@@ -97,10 +97,10 @@ export const modelLanguages = (s) => ({ spoken: s.explicit ? s.spoken.map((l) =>
  */
 const SCRIPTS = /** @type {const} */ ([[/[぀-ヿ一-鿿]/g, 'Chinese'], [/[가-힯]/g, 'Korean'], [/[฀-๿]/g, 'Thai'],
   [/[؀-ۿ]/g, 'Arabic'], [/[֐-׿]/g, 'Hebrew'], [/[Ͱ-Ͽ]/g, 'Greek'], [/[ऀ-ॿ]/g, 'Hindi'], [/[Ѐ-ӿ]/g, 'Russian']]);
-/** The commonest small words of languages written in Latin letters: the one with the most of them, alone at the top, is it. */
+/** The commonest small words of languages written in Latin letters: the one with the most of them, alone at the top, is it. (No "no" for Spanish: it is English's too.) */
 const COMMON = Object.entries({
   English: 'the and is are was you we our to of it what where when how for this that please with be can do my me i us in on at near still open not have there any tonight today',
-  Spanish: 'el los las y es son que de en un una por para con no qué dónde cómo gracias somos estamos hay del al muy',
+  Spanish: 'el los las y es son que de en un una por para con qué dónde cómo gracias somos estamos hay del al muy',
   French: 'le les et est sont que de des du un une pour avec nous vous je pas où merci au aux sur',
   German: 'der die das und ist sind nicht ich wir sie ein eine mit für auf wo was bitte danke zu dem den',
   Italian: 'il lo gli e è sono che di un una per con non siamo dove cosa grazie del della ci',

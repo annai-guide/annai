@@ -10,17 +10,20 @@ import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName } from '..
 export function languagesSection(ctx, app) {
   const first = languageSettings(app, navigator.language);
   let ids = first.spoken.map((l) => l.id);
+  let chosen = first.explicit;
   const name = (/** @type {string} */ id) => LANGUAGES.find((l) => l.id === id)?.name ?? id;
   const own = (/** @type {string} */ id) => { const l = LANGUAGES.find((x) => x.id === id); return l && nativeName(l) !== l.name ? nativeName(l) : ''; };
   const note = h('span', { class: 'saved', role: 'status' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   const list = h('ol', { class: 'langs', 'aria-label': W.spokenLabel });
+  const hint = h('p', { class: 'sub' });
   const add = h('select', { id: 'language-add' });
   /** Saves the list as shown (the first change turns the browser's default into a list of the user's own). @param {string[]} next */
   const save = (next) => queueSave(async () => {
     try {
       await updateAppSettings(ctx.ws, { languages: { spoken: next } });
       ids = next;
+      chosen = true;
       error.hidden = true;
       note.textContent = 'Saved';
       draw();
@@ -34,6 +37,7 @@ export function languagesSection(ctx, app) {
       h('span', { class: 'lang-name' }, `${i + 1}. ${name(id)} `, h('span', { class: 'sub', text: own(id) })),
       i ? h('button', { class: 'btn', type: 'button', 'aria-label': W.up(name(id)), onclick: () => save(ids.map((x, k) => (k === i - 1 ? id : k === i ? ids[i - 1] : x))) }, '↑') : null,
       h('button', { class: 'btn', type: 'button', 'aria-label': W.remove(name(id)), disabled: ids.length < 2, onclick: () => save(ids.filter((x) => x !== id)) }, 'Remove'))));
+    hint.textContent = chosen ? W.spokenHint : `${W.empty} ${W.spokenHint}`;
     add.replaceChildren(h('option', { value: '', text: W.add }), ...LANGUAGES.filter((l) => !ids.includes(l.id)).map((l) => h('option', { value: l.id, text: `${l.name} · ${nativeName(l)}` })));
   };
   draw();
@@ -46,6 +50,6 @@ export function languagesSection(ctx, app) {
     h('h2', { class: 'section', text: W.heading }),
     h('p', { class: 'sub', text: W.intro }),
     h('div', { class: 'saving' }, h('h3', { text: W.spokenLabel }), list, field(W.add, add), note, error,
-      h('p', { class: 'sub', text: first.explicit ? W.spokenHint : `${W.empty} ${W.spokenHint}` })),
+      hint),
     savedField(W.answerLabel, answer, () => answer.value, (v) => updateAppSettings(ctx.ws, { languages: { answer: v } })));
 }

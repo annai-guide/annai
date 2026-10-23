@@ -3,6 +3,8 @@
 // timeline, so they are tested without a browser. Times are epoch ms; a record's startedAt is when its session opened.
 //
 
+import { languageOf } from '../../src/core/languages.js';
+
 /**
  * @typedef {{ at: number, name: string, end: number, gainDb: number }} MicPlay  a clip played into the microphone
  * @typedef {{ at: number, dir: 'out' | 'in', kind: string, bytes?: number, text?: string, name?: string, code?: number, reason?: string }} Frame
@@ -10,8 +12,10 @@
  *   interrupted, toolCall, usage, goAway, close
  * @typedef {{ at: number, type: string, data: any, text?: string }} TraceEntry  annai's own: live.turn, live.session, out.speak, heard, error
  * @typedef {{ scenario: string, route: string, echoDb: number | null, startedAt: number, endedAt: number, keyLine: number | null, plays: MicPlay[],
- *   frames: Frame[], level: number[][], micLevel?: number[][], trace: TraceEntry[], errors: string[], notes: string[], cards?: string[] }} Rec  level: [at, rms of what annai plays];
- *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening
+ *   frames: Frame[], level: number[][], micLevel?: number[][], trace: TraceEntry[], errors: string[], notes: string[], cards?: string[],
+ *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string } }} Rec  level: [at, rms of what annai plays];
+ *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening;
+ *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied)
  */
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
@@ -25,13 +29,23 @@ export const END_LAG_MS = 2000;
 /** The words of a text, lower case, no punctuation. @param {string} text */
 const words = (text) => String(text).toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(Boolean);
 
-/** How much of what was said was heard: the share of its words found among the heard words. @param {string} said @param {string} heard */
+/** Japanese and Chinese have no spaces between words: they are read by character. @param {string} text */
+const characters = (text) => [...String(text).replace(/[^\p{L}\p{N}]/gu, '')];
+const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
+
+/** How much of what was said was heard: the share of its words (a Japanese or Chinese text's characters) found among the heard. @param {string} said @param {string} heard */
 export function wordRecall(said, heard) {
-  const want = words(said);
+  const by = CJK.test(said) ? characters : words;
+  const want = by(said);
   if (!want.length) return 1;
-  const got = new Set(words(heard));
+  const got = new Set(by(heard));
   return want.filter((w) => got.has(w)).length / want.length;
 }
+
+/** The language a text is written in, by name ('' when it can't be told): its script, the small words of English, Spanish, French and the like, and Spanish and Vietnamese marks. @param {string} text */
+export const seenLanguage = (text) => languageOf(text) || (/[¿¡ñ]/.test(text) ? 'Spanish' : /[ơưăạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(text) ? 'Vietnamese' : '');
+/** The language a clip is spoken in, as languageOf names it. */
+const LANGUAGE_NAME = /** @type {Record<string, string>} */ ({ en: 'English', ja: 'Japanese', zh: 'Chinese' });
 
 /** The runs of sound in what annai played. @param {number[][]} level @returns {{ from: number, to: number }[]} */
 export function soundRuns(level) {
@@ -50,14 +64,16 @@ export function soundRuns(level) {
  * @typedef {{ i: number, start: number, end: number | null, ms: number | null, audioBytes: number, reason: string | null, clip: string | null,
  *   spurious: boolean, echo: boolean }} Turn
  * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing', turns: number, endLagMs: number | null, answered: boolean | null,
- *   firstAudioMs: number | null, firstSoundMs: number | null, heard: string, recall: number, said: string, tools: string[], overHer: boolean, sentMs: number, coverage: number }} ClipResult
- *   tools: what she called before her first sound; overHer: it began while she sounded or as she began
+ *   firstAudioMs: number | null, firstSoundMs: number | null, heard: string, recall: number, said: string, tools: string[], overHer: boolean, sentMs: number, coverage: number,
+ *   lang?: string, heardLang?: string, saidLang?: string }} ClipResult
+ *   tools: what she called before her first sound; overHer: it began while she sounded or as she began; lang: the language the clip is spoken in;
+ *   heardLang, saidLang: the language Gemini's transcript of it, and her words, are in ('' when they can't be told)
  * @typedef {{ at: number, cause: 'user' | 'echo' | 'noise' | 'other' }} Cut
  * @typedef {{ name: string, ok: boolean, detail: string, soft?: boolean }} Check  soft: a warning, which does not fail the scenario
  */
 
 /**
- * @param {Rec} rec @param {Record<string, { kind: string, words: string }>} clips
+ * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
  * @param {{ endLagMs?: number, expectCut?: boolean }} [o] expectCut: the scenario has the user speak over her, which should cut her
  */
 export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false } = {}) {
@@ -122,19 +138,29 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
       endLagMs: lastEnd === null ? null : lastEnd - p.end,
       answered: Boolean(audio), firstAudioMs: audio ? audio.at - p.end : null, firstSoundMs: sound ? Math.max(sound.from, lastEnd ?? 0) - p.end : null,
       heard, recall: heard ? wordRecall(clips[p.name]?.words ?? '', heard) : 0, said,
+      lang: clips[p.name]?.lang ?? 'en', heardLang: seenLanguage(heard), saidLang: seenLanguage(said),
     };
   });
   const halfDuplex = rec.route === 'speaker';
   for (const r of results) {
     if (r.expect === 'answer' && !r.turns && r.overHer) notes.push(`${r.name}: spoken over her${halfDuplex ? ', and annai on the phone speaker hears nothing while she speaks: no turn, as designed' : ' and no turn was made of it'}`);
     if (r.expect === 'answer' && r.turns > 1) notes.push(`${r.name}: split into ${r.turns} turns (a pause inside the sentence ended the first)`);
-    if (r.expect === 'answer' && r.turns && r.heard && r.recall < 0.6) notes.push(`${r.name}: Gemini heard "${r.heard}" for "${clips[r.name]?.words}"`);
+    if (r.expect === 'answer' && r.turns && r.heard && r.recall < 0.6) notes.push(`${r.name}: Gemini heard "${r.heard}" for "${clips[r.name]?.words}"${r.heardLang && r.heardLang !== LANGUAGE_NAME[r.lang ?? 'en'] ? ` (${r.heardLang})` : ''}`);
     if (r.expect === 'answer' && r.turns && !r.heard) notes.push(`${r.name}: no transcript of the turn came back`);
     if (r.firstAudioMs !== null && r.firstAudioMs > 3000) notes.push(`${r.name}: her first audio came ${(r.firstAudioMs / 1000).toFixed(1)} s after the user stopped`);
   }
   for (const t of turns) {
     if (t.spurious && !t.echo) notes.push(`turn ${t.i} at ${(t.start - rec.startedAt) / 1000} s was nobody speaking (noise)`);
     if (t.end === null) notes.push(`turn ${t.i} never ended`);
+  }
+
+  // The languages (phase 2): what the setup carried, what annai flagged, and whether the build took the setting at all.
+  if (rec.languages) {
+    if (!rec.languages.applied) notes.push(`languages setting not applied: ${rec.languages.why ?? 'it was not set'}`);
+    const setup = frames.find((fr) => fr.dir === 'out' && fr.kind === 'setup' && fr.text);
+    if (setup) notes.push(`setup: ${setup.text}`);
+    for (const t of rec.trace.filter((x) => x.type === 'heard' && x.data?.strayLanguage)) notes.push(`annai flagged the heard line "${t.data.text}" as ${t.data.strayLanguage} (a very short transcript in a language not listed)`);
+    for (const r of results) if (r.expect === 'answer' && r.turns && r.answered && !r.said) notes.push(`${r.name}: no transcript of what she said, so her language could not be told`);
   }
 
   // Her being cut: each interrupted, by whose turn it followed.
@@ -182,6 +208,15 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
     { name: 'turn ends in time', ok: lagged.length === 0, detail: lagged.length ? `late: ${lagged.map((r) => `${r.name} ${r.endLagMs === null ? 'never ended' : `${(r.endLagMs / 1000).toFixed(2)} s`}`).join(', ')}` : `every turn ended within ${endLagMs / 1000} s of the user stopping` },
     { name: 'no errors', ok: errors.length === 0, detail: errors.length ? errors.join('; ') : 'none' },
   ];
+  // Her language (phase 2): each answer in the language its clip was spoken in. An answer too short to place passes: it can't be told.
+  if (rec.languages) {
+    const wrong = asked.filter((r) => r.answered && r.saidLang && r.saidLang !== LANGUAGE_NAME[r.lang ?? 'en']);
+    checks.push({
+      name: 'language kept', ok: wrong.length === 0,
+      detail: wrong.length ? wrong.map((r) => `${r.name} answered in ${r.saidLang} (spoken in ${LANGUAGE_NAME[r.lang ?? 'en']}): "${r.said.slice(0, 80)}"`).join('; ')
+        : `every answer that could be placed was in the language it was spoken in (${asked.filter((r) => r.saidLang).length} of ${asked.length} could be placed)`,
+    });
+  }
   // Whether all that was said reached Gemini: a sentence cut at its pause, or a question begun over her voice, arrives in part.
   const partial = asked.filter((r) => r.turns && (r.coverage < 0.75 || (r.heard && r.recall < 0.6)));
   checks.push({
@@ -267,7 +302,7 @@ export function timeline(rec, a) {
   }
   for (const t of rec.trace) {
     const d = t.data ?? {};
-    const detail = t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
+    const detail = t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
     add(t.at, 'trace', `${t.type} ${detail}`.trimEnd());
   }
   rows.sort((x, y) => x.at - y.at);
@@ -280,6 +315,7 @@ export function timeline(rec, a) {
  */
 export function detail(rec, a, about = '') {
   const out = [`== ${rec.scenario}: ${a.pass ? 'PASS' : 'FAIL'} (${rec.route}${rec.echoDb === null ? '' : `, her voice back into the microphone at ${rec.echoDb} dB`})${about ? ` ${about}` : ''}`];
+  if (rec.languages) out.push(`   languages set: ${rec.languages.spoken.join(', ')}; she answers in: ${rec.languages.answer}${rec.languages.applied ? '' : ' (NOT applied: this build has no such setting)'}`);
   for (const c of a.clips) {
     if (c.expect === 'nothing') {
       out.push(`   ${c.name.padEnd(9)} ${secs(c.end - c.at)} s of quiet, ${a.turns.some((t) => t.start >= c.at && t.start <= c.end) ? 'a turn began in it' : 'no turn began'}`);
@@ -288,7 +324,8 @@ export function detail(rec, a, about = '') {
     const t = a.turns.filter((x) => x.clip === `${c.name}@${c.at}`);
     const ends = t.map((x) => `${x.reason ?? '?'}`).join('+');
     out.push(`   ${c.name.padEnd(9)} ${c.turns ? `${c.turns} turn${c.turns > 1 ? 's' : ''} (${t.map((x) => `${secs(x.ms ?? 0)} s`).join(' + ')} sent), ended by ${ends}, ${c.endLagMs === null ? 'never ended' : after(c.endLagMs)}` : 'NO TURN was made'}; ${c.answered ? `audio back ${after(/** @type {number} */ (c.firstAudioMs))}${c.tools.length ? ` (after ${c.tools.join(', ')})` : ''}, sound at the speaker ${c.firstSoundMs === null ? '?' : after(c.firstSoundMs)}` : 'NO AUDIO back'}`);
-    out.push(`             heard: "${c.heard}"${c.heard ? ` (${Math.round(c.recall * 100)}% of the words)` : ''}${c.said ? `; she said: "${c.said.slice(0, 140)}"` : ''}`);
+    const mark = (/** @type {string | undefined} */ seen) => (seen && seen !== LANGUAGE_NAME[c.lang ?? 'en'] ? seen : '');
+    out.push(`             heard: "${c.heard}"${c.heard ? ` (${Math.round(c.recall * 100)}% of the words)` : ''}${mark(c.heardLang) ? ` [heard as ${mark(c.heardLang)}]` : ''}${c.said ? `; she said: "${c.said.slice(0, 140)}"` : ''}${mark(c.saidLang) ? ` [answered in ${mark(c.saidLang)}]` : ''}`);
   }
   for (const k of a.cuts) out.push(`   she was cut at ${secs(k.at - rec.startedAt)} s by ${k.cause === 'user' ? 'the user speaking over her' : k.cause === 'echo' ? 'HER OWN ECHO' : k.cause === 'noise' ? 'noise' : 'something else'}`);
   for (const c of a.checks) out.push(`   ${c.ok ? 'ok  ' : c.soft ? 'WARN' : 'FAIL'} ${c.name}: ${c.detail}`);

@@ -30,6 +30,7 @@ test('Settings → Shiori → Languages: the browser\'s language to begin with; 
   const add = panel.getByLabel('Add a language');
   await add.selectOption('zh');
   await expect(panel.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
+  await expect(panel).not.toContainText('None picked'); // the note follows the list, not only a new visit
   await add.selectOption('ja');
   await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/, /^3\. Japanese/]);
   await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'zh', 'ja'] });

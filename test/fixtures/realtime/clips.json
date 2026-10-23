@@ -70,6 +70,50 @@
       "seconds": 12.66,
       "bytes": 405164,
       "sha256": "3898e759ec3a7dbd"
+    },
+    "sure": {
+      "words": "Sure.",
+      "voice": "Puck",
+      "seconds": 0.64,
+      "bytes": 20524,
+      "sha256": "6f84046f41a75e75"
+    },
+    "what": {
+      "words": "What?",
+      "voice": "Kore",
+      "seconds": 0.94,
+      "bytes": 30124,
+      "sha256": "ec921c8e7c686a80"
+    },
+    "alright": {
+      "words": "Alright.",
+      "voice": "Leda",
+      "seconds": 0.8,
+      "bytes": 25644,
+      "sha256": "baec1d7eb3dbab7f"
+    },
+    "no": {
+      "words": "No.",
+      "voice": "Aoede",
+      "seconds": 0.6,
+      "bytes": 19244,
+      "sha256": "94b62ea2596f3e4f"
+    },
+    "ja": {
+      "words": "この近くに、おいしいラーメン屋さんはありますか。",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 2.9,
+      "bytes": 92844,
+      "sha256": "91edd1fde4abf80b"
+    },
+    "zh": {
+      "words": "附近有什么好吃的餐馆吗？",
+      "voice": "Puck",
+      "lang": "zh",
+      "seconds": 2.32,
+      "bytes": 74284,
+      "sha256": "643e8f0b080b1b77"
     }
   }
 }

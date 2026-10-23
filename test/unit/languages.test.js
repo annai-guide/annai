@@ -82,6 +82,8 @@ test('a very short transcript in a language that is not listed is stray: named, 
   assert.equal(strayLanguage('Aha.', en), '', 'English-looking: nothing to say');
   assert.equal(strayLanguage('parco', en), '', "a word no list can place isn't called foreign");
   assert.equal(strayLanguage('Yes.', en), '');
+  // Words English shares with another language place nothing (the first real run: "No." was called Spanish).
+  for (const said of ['No.', 'No', 'What?', 'All right.', 'Sure.', 'Okay.', 'Mm.']) assert.equal(strayLanguage(said, en), '', said);
   assert.equal(strayLanguage('はい', en), '', 'listed');
   assert.equal(strayLanguage('你好', en), '', 'listed');
   assert.equal(strayLanguage('안녕', en), 'Korean');
