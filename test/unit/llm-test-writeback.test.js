@@ -113,3 +113,47 @@ test('what a Test records under a name replaces what was there under it: a level
   await markVerified(ws, id, { levels: { low: 'ok' }, levelsAt: 2 });
   assert.deepEqual((await readConfig(ws)).models[id].verified, { levels: { low: 'ok' }, levelsAt: 2 });
 });
+
+test("a model removed while a field of it is being saved stays removed: removing takes the file's lock, so it comes before or after the save, never between its read and write", async () => {
+  const { ws, id } = await slowModel();
+  const { removeModel, updateModel } = await import('../../src/core/llm/config.js');
+  const { NotFoundError } = await import('../../src/core/workspace.js');
+  let release = () => {};
+  const gate = new Promise((r) => { release = () => r(undefined); });
+  // A save that has read the record and is not done: it holds the file's lock.
+  const saving = ws.update('sys:settings', `/llm/models/${id}.json`, async (rec) => {
+    await gate;
+    return { ...rec, user: { ...(rec.user ?? {}), contextWindow: 777 } };
+  }, { author: 'user' });
+  await new Promise((r) => setTimeout(r, 20));
+  const removing = removeModel(ws, id);
+  await new Promise((r) => setTimeout(r, 20));
+  release();
+  await Promise.all([saving, removing]);
+  assert.equal((await readConfig(ws)).models[id], undefined, 'removed, not recreated by the save that read it first');
+  await assert.rejects(updateModel(ws, id, (rec) => rec), NotFoundError);
+});
+
+test("a field save holds the model's lock only for its own record: the scan of every provider and model for the cross-record checks is made before it, and a name taken by another model is still refused", async () => {
+  const { ws, id } = await slowModel();
+  const { updateModel, readConfig: read, newModel, saveModel } = await import('../../src/core/llm/config.js');
+  const { ValidationError } = await import('../../src/core/workspace.js');
+  const other = newModel((await read(ws)).models[id].provider, 'chat', { user: { providerId: 'other-model' } });
+  await saveModel(ws, other);
+  // Which reads happen while an update's function is running, that is, in the lock.
+  let inLock = false;
+  /** @type {string[]} */
+  const inside = [];
+  const update = ws.update.bind(ws);
+  ws.update = (scope, path, fn, opts) => update(scope, path, async (/** @type {any} */ cur) => {
+    inLock = true;
+    try { return await fn(cur); } finally { inLock = false; }
+  }, opts);
+  const list = ws.list.bind(ws);
+  ws.list = (...a) => { if (inLock) inside.push('list'); return list(...a); };
+  await updateModel(ws, id, (rec) => ({ ...rec, user: { ...(rec.user ?? {}), contextWindow: 999 } }));
+  assert.deepEqual(inside, [], 'no scan of the config in the lock');
+  assert.equal(modelOf((await read(ws)).models[id]).contextWindow, 999);
+  await assert.rejects(updateModel(ws, id, (rec) => ({ ...rec, user: { ...(rec.user ?? {}), name: 'Other-Model' } })), ValidationError);
+  assert.notEqual(modelOf((await read(ws)).models[id]).name, 'Other-Model');
+});
