@@ -97,7 +97,8 @@ A scenario **passes** when:
 2. **no echo cut**: no turn began that nobody made while she sounded (her own echo), none began in silence, and no cut of hers followed one;
 3. **turn ends in time**: each turn ended within 2 s of the user stopping;
 4. **no errors**: no `error` entry in the trace, no socket closed with a kind annai did not ask for, no console error once she is listening
-   (a silent session the watchdog replaced, with her answer after it, is a note, "rescued", not an error: the user was answered, late);
+   (a silent session the watchdog rescued, by the ask again or a fresh session, with her answer after it and before the next clip, is a
+   note, "rescued", not an error: the user was answered, late; a second silence in a row stays an error);
 5. barge-in only: **she is cut by the user**.
 
 A sixth check, **whole sentences heard**, is a *warning* (`WARN`, "PASS (2 warnings)"): it fails when a question's turns carried less than
@@ -105,8 +106,9 @@ three quarters of its sound or Gemini's transcript has less than 60% of its word
 than annai waits for (her voice waits 1.2 s after the turn's end for the user to go on), or a question's tail sent alone, shows; it does
 not fail the scenario, and it is for people to read.
 
-The notes are for people too: a transcript that is not what was said, a first sound later than 3 s, and, in echo mode, whether her
-voice did reach the microphone at the level asked (a check that proves nothing if it did not).
+The notes are for people too: a transcript that is not what was said, a first sound later than 3 s, every card annai showed once she
+was listening ("card: Tap Shiori to talk over her" in a scenario where nobody talked over her is a misfire), and, in echo mode, whether
+her voice did reach the microphone at the level asked (a check that proves nothing if it did not).
 
 Each scenario also leaves `<name>.timeline.txt` (the clips, both directions of the socket, where she sounded and annai's trace, in
 time order from the session's open, with each user turn explained) and `<name>.json` (the record). That is the shape of

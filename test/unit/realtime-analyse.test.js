@@ -141,6 +141,21 @@ test('a silent session the watchdog rescued, with her answer after it, is a note
   assert.equal(a.checks.find((x) => x.name === 'no errors')?.ok, true);
   assert.ok(a.notes.some((n) => /rescued/.test(n) && /live-silent|8 seconds/.test(n)), a.notes.join(' | '));
   assert.equal(a.pass, true);
+  // Review N7: only a rescue (a fresh session, or the ask again) answered before the next clip; a second silence stays an error.
+  const second = clean();
+  second.trace.push({ at: 9000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave no answer within 8 seconds.', quiet: true } });
+  second.frames.push(f(9800, 'in', 'audio', { bytes: 9600 }));
+  assert.equal(run(second).checks.find((x) => x.name === 'no errors')?.ok, false);
+  const late = clean();
+  late.plays.push({ name: 'yes', at: 9500, end: 10_300, gainDb: 0 });
+  late.trace.push({ at: 9000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave no answer within 8 seconds: it is asked again.', quiet: true } });
+  late.frames.push(f(11_000, 'in', 'audio', { bytes: 9600 }));
+  assert.equal(run(late).checks.find((x) => x.name === 'no errors')?.ok, false, 'answered only after the next clip: not rescued');
+});
+
+test('the cards annai showed while she listened are in the notes, so one shown for nothing (the talk-over card with nobody talking) shows', () => {
+  const a = run(clean({ cards: ['Tap Shiori to talk over her'] }));
+  assert.ok(a.notes.some((n) => n === 'card: Tap Shiori to talk over her'), a.notes.join(' | '));
 });
 
 test('what Gemini heard is joined from the transcript frames of a turn and scored against the words said', () => {

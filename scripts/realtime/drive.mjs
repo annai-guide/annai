@@ -183,14 +183,18 @@ export async function runScenario(browser, name, sc, env) {
       const lv = (/** @type {number[][]} */ xs) => xs.map((l) => [r.t0 + l[0], Math.round(l[1] * 10_000) / 10_000]);
       return r ? { plays: r.plays, level: lv(r.level), mic: lv(r.mic), opens: r.opens } : { plays: [], level: [], mic: [], opens: 0 };
     });
+    const shown = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim())).catch(() => []);
+    const cards = [...new Set(shown.filter((c) => !before.includes(c)))].map((c) => env.scrub(c).slice(0, 120));
     const convo = await page.evaluate(() => [...document.querySelectorAll('.convo .you, .convo .shiori, .convo .system-line')].map((e) => ({ who: e.classList.contains('you') ? 'you' : e.classList.contains('system-line') ? 'system' : 'shiori', text: (e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 300) })));
     // A close annai did not ask for is an error with its kind; the socket's own close code is annai's trace's, not the page's.
     for (const t of trace) {
       if (t.type === 'live.session' && t.data.state === 'closed' && t.data.kind) frames.push({ at: t.at, dir: 'in', kind: 'close', code: t.data.code, reason: `${t.data.kind}: ${t.data.why ?? ''}` });
     }
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, convo };
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo };
   };
   let opened = began;
+  /** The cards on the page as she starts listening: only those that come after are hers to report. @type {string[]} */
+  let before = [];
   try {
     await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn } : {});
     log('    annai is set up; tapping Shiori');
@@ -198,6 +202,7 @@ export async function runScenario(browser, name, sc, env) {
     await page.locator('.voice-chip').filter({ hasText: 'Listening live' }).waitFor({ timeout: 40_000 });
     await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: 15_000 });
     talking = true;
+    before = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim()));
     await wait(1200); // the detector hears the room before the first word
     opened = frames.find((f) => f.kind === 'setup')?.at ?? began;
     log('    listening live; running the conversation');

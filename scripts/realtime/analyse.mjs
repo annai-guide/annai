@@ -10,8 +10,8 @@
  *   interrupted, toolCall, usage, goAway, close
  * @typedef {{ at: number, type: string, data: any, text?: string }} TraceEntry  annai's own: live.turn, live.session, out.speak, heard, error
  * @typedef {{ scenario: string, route: string, echoDb: number | null, startedAt: number, endedAt: number, keyLine: number | null, plays: MicPlay[],
- *   frames: Frame[], level: number[][], micLevel?: number[][], trace: TraceEntry[], errors: string[], notes: string[] }} Rec  level: [at, rms of what annai plays];
- *   micLevel: the same for what the microphone carried
+ *   frames: Frame[], level: number[][], micLevel?: number[][], trace: TraceEntry[], errors: string[], notes: string[], cards?: string[] }} Rec  level: [at, rms of what annai plays];
+ *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening
  */
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
@@ -151,10 +151,16 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
     else notes.push(`echo mode: her voice reached the microphone at ${echoMeasuredDb.toFixed(1)} dB of her own level (asked ${rec.echoDb} dB)`);
   }
 
-  // Errors: the trace's, the sockets' closes with a code, and the page's. A silent session the watchdog replaced, with her answer
-  // after it, was rescued: the user was answered, late (a note, with how late in the clip's own).
+  // Errors: the trace's, the sockets' closes with a code, and the page's. A silent session the watchdog rescued (a fresh session, or
+  // the ask again), with her answer after it and before the next clip, was rescued: the user was answered, late (a note; how late is
+  // in the clip's own). A second silence in a row is an error.
   const errorText = (/** @type {TraceEntry} */ t) => `${t.data?.kind ?? 'error'}: ${t.data?.message ?? ''}`.trim();
-  const rescued = (/** @type {TraceEntry} */ t) => t.data?.kind === 'live-silent' && frames.some((fr) => fr.dir === 'in' && fr.kind === 'audio' && fr.at > t.at);
+  const rescued = (/** @type {TraceEntry} */ t) => {
+    if (t.data?.kind !== 'live-silent' || !/a fresh one gets it again|it is asked again/.test(String(t.data?.message ?? ''))) return false;
+    const until = speech.find((p) => p.at > t.at)?.at ?? Infinity;
+    return frames.some((fr) => fr.dir === 'in' && fr.kind === 'audio' && fr.at > t.at && fr.at < until);
+  };
+  for (const c of rec.cards ?? []) notes.push(`card: ${c}`);
   for (const t of rec.trace.filter((x) => x.type === 'error' && rescued(x))) notes.push(`rescued at ${((t.at - rec.startedAt) / 1000).toFixed(1)} s: ${errorText(t)}`);
   /** @type {string[]} */
   const errors = [
