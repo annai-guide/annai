@@ -190,16 +190,29 @@ export function startShell(root, core) {
     return y;
   };
 
-  /** @type {Promise<unknown>} the newest draw: one it supersedes finishes only when that is on screen, so a caller that awaits a draw sees the screen as drawn */
-  let newest = Promise.resolve();
+  const nextLanding = () => {
+    let done = () => {};
+    const promise = /** @type {Promise<void>} */ (new Promise((resolve) => { done = () => resolve(undefined); }));
+    return { promise, done };
+  };
+  /**
+   * The next draw to land on screen, a screen or the error page. A draw that a newer one supersedes ends when that lands, not at once
+   * (a caller that awaits it, such as a save before its toast, finds the screen drawn) and not on one particular draw, which may
+   * never finish: whichever draw lands next ends it, or one that landed already, which began after it.
+   */
+  let landing = nextLanding();
+  let landedAt = 0;
+  /** @param {number} my the draw that landed */
+  const land = (my) => {
+    const was = landing;
+    landedAt = my;
+    landing = nextLanding();
+    was.done();
+  };
+  /** What a draw that a newer one superseded ends with. @param {number} my */
+  const superseded = (my) => (landedAt > my ? undefined : landing.promise);
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
-  function render(o = {}) {
-    const drawn = draw(o);
-    newest = drawn;
-    return drawn;
-  }
-  /** @param {{ moved?: boolean }} o */
-  async function draw(o) {
+  async function render(o = {}) {
     const my = ++seq;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
@@ -227,7 +240,7 @@ export function startShell(root, core) {
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once (minors 15).
       const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
-      if (my !== seq) return newest;
+      if (my !== seq) return superseded(my);
       main.replaceChildren(node);
       if (pending !== null) {
         const want = pending;
@@ -237,12 +250,14 @@ export function startShell(root, core) {
         // touch it; not the Conversation, which goes to its last message itself.
         if (want && route.name !== 'talk') follow(my, want);
       }
+      land(my);
     } catch (e) {
-      if (my !== seq) return newest;
+      if (my !== seq) return superseded(my);
       main.replaceChildren(h('div', { class: 'screen' },
         h('h1', { class: 'title', text: "This screen couldn't open" }),
         h('p', { text: String(/** @type {any} */ (e)?.message ?? e) }),
         h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips'))));
+      land(my);
       dispatchEvent(new ErrorEvent('error', { error: e, message: String(e) }));
     }
   }
