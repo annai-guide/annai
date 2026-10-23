@@ -12,6 +12,7 @@ import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { OFFICIAL_NAMES } from '../../core/official-names.js';
 import { setupOf } from '../../core/llm/setup.js';
+import { keeperOf } from '../../core/llm/kept.js';
 import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
 export { messageOf };
@@ -334,13 +335,13 @@ async function abilityBody(view, abilityId) {
   const uploads = type.uploadRequest ? savedCheck('Upload photos to this provider (each expires after 48 hours)', a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
   // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
-  const who = type.keeps?.name ?? providerOf(rec).name;
+  const { name: who, holds, note: keepNote } = keeperOf(type.keeps, rec.plugin, providerOf(rec).name);
+  const keyless = !(await ctx.llm.keyFor(id));
   const keep = type.keeps ? savedCheck(`Let ${who} keep the conversation between turns: sends less each time.`, a.tunables?.keep !== false, async (on) => {
     tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, keep: on }) })).tunables);
     if (!on) await ctx.llm.forgetEndpoint(`${id}/${abilityId}`);
   }) : null;
   const waiting = keep ? (await ctx.llm.keptCount({ endpoint: `${id}/${abilityId}` })).waiting : 0;
-  const keyless = waiting > 0 && !(await ctx.llm.keyFor(id));
   // Tunables the protocol offers in words (G3): one of its options, or a switch, showing what the JSON field saves too.
   const tune = (/** @type {string} */ k) => async (/** @type {any} */ v) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, [k]: v }) })).tunables);
   const choices = Object.entries(type.choices ?? {}).map(([k, c]) => ({ k, el: c.options ? savedRadios(c.label, Object.entries(c.options), String(a.tunables?.[k]), tune(k))
@@ -365,7 +366,7 @@ async function abilityBody(view, abilityId) {
     addressWarn,
     uploads?.el ?? null,
     keep?.el ?? null,
-    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to ${type.keeps.days} days on a paid one. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.` }) : null,
+    keep ? h('p', { class: 'sub', text: `${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: ${holds ?? `a day on a free key, up to ${type.keeps.days} days on a paid one`}. annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off. Off, each turn sends the whole conversation.${keepNote ? ` ${keepNote}` : ''}${keyless ? ' It needs this provider\'s key: without one, each turn sends the whole conversation.' : ''}` }) : null,
     waiting ? h('p', { class: 'sub', text: `${waiting} deletion${waiting === 1 ? '' : 's'} waiting: ${keyless ? `annai can't send ${waiting === 1 ? 'it' : 'them'} without this provider's key` : `annai sends ${waiting === 1 ? 'it' : 'them'} when it can reach ${who}`}.` }) : null,
     ...choices.map((c) => c.el),
     ...tools,

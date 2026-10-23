@@ -284,6 +284,8 @@ export class Agent {
   #free = [];
   /** The page is being left. */
   #leaving = false;
+  /** The warm summary's call, which leaving the page or a tap on Shiori cuts short. @type {AbortController | null} */
+  #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
   /** The wake whose photo couldn't be sent: its card already says why. */
@@ -932,11 +934,13 @@ export class Agent {
    */
   leaving(yes = true) {
     this.#leaving = yes;
+    if (yes) this.#tidy?.abort();
   }
 
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#userStop = true;
+    this.#tidy?.abort(); // a warm summary under way: its call deletes the turn it borrowed
     if (this.#gathering) this.#stopGathered();
     this.#halt();
   }
@@ -1068,6 +1072,7 @@ export class Agent {
     try {
       await this.compact(mode);
     } catch (e) {
+      if (e instanceof ProviderError && e.kind === 'cancelled') return; // the user left or tapped her: nothing failed
       await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${this.#explain(e, mode === 'cold' ? 'utility' : 'main')} She will try again later.` });
     } finally {
       this.#busy = false;
@@ -1302,25 +1307,31 @@ export class Agent {
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
-    for (let step = 0; step < 4; step++) {
-      const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
-      const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
-      const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
-      if (!calls.length) return r.reply.text.trim() || null;
-      /** @type {import('../llm/contract.js').Part[]} */
-      const results = [];
-      for (const c of calls) {
-        const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
-        const tool = tools.find((t) => t.name === c.name);
-        const out = memory && tool
-          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
-          : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
-        await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
-        results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
+    const tidy = new AbortController();
+    this.#tidy = tidy;
+    try {
+      for (let step = 0; step < 4; step++) {
+        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
+        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+        const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+        if (!calls.length) return r.reply.text.trim() || null;
+        /** @type {import('../llm/contract.js').Part[]} */
+        const results = [];
+        for (const c of calls) {
+          const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
+          const tool = tools.find((t) => t.name === c.name);
+          const out = memory && tool
+            ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
+            : { content: 'Not during housekeeping: only memory moves work now.', isError: true };
+          await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
+          results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
+        }
+        messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
       }
-      messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
+      return null;
+    } finally {
+      if (this.#tidy === tidy) this.#tidy = null;
     }
-    return null;
   }
 
   /** Cold: the utility model, from the older part as text. @param {number} cut @param {string} language */
@@ -1858,7 +1869,8 @@ export class Agent {
     try {
       return await this.compact(mode, o);
     } catch (e) {
-      if (this.#leaving) return null;
+      // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
+      if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await withoutSecrets(this.store, this.#explain(e, mode === 'cold' ? 'utility' : 'main'));
       if (!o.forced) {
         await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${why} She will try again later.` });

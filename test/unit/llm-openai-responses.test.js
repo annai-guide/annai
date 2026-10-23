@@ -91,7 +91,11 @@ test('build: a conversation with photos, a PDF, tool calls and results, this mod
   assert.deepEqual(headers, { 'content-type': 'application/json', authorization: 'Bearer sk-test-r' });
   assert.equal(body.model, MODEL);
   assert.equal(body.stream, true);
-  assert.equal(body.store, false, 'nothing is kept on the server: the whole conversation goes each time');
+  assert.equal(body.store, false, 'a call that is not a conversation turn (a utility call, a Test) keeps nothing on the server');
+  assert.equal(type.build({ ...s, keep: true }).body.store, true, 'a conversation turn is kept when its call says so');
+  const chained = type.build({ ...s, keep: true, kept: { id: 'resp_1', from: 1 } }).body;
+  assert.equal(chained.previous_response_id, 'resp_1');
+  assert.ok(chained.input.length < body.input.length, 'only what follows the kept turn is sent');
   assert.equal(body.instructions, 'Be brief.');
   assert.equal(body.max_output_tokens, 500);
   // A model without reasoning levels may not reason: it is sent no reasoning field, and isn't asked for encrypted reasoning.

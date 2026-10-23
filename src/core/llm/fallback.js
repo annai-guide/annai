@@ -269,7 +269,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
- *   prefer?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
+ *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string }} c
@@ -281,6 +281,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
  *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
+ *   borrow: warm housekeeping, which continues the conversation's live kept chain (if it has one) and deletes its own response, recording nothing
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
  *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
@@ -296,7 +297,7 @@ export async function callRole(c) {
   /** @type {number | undefined} */
   let cost;
   const { keepParts, ...meta } = c.record ?? {};
-  const keeps = c.kept && keepParts && (role === 'main' || role === KOE_CLASSIC) ? c.kept : null;
+  const keeps = c.kept && (keepParts || c.borrow) && (role === 'main' || role === KOE_CLASSIC) ? c.kept : null;
   // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused (fix pass 8b-1).
   const trace = c.trace && typeof meta.tag === 'string' && meta.tag.startsWith('plugin:')
     ? { ...c.trace, request: (/** @type {any} */ i) => /** @type {any} */ (c.trace).request({ ...i, tag: meta.tag }) } : c.trace;
@@ -348,6 +349,7 @@ export async function callRole(c) {
     let uploadRetries = 0;
     let plain = false;
     let whole = false;
+    let again = false;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
       const asked = forModel(request);
@@ -367,7 +369,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -388,6 +390,11 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(c.request, said);
           break;
+        }
+        if (err.again && !again) {
+          // The server said it lacked the kept turn, and has it: a passing error. The same chained call, once more.
+          again = true;
+          continue;
         }
         if (err.whole && !whole) {
           // The kept turn this continued failed: the same model again, whole, once.
