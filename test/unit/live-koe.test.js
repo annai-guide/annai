@@ -255,6 +255,80 @@ test("the review's minors: Koe's turn with no word yet when the user starts spea
   }
 });
 
+/** The user speaks into the microphone in real time, 100 ms at a time. @param {any} k @param {Float32Array} pcm */
+async function talk(k, pcm) {
+  for (let i = 0; i < pcm.length; i += 1600) {
+    k.platform.mic.feed(pcm.subarray(i, i + 1600), 16_000);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+// realtime-fix2 P1: a thinking pause ended the turn, she answered the first half, and annai was deaf to the rest (the realtime check, 2026-10-22).
+test('a thinking pause: her answer waits while the microphone may still hear the user; they go on, so it is cut before a sound of it, and their second half is a turn of its own', async () => {
+  const k = await liveKit([
+    { heard: 'I would like a place for dinner', said: 'Let me check dinner spots.', audio: tone(1) },
+    { heard: 'somewhere with a view', said: 'One with a view, then.', audio: tone(0.3) },
+  ], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    // The pause ends the turn at 700 ms; they go on 200 ms later, before her answer has waited out the quiet after it.
+    await talk(k, cat(quiet(0.5), await clip('where-lunch'), quiet(0.9), await clip('gas-station'), quiet(1.2)));
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    const starts = got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.activityStart);
+    assert.equal(starts.length, 2, 'the second half is sent');
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text, e.data.cut]), [['One with a view, then.', undefined]], 'the first answer never sounded, and is not written');
+    assert.equal(k.platform.streams.length, 1, 'only the answer to the whole sentence played');
+  } finally {
+    await k.done();
+  }
+});
+
+test('the user quiet after their turn: her answer plays once the microphone has been quiet 500 ms since the turn ended, and from its first word when that is later', async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.5) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    const talking = talk(k, cat(quiet(0.5), await clip('where-eat'), quiet(0.9)));
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 6000);
+    const ended = Date.now();
+    await soon(async () => k.platform.streams.length === 1, 3000);
+    const played = Date.now();
+    assert.ok(played - ended >= 450, `played ${played - ended} ms after the turn ended`);
+    await talking;
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
+    assert.equal((await k.events(['out.speak']))[0].data.text, "There's a taco stand ahead.");
+  } finally {
+    await k.done();
+  }
+});
+
+// realtime-fix2 P2, the race: the user began 0.14 s before her note's answer sounded, and the whole question was lost.
+test("speech begun just before her answer comes holds its voice: the user's turn starts and cuts it, and nothing of it plays over them", async () => {
+  const k = await liveKit([{ said: 'It is about twenty minutes down the road.', audio: tone(1) }, { heard: 'What time is sunset?', said: 'Around seven.', audio: tone(0.2) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    const gas = await clip('gas-station');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await talk(k, quiet(0.5));
+    await talk(k, gas.subarray(0, 1600 * 2)); // 200 ms of speech: begun, not yet sure enough to send
+    k.agent.send('A note'); // its answer comes at once, as the user goes on
+    await soon(async () => got(k, 'clientContent').length === 1);
+    await talk(k, cat(gas.subarray(1600 * 2), quiet(1.2)));
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Around seven.']);
+    assert.equal(k.platform.streams.length, 1, 'the note\'s answer never played over them');
+  } finally {
+    await k.done();
+  }
+});
+
 test('with "Keep voice clips", what was said live is kept with its line, in the smallest format the phone makes and plays', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: { keepClips: true, encoder: { makes: ['ogg'] }, plays: ['ogg', 'mp3', 'wav'] } });
   try {

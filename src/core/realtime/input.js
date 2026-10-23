@@ -92,6 +92,11 @@ export class LiveInput {
     this.onLevel?.(0);
   }
 
+  /** Speech has begun: held until it is surely speech, or being sent. */
+  get hearing() {
+    return this.active || this.#held;
+  }
+
   /** How long the turn going on has had no frame keepDb over the floor it began on, in ms: a detector whose floor fell may still call it speech. */
   get quietMs() {
     return this.active ? this.#detector?.sinceMarkMs ?? 0 : 0;
