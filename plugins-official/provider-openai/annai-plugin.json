@@ -1,7 +1,7 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "api": 1,
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
   "category": "providers",
@@ -24,6 +24,7 @@
         "kind": "chat",
         "type": "openai-responses",
         "name": "Chat (Responses)",
+        "tunables": { "keep": true },
         "note": "The one to use for OpenAI: GPT-6 Astra and GPT-6.1 Sol call tools only through Responses. Reasoning summaries may need a verified organization at OpenAI; without one, add \"reasoningSummary\": false to the tunables. A reasoning model added with Fetch model list needs its Reasoning levels set, as these models have; without them it thinks without showing progress, and may run past the time limit.",
         "models": [
           {

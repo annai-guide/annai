@@ -50,7 +50,7 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.8.1",
+      "version": "0.9.0",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 64124,
+      "size": 64309,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,14 +68,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "4bb0f0bfc649170104ce603b028fa567c96b3c0b9b4f3751606b8fa8d5514b66",
+        "annai-plugin.json": "984942622f5f2327d4e8a212563a3e865683e2ef1d0acf1255f57e07f2cec66d",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
         "speech.js": "c2bac69131fe23026545899fa60befa9848175308ea07e71cbbaaec5610191b4",
-        "steps.js": "dbcf97565b97807d0ad44a159a327526cb5fa7804032424a42b2f4519b5576d2"
+        "steps.js": "094f1c64c2a2fc168ec659144ced0795533d7e58686b7525bffd8a6a9cc17d10"
       }
     },
     {
@@ -127,15 +127,15 @@
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.3.0",
-      "description": "Talks to OpenAI's Responses API and to servers that speak it, keeping nothing on the server.",
+      "version": "0.7.0",
+      "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
       "category": "developer",
       "keywords": [],
       "abilities": [],
       "free": false,
       "local": false,
       "code": true,
-      "size": 21472,
+      "size": 25753,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -143,14 +143,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "11ff7a11d6ddca123015aed7d8b7a8df351597979dd1b946813f6aecd6c5ec0a",
-        "index.js": "a147f107b84b1676ea19973689486715ad6e5fa9736ba81d95dc2b863de068af"
+        "annai-plugin.json": "e9283a5785c656df094d84ea6841fa976de869de0a6122fee357ce4c158dc6ac",
+        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01"
       }
     },
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.1.2",
+      "version": "2.1.4",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -169,12 +169,12 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24514,
+      "size": 24707,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "cff3a9bd96d765100a49c1919a4bd7039e376a8187b7f9ffa6c3e1695e082643",
+        "annai-plugin.json": "85d6c758abb98336da5d3c7c2c1f556186dd0501edc30393f7c6e644f7ee581c",
         "index.js": "f17b0e95caa9396f8394859b06515a3c4f27705852bf2535106d3d5962b3f0c9",
         "probe.js": "3dd2da5ad8350f8d6eb43c003658f7dcf90deb6811116a358f94e6f2f64c4150"
       }
@@ -427,7 +427,7 @@
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
@@ -440,7 +440,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13257,
+      "size": 13295,
       "requires": [
         {
           "id": "openai-responses",
@@ -453,7 +453,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "feec19e5007ea9363b086563c7476fcdd519f0c34f5330cb5ac5d1899783e267"
+        "annai-plugin.json": "d86189f4d64b3a6a87b48d6490e054a24c056b8401120edbd42465c38ce1c4e4"
       }
     },
     {

@@ -14,7 +14,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { Uploads } from './uploads.js';
-import { Kept, keyPrint } from './kept.js';
+import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
@@ -57,7 +57,7 @@ export function createLlm({
   const reachEndpoint = async (endpointId) => {
     const pRec = (await readConfig(ws)).providers[endpointId.split('/')[0]];
     const to = pRec ? await reach(pRec, endpointId.slice(endpointId.indexOf('/') + 1)) : null;
-    return to?.secret ? { ...to, print: await keyPrint(to.secret, to.endpoint.baseUrl) } : null;
+    return to?.secret ? { ...to, print: await keyPrint(to.secret, to.endpoint.baseUrl, to.endpoint.headers) } : null;
   };
   /** Kept turns (G2): kept only while the provider is there and not going, with the same key and address, the switch on and the trip there. */
   const kept = new Kept({
@@ -440,17 +440,17 @@ export function createLlm({
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
      *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
-     *   prefer?: string, repairImages?: Parameters<typeof callRole>[0]['repairImages'], speech?: Parameters<typeof callRole>[0]['speech'], firstOutputMs?: number }} c
-     *   prefer: the model whose cache is warm, tried first; repairImages: fixes a refused photo (spec §9.6, §9.9); speech: resolves heard
+     *   prefer?: string, borrow?: boolean, repairImages?: Parameters<typeof callRole>[0]['repairImages'], speech?: Parameters<typeof callRole>[0]['speech'], firstOutputMs?: number }} c
+     *   prefer: the model whose cache is warm, tried first; borrow: warm housekeeping continues the conversation's kept chain and deletes its own response; repairImages: fixes a refused photo (spec §9.6, §9.9); speech: resolves heard
      *   speech for each attempt (§10.3); firstOutputMs: how long the first words may take, when not the role's own setting
      */
-    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, repairImages, speech, firstOutputMs }) {
+    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, borrow, repairImages, speech, firstOutputMs }) {
       await ready;
       const run = callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench, missing: whyNoPlugins(),
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, repairImages, uploads, speech, firstOutputMs, kept, scope, tally: ws,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, borrow, repairImages, uploads, speech, firstOutputMs, kept, scope, tally: ws,
       });
-      if (!record?.keepParts) return run;
+      if (!record?.keepParts && !borrow) return run;
       inflight.add(run);
       try {
         return await run;
@@ -475,6 +475,8 @@ export function createLlm({
     async forgetAll({ timeoutMs = 10_000 } = {}) {
       erasing = true;
       await within(Promise.allSettled([...inflight]), 5000);
+      // Whatever a call under way did not settle in time, and what a page killed before left pending, is deleted before the wipe too.
+      await kept.release();
       await kept.queue();
       await drainFor(timeoutMs);
       const n = await kept.count();
@@ -492,7 +494,7 @@ export function createLlm({
         const pRec = cfg.providers[e.split('/')[0]];
         if (!pRec) continue;
         const p = providerOf(pRec);
-        who.add(types().get(p.abilities[e.slice(e.indexOf('/') + 1)]?.type ?? '')?.keeps?.name ?? p.name);
+        who.add(keeperOf(types().get(p.abilities[e.slice(e.indexOf('/') + 1)]?.type ?? '')?.keeps, pRec.plugin, p.name).name);
       }
       return { turns: n.turns, waiting: n.waiting, days: n.until ? Math.ceil((n.until - Date.now()) / 86_400_000) : 0, who: [...who] };
     },

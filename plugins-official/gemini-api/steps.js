@@ -77,6 +77,8 @@ export function toInput(messages, { model, tail, leave, from = 0, tools = [] }) 
     steps.push(...own);
     replies.push(own.filter((s) => s.type === 'function_call'));
   }
+  // Nothing after the kept turn but the tail (warm housekeeping, which continues the turn the conversation ends with).
+  if (from > 0 && from >= messages.length) first = steps.length;
   if (tail) {
     const last = steps.at(-1);
     if (last?.type === 'user_input') last.content.push({ type: 'text', text: tail });
