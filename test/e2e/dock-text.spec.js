@@ -221,14 +221,16 @@ test('a press elsewhere that brings no click (iOS, on plain content) still close
   await onTrips(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
-  // It is still open as the pointer comes up (looked at in the page, in the same task): the box closes 400 ms later, by its own timer, and a
-  // slow machine can make a look from the test come after that.
-  const stillOpen = await page.evaluate(() => {
+  // It is still open 100 ms after the pointer is up, looked at in the page: the box closes 400 ms after, by its own timer, and a look from the
+  // test can come after that on a slow machine. The page's timers fire in the order of their times, so a wait of 100 ms there always comes
+  // before the 400 ms close; and a close in a microtask or a zero-delay timer would be caught by it (NO_CLICK_MS at 0 fails this).
+  const stillOpen = await page.evaluate(async () => {
     const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
     for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
+    await new Promise((r) => setTimeout(r, 100));
     return /** @type {HTMLElement} */ (document.getElementById('dock-text')).offsetParent !== null;
   });
-  expect(stillOpen, 'open when the pointer is up').toBe(true);
+  expect(stillOpen, 'still open 100 ms after the pointer is up').toBe(true);
   await expect(box(page)).toBeHidden({ timeout: 2000 });
 });
 
