@@ -4,7 +4,7 @@ import { openApp, waitForServiceWorker } from './helpers.js';
 import { SOURCES, FONTS, ART } from '../../src/ui/credits.js';
 
 // The welcome and Settings → About (the user, 2026-10-18).
-const STEPS = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
+const STEPS = ['Welcome to annai', 'Shiori, Koe and Kokoro', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
 const h1 = (/** @type {import('@playwright/test').Page} */ page) => page.getByRole('heading', { level: 1 });
 
 /** What /app.json in sys:settings says, through annai's own modules. @param {import('@playwright/test').Page} page */
@@ -94,8 +94,8 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
 });
 
 test("the last step, where annai isn't installed: on an iPhone in Safari, look around first, and set the model up in the Home Screen app; elsewhere, set up a model", async ({ page, browserName }) => {
-  await openApp(page, '#/welcome/5');
-  await expect(h1(page)).toHaveText(STEPS[4]);
+  await openApp(page, '#/welcome/6');
+  await expect(h1(page)).toHaveText(STEPS[5]);
   const primary = page.locator('.welcome .acts .btn.pri').last();
   if (browserName === 'webkit') {
     // The iPhone project: Safari, not the Home Screen app.
@@ -112,7 +112,7 @@ test("the last step, where annai isn't installed: on an iPhone in Safari, look a
 });
 
 test("the welcome's last step names the featured provider's sign-in from annai's catalog; outside Safari on an iPhone, its plugin installs in the background, so Models' sign-in is ready before the tap", async ({ page, browserName }) => {
-  await openApp(page, '#/welcome/5');
+  await openApp(page, '#/welcome/6');
   await waitForServiceWorker(page);
   const lead = page.locator('.welcome p', { hasText: 'so Shiori can think' });
   await expect(lead).toContainText('Sign in with OpenRouter is the quickest way, and it starts you on free models.');
@@ -140,7 +140,7 @@ test("the welcome's sentence on the featured sign-in comes with annai's catalog,
     await new Promise((resolve) => setTimeout(resolve, 8000));
     await route.continue().catch(() => {});
   });
-  await openApp(page, '#/welcome/5');
+  await openApp(page, '#/welcome/6');
   await expect(page.locator('.welcome p', { hasText: 'so Shiori can think' })).toContainText('Sign in with OpenRouter is the quickest way', { timeout: 4000 });
 });
 
@@ -167,6 +167,22 @@ test.describe('a link that opens a screen is never interrupted', () => {
   });
 });
 
+// "should we also introduce the user to our main architecture? and explain who is shiori, what is kokoro and what is koe?" (the user, 2026-10-23)
+test('a step says who Shiori is, and what Koe (声) and Kokoro (心) each do, plainly and short', async ({ page }) => {
+  await openApp(page, '#/welcome/2');
+  await expect(h1(page)).toHaveText('Shiori, Koe and Kokoro');
+  const step = page.locator('.welcome');
+  await expect(step).toContainText('Shiori is your guide. She has two halves that work together.');
+  await expect(step.locator('li', { hasText: 'Koe' })).toContainText('声');
+  await expect(step.locator('li', { hasText: 'Koe' })).toContainText('talks with you and answers at once');
+  await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('心');
+  await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('thinks things through and does the work');
+  await expect(step.getByText('2 of 6')).toBeVisible();
+  // It is skippable like every step: Next goes on, Back returns.
+  await step.getByRole('button', { name: 'Next' }).click();
+  await expect(h1(page)).toHaveText('What annai can do');
+});
+
 test('every step is reached with the keyboard alone, its heading taking the focus; Back goes to the one before', async ({ page }) => {
   await openApp(page, '#/welcome');
   /** Tabs until the focus is on the button with this name. @param {string} name */
@@ -187,12 +203,12 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   }
   await tabTo('Back');
   await page.keyboard.press('Enter');
-  await expect(h1(page)).toHaveText(STEPS[3]);
+  await expect(h1(page)).toHaveText(STEPS[4]);
   await expect(h1(page)).toBeFocused();
   // Skip goes to the last step, which ends on the onboarding: Settings → Models.
   await tabTo('Skip');
   await page.keyboard.press('Enter');
-  await expect(h1(page)).toHaveText(STEPS[4]);
+  await expect(h1(page)).toHaveText(STEPS[5]);
   await tabTo('Set up a model');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
