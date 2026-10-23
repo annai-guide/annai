@@ -226,7 +226,8 @@ export async function runScenario(browser, name, sc, env) {
         await wait(step.sounding);
       } else {
         // Her answer heard out: audio after the clip, then a turnComplete after that audio (Koe's own tool calls end turns with no sound);
-        // when she asked Kokoro, the answer is the one that follows Kokoro's note; then her sound quiet, then ms more.
+        // when she asked Kokoro, the answer is the one that follows Kokoro's note; then her sound quiet, then ms more. A clip no turn was
+        // made of (begun over her on the phone's speaker, let go by design) gets no answer: then only the quiet, from 1.5 s after it.
         const end = Date.now() + env.answerTimeoutMs;
         let why = 'timeout';
         while (Date.now() < end) {
@@ -239,6 +240,11 @@ export async function runScenario(browser, name, sc, env) {
           const quietFrom = Math.max(await lastSound(), heard.at(-1)?.at ?? 0, lastEnd);
           if (complete && Date.now() - quietFrom >= Math.max(step.answered, 400)) {
             why = 'answered';
+            break;
+          }
+          const made = frames.some((f) => f.dir === 'out' && f.kind === 'activityStart' && f.at >= lastAt - 200);
+          if (!made && Date.now() - lastEnd >= 1500 && Date.now() - quietFrom >= Math.max(step.answered, 400)) {
+            why = 'no turn was made of it';
             break;
           }
           await wait(100);

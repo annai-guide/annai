@@ -151,10 +151,14 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
     else notes.push(`echo mode: her voice reached the microphone at ${echoMeasuredDb.toFixed(1)} dB of her own level (asked ${rec.echoDb} dB)`);
   }
 
-  // Errors: the trace's, the sockets' closes with a code, and the page's.
+  // Errors: the trace's, the sockets' closes with a code, and the page's. A silent session the watchdog replaced, with her answer
+  // after it, was rescued: the user was answered, late (a note, with how late in the clip's own).
+  const errorText = (/** @type {TraceEntry} */ t) => `${t.data?.kind ?? 'error'}: ${t.data?.message ?? ''}`.trim();
+  const rescued = (/** @type {TraceEntry} */ t) => t.data?.kind === 'live-silent' && frames.some((fr) => fr.dir === 'in' && fr.kind === 'audio' && fr.at > t.at);
+  for (const t of rec.trace.filter((x) => x.type === 'error' && rescued(x))) notes.push(`rescued at ${((t.at - rec.startedAt) / 1000).toFixed(1)} s: ${errorText(t)}`);
   /** @type {string[]} */
   const errors = [
-    ...rec.trace.filter((t) => t.type === 'error').map((t) => `${t.data?.kind ?? 'error'}: ${t.data?.message ?? ''}`.trim()),
+    ...rec.trace.filter((t) => t.type === 'error' && !rescued(t)).map(errorText),
     ...frames.filter((fr) => fr.kind === 'close' && ![1000, 1005].includes(fr.code ?? 0)).map((fr) => `socket closed ${fr.code}: ${fr.reason ?? ''}`.trim()),
     ...rec.errors,
   ];
