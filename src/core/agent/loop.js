@@ -82,6 +82,7 @@ import { anySignal } from '../signals.js';
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
+ * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -940,6 +941,11 @@ export class Agent {
     const wakes = this.#queue.filter((w) => w.scope === this.scope);
     this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     this.poke();
+    this.#stopWakes(wakes);
+  }
+
+  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped". @param {Wake[]} wakes */
+  #stopWakes(wakes) {
     if (!wakes.length) return;
     const wakeId = newId('w');
     this.#checking++;
@@ -1195,6 +1201,8 @@ export class Agent {
    * leaves nothing to summarize), and a turn that runs is stopped. Settles once none runs; letGo() ends it.
    */
   async holdStill() {
+    // What waited behind the turn it stops came before it: the fresh context would have nothing to go on for it.
+    const before = this.#still ? [] : this.#queue.filter((w) => w.scope === this.scope);
     this.#still = true;
     this.#due = false;
     this.#clearTimer();
@@ -1202,6 +1210,11 @@ export class Agent {
       this.interrupt();
       await this.#whenFree();
     }
+    const left = this.#queue.filter((w) => before.includes(w));
+    this.#queue = this.#queue.filter((w) => !left.includes(w));
+    this.#stopWakes(left);
+    const owed = left.flatMap((w) => w.fallbacks ?? []);
+    if (owed.length) await this.remind(owed, this.scope, { silent: true }); // a reminder's words are still shown
   }
 
   /** Start fresh is done: what waited (the user's words meanwhile) runs. */
@@ -1244,7 +1257,8 @@ export class Agent {
         const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
         const [said] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], reverse: true, limit: 1, ...(fresh ? { after: fresh.seq } : {}) }));
         if (!last || !said) return void (result = fresh ? 'already' : 'nothing');
-        const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: last.seq, mode: 'fresh' } });
+        const [first] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { limit: 1 }));
+        const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: first.seq, to: last.seq, mode: 'fresh' } });
         await this.reread();
         await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
         result = 'done';
@@ -1547,6 +1561,7 @@ export class Agent {
      */
     let notes = [];
     this.#owing = () => {
+      settle(); // not those she has reached the user with since
       const taken = notes;
       notes = [];
       return taken;
@@ -1786,8 +1801,14 @@ export class Agent {
       }
     }
     settle();
-    // Kokoro's notes for the user, and Koe never passed them on: annai shows what it can of them itself (spec §6.8).
-    if (notes.length && !abort.signal.aborted && !this.#leaving && !failed) await this.#half.unsaid?.(notes);
+    // Kokoro's notes for the user, and Koe never passed them on: annai shows what it can of them itself (spec §6.8), once. A turn Start
+    // fresh stopped shows their words above its divider.
+    const unsaid = notes;
+    notes = [];
+    if (unsaid.length && !this.#leaving && !failed) {
+      if (!abort.signal.aborted) await this.#half.unsaid?.(unsaid);
+      else if (this.#still) this.#half.left?.(unsaid);
+    }
     if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = 'Her model finished without saying anything to you.';
@@ -1801,6 +1822,7 @@ export class Agent {
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
+    this.#owing = null;
     return answered && !failed;
   }
 

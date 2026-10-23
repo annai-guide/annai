@@ -512,6 +512,7 @@ export class LiveKoe {
   async send(text, { photos = [], chose = false } = {}) {
     this.#brief = false;
     this.#watched = true;
+    await this.c.held?.(); // typed while Start fresh runs: written below its divider
     const e = await this.c.koe.logUser(text, photos, chose);
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
@@ -764,7 +765,9 @@ export class LiveKoe {
       if (t.stream) t.stream.push(samples(e.data));
       else if (!t.cut) t.held.push(e.data);
     } else if (e.type === 'said' && !this.#t && this.#trail) {
-      if (!this.#trail.cut && !this.#trail.logged) this.#trail.said += e.text;
+      const t = this.#trail;
+      if (!t.cut && !t.logged) t.said += e.text;
+      if (this.#sounding === t && !t.cut) this.c.saying?.(cleanSaid(t.said)); // after the provider's turn ended, while her voice plays
     } else if (e.type === 'said') {
       const t = (this.#t ??= newTurn());
       t.said += e.text;

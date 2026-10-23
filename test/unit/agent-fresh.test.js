@@ -200,3 +200,19 @@ test('Start fresh while the conversation is still opening says so, and starts no
   await opening;
   assert.deepEqual(await k.events(['compaction']), []);
 });
+
+test("the fresh note's range starts at the conversation's first event, even after a summary (fix pass 3, item 13)", async () => {
+  const k = await agentKit([[...Array.from({ length: 6 }, (_, i) => say(`Answer ${i}`)), { text: 'SUMMARY' }, say('x')]]);
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Question ${i}`);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.summarizeNow(), 'done');
+  k.agent.send('Question 5');
+  await k.agent.idle();
+  assert.equal(await k.agent.startFresh(), 'done');
+  const [first] = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(k.agent.scope, { limit: 1 }));
+  const fresh = (await k.events(['compaction'])).at(-1);
+  assert.equal(fresh.data.from, first.seq);
+  assert.match(k.agent.transcript.messages[0].parts[0].text, new RegExp(`\\(events ${first.seq}–${fresh.data.to}\\)`));
+});
