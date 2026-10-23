@@ -111,3 +111,25 @@ test('what the clock does not replace stays on real time (documented): new Date(
   assert.ok(performance.now() - realBefore < 5000, 'performance.now() did not');
   assert.ok(new Date().getTime() - dateBefore < 5000, 'nor did new Date()');
 });
+
+test('the idle turns are counted afresh for a timer set after the last one was cleared: it too waits sixteen turns, whatever the clock had counted for the one before', async (t) => {
+  useClock(t);
+  /** @param {number} depth */
+  const chain = (depth) => new Promise((resolve) => {
+    let n = depth;
+    const hop = () => (--n ? setImmediate(hop) : resolve(undefined));
+    setImmediate(hop);
+  });
+  /** @type {string[]} */
+  const order = [];
+  const first = setTimeout(() => order.push('first'), 10_000);
+  await chain(12); // twelve idle turns counted for the first timer
+  clearTimeout(first);
+  await chain(2); // the clock sees the list empty
+  setTimeout(() => order.push('timer'), 20_000);
+  await chain(12);
+  order.push('chain of 12');
+  await new Promise((r) => setTimeout(r, 25_000));
+  assert.deepEqual(order, ['chain of 12', 'timer']);
+});
+
