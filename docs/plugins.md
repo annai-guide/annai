@@ -35,6 +35,7 @@ A plugin's manifest:
   - `skills`: skill folders in the package, each holding a `SKILL.md` (`"."` is the package's top).
   - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
   - `provider`: a model provider's description, inline. See "Model providers" below.
+  - `search`: a search provider's description, inline: its `id`, `kind`, `origins` and key. See "Search providers" below.
   - `requires`: the plugins yours needs, `[{ "id": "chat-completions", "version": "^0" }, { "id": "acme-proto", "version": "^2", "homepage": "https://…" }]`, at most 10. A range is `^N`, the same major; for a protocol plugin the major is its interface version. annai's own come with yours from its catalog; a third party's must be installed first, and the install stops naming it, with its `homepage` (https). A package can't require itself.
   - `category`: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`, the kind it is listed under on the Add screen and in Settings → Plugins (Model providers, Voices and transcription, Backup places, Tools and MCP, Skills and personalities, Developer). When absent it is worked out: a provider with chat is `providers`, one with speech only `speech`, a backup place's plugin `backup`, a protocol `developer`, skills or personalities without code `skills`, other code `tools`.
   - `keywords`: up to 20 other names it is searched by, 1 to 40 characters each, written as they are shown (`["Unsloth", "LM Studio"]`). They aren't hidden: a row found by a keyword says so, "Also for: LM Studio". A name match ranks above a keyword match, so a plugin made for LM Studio comes before one that lists it as a keyword. Give the names of things your plugin also serves (a server built on the one you describe, a product's other spelling), not words for what it does: its description and its abilities are searched too.
@@ -89,9 +90,9 @@ export function activate(annai) {
 | `annai.hooks.on(fn, { types? })` | follows the log: see "Following the log" below |
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change); a key nothing is saved for has your schema's `default` |
-| `annai.searchProviders()` | the search providers, in the order the user set |
+| `annai.searchProviders()`, `await annai.searchProvidersAsync()` | the search providers in the order `web_search` tries them: the user's list (Settings → Tools → Search), then keyed ones, the free ones and the knowledge floor. The async one reads the user's order and leaves out those they switched off. |
 | `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
-| `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
+| `annai.register('search', { id, name, kind?, ready?(), search(query, { fetch, signal, limit }) })` | a search provider for `web_search`: see "Search providers" below |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
@@ -562,6 +563,59 @@ export function activate(annai) {
   - `rate` (with `retryAt`) and `other` are tried again later.
   - A `TypeError` and the like count as a bug in your plugin.
 - **Send every request through `annai.net.fetch`,** so the trace shows it.
+
+## Search providers
+
+`web_search` asks the search providers one after another, in the order Settings → Tools → Search shows (the user can drag them and untick them). The first to answer with rows wins. A provider is one object you register:
+
+```js
+export function activate(annai) {
+  return annai.register('search', {
+    id: 'tavily', name: 'Tavily', kind: 'web',
+    async ready() { return (await annai.secrets.get('key')) ? { ok: true } : { ok: false, why: 'needs a key' }; },
+    async search(query, { fetch, signal, limit }) {
+      const key = await annai.secrets.get('key');
+      const res = await fetch('https://api.tavily.com/search', { method: 'POST', signal,
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({ query, max_results: limit }) });
+      if (!res.ok) throw Object.assign(new Error(`Tavily answered ${res.status}`), { status: res.status });
+      return (await res.json()).results.map((r) => ({ title: r.title, url: r.url, snippet: r.content }));
+    },
+  });
+}
+```
+
+- **`id`** is the provider's name, one owner like a tool's (see "Names and conflicts"); the user's order and their ticks are kept by it.
+- **`ready()`** says whether the provider can run now: `{ ok: true }`, or `{ ok: false, why }` in plain words ("needs a key"). A provider that isn't ready is passed over, and the screen shows `why`. Leave it out when nothing is needed. **Read your own key in it and in `search`:** `annai.secrets.get('key')` gives your plugin's secret, and no other plugin's. annai hands `search` no key.
+- **`search(query, { fetch, signal, limit })`** returns rows: any list of `{ title, url, snippet }` (`description` and `content` are read as `snippet`). `fetch` is the traced fetch, with secrets blanked; `signal` ends when the user stops Shiori or the step's 25 seconds pass; `limit` is 8. Throw an `Error` in plain words for a failure. Put `status` (the HTTP status) on it, or `kind: 'cors'` for a request the browser couldn't make: a 429, a 402, a 5xx, a timeout and a failed request make the provider **rest**, a minute at first and up to 30 minutes after each failure in a row, in memory only; a 401 or other refusal doesn't, because it is the user's to fix.
+- **An empty answer is no failure and no answer:** with no rows, the next provider is asked. "Nothing found" is said only when every provider that ran found nothing.
+- **annai makes the rows,** so return whatever the service sends: tags and entities are taken out, whitespace folded, addresses must be http(s) and are cleaned of `utm_*`, `srsltid`, `msockid` and the like, one row stays per host and path, a long excerpt is cut to the sentences that share the most words with the query (400 characters), and at most 8 rows go to Shiori as TSV.
+- **`kind`** is `web` (default) or `knowledge`; knowledge providers (an encyclopedia) come last by default. A provider with `always: true` can't be unticked. `free: true` marks a keyless service, listed after keyed ones.
+- **The order** with nothing set is: keyed providers in the order installed, the free ones, the knowledge ones. Whatever the user drags is kept in `web.search`, and what they untick in `web.searchOff`.
+
+### A search provider plugin
+
+Describe it in the manifest, so the install screen can say where searches and the key go before any code runs:
+
+```json
+{
+  "id": "search-tavily", "name": "Tavily Search", "version": "0.1.0", "api": 1, "entry": "index.js", "category": "tools",
+  "provides": { "search": ["tavily"] },
+  "search": {
+    "id": "tavily", "kind": "web", "origins": ["https://api.tavily.com"],
+    "key": { "setting": "key", "url": "https://app.tavily.com", "note": "1,000 free credits a month, no card." }
+  },
+  "settings": { "type": "object", "properties": { "key": { "type": "string", "title": "Tavily API key", "writeOnly": true } } }
+}
+```
+
+- **`search.id`** is the id you register. **`kind`**: `web` or `knowledge`.
+- **`search.origins`:** every origin (scheme and host) the searches and the key are sent to, as `https://host` with nothing after. The install screen says "Your search words and the key you give it are sent to …", an update that adds one asks again, and annai's credits list the host. **A provider for the user's own server** (SearXNG) has `"origins": []`, and the install screen says searches go only to the address the user gives it.
+- **`search.key`** names the `writeOnly` setting that holds the key (`setting`), where to get one (`url`, https) and a line about the free tier (`note`). annai keeps the key as the secret `plugin:<id>:key` and draws a password field for it on your plugin's page.
+- **Browser access is yours to check.** A web app can call a service only if it allows annai's address (CORS), including the request's headers: Tavily (`authorization`, `content-type`) and Serper (`x-api-key`) do; Brave, Kagi's REST API, You.com's and Exa's REST API don't, and a plugin for them fails with "Failed to fetch". A SearXNG instance sends no CORS header unless its operator adds one, and has JSON off unless `json` is under `search: formats:` in `settings.yml`; its plugin says so.
+- The official ones are Tavily, Serper and SearXNG (`plugins-official/search-*`); read them as examples.
+
+annai's own free search is not a plugin you can replace one by one: Exa, Parallel and Firecrawl (each through its MCP address, one request per search with no session), and a floor of Wikivoyage, Wikipedia and Nominatim, are built into the web tools. Only the words searched go to them.
 
 ## MCP servers
 
