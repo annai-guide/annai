@@ -159,6 +159,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
     },
     mic: {
+      /** Whether the microphone is open: what is fed while it is not is heard by no one. */
+      isOpen: () => frames !== null,
       /** The input in use while open. */
       inUse() {
         if (!frames) return null;

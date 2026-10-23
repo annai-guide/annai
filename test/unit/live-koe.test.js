@@ -1327,7 +1327,9 @@ test('a live session is told the languages: the section in its instructions, the
 test('a very short transcript in a language that is not listed is flagged in the trace, and still written: it is never a change of language, and nothing drops it (the user, 2026-10-23)', async () => {
   const k = await liveKit([{ heard: '¿Qué?', said: 'Sorry, could you say that again?', audio: tone() }, { heard: 'Where should we eat tonight?', said: 'There is a taco stand ahead.', audio: tone() }]);
   try {
-    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+    // Open between the two exchanges: at the default, the session closes after 30 of its seconds (300 ms here) of quiet, and an
+    // exchange begun as that happens says its words to a microphone that has just closed.
+    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] }, voice: { closeAfterSeconds: 300 } });
     await exchange(k, 'where-eat');
     await exchange(k, 'where-eat', 2);
     const [stray, whole] = await k.events(['heard']);
@@ -1342,6 +1344,7 @@ test('a very short transcript in a language that is not listed is flagged in the
 test('with no languages chosen, a very short transcript is held against the browser\'s language: English is never stray, "¿Qué?" is (the first real run called "What?" English and "No." Spanish)', async () => {
   const k = await liveKit([{ heard: 'What?', said: 'Sorry.', audio: tone() }, { heard: '¿Qué?', said: 'Sorry.', audio: tone() }]);
   try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // open between the two exchanges (as the test above)
     await exchange(k, 'where-eat');
     await exchange(k, 'where-eat', 2);
     const [english, spanish] = await k.events(['heard']);
