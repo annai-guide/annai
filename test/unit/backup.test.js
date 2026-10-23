@@ -367,13 +367,88 @@ test('a place that can peek tells what a backup holds from its manifest alone; o
   const manifest = await phone.backups.peek(id, 'b1');
   assert.equal(place.peeks(), 1);
   assert.deepEqual(manifest, (await peekArchive(place.kept[0].blob)).manifest);
-  assert.deepEqual(phone.backups.running(), [], 'it is no download: nothing waits behind it, and an automatic backup is left alone');
+  assert.deepEqual(phone.backups.running(), [], 'it is no download');
   await assert.rejects(phone.backups.peek(id, 'gone'), (e) => e instanceof TargetError && e.kind === 'missing');
-  // A manifest from a newer annai, or one that isn't one, is refused in plain words, as a file would be.
+});
+
+test('a peek is not queued behind a backup under way, and leaves an automatic one alone', async () => {
+  const place = memoryPlace({ peek: true });
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const release = place.pause();
+  const running = phone.backups.backUp(id, { reason: 'auto' });
+  await until(() => place.waiting() > 0);
+  const manifest = await phone.backups.peek(id, 'b1');
+  assert.ok(manifest.files, 'answered while the backup is still in flight');
+  assert.deepEqual(phone.backups.running().map((r) => r.reason), ['auto'], 'and the backup is still the only thing running');
+  release();
+  await running;
+  assert.equal(place.kept.length, 2, 'the automatic backup finished: the peek did not stop it');
+});
+
+test("a peeked manifest the place sends badly is refused in plain words, with the details in the trace only", async () => {
+  const place = memoryPlace({ peek: true });
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const manifest = await phone.backups.peek(id, 'b1');
   const real = place.type.peek;
-  place.type.peek = async () => ({ ...manifest, format: 99 });
-  await assert.rejects(phone.backups.peek(id, 'b1'), /newer version of annai/);
-  place.type.peek = /** @type {any} */ (async () => ({ files: 'no' }));
-  await assert.rejects(phone.backups.peek(id, 'b1'), /damaged/);
+  /** @param {unknown} m */
+  const sends = (m) => { place.type.peek = /** @type {any} */ (async () => m); };
+  sends({ ...manifest, format: 99 });
+  await assert.rejects(phone.backups.peek(id, 'b1'), (e) => e instanceof TargetError && e.message === 'This backup was made by a newer annai: update annai first.');
+  sends({ files: 'no' });
+  await assert.rejects(phone.backups.peek(id, 'b1'), (e) => e instanceof TargetError && e.message === 'This backup is damaged.');
+  sends({ ...manifest, files: manifest.files.map((/** @type {any} */ f, /** @type {number} */ i) => (i ? f : { ...f, path: '/../../escape' })) });
+  await assert.rejects(phone.backups.peek(id, 'b1'), (e) => e instanceof TargetError && e.message === 'This backup is damaged.', 'an unsafe path');
   place.type.peek = real;
+  const traced = await phone.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.peek'] }));
+  assert.equal(traced.length, 3);
+  assert.match(JSON.stringify(traced[0].data), /newer version of annai/);
+  assert.match(JSON.stringify(traced[2].data), /unsafe file path/);
+});
+
+test('only a place that stores the unpacked tree is peeked: a whole-file place gets its download as before', async () => {
+  const place = memoryPlace({ peek: true });
+  place.type.stores = /** @type {any} */ ('file');
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  assert.equal(await phone.backups.peek(id, 'b1'), null);
+  assert.equal(place.peeks(), 0);
+});
+
+test('a download that is stopped while it waits its turn never reaches the place', async () => {
+  const place = memoryPlace();
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const release = place.pause();
+  const running = phone.backups.backUp(id);
+  await until(() => place.waiting() > 0);
+  const stop = new AbortController();
+  const queued = phone.backups.download(id, 'b1', { signal: stop.signal });
+  stop.abort();
+  release();
+  await running;
+  await assert.rejects(queued, (e) => /** @type {any} */ (e).name === 'AbortError');
+  assert.equal(place.gets(), 0, 'get never ran');
+  assert.deepEqual(phone.backups.running(), []);
+});
+
+test('a download that is stopped while it runs stops the place, and nothing is left running', async () => {
+  const place = memoryPlace();
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  place.pauseGets();
+  const stop = new AbortController();
+  const running = phone.backups.download(id, 'b1', { signal: stop.signal });
+  await until(() => place.gets() > 0);
+  assert.deepEqual(phone.backups.running().map((r) => r.reason), ['download']);
+  stop.abort();
+  await assert.rejects(running, (e) => /** @type {any} */ (e).name === 'AbortError');
+  assert.deepEqual(phone.backups.running(), []);
+  // The one before it left nothing behind: the next download works.
+  await assert.rejects(phone.backups.download(id, 'b1', { signal: AbortSignal.abort() }), (e) => /** @type {any} */ (e).name === 'AbortError');
 });

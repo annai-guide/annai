@@ -177,9 +177,24 @@ test('"Turn it on" brings back a plugin annai switched off after repeated errors
   assert.equal(k.registry.isDisabled('storage-probe'), false);
 });
 
-test('a kind of backup place may have a peek, which must be a function', () => {
+test('a kind of backup place may have a peek; anything else there is no peek at all', () => {
   const ok = { type: 'x', name: 'X', stores: 'tree', where: () => '', check: () => {}, list: () => {}, put: () => {}, get: () => {}, fields: [], secret: [] };
   assert.equal(checkStorageType(ok), null);
   assert.equal(checkStorageType({ ...ok, peek: () => {} }), null);
-  assert.match(String(checkStorageType({ ...ok, peek: 'yes' })), /peek that isn't a function/);
+  for (const peek of [null, 'yes', 5, {}]) assert.equal(checkStorageType({ ...ok, peek }), null, String(peek));
+});
+
+test('a registered kind of place keeps a peek that is a function, and drops one that is not', async () => {
+  const k = await setup();
+  await k.host.addBuiltin(moduleUrl(`export const manifest = { id: 'probe-peek', name: 'Probe', version: '1.0.0', api: 1 };
+    export function activate(a) {
+      const one = (type, peek) => a.storage.register({ type, name: type, stores: 'tree', where: () => '', check: async () => ({ note: '' }),
+        list: async () => [], put: async () => ({ id: '', at: 0 }), get: async () => new Blob([]), peek });
+      const off = [one('with-peek', async () => ({})), one('null-peek', null), one('text-peek', 'yes')];
+      return () => off.forEach((f) => f());
+    }`));
+  const types = storageTypes(k.registry);
+  assert.equal(typeof types.get('with-peek')?.peek, 'function');
+  assert.equal(types.get('null-peek')?.peek, undefined);
+  assert.equal(types.get('text-peek')?.peek, undefined);
 });

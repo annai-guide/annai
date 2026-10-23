@@ -134,18 +134,15 @@ export const localDay = (ms) => {
 /** A backup place's own screen. @param {string} id */
 export const placeHref = (id) => `#/backups/place?id=${encodeURIComponent(id)}`;
 
-/** What a backup's download says it is doing: "Getting files: 120 of 650". @param {string} of ' 120 of 650' or '' */
-const gettingWords = (of) => (of ? `Getting files:${of}` : 'Getting the backup…');
-
-/** @param {{ done: number, total: number } | null} p */
-export const gettingFiles = (p) => gettingWords(p?.total ? ` ${p.done} of ${p.total}` : '');
+/** What a backup's download says it is doing: "Getting files: 120 of 650"; one file (a whole-file place) is no count. @param {{ done: number, total: number } | null} p */
+export const gettingFiles = (p) => (p && p.total > 1 ? `Getting files: ${p.done} of ${p.total}` : 'Getting the backup…');
 
 /** @type {Record<string, (of: string) => string>} */
 const PHASES = {
   building: () => 'Getting the backup ready…',
   checking: (of) => `Comparing files${of}…`,
   uploading: (of) => `Uploading${of}…`,
-  downloading: (of) => gettingWords(of),
+  downloading: () => 'Getting the backup…',
 };
 
 /**
@@ -154,6 +151,7 @@ const PHASES = {
  * @param {{ phase: string, done: number, total: number } | null} progress @param {number} [now]
  */
 export function placeStatus(t, progress, now = Date.now()) {
+  if (progress?.phase === 'downloading') return gettingFiles(progress);
   if (progress) return (PHASES[progress.phase] ?? (() => 'Working…'))(progress.total ? ` ${progress.done} of ${progress.total}` : '');
   const h = t.hold;
   const when = t.last ? `Last backup ${relTime(t.last.at, now)}` : 'Not backed up yet';

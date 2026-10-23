@@ -113,11 +113,11 @@ async function openPeeked(ctx, body, manifest, from) {
  * Gets a previewed backup's files, up to six at a time (the place does that), and opens them. The archive must carry the manifest
  * that was previewed: the choices on the preview name its trips, and each file is checked against the manifest as it is imported.
  * @param {any} ctx @param {any} manifest @param {import('../import-state.js').From} from
- * @returns {(say: (words: string) => void) => Promise<any>}
+ * @returns {(say: (words: string) => void, signal: AbortSignal) => Promise<any>}
  */
 function filesOf(ctx, manifest, from) {
   const shown = JSON.stringify(manifest);
-  return async (say) => {
+  return async (say, signal) => {
     let said = 0;
     const off = ctx.backups.on(() => {
       const p = ctx.backups.progress(from.target);
@@ -126,7 +126,7 @@ function filesOf(ctx, manifest, from) {
       say(gettingFiles(p));
     });
     try {
-      const downloading = ctx.backups.download(from.target, from.remote.id);
+      const downloading = ctx.backups.download(from.target, from.remote.id, { signal });
       say(ctx.backups.running().some((/** @type {any} */ r) => r.reason === 'user') ? "Waiting for the backup that's running to finish…" : gettingFiles(null));
       const opened = await peekArchive(await downloading);
       if (JSON.stringify(opened.manifest) !== shown) throw new Error('This backup changed on the server while annai was getting it. Open it again from the backups.');
@@ -151,8 +151,8 @@ function passphraseForm(ctx, body, source, problem) {
  * @param {any} ctx @param {HTMLElement} body @param {any} opened @param {any} desc
  * @param {import('../import-state.js').From | null} from the backup place it came from
  * @param {boolean} fresh this device has no trips yet: restoring onto it brings the profile and settings too
- * @param {((say: (words: string) => void) => Promise<any>) | null} [bring] a preview from a manifest alone has no archive (opened is null):
- *   this gets the files when the user imports, saying how far it is, and gives the archive
+ * @param {((say: (words: string) => void, signal: AbortSignal) => Promise<any>) | null} [bring] a preview from a manifest alone has no archive (opened is null):
+ *   this gets the files when the user imports, saying how far it is, and gives the archive; its signal stops it when the user leaves
  */
 function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   /** @type {Record<string, 'new'|'replace'>} */
@@ -171,9 +171,9 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const plugins = desc.hasPlugins ? checkbox('Replace my plugins', false) : null;
   const keys = desc.hasSecrets ? checkbox('Restore API keys (keys already on this device are kept)', false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
-  // Cancel while the files are coming stops that download, and nothing is imported after it.
-  let getting = false;
-  let left = false;
+  // Leaving this screen any way (Cancel, the crumb, Back, the dock, a swipe) is a Cancel: the download stops and nothing is imported.
+  const quit = new AbortController();
+  addEventListener('hashchange', () => quit.abort(), { once: true });
   const go = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
@@ -181,14 +181,12 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
       status.textContent = 'Reading…';
       let said = 0;
       try {
-        if (bring) getting = true;
-        const archive = bring ? await bring((words) => { status.textContent = words; }) : opened;
-        getting = false;
-        if (left) return;
+        const archive = bring ? await bring((words) => { status.textContent = words; }, quit.signal) : opened;
+        quit.signal.throwIfAborted();
         status.textContent = 'Reading…';
         const result = await importArchive(ctx.store, archive, {
           trips, me: me?.input.checked ? 'replace' : 'keep', settings: settings?.input.checked ? 'replace' : 'keep',
-          plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false,
+          plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false, signal: quit.signal,
           // A live region: said at most once a second, so a screen reader doesn't chatter through hundreds of entries.
           onProgress: (done, total) => {
             if (Date.now() - said < 1000 && done < total) return;
@@ -214,7 +212,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
           result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
           from ? h('p', { class: 'sub', text: "annai's next backup to that place builds on this one." }) : null));
       } catch (e) {
-        getting = false;
+        if (quit.signal.aborted) return; // the user is gone: nothing was imported, and there is no one to tell
         explainStorageFull(ctx, e);
         status.textContent = String(/** @type {any} */ (e)?.message ?? e);
         go.disabled = false;
@@ -225,7 +223,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     h('p', { text: `${desc.kind === 'everything' ? 'A backup of everything' : 'A trip'} exported ${relTime(desc.created)} from annai ${desc.app}${desc.encrypted ? ', encrypted' : ''}.` }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'sub', text: 'There are no trips in this file.' }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
-    h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => { left = true; if (getting && ctx.backups.running().some((/** @type {any} */ r) => r.id === from?.target && r.reason === 'download')) ctx.backups.stop(from?.target); } }, 'Cancel')),
+    h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => quit.abort() }, 'Cancel')),
     status);
 }
 

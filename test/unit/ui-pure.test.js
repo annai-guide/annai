@@ -252,6 +252,9 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeStatus(t(), { phase: 'uploading', done: 3, total: 12 }, now), 'Uploading 3 of 12…');
   assert.equal(placeStatus(t(), { phase: 'checking', done: 1, total: 40 }, now), 'Comparing files 1 of 40…');
   assert.equal(placeStatus(t(), { phase: 'building', done: 0, total: 0 }, now), 'Getting the backup ready…');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 120, total: 650 }, now), 'Getting files: 120 of 650');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 1 }, now), 'Getting the backup…', 'one file is no count');
+  assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 0 }, now), 'Getting the backup…');
   assert.deepEqual(['iPhone', 'iPad', 'Android phone', 'computer'].map(withArticle), ['an iPhone', 'an iPad', 'an Android phone', 'a computer']);
   assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
   const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
@@ -268,6 +271,7 @@ test('the trace says what each backup did (spec §15)', () => {
   assert.equal(traceSummary({ type: 'backup.newer', data: { type: 'github', remote: { id: 'c2', at: 0, label: 'Android phone' } } }), 'github · a newer backup from an Android phone is there');
   assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
   assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
+  assert.equal(traceSummary({ type: 'backup.peek', data: { type: 'forgejo', backup: 'c2', problem: '$.files[0].hash: does not match' } }), "forgejo · c2 can't be opened: $.files[0].hash: does not match");
   assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
 });
 
@@ -305,7 +309,7 @@ test('a restore from a place that can peek opens the import screen at once, with
   const manifest = { scopes: [] };
   let downloaded = 0;
   const backups = {
-    typeOf: () => ({ peek() {} }),
+    typeOf: () => ({ stores: 'tree', peek() {} }),
     peek: async () => manifest,
     download: async () => { downloaded++; return new Blob(); },
     on: () => () => {}, progress: () => null, running: () => [],
@@ -321,6 +325,29 @@ test('a restore from a place that can peek opens the import screen at once, with
   said.length = 0;
   await restoreFrom(/** @type {any} */ ({ backups: broken, store: null, notices: null, go: () => went.push('wrong') }), /** @type {any} */ ({ id: 'bt-1', type: 'forgejo' }), { id: 'c1', at: 0 }, (s) => said.push(s));
   assert.deepEqual([said, went, takePendingImport()], [['Opening the backup…', "That backup isn't there."], ['#/import'], null]);
+});
+
+test('a restore falls back to the download when the place has nothing to peek with, and for a place of whole files', async () => {
+  /** @type {string[]} */
+  const said = [];
+  /** @type {string[]} */
+  const went = [];
+  let downloaded = 0;
+  let peeked = 0;
+  const backups = {
+    typeOf: () => ({ stores: 'tree', peek() {} }),
+    peek: async () => { peeked++; return null; },
+    download: async () => { downloaded++; return new Blob(['zip']); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  const ctx = (/** @type {any} */ b) => /** @type {any} */ ({ backups: b, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) });
+  await restoreFrom(ctx(backups), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([peeked, downloaded, went], [1, 1, ['#/import']], 'a null peek goes on to the download');
+  assert.equal(takePendingImport()?.files.length, 1);
+  went.length = 0;
+  await restoreFrom(ctx({ ...backups, typeOf: () => ({ stores: 'file', peek() {} }) }), /** @type {any} */ ({ id: 'bt-1', type: 'x' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([peeked, downloaded, went], [1, 2, ['#/import']], 'a place of whole files is not peeked at');
+  takePendingImport();
 });
 
 test('the limit for an unnamed connection, as typed and as shown', () => {

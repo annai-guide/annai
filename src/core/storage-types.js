@@ -13,10 +13,11 @@
  * put(c, archive, o) refuses with TargetError "newer" when the place's newest backup is neither
  * o.base nor one this device made (c.device.id), and with "large" before uploading anything when it
  * would send more than o.maxUpload bytes.
- * peek(c, id, o) is optional, for a place that can tell what a backup holds without sending it: it
- * returns the backup's annai-archive.json (parsed) alone, in a request or two however many files the backup
- * has. annai previews a backup with it, and calls get only when the user imports; a place without it
- * gets the whole backup first. get still brings every file, and annai checks each against the manifest.
+ * peek(c, id, o) is optional, for a place that stores a "tree" and can tell what a backup holds without sending it: it
+ * returns the backup's annai-archive.json (parsed) alone, in a few requests however many files the backup has (Forgejo: two,
+ * GitHub: one). annai previews a backup with it, and calls get only when the user imports; a place without it
+ * gets the whole backup first. get still brings every file, and its archive must carry the manifest peek returned (annai refuses
+ * the backup if it does not); annai checks each file against that manifest's hash as it imports. Anything but a function is no peek.
  *
  * @typedef {import('./backup-targets.js').RemoteBackup} RemoteBackup
  * @typedef {{ key: string, label: string, placeholder?: string, advanced?: boolean }} Field
@@ -71,7 +72,6 @@ export function checkStorageType(t) {
   if (typeof t.name !== 'string' || !t.name.trim()) return `${named} needs a name`;
   if (t.stores !== 'tree' && t.stores !== 'file') return `${named} must say whether it stores a "tree" of files or the archive "file"`;
   for (const f of ['where', 'check', 'list', 'put', 'get']) if (typeof t[f] !== 'function') return `${named} needs ${f}()`;
-  if (t.peek !== undefined && typeof t.peek !== 'function') return `${named} has a peek that isn't a function`;
   if (t.delete !== undefined && typeof t.delete !== 'function') return `${named} has a delete that isn't a function`;
   for (const list of [t.fields ?? [], t.secret ?? []]) {
     if (!Array.isArray(list) || list.some((f) => !FIELD_KEY.test(f?.key ?? '') || typeof f.label !== 'string')) return `${named} has a field without a key or a label`;
