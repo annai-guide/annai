@@ -1,5 +1,6 @@
 // Helpers for Koe live's tests (K5): Shiori as two halves with a realtime model, at the stand-in Gemini Live server.
-import { agentKit, until } from './agent-kit.js';
+import assert from 'node:assert/strict';
+import { agentKit } from './agent-kit.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
@@ -45,9 +46,12 @@ export async function soon(fn, ms = 3000) {
     await new Promise((r) => setTimeout(r, 5));
   }
 }
-/** The user says one of the speech clips into the microphone, once it is open (said before, it would be heard by no one). @param {any} k @param {string} name */
+/**
+ * The user says one of the speech clips into the microphone, as soon as she listens: the dock says so only once the microphone is open,
+ * which is checked here (words said to a closed one would be heard by no one). @param {any} k @param {string} name
+ */
 export const say = async (k, name) => {
-  await until(() => k.platform.mic.isOpen());
+  assert.ok(k.platform.mic.isOpen(), 'she listens only once the microphone is open');
   k.platform.mic.feed(cat(quiet(0.3), await clip(name), quiet(1)), 16_000);
 };
 
