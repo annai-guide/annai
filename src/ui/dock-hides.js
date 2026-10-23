@@ -4,6 +4,29 @@ import { takesTyping } from './tap-keeps-keyboard.js';
 const NO_CLICK_MS = 400;
 
 /**
+ * Calls fn with what a tap or press on the page landed on, at its click, or NO_CLICK_MS after its pointer is up when none comes (iOS sends
+ * none for a tap on plain content, or a drag): never at the press, which would move the page under the finger. @param {(at: EventTarget | null) => void} fn
+ * @param {Document} [doc] @returns {() => void} stops
+ */
+export function onTap(fn, doc = document) {
+  /** @type {EventTarget | null} */
+  let at = null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  /** @type {[string, (e: Event) => void][]} */
+  const on = [
+    ['pointerdown', (e) => { clearTimeout(timer); at = e.target; }],
+    ['pointerup', () => { clearTimeout(timer); timer = setTimeout(() => { if (at) fn(at); at = null; }, NO_CLICK_MS); }],
+    ['click', (e) => { clearTimeout(timer); at = null; fn(e.target); }],
+  ];
+  for (const [type, f] of on) doc.addEventListener(type, f, true);
+  return () => {
+    clearTimeout(timer);
+    for (const [type, f] of on) doc.removeEventListener(type, f, true);
+  };
+}
+
+/**
  * On a touch screen the dock steps aside while a text field outside it has focus and the keyboard is up, and comes back when focus
  * leaves or the keyboard goes (the user, 2026-10-22: on an iPhone it "pops in and out"). The page gets `typing-elsewhere`; shiori.css
  * makes the dock see-through and deaf to taps but keeps its box and its place in the accessibility tree. The dock's own text box

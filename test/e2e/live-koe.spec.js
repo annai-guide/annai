@@ -198,6 +198,31 @@ test('in Koe · Realtime the bubble over Shiori holds her words while she speaks
   }
 });
 
+// Fix pass 3, item 5: Gemini's input transcript often finishes after her turn: the heard line takes its last words, and they are announced.
+test('in Koe · Realtime the last words heard, coming after her turn, reach the heard line and the announcer', async ({ page }) => {
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we', heardAfter: ' eat tonight?', said: 'Somewhere nice by the water.', audio: voice(1), usage }] });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await liveSetUp(page, kokoro.origin, s.origin);
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect(page.locator('.convo .shiori.said')).toContainText('Somewhere nice by the water.', { timeout: 20_000 });
+    await expect(page.locator('.convo .you.heard')).toHaveText(['Where should we eat tonight?'], { timeout: 10_000 });
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced)).toContain('Heard: Where should we eat tonight?');
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
+
 // K6's plan, Task 3: the same conversation through OpenAI Realtime, against the stand-in's openai flavour.
 test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoken question answered and passed to Kokoro, whose note goes in marked and is said; voice off closes it; the key never shows", async ({ page }) => {
   const usage = { input_tokens: 900, output_tokens: 40, input_token_details: { text_tokens: 600, audio_tokens: 300 }, output_token_details: { audio_tokens: 40 } };

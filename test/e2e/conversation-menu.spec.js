@@ -156,4 +156,11 @@ test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   await expect(menu).toBeVisible();
   await page.mouse.up();
   await expect(menu).toBeHidden();
+  // A press that brings no click (iOS, on plain content) closes it a moment after it ends (fix pass 3).
+  await toggle.click();
+  await page.evaluate(() => {
+    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
+  });
+  await expect(menu).toBeHidden({ timeout: 2000 });
 });

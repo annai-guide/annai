@@ -7,6 +7,7 @@ import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
+import { onTap } from './dock-hides.js';
 
 /** How long her last words stay in the bubble once she has stopped, to read them. */
 const CAPTION_LINGER_MS = 2500;
@@ -68,16 +69,18 @@ export function createDock(ctx) {
     },
   }, h('div', { class: 'type-box' }, input, sendArrow));
   const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', 'aria-expanded': 'false', title: 'Type', onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
-  /** A tap elsewhere on the page, at its click (a press closing it would move the page under the finger): an empty box closes; one with a draft stays. @param {Event} e */
-  const elsewhere = (e) => {
-    const t = /** @type {Node} */ (e.target);
+  /** A tap elsewhere on the page (onTap: never at its press): an empty box closes; one with a draft stays. @param {EventTarget | null} at */
+  const elsewhere = (at) => {
+    const t = /** @type {Node} */ (at);
     if (!input.value.trim() && !sheet.contains(t) && !typeButton.contains(t)) closeTyping();
   };
+  /** @type {(() => void) | undefined} */
+  let offTap;
   const closeTyping = () => {
     sheet.hidden = true;
     composing = false;
     typeButton.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('click', elsewhere, true);
+    offTap?.();
     ctx.agent.typing?.(false);
   };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
@@ -91,7 +94,8 @@ export function createDock(ctx) {
     sheet.hidden = false;
     typeButton.setAttribute('aria-expanded', 'true');
     input.focus();
-    document.addEventListener('click', elsewhere, true);
+    offTap?.();
+    offTap = onTap(elsewhere);
     ctx.agent.typing?.(Boolean(input.value.trim())); // a draft kept from before is typed text again
   };
   const camera = h('input', { id: 'dock-camera', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
@@ -160,18 +164,20 @@ export function createDock(ctx) {
     captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
     letGo();
   };
-  /** Whether "Show what she says" is on, read again as she starts speaking. */
-  let wordsOn = Promise.resolve(true);
-  const readOn = () => { wordsOn = readAppSettings(ctx.ws).then((a) => shownSettings(a).showWords, () => true); };
-  readOn();
-  // Each line reads its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
+  // Each line reads "Show what she says" and its stored text before it shows (off, mid-speech, the bubble goes at once, words and all): a
+  // slower read of an earlier line never replaces a later one's words.
   let latest = 0;
   /** @param {() => Promise<string> | string} words */
   const show = async (words) => {
     const mine = ++latest;
-    const on = await wordsOn;
+    const on = shownSettings(await readAppSettings(ctx.ws).catch(() => ({}))).showWords;
     const text = on ? await words() : '';
-    if (mine === latest && on) showCaption(text);
+    if (mine !== latest) return;
+    if (on) showCaption(text);
+    else {
+      hideCaption();
+      captionText.textContent = '';
+    }
   };
   offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
     if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''));
@@ -179,10 +185,8 @@ export function createDock(ctx) {
   // A live Koe's words as the transcript grows, while she speaks (fix pass 2): its line is written only once she has finished.
   offs.push(ctx.agent.on('saying', (/** @type {string} */ words) => { show(() => String(words)); }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
-    if (s.name === 'speaking') {
-      clearTimeout(lingering);
-      readOn();
-    } else if (!caption.hidden) letGo();
+    if (s.name === 'speaking') clearTimeout(lingering);
+    else if (!caption.hidden) letGo();
   }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },
@@ -233,7 +237,7 @@ export function createDock(ctx) {
     dispose: () => {
       for (const off of offs.splice(0)) off?.();
       composing = false;
-      document.removeEventListener('click', elsewhere, true);
+      offTap?.();
       ctx.agent.typing?.(false);
     },
     /** @param {boolean} on */

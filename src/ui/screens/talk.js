@@ -9,6 +9,7 @@ import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
 import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
+import { onTap } from '../dock-hides.js';
 
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
@@ -100,7 +101,7 @@ export async function renderTalk(ctx) {
   const asks = new Map();
   /** The newest error note with a Try again: it goes when anything newer joins the conversation. @type {{ li: HTMLElement, again: HTMLElement } | null} */
   let retry = null;
-  /** @type {Map<string, HTMLElement>} heard speech whose words are still being written down */
+  /** @type {Map<string, HTMLElement>} heard lines' words, by id: written down, or ending, later (heard.text) */
   const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
   const replaced = new Map((await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })))
@@ -144,7 +145,7 @@ export async function renderTalk(ctx) {
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
       const words = h('span', { text: typeof d.text === 'string' ? d.text : '…' });
-      if (typeof d.text !== 'string') unheard.set(d.id, words);
+      unheard.set(d.id, words); // its words may come later, or end later (Gemini's input transcript): heard.text
       return d.dismissed ? h('li', { class: 'system-line' }, 'Heard, not for Shiori: ', words) : h('li', { class: 'you heard' }, h('p', {}, words));
     }
     if (e.type === 'heard.text') {
@@ -153,7 +154,6 @@ export async function renderTalk(ctx) {
         words.textContent = String(d.text ?? '');
         tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
       }
-      unheard.delete(d.of);
       return null;
     }
     if (e.type === 'out.show') {
@@ -342,9 +342,8 @@ function tidyMenu(ctx) {
       /** @type {HTMLElement | null} */ (document.querySelector('.tidy-toggle'))?.focus(); // the new screen's, after the divider
     },
   }, 'Start fresh');
-  // A tap elsewhere closes it, at its click: nothing moves under a finger still down.
-  const outside = (/** @type {Event} */ e) => { if (!menu.hidden && !menu.contains(/** @type {Node} */ (e.target)) && e.target !== toggle) close(); };
-  document.addEventListener('click', outside, true);
+  // A tap elsewhere closes it, never at its press: nothing moves under a finger still down.
+  const offTap = onTap((at) => { if (!menu.hidden && !menu.contains(/** @type {Node} */ (at)) && at !== toggle) close(); });
   // Escape closes it wherever the focus is (Safari doesn't focus a button on a tap).
   const escape = (/** @type {KeyboardEvent} */ e) => {
     if (e.key !== 'Escape' || menu.hidden) return;
@@ -357,7 +356,7 @@ function tidyMenu(ctx) {
     h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.' }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.' }), fresh);
   whenGone(el, () => {
-    document.removeEventListener('click', outside, true);
+    offTap();
     document.removeEventListener('keydown', escape);
   });
   return el;
