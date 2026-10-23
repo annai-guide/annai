@@ -265,6 +265,34 @@ export default function (test, assert) {
     }
   });
 
+  test('fix pass 3, items 7 and 8: "Show what she says" is read for each line: turned off while she speaks, the bubble goes at once, and her earlier words never stay in it', async () => {
+    const { registry } = kit();
+    const agent = fakeAgent();
+    /** @type {Record<string, any>} */
+    const app = {};
+    const ws = { readJSON: async () => app };
+    const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
+    const dock = createDock(ctx);
+    const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
+    const tick = () => new Promise((done) => setTimeout(done, 30));
+    try {
+      agent.state = { name: 'speaking', label: '' };
+      agent.emit('state', agent.state);
+      agent.emit('saying', 'It is open');
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [false, 'It is open']);
+      app.shiori = { showWords: false }; // switched off in Settings → Voice while she speaks
+      agent.emit('saying', 'It is open until ten');
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, ''], 'gone at once, with its words');
+      agent.emit('event', { type: 'out.speak', seq: 3, data: { voice: true, text: 'Her next line.' } });
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, '']);
+    } finally {
+      dock.dispose();
+    }
+  });
+
   // Last: it starts a shell, which follows this page's address from then on.
   test("minors 15: what a render the shell gave up on drew is cleaned up as it comes, not at the next render", async () => {
     const registry = new Registry();

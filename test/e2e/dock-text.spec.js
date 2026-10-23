@@ -204,3 +204,17 @@ test('a composition the box lost (it closed, or lost focus) holds back nothing: 
     await expect(page.locator('.convo .you').last()).toHaveText(`words after ${lose}`);
   }
 });
+
+// Fix pass 3, item 6: iOS sends no click for a tap on plain content, or a drag: the box closes NO_CLICK_MS after the pointer is up.
+test('a press elsewhere that brings no click (iOS, on plain content) still closes the empty box, a moment after it ends', async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await expect(box(page)).toBeVisible();
+  await page.evaluate(() => {
+    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
+  });
+  await page.waitForTimeout(100);
+  await expect(box(page)).toBeVisible();
+  await expect(box(page)).toBeHidden({ timeout: 2000 });
+});
