@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Kept, fingerprint, keyPrint, MAX_TURNS } from '../../src/core/llm/kept.js';
@@ -9,6 +9,18 @@ import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_DEVICE } from '../../src/core/scopes.js';
 import { loadGemini, KEY, endpointOf } from './gemini-kit.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
+
+/** Every stand-in server a test starts. A kit that throws after starting one (a plugin that won't install, say) never reaches its own close, and the open server keeps the run from ending. */
+const started = new Set();
+const startServer = async (/** @type {Parameters<typeof startGeminiServer>[0]} */ o) => {
+  const s = await startGeminiServer(o);
+  started.add(s);
+  return s;
+};
+afterEach(async () => {
+  for (const s of started) await s.close();
+  started.clear();
+});
 
 // Turns a provider keeps on its side (the Gemini design, "Kept on Google's side"): the store of them, a request that
 // continues one, Google having forgotten one, and only a conversation's own turns kept.
@@ -141,7 +153,7 @@ const gemConfig = (url, tunables = {}, free = false) => /** @type {any} */ ({
 
 /** A conversation's turn (main, its parts kept), or another call, through callRole. free: the key is marked as on the free tier */
 async function callKit(/** @type {any} */ replies, /** @type {Record<string, any>} */ tunables = {}, { free = false } = {}) {
-  const s = await startGeminiServer({ key: KEY, replies });
+  const s = await startServer({ key: KEY, replies });
   const k = await keptKit();
   const config = gemConfig(s.url, tunables, free);
   /** @param {any[]} messages @param {Record<string, any>} [o] */
@@ -302,7 +314,7 @@ async function serviceKit({ replyDelay = 0, deleteDelay = 0, anyKey = false } = 
   const { hostKit } = await import('./package-kit.js');
   const { createLlm } = await import('../../src/core/llm/service.js');
   const { createTrip } = await import('../../src/core/scopes.js');
-  const s = await startGeminiServer({ ...(anyKey ? {} : { key: KEY }), replies: [(b) => ({ text: `Answer ${b.input.length}`, delayMs: replyDelay })] });
+  const s = await startServer({ ...(anyKey ? {} : { key: KEY }), replies: [(b) => ({ text: `Answer ${b.input.length}`, delayMs: replyDelay })] });
   const k = await hostKit();
   const root = new URL('../../', import.meta.url);
   const net = { online: true };
@@ -770,7 +782,7 @@ test("deletions of a provider that vanished another way (a restore replacing set
 
 test('Review Focus 1 through callRole: Gemini rate-limited, another provider answers; the next Gemini turn goes after its own kept one, the other model\'s reply as a model_output, nothing twice', async () => {
   const k = await keptKit();
-  const s = await startGeminiServer({ key: KEY, replies: [(/** @type {any} */ b) => (JSON.stringify(b.input).includes('Is it open?')
+  const s = await startServer({ key: KEY, replies: [(/** @type {any} */ b) => (JSON.stringify(b.input).includes('Is it open?')
     && !JSON.stringify(b.input).includes('Book it.') ? { error: { status: 429, body: { error: { message: 'Resource exhausted. Please retry in 44s.', code: 'too_many_requests' } } } } : { text: 'Ichiran, 200 m away.' })] });
   try {
     const config = gemConfig(s.url);
@@ -866,7 +878,7 @@ test('VERIFY B: a chained bad request: the turn it continued is still at Google,
 
 test('VERIFY C: the switch goes off while the first model of the list fails; the next model keeps nothing, as it is checked when its turn is recorded', async () => {
   const k = await keptKit();
-  const s = await startGeminiServer({ key: KEY, replies: [{ text: 'OK' }] });
+  const s = await startServer({ key: KEY, replies: [{ text: 'OK' }] });
   try {
     const { ProviderError } = await import('../../src/core/llm/contract.js');
     const config = gemConfig(s.url);
@@ -892,8 +904,8 @@ test('VERIFY D: a drain already running when a key changes never sends the old k
   const { createLlm } = await import('../../src/core/llm/service.js');
   const { createTrip } = await import('../../src/core/scopes.js');
   const { setKey, readConfig, saveRoles } = await import('../../src/core/llm/config.js');
-  const s = await startGeminiServer({ replies: [() => ({ text: 'P' })] });
-  const s2 = await startGeminiServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
+  const s = await startServer({ replies: [() => ({ text: 'P' })] });
+  const s2 = await startServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
   const k = await hostKit();
   const root = new URL('../../', import.meta.url);
   const fetching = async (/** @type {any} */ url, /** @type {any} */ init) => {
@@ -969,8 +981,8 @@ async function realKit(/** @type {{ slowModel?: string, deleteDelay?: number }} 
   const { hostKit } = await import('./package-kit.js');
   const { createLlm } = await import('../../src/core/llm/service.js');
   const { createTrip } = await import('../../src/core/scopes.js');
-  const s = await startGeminiServer({ replies: [(/** @type {any} */ b) => (b.model === o.slowModel ? { error: { status: 401, body: { error: { message: 'API key not valid.', code: 'unauthenticated' } } } } : { text: 'OK', delayMs: 300 })] });
-  const s2 = await startGeminiServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
+  const s = await startServer({ replies: [(/** @type {any} */ b) => (b.model === o.slowModel ? { error: { status: 401, body: { error: { message: 'API key not valid.', code: 'unauthenticated' } } } } : { text: 'OK', delayMs: 300 })] });
+  const s2 = await startServer({ replies: [() => ({ text: 'Q' })], ids: 'v1_q-' });
   const k = await hostKit();
   const root = new URL('../../', import.meta.url);
   const fetching = async (/** @type {any} */ url, /** @type {any} */ init) => {
