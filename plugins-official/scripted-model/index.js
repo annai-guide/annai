@@ -35,11 +35,11 @@ export function activate(annai) {
     const tail = String(request?.tail ?? '');
     const woke = /^woke for: (.*)$/m.exec(tail)?.[1] ?? tail;
     const last = request?.messages?.at(-1);
-    // Results of its own tool calls come last; a new wake's words would follow them in the same message. A message may
-    // also carry words after the results that are no wake (what the other half said meanwhile): without a "woke for" line
-    // in the tail (it is there on a turn's first request only), the request still follows its own calls.
-    const followUp = last?.role === 'user' && last.parts?.some((/** @type {any} */ x) => x.type === 'tool_result')
-      && (last.parts.at(-1)?.type === 'tool_result' || !/^woke for: /m.test(tail));
+    // Results of its own tool calls come last, or a new wake's words follow them in the same message. Words after the results that
+    // are no wake (what the other half said meanwhile) leave it a follow-up: its rule's `then`. A wake that joined the turn (its
+    // reason is in the "woke for" line) is matched by the rules as a new request does, and when none matches it is the follow-up still.
+    const hasResults = last?.role === 'user' && last.parts?.some((/** @type {any} */ x) => x.type === 'tool_result');
+    const followUp = hasResults && (last.parts.at(-1)?.type === 'tool_result' || !/^woke for: /m.test(tail));
     const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
     if (followUp && lastRule.has(endpoint.id)) return lastRule.get(endpoint.id).then ?? sleep;
     let i = 0;
@@ -52,7 +52,7 @@ export function activate(annai) {
       lastRule.set(endpoint.id, r);
       return r.reply ?? sleep;
     }
-    return sleep;
+    return hasResults && lastRule.has(endpoint.id) ? lastRule.get(endpoint.id).then ?? sleep : sleep;
   };
   return annai.providers.register({
     type: 'scripted',
