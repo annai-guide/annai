@@ -1,5 +1,6 @@
 import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
+import { pricesAt } from './cost.js';
 
 /**
  * Providers made from provider plugins' descriptions (spec §9.8): its values are the template layer of
@@ -104,12 +105,13 @@ function suggested(roles, pick, suggestion, o) {
 }
 
 /** Whether a model costs nothing: its provider is a local server or its key is on the free tier, or its prices are all zero (a model with no price on another provider is not free). @param {import('./config.js').ModelConfig} cfg @param {string} id */
-function free(cfg, id) {
+export function free(cfg, id) {
   const m = cfg.models[id];
   if (!m) return false;
   const owner = providerOf(cfg.providers[m.provider]);
   if (owner.free || owner.local) return true;
-  const prices = modelOf(m).prices;
+  const listed = modelOf(m).prices;
+  const prices = listed ? pricesAt(listed, Date.now()) : null; // the prices in force today
   return Boolean(prices) && Object.keys(prices ?? {}).length > 0 && Object.values(prices ?? {}).every((v) => v === 0);
 }
 

@@ -1,6 +1,6 @@
 import { validate } from '../schema.js';
 import { mergePatch, diffPatch } from '../patch.js';
-import { ValidationError } from '../workspace.js';
+import { ValidationError, NotFoundError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
@@ -92,6 +92,11 @@ const MODEL_DEFAULTS = Object.freeze({
 });
 
 const OBJECT = { type: 'object' };
+const PRICE = { type: 'number', minimum: 0 };
+/** Prices that start on a date: each entry a `from` (YYYY-MM-DD) and the price fields that change from then. */
+const PRICE_SCHEDULE = { type: 'array', items: { type: 'object', required: ['from'], properties: {
+  from: { type: 'string', format: 'date' }, input: PRICE, output: PRICE, cacheRead: PRICE, cacheWrite: PRICE, cacheWrite1h: PRICE, audioIn: PRICE, audioOut: PRICE, image: PRICE,
+  cacheReadAudio: PRICE, cacheReadImage: PRICE, perMinute: PRICE, perMillionChars: PRICE, minSeconds: PRICE, tiers: { type: 'array' } } } };
 const VALUES = {
   type: 'object',
   properties: {
@@ -106,7 +111,7 @@ const VALUES = {
     tools: { type: 'boolean' },
     contextWindow: { type: ['integer', 'null'], minimum: 1 },
     maxOutput: { type: ['integer', 'null'], minimum: 1 },
-    prices: { type: ['object', 'null'] },
+    prices: { type: ['object', 'null'], properties: { schedule: { ...PRICE_SCHEDULE, type: ['array', 'null'] } } }, // null on the user layer: the description's schedule removed
     providerTools: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'patch'],
       properties: { id: { type: 'string', minLength: 1 }, name: { type: 'string' }, kind: { enum: ['search', 'fetch', 'other'] }, patch: OBJECT,
         pricePerCall: { type: 'number', minimum: 0 }, usageKey: { type: 'string' }, paidOnly: { type: 'boolean' }, freePerMonth: { type: 'integer', minimum: 0 },
@@ -248,6 +253,17 @@ export function modelBase(rec) {
 /** The model as calls see it; it is named by its provider id until the user names it. @param {ModelRecord} rec @returns {Model} */
 export function modelOf(rec) {
   const v = { ...MODEL_DEFAULTS, ...mergePatch(modelBase(rec), rec.user ?? {}) };
+  // A price the user set stays theirs: the description's schedule does not change that field from its date (a typed input price must
+  // not become Google's on 2027-01-01). A schedule of the user's own was made with those prices (the Prices box takes the fields
+  // typed out of it as they are typed). A schedule left with no entry, or emptied (`[]`, or null, which older builds read as the
+  // schedule removed), is no schedule.
+  if (v.prices && Array.isArray(v.prices.schedule)) {
+    const own = rec.user?.prices;
+    const set = own && typeof own === 'object' && !('schedule' in own) ? Object.keys(own) : [];
+    const entries = (set.length ? v.prices.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !set.includes(k))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) : v.prices.schedule);
+    const { schedule: _, ...rest } = v.prices;
+    v.prices = entries.length ? { ...rest, schedule: entries } : rest;
+  }
   return { id: rec.id, provider: rec.provider, ability: rec.ability, ...v, name: v.name || v.providerId };
 }
 
@@ -360,6 +376,17 @@ export async function saveModel(ws, rec) {
     }
   }
   await ws.write(SYS_SETTINGS, path, rec, { author: 'user' });
+}
+
+/**
+ * Records what a Test found on a model: only `verified`, merged in under the model's file lock, so a field the user saved while
+ * the Test ran (it can take seconds) is not written back as it was. A model removed meanwhile stays removed.
+ * @param {Workspace} ws @param {string} id @param {Record<string, any>} verified
+ */
+export async function markVerified(ws, id, verified) {
+  await ws.patch(SYS_SETTINGS, modelPath(id), { verified }, { author: 'user' }).catch((/** @type {unknown} */ e) => {
+    if (!(e instanceof NotFoundError)) throw e;
+  });
 }
 
 /**

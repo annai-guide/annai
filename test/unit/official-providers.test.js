@@ -250,6 +250,11 @@ test('catalogFacts: abilities in order, free from zero prices, local, code, the 
   assert.equal(facts({ provider: { abilities: { a: { kind: 'transcription' }, b: { kind: 'voice' } } } }).category, 'speech');
   assert.equal(facts({ provider: { local: true, abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 1, output: 0 } }] } } } }).free, false);
   assert.equal(facts({ provider: { local: true, abilities: {} } }).local, true);
+  // Free is judged by the prices in force today: free that turned paid on a date past is not free; free until a date to come is.
+  /** @param {string} from */
+  const freeUntil = (from) => facts({ provider: { abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 0, output: 0, schedule: [{ from, input: 1, output: 4 }] } }] } } } }).free;
+  assert.equal(freeUntil('2020-01-01'), false);
+  assert.equal(freeUntil('2999-01-01'), true);
   assert.equal(facts({ entry: 'index.js', provides: { 'storage-type': ['s3'] } }).category, 'backup');
   assert.equal(facts({ entry: 'index.js', provides: { 'endpoint-type': ['x'] } }).category, 'developer');
   assert.equal(facts({ skills: ['s'] }).category, 'skills');
@@ -364,10 +369,13 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   }
 });
 
-test('provider-gemini 2.5.1: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+/** Google's pricing page, 2026-10-23: 3.8 and 3.6 Flash double from 2027-01-01. */
+const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 }];
+
+test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.5.1');
+  assert.equal(m.version, '2.6.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -378,8 +386,8 @@ test('provider-gemini 2.5.1: Gemini through its own API (gemini-api), its chat m
   // No audioIn or cacheReadAudio: the page gives each one input and one caching price, for every kind of input (flash-lite's says
   // "text / image / video / audio"; 3.8's and 3.6's have no audio row; checked again in the fix pass), so audio costs what words do.
   assert.deepEqual(chat.models.map((/** @type {any} */ x) => [x.providerId, x.prices]), [
-    ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
-    ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
+    ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075, schedule: DOUBLES }],
+    ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075, schedule: DOUBLES }],
     ['gemini-3.5-flash-lite', { input: 0.3, output: 2.5, cacheRead: 0.03 }],
   ]);
   for (const x of chat.models) {
@@ -447,8 +455,8 @@ test("provider-gemini's transcription and voices (G3): Google's transcription mo
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash Lite (transcription)', { perMinute: 0.0009 }],
   ]);
   assert.deepEqual(say.models.map((/** @type {any} */ x) => [x.providerId, x.name, x.prices]), [
-    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS', { perMillionChars: 10 }],
-    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', { perMillionChars: 15 }],
+    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS', { perMillionChars: 10, schedule: [{ from: '2027-01-01', perMillionChars: 20 }] }],
+    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', { perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }],
   ]);
   assert.match(say.note, /only 10 requests a day and 3 a minute: far fewer than a day of replies/, "the free tier's limits, too small for a day of replies, in words");
   assert.match(say.note, /Switch streaming off/);
@@ -628,4 +636,19 @@ test('Custom provider has a Realtime voice ability, off, for any server that spe
   const rt = /** @type {any} */ (m.provider.abilities.realtime);
   assert.deepEqual([rt.kind, rt.type, rt.on], ['realtime', 'openai-realtime', false]);
   assert.ok(entry('provider-another-address').version > '2.0.0', 'a version past the one released');
+});
+
+test("no official model changes between free and paid across its schedule, so the catalog's `free` fact is the same on every day (catalog --check)", async () => {
+  const { pricesAt } = await import('../../src/core/llm/cost.js');
+  const free = (/** @type {any} */ p) => Object.values(p).filter((v) => typeof v === 'number').every((v) => v === 0) && Object.values(p).some((v) => typeof v === 'number');
+  for (const m of await officialManifests()) {
+    for (const [ability, a] of Object.entries(/** @type {Record<string, any>} */ (m.provider?.abilities ?? {}))) {
+      for (const model of a.models ?? []) {
+        const dates = (Array.isArray(model.prices?.schedule) ? model.prices.schedule : []).map((/** @type {any} */ e) => Date.parse(`${e.from}T00:00:00Z`));
+        const days = [Date.parse('2000-01-01T00:00:00Z'), ...dates, Date.parse('2999-01-01T00:00:00Z')];
+        const verdicts = new Set(days.map((d) => free(pricesAt(model.prices, d))));
+        assert.equal(verdicts.size, 1, `${m.id}/${ability}/${model.providerId} changes free-ness across its schedule`);
+      }
+    }
+  }
 });

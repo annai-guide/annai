@@ -3,22 +3,46 @@ import { modelOf, modelBase, providerOf, endpointOf, saveModel, removeModel, dif
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
+import { pricesProblem } from '../../core/llm/cost.js';
 
 /**
  * Saves one field into the user's layer of the model as it is now (spec §9.2; a function works the
  * value out from it), and ends its rest: what failed may be fixed. Gives the model.
  * @param {any} ctx @param {string} id
  */
-const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @type {any} */ value) => {
+export const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @type {any} */ value) => {
   const rec = (await ctx.llm.config()).models[id];
   if (!rec) throw new Error('This model no longer exists.');
   const { [key]: _, ...rest } = rec.user ?? {};
-  const v = typeof value === 'function' ? value(modelOf(rec)) : value;
-  const next = { ...rec, user: { ...rest, ...diffLayer({ [key]: v }, modelBase(rec)) } };
+  let v = typeof value === 'function' ? value(modelOf(rec)) : value;
+  // The Prices box shows the prices in effect, a description's schedule with the fields the user set left out of it. Sent back
+  // unchanged, that schedule is the description's still, not a copy of it for the user (which would put the description's
+  // value over a price the user typed later).
+  const was = modelOf(rec).prices;
+  if (key === 'prices' && v && !('schedule' in (rec.user?.prices ?? {})) && modelBase(rec).prices?.schedule && JSON.stringify(v.schedule) === JSON.stringify(was?.schedule)) {
+    v = { ...v, schedule: modelBase(rec).prices?.schedule };
+  } else if (key === 'prices' && v && Array.isArray(v.schedule)) {
+    // A schedule of the user's own, and a price changed in this edit: the price wins from every date (typed, it is theirs).
+    const changed = Object.keys({ ...v, ...was }).filter((k) => k !== 'schedule' && JSON.stringify(v[k]) !== JSON.stringify(was?.[k]));
+    if (changed.length) {
+      v = { ...v, schedule: v.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !changed.includes(k))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) };
+    }
+  }
+  const layer = diffLayer({ [key]: v }, modelBase(rec));
+  // The description's schedule deleted is stored as an empty list: an older build reads that, and drops a model whose schedule is null.
+  if (key === 'prices' && layer.prices?.schedule === null) layer.prices.schedule = [];
+  const next = { ...rec, user: { ...rest, ...layer } };
   await saveModel(ctx.ws, next);
   ctx.llm.bench.clear(id);
   return modelOf(next);
 };
+
+/** The Prices box's value to save: none when it is empty, and refused when something in it isn't a price. @param {any} p */
+export function pricesInto(p) {
+  const wrong = pricesProblem(p);
+  if (wrong) throw new Error(wrong);
+  return Object.keys(p).length ? p : null;
+}
 
 /**
  * A JSON field that saves once it parses, then shows what is in effect.
@@ -27,7 +51,8 @@ const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @type {any
  */
 function modelJson(save, label, id, key, value, into = (v) => v) {
   const f = jsonField(label, id, value);
-  return h('div', { class: 'saving' }, f.el, ...autosave(f.area, f.read, async (v) => f.show(/** @type {any} */ (await save(key, into(v)))[key])));
+  // `into` may refuse (a price that isn't one): that is said by the field, with the text left as typed.
+  return h('div', { class: 'saving' }, f.el, ...autosave(f.area, () => into(f.read()), async (v) => f.show(/** @type {any} */ (await save(key, v))[key])));
 }
 
 /**
@@ -95,7 +120,7 @@ export async function renderModel(ctx, id) {
       h('div', { class: 'row' },
         savedField('Context window (tokens)', window, () => tokens(window, 'The context window'), (v) => save('contextWindow', v)),
         savedField('Maximum output (tokens)', max, () => tokens(max, 'The maximum output'), (v) => save('maxOutput', v))),
-      modelJson(save, 'Prices, USD per million tokens (JSON)', 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
+      modelJson(save, 'Prices, USD per million tokens (JSON)', 'model-prices', 'prices', m.prices ?? {}, pricesInto),
       savedField('Cache lifetimes (5m, 1h)', ttls, readTtls, (v) => save('cacheTtls', v)),
       h('p', { class: 'sub', text: 'Empty: it is asked for five minutes.' }),
       // What it takes in photos (spec §9.2): formats, maxEdge (pixels), maxBytes, maxCount. A refusal can teach these.
@@ -160,7 +185,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
       voice ? h('p', { class: 'sub', text: 'Sent with every request. Emptied, the model\'s default (grey) is used; to send none, put "voice": null in Extra request fields.' }) : null,
       style ? savedField('Style', style, () => style.value.trim(), saveFields) : null,
       style ? note : null,
-      modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, (p) => (Object.keys(p).length ? p : null)),
+      modelJson(save, { in: 'Prices, USD (JSON: perMinute, minSeconds)', out: 'Prices, USD (JSON: perMillionChars)', live: 'Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)' }[kind], 'model-prices', 'prices', m.prices ?? {}, pricesInto),
       h('div', { class: 'saving' }, tunables.el, ...autosave(tunables.area, tunables.read, async (t) => showTunables(await save('tunables', withFields(t))))),
       modelJson(save, 'Extra request fields (JSON)', 'model-extra', 'extraBody', m.extraBody)),
     kind === 'live' ? testPanel(ctx, rec.id, rec.verified, 'Test', true) : speechTestPanel(ctx, m, kind, rec.verified),

@@ -8,9 +8,9 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow } from '../../src/ui/screens/talk.js';
+import { follow, announcement } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
-import { traceSummary } from '../../src/ui/screens/trace.js';
+import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
 import { priceLine, freeTierLabel } from '../../src/ui/screens/provider.js';
 import { metaLine } from '../../src/ui/talk-panel.js';
@@ -425,6 +425,9 @@ test('a microphone that fails says what happened and what to do, for this phone 
 test('model prices in a line: tokens, minutes of speech, or characters', () => {
   assert.equal(priceLine({ input: 2, output: 10 }), '$2 in, $10 out per million tokens');
   assert.equal(priceLine({ input: 0, output: 0 }), 'free');
+  const doubling = { input: 1, output: 4, schedule: [{ from: '2027-01-01', input: 2, output: 8 }] };
+  assert.equal(priceLine(doubling, Date.parse('2026-12-31T23:00:00Z')), '$1 in, $4 out per million tokens (from 2027-01-01: $2 in, $8 out)');
+  assert.equal(priceLine(doubling, Date.parse('2027-01-01T00:00:00Z')), '$2 in, $8 out per million tokens', 'the price in force, not the base');
   assert.equal(priceLine({ perMinute: 0.006 }), '$0.006 a minute of speech');
   assert.equal(priceLine({ perMillionChars: 15 }), '$15 per million characters');
   assert.equal(priceLine(null), null);
@@ -677,4 +680,52 @@ test("localDay: a day in this device's own zone, not UTC's, for a backup's file 
     if (was === undefined) delete process.env.TZ;
     else process.env.TZ = was;
   }
+});
+
+test("Trace order: newest first by when an entry was written, so a simulated trip's future-dated events don't top it; older entries fall back to their event time", () => {
+  const day = 86_400_000;
+  const e = (/** @type {string} */ scope, /** @type {number} */ seq, /** @type {number} */ ts, /** @type {number | undefined} */ at) => ({ scope, seq, ts, at, type: 'x', actor: 'system' });
+  const written = Date.parse('2026-10-20T12:00:00Z');
+  // A simulation, run on the 20th, whose clock ran ahead by a week; then a real entry, written later.
+  const sim = e('trip', 1, written + 7 * day, written);
+  const real = e('me', 1, written + 3600_000, written + 3600_000);
+  assert.deepEqual(newestFirst([sim, real], 10), [real, sim]);
+  // Entries from before the field existed are ordered by their event time among themselves, and by it against the rest.
+  const old1 = e('trip', 5, written - 2 * day, undefined);
+  const old2 = e('trip', 6, written - day, undefined);
+  assert.deepEqual(newestFirst([old1, sim, old2, real], 10), [real, sim, old2, old1]);
+  // Ties go to the later entry, and the list is cut to the limit.
+  const a = e('trip', 7, 5, 100);
+  const b = e('trip', 8, 5, 100);
+  assert.deepEqual(newestFirst([a, b], 1), [b]);
+});
+
+test('the announcer reads her lines as "Shiori: …": a spoken line, a card (a plugin\'s kind named as the plugin names it), a question or a card with its choices ("SHIORINepenthe" was the label run into the words)', () => {
+  assert.equal(announcement('out.speak', '', "I'm checking."), "Shiori: I'm checking.");
+  assert.equal(announcement('out.show', '', 'Nepenthe Open till 10 tonight.'), 'Shiori: Nepenthe Open till 10 tonight.');
+  assert.equal(announcement('out.show', 'Trail', 'Trail: Pfeiffer Falls'), 'Shiori (Trail): Trail: Pfeiffer Falls');
+  // A kind's name as the plugin wrote it: no case changed, " · " and all.
+  assert.equal(announcement('out.show', 'SBB · Rail', 'Zurich to Bern'), 'Shiori (SBB · Rail): Zurich to Bern');
+  assert.equal(announcement('out.show', 'iOS notes', 'Two notes'), 'Shiori (iOS notes): Two notes');
+  assert.equal(announcement('out.ask', '', 'Where should we eat?', ['Ramen', 'Sushi']), 'Shiori asks: Where should we eat? Choices: Ramen, Sushi.');
+  assert.equal(announcement('out.show', '', 'Dinner at 7.', ['Book it', 'Not now']), 'Shiori: Dinner at 7. Choices: Book it, Not now.');
+  assert.equal(announcement('out.ask', '', 'Is that right?', []), 'Shiori asks: Is that right?');
+  // A card with nothing to read says what it is.
+  assert.equal(announcement('out.show', '', '', [], { image: '/trip/files/menu.jpg' }), 'Shiori: a photo');
+  assert.equal(announcement('out.show', '', '', [], {}), 'Shiori: a card');
+  // Anything else is as written; what you typed and the halves' notes are not announced.
+  assert.equal(announcement('reminder', '', 'Reminder: Leave at 5.'), 'Reminder: Leave at 5.');
+  assert.equal(announcement('msg.user', '', 'Hello'), '');
+  assert.equal(announcement('note', '', 'Koe to Kokoro: …'), '');
+});
+
+test("the price line says a change that is coming: from its date, the price then", () => {
+  const doubling = { input: 0.75, output: 3.75, schedule: [{ from: '2027-01-01', input: 1.5, output: 7.5 }] };
+  assert.equal(priceLine(doubling, Date.parse('2026-10-23T00:00:00Z')), '$0.75 in, $3.75 out per million tokens (from 2027-01-01: $1.5 in, $7.5 out)');
+  assert.equal(priceLine(doubling, Date.parse('2027-01-01T00:00:00Z')), '$1.5 in, $7.5 out per million tokens', 'no hint once it is in force');
+  // A change that leaves what the line says as it is has no hint, and a schedule that is no list none either.
+  assert.equal(priceLine({ input: 1, output: 4, schedule: [{ from: '2027-01-01', cacheRead: 0.1 }] }, Date.parse('2026-10-23T00:00:00Z')), '$1 in, $4 out per million tokens');
+  assert.equal(priceLine(/** @type {any} */ ({ input: 1, output: 4, schedule: 'later' }), Date.parse('2026-10-23T00:00:00Z')), '$1 in, $4 out per million tokens');
+  const voice = { perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] };
+  assert.equal(priceLine(voice, Date.parse('2026-10-23T00:00:00Z')), '$15 per million characters (from 2027-01-01: $30)');
 });

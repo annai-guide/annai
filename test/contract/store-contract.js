@@ -137,6 +137,25 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['events'], 'readonly', (t) => t.lastSeq('none')), 0);
   });
 
+  test('events: appendEvent records when the entry was written, apart from its event time', async () => {
+    const s = await makeStore();
+    const before = Date.now();
+    // A simulated trip's event time lies in the future; when it was written is now.
+    const future = before + 90 * 86_400_000;
+    const rec = await s.tx(['events'], 'readwrite', (t) => t.appendEvent('a', { ts: future, type: 'x', actor: 'user' }));
+    assert.equal(rec.ts, future);
+    assert.ok(typeof rec.at === 'number' && rec.at >= before && rec.at <= Date.now(), `at ${rec.at}`);
+    const [back] = await s.tx(['events'], 'readonly', (t) => t.listEvents('a'));
+    assert.equal(back.at, rec.at);
+    // An entry put back by an import keeps the time it was written, and one without it stays without.
+    await s.tx(['events'], 'readwrite', async (t) => {
+      await t.putEvent({ scope: 'b', seq: 1, ts: 5, at: 7, type: 'x', actor: 'user' });
+      await t.putEvent({ scope: 'b', seq: 2, ts: 6, type: 'x', actor: 'user' });
+    });
+    const kept = await s.tx(['events'], 'readonly', (t) => t.listEvents('b'));
+    assert.deepEqual(kept.map((e) => e.at), [7, undefined]);
+  });
+
   test('events: listEvents with after, before, limit, reverse and types', async () => {
     const s = await makeStore();
     await s.tx(['events'], 'readwrite', async (t) => {

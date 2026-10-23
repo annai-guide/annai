@@ -6,8 +6,10 @@
  *   records one) and where. original: the bytes are the photo as taken, embedded metadata included.
  * @typedef {{ scope: string, path: string, hash: string, size: number, type: string,
  *   author: string, source?: string, meta?: PhotoMeta, created: number, modified: number }} FileEntry
- * @typedef {{ scope: string, seq: number, ts: number, type: string, actor: string,
+ * @typedef {{ scope: string, seq: number, ts: number, at?: number, type: string, actor: string,
  *   data?: any, refs?: string[] }} EventRecord
+ *   ts: when it happened (a simulated trip's clock may be ahead); at: when the store wrote it, which the Trace orders by.
+ *   Entries from before `at` existed, or imported from such a backup, have none.
  * @typedef {{ ts: number, type: string, actor: string, data?: any, refs?: string[] }} NewEvent
  * @typedef {{ id: string, kind: 'me'|'trip'|'sys', title: string, status: 'active'|'archived',
  *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number } }} ScopeRecord

@@ -232,7 +232,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.5.1",
+      "version": "2.6.0",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -245,7 +245,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11371,
+      "size": 11729,
       "requires": [
         {
           "id": "gemini-api",
@@ -254,7 +254,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "dc26b413a54174d0d9baa4a0f27ad4c69dc074f195bf65b66b51556ec18a12d4"
+        "annai-plugin.json": "50a6a1a204acb6ed2ec098253e7c75fe0020ea8187212fdb745d6e76d953d8f5"
       }
     },
     {
@@ -587,7 +587,7 @@
     {
       "id": "scripted-model",
       "name": "Scripted model",
-      "version": "0.4.1",
+      "version": "0.4.4",
       "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
       "category": "developer",
       "keywords": [],
@@ -595,7 +595,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 6189,
+      "size": 7132,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -603,8 +603,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "a46753ca138a9683b5ebfa57249b95f070d8b3fde0743579d3916ff0a820bbdf",
-        "index.js": "d5379c7c7523b678984e1d4811dab63b7e5f4d313f444de0a94a4122f9f45449"
+        "annai-plugin.json": "17daa24ad812e528cf7ee3d46b3e1450f53cf70c2df3b877e82ef38438182540",
+        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a"
       }
     },
     {

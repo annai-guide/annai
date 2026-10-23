@@ -8,6 +8,7 @@ import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
+import { pricesAt } from '../../core/llm/cost.js';
 import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { OFFICIAL_NAMES } from '../../core/official-names.js';
@@ -17,13 +18,23 @@ import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
 export { messageOf };
 
-/** A model's prices in a line: tokens, minutes of speech, or characters. @param {import('../../core/llm/cost.js').Prices | null} prices */
-export function priceLine(prices) {
+/**
+ * A model's prices in a line: tokens, minutes of speech, or characters; those in force at `at`, and a change that is coming, with its date.
+ * @param {import('../../core/llm/cost.js').Prices | null} prices @param {number} [at]
+ */
+export function priceLine(prices, at = Date.now()) {
   if (!prices) return null;
-  if (typeof prices.perMinute === 'number') return `$${prices.perMinute} a minute of speech`;
-  if (typeof prices.perMillionChars === 'number') return `$${prices.perMillionChars} per million characters`;
-  if (!prices.input && !prices.output) return 'free';
-  return `$${prices.input ?? '?'} in, $${prices.output ?? '?'} out per million tokens`;
+  /** @param {import('../../core/llm/cost.js').PriceFields} p @returns {[string, string]} the prices, and what they are per */
+  const say = (p) => {
+    if (typeof p.perMinute === 'number') return [`$${p.perMinute} a minute of speech`, ''];
+    if (typeof p.perMillionChars === 'number') return [`$${p.perMillionChars}`, ' per million characters'];
+    if (!p.input && !p.output) return ['free', ''];
+    return [`$${p.input ?? '?'} in, $${p.output ?? '?'} out`, ' per million tokens'];
+  };
+  const [now, per] = say(pricesAt(prices, at));
+  const next = (Array.isArray(prices.schedule) ? prices.schedule : []).map((e) => e?.from).filter((d) => Date.parse(`${d}T00:00:00Z`) > at).sort()[0];
+  const then = next ? say(pricesAt(prices, Date.parse(`${next}T00:00:00Z`)))[0] : now;
+  return `${now}${per}${then !== now ? ` (from ${next}: ${then})` : ''}`;
 }
 
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */

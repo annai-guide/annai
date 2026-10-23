@@ -96,16 +96,28 @@ test("a status chip that throws doesn't break the dock; it counts against its pl
 
 test("Shiori shows a plugin's kind of card: the plugin draws it, and its label names the kind", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [
-    sse(anthropicToolReply([{ name: 'show', input: { card: { type: 'trail', data: { name: 'Pfeiffer Falls' } } } }, { name: 'sleep', input: {} }])),
+    // The second names choices and a photo the plugin does not draw: the announcer does not read what the card does not show.
+    sse(anthropicToolReply([{ name: 'show', input: { card: { type: 'trail', data: { name: 'Pfeiffer Falls' } } } },
+      { name: 'show', input: { card: { type: 'trail', data: { name: 'Hidden Beach' }, choice: ['Go', 'Stay'], image: '/trip/files/beach.jpg' } } }, { name: 'sleep', input: {} }])),
   ] });
   try {
     await modelSetUp(page, llm.origin);
     await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install anyway and use it');
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Show me the falls');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.locator('.convo .trail-card')).toHaveText('Trail: Pfeiffer Falls');
+    await expect(page.locator('.convo .trail-card')).toHaveText(['Trail: Pfeiffer Falls', 'Trail: Hidden Beach']);
     await expect(page.locator('.convo .who').last()).toHaveText('SHIORI · TRAIL');
+    // The announcer names her, as it does for a spoken line, rather than running the label into the card's words.
+    expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual(['Shiori (Trail): Trail: Pfeiffer Falls', 'Shiori (Trail): Trail: Hidden Beach']);
   } finally {
     await llm.stop();
   }
