@@ -206,7 +206,8 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
-      throw new Error(`annai couldn't reach ${hostOf(base.url)}${held ? '' : ` (${said})`}. Is the device offline?`);
+      // Marked a network failure (what a search provider rests on), with the browser's own error kept as its cause.
+      throw Object.assign(new Error(`annai couldn't reach ${hostOf(base.url)}${held ? '' : ` (${said})`}. Is the device offline?`, held ? undefined : { cause: e }), { kind: 'network' });
     }
   };
 }

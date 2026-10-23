@@ -61,10 +61,12 @@ test('search providers in the order the settings give', async () => {
   await updateAppSettings(k.ws, { web: { search: ['two', 'one'] } });
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['two', 'one']);
-  // Switched off, a provider is left out; one that is always on stays.
+  // Switched off, a provider is left out, whatever it says of itself: only the web plugin's own can be always on (S2).
   k.registry.add('three', 'search', { id: 'three', name: 'Three', always: true, kind: 'knowledge', search: async () => [] });
   await updateAppSettings(k.ws, { web: { search: ['two', 'one'], searchOff: ['two', 'three'] } });
-  assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['one', 'three']);
+  assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['one']);
+  // The plain one answers as of that read, also without the switched-off ones.
+  assert.deepEqual(a.searchProviders().map((/** @type {any} */ p) => p.id), ['one']);
 });
 
 test("annai.secrets.blank gives a copy with every secret annai keeps, and anything shaped like a credential, blanked in every string, however deep; other text and values are unchanged", async () => {

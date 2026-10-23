@@ -6,13 +6,17 @@ import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { webVia } from '../../src/core/agent/via.js';
-import { STEP_MS } from '../../src/plugins/web/index.js';
-import { cooldowns } from '../../src/core/web-search.js';
+import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
+import { cooldowns, CHAIN } from '../../src/core/web-search.js';
+import { tracedFetch } from '../../src/core/agent/net.js';
+import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
 
-async function setup() {
-  for (const id of ['jina', 'exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
+async function setup({ traced = false } = {}) {
+  NOMINATIM_GAP.ms = 1;
+  nominatimReset();
+  for (const id of ['jina', 'exa', 'parallel', 'firecrawl', 'wiki', 'stuck', 'slow', 'tavily']) cooldowns.clear(id);
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store);
@@ -25,13 +29,15 @@ async function setup() {
   /** @param {(url: string, init: any) => Response | Promise<Response>} answer @param {any} [over] */
   const run = (name, input, answer, over = {}) => tools[name].run(input, {
     scope: 'me', trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori', providerOff: [],
-    fetch: async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return answer(url, init); },
+    fetch: traced
+      ? tracedFetch(store, 'me', { tool: name }, async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return answer(url, init); })
+      : async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return answer(url, init); },
     llm: { call: async () => { throw new Error('no model'); } },
     ...over,
   });
   const setKey = (/** @type {string} */ k) => store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:web:jina', k));
   const settings = (/** @type {any} */ web) => updateAppSettings(ws, { web });
-  return { registry, run, asked, setKey, settings };
+  return { registry, run, asked, setKey, settings, ws, store };
 }
 const html = (/** @type {string} */ body) => new Response(`<html><head><title>T</title></head><body><main>${body}</main></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
 const blocked = () => { throw new TypeError('Failed to fetch'); };
@@ -268,7 +274,7 @@ test('fetch and web_search: each step has its own time limit, and the next way i
       { message: "Couldn't read https://slow.test/page: the site didn't answer in time; Jina Reader didn't answer in time; Exa didn't answer in time; no model with a fetch tool could read it." });
     await setKey('jina_test_key');
     cooldowns.clear('exa'); // the reader above timed out, and Exa rests for it
-    await assert.rejects(run('web_search', { query: 'tide pools' }, (_url, init) => hang(init)), /Jina Search didn't answer in time; Exa didn't answer in time; Parallel didn't answer in time; Firecrawl didn't answer in time; Wikivoyage and Wikipedia didn't answer in time/);
+    await assert.rejects(run('web_search', { query: 'tide pools' }, (_url, init) => hang(init)), /Jina Search didn't answer in time; Exa didn't answer in time; Parallel didn't answer in time; Firecrawl didn't answer in time; Wikivoyage, Wikipedia and Nominatim didn't answer in time/);
     // The user's stop is still a stop.
     STEP_MS.ms = 5_000;
     const stop = new AbortController();
@@ -277,4 +283,164 @@ test('fetch and web_search: each step has its own time limit, and the next way i
   } finally {
     STEP_MS.ms = was;
   }
+});
+
+
+// The fix pass after the review.
+
+/** Everything off but the floor and one stand-in provider, so a test sees one thing. @param {any} t @param {any} item */
+async function alone(t, item) {
+  t.registry.add('third', 'search', { id: 'stuck', name: 'Stuck', ...item });
+  await t.settings({ search: ['stuck'], searchOff: ['jina', 'exa', 'parallel', 'firecrawl'] });
+}
+/** An answer that settles after ms whatever the signal says: a provider that ignores it. @param {number} ms */
+const ignoring = (ms) => new Promise((resolve) => setTimeout(() => resolve([]), ms));
+
+test('S1: a ready() that never settles is passed over after a moment; a search() that ignores its signal ends at its step limit; the next providers answer', async () => {
+  const was = [READY_MS.ms, STEP_MS.ms];
+  READY_MS.ms = 40;
+  STEP_MS.ms = 60;
+  try {
+    const t = await setup();
+    await alone(t, { ready: () => new Promise(() => {}), search: async () => [] });
+    const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
+    assert.match(out, /Wikivoyage/);
+    t.registry.add('third2', 'search', { id: 'slow', name: 'Slow', search: () => new Promise(() => {}) });
+    await t.settings({ search: ['slow'], searchOff: ['jina', 'exa', 'parallel', 'firecrawl', 'stuck'] });
+    const started = Date.now();
+    assert.match(await t.run('web_search', { query: 'nepenthe hours' }, services), /Wikivoyage/);
+    assert.ok(Date.now() - started < 1000);
+    // The user's stop still ends a provider that ignores it.
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 10);
+    STEP_MS.ms = 5_000;
+    cooldowns.clear('slow');
+    await t.settings({ search: ['slow'], searchOff: ['jina', 'exa', 'parallel', 'firecrawl', 'stuck', 'wiki'] });
+    await assert.rejects(t.run('web_search', { query: 'q' }, services, { signal: stop.signal }), { name: 'AbortError' });
+  } finally {
+    [READY_MS.ms, STEP_MS.ms] = was;
+  }
+});
+
+test('S2: a third-party provider that says it is always on or the knowledge floor is asked only while ticked', async () => {
+  const t = await setup();
+  let asked = 0;
+  t.registry.add('third', 'search', { id: 'sticky', name: 'Sticky', always: true, kind: 'knowledge', free: true, search: async () => { asked++; return [{ title: 'S', url: 'https://s.test/', snippet: 's' }]; } });
+  await t.settings({ searchOff: ['sticky'] });
+  await t.run('web_search', { query: 'q' }, services);
+  assert.equal(asked, 0);
+});
+
+test('S3: a request the browser could not make, through the traced fetch, rests Jina and the floor like any other (the traced fetch marks it a network failure)', async () => {
+  const t = await setup({ traced: true });
+  await t.setKey('jina_test_key');
+  await t.settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  await assert.rejects(t.run('web_search', { query: 'nepenthe hours' }, blocked), /Web search didn't work/);
+  assert.ok(cooldowns.left('jina') > 0 && cooldowns.left('wiki') > 0, 'both rest');
+  // And the failure is told as itself.
+  const e = await tracedFetch(t.store, 'me', { tool: 'web_search' }, blocked)('https://x.test/').catch((/** @type {any} */ x) => x);
+  assert.equal(e.kind, 'network');
+  assert.ok(e.cause instanceof TypeError);
+});
+
+test('S7: a keyless service that now answers 401 or 403 is told as asking for a key, and rests', async () => {
+  const t = await setup();
+  const out = await t.run('web_search', { query: 'nepenthe hours' }, (url, init) => (url === EXA ? new Response('', { status: 401 }) : services(url, init)));
+  assert.match(out, /nepenthebigsur\.com/);
+  assert.ok(cooldowns.left('exa') > 0);
+  cooldowns.clear('exa');
+  await t.settings({ searchOff: ['parallel', 'firecrawl', 'wiki'] });
+  await assert.rejects(t.run('web_search', { query: 'q' }, (url) => new Response('', { status: url === EXA ? 403 : 500 })), /Exa now asks for a key/);
+});
+
+test('S9: when every service that ran failed by timeout or network, nobody climbs; with one real failure among them, the rests climb; all resting, the one whose rest ends soonest is tried', async () => {
+  const was = STEP_MS.ms;
+  STEP_MS.ms = 30;
+  try {
+    const t = await setup();
+    await t.settings({ searchOff: ['jina'] });
+    await assert.rejects(t.run('web_search', { query: 'q' }, (_url, init) => hang(init)), /didn't answer in time/);
+    for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) assert.equal(cooldowns.left(id) <= 60_000 && cooldowns.left(id) > 0, true, id);
+    // Everything is resting now: the one whose rest ends soonest is tried again, and answers.
+    cooldowns.rest('parallel');
+    const exaLeft = cooldowns.left('exa');
+    assert.ok(exaLeft > 0);
+    const asked = [];
+    const out = await t.run('web_search', { query: 'nepenthe hours' }, (url, init) => { asked.push(url); return services(url, init); });
+    assert.match(out, /^title/);
+    assert.equal(asked.length > 0, true);
+    assert.equal(cooldowns.left('exa'), 0, 'its success cleared its rest');
+  } finally {
+    STEP_MS.ms = was;
+  }
+});
+
+test('S10: a search ends by its deadline, with a reserve kept for the floor, which answers', async () => {
+  const was = [CHAIN.ms, CHAIN.reserve];
+  CHAIN.ms = 400;
+  CHAIN.reserve = 150;
+  try {
+    const t = await setup();
+    await alone(t, { search: () => ignoring(60_000) });
+    const started = Date.now();
+    const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
+    assert.match(out, /Wikivoyage/);
+    const took = Date.now() - started;
+    assert.ok(took >= 200 && took < 600, `took ${took} ms`);
+  } finally {
+    [CHAIN.ms, CHAIN.reserve] = was;
+  }
+});
+
+test('Parallel gets one random session_id per conversation, kept in memory; a new conversation gets a new one', async () => {
+  const t = await setup();
+  await t.settings({ searchOff: ['exa', 'jina'] });
+  const sessions = [];
+  const answer = (/** @type {string} */ url, /** @type {any} */ init) => { if (url === PARALLEL) sessions.push(JSON.parse(init.body).params.arguments.session_id); return services(url, init); };
+  await t.run('web_search', { query: 'one' }, answer);
+  await t.run('web_search', { query: 'two' }, answer);
+  await t.run('web_search', { query: 'three' }, answer, { scope: 'trip-b' });
+  assert.match(sessions[0], /^[0-9a-f-]{20,}$/);
+  assert.equal(sessions[0], sessions[1]);
+  assert.notEqual(sessions[2], sessions[0]);
+  const stored = JSON.stringify(await t.store.tx(['files', 'events', 'secrets'], 'readonly', async (/** @type {any} */ tx) => [await tx.listFiles('sys:settings'), await tx.listSecretIds()]));
+  assert.ok(!stored.includes(sessions[0]));
+});
+
+test('S5: Exa, Parallel and Firecrawl are sent only the words searched (and Exa its name); no location, trip or key', async () => {
+  const t = await setup();
+  await t.settings({});
+  await t.run('web_search', { query: 'nepenthe hours' }, services, { trip: 'trip-1', scope: 'trip-1' });
+  const sent = JSON.stringify(t.asked.map((a) => [a.url, a.init.headers, a.init.body]));
+  assert.ok(!/trip-1|authorization|lat|lng/i.test(sent), sent);
+});
+
+test('S4: the floor asks Nominatim no faster than places does, from one shared gate, and says who is asking', async () => {
+  try {
+    const t = await setup();
+    NOMINATIM_GAP.ms = 80;
+    await t.settings({ searchOff: ['jina', 'exa', 'parallel', 'firecrawl'] });
+    const at = /** @type {number[]} */ ([]);
+    const answer = (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (url.includes('nominatim')) {
+        at.push(Date.now());
+        assert.equal(init.referrerPolicy, 'origin');
+      }
+      return wikiAnswer(url);
+    };
+    await t.run('web_search', { query: 'nepenthe lunch' }, answer);
+    await t.run('web_search', { query: 'bixby bridge' }, answer);
+    // A places call in between takes its turn from the same gate.
+    assert.equal(at.length, 2);
+    assert.ok(at[1] - at[0] >= 75, `${at[1] - at[0]} ms apart`);
+  } finally {
+    NOMINATIM_GAP.ms = 1;
+  }
+});
+
+test('the floor reads no more of an answer than annai reads', async () => {
+  const t = await setup();
+  await t.settings({ searchOff: ['jina', 'exa', 'parallel', 'firecrawl'] });
+  const huge = () => new Response('x', { headers: { 'content-length': String(9 * 2 ** 20), 'content-type': 'application/json' } });
+  await assert.rejects(t.run('web_search', { query: 'nepenthe lunch' }, huge), /more than annai reads/);
 });

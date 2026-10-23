@@ -667,3 +667,16 @@ test("fix pass: a code plugin removed and installed again with the same files st
   await host.install(code('1.0.0', 'low'));
   assert.equal(host.needsRestart('tides'), false, 'back to the bytes that ran: no restart needed');
 });
+
+test("M2: removing a search plugin takes its ids out of the search order and the switched-off list, whether it was running or not; other ids stay", async () => {
+  const { host, ws } = await hostKit();
+  const search = (/** @type {string} */ id) => `return annai.register('search', { id: '${id}', name: '${id}', search: async () => [] });`;
+  await host.install(codePlugin('search-tavily', search('tavily'), { provides: { search: ['tavily'] }, search: { id: 'tavily', kind: 'web', origins: ['https://api.tavily.com'] } }));
+  await host.install(codePlugin('search-nope', search('nope'), { search: { id: 'nope', kind: 'web', origins: [] } }));
+  await host.start('search-tavily');
+  await updateAppSettings(ws, { web: { search: ['jina', 'tavily', 'nope', 'exa'], searchOff: ['tavily', 'nope', 'exa'], fetchVia: 'annai' } });
+  await host.uninstall('search-tavily');
+  await host.setEnabled('search-nope', false); // never running when removed
+  await host.uninstall('search-nope');
+  assert.deepEqual((await readAppSettings(ws)).web, { search: ['jina', 'exa'], searchOff: ['exa'], fetchVia: 'annai' });
+});

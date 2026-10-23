@@ -106,7 +106,17 @@ export class McpClient {
 
   /** Calls a tool; its result. @param {string} name @param {any} args @param {{ fetch: Fetch, signal?: AbortSignal }} o */
   async callTool(name, args, o) {
-    return this.#inSession(o, () => this.#request('tools/call', { name, arguments: args ?? {} }, o));
+    const call = () => this.#request('tools/call', { name, arguments: args ?? {} }, o);
+    if (this.#stateless) {
+      try {
+        return await call();
+      } catch (e) {
+        // A server that wants a session first refuses the bare call (400, 404, 405): start one, and keep to sessions from here.
+        if (!(e instanceof McpError && e.kind === 'server' && (e.status === 400 || e.status === 404 || e.status === 405))) throw e;
+        this.#stateless = false;
+      }
+    }
+    return this.#inSession(o, call);
   }
 
   /** Ends the session, when the server can be reached (milestone 8c, choice 6). @param {{ fetch: Fetch, signal?: AbortSignal }} o */
@@ -224,10 +234,10 @@ export class McpClient {
       // A server guarding against DNS rebinding refuses an Origin it doesn't know with 403, and says so (the SDK: "Invalid Origin header").
       if (res.status === 403 && /origin/i.test(await startOf(res, 2000))) {
         const here = globalThis.location?.origin;
-        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`);
+        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`, 403);
       }
       res.body?.cancel().catch(() => {});
-      throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`);
+      throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`, res.status);
     }
     if (res.status === 404 && this.#session && !init) {
       res.body?.cancel().catch(() => {});
