@@ -25,6 +25,8 @@ const r1 = msg('assistant', { type: 'reasoning', text: '', signature: 'TS', mode
 const tr = msg('user', { type: 'tool_result', id: 'call_1', content: 'Ichiran, 200 m' });
 const r2 = msg('assistant', text('Ichiran is 200 m away.'));
 const m3 = msg('user', text('Is it open now?'));
+/** The conversation so far as messages, after a call's reply. @param {any[]} messages @param {any} r */
+const said1 = (messages, r) => [...messages, msg('assistant', ...r.reply.parts)];
 
 /** A Kept on memory storage, on a clock the test moves; state.alive: whether a turn may be kept now, as the service checks it. */
 async function keptKit() {
@@ -91,7 +93,7 @@ test('two lifetimes, whatever the key: a chain is continued for 23 hours after i
   assert.deepEqual(await kept.count(), { turns: 1, waiting: 0, until: T0 + 55 * DAY, endpoints: ['pv-g/chat'] }, 'still tracked, to be deleted when removed');
   clock.t = T0 + 55 * DAY + 1;
   assert.deepEqual(await kept.count(), { turns: 0, waiting: 0, until: 0, endpoints: [] });
-  assert.deepEqual(await file(), { turns: [], forget: [] }, 'past 55 days Google has deleted it: dropped, nothing to delete');
+  assert.deepEqual(await file(), { turns: [], forget: [], pending: [] }, 'past 55 days Google has deleted it: dropped, nothing to delete');
 });
 
 test("a chain holds only while its first turn is there: Google silently drops a deleted or expired turn's content from the turns after it", async () => {
@@ -177,6 +179,125 @@ test("a conversation's turns are kept, and the next one sends only what is new, 
   } finally {
     await c.s.close();
   }
+});
+
+test("warm housekeeping borrows the live chain (Gemini too): previous_interaction_id and only what is new, its interaction deleted at once, nothing recorded, and the next real turn goes on from the last real one", async () => {
+  const c = await callKit([{ text: 'Ichiran.' }, { text: 'Summary.' }, { text: 'Yes, until 23:00.' }]);
+  try {
+    const r = await c.call([m1]);
+    const m = [...said1([m1], r), m3];
+    const h = await c.call(m, { record: { tag: 'compaction' }, borrow: true, request: { messages: m, tail: '[annai: housekeeping] Summarize.', tools: [TOOL] } });
+    assert.equal(h.reply.text, 'Summary.');
+    const hb = c.s.bodies()[1];
+    assert.deepEqual([hb.store, hb.previous_interaction_id], [true, 'v1_stand-in-1']);
+    assert.match(JSON.stringify(hb.input), /Summarize/);
+    assert.ok(JSON.stringify(hb.input).includes('Is it open now?') && !JSON.stringify(hb.input).includes('Where can we eat?'), 'only the new message and the summary request');
+    assert.deepEqual(c.s.deleted(), ['v1_stand-in-2']);
+    assert.deepEqual(c.s.stored(), ['v1_stand-in-1']);
+    assert.deepEqual((await c.file()).turns.map((/** @type {any} */ t) => t.id), ['v1_stand-in-1']);
+    await c.call(m);
+    assert.equal(c.s.bodies()[2].previous_interaction_id, 'v1_stand-in-1');
+    // No live chain: the whole conversation, stored nowhere.
+    const fresh = await callKit([{ text: 'Summary.' }]);
+    try {
+      await fresh.call([m1], { record: { tag: 'compaction' }, borrow: true });
+      assert.deepEqual([fresh.s.bodies()[0].store, fresh.s.bodies()[0].previous_interaction_id], [false, undefined]);
+    } finally {
+      await fresh.s.close();
+    }
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("warm housekeeping in the agent's real shape (the conversation ends with the last reply) continues that very turn and sends only the summary request", async () => {
+  const c = await callKit([{ text: 'Ichiran.' }, { text: 'Summary.' }]);
+  try {
+    const r = await c.call([m1]);
+    const m = said1([m1], r); // [question, reply]
+    await c.call(m, { record: { tag: 'compaction' }, borrow: true, request: { messages: m, tail: '[annai: housekeeping] Summarize.', tools: [TOOL] } });
+    const hb = c.s.bodies()[1];
+    assert.deepEqual([hb.store, hb.previous_interaction_id], [true, 'v1_stand-in-1']);
+    assert.ok(JSON.stringify(hb.input).includes('Summarize') && !JSON.stringify(hb.input).includes('Where can we eat?'), 'only the summary request');
+    assert.deepEqual(c.s.stored(), ['v1_stand-in-1']);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a real turn never matches a conversation with nothing new after the reply; only a borrow does', async () => {
+  const { kept } = await keptKit();
+  await kept.record(turn());
+  assert.equal(await kept.match('pv-g/chat', [m1, r1], A), null);
+  assert.deepEqual(await kept.match('pv-g/chat', [m1, r1], { ...A, borrow: true }), { id: 'v1_a', from: 2 });
+});
+
+test('the interaction id is written down as soon as Google names it, and replaced when the turn ends (pending)', async () => {
+  const c = await callKit([{ text: 'Ichiran.', delayMs: 400 }]);
+  try {
+    const p = c.call([m1]);
+    await new Promise((r) => setTimeout(r, 200));
+    const mid = await c.file();
+    assert.deepEqual(mid.pending.map((/** @type {any} */ x) => [x.id, x.endpoint, x.scope]), [['v1_stand-in-1', 'pv-g/chat', 'trip-a']]);
+    await p;
+    const end = await c.file();
+    assert.deepEqual([end.pending, end.turns.map((/** @type {any} */ t) => t.id)], [[], ['v1_stand-in-1']]);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("a pending turn older than a call can last is queued for deletion at the next drain, unless a call of this very process still owns it; a recent one stays; a removal lets go of a provider's", async () => {
+  const { kept, clock, file, ws } = await keptKit();
+  const send = { resolve: async () => null };
+  await kept.pending({ id: 'v1_old', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  clock.t += 20 * 60_000;
+  await kept.pending({ id: 'v1_recent', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  // Its call is still answering: a drain leaves it.
+  await kept.drain({ ...send, fetch: async () => new Response('{}') });
+  assert.deepEqual((await file()).forget, []);
+  // annai started again (another Kept reads the file): no call owns it.
+  const again = new Kept({ ws, now: () => clock.t });
+  await again.drain({ ...send, fetch: async () => new Response('{}') });
+  const f = await file();
+  assert.deepEqual(f.forget.map((/** @type {any} */ d) => d.id), ['v1_old']);
+  assert.deepEqual(f.pending.map((/** @type {any} */ d) => d.id), ['v1_recent']);
+  await kept.drop('pv-g');
+  assert.deepEqual((await file()).pending, []);
+});
+
+test('a call that ended no longer owns its pending id: the next drain, past the time, deletes it', async () => {
+  const { kept, clock, file } = await keptKit();
+  await kept.pending({ id: 'v1_a', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  clock.t += 20 * 60_000;
+  kept.ended('v1_a');
+  await kept.drain({ resolve: async () => null, fetch: async () => new Response('{}') });
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id), ['v1_a']);
+});
+
+test("count includes pending ids; queue leaves a call's own and takes an orphan's; release takes all", async () => {
+  const { ws, clock, file } = await keptKit();
+  // Another process left one pending; this one's call is answering another.
+  await new Kept({ ws, now: () => clock.t }).pending({ id: 'v1_orphan', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  const kept = new Kept({ ws, now: () => clock.t });
+  await kept.pending({ id: 'v1_live', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  assert.equal((await kept.count({ provider: 'pv-g' })).turns, 2);
+  assert.equal(await kept.queue({ provider: 'pv-g' }), 0);
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id), ['v1_orphan'], "a call's own is left to that call; the other process's is not");
+  await kept.release();
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id).sort(), ['v1_live', 'v1_orphan']);
+  assert.deepEqual((await file()).pending, []);
+});
+
+test('record: a chain ends at the earliest limit given (a photo\'s expiry), carried down the chain', async () => {
+  const { kept, clock, file } = await keptKit();
+  await kept.record(turn({ limit: T0 + 2 * 3600_000 }));
+  clock.t += 60_000;
+  await kept.record(turn({ id: 'v1_b', messages: [m1, r1, tr], reply: r2, after: 'v1_a', limit: T0 + 5 * 3600_000 }));
+  assert.deepEqual((await file()).turns.map((/** @type {any} */ t) => t.ends), [T0 + 2 * 3600_000, T0 + 2 * 3600_000]);
+  assert.deepEqual(await kept.match('pv-g/chat', [m1, r1, tr, r2, m3], A), { id: 'v1_b', from: 4 });
+  clock.t = T0 + 3 * 3600_000;
+  assert.equal(await kept.match('pv-g/chat', [m1, r1, tr, r2, m3], A), null);
 });
 
 test("Review Focus 2: turn 2 doesn't carry turn 1's photo", async () => {
@@ -276,7 +397,8 @@ test('a call that fails after Google kept its turn deletes it before it settles;
   });
   await assert.rejects(call());
   assert.deepEqual(deleted.map((u) => u.split('/').pop()), ['v1_half', 'v1_half', 'v1_half'], 'each of its three tries deleted what it kept');
-  assert.equal(await k.file(), undefined, 'nothing to remember');
+  assert.deepEqual((await k.file())?.turns ?? [], [], 'nothing to remember');
+  assert.deepEqual((await k.file())?.pending ?? [], [], 'and nothing pending');
   online = false;
   await assert.rejects(call());
   assert.deepEqual((await k.file()).forget.map((/** @type {any} */ f) => f.id), ['v1_half'], "a deletion that couldn't go waits, once");
@@ -443,7 +565,7 @@ test('removing the provider deletes first, while its key is there; offline, what
     assert.deepEqual(c.order.slice(0, 3), ['DELETE v1_stand-in-1', 'DELETE v1_stand-in-2', 'key removed'], 'every DELETE before the key goes (its plugin\'s secrets go after)');
     assert.equal(c.order.filter((x) => x.startsWith('DELETE')).length, 2);
     assert.equal(await getKey(c.store, c.id), null);
-    assert.deepEqual(await c.keptFile(), { turns: [], forget: [] });
+    assert.deepEqual(await c.keptFile(), { turns: [], forget: [], pending: [] });
 
     const off = await serviceKit();
     try {
@@ -458,7 +580,7 @@ test('removing the provider deletes first, while its key is there; offline, what
       const started = Date.now();
       await off.llm.removeProvider(off.id);
       assert.ok(Date.now() - started < 10_000);
-      assert.deepEqual(await off.keptFile(), { turns: [], forget: [] }, "none of that provider's");
+      assert.deepEqual(await off.keptFile(), { turns: [], forget: [], pending: [] }, "none of that provider's");
       assert.deepEqual(off.s.deleted(), []);
     } finally {
       await off.s.close();
@@ -582,7 +704,8 @@ test("a turn Google refused isn't continued: what it blocked would be in every l
   });
   assert.equal(r.reply.stop, 'refusal');
   assert.deepEqual(deleted, ['v1_refused']);
-  assert.equal(await k.file(), undefined, 'never remembered');
+  assert.deepEqual((await k.file())?.turns ?? [], [], 'never remembered');
+  assert.deepEqual((await k.file())?.pending ?? [], []);
 });
 
 test('the record-time check: a turn still being answered when it may no longer be kept (its provider going, its key changed, its switch off, its trip gone) is deleted at once, with the key its call holds', async () => {
@@ -710,7 +833,7 @@ test('RACE 1: the provider is removed while a turn is answered: the turn, kept d
     await c.llm.removeProvider(c.id);
     await p.catch(() => {});
     assert.deepEqual(c.s.stored(), [], 'nothing left with Google');
-    assert.deepEqual(await c.keptFile(), { turns: [], forget: [] });
+    assert.deepEqual(await c.keptFile(), { turns: [], forget: [], pending: [] });
   } finally {
     await c.s.close();
   }
@@ -761,13 +884,13 @@ test('Remove key, or a new key: what Google keeps is deleted first with the old 
     assert.equal(await getKey(c.store, c.id), null);
     const deletes = c.s.requests().filter((r) => r.method === 'DELETE').map((r) => [decodeURIComponent(r.url.split('/').pop() ?? ''), r.headers['x-goog-api-key']]);
     assert.deepEqual(deletes.sort(), [['v1_stand-in-1', KEY], ['v1_stand-in-2', 'AIza-the-new-key-0123456789'], ['v1_stand-in-3', 'AIza-the-new-key-0123456789']]);
-    assert.deepEqual([c.s.stored(), await c.keptFile()], [[], { turns: [], forget: [] }]);
+    assert.deepEqual([c.s.stored(), await c.keptFile()], [[], { turns: [], forget: [], pending: [] }]);
     // Offline, a key change lets go of what it couldn't delete: no other key will ever try.
     await setKey(c.store, c.id, KEY);
     await c.talk(c.tripA, 1);
     c.net.online = false;
     await c.llm.reconnect(c.id, () => setKey(c.store, c.id, 'AIza-another-key-0123456789'));
-    assert.deepEqual(await c.keptFile(), { turns: [], forget: [] });
+    assert.deepEqual(await c.keptFile(), { turns: [], forget: [], pending: [] });
   } finally {
     await c.s.close();
   }
@@ -1043,7 +1166,7 @@ test('through the service: a new key saved while a turn is answered: that turn i
     await llm.reconnect(P, () => setKey(k.store, P, 'AIza-the-new-key-0123456789'));
     await p;
     await llm.drainKept();
-    const f = (await k.ws.readJSON(SYS_DEVICE, '/llm/kept.json').catch(() => null)) ?? { turns: [], forget: [] };
+    const f = (await k.ws.readJSON(SYS_DEVICE, '/llm/kept.json').catch(() => null)) ?? { turns: [], forget: [], pending: [] };
     assert.deepEqual(s.stored(), [], 'kept at Google, never to be deleted');
   } finally { await s.close(); await s2.close(); }
 });

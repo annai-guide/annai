@@ -16,7 +16,7 @@ import { freeTicks, WELCOME_SEARCH } from '../search-panel.js';
  */
 
 /** The steps, each by an id its body is found by (not its number, so a step added between them moves nothing). */
-const STEPS = /** @type {const} */ ([['welcome', 'Welcome to annai'], ['can', 'What annai can do'], ['keys', 'Your keys and your data'], ['fine', 'The fine print'], ['search', 'Searching the web'], ['start', 'Get started']]);
+const STEPS = /** @type {const} */ ([['welcome', 'Welcome to annai'], ['halves', 'Shiori, Koe and Kokoro'], ['can', 'What annai can do'], ['keys', 'Your keys and your data'], ['fine', 'The fine print'], ['search', 'Searching the web'], ['start', 'Get started']]);
 const TITLES = STEPS.map((s) => s[1]);
 const LAST = STEPS.length;
 /** @param {number} n */
@@ -25,8 +25,10 @@ const idOf = (n) => STEPS[n - 1][0];
 /** @param {number} n */
 const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
 
-/** @param {string} lead @param {string} text */
-const can = (lead, text) => h('li', {}, h('strong', { text: lead }), ' ', text);
+/** @param {string | Node} lead @param {string} text */
+const can = (lead, text) => h('li', {}, h('strong', {}, lead), ' ', text);
+/** A Japanese word, marked as one, for a screen reader to say it right. @param {string} text */
+const ja = (text) => h('span', { lang: 'ja', text });
 
 /** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (the search step) @returns {any[]} */
 function body(n, ctx, ticks) {
@@ -39,10 +41,20 @@ function body(n, ctx, ticks) {
       h('p', { class: 'sub', text: 'annai (案内) is Japanese for "guidance; showing someone around".' }),
     ];
   }
+  if (id === 'halves') {
+    // The architecture, plainly (the user, 2026-10-23: "explain who is shiori, what is kokoro and what is koe").
+    return [
+      h('p', { class: 'lead', text: 'Shiori is your guide. She has two halves that work together.' }),
+      h('ul', { class: 'can' },
+        can(h('span', {}, 'Koe (', ja('声'), ', voice)'), 'talks with you and answers at once.'),
+        can(h('span', {}, 'Kokoro (', ja('心'), ', heart and mind)'), 'thinks things through and does the work: planning, searching, reading your bookings.')),
+      h('p', { class: 'sub', text: 'You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.' }),
+    ];
+  }
   if (id === 'can') {
     return [h('ul', { class: 'can' },
       can('Plans and bookings.', 'Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.'),
-      can('On the road.', "annai follows where you are with GPS, and reminds you at the right time and place: when to leave, when you've arrived, when you're running late."),
+      can('GPS.', "With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late."),
       can('Voice.', 'Talk with Shiori hands-free, in the car or on a trail.'),
       can('Offline places.', "OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal."),
       can('Photos.', 'Show Shiori what you see, and ask about it.'),

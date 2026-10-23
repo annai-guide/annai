@@ -16,18 +16,21 @@ import { strayLanguage } from '../languages.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean }} Turn  one of Koe's; held: its sound until a real word;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
- *   heard or written
+ *   heard or written; audible: its sound has started playing, so its words may show
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace }} LiveHost
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
+ *   held?: () => Promise<void> | null, saying?: (words: string) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
- *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown
+ *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
+ *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; saying: her words so far, while she speaks
+ *   them (the dock's bubble), as the transcript grows; her line is written once, at the end
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -251,9 +254,13 @@ export class LiveKoe {
 
   /** @param {string} why */
   async #start(why) {
+    // Start fresh runs: a session opens once it is done, its setup from the fresh start; a close meanwhile wins.
+    const asked = this.#gen;
+    const held = this.c.held?.();
+    if (held) await held;
     const id = this.c.model();
     // Never from a page out of view: what comes meanwhile waits for it (shown()).
-    if (!id || !this.c.visible()) return false;
+    if (asked !== this.#gen || !id || !this.c.visible()) return false;
     const gen = ++this.#gen;
     this.state = 'opening'; // a close from now on wins
     this.#changed();
@@ -306,7 +313,7 @@ export class LiveKoe {
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
     this.#s = s;
-    this.#rate = s.audioOut.rate;
+    this.#rate = s.audioOut.rate || 24_000; // never 0 or missing: her stall wait is worked out from it
     for (const fn of this.#waiting.splice(0)) fn(s);
     this.#arm();
     return s;
@@ -411,8 +418,8 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
-    // Another conversation: Kokoro's notes it owed are shown in the one left, never lost (review S4).
-    if (forget && why === 'switch' && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
+    // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost (review S4).
+    if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
     clearTimeout(this.#hearFirst);
     this.#hearFirst = null;
@@ -440,7 +447,10 @@ export class LiveKoe {
     input?.stop();
     this.#old?.close(why); // one being left for a new connection
     this.#old = null;
-    if (was === 'closed') return this.#changed();
+    if (was === 'closed') {
+      if (this.#opening) this.#gen++; // one waiting for Start fresh to end
+      return this.#changed();
+    }
     this.#gen++;
     const s = this.#s;
     this.#s = null;
@@ -529,6 +539,7 @@ export class LiveKoe {
   async send(text, { photos = [], chose = false } = {}) {
     this.#brief = false;
     this.#watched = true;
+    await this.c.held?.(); // typed while Start fresh runs: written below its divider
     const e = await this.c.koe.logUser(text, photos, chose);
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
@@ -781,13 +792,21 @@ export class LiveKoe {
       if (t.stream) t.stream.push(samples(e.data));
       else if (!t.cut) t.held.push(e.data);
     } else if (e.type === 'said' && !this.#t && this.#trail) {
-      if (!this.#trail.cut && !this.#trail.logged) this.#trail.said += e.text;
+      const t = this.#trail;
+      if (!t.cut && !t.logged) t.said += e.text;
+      this.#saying(t); // after the provider's turn ended, while her voice plays
     } else if (e.type === 'said') {
       const t = (this.#t ??= newTurn());
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
+      else this.#saying(t);
     }
     this.#changed();
+  }
+
+  /** Her words so far, for the bubble: only once her voice is heard, and never after it was cut. @param {Turn} t */
+  #saying(t) {
+    if (t.audible && this.#sounding === t && !t.cut) this.c.saying?.(cleanSaid(t.said));
   }
 
   /**
@@ -865,6 +884,11 @@ export class LiveKoe {
         this.#played(t, r);
       });
       t.stream.running?.then((ok) => { if (!ok) this.#stalled(t); }); // the page may not play sound now
+      // Her words show as her voice starts (after the player's start buffer), never before it.
+      (t.stream.started ?? Promise.resolve(true)).then((ok) => {
+        t.audible = ok;
+        this.#saying(t);
+      });
       if (t.done) this.#ending(t);
     } else if (t.done) this.#said(t, null);
     t.held = [];

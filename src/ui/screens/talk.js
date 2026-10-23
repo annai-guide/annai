@@ -1,4 +1,6 @@
-import { h, whenGone, checkbox } from '../dom.js';
+import { h, whenGone } from '../dom.js';
+import { readAppSettings } from '../../core/settings.js';
+import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { costs } from '../../core/agent/budgets.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -6,22 +8,15 @@ import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost } from '../format.js';
+import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
+import { onTap } from '../dock-hides.js';
 
+/** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
+const HEARD_MS = 600;
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
-/** Wakes that are lines of their own: the user's, and what the halves tell each other. */
-const NOT_WOKE = ['user', 'choice', 'note', 'cue', 'halves'];
-const HALVES_KEY = 'annai.showHalves';
-
-/** Whether this device shows what Shiori's halves tell each other (off unless asked); for this visit where storage is blocked. */
-let halvesHere = false;
-function showingHalves() {
-  try {
-    return localStorage.getItem(HALVES_KEY) === '1';
-  } catch {
-    return halvesHere;
-  }
-}
+/** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
+const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 
 /**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
@@ -99,12 +94,26 @@ export async function follow(agent, scope, { read, show, state }) {
 export async function renderTalk(ctx) {
   const agent = ctx.agent;
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
-  // Shiori as two halves (the Koe and Kokoro design): their exchanges stay out of the conversation unless asked.
-  const halves = showingHalves();
-  let split = Boolean(agent.koeState && agent.koeState !== 'off');
+  // What Shiori's halves tell each other shows, and her spoken lines show their words, unless Settings say not (spec §16.1).
+  const { showWords, showHalves: halves } = shownSettings(await readAppSettings(ctx.ws));
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
-  const list = h('ol', { class: 'convo', 'aria-live': 'polite' });
+  // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
+  // they are in; never what you typed, nor the halves' notes.
+  const list = h('ol', { class: 'convo' });
+  const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
+  const tell = (/** @type {string} */ text) => { if (built && text) announce.replaceChildren(h('span', { text })); };
+  /** Heard lines announced, and those waiting HEARD_MS for more words: each is announced once, as its last revision. @type {Map<string, any>} */
+  const hearing = new Map();
+  /** @param {string} id @param {HTMLElement} words */
+  const hearSoon = (id, words) => {
+    if (!built || hearing.get(id) === true) return;
+    clearTimeout(hearing.get(id));
+    hearing.set(id, setTimeout(() => {
+      hearing.set(id, true);
+      tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
+    }, HEARD_MS));
+  };
   const cost = h('p', { class: 'sub' });
   const showCost = async () => {
     const c = await costs(ctx.store, scope);
@@ -114,7 +123,7 @@ export async function renderTalk(ctx) {
   const asks = new Map();
   /** The newest error note with a Try again: it goes when anything newer joins the conversation. @type {{ li: HTMLElement, again: HTMLElement } | null} */
   let retry = null;
-  /** @type {Map<string, HTMLElement>} heard speech whose words are still being written down */
+  /** @type {Map<string, HTMLElement>} heard lines' words, by id: written down, or ending, later (heard.text) */
   const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
   const replaced = replacements(await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })));
@@ -143,7 +152,8 @@ export async function renderTalk(ctx) {
     if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(e)));
     if (e.type === 'out.speak') {
       if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
-      // Said aloud: hidden unless asked (spec §2 principle 4, §16.1).
+      // Said aloud: its words show like any of hers, marked; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
+      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { class: 'said-words', text: texts.text ?? '' }));
       const words = h('p', { text: texts.text ?? '', hidden: true });
       const show = h('button', {
         class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
@@ -158,13 +168,15 @@ export async function renderTalk(ctx) {
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
       const words = h('span', { text: typeof d.text === 'string' ? d.text : '…' });
-      if (typeof d.text !== 'string') unheard.set(d.id, words);
+      unheard.set(d.id, words); // its words may come later, or end later (Gemini's input transcript): heard.text
       return d.dismissed ? h('li', { class: 'system-line' }, 'Heard, not for Shiori: ', words) : h('li', { class: 'you heard' }, h('p', {}, words));
     }
     if (e.type === 'heard.text') {
       const words = unheard.get(d.of);
-      if (words) words.textContent = String(d.text ?? '');
-      unheard.delete(d.of);
+      if (words) {
+        words.textContent = String(d.text ?? '');
+        hearSoon(d.of, words);
+      }
       return null;
     }
     if (e.type === 'out.show') {
@@ -185,12 +197,8 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') return h('li', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
-    if (e.type === 'note' || e.type === 'halves') {
-      split = true;
-      if (!halves) return null;
-      const who = e.type === 'halves' ? 'annai to Kokoro' : d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe';
-      return h('li', { class: 'system-line', text: `${who}: ${String(texts.text ?? '')}` });
-    }
+    // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
+    if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: `${d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe'}:` }), ` ${String(texts.text ?? '')}`) : null;
     if (e.type === 'wake') {
       // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
       if (d.half === 'kokoro') return null;
@@ -199,6 +207,8 @@ export async function renderTalk(ctx) {
       return others.length ? h('li', { class: 'system-line', text: `Shiori woke: ${why.length > 160 ? `${why.slice(0, 160)}…` : why}` }) : null;
     }
     if (e.type === 'paused') return h('li', { class: 'system-line', text: String(d.text ?? '') });
+    // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
+    if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', text: 'Started fresh' }); // a list item with its words: a separator has no name
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
     if (e.type === 'error' && (d.quiet || d.aside)) return null;
@@ -252,6 +262,10 @@ export async function renderTalk(ctx) {
         }
         empty.remove();
         list.append(node);
+        if (e.type === 'heard') {
+          const words = unheard.get(e.data?.id);
+          if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
+        } else tell(e.type === 'msg.user' || e.type === 'note' ? '' : e.type === 'out.speak' ? `Shiori: ${node.querySelector('p')?.textContent ?? ''}` : node.textContent ?? '');
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
@@ -265,23 +279,14 @@ export async function renderTalk(ctx) {
   });
   built = true;
   showCost();
-  const toggle = checkbox('Show what the halves tell each other', halves);
-  toggle.input.addEventListener('change', () => {
-    halvesHere = toggle.input.checked;
-    try {
-      localStorage.setItem(HALVES_KEY, halvesHere ? '1' : '0');
-    } catch {
-      // storage blocked: for this visit only
-    }
-    ctx.render();
-  });
   const screen = h('div', { class: 'screen' },
     h('h1', { class: 'title', text: 'Conversation' }),
+    tidyMenu(ctx),
     h('p', { class: 'sub', text: agent.trip ? title : 'No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.' }),
     cost,
     list.childElementCount ? null : empty,
     list,
-    split ? toggle.el : null);
+    announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
     wasShown = true;
@@ -290,12 +295,97 @@ export async function renderTalk(ctx) {
   // Gone, it stops listening at once, and the photos it showed let their memory go.
   whenGone(screen, () => {
     stop();
+    for (const t of hearing.values()) clearTimeout(t);
     removeEventListener('message', fit);
     for (const t of USER) removeEventListener(t, own);
     grows.disconnect();
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
+}
+
+/**
+ * The Conversation screen's menu (the user, 2026-10-23: "some way to let the user compact or clear the transcript / session manually?"):
+ * Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
+ * Neither deletes a line: the earlier ones stay in the conversation, searchable and recallable (spec §6.5, §16.2).
+ * @param {any} ctx
+ */
+function tidyMenu(ctx) {
+  const agent = ctx.agent;
+  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu' }, 'Tidy up');
+  const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': 'Tidy up the conversation', hidden: true });
+  const close = () => {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  toggle.addEventListener('click', () => {
+    if (toggle.getAttribute('aria-disabled') === 'true') return;
+    menu.hidden = !menu.hidden;
+    toggle.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  const summarize = h('button', {
+    class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
+    onclick: async () => {
+      close();
+      ctx.notices.toast('Summarizing…');
+      const r = await agent.summarizeNow();
+      ctx.notices.toast({ done: 'Earlier conversation summed up. Every line stays here, and she can still look them up.', nothing: 'There is not enough yet to summarize.', busy: 'Shiori is working. Try again in a moment.', failed: "She couldn't summarize it. A card says why." }[/** @type {'done' | 'nothing' | 'busy' | 'failed'} */ (r)]);
+      if (r === 'done') ctx.render();
+    },
+  }, 'Summarize now');
+  /** Start fresh runs: the toggle says so, and opens nothing meanwhile. @param {boolean} on */
+  const working = (on) => {
+    toggle.setAttribute('aria-busy', String(on));
+    toggle.setAttribute('aria-disabled', String(on));
+    toggle.textContent = on ? 'Starting fresh…' : 'Tidy up';
+  };
+  const fresh = h('button', {
+    class: 'btn', type: 'button', 'aria-describedby': 'tidy-fresh',
+    onclick: async () => {
+      close();
+      const yes = await ask({
+        title: 'Start fresh?',
+        body: "Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.",
+        yes: 'Start fresh',
+      });
+      if (!yes) return void toggle.focus();
+      working(true);
+      /** @type {import('../../core/agent/loop.js').Fresh} */
+      let r;
+      try {
+        r = await agent.startFresh();
+      } catch (e) {
+        working(false);
+        ctx.notices.toast(`She couldn't start fresh: ${String(/** @type {any} */ (e)?.message ?? e)}`);
+        return void toggle.focus();
+      }
+      ctx.notices.toast({ done: 'Started fresh.', nothing: 'There is nothing to start fresh from yet.', already: 'Already fresh: nothing has been said since.', opening: 'The conversation is still opening. Try again in a moment.' }[r]);
+      if (r !== 'done') {
+        working(false);
+        return void toggle.focus();
+      }
+      await ctx.render();
+      /** @type {HTMLElement | null} */ (document.querySelector('.tidy-toggle'))?.focus(); // the new screen's, after the divider
+    },
+  }, 'Start fresh');
+  // A tap elsewhere closes it, never at its press: nothing moves under a finger still down.
+  const offTap = onTap((at) => { if (!menu.hidden && !menu.contains(/** @type {Node} */ (at)) && at !== toggle) close(); });
+  // Escape closes it wherever the focus is (Safari doesn't focus a button on a tap).
+  const escape = (/** @type {KeyboardEvent} */ e) => {
+    if (e.key !== 'Escape' || menu.hidden) return;
+    close();
+    toggle.focus();
+  };
+  document.addEventListener('keydown', escape);
+  const el = h('div', { class: 'tidy' }, toggle, menu);
+  menu.append(
+    h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.' }), summarize,
+    h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.' }), fresh);
+  whenGone(el, () => {
+    offTap();
+    document.removeEventListener('keydown', escape);
+  });
+  return el;
 }
 
 /**

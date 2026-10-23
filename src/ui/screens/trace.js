@@ -14,13 +14,13 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Web: ['net.request', 'pack.download'],
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route'],
   Housekeeping: ['compaction'],
-  // On the road is what live mode did; its location points (about one a second on a drive) are a kind of their own,
+  // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
-  'On the road': ['trigger.fired', 'state', 'reminder'],
+  'GPS': ['trigger.fired', 'state', 'reminder'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
-  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
+  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.peek', 'backup.prune'],
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });
 
@@ -120,6 +120,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request' && d.kind === 'upload') return `upload · ${d.endpoint} · ${d.url} · ${d.error ?? d.status} · ${d.ms ?? '?'} ms`;
   // A deletion of a turn the provider kept (G2).
   if (e.type === 'net.request' && d.kind === 'forget') return `kept turn ${d.outcome === 'ok' ? 'deleted' : 'not deleted yet'} · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'net.request' && d.kind === 'look') return `kept turn looked up · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'import') {
     const n = Number(d.uncarried) || 0;
@@ -128,12 +129,12 @@ export function traceSummary(e, { costs: perWake } = {}) {
   // Another trip's content, asked for here by its hash (reach.js): not given.
   if (e.type === 'content.refused') return `${d.via ? `${d.via} · ` : ''}asked for content that isn't ${e.scope?.startsWith('trip-') ? "this trip's" : 'here'}, and got none`;
   if (e.type === 'paused') return 'a turn cut off by opening another conversation';
-  if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
+  if (e.type === 'compaction') return d.mode === 'fresh' ? `started fresh after event ${d.to}` : `events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'location') return `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
   if (e.type === 'trigger.fired') return `${d.watch} · ${cut(d.text)}${d.late ? ` · late by ${d.late} min` : ''}${d.offline ? ' · no connection' : ''}`;
   if (e.type === 'reminder') return `${d.aloud ? 'said aloud' : 'shown'} · ${cut(d.text)}`;
   if (e.type === 'voice.route') return `audio route ${d.route} · ${d.using === null ? 'from the devices present' : `the microphone in use: ${d.using || 'no name'}`} · ${(d.devices ?? []).map((/** @type {string} */ x) => x || 'no name').join(', ') || 'no devices'}`;
-  if (e.type === 'state') return d.live ? `on the road ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
+  if (e.type === 'state') return d.live ? `GPS ${d.live}` : d.voice ? `voice ${d.voice}${d.why ? ` (${d.why})` : ''}` : '';
   if (e.type === 'push.sync') return `${d.relay} · ${d.sent ?? 0} sent, ${d.calledOff ?? 0} called off · ${d.waiting ?? 0} waiting${d.error ? ` · ${cut(d.error)}` : ''}`;
   if (e.type === 'push.shown') return `notification shown · ${d.watch}`;
   if (e.type === 'push.opened') return `notification opened · ${d.watch}`;
@@ -178,7 +179,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${bytes(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
-  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
+  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}${d.stopped ? ', then stopped: thrown away' : ''}`;
+  if (e.type === 'backup.peek') return `${d.type} · ${d.backup} can't be opened: ${cut(d.problem)}`;
   if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   if (e.type === 'plugin.reset') {
     const n = (/** @type {number} */ c, /** @type {string} */ w) => `${c} ${w}${c === 1 ? '' : 's'}`;

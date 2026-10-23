@@ -908,7 +908,7 @@ export class PluginHost {
         register: (/** @type {any} */ type) => {
           const wrong = checkStorageType(type);
           if (wrong) throw new PluginError(id, wrong);
-          return registry.add(id, 'storage-type', Object.freeze({ ...type, name: String(type.name).trim(), fields: type.fields ?? [], secret: type.secret ?? [], pluginId: id }));
+          return registry.add(id, 'storage-type', Object.freeze({ ...type, name: String(type.name).trim(), fields: type.fields ?? [], secret: type.secret ?? [], peek: typeof type.peek === 'function' ? type.peek : undefined, pluginId: id }));
         },
       }),
       helpers: HELPERS,

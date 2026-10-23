@@ -90,8 +90,8 @@ export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
 export class ProviderError extends Error {
   /**
    * @param {ErrorKind} kind @param {string} message
-   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown }} [more]
-   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said
+   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean }} [more]
+   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said; noChain: the server ignored the kept turn it was told to continue
    */
   constructor(kind, message, more = {}) {
     super(message, more.cause === undefined ? undefined : { cause: more.cause });
@@ -103,6 +103,10 @@ export class ProviderError extends Error {
     this.partial = more.partial ?? '';
     /** A kept turn the call continued failed: annai sends the conversation whole, once (G2). */
     this.whole = false;
+    /** The server ignored the kept turn it was told to continue: annai keeps nothing there until it starts again. */
+    this.noChain = more.noChain === true;
+    /** A kept turn the server said it lacked is there when looked up: the same call is tried once more, chained. */
+    this.again = false;
   }
 }
 
@@ -284,10 +288,13 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
- * @property {{ name?: string, days: number, hours: number }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
- *   who, for the switch's words; the longest it keeps one; how long a chain is continued
+ * @property {{ name?: string, days: number, hours: number, holds?: string, note?: string, provider?: string, perModel?: boolean, minLife?: number }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
+ *   who, for the switch's words; the longest annai tracks one; how long a chain is continued; holds: how long it keeps one on any key, for the page (else the page tells free from paid keys); note: more for the page to say;
+ *   provider: the plugin these words are for (another provider using the protocol gets its own name); perModel: only the model that made a turn continues it; minLife: ms within which a turn is never gone (gone sooner, the server isn't keeping them)
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [forgetRequest]
  *   its delete call for one kept turn
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string> }} [lookRequest]
+ *   its look-up of one kept turn (200: it is there, 404: it is not), asked before a missing one is read as a server that stores nothing
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
  * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string }, languages?: Languages }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]  languages: what the user speaks (phase 2)

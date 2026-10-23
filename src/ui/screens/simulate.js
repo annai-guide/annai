@@ -81,7 +81,7 @@ function running(ctx) {
     h('div', { class: 'acts' },
       h('button', { class: 'btn', type: 'button', onclick: () => (s.paused ? sim.resume() : sim.pause()) }, s.paused ? 'Resume' : 'Pause'),
       h('button', { class: 'btn danger', type: 'button', onclick: () => sim.stop() }, 'Stop')),
-    h('p', { class: 'sub', text: 'Watch it on Now, Driving and the Conversation; Shiori wakes as on the road. Opening another trip stops it.' }),
+    h('p', { class: 'sub', text: 'Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.' }),
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/now' }, 'Now'), h('a', { class: 'btn', href: '#/drive' }, 'Driving'), h('a', { class: 'btn', href: '#/talk' }, 'Conversation'), h('a', { class: 'btn', href: trip }, 'The trip')),
   ];
 }
@@ -132,7 +132,7 @@ async function form(ctx) {
       /** @type {any} */
       let source;
       if (fromTrip.input.checked) {
-        if (!trips.value) throw new Error('No trip on this device has a recorded track yet: On the road records one while it is on.');
+        if (!trips.value) throw new Error('No trip on this device has a recorded track yet: GPS records one while it is on.');
         source = { kind: 'trip', trip: trips.value };
       } else if (fromFile.input.checked) {
         const f = file.files?.[0];
@@ -150,9 +150,9 @@ async function form(ctx) {
   });
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
   return h('section', { class: 'panel', 'aria-label': 'A new simulation' },
-    h('p', { class: 'sub', text: 'A recorded or made-up GPS track, and its clock, run through On the road and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.' }),
+    h('p', { class: 'sub', text: 'A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.' }),
     h('p', { class: 'sub', text: main.length
-      ? 'Shiori wakes with your own models, as she would on the road: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.'
+      ? 'Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.'
       : "No model is set up, so Shiori can't answer: annai shows the reminders itself." }),
     h('fieldset', { class: 'radios' }, h('legend', { text: 'The track' }), sample.el, fromTrip.el, field('Trip', trips), fromFile.el, field('Itinerary file', file)),
     field('Speed', speed),

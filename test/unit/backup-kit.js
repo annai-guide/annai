@@ -6,13 +6,21 @@ import { Registry } from '../../src/core/registry.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { TargetError, parseBackupFileName } from '../../src/core/storage-types.js';
 import { createBackups } from '../../src/core/backup.js';
+import { peekArchive } from '../../src/core/archive.js';
 
 // Shared by the backup tests: a place in memory, and devices that back up to it.
 
 export const TOKEN = 'sekrit-token-0001';
 
-/** A place that keeps backups in memory for every device given it, as the storage type contract says. */
-export function memoryPlace() {
+/**
+ * A place that keeps backups in memory for every device given it, as the storage type contract says.
+ * @param {{ peek?: boolean }} [o] peek: it can tell a backup's manifest alone, as a git place can; its peeks counts them
+ */
+export function memoryPlace({ peek = false } = {}) {
+  let peeks = 0;
+  let gets = 0;
+  /** @type {((signal: AbortSignal) => Promise<unknown>) | null} */
+  let getHold = null;
   /** @type {{ id: string, at: number, device: string, label: string, blob: Blob }[]} */
   const kept = [];
   /** @type {unknown} */
@@ -49,14 +57,42 @@ export function memoryPlace() {
       kept.push(b);
       return { id: b.id, at: b.at, uploaded: a.blob.size, files: 1 };
     },
-    get: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+    get: async (/** @type {any} */ _c, /** @type {string} */ id, /** @type {any} */ o = {}) => {
+      gets++;
+      if (getHold) await getHold(o.signal);
       const b = kept.find((x) => x.id === id);
       if (!b) throw new TargetError('missing', 'That backup is gone.');
       return b.blob;
     },
+    ...(peek ? {
+      peek: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+        peeks++;
+        const b = kept.find((x) => x.id === id);
+        if (!b) throw new TargetError('missing', 'That backup is gone.');
+        return (await peekArchive(b.blob)).manifest;
+      },
+    } : {}),
   };
   return {
     kept, type,
+    peeks: () => peeks,
+    /** How many times get was called. */
+    gets: () => gets,
+    /** Gets wait until released, or until their signal aborts. @returns {() => void} release */
+    pauseGets() {
+      /** @type {(v: unknown) => void} */
+      let open = () => {};
+      const gate = new Promise((resolve) => { open = resolve; });
+      getHold = (signal) => new Promise((resolve, reject) => {
+        if (signal?.aborted) return reject(signal.reason);
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+        gate.then(resolve);
+      });
+      return () => {
+        getHold = null;
+        open(undefined);
+      };
+    },
     waiting: () => waiting,
     /** The next put throws e. @param {unknown} e */
     failNext(e) { fail = e; },

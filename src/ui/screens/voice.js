@@ -1,5 +1,6 @@
 import { h, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
 import { SAMPLE, speechProblem } from '../speech-check.js';
@@ -17,7 +18,8 @@ const section = (title, ...children) => h('section', { class: 'panel', 'aria-lab
 export async function renderVoice(ctx) {
   await ctx.llm.ready;
   const voice = ctx.voice;
-  const s = voiceSettings(await readAppSettings(ctx.ws));
+  const app = await readAppSettings(ctx.ws);
+  const s = voiceSettings(app);
   const entries = await voice.outEntries();
   const synth = voice.platform?.synth;
   const cfg = await ctx.llm.config();
@@ -42,6 +44,8 @@ export async function renderVoice(ctx) {
   });
   const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
   const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
+  // What she says shows on the screen unless switched off here (the user, 2026-10-23); it lives with the Shiori settings.
+  const showWords = savedCheck('Show what she says', shownSettings(app).showWords, (on) => updateAppSettings(ctx.ws, { shiori: { showWords: on } }));
   const clips = savedCheck('Keep voice clips', s.keepClips, (on) => save({ keepClips: on }));
   // Koe live (K5): where a live session's audio goes, said plainly; its quiet spell, and whether speaking cuts her off.
   const live = [...new Set((cfg.roles[KOE_REALTIME]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
@@ -134,6 +138,9 @@ export async function renderVoice(ctx) {
       h('div', { class: 'row' },
         savedField('Listen for an answer (seconds)', silence, () => numberIn(silence, 2, 60, 'Listen for 2 to 60 seconds.', { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
         savedField('Wait for her first words (seconds)', firstWords, () => numberIn(firstWords, 5, 120, 'Wait 5 to 120 seconds.', { whole: true, need: true }), (n) => save({ firstWordsSeconds: n })))),
+    section('On the screen',
+      showWords.el,
+      h('p', { class: 'sub', text: 'On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".' })),
     section("Shiori's voice",
       h('p', { class: 'sub', text: `Voices, tried in order: ${entries.map((/** @type {any} */ e) => e.name).join(', ') || 'none'}.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),

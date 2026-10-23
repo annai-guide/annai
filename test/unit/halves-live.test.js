@@ -902,6 +902,185 @@ test("Kokoro's note that comes while the user is still speaking goes in as soon 
   }
 });
 
+test("Start fresh with Kokoro's note still owed shows its words for the user (for_user) above the divider, not aloud, and the fresh context holds none of it (fix pass 6)", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // still speaking: the notes wait
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    assert.equal(await k.agent.startFresh(), 'done');
+    const all = await k.events(['reminder', 'compaction']);
+    assert.deepEqual(all.map((/** @type {any} */ e) => e.type), ['reminder', 'compaction'], 'the words come before the fresh start');
+    assert.deepEqual([all[0].data.title, all[0].data.text, all[0].data.unsaid, all[0].data.aloud], ["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
+    assert.equal(k.agent.live.owing, false);
+    assert.equal(JSON.stringify(k.agent.kokoro.transcript.messages).includes('Highway'), false);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Summarize now while a live session is opening or replying says busy and writes nothing under it (fix pass 2)", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap(); // the session is opening
+    assert.equal(k.agent.live.busy, true);
+    assert.equal(await k.agent.summarizeNow(), 'busy');
+    assert.deepEqual(await k.events(['compaction']), []);
+  } finally {
+    await k.done();
+  }
+});
+
+/** The conversation a live session's setup gave it. @param {any} k */
+const setups = (k) => got(k, 'setup').map((/** @type {any} */ m) => m.setup.systemInstruction.parts[0].text);
+
+test('after Start fresh, the next live session opens with none of the earlier lines (fix pass 2, item 1)', async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Something new.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    assert.match(setups(k).at(-1), /The conversation so far/);
+    assert.equal(await k.agent.startFresh(), 'done');
+    assert.equal(/otters/i.test((await k.agent.live.c.setup()).context), false, 'a session without a handle starts from the fresh start');
+    k.agent.send('Something new');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    assert.equal(setups(k).length, 2);
+    assert.equal(/otters/i.test(setups(k).at(-1)), false, 'the fresh session holds none of the old lines');
+    assert.match(setups(k).at(-1), /Something new/);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a note that comes while Start fresh runs waits for it: the session it opens holds none of the earlier lines (fix pass 2, item 1's second path)", async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Noted.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    // Kokoro's part of Start fresh is held, as a slow phone would: meanwhile a note of Kokoro's comes for Koe.
+    /** @type {() => void} */
+    let go = () => {};
+    const gate = new Promise((r) => { go = () => r(undefined); });
+    const fresh = k.agent.kokoro.startFresh.bind(k.agent.kokoro);
+    k.agent.kokoro.startFresh = async () => { await gate; return fresh(); };
+    const started = k.agent.startFresh();
+    await k.agent.channel.send('kokoro', 'The weather turns at four.', 'append', 'tool', undefined, undefined, false, 'Rain comes at four.');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(setups(k).length, 1, 'no session opens while Start fresh runs');
+    go();
+    assert.equal(await started, 'done');
+    await soon(async () => setups(k).length === 2, 5000);
+    assert.equal(/otters/i.test(setups(k).at(-1)), false, 'the session the note opened holds none of the old lines');
+  } finally {
+    await k.done();
+  }
+});
+
+test("in Koe · Realtime her words come as the transcript grows, while she speaks, before her line is written (fix pass 2, item 3: the dock's bubble)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand two miles ahead, on the left.", audio: tone(1.0) }]);
+  try {
+    /** @type {string[]} */
+    const seq = [];
+    k.agent.on('saying', (/** @type {string} */ text) => seq.push(`saying(${k.agent.state.name}): ${text}`));
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.speak') seq.push('out.speak'); });
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    await k.agent.idle();
+    const saying = seq.filter((x) => x.startsWith('saying'));
+    assert.ok(saying.length >= 1, `her words come while she speaks: ${seq.join(' | ')}`);
+    assert.ok(seq.indexOf('out.speak') > seq.indexOf(saying.at(-1)), 'all before her line is written');
+    assert.ok(saying.every((x) => x.startsWith('saying(speaking): ')), 'only while she speaks');
+    assert.equal(saying.at(-1), "saying(speaking): There's a taco stand two miles ahead, on the left.");
+    assert.equal((await k.events(['out.speak'])).length, 1, 'her line is written once, at the end, as before');
+  } finally {
+    await k.done();
+  }
+});
+
+// Fix pass 3: what the verification's probes found in Koe · Realtime.
+/** Start fresh with Kokoro's own part held until go(). @param {any} k */
+function gated(k) {
+  /** @type {() => void} */
+  let go = () => {};
+  const gate = new Promise((r) => { go = () => r(undefined); });
+  const orig = k.agent.kokoro.startFresh.bind(k.agent.kokoro);
+  k.agent.kokoro.startFresh = async () => { await gate; return orig(); };
+  return { started: k.agent.startFresh(), go };
+}
+
+test('a message typed while Start fresh runs is written below the divider, and answered after it (fix pass 3, item 3)', async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Something new, yes.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const { started, go } = gated(k);
+    await new Promise((r) => setTimeout(r, 50));
+    k.agent.send('Something new');
+    await new Promise((r) => setTimeout(r, 300));
+    go();
+    assert.equal(await started, 'done');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    await k.agent.idle();
+    const ev = (await k.events(['msg.user', 'compaction'])).map((/** @type {any} */ e) => `${e.type}:${e.data.mode ?? e.data.text}`);
+    assert.deepEqual(ev, ['msg.user:Tell me about otters please', 'compaction:fresh', 'msg.user:Something new']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Kokoro's note for the user while Start fresh runs, then a switch to another trip: its words are shown once (fix pass 3, item 10)", async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const { started, go } = gated(k);
+    await k.agent.channel.send('kokoro', 'The weather turns at four.', 'append', 'tool', undefined, undefined, false, 'Rain comes at four.');
+    await new Promise((r) => setTimeout(r, 100));
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const other = await createTrip(k.ws, { title: 'Yosemite' });
+    const opened = k.agent.open(other);
+    go();
+    await started.catch(() => {});
+    await opened;
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 300));
+    const left = (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    const there = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(other, { types: ['reminder'] }))).map((/** @type {any} */ e) => e.data.text);
+    assert.equal([...left, ...there].filter((t) => /Rain comes at four/.test(t)).length, 1);
+  } finally {
+    await k.done();
+  }
+});
+
+test('words she says after the provider ends her turn, while her voice still plays, reach the bubble (fix pass 3, item 9)', async () => {
+  const k = await liveKit([{ said: 'It is open', saidAfter: ' until ten tonight.', audio: tone(1.5) }]);
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    /** @type {string[]} */
+    const seq = [];
+    k.agent.on('saying', (/** @type {string} */ t) => seq.push(t));
+    k.agent.send('Is it open?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    await k.agent.idle();
+    assert.match(seq.at(-1) ?? '', /until ten tonight/);
+  } finally {
+    await k.done();
+  }
+});
+
 test('a live session is told the Gemini voice\'s speaking style as one stable line, only while it is set (nit: Koe sounds as Classic does)', async () => {
   const { newProvider, newModel, saveProvider, saveRoles, readConfig } = await import('../../src/core/llm/config.js');
   const k = await liveKit([]);
@@ -922,6 +1101,80 @@ test('a live session is told the Gemini voice\'s speaking style as one stable li
     k.agent.tap();
     await soon(async () => got(k, 'setup').length === 2);
     assert.doesNotMatch(text(1), /# Voice/, 'a cleared style: no line');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe's words reach the bubble only once her voice is heard (the stream player's started), never before it, and none for a stream that never plays (with pops-fix)", async () => {
+  for (const plays of [true, false]) {
+    const k = await liveKit([{ said: 'Rain comes at four, so bring a coat.', audio: tone(1.0) }]);
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      /** @type {((ok: boolean) => void) | null} */
+      let start = null;
+      const stream = k.platform.player.stream.bind(k.platform.player);
+      k.platform.player.stream = (/** @type {any} */ o) => ({ ...stream(o), started: new Promise((r) => { start = r; }) });
+      /** @type {string[]} */
+      const seq = [];
+      k.agent.on('saying', (/** @type {string} */ t) => seq.push(t));
+      k.agent.send('Will it rain?');
+      await until(() => start !== null, 5000);
+      await new Promise((r) => setTimeout(r, 200));
+      assert.deepEqual(seq, [], 'nothing before her voice starts');
+      /** @type {any} */ (start)(plays);
+      await new Promise((r) => setTimeout(r, 100));
+      if (plays) assert.equal(seq.at(-1), 'Rain comes at four, so bring a coat.');
+      else assert.deepEqual(seq, [], 'a stream that never plays shows no words');
+    } finally {
+      await k.done();
+    }
+  }
+});
+
+test("a note Start fresh showed is not shown again when a session that still held it hands it on (follow-up 3)", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    const note = k.agent.live.note.bind(k.agent.live);
+    k.agent.live.note = (/** @type {string} */ t, /** @type {any} */ m, /** @type {any} */ owed) => { if (owed) notes.push(owed); return note(t, m, owed); };
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // still speaking: the note waits
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    assert.equal(await k.agent.startFresh(), 'done');
+    k.agent.live.c.owed(notes); // a session that still held it, closing without forgetting it
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 200));
+    assert.equal((await k.events(['reminder'])).filter((/** @type {any} */ e) => /Highway 1/.test(e.data.text)).length, 1);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a session whose audio rate is missing doesn't stop her voice at once (follow-up 6)", async () => {
+  const k = await liveKit([{ said: 'Rain comes at four, so bring a coat.', audio: tone(0.8) }]);
+  try {
+    const live = k.agent.llm.live.bind(k.agent.llm);
+    k.agent.llm.live = async (/** @type {any[]} */ ...a) => {
+      const s = await live(...a);
+      Object.defineProperty(s, 'audioOut', { value: { ...s.audioOut, rate: undefined }, configurable: true });
+      return s;
+    };
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Will it rain?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    await k.agent.idle();
+    const [line] = await k.events(['out.speak']);
+    assert.equal(Boolean(line.data.cut), false, 'not cut');
+    assert.ok(k.platform.streams.at(-1).playedMs > 500, 'played through');
   } finally {
     await k.done();
   }

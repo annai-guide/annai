@@ -16,17 +16,17 @@ export function knownFix(live, now = live.clock?.now() ?? Date.now()) {
   return f.source === 'manual' || (live.gps === 'ok' && now - f.at <= FRESH_MS) ? f : null;
 }
 
-/** The On the road chip's words; during a simulation, it says so (7b choice 10). @param {{ on: boolean, gps: string, activity: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live */
+/** The GPS chip's words; during a simulation, it says so (7b choice 10). @param {{ on: boolean, gps: string, activity: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live */
 export function liveText(live) {
   if (live.simulating) return `Simulation · ${DOING[live.activity] ?? 'on'}`;
-  if (!live.on) return 'Off the road';
-  if (!knownFix(live)) return live.gps === 'denied' ? 'On the road · no location' : live.gps === 'unavailable' ? 'On the road · no GPS' : 'On the road · finding you';
-  return DOING[live.activity] ? `On the road · ${DOING[live.activity]}` : 'On the road';
+  if (!live.on) return 'GPS off';
+  if (!knownFix(live)) return live.gps === 'denied' ? 'GPS on · no location' : live.gps === 'unavailable' ? 'GPS on · no signal' : 'GPS on · finding you';
+  return DOING[live.activity] ? `GPS on · ${DOING[live.activity]}` : 'GPS on';
 }
 
 /** "Keep the screen on while driving or riding". @param {string} activity */
 export function whileText(activity) {
-  return /** @type {Record<string, string>} */ ({ 'moving-fast': 'while driving or riding', walking: 'while walking', still: 'while stopped' })[activity] ?? 'while on the road';
+  return /** @type {Record<string, string>} */ ({ 'moving-fast': 'while driving or riding', walking: 'while walking', still: 'while stopped' })[activity] ?? 'while GPS is on';
 }
 
 /**
@@ -38,7 +38,7 @@ export function whileText(activity) {
 export function liveChip(ctx) {
   const live = ctx.live;
   const chip = h('button', { class: 'chip live-chip', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true', 'aria-controls': 'live-menu' });
-  const menu = h('div', { id: 'live-menu', class: 'voice-menu live-menu', role: 'group', 'aria-label': 'On the road', hidden: true });
+  const menu = h('div', { id: 'live-menu', class: 'voice-menu live-menu', role: 'group', 'aria-label': 'GPS', hidden: true });
   /** Open, or opening: a second tap while it reads the plan's places closes it, rather than opening it again. */
   let shown = false;
   let opens = 0;
@@ -77,7 +77,7 @@ export function liveChip(ctx) {
         close();
         await live.setLive(!live.on);
       },
-    }, live.on ? 'Stop on the road' : 'Start on the road')];
+    }, live.on ? 'Turn GPS off' : 'Turn GPS on')];
     const awake = ctx.awake;
     if (live.on && awake?.available) {
       items.push(h('button', {
@@ -99,7 +99,7 @@ export function liveChip(ctx) {
           onclick: async () => {
             close();
             await live.place(p);
-            ctx.notices.toast(`On the road takes it you are at ${p.name}.`);
+            ctx.notices.toast(`annai now knows you're at ${p.name}.`);
           },
         }, p.name));
       }

@@ -78,7 +78,7 @@ export async function renderSettings(ctx) {
     diagnostics: () => section('Diagnostics',
       h('p', { class: 'sub', text: 'A report of recent errors and system events, without your files or keys, to paste into a bug report.' }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, 'Copy diagnostics'))),
-    developer: () => section('Developer', ...goTo('Try On the road, the replay and the recap with a simulated trip.', '#/simulate', 'Simulate a trip')),
+    developer: () => section('Developer', ...goTo('Try GPS, the replay and the recap with a simulated trip.', '#/simulate', 'Simulate a trip')),
     experimental: () => section('Experimental', ...goTo('Features still being tried, such as swiping between tabs. Each is off until you turn it on.', '#/experimental', 'Experimental')),
     erase: () => section('Erase', eraseControls(ctx)),
   };

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -472,6 +473,48 @@ test("Shiori's turns ask the model to call a tool (she reaches the user only thr
   assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
 });
 
+test("warm housekeeping asks to borrow the conversation's kept chain (it continues it and deletes its own response); cold housekeeping and turns don't", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  /** @type {any[]} */
+  const calls = [];
+  const was = k.llm.call;
+  k.llm.call = (/** @type {any} */ c) => { calls.push(c); return was(c); };
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('warm'), true);
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.deepEqual(calls.filter((c) => c.borrow).map((c) => c.record?.tag), ['compaction'], 'only the warm summary');
+  assert.equal(calls.filter((c) => c.record?.tag === 'compaction').length, 2);
+});
+
+test("leaving the page, or tapping Shiori, cuts a warm housekeeping call short (the call then deletes the provider's turn it borrowed)", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  /** @type {AbortSignal[]} */
+  const signals = [];
+  const was = k.llm.call;
+  k.llm.call = async (/** @type {any} */ c) => {
+    if (!c.borrow) return was(c);
+    signals.push(c.signal);
+    await new Promise((r) => setTimeout(r, 200));
+    if (c.signal?.aborted) throw new ProviderError('cancelled', 'Stopped.');
+    return was(c);
+  };
+  const done = k.agent.compact('warm').catch((/** @type {any} */ e) => e);
+  await new Promise((r) => setTimeout(r, 50));
+  k.agent.leaving();
+  k.agent.interrupt();
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0].aborted, true);
+  const out = await done;
+  assert.ok(out instanceof ProviderError && out.kind === 'cancelled');
+});
+
 test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Big Sur: the coast.' } }] }, { text: 'Done.' }]]);
   k.agent.send('What is Big Sur known for?');
@@ -766,6 +809,43 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.equal(card.title, "Shiori couldn't tidy up the conversation");
   assert.match(card.body, /bad utility key/i);
   assert.equal(k.agent.transcript.unanswered, false);
+});
+
+test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without is not a failure: no card, no error event", async () => {
+  // In a turn that can't go on without it (the forced tidy-up).
+  const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [{ text: 'Summary.' }] });
+  const was = k.llm.call;
+  k.llm.call = async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'compaction') return was(c);
+    k.agent.interrupt(); // the tap
+    throw new ProviderError('cancelled', 'Stopped.');
+  };
+  for (const m of ['first', 'second', 'third']) { k.agent.send(m); await k.agent.idle(); }
+  assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind).filter((x) => x !== 'stopped'), []);
+  assert.equal(k.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
+});
+
+test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so it would ask for a card) is no failure either", async () => {
+  // Housekeeping that came due waits for the cache to go cold, then runs at the start of the next turn (#tidyUp, not forced).
+  const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
+  const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
+  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, say('a2')]], {
+    models: [{ contextWindow: 10_000 }], utility: [{ text: 'Summary.' }],
+    agent: { now: () => clock.t, timers: { set: () => 1, clear: () => {} } },
+  });
+  for (const m of ['one', 'two', 'three']) { o.agent.send(m); await o.agent.idle(); }
+  clock.t += 3_600_000; // the cache is cold
+  const was2 = o.llm.call;
+  let asked = 0;
+  o.llm.call = async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'compaction') return was2(c);
+    asked++;
+    throw new ProviderError('cancelled', 'Stopped.');
+  };
+  o.agent.send('four');
+  await o.agent.idle();
+  assert.ok(asked >= 1, 'the cold tidy-up at the start of the turn ran, and was cut short');
+  assert.equal(o.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0, 'no card');
 });
 
 test('a turn that failed is over: later starts do not wake Shiori again for it', async () => {
