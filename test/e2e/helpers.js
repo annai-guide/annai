@@ -414,6 +414,17 @@ export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
       const source = ctx.createBufferSource();
       source.buffer = await ctx.decodeAudioData(bytes.buffer);
       const out = ctx.createMediaStreamDestination();
+      // A faint hiss under everything, as a real microphone has: the detector learns its floor from the first frames with sound in them,
+      // and a floor learned from the first frame of speech (the digital silence before it having gone unheard, as it does on a slow
+      // machine) hears no speech in the speech.
+      const hiss = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const noise = hiss.getChannelData(0);
+      for (let i = 0; i < noise.length; i++) noise[i] = (Math.random() * 2 - 1) * 0.0005;
+      const rustle = ctx.createBufferSource();
+      rustle.buffer = hiss;
+      rustle.loop = true;
+      rustle.connect(out);
+      rustle.start();
       source.connect(out);
       source.start(ctx.currentTime + 0.4);
       if (loop) {
