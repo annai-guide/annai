@@ -30,13 +30,20 @@ const secretIds = (page) => page.evaluate(async () => {
 
 /** From the Models screen: plays the voice's sample, then has the transcription model write down what the (fake) microphone says. @param {import('@playwright/test').Page} page */
 async function testBoth(page) {
+  // Each page is waited for by its heading before the next press: the provider's page has a Play a sample and a Say something
+  // of its own (for its first voice and ear), so a press made while the page being left was still there tested the wrong page,
+  // and the model's page drew over it still saying "Not tested yet." (found by running the test on 2 CPUs).
   await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible();
   await page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^SpaceXAI: Grok Voice TTS 1\.0 \(Ara\)/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'SpaceXAI: Grok Voice TTS 1.0 (Ara)' })).toBeVisible();
   await page.getByRole('button', { name: 'Play a sample' }).click();
   await expect(page.getByText('It works: that was this voice.')).toBeVisible();
   await page.goto('/#/models');
   await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible();
   await page.getByRole('region', { name: 'Transcription', exact: true }).getByRole('link', { name: /^OpenAI: Whisper Large V3 Turbo/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'OpenAI: Whisper Large V3 Turbo' })).toBeVisible();
   await page.getByRole('button', { name: 'Say something' }).click();
   await expect(page.getByText('It heard: "Where should we stop for lunch?"')).toBeVisible({ timeout: 20_000 });
 }
