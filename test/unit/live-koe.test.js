@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
+import { liveKit, got, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { quiet, cat, clip, room, hum } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
@@ -57,6 +57,44 @@ test('what was heard and what Koe said are logged per turn; Kokoro reads "[heard
     // Koe as a text model would read the same lines, live ones as what was said to the user.
     assert.ok(read(k.agent.koe).join('|').includes(`[said to the user] "There's a taco stand ahead."`));
     assert.ok(k.platform.streams.every((/** @type {any} */ s) => s.ended || s.stopped), 'every stream ended or stopped');
+  } finally {
+    await k.done();
+  }
+});
+
+test("her voice is traced per reply in numbers only, from the player's own (holes, the start's wait, cut or not); the ready line has the phone's sound rate and output latency (the pops investigation)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone() }]);
+  try {
+    await exchange(k, 'where-eat');
+    await soon(async () => (await k.events(['live.reply'])).length === 1);
+    const [reply] = await k.events(['live.reply']);
+    const { wake, ms, ...rest } = reply.data;
+    assert.ok(wake && ms > 500, `${ms} ms`);
+    assert.deepEqual(rest, { holes: 0, holeMs: 0, waitMs: 0, player: 'fake', cut: false });
+    const [ready] = await lives(k, 'ready');
+    assert.deepEqual([ready.data.sampleRate, ready.data.baseLatency], [48_000, 0.01]);
+  } finally {
+    await k.done();
+  }
+});
+
+test("closed while she speaks: her voice stops, traced as cut, and playback comes back only once its fade is over, not under it", async () => {
+  const k = await liveKit([{ said: 'The bridge ahead was built in 1932 and it is one of the most photographed on the coast.', audio: tone(3) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    await new Promise((r) => setTimeout(r, 300));
+    k.agent.hush('away');
+    assert.equal(k.agent.live.state, 'closed');
+    assert.ok(k.platform.streams[0].stopped);
+    assert.equal(k.platform.sessions.at(-1), 'play-and-record', 'not yet: her voice is fading out');
+    await until(() => k.platform.sessions.at(-1) === 'playback', 1000);
+    await soon(async () => (await k.events(['live.reply'])).length === 1);
+    const [reply] = await k.events(['live.reply']);
+    assert.equal(reply.data.cut, true);
   } finally {
     await k.done();
   }

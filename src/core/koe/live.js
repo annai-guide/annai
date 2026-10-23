@@ -69,6 +69,8 @@ export function mayPlay(input, { duplex, sinceEndMs, sinceWordMs }) {
   if (input.hearing || sinceEndMs < HOLD_MS) return false;
   return input.stillMs >= STILL_MS || Math.min(sinceEndMs - HOLD_MS, sinceWordMs) >= CAP_MS;
 }
+/** Her voice's stop fades out over 12 ms; this long after it, with the output's own latency, it is surely silent. */
+const FADED_MS = 60;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -285,7 +287,9 @@ export class LiveKoe {
     const { instructions, context } = await this.c.setup();
     const tools = definitions(await this.c.koe.liveTools());
     this.#wake = newId('w');
-    const s = await this.c.llm.live(id, { instructions, context, tools, ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake });
+    // The phone's sound, for the Trace's ready line: its rate and the output's own latency (the pops investigation).
+    const output = this.c.voice?.platform?.player.output?.() ?? undefined;
+    const s = await this.c.llm.live(id, { instructions, context, tools, ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
@@ -430,6 +434,7 @@ export class LiveKoe {
     if (!forget && s?.handle) this.#handle = s.handle;
     if (why === 'tap') this.#handle = undefined; // the user stopped it: the next one starts fresh, with the last lines
     this.voiced = this.#rotate = false;
+    const fading = Boolean(this.#sounding?.stream);
     this.#cut(true);
     this.#t = null;
     this.#flushHeard(false);
@@ -437,7 +442,10 @@ export class LiveKoe {
     this.#waiting = [];
     clearTimeout(this.#quiet);
     clearTimeout(this.#holdTimer);
-    this.c.voice?.platform?.session('playback');
+    // Playback again once her stopped voice has faded out: the session switched under the fade might be heard (unverified; the
+    // pops investigation). Unless a microphone opened meanwhile, which wants play-and-record.
+    if (!fading) this.c.voice?.platform?.session('playback');
+    else setTimeout(() => { if (!this.#input) this.c.voice?.platform?.session('playback'); }, FADED_MS);
     s?.close(why);
     this.modelId = null;
     if (this.#toldOpen) this.c.told('live-closed');
@@ -832,7 +840,10 @@ export class LiveKoe {
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
-      t.stream.done.then(({ playedMs }) => this.#said(t, playedMs));
+      t.stream.done.then((r) => {
+        this.#said(t, r.playedMs);
+        this.#played(t, r);
+      });
       if (t.done) t.stream.end();
     } else if (t.done) this.#said(t, null);
     t.held = [];
@@ -895,6 +906,16 @@ export class LiveKoe {
       this.#said(t, shown ? null : 0);
     }
     return playedMs === undefined ? {} : { playedMs };
+  }
+
+  /**
+   * How her voice played, in numbers only, for the Trace (the pops investigation, 2026-10-23): heard ms; the holes where her sound
+   * ran out before more came, and their ms; how long her first sound waited to start; whether it was cut; and which player played it.
+   * @param {Turn} t @param {import('../voice/platform.js').Played} r
+   */
+  #played(t, r) {
+    const { playedMs, ...rest } = r;
+    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole } });
   }
 
   /** What Koe said, written once: whole, or cut where its voice stopped (✂). @param {Turn} t @param {number | null} playedMs null: none played */
