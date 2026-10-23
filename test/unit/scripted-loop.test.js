@@ -16,3 +16,14 @@ test("scripted rules through the real loop: a note that joins the turn while its
   assert.equal(k.requests[1].messages.at(-1).parts.some((/** @type {any} */ p) => p.type === 'tool_result'), true);
   assert.equal((await k.events(['out.speak'])).map((e) => e.data.text).join(), 'Nothing to add.');
 });
+
+test("scripted rules through the real loop: a wake in a later turn that no rule matches is not answered by the last rule's `then` (the new turn's first request carries the old turn's tool results)", async () => {
+  const list = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: list, then: say('Nothing to add.'), times: 1 }] }]);
+  k.agent.send('Look around');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Nothing to add.']);
+  k.agent.enqueue({ kind: 'cue', text: 'the weather changed', logged: true });
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Nothing to add.'], 'nothing said for a wake no rule matches');
+});

@@ -587,7 +587,7 @@
     {
       "id": "scripted-model",
       "name": "Scripted model",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
       "category": "developer",
       "keywords": [],
@@ -595,7 +595,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 6704,
+      "size": 7132,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -603,8 +603,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "1f21ca7bb741bc111bebdb6e52e0745cddc4a2adcc581d78f4c6086cfef56861",
-        "index.js": "59c210fb4006b04e513ecd483362865759fe43846c4ac4fb22b12e881c5f24da"
+        "annai-plugin.json": "17daa24ad812e528cf7ee3d46b3e1450f53cf70c2df3b877e82ef38438182540",
+        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a"
       }
     },
     {
