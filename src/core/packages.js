@@ -14,7 +14,7 @@ import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.
  * annai-plugin.json, or a bare skill in the Agent Skills format (§5.1). Nothing here stores anything.
  * @typedef {import('./skills.js').Skill} Skill
  * @typedef {{ name: string, description: string, folder: string }} SkillInfo  folder: '' for the package's top, else "skills/tides"
- * @typedef {{ id: string, kind: 'web' | 'knowledge', origins: string[], key?: { setting: string, url?: string, note?: string }, credit?: string }} SearchDesc
+ * @typedef {{ id: string, kind: 'web', origins: string[], key?: { setting: string, url?: string, note?: string } }} SearchDesc
  *   a search provider's description (docs/plugins.md, "Search providers"): the id it registers, the origins its searches and key go to
  * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major (milestone 1, decision 7)
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
@@ -82,6 +82,7 @@ export function checkManifest(manifest) {
   if (manifest.search !== undefined) {
     const wrong = checkSearchDesc(manifest.search, manifest);
     if (wrong.length) throw new PluginError(id, `its search isn't valid: ${wrong.join('; ')}`);
+    if (manifest.entry === undefined) throw new PluginError(id, 'describes a search provider but has no entry: a search provider is code that registers itself');
   }
 }
 
@@ -90,11 +91,11 @@ const SEARCH_SCHEMA = {
   required: ['id', 'kind', 'origins'],
   properties: {
     id: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,40}$' },
-    kind: { enum: ['web', 'knowledge'] },
+    kind: { enum: ['web'] },
     origins: { type: 'array', maxItems: 10, items: { type: 'string', maxLength: 200 } },
     key: { type: 'object', required: ['setting'], properties: { setting: { type: 'string' }, url: { type: 'string', pattern: '^https://', maxLength: 500 }, note: { type: 'string', maxLength: 300 } } },
-    credit: { type: 'string', maxLength: 300 },
   },
+  additionalProperties: false,
 };
 
 /**
@@ -117,10 +118,14 @@ export function checkSearchDesc(search, manifest) {
   return errors;
 }
 
-/** Every origin a package's provider or search sends keys and searches to, sorted: what an update asks about when it brings a new one. @param {any} manifest @returns {string[]} */
-export function originsOf(manifest) {
-  if (manifest?.provider) return descOrigins(manifest.provider);
+/** The origins a package's search block names, sorted. @param {any} manifest @returns {string[]} */
+export function searchOriginsOf(manifest) {
   return Array.isArray(manifest?.search?.origins) ? [...new Set(/** @type {string[]} */ (manifest.search.origins))].sort() : [];
+}
+
+/** Every origin a package's provider and search block send keys and searches to, sorted: what an update asks about when it brings a new one. @param {any} manifest @returns {string[]} */
+export function originsOf(manifest) {
+  return [...new Set([...(manifest?.provider ? descOrigins(manifest.provider) : []), ...searchOriginsOf(manifest)])].sort();
 }
 
 /** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses (fix pass 8a-4). */
@@ -463,15 +468,17 @@ function asManifest(url, body) {
  * provider description sends keys to that the installed one didn't (milestone 1, decision 11; the
  * security review: a change of scheme or port is new too). An update that adds any of them asks the user first.
  * @typedef {{ code: boolean, skills: string[], personalities: string[], origins: string[] }} Parts what an installed package has, by name
- * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], origins: string[] }} Added
+ * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], origins: string[], searchOrigins?: string[] }} Added
  * @param {Parts} before @param {Package} pkg @returns {Added}
  */
 export function addedParts(before, pkg) {
+  const searchNew = searchOriginsOf(pkg.manifest).filter((o) => !(before.origins ?? []).includes(o));
   return {
     code: !before.code && pkg.code,
     skills: pkg.skills.filter((s) => !before.skills.includes(s.name)),
     personalities: pkg.personalities.filter((p) => !before.personalities.includes(p.name)),
     origins: originsOf(pkg.manifest).filter((o) => !(before.origins ?? []).includes(o)),
+    ...(searchNew.length ? { searchOrigins: searchNew } : {}),
   };
 }
 
@@ -494,6 +501,6 @@ export function addedWords(a) {
     ...(a.code ? ['code that runs in annai'] : []),
     ...a.skills.map((s) => `the skill ${s.name}`),
     ...a.personalities.map((p) => `the personality ${p.name}`),
-    ...(a.origins ?? []).map((o) => `a provider that sends keys to ${o}`),
+    ...(a.origins ?? []).map((o) => (a.searchOrigins?.includes(o) ? `an address your searches are sent to: ${o}` : `a provider that sends keys to ${o}`)),
   ].join(', ');
 }
