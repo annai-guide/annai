@@ -375,11 +375,13 @@ export async function deleteTurn({ type, endpoint, key, id, fetch, signal, trace
  * Whether the provider has a kept turn: its look-up (the protocol's lookRequest), traced like a deletion without the id. 'there' on a
  * 200, 'gone' on a 404, 'unknown' on anything else or no answer.
  * @param {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, key: string | null, id: string,
- *   fetch: (url: string, init: RequestInit) => Promise<Response>, signal?: AbortSignal, trace?: ReturnType<typeof import('./trace.js').modelTrace>, now: () => number }} c
+ *   fetch: (url: string, init: RequestInit) => Promise<Response>, signal?: AbortSignal, trace?: ReturnType<typeof import('./trace.js').modelTrace>, now: () => number, missing?: string }} c
+ * missing: what the Trace says when it isn't there
  * @returns {Promise<'there' | 'gone' | 'unknown'>}
  */
-export async function lookTurn({ type, endpoint, key, id, fetch, signal, trace, now }) {
+export async function lookTurn({ type, endpoint, key, id, fetch, signal, trace, now, missing }) {
   if (!type.lookRequest) return 'unknown';
+  if (key) trace?.secret(key);
   const r = type.lookRequest({ endpoint, key, id });
   const started = now();
   let status = 0;
@@ -392,6 +394,6 @@ export async function lookTurn({ type, endpoint, key, id, fetch, signal, trace, 
     // no answer
   }
   const found = status >= 200 && status < 300 ? 'there' : status === 404 ? 'gone' : 'unknown';
-  await trace?.request({ kind: 'look', endpoint: endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(id), '…'), status, ms: now() - started, firstMs: null, outcome: found === 'unknown' ? 'waiting' : 'ok', usage: null });
+  await trace?.request({ kind: 'look', endpoint: endpoint.name, model: '', providerModel: '', url: r.url.replace(encodeURIComponent(id), '…'), status, ms: now() - started, firstMs: null, outcome: found === 'unknown' ? 'waiting' : 'ok', usage: null, ...(found === 'gone' && missing ? { error: missing } : {}) });
   return found;
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { Kept, keyPrint, keeperOf } from '../../src/core/llm/kept.js';
+import { Kept, keyPrint, keeperOf, lookTurn } from '../../src/core/llm/kept.js';
 import { Uploads } from '../../src/core/llm/uploads.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
@@ -831,8 +831,8 @@ test('a response that was there minutes ago and is gone means the server is not 
     const m2 = [...said([m1], r), msg('user', text('q1'))];
     const again = await c.call(m2);
     assert.deepEqual(again.attempts.map((a) => a.outcome), ['forgotten', 'ok']);
-    const said1 = (await c.requests()).find((q) => q.outcome === 'forgotten');
-    assert.match(said1.error, /not storing|isn't storing|does not keep|doesn't keep/i);
+    const said1 = (await c.requests()).find((q) => q.kind === 'look');
+    assert.match(said1.error, /not storing/i);
     assert.match(said1.error, /Zero Data Retention/);
     await c.call([...said(m2, again), msg('user', text('q2'))]);
     assert.deepEqual([c.s.bodies().at(-1).store, c.s.bodies().at(-1).previous_response_id], [false, undefined]);
@@ -948,7 +948,8 @@ test('a "not found" for a response that is not there when looked up was never st
     assert.deepEqual(again.attempts.map((a) => a.outcome), ['forgotten', 'ok']);
     const reqs = await c.requests();
     assert.ok(reqs.some((q) => q.kind === 'look' && q.status === 404));
-    assert.match(reqs.find((q) => q.outcome === 'forgotten').error, /Zero Data Retention/);
+    assert.match(reqs.find((q) => q.kind === 'look').error, /Zero Data Retention/, 'said where it was found');
+    assert.match(again.attempts[0].error ?? '', /Zero Data Retention/);
     assert.equal(c.s.bodies().at(-1).store, false);
   } finally {
     await c.s.close();
@@ -973,6 +974,71 @@ test('aborting during a photo upload is a cancelled call, not a plugin failure: 
       uploads: new Uploads(c.ws), fetch, signal: ac.signal, request: { messages: [msg('user', text('look'), PHOTO('a'))], tail: 'now' } }).then(() => null, (x) => x);
     assert.equal(e?.kind, 'cancelled');
     assert.ok(bench.until('m-o') <= Date.now(), 'not benched');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a stop while the look-up is out ends it at once: the call is not left to wait for the look-up\'s own time limit, and no retry follows', async () => {
+  const left = { n: 1 };
+  const c = await callKit([flaky(left)]);
+  const ac = new AbortController();
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (init?.method !== 'GET') return globalThis.fetch(url, init);
+    setTimeout(() => ac.abort(), 40);
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => globalThis.fetch(url, init).then(resolve, reject), 3000); // a slow look-up
+      init.signal?.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); });
+    });
+  };
+  try {
+    const r = await c.call([m1]);
+    const started = Date.now();
+    const e = await c.call([...said([m1], r), msg('user', text('q1'))], { fetch, signal: ac.signal }).then(() => null, (x) => x);
+    assert.ok(Date.now() - started < 1500, `ended in ${Date.now() - started} ms`);
+    assert.equal(e?.kind, 'cancelled');
+    assert.equal(c.s.bodies().length, 2, 'no request after the stop');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("a deadline that passes while a photo uploads is a stop (cancelled), not a time-out that rests the model", async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const signal = AbortSignal.timeout(40);
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => (String(url).endsWith('/files')
+    ? new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(init.signal.reason)))
+    : globalThis.fetch(url, init));
+  const bench = new Bench();
+  const cfg = /** @type {any} */ (structuredClone(c.cfg));
+  cfg.models['m-o'].user.input = ['text', 'image'];
+  try {
+    const e = await callRole({ role: 'main', config: cfg, types: new Map([['openai-responses', type]]), bench, keyFor: async () => KEY, kept: c.kept, scope: 'trip-a', record: { keepParts: true },
+      uploads: new Uploads(c.ws), fetch, signal, request: { messages: [msg('user', text('look'), PHOTO('a'))], tail: 'now' } }).then(() => null, (x) => x);
+    assert.equal(e?.kind, 'cancelled');
+    assert.ok(bench.until('m-o') <= Date.now(), 'not benched');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test("the look-up registers the key as a secret itself, as a deletion does", async () => {
+  /** @type {string[]} */
+  const secrets = [];
+  const trace = /** @type {any} */ ({ secret: (/** @type {string} */ k) => secrets.push(k), request: async () => {} });
+  const found = await lookTurn({ type, endpoint: /** @type {any} */ ({ baseUrl: 'https://api.openai.com/v1', name: 'OpenAI', headers: {} }), key: 'sk-look', id: 'resp_1', fetch: async () => new Response('{}', { status: 200 }), trace, now: Date.now });
+  assert.equal(found, 'there');
+  assert.deepEqual(secrets, ['sk-look']);
+});
+
+test("the Trace reads in order: the failed call's own line, then the look-up it led to", async () => {
+  const left = { n: 1 };
+  const c = await callKit([flaky(left)]);
+  try {
+    const r = await c.call([m1]);
+    await c.call([...said([m1], r), msg('user', text('q1'))]);
+    const lines = (await c.requests()).map((q) => [q.kind, q.outcome]);
+    assert.deepEqual(lines, [['model', 'ok'], ['model', 'forgotten'], ['look', 'ok'], ['model', 'ok']]);
   } finally {
     await c.s.close();
   }
