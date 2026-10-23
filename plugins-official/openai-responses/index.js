@@ -67,6 +67,8 @@ export function activate(annai) {
     },
     /** @param {any} j */
     readUpload: (j) => ({ id: String(j.id), ...(typeof j.expires_at === 'number' ? { expiresAt: j.expires_at * 1000 } : {}) }),
+    /** Whether OpenAI has a response: 200 when it does, 404 when it doesn't (annai asks before it takes a missing one for a sign the account stores nothing). @param {{ endpoint: any, key: string | null, id: string }} c */
+    lookRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/responses/${encodeURIComponent(id)}`), headers: auth(endpoint, key) }),
     /** @param {{ endpoint: any, key: string | null }} c */
     listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/models'), headers: auth(endpoint, key) }),
     readList,

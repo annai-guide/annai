@@ -899,3 +899,81 @@ test("a new response's id is registered as a secret the moment it is named: an e
     await c.s.close();
   }
 });
+
+/** A reply that refuses a chained request as "not found" the first n times, as an intermittent error does. */
+const flaky = (/** @type {{ n: number }} */ left, /** @type {number} */ status = 400) => (/** @type {any} */ b) => (b.previous_response_id && left.n-- > 0
+  ? { error: { status, body: { error: { message: `Previous response with id '${b.previous_response_id}' not found.`, type: 'invalid_request_error', param: 'previous_response_id', code: 'previous_response_not_found' } } } }
+  : { text: 'A' });
+
+test('a "not found" right after storing that is passing (the response is there when looked up): the chained call is tried once more, and keeping goes on', async () => {
+  const left = { n: 1 };
+  const c = await callKit([flaky(left)]);
+  try {
+    let m = [msg('user', text('q0'))];
+    for (let i = 1; i <= 3; i++) {
+      const r = await c.call(m);
+      m = [...said(m, r), msg('user', text(`q${i}`))];
+    }
+    assert.deepEqual(c.s.bodies().map((b) => [b.store, b.previous_response_id ?? null]), [[true, null], [true, 'resp_stand-in-1'], [true, 'resp_stand-in-1'], [true, 'resp_stand-in-2']], 'the same chained call again, and the chain goes on');
+    const look = c.s.seen.filter((x) => x.method === 'GET');
+    assert.deepEqual(look.map((x) => x.url), ['/v1/responses/resp_stand-in-1']);
+    assert.equal(look[0].headers.authorization, `Bearer ${KEY}`);
+    assert.ok((await c.requests()).some((q) => q.kind === 'look' && q.status === 200));
+    assert.ok(!JSON.stringify(await c.requests()).includes('resp_stand-in-1'), 'its id is not in the Trace');
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a "not found" that keeps coming while the response is there is sent whole after one more try, and no more', async () => {
+  const left = { n: 99 };
+  const c = await callKit([flaky(left)]);
+  try {
+    const r = await c.call([m1]);
+    const again = await c.call([...said([m1], r), msg('user', text('q1'))]);
+    assert.deepEqual(again.attempts.map((a) => a.outcome), ['forgotten', 'forgotten', 'ok']);
+    assert.deepEqual(c.s.bodies().map((b) => b.previous_response_id ?? null), [null, 'resp_stand-in-1', 'resp_stand-in-1', null]);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a "not found" for a response that is not there when looked up was never stored: keeping goes off, and the Trace says so', async () => {
+  const left = { n: 1 };
+  const c = await callKit([flaky(left)]);
+  try {
+    const r = await c.call([m1]);
+    c.s.expire();
+    const again = await c.call([...said([m1], r), msg('user', text('q1'))]);
+    assert.deepEqual(again.attempts.map((a) => a.outcome), ['forgotten', 'ok']);
+    const reqs = await c.requests();
+    assert.ok(reqs.some((q) => q.kind === 'look' && q.status === 404));
+    assert.match(reqs.find((q) => q.outcome === 'forgotten').error, /Zero Data Retention/);
+    assert.equal(c.s.bodies().at(-1).store, false);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('aborting during a photo upload is a cancelled call, not a plugin failure: the model is not benched', async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const ac = new AbortController();
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (String(url).endsWith('/files')) {
+      setTimeout(() => ac.abort(), 30);
+      return new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+    }
+    return globalThis.fetch(url, init);
+  };
+  const bench = new Bench();
+  const cfg = /** @type {any} */ (structuredClone(c.cfg));
+  cfg.models['m-o'].user.input = ['text', 'image'];
+  try {
+    const e = await callRole({ role: 'main', config: cfg, types: new Map([['openai-responses', type]]), bench, keyFor: async () => KEY, kept: c.kept, scope: 'trip-a', record: { keepParts: true },
+      uploads: new Uploads(c.ws), fetch, signal: ac.signal, request: { messages: [msg('user', text('look'), PHOTO('a'))], tail: 'now' } }).then(() => null, (x) => x);
+    assert.equal(e?.kind, 'cancelled');
+    assert.ok(bench.until('m-o') <= Date.now(), 'not benched');
+  } finally {
+    await c.s.close();
+  }
+});

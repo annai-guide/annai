@@ -14,6 +14,7 @@ import http from 'node:http';
  *   cached; `chars / 4` stands for tokens.
  * - `DELETE /v1/responses/{id}`: `{ id, object: 'response.deleted', deleted: true }`; a response it doesn't have is a 404
  *   ("Response with id '…' not found.").
+ * - `GET /v1/responses/{id}`: the response when it is kept, else the same 404 as a delete's.
  * - `GET /v1/models`.
  * It records each request's address, headers and body, so a test can check what was sent. Tests and the end-to-end suite run it
  * on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
@@ -61,6 +62,11 @@ export async function startOpenAIServer({ key, replies = [], notFoundStatus = 40
       if (key && req.headers.authorization !== `Bearer ${key}`) return void json(401, { error: { message: 'Incorrect API key provided.', type: 'invalid_request_error', param: null, code: 'invalid_api_key' } });
       const path = new URL(String(req.url), 'http://localhost').pathname;
       if (req.method === 'GET' && path === '/v1/models') return void json(200, { object: 'list', data: [{ id: 'gpt-6-luna', object: 'model', created: 1790000000, owned_by: 'openai' }] });
+      if (req.method === 'GET' && path.startsWith('/v1/responses/')) {
+        const id = decodeURIComponent(path.slice('/v1/responses/'.length));
+        if (!stored.has(id)) return void fail(404, `Response with id '${id}' not found.`, null);
+        return void json(200, { id, object: 'response', status: 'completed', output: (stored.get(id) ?? []).filter((x) => x.role === 'assistant' || x.type) });
+      }
       if (req.method === 'DELETE' && path.startsWith('/v1/responses/')) {
         const id = decodeURIComponent(path.slice('/v1/responses/'.length));
         if (!stored.has(id)) return void fail(404, `Response with id '${id}' not found.`, null);

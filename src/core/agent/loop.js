@@ -1726,7 +1726,8 @@ export class Agent {
     try {
       return await this.compact(mode, o);
     } catch (e) {
-      if (this.#leaving) return null;
+      // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
+      if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await withoutSecrets(this.store, this.#explain(e, mode === 'cold' ? 'utility' : 'main'));
       if (!o.forced) {
         await this.#notice({ tone: 'info', title: "Shiori couldn't tidy up the conversation", body: `${why} She will try again later.` });

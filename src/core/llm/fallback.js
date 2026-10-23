@@ -349,6 +349,7 @@ export async function callRole(c) {
     let uploadRetries = 0;
     let plain = false;
     let whole = false;
+    let again = false;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
       const asked = forModel(request);
@@ -368,7 +369,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}) } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -389,6 +390,11 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(c.request, said);
           break;
+        }
+        if (err.again && !again) {
+          // The server said it lacked the kept turn, and has it: a passing error. The same chained call, once more.
+          again = true;
+          continue;
         }
         if (err.whole && !whole) {
           // The kept turn this continued failed: the same model again, whole, once.

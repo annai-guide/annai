@@ -119,6 +119,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request' && d.kind === 'upload') return `upload · ${d.endpoint} · ${d.url} · ${d.error ?? d.status} · ${d.ms ?? '?'} ms`;
   // A deletion of a turn the provider kept (G2).
   if (e.type === 'net.request' && d.kind === 'forget') return `kept turn ${d.outcome === 'ok' ? 'deleted' : 'not deleted yet'} · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'net.request' && d.kind === 'look') return `kept turn looked up · ${d.endpoint} · ${d.status || 'no answer'} · ${d.ms ?? '?'} ms`;
   if (e.type === 'photo.replace') return `a refused photo sent again as a new copy (${d.mediaType})`;
   if (e.type === 'paused') return 'a turn cut off by opening another conversation';
   if (e.type === 'compaction') return `events ${d.from}–${d.to} summarized (${d.mode})`;
