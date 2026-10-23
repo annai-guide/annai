@@ -22,7 +22,8 @@ export async function liveKit(turns, o = {}) {
     });
     await k.agent.idle();
   } catch (e) {
-    // A kit that can't be built lets go of its server, or the open socket keeps the run from ending.
+    // A kit that can't be built lets go of its agent and its server, or the open socket keeps the run from ending.
+    k?.agent.hush('away');
     await server.stop();
     throw e;
   }
