@@ -913,7 +913,7 @@ test("Start fresh with Kokoro's note still owed shows its words for the user (fo
     await until(() => k.agent.live.view.name === 'hearing');
     await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
     await until(() => k.agent.live.owing);
-    assert.equal(await k.agent.startFresh(), true);
+    assert.equal(await k.agent.startFresh(), 'done');
     const all = await k.events(['reminder', 'compaction']);
     assert.deepEqual(all.map((/** @type {any} */ e) => e.type), ['reminder', 'compaction'], 'the words come before the fresh start');
     assert.deepEqual([all[0].data.title, all[0].data.text, all[0].data.unsaid, all[0].data.aloud], ["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]);
@@ -932,6 +932,53 @@ test("Summarize now while a live session is opening or replying says busy and wr
     assert.equal(k.agent.live.busy, true);
     assert.equal(await k.agent.summarizeNow(), 'busy');
     assert.deepEqual(await k.events(['compaction']), []);
+  } finally {
+    await k.done();
+  }
+});
+
+/** The conversation a live session's setup gave it. @param {any} k */
+const setups = (k) => got(k, 'setup').map((/** @type {any} */ m) => m.setup.systemInstruction.parts[0].text);
+
+test('after Start fresh, the next live session opens with none of the earlier lines (fix pass 2, item 1)', async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Something new.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    assert.match(setups(k).at(-1), /The conversation so far/);
+    assert.equal(await k.agent.startFresh(), 'done');
+    assert.equal(/otters/i.test((await k.agent.live.c.setup()).context), false, 'a session without a handle starts from the fresh start');
+    k.agent.send('Something new');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    assert.equal(setups(k).length, 2);
+    assert.equal(/otters/i.test(setups(k).at(-1)), false, 'the fresh session holds none of the old lines');
+    assert.match(setups(k).at(-1), /Something new/);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a note that comes while Start fresh runs waits for it: the session it opens holds none of the earlier lines (fix pass 2, item 1's second path)", async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Noted.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    // Kokoro's part of Start fresh is held, as a slow phone would: meanwhile a note of Kokoro's comes for Koe.
+    /** @type {() => void} */
+    let go = () => {};
+    const gate = new Promise((r) => { go = () => r(undefined); });
+    const fresh = k.agent.kokoro.startFresh.bind(k.agent.kokoro);
+    k.agent.kokoro.startFresh = async () => { await gate; return fresh(); };
+    const started = k.agent.startFresh();
+    await k.agent.channel.send('kokoro', 'The weather turns at four.', 'append', 'tool', undefined, undefined, false, 'Rain comes at four.');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(setups(k).length, 1, 'no session opens while Start fresh runs');
+    go();
+    assert.equal(await started, 'done');
+    await soon(async () => setups(k).length === 2, 5000);
+    assert.equal(/otters/i.test(setups(k).at(-1)), false, 'the session the note opened holds none of the old lines');
   } finally {
     await k.done();
   }

@@ -550,3 +550,24 @@ test("Summarize now while Koe is mid-turn says busy and leaves Koe's window alon
   assert.match(JSON.stringify(k.agent.koe.transcript.messages), /Nepenthe/);
   assert.equal(await k.agent.summarizeNow(), 'nothing', 'free again: it ran, and one exchange is too little to summarize');
 });
+
+test("Start fresh in Koe · Classic shows Kokoro's words for the user that Koe still owes (for_user) above the divider, never lost (fix pass 2, item 6)", async () => {
+  const SLOW = { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'Hi.' }]) },
+    { match: 'a note from Kokoro', reply: { ...calls(['speak', { text: 'Good news.' }]), delayMs: 3000 } },
+  ] };
+  for (const when of ['in its turn', 'queued']) {
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: SLOW } });
+    k.agent.send('Hello');
+    await k.agent.idle();
+    const asked = k.sent['model-koe'].length;
+    await k.agent.channel.send('kokoro', 'Tell them about Highway 1.', 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    if (when === 'in its turn') await until(() => k.sent['model-koe'].length > asked);
+    assert.equal(await k.agent.startFresh(), 'done', when);
+    await k.agent.idle();
+    const all = (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, e.data.title ?? e.data.mode, e.data.text ?? '']);
+    assert.deepEqual(all, [['reminder', "Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.'], ['compaction', 'fresh', '']], when);
+    assert.ok(!(await shown(k)).some(([, , text]) => text === 'Good news.'), when);
+    assert.equal(JSON.stringify(k.agent.koe.transcript.messages).includes('Highway'), false, when);
+  }
+});
