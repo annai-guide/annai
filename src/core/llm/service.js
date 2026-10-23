@@ -13,6 +13,7 @@ import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
 import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
+import { forgetPhotoHashes } from './call.js';
 import { Uploads } from './uploads.js';
 import { Kept, keyPrint } from './kept.js';
 import { speechCall } from './speech.js';
@@ -463,7 +464,10 @@ export function createLlm({
     /** Sends the kept turns' deletions waiting (G2). */
     drainKept: () => drainKept(),
     /** A removed trip's kept turns, deleted (spec §4.9). @param {string} scope */
-    forgetScope: (scope) => forgetSoon({ scope }),
+    forgetScope: (scope) => {
+      forgetPhotoHashes(); // the photos sent from it, held in memory for their uploads' hashes (spec §4.9)
+      return forgetSoon({ scope });
+    },
     /** An ability's kept turns, its switch saved off. @param {string} endpoint */
     forgetEndpoint: (endpoint) => forgetSoon({ endpoint }),
     /** A key or address changing, or the key going: what the provider keeps goes first, with the old key. @template T @param {string} id @param {() => Promise<T>} save */
@@ -474,6 +478,7 @@ export function createLlm({
      */
     async forgetAll({ timeoutMs = 10_000 } = {}) {
       erasing = true;
+      forgetPhotoHashes();
       await within(Promise.allSettled([...inflight]), 5000);
       await kept.queue();
       await drainFor(timeoutMs);
