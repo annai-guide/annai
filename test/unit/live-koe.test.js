@@ -783,6 +783,38 @@ test('no answer within 8 s of the user finishing: traced, and a fresh session ge
   }
 });
 
+// realtime-fix2 P5: the harness's quick-yes, once in four runs (2026-10-22): Gemini answered "Yes." with already_told and no words.
+test("a spoken turn answered only by tool calls, no sound and no word (already_told), is no answer: the watchdog rescues it; a turn with nothing at all is chatter, and waits no more", async () => {
+  const k = await liveKit([{ heard: 'Yes.', tool: { name: 'already_told', args: {} } }, { said: 'Great, I will keep an eye out.', audio: tone(0.2) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await say(k, 'gas-station');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'Great, I will keep an eye out.');
+    const silent = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent');
+    assert.equal(silent.length, 1, 'the tool call alone answered nobody');
+    assert.ok(texts(k).some((t) => t.includes('Yes.')), 'their words, as text, in the fresh session');
+  } finally {
+    await k.done();
+  }
+  // Speech the model leaves unanswered on purpose (people talking among themselves): its empty turn ends the wait.
+  const k2 = await liveKit([{ heard: 'Did you lock the car?' }]);
+  try {
+    await updateAppSettings(k2.ws, { voice: { closeAfterSeconds: 300 } });
+    k2.agent.tap();
+    await until(() => k2.agent.live.listening && k2.platform.log.includes('mic open'));
+    await say(k2, 'gas-station');
+    await soon(async () => (await k2.events(['heard'])).length === 1, 5000);
+    await new Promise((r) => setTimeout(r, 1500)); // past the watchdog's 1 s here
+    assert.equal((await k2.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 0);
+    assert.equal(k2.server.connections().length, 1);
+  } finally {
+    await k2.done();
+  }
+});
+
 // Review M2: the watchdog.
 /** Delays each live session's opening by ms, as a slow network does. @param {any} k @param {number} ms */
 const slowOpen = (k, ms) => {
