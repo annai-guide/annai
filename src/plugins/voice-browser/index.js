@@ -67,6 +67,194 @@ export function activate(annai) {
   return annai.register('voice-platform', browserPlatform());
 }
 
+/**
+ * What the player worklet tells (player-worklet.js), about every 50 ms and at once as it starts, runs dry or is done. frame: the
+ * context's frame it is true at; played: frames of sound played; read: samples it has played past; written: samples it was given;
+ * level: loudness (RMS) since the last; dry: it ran dry and faded out, so nothing it was given plays until more comes; holes: times
+ * it ran dry and played on, holeFrames how long they were; waited: frames its first sound waited to play.
+ * @typedef {{ frame: number, played: number, read: number, written: number, level: number, playing: boolean, dry: boolean, done: boolean, holes: number,
+ *   holeFrames: number, waited: number }} Report
+ * @typedef {import('../../core/voice/platform.js').PlayerStream} PlayerStream
+ * @typedef {import('../../core/voice/platform.js').Played} Played
+ */
+
+/**
+ * A stream whose player is known once made settles: what comes meanwhile is held, then handed on.
+ * @param {Promise<PlayerStream>} made @param {Promise<boolean>} running @returns {PlayerStream}
+ */
+function heldStream(made, running) {
+  /** @type {PlayerStream | null} */
+  let inner = null;
+  /** @type {Int16Array[]} */
+  const held = [];
+  let ended = false;
+  /** @type {Played | null} */
+  let stopped = null;
+  /** @type {(r: Played) => void} */
+  let settle = () => {};
+  const done = new Promise((r) => { settle = r; });
+  made.then((s) => {
+    if (stopped) return void s.stop();
+    inner = s;
+    for (const p of held.splice(0)) s.push(p);
+    if (ended) s.end();
+    s.done.then(settle);
+  });
+  return {
+    push(pcm) {
+      if (inner) inner.push(pcm);
+      else if (!stopped) held.push(pcm);
+    },
+    end() {
+      ended = true;
+      inner?.end();
+    },
+    queued: () => (inner ? inner.queued() : held.length),
+    stop() {
+      if (inner) return inner.stop();
+      stopped ??= { playedMs: 0 };
+      settle(stopped);
+      return stopped;
+    },
+    done,
+    running,
+  };
+}
+
+/**
+ * A stream through a player worklet's node: the page's side, apart so that it is tested without sound. Its reports are at most
+ * 50 ms old, and come at once when it runs dry or is done: so queued() says a piece is still to play from its push until a report
+ * has it played (a half-duplex microphone is deaf no shorter than her sound), and stop() adds what has played since the last report.
+ * @param {{ port: { postMessage(m: any, t?: Transferable[]): void, onmessage: ((e: MessageEvent) => void) | null }, disconnect(): void }} node
+ * @param {{ rate: number, sampleRate: number, now: () => number, onLevel?: (x: number) => void, running: Promise<boolean> }} o
+ *   rate: the stream's; sampleRate: the context's; now: the context's time, in seconds
+ * @returns {PlayerStream}
+ */
+export function workletStream(node, { rate, sampleRate, now, onLevel = () => {}, running }) {
+  /** Where each piece pushed ends, in samples: those read are let go. @type {number[]} */
+  const ends = [];
+  let pushed = 0;
+  /** @type {Report} */
+  let last = { frame: 0, played: 0, read: 0, written: 0, level: 0, playing: false, dry: false, done: false, holes: 0, holeFrames: 0, waited: 0 };
+  /** @type {Played | null} */
+  let result = null;
+  /** @type {(r: Played) => void} */
+  let settle = () => {};
+  const done = new Promise((r) => { settle = r; });
+  const ms = (/** @type {number} */ frames) => Math.round((frames / sampleRate) * 1000);
+  /** @param {number} playedMs */
+  const finish = (playedMs) => {
+    if (result) return result;
+    result = { playedMs, holes: last.holes, holeMs: ms(last.holeFrames), waitMs: ms(last.waited), player: 'worklet' };
+    onLevel(0);
+    settle(result);
+    return result;
+  };
+  node.port.onmessage = (e) => {
+    /** @type {Report} */
+    const r = e.data;
+    if (r?.frame === undefined) return; // a sync's answer
+    last = r;
+    // Run dry, what it had will not sound unless more comes: her sound has stopped (a piece pushed since stays queued).
+    const past = r.done ? Infinity : r.dry ? r.written : r.read;
+    while (ends.length && ends[0] <= past) ends.shift();
+    if (r.done) {
+      node.port.onmessage = null;
+      node.disconnect();
+      finish(ms(r.played));
+    } else if (!result) onLevel(Math.min(1, r.level * 4));
+  };
+  return {
+    push(pcm) {
+      if (result || !pcm.length) return;
+      const copy = pcm.slice();
+      node.port.postMessage(copy, [copy.buffer]);
+      ends.push((pushed += pcm.length));
+    },
+    end() {
+      if (!result) node.port.postMessage('end');
+    },
+    queued: () => ends.length,
+    stop() {
+      if (result) return result;
+      node.port.postMessage('stop'); // it fades out over 12 ms: the sound's tail, not counted
+      const since = last.playing ? Math.max(0, now() - last.frame / sampleRate) * 1000 : 0;
+      return finish(Math.round(Math.min(ms(last.played) + since, (pushed / rate) * 1000)));
+    },
+    done,
+    running,
+  };
+}
+
+/**
+ * The player where AudioWorklet isn't, or its module didn't load: a buffer a piece, scheduled back to back on the context. Each
+ * piece is resampled alone and stopped at once, so an edge or a stop can click (the pops investigation, 2026-10-23).
+ * @param {AudioContext} c @param {{ rate: number, onLevel: (x: number) => void, running: Promise<boolean> }} o @returns {PlayerStream}
+ */
+function bufferStream(c, { rate, onLevel, running }) {
+  /** The pieces still to play: when on the context's clock, their source, and their loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
+  const pieces = [];
+  let heard = 0; // seconds of the pieces already played and let go
+  let next = 0;
+  let ended = false;
+  let holes = 0;
+  let holeS = 0;
+  /** @type {Played | null} */
+  let result = null;
+  /** @type {(r: Played) => void} */
+  let settle = () => {};
+  const done = new Promise((r) => { settle = r; });
+  const finish = () => {
+    if (result) return result;
+    clearInterval(ticker);
+    onLevel(0);
+    // What was heard: sound only, never the gaps when pieces came late.
+    const playedMs = Math.round((heard + pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0)) * 1000);
+    result = { playedMs, holes, holeMs: Math.round(holeS * 1000), waitMs: 30, player: 'buffers' };
+    settle(result);
+    return result;
+  };
+  // Its ticker runs until end() has played out or stop(): a caller always ends a stream one way or the other.
+  const ticker = setInterval(() => {
+    const now = c.currentTime;
+    while (pieces.length && pieces[0].end <= now) {
+      const p = /** @type {{ at: number, end: number }} */ (pieces.shift());
+      heard += p.end - p.at;
+    }
+    onLevel(pieces.find((p) => p.at <= now)?.level ?? 0);
+    if (ended && now >= next) finish();
+  }, 50);
+  return {
+    push(pcm) {
+      if (result || !pcm.length) return;
+      const buf = c.createBuffer(1, pcm.length, rate);
+      const ch = buf.getChannelData(0);
+      let sum = 0;
+      for (let i = 0; i < pcm.length; i++) sum += (ch[i] = pcm[i] / 0x8000) ** 2;
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.connect(c.destination);
+      const at = Math.max(next, c.currentTime + 0.03);
+      if (next && at > next + 0.001) {
+        holes++;
+        holeS += at - next;
+      }
+      src.start(at);
+      next = at + buf.duration;
+      pieces.push({ at, end: next, src, level: Math.min(1, Math.sqrt(sum / pcm.length) * 4) });
+    },
+    end() { ended = true; },
+    queued: () => pieces.length,
+    running,
+    stop() {
+      const r = finish();
+      for (const p of pieces) p.src.stop();
+      return r;
+    },
+    done,
+  };
+}
+
 /** limitMs: how long a codec's trial may take; an encoding gets that and 0.3 s a second of speech. @returns {VoicePlatform} */
 export function browserPlatform({ limitMs = 2000 } = {}) {
   /** @type {AudioContext | null} */
@@ -77,6 +265,11 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
   const player = () => (element ??= new Audio());
   /** @type {Promise<void> | null} */
   let worklet = null;
+  /** @type {Promise<boolean> | null} */
+  let playerModule = null;
+  /** The player worklet's module, loaded once on the context (at a tap, or as the microphone opens): whether it loaded. */
+  const playerReady = () => (playerModule ??= typeof AudioWorkletNode === 'undefined' || !context().audioWorklet ? Promise.resolve(false)
+    : context().audioWorklet.addModule(new URL('./player-worklet.js', import.meta.url).href).then(() => true, () => false));
   /** Each open microphone's track (§10.5): the newest is the one in use, read afresh each time (AirPods taken out). @type {MediaStreamTrack[]} */
   const inputs = [];
   /** @type {Promise<string[]> | null} */
@@ -130,6 +323,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           played = Promise.resolve(false);
         }
         context().resume().catch(() => {});
+        playerReady(); // loaded before her first word
         try {
           const quiet = new SpeechSynthesisUtterance(' ');
           quiet.volume = 0;
@@ -139,66 +333,26 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         }
         return played;
       },
-      // A live session's voice (K4): pieces scheduled back to back on the one unlocked context, however fast they come.
-      // Its ticker runs until end() has played out or stop(): a caller always ends a stream one way or the other.
+      // A live session's voice (K4), and a streamed voice's (G3): through the player worklet, or, where it can't load, pieces
+      // scheduled back to back on the one unlocked context. What is pushed before the worklet is known to load or not is held.
       stream({ rate, onLevel = () => {} }) {
         const c = context();
         // Whether it will sound: a context an interruption or a locked screen suspended may not resume without a tap (fix pass).
         const running = c.state === 'running' ? Promise.resolve(true) : c.resume().then(() => c.state === 'running', () => false);
-        /** The pieces still to play: when on the context's clock, their source, and their loudness. @type {{ at: number, end: number, src: AudioBufferSourceNode, level: number }[]} */
-        const pieces = [];
-        let heard = 0; // seconds of the pieces already played and let go
-        let next = 0;
-        let ended = false;
-        /** @type {{ playedMs: number } | null} */
-        let result = null;
-        /** @type {(r: { playedMs: number }) => void} */
-        let settle = () => {};
-        const done = new Promise((r) => { settle = r; });
-        const finish = () => {
-          if (result) return result;
-          clearInterval(ticker);
-          onLevel(0);
-          // What was heard: sound only, never the gaps when pieces came late.
-          result = { playedMs: Math.round((heard + pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0)) * 1000) };
-          settle(result);
-          return result;
-        };
-        const ticker = setInterval(() => {
-          const now = c.currentTime;
-          while (pieces.length && pieces[0].end <= now) {
-            const p = /** @type {{ at: number, end: number }} */ (pieces.shift());
-            heard += p.end - p.at;
+        return heldStream(playerReady().then((ok) => {
+          if (ok) {
+            try {
+              const node = new AudioWorkletNode(c, 'annai-player', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { rate } });
+              node.connect(c.destination);
+              return workletStream(node, { rate, sampleRate: c.sampleRate, now: () => c.currentTime, onLevel, running });
+            } catch {
+              // the buffers below
+            }
           }
-          onLevel(pieces.find((p) => p.at <= now)?.level ?? 0);
-          if (ended && now >= next) finish();
-        }, 50);
-        return {
-          push(pcm) {
-            if (result || !pcm.length) return;
-            const buf = c.createBuffer(1, pcm.length, rate);
-            const ch = buf.getChannelData(0);
-            let sum = 0;
-            for (let i = 0; i < pcm.length; i++) sum += (ch[i] = pcm[i] / 0x8000) ** 2;
-            const src = c.createBufferSource();
-            src.buffer = buf;
-            src.connect(c.destination);
-            const at = Math.max(next, c.currentTime + 0.03);
-            src.start(at);
-            next = at + buf.duration;
-            pieces.push({ at, end: next, src, level: Math.min(1, Math.sqrt(sum / pcm.length) * 4) });
-          },
-          end() { ended = true; },
-          queued: () => pieces.length,
-          running,
-          stop() {
-            const r = finish();
-            for (const p of pieces) p.src.stop();
-            return r;
-          },
-          done,
-        };
+          return bufferStream(c, { rate, onLevel, running });
+        }), running);
       },
+      output: () => (ctx ? { sampleRate: ctx.sampleRate, baseLatency: ctx.baseLatency } : null),
       plays: () => CODEC_ORDER.flat().filter((f) => f !== 'opus' && player().canPlayType(mediaTypeOf(f) + (PARAMS[f] ?? '')) !== ''),
       async play(clip, { signal, onLevel = () => {} }) {
         if (signal.aborted) return { ended: false, fraction: 0 };
@@ -328,6 +482,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         try {
           const c = context();
           if (c.state !== 'running') await c.resume().catch(() => {});
+          playerReady();
           worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
           try {
             await worklet;

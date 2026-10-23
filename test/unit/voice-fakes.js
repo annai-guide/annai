@@ -82,6 +82,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     streams: [],
     player: {
       async unlock() { log.push('unlock'); return true; },
+      output: () => ({ sampleRate: 48_000, baseLatency: 0.01 }),
       ...(plays ? { plays: () => plays } : {}),
       /** A live session's voice: it "plays" streamSpeed times faster than real time, from its first piece. @param {{ rate: number }} o */
       stream({ rate }) {
@@ -93,12 +94,15 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         let settle = () => {};
         const done = new Promise((r) => { settle = r; });
         const played = () => (started ? Math.min(s.ms, (Date.now() - started) * platform.streamSpeed) : 0);
+        /** The player's own numbers, as the worklet's are: no holes, a start at once. @type {any} */
+        let result = null;
         const finish = () => {
-          if (s.playedMs !== null) return { playedMs: s.playedMs };
+          if (result) return result;
           clearInterval(timer);
           s.playedMs = Math.round(played());
-          settle({ playedMs: s.playedMs });
-          return { playedMs: s.playedMs };
+          result = { playedMs: s.playedMs, holes: 0, holeMs: 0, waitMs: 0, player: 'fake' };
+          settle(result);
+          return result;
         };
         const timer = setInterval(() => { if (s.ended && played() >= s.ms) finish(); }, 2);
         return {

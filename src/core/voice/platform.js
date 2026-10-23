@@ -8,13 +8,16 @@
  *   the microphone: open only while listening (§10.2); record: a MediaRecorder type to record alongside; inUse: the input its open
  *   stream takes, by its track's label and deviceId (§10.5); null while closed
  * @typedef {{ unlock(): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
- *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream }} Player
+ *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream, output?(): { sampleRate: number, baseLatency?: number } | null }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now; play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;
- *   stream(): a live session's voice, 16-bit PCM pushed as it arrives (K4)
- * @typedef {{ push(pcm: Int16Array): void, end(): void, stop(): { playedMs: number }, done: Promise<{ playedMs: number }>, queued(): number, running?: Promise<boolean> }} PlayerStream
- *   pieces play back to back, however fast they come; end: no more is coming, and done settles once it has all played; stop: silence now
- *   (always one or the other); playedMs: how much was heard, for cutting what was said where it stopped; queued: pieces still to play;
+ *   stream(): a live session's voice, 16-bit PCM pushed as it arrives (K4); output: the sound's rate and the output's own latency (s), for the Trace, once there is sound
+ * @typedef {{ push(pcm: Int16Array): void, end(): void, stop(): Played, done: Promise<Played>, queued(): number, running?: Promise<boolean> }} PlayerStream
+ *   pieces play as one sound, however fast they come, after a short start (150 ms of it in, the pops investigation); end: no more is coming,
+ *   and done settles once it has all played; stop: silent within 15 ms, faded out (always one or the other); queued: pieces still to play;
  *   running: whether its sound can play, once the player knows (false: the page may not play sound now, so it would never end)
+ * @typedef {{ playedMs: number, holes?: number, holeMs?: number, waitMs?: number, player?: string }} Played  playedMs: how much was heard, for
+ *   cutting what was said where it stopped; holes: times it ran dry and played on, holeMs their silence; waitMs: how long its first sound
+ *   waited to play; player: 'worklet', or 'buffers' where the player worklet can't run
  * @typedef {{ makes(): Promise<string[]>, records?(): { type: string, format: string }[], encode(pcm: Int16Array, rate: number, format: string): Promise<Uint8Array>,
  *   decode?(data: Uint8Array, mediaType: string): Promise<{ pcm: Float32Array, rate: number }> }} Encoder  the audio encoders (§10.6); records: MediaRecorder's
  * @typedef {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }} SystemVoice
