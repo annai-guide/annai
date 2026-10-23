@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import { VERSION } from '../../src/app/version.js';
 
 const root = new URL('../../', import.meta.url);
+/** The pseudo-locales are made at load in development only, and are not shipped (localization design, "Tests"). */
+const PSEUDO = '/src/core/l10n-pseudo.js';
 
 /** @param {string} dir @returns {Promise<string[]>} */
 async function walk(dir) {
@@ -23,7 +25,7 @@ test('the service worker caches exactly the files the app ships', async () => {
   const block = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '';
   const shell = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
   // LICENSE too, so Settings → About → Read the licence works offline.
-  const expected = ['/', '/index.html', '/manifest.webmanifest', '/LICENSE', ...(await walk('src')), ...(await walk('assets')), ...(await walk('skills'))].sort();
+  const expected = ['/', '/index.html', '/manifest.webmanifest', '/LICENSE', ...(await walk('src')).filter((p) => p !== PSEUDO), ...(await walk('assets')), ...(await walk('skills'))].sort();
   assert.deepEqual(shell, expected);
 });
 
