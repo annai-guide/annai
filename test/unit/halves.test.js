@@ -571,3 +571,108 @@ test("Start fresh in Koe · Classic shows Kokoro's words for the user that Koe s
     assert.equal(JSON.stringify(k.agent.koe.transcript.messages).includes('Highway'), false, when);
   }
 });
+
+// Fix pass 3: what the verification's probes found in Start fresh, Koe · Classic.
+const reminders = async (/** @type {any} */ k) => (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, e.data.title ?? e.data.mode, e.data.text ?? '']);
+const HIGHWAY = 'Highway 1 took from 1919 to 1937 to build.';
+const noteForUser = (/** @type {any} */ k) => k.agent.channel.send('kokoro', 'Tell them about Highway 1.', 'append', 'tool', undefined, undefined, false, HIGHWAY);
+
+test("Start fresh in the first moments of Koe's turn for Kokoro's note, before it reads it: the note's words are shown above the divider, once (fix pass 3, item 1)", async () => {
+  const KOE = { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'Hi.' }]) },
+    { match: 'a note from Kokoro', reply: { ...calls(['speak', { text: 'Good news.' }]), delayMs: 3000 } },
+  ] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  /** @type {Promise<any> | null} */
+  let fresh = null;
+  // Koe's turn for the note writes its wake first, before its steps go on.
+  const off = k.agent.on('event', (/** @type {any} */ e) => {
+    if (!fresh && e.type === 'wake' && e.data?.half !== 'kokoro' && (e.data?.reasons ?? []).some((/** @type {any} */ r) => r.kind === 'note')) fresh = k.agent.startFresh();
+  });
+  await noteForUser(k);
+  await until(() => fresh !== null);
+  assert.equal(await fresh, 'done');
+  off();
+  await k.agent.idle();
+  assert.deepEqual(await reminders(k), [['reminder', "Shiori's answer", HIGHWAY], ['compaction', 'fresh', '']]);
+});
+
+test("Start fresh while annai shows Kokoro's note Koe never passed on: shown once, not twice (fix pass 3, item 2)", async () => {
+  const KOE = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Hi.' }]) }, { match: '.', reply: sleep }] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  /** @type {Promise<any> | null} */
+  let fresh = null;
+  const off = k.agent.on('event', (/** @type {any} */ e) => {
+    if (!fresh && e.type === 'reminder' && e.data?.title === "Shiori's answer") fresh = k.agent.startFresh();
+  });
+  await noteForUser(k);
+  await until(() => fresh !== null);
+  await fresh;
+  off();
+  await k.agent.idle();
+  assert.equal((await reminders(k)).filter(([t, , text]) => t === 'reminder' && text === HIGHWAY).length, 1);
+});
+
+test('Start fresh drops what waited behind a turn it stopped, as stopped: nothing runs for it in the fresh context (fix pass 3, item 4)', async () => {
+  const KOKORO = { rules: [{ match: '.', reply: { ...sleep, delayMs: 1500 } }] };
+  const KOE = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Sure.' }]) }] };
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  k.agent.send('First question about pelicans');
+  await until(() => (k.sent['model-0']?.length ?? 0) >= 1); // Kokoro's slow turn is under way
+  k.agent.send('Second question about pelicans');
+  await until(() => k.agent.kokoro.busy && (k.sent['model-koe']?.length ?? 0) >= 2);
+  await new Promise((r) => setTimeout(r, 100));
+  const before = { kokoro: k.sent['model-0'].length, koe: k.sent['model-koe'].length };
+  assert.equal(await k.agent.startFresh(), 'done');
+  await k.agent.idle();
+  assert.deepEqual({ kokoro: k.sent['model-0'].length, koe: k.sent['model-koe'].length }, before, 'no turn in the fresh context for what came before it');
+  const stopped = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'stopped');
+  assert.ok(stopped.length >= 1 && stopped.every((/** @type {any} */ e) => e.data.quiet));
+  // A message after it is answered as usual.
+  k.agent.send('Something new');
+  await k.agent.idle();
+  assert.ok(k.sent['model-koe'].length > before.koe);
+});
+
+test('Start fresh while another conversation is opening says so before it does anything (fix pass 3, item 11)', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  /** @type {string[]} */
+  const closed = [];
+  const close = k.agent.live.close.bind(k.agent.live);
+  k.agent.live.close = (/** @type {string} */ why, /** @type {any} */ o) => { closed.push(why); return close(why, o); };
+  const opening = k.agent.open(other);
+  assert.equal(await k.agent.startFresh(), 'opening');
+  await opening;
+  assert.deepEqual(closed.filter((w) => w === 'fresh'), [], 'nothing of Start fresh was done');
+});
+
+test('Start fresh lets both halves go even when closing live at its end throws (fix pass 3, item 12)', async () => {
+  const KOE = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Answer.' }]) }] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  // A session that seems open at the end, and a close that throws there.
+  const live = k.agent.live;
+  const was = live.state;
+  let closes = 0;
+  const close = live.close.bind(live);
+  live.close = (/** @type {string} */ why, /** @type {any} */ o) => {
+    if (why !== 'fresh' || !closes++) return close(why, o);
+    Object.defineProperty(live, 'state', { value: was, writable: true, configurable: true, enumerable: true });
+    throw new Error('the socket went away');
+  };
+  const fresh = k.agent.kokoro.startFresh.bind(k.agent.kokoro);
+  k.agent.kokoro.startFresh = async () => { const r = await fresh(); Object.defineProperty(live, 'state', { value: 'open', writable: true, configurable: true, enumerable: true }); return r; };
+  await k.agent.startFresh().catch(() => {});
+  k.agent.send('Again');
+  await Promise.race([k.agent.idle(), new Promise((r) => setTimeout(r, 3000))]);
+  assert.equal((await k.events(['out.speak'])).length, 2, 'the message after it is answered');
+});

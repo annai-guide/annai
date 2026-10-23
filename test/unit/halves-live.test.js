@@ -1006,3 +1006,77 @@ test("in Koe · Realtime her words come as the transcript grows, while she speak
     await k.done();
   }
 });
+
+// Fix pass 3: what the verification's probes found in Koe · Realtime.
+/** Start fresh with Kokoro's own part held until go(). @param {any} k */
+function gated(k) {
+  /** @type {() => void} */
+  let go = () => {};
+  const gate = new Promise((r) => { go = () => r(undefined); });
+  const orig = k.agent.kokoro.startFresh.bind(k.agent.kokoro);
+  k.agent.kokoro.startFresh = async () => { await gate; return orig(); };
+  return { started: k.agent.startFresh(), go };
+}
+
+test('a message typed while Start fresh runs is written below the divider, and answered after it (fix pass 3, item 3)', async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }, { said: 'Something new, yes.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const { started, go } = gated(k);
+    await new Promise((r) => setTimeout(r, 50));
+    k.agent.send('Something new');
+    await new Promise((r) => setTimeout(r, 300));
+    go();
+    assert.equal(await started, 'done');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    await k.agent.idle();
+    const ev = (await k.events(['msg.user', 'compaction'])).map((/** @type {any} */ e) => `${e.type}:${e.data.mode ?? e.data.text}`);
+    assert.deepEqual(ev, ['msg.user:Tell me about otters please', 'compaction:fresh', 'msg.user:Something new']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Kokoro's note for the user while Start fresh runs, then a switch to another trip: its words are shown once (fix pass 3, item 10)", async () => {
+  const k = await liveKit([{ said: 'Otters hold hands.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Tell me about otters please');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const { started, go } = gated(k);
+    await k.agent.channel.send('kokoro', 'The weather turns at four.', 'append', 'tool', undefined, undefined, false, 'Rain comes at four.');
+    await new Promise((r) => setTimeout(r, 100));
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const other = await createTrip(k.ws, { title: 'Yosemite' });
+    const opened = k.agent.open(other);
+    go();
+    await started.catch(() => {});
+    await opened;
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 300));
+    const left = (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    const there = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(other, { types: ['reminder'] }))).map((/** @type {any} */ e) => e.data.text);
+    assert.equal([...left, ...there].filter((t) => /Rain comes at four/.test(t)).length, 1);
+  } finally {
+    await k.done();
+  }
+});
+
+test('words she says after the provider ends her turn, while her voice still plays, reach the bubble (fix pass 3, item 9)', async () => {
+  const k = await liveKit([{ said: 'It is open', saidAfter: ' until ten tonight.', audio: tone(1.5) }]);
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    /** @type {string[]} */
+    const seq = [];
+    k.agent.on('saying', (/** @type {string} */ t) => seq.push(t));
+    k.agent.send('Is it open?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    await k.agent.idle();
+    assert.match(seq.at(-1) ?? '', /until ten tonight/);
+  } finally {
+    await k.done();
+  }
+});

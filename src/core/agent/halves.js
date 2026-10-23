@@ -252,6 +252,7 @@ export class Halves {
           this.#up('koe');
         },
         unsaid: (notes) => this.#backstop(notes),
+        left: (notes) => this.#leftUnsaid(notes),
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
@@ -323,11 +324,14 @@ export class Halves {
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
   /** @type {Promise<unknown>[]} Kokoro's owed words being shown in the conversation left or started fresh from */
   #left = [];
+  /** Kokoro's notes already shown as left unsaid. @type {WeakSet<Wake>} */
+  #shown = new WeakSet();
   /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
   #fresh = null;
 
   /** Kokoro's words for the user (for_user) a switch or Start fresh left unsaid: shown, never aloud. @param {Wake[]} notes */
   #leftUnsaid(notes) {
+    for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
     const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
     if (!list.length) return;
     const shown = this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
@@ -499,7 +503,7 @@ export class Halves {
     if (this.koeState === 'text') return this.koe.enqueue(w);
     if (this.koeState !== 'down') {
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
-      if (isForUser(w)) await this.#backstop([w]);
+      if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
       return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
     }
     this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
@@ -681,6 +685,7 @@ export class Halves {
    */
   startFresh() {
     if (this.#fresh) return this.#fresh.done;
+    if (this.kokoro.switching || this.koe.switching) return Promise.resolve(/** @type {const} */ ('opening')); // before anything is done
     /** @type {() => void} */
     let release = () => {};
     const held = new Promise((r) => { release = () => r(undefined); });
@@ -702,9 +707,9 @@ export class Halves {
       await Promise.all(this.#left); // shown above the divider
       return await this.kokoro.startFresh();
     } finally {
-      if (this.live.state !== 'closed') this.live.close('fresh', { forget: true });
       this.koe.letGo();
       this.kokoro.letGo();
+      if (this.live.state !== 'closed') this.live.close('fresh', { forget: true });
     }
   }
 
