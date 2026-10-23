@@ -67,6 +67,7 @@ export function activate(annai) {
     list: (/** @type {any} */ c) => list(client(c)),
     put: (/** @type {any} */ c, /** @type {any} */ archive, /** @type {any} */ o) => put(client(c), archive, o),
     get: (/** @type {any} */ c, /** @type {string} */ id, /** @type {any} */ o) => get(client(c), id, o),
+    peek: (/** @type {any} */ c, /** @type {string} */ id, /** @type {any} */ o) => peek(client(c), id, o),
   });
 }
 
@@ -379,6 +380,32 @@ async function list(g) {
     .map((c) => describe({ sha: c.sha, message: c.commit.message, author: c.commit.author, committer: c.commit.committer }));
 }
 
+/** A backup's annai-archive.json, read. @param {G} g @param {Uint8Array} bytes */
+function manifestOf(g, bytes) {
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new g.TargetError('other', 'This backup is damaged: its annai-archive.json is not readable.');
+  }
+}
+
+/**
+ * What one backup holds, from its annai-archive.json alone: one request, the file at that commit through the contents API
+ * (a commit is a ref it takes; the raw media type gives the bytes up to 100 MB), whatever the number of files. The import screen
+ * previews with this, and the files come when the user imports (get).
+ * @param {G} g @param {string} id @param {{ signal?: AbortSignal }} [o]
+ */
+async function peek(g, id, { signal } = {}) {
+  ready(g);
+  signal?.throwIfAborted();
+  const E = g.TargetError;
+  if (!/^[0-9a-f]{40}$/.test(id)) throw new E('missing', `That backup isn't in ${g.repo} on GitHub.`);
+  const res = await call(g, 'GET', `/contents/${MANIFEST}?ref=${id}`, { raw: true, signal });
+  if (res.status === 404) throw new E('missing', "That commit isn't an annai backup.");
+  if (!res.ok) throw await failure(g, res);
+  return manifestOf(g, /** @type {Uint8Array} */ (await g.read(res, 'bytes', 'GitHub', { max: MANIFEST_MAX })));
+}
+
 /**
  * One backup, as an archive file annai opens on its import screen: the files the backup's
  * annai-archive.json names, read from that commit.
@@ -391,13 +418,7 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   const m = files.get(MANIFEST);
   if (!m) throw new E('missing', "That commit isn't an annai backup.");
   const manifestBytes = await blob(g, m.sha, signal, MANIFEST_MAX);
-  /** @type {any} */
-  let manifest;
-  try {
-    manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
-  } catch {
-    throw new E('other', 'This backup is damaged: its annai-archive.json is not readable.');
-  }
+  const manifest = manifestOf(g, manifestBytes);
   const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
   const named = lists.flat().map((x) => x?.name);
   const names = [...new Set(named.filter((n) => typeof n === 'string' && n !== MANIFEST))];

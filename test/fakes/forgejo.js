@@ -77,6 +77,9 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
   let duringChange = null;
   /** @type {{ method: string, part: string, answer: Answer } | null} */
   let next = null;
+  /** @type {{ gate: Promise<void>, pass: number } | null} */
+  let held = null;
+  let waiting = 0;
   /** @type {number} bytes the owner may keep, or Infinity */
   let quota = Infinity;
   let origin = '';
@@ -383,9 +386,15 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     /** @type {Buffer[]} */
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
-    req.on('end', () => {
+    req.on('end', async () => {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const method = req.method ?? 'GET';
+      // A backup's files (not its manifest) wait here while holdFiles is on.
+      if (held && method === 'GET' && url.pathname.includes('/media/') && !url.pathname.endsWith('/media/annai-archive.json') && held.pass-- <= 0) {
+        waiting++;
+        await held.gate;
+        waiting--;
+      }
       const from = typeof req.headers.origin === 'string' ? req.headers.origin : undefined;
       const raw = Buffer.concat(chunks);
       /** @type {Answer} */
@@ -477,6 +486,18 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     duringChange(fn) {
       duringChange = fn;
     },
+    /** The requests for a backup's files (not its manifest) wait, after the first letThrough of them, until the returned function is called. @param {number} [letThrough] @returns {() => void} */
+    holdFiles(letThrough = 0) {
+      /** @type {() => void} */
+      let release = () => {};
+      held = { gate: new Promise((resolve) => { release = () => resolve(undefined); }), pass: letThrough };
+      return () => {
+        held = null;
+        release();
+      };
+    },
+    /** How many requests for files are waiting in holdFiles. */
+    waiting: () => waiting,
     /** The next request with this method to a path holding part gets this answer instead. @param {string} method @param {string} part @param {Answer} a */
     answerNext(method, part, a) {
       next = { method, part, answer: a };

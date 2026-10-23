@@ -1,4 +1,4 @@
-import { exportArchive, PRESETS } from './archive.js';
+import { exportArchive, checkManifest, PRESETS } from './archive.js';
 import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
 import { withoutSecrets, withoutSecretsIn } from './agent/net.js';
@@ -403,13 +403,45 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       return listed(await target(id));
     },
 
-    /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */
-    download: (id, backupId) => {
+    /**
+     * What one backup holds, from its manifest alone, for a place whose type can peek (storage-types.js): the import screen previews
+     * with it, and calls download when the user imports. Null for a place that can't. It reads nothing else, so an automatic
+     * backup running isn't in its way. @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
+     */
+    async peek(id, backupId, o = {}) {
+      const rec = await target(id);
+      const type = typeOf(rec.type);
+      // Only a place that keeps the unpacked tree: a whole archive file may be encrypted, and its preview needs the passphrase form.
+      if (type?.stores !== 'tree' || typeof type.peek !== 'function') return null;
+      const manifest = await call(rec, 'peek', (t, c) => /** @type {NonNullable<StorageType['peek']>} */ (t.peek)(c, backupId, { signal: o.signal }));
+      try {
+        checkManifest(manifest);
+      } catch (e) {
+        // What is wrong with it goes to the Trace; the screen says it in a few plain words.
+        const why = String(/** @type {any} */ (e)?.message ?? e);
+        await log('backup.peek', { target: id, type: rec.type, backup: backupId, problem: (await withoutSecrets(store, why)).slice(0, 500) });
+        throw new TargetError('other', /newer version of annai/.test(why) ? 'This backup was made by a newer annai: update annai first.' : 'This backup is damaged.');
+      }
+      return manifest;
+    },
+
+    /**
+     * Downloads one backup from a place, as an archive file for the import screen (spec §12.3). signal: the user left or cancelled; a
+     * download still waiting its turn then never reaches the place, and one under way stops it.
+     * @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
+     */
+    download: (id, backupId, { signal } = {}) => {
       // The user is waiting for this: an automatic backup in its way stops, and carries on later as usual.
       for (const p of running.values()) if (p.reason === 'auto') p.stop.abort();
+      const stopped = () => new DOMException('The backup was stopped.', 'AbortError');
       return serial(async () => {
+        if (signal?.aborted) throw stopped();
         const rec = await target(id);
+        // A cancel that came while the place's record was read has no listener to reach: look again, then listen, with nothing between.
+        if (signal?.aborted) throw stopped();
         const stop = new AbortController();
+        const forward = () => stop.abort();
+        signal?.addEventListener('abort', forward, { once: true });
         running.set(id, { phase: 'downloading', done: 0, total: 0, stop, reason: 'download' });
         emit();
         try {
@@ -420,9 +452,13 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
               emit();
             },
           }));
-          await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size });
+          // A cancel as the download ends throws the backup away, and the trace says so.
+          const cut = Boolean(signal?.aborted);
+          await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size, ...(cut ? { stopped: true } : {}) });
+          if (cut) throw stopped();
           return blob;
         } finally {
+          signal?.removeEventListener('abort', forward);
           running.delete(id);
           emit();
         }
