@@ -535,7 +535,9 @@ export class Halves {
     const tail = await this.#koeTail({ now: this.koe.now(), timeZone: this.koe.timeZone(), voice, online: this.koe.online(), reasons: ['a live session opened'], place, activity });
     // The protocol's own language fields (Gemini Live's transcription hints, OpenAI's transcription language) get the setting; the words are in the instructions.
     const languages = languageSettings(await readAppSettings(this.ws), this.voice?.locale);
-    return { instructions: koeSystem(s, true), context: [await this.#recent(), tail].filter(Boolean).join('\n'), languages: modelLanguages(languages), known: languages };
+    // How she sounds, as in Classic: one stable line while the voice's style is set (the description's, or the user's own).
+    const style = (await this.voice?.speakingStyle().catch(() => '')) ?? '';
+    return { instructions: koeSystem(s, true) + (style ? `\n\n# Voice\nYour speaking style: ${style}.` : ''), context: [await this.#recent(), tail].filter(Boolean).join('\n'), languages: modelLanguages(languages), known: languages };
   }
 
   /** The conversation's last 12 lines, for a live session that starts without a handle: annai's labels, every word quoted and escaped. */

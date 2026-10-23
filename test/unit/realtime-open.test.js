@@ -222,7 +222,7 @@ test('realtime usage is priced by audioIn and audioOut and counted in Spend per 
   assert.ok(Math.abs(spent - (first + second)) < 1e-12, `${spent} vs ${first + second}`);
 });
 
-test("a protocol may open again once, before the session is ready, with the tunables it gives (Gemini's proactive audio, decision 11)", async () => {
+test("a protocol may open again, twice at most, before the session is ready, with the tunables it gives (Gemini's proactive audio, decision 11; its language hints)", async () => {
   FakeSocket.made = [];
   const type = { ...ECHO, reopen: (/** @type {number} */ code, /** @type {string} */ reason, /** @type {any} */ t) => (code === 1007 && /proactivity/.test(reason) && t.version !== 'v2' ? { ...t, version: 'v2' } : null) };
   const { store, session } = open({ type, tunables: { version: 'v1' } });
@@ -236,14 +236,17 @@ test("a protocol may open again once, before the session is ready, with the tuna
   assert.deepEqual(session.tunables, { version: 'v2' });
   const states = (await events(store)).filter((/** @type {any} */ e) => e.type === 'live.session').map((/** @type {any} */ e) => e.data.state);
   assert.deepEqual(states, ['open', 'ready']);
-  // Only once: a second refusal ends it.
-  const again = open({ type: { ...type, reopen: () => ({ version: 'v3' }) }, tunables: { version: 'v1' } });
+  // At most twice in all: a third refusal ends it (a second fix, for a second field refused, is allowed: Gemini's hints, then its proactive audio).
+  const again = open({ type: { ...type, reopen: (/** @type {number} */ _c, /** @type {string} */ _r, /** @type {any} */ t) => ({ version: `v${Number(String(t.version).slice(1)) + 1}` }) }, tunables: { version: 'v1' } });
   await tick();
   again.ws().drop(1007, 'no');
   await tick();
   again.ws().drop(1007, 'still no');
+  await tick();
+  assert.equal(FakeSocket.made.length, 5, 'a second reopen');
+  again.ws().drop(1007, 'and again no');
   await assert.rejects(again.session.ready, (e) => e instanceof ProviderError);
-  assert.equal(FakeSocket.made.length, 4);
+  assert.equal(FakeSocket.made.length, 5, 'but not a third');
   session.close();
 });
 
@@ -300,6 +303,37 @@ test('callRole skips a realtime model as not-chat; a chat role never sends it a 
   assert.ok(llm.bench.until(m.id) > Date.now(), 'a refused key rests the model');
   await assert.rejects(llm.live('m-nope', { instructions: '', context: '', tools: [] }), (e) => e instanceof ProviderError && e.kind === 'not-found');
   assert.ok(!JSON.stringify(await events(store)).includes(KEY));
+});
+
+test('what a refusal taught the protocol is remembered for the model even when the reopened attempt fails, so the next session does not pay a refused socket again (Step S4)', async () => {
+  const registry = new Registry();
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  /** @type {any[]} */
+  const opened = [];
+  registry.add('echo', 'endpoint-type', {
+    ...ECHO,
+    open: (/** @type {any} */ c) => { opened.push({ ...c.tunables }); return ECHO.open(c); },
+    reopen: (/** @type {number} */ code, /** @type {string} */ reason, /** @type {any} */ t) => (code === 1007 && /languageCodes/.test(reason) && t.languageHints !== false ? { ...t, languageHints: false } : null),
+  });
+  const p = newProvider('provider-test', { user: { name: 'Gemini', baseUrl: 'https://live.test', abilities: { live: { kind: 'realtime', type: 'echo-live' } } } });
+  const m = newModel(p.id, 'live', { user: { providerId: 'live-1' } });
+  await saveProvider(ws, p, [m]);
+  await setKey(store, p.id, KEY);
+  FakeSocket.made = [];
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: async () => { throw new Error('no request'); }, openSocket: socket });
+  const setup = { instructions: '', context: '', tools: [] };
+  const first = await llm.live(m.id, setup);
+  await tick();
+  FakeSocket.made[0].drop(1007, 'Unknown name "languageCodes" at \'setup.input_audio_transcription\'');
+  await tick();
+  FakeSocket.made[1].drop(1011, 'the server had a bad moment'); // the reopened attempt fails for another reason
+  await assert.rejects(first.ready, (e) => e instanceof ProviderError);
+  const second = await llm.live(m.id, setup);
+  await tick();
+  assert.deepEqual(opened.map((t) => t.languageHints), [undefined, false, false], 'the second session starts without the hints');
+  second.close();
 });
 
 test('a key with characters an address escapes is blanked in both forms: in the close, the error and the trace (review)', async () => {

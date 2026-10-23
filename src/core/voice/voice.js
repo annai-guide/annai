@@ -64,6 +64,8 @@ export class Voice {
   voicePlays = new Map();
   /** The voices that answered a 400 naming instructions: asked without their style from then on (until annai restarts). @type {Set<string>} */
   unstyled = new Set();
+  /** The transcription models that answered a 400 naming language: asked without the user's languages from then on (until annai restarts). @type {Set<string>} */
+  unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: 'not sure' };
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
@@ -137,6 +139,19 @@ export class Voice {
   /** What the user speaks (Settings → Shiori), the browser's language until they choose. */
   async languages() {
     return languageSettings(await readAppSettings(this.ws), this.locale);
+  }
+
+  /**
+   * How Shiori sounds, in the words of the first Gemini voice in her voices' list: its style, the description's default or the user's own,
+   * in plain words; '' once the user has cleared it, for a voice that takes none, or with no Gemini voice. Koe live is told it, so it sounds
+   * as she does in Classic.
+   */
+  async speakingStyle() {
+    const cfg = await this.llm.config();
+    const id = (cfg.roles['speech-out']?.models ?? []).find((/** @type {string} */ i) => abilityOf(cfg, i)?.type === 'gemini-speech');
+    if (!id) return '';
+    const t = tunablesOf(cfg, this.llm.types(), id);
+    return t.styled === false ? '' : String(t.style ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).replace(/[\s.,;:!?]+$/, '');
   }
 
   /** The language phone dictation listens in: the first the user speaks (it takes one), whatever Shiori answers in. */
@@ -386,12 +401,18 @@ export class Voice {
     if (!audio) throw new ProviderError('bad-request', `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
     for (let retry = 0; ; retry++) {
       try {
-        const languages = modelLanguages(await this.languages());
+        const hints = modelLanguages(await this.languages());
+        const languages = this.unhinted.has(id) ? { ...hints, spoken: [] } : hints;
         const text = String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake, signal, languages })).text ?? '');
         if (plain) this.wavOnly.add(id);
         return text;
       } catch (e) {
         const kind = e instanceof ProviderError ? e.kind : '';
+        // A 400 naming the language field: asked again without the user's languages, and not hinted again (as a refused style is dropped).
+        if (kind === 'bad-request' && /language/i.test(/** @type {Error} */ (e).message) && !this.unhinted.has(id) && modelLanguages(await this.languages()).spoken.length) {
+          this.unhinted.add(id);
+          return this.#hear(id, kept, scope, wake, signal, plain);
+        }
         if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, true);
         if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length || signal?.aborted) throw e;
         await new Promise((r) => setTimeout(r, this.retryMs[retry]));

@@ -14,7 +14,8 @@
  *   appropriate language and don't support explicitly setting the language code", so no speechConfig.languageCode is sent (it takes one code
  *   anyway); they may be told in the system instruction which languages to speak, and annai always does (the instructions it is given hold the
  *   languages section). Input transcription takes `languageCodes`, several BCP-47 hints ("If omitted or empty, defaults to automatic language
- *   detection"), in the guide's own codes (en, ja, zh-Hans); a session that refuses the field opens once more without it;
+ *   detection"), in the guide's own codes (en, ja, zh-Hans), and only when every language listed has one (Cantonese has none); a session that
+ *   refuses the field opens again without it, and again if it then refuses the proactive audio (two reopens at most);
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
@@ -96,8 +97,10 @@ export function activate(annai) {
         if (m.sessionResumptionUpdate?.resumable && m.sessionResumptionUpdate.newHandle) emit({ type: 'resume', handle: m.sessionResumptionUpdate.newHandle });
         if (m.goAway) emit({ type: 'goaway', ms: ms(m.goAway.timeLeft) });
       });
-      // The user's languages as Gemini Live names them, once each, in order; Cantonese and Mandarin are two ids that may share a code.
-      const hints = t.languageHints === false ? [] : [...new Set((setup.languages?.spoken ?? []).map((/** @type {any} */ l) => l?.live).filter(Boolean))];
+      // The user's languages as Gemini Live names them, once each, in order. Only when it names every one: a list missing a language
+      // (Cantonese, whose zh-Hant is not its own) would bias the transcript against it.
+      const codes = (setup.languages?.spoken ?? []).map((/** @type {any} */ l) => l?.live);
+      const hints = t.languageHints === false || codes.some((/** @type {unknown} */ c) => !c) ? [] : [...new Set(codes)];
       send({
         setup: {
           model: `models/${model.providerId}`,
@@ -129,7 +132,8 @@ export function activate(annai) {
     /** @param {number} code @param {string} reason @param {any} t */
     reopen: (code, reason, t) => {
       if (code !== 1007) return null;
-      if (/languageCodes/i.test(reason) && t.languageHints !== false) return { ...t, languageHints: false };
+      // One field a try, twice in all: the hints, then the proactive audio (a model refusing both used to die on the second).
+      if (/language_?codes/i.test(reason) && t.languageHints !== false) return { ...t, languageHints: false };
       return /proactivity/i.test(reason) && t.proactive ? { ...t, apiVersion: 'v1beta', proactive: false } : null;
     },
   });

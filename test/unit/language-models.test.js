@@ -79,14 +79,21 @@ test("Gemini Live: input transcription is given the languages as hints, in Googl
   }
 });
 
-test('Gemini Live: a language no code of Gemini Live\'s is known for is left out; Cantonese goes as Traditional Chinese', async () => {
+test('Gemini Live: hints go only when every language listed has a code of Live\'s: with Cantonese listed (zh-Hant is not Cantonese) or a language it has none for, none go, rather than a list that biases the rest (review item 12)', async () => {
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [] });
   try {
-    const a = openGemini(s, { setup: { languages: modelLanguages(languageSettings({ languages: { spoken: ['yue', 'en', 'yue', 'zh'] } }, 'en')) } });
-    await a.ready;
-    assert.deepEqual(s.received().at(-1).setup.inputAudioTranscription, { languageCodes: ['zh-Hant', 'en', 'zh-Hans'] });
-    a.close();
-    await a.closed;
+    const hints = async (/** @type {string[]} */ spoken) => {
+      const a = openGemini(s, { setup: { languages: modelLanguages(languageSettings({ languages: { spoken } }, 'en')) } });
+      await a.ready;
+      const sent = s.received().at(-1).setup.inputAudioTranscription;
+      a.close();
+      await a.closed;
+      return sent;
+    };
+    assert.deepEqual(await hints(['en', 'zh', 'ja', 'zh']), { languageCodes: ['en', 'zh-Hans', 'ja'] }, 'a language once');
+    assert.deepEqual(await hints(['yue', 'en']), {}, 'Cantonese: no code of Live\'s, so none');
+    assert.deepEqual(await hints(['yue']), {});
+    assert.deepEqual(await hints(['en', 'ta']), { languageCodes: ['en', 'ta'] }, 'Tamil has one for Live (only Gemini\'s transcription model lacks it)');
   } finally {
     await s.stop();
   }
@@ -105,6 +112,31 @@ test('Gemini Live: a session that refuses the hints (1007 naming languageCodes) 
   } finally {
     await s.stop();
   }
+});
+
+test('Gemini Live: a session that refuses two fields, the hints and the proactive audio, recovers with two reopens, in either order (review item 11, Step S1)', async () => {
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [], noLanguageCodes: true, noProactivity: true });
+  try {
+    const a = openGemini(s, { setup: { languages: three } });
+    await a.ready;
+    const setups = s.received().filter((/** @type {any} */ m) => m.setup).map((/** @type {any} */ m) => [m.setup.inputAudioTranscription, Boolean(m.setup.proactivity)]);
+    // The stand-in reads proactivity first: refused for it, then (v1beta) for the hints, then it opens without both.
+    assert.deepEqual(setups, [[{ languageCodes: ['en', 'zh-Hans', 'ja'] }, true], [{ languageCodes: ['en', 'zh-Hans', 'ja'] }, false], [{}, false]]);
+    assert.deepEqual([a.tunables.languageHints, a.tunables.apiVersion, a.tunables.proactive], [false, 'v1beta', false]);
+    a.close();
+    await a.closed;
+  } finally {
+    await s.stop();
+  }
+});
+
+test('Gemini Live reads a refusal of the hints by the field\'s name in either spelling (review item 11)', () => {
+  const t = { ...GEMINI.tunables };
+  for (const reason of ['Invalid JSON payload received. Unknown name "languageCodes" at \'setup.input_audio_transcription\': Cannot find field.', 'Unknown name "language_codes" at \'setup.input_audio_transcription\'', 'Invalid value at input_audio_transcription.language_codes']) {
+    assert.deepEqual(GEMINI.reopen(1007, reason, t), { ...t, languageHints: false }, reason);
+  }
+  assert.equal(GEMINI.reopen(1007, 'Unknown name "languageCodes"', { ...t, languageHints: false }), null, 'and not again once they are off');
+  assert.equal(GEMINI.reopen(1008, 'languageCodes', t), null);
 });
 
 // ---- OpenAI Realtime ----
@@ -152,6 +184,67 @@ test('OpenAI Realtime: gpt-transcribe is given languages (an array); a Whisper-s
   }
 });
 
+test('OpenAI Realtime: the singular `language` is sent only for a two-letter ISO-639-1 code: Cantonese (yue) gets none (review item 10)', async () => {
+  const s = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [] });
+  try {
+    const cantonese = modelLanguages(languageSettings({ languages: { spoken: ['yue'] } }, 'en'));
+    for (const [model, languages, want] of /** @type {[string, any, any][]} */ ([
+      ['gpt-4o-transcribe', cantonese, { model: 'gpt-4o-transcribe' }],
+      ['gpt-transcribe', cantonese, { model: 'gpt-transcribe', languages: ['yue'] }], // OpenAI lists yue among the codes gpt-transcribe takes
+      ['gpt-4o-transcribe', modelLanguages(languageSettings({ languages: { spoken: ['fil'] } }, 'en')), { model: 'gpt-4o-transcribe', language: 'tl' }],
+    ])) {
+      const a = openOpenai(s, { tunables: { transcription: model }, setup: { languages } });
+      await a.ready;
+      assert.deepEqual(transcription(s), want, model);
+      a.close();
+      await a.closed;
+    }
+  } finally {
+    await s.stop();
+  }
+});
+
+test('OpenAI Realtime: a session.update refused for the language fields is sent again without them, and that is remembered for the model (review item 10)', async () => {
+  const s = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [], noLanguages: true });
+  try {
+    const updates = () => s.received().filter((/** @type {any} */ m) => m.type === 'session.update').map((/** @type {any} */ m) => m.session.audio.input.transcription);
+    const a = openOpenai(s, { tunables: { transcription: 'gpt-transcribe' }, setup: { languages: three } });
+    await a.ready;
+    assert.deepEqual(updates(), [{ model: 'gpt-transcribe', languages: ['en', 'zh', 'ja'] }, { model: 'gpt-transcribe' }]);
+    a.close();
+    await a.closed;
+    // The next session for that model does not ask again.
+    const b = openOpenai(s, { tunables: { transcription: 'gpt-transcribe' }, setup: { languages: three } });
+    await b.ready;
+    assert.deepEqual(updates().slice(2), [{ model: 'gpt-transcribe' }]);
+    b.close();
+    await b.closed;
+    // Another transcription model is its own.
+    const c = openOpenai(s, { tunables: { transcription: 'gpt-4o-transcribe' }, setup: { languages: english } });
+    await c.ready;
+    assert.deepEqual(updates().slice(3), [{ model: 'gpt-4o-transcribe', language: 'en' }, { model: 'gpt-4o-transcribe' }]);
+    c.close();
+    await c.closed;
+  } finally {
+    await s.stop();
+  }
+});
+
+test('OpenAI Realtime: a refusal of the language fields that closes the socket opens once more without them (review item 10)', async () => {
+  const s = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [], noLanguages: 'close' });
+  try {
+    const a = openOpenai(s, { tunables: { transcription: 'gpt-live-transcribe' }, setup: { languages: three } });
+    await a.ready;
+    const updates = s.received().filter((/** @type {any} */ m) => m.type === 'session.update').map((/** @type {any} */ m) => m.session.audio.input.transcription);
+    assert.deepEqual(updates.at(-1), { model: 'gpt-live-transcribe' });
+    assert.equal(a.tunables.languageHints, false);
+    a.close();
+    await a.closed;
+  } finally {
+    await s.stop();
+  }
+});
+
 // ---- Whisper-style transcription (OpenAI, Groq, OpenRouter, local servers) ----
 
 const SPEECH = (() => {
@@ -178,6 +271,8 @@ test('Whisper-style transcription: one language listed is the `language` field; 
   assert.equal(form('gpt-transcribe', three).get('language'), null, "never both (OpenAI: 'Don't send both')");
   assert.deepEqual(form('openai/gpt-transcribe', english).getAll('languages[]'), ['en']);
   // A language set by hand on the model's page wins over the setting.
+  assert.equal(form('whisper-large-v3', modelLanguages(languageSettings({ languages: { spoken: ['yue'] } }, 'en'))).get('language'), null, 'yue is no ISO-639-1 code: auto-detect');
+  assert.equal(form('whisper-large-v3', modelLanguages(languageSettings({ languages: { spoken: ['fil'] } }, 'en'))).get('language'), 'tl', 'Filipino is tl');
   assert.equal(form('whisper-large-v3', three, { language: 'ja' }).get('language'), 'ja');
   assert.equal(form('gpt-transcribe', three, { language: 'ja' }).get('language'), 'ja');
   assert.deepEqual(form('gpt-transcribe', three, { language: 'ja' }).getAll('languages[]'), []);
@@ -215,7 +310,8 @@ test("Gemini transcription: Google's transcription model gets language_codes in 
   assert.deepEqual(body('gemini-3.5-transcribe', three, { language: 'ja-JP' }).generation_config.transcription_config, { language_codes: ['ja-JP'] });
   // A language Google's model has no tag for is left out.
   const tamil = modelLanguages(languageSettings({ languages: { spoken: ['ta', 'en'] } }, 'en'));
-  assert.deepEqual(body('gemini-3.5-transcribe', tamil).generation_config.transcription_config, { language_codes: ['en-US'] });
+  assert.deepEqual(body('gemini-3.5-transcribe', tamil).generation_config.transcription_config, { language_codes: [] }, 'a language Google\'s model has no tag for: no hints at all, which would bias the rest against it (review item 12)');
+  assert.deepEqual(body('gemini-3.5-transcribe', modelLanguages(languageSettings({ languages: { spoken: ['yue', 'en'] } }, 'en'))).generation_config.transcription_config, { language_codes: ['yue-Hant-HK', 'en-US'] });
   const text = body('gemini-3-flash', three).input[0].content[0].text;
   assert.equal(text, 'Transcribe this speech exactly, in its own language. The speaker uses English, Chinese (Mandarin) or Japanese: write each in the language spoken and never translate. Output only the words.');
   assert.equal(body('gemini-3-flash', none).input[0].content[0].text, 'Transcribe this speech exactly, in its own language. Output only the words.');
