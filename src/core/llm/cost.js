@@ -10,6 +10,46 @@
  *   schedule: prices that start on a date (`from`, YYYY-MM-DD, UTC midnight): from then each entry's fields replace the base ones, the latest date last
  */
 
+/** The prices annai knows, by name. */
+const PRICE_NAMES = ['input', 'output', 'cacheRead', 'cacheWrite', 'cacheWrite1h', 'audioIn', 'audioOut', 'image', 'cacheReadAudio', 'cacheReadImage', 'perMinute', 'perMillionChars', 'minSeconds'];
+
+/** UTC midnight of a YYYY-MM-DD that is a real date, else NaN. @param {unknown} day */
+function dayStart(day) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(String(day)) ? Date.parse(`${day}T00:00:00Z`) : NaN;
+  return t === t && new Date(t).toISOString().slice(0, 10) === day ? t : NaN;
+}
+
+/**
+ * What is wrong with a model's prices, in plain words, or null: a price is a number, not negative; a schedule is a list of entries, each
+ * with a real `from` date, once, and only prices annai knows. Checked where prices are typed or a description is read, not where
+ * they are stored: a record that fails there is dropped, which an older build would do to a model it could still use.
+ * @param {any} prices @returns {string | null}
+ */
+export function pricesProblem(prices) {
+  if (!prices || typeof prices !== 'object' || Array.isArray(prices)) return 'Prices are an object, like {"input": 1, "output": 4}.';
+  /** @param {any} set @param {string} where */
+  const bad = (set, where) => {
+    const k = PRICE_NAMES.find((n) => set[n] !== undefined && !(typeof set[n] === 'number' && set[n] >= 0 && Number.isFinite(set[n])));
+    return k ? `${where}${k} is not a price: it is a number, not below 0.` : null;
+  };
+  const own = bad(prices, '');
+  if (own) return own;
+  if (prices.schedule === undefined) return null;
+  if (!Array.isArray(prices.schedule)) return 'The schedule is a list: [{"from": "2027-01-01", "input": 2}].';
+  /** @type {Set<string>} */
+  const seen = new Set();
+  for (const e of prices.schedule) {
+    if (!e || typeof e !== 'object' || dayStart(e.from) !== dayStart(e.from)) return `A schedule's "from" ${e && typeof e === 'object' && 'from' in e ? `${JSON.stringify(e.from)} is not a date: write it like 2027-01-01` : 'is missing: each entry starts on a date like 2027-01-01'}.`;
+    if (seen.has(e.from)) return `The schedule has ${e.from} twice: put what changes that day in one entry.`;
+    seen.add(e.from);
+    const unknown = Object.keys(e).find((k) => k !== 'from' && k !== 'tiers' && !PRICE_NAMES.includes(k));
+    if (unknown) return `The schedule names "${unknown}", which isn't a price annai knows.`;
+    const wrong = bad(e, 'In the schedule, ');
+    if (wrong) return wrong;
+  }
+  return null;
+}
+
 /**
  * The prices in force at a time: the base, with the fields of each schedule entry that has started laid over it, in date order.
  * An entry whose date is not a real date never applies.
@@ -18,7 +58,7 @@
 export function pricesAt(prices, at) {
   const { schedule, ...base } = prices;
   const started = (schedule ?? [])
-    .map(({ from, ...entry }) => ({ start: /^\d{4}-\d{2}-\d{2}$/.test(String(from)) ? Date.parse(`${from}T00:00:00Z`) : NaN, entry }))
+    .map(({ from, ...entry }) => ({ start: dayStart(from), entry }))
     .filter((e) => e.start <= at)
     .sort((a, b) => a.start - b.start);
   return Object.assign(base, ...started.map((e) => e.entry));
