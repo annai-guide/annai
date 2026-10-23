@@ -676,7 +676,7 @@ export class Halves {
    * "Start fresh": both halves read the conversation again from this point with none of the earlier lines, and a live session closes
    * with its handle forgotten, so the next one opens fresh. In order: nothing new starts (no live session opens until it is done, no
    * turn, no housekeeping); Kokoro's words for the user still owed are shown above the divider; both halves' turns are stopped; the
-   * fresh compaction is written; live is closed once more, for anything that slipped in. A second call while it runs gets the first's.
+   * fresh compaction is written; live is closed once more. A second call while it runs gets the first's.
    * @returns {Promise<import('./loop.js').Fresh>}
    */
   startFresh() {
@@ -684,12 +684,12 @@ export class Halves {
     /** @type {() => void} */
     let release = () => {};
     const held = new Promise((r) => { release = () => r(undefined); });
-    const done = this.#startFresh().finally(() => {
+    const fresh = (this.#fresh = { held, done: Promise.resolve(/** @type {import('./loop.js').Fresh} */ ('nothing')) });
+    fresh.done = this.#startFresh().finally(() => {
       this.#fresh = null;
       release();
     });
-    this.#fresh = { held, done };
-    return done;
+    return fresh.done;
   }
 
   async #startFresh() {
