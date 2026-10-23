@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NO_USAGE, mergeUsage, addUsage, costOf, addCost } from '../../src/core/llm/cost.js';
+import { NO_USAGE, mergeUsage, addUsage, costOf, addCost, speechCost } from '../../src/core/llm/cost.js';
 import { LEVELS, ROLE_LEVELS, nearestLevel, levelPatch } from '../../src/core/llm/reasoning.js';
 
 /** @param {number | undefined} a @param {number} b */
@@ -106,4 +106,79 @@ test("a provider marked free tier costs nothing: a call's reply and trace, and a
   assert.equal(spoken.cost, 0);
   const costs = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS))).map((/** @type {any} */ e) => e.data.cost);
   assert.deepEqual(costs, [0, 0], 'the trace says free, and Spend per day adds nothing');
+});
+
+// ---- A price with a date it starts from (Gemini's prices double on 2027-01-01) ----
+
+test('a price schedule: an entry applies from its date (UTC midnight), later entries lay over earlier ones, and an entry with no usable date never applies', () => {
+  const prices = { input: 1, output: 4, schedule: [{ from: '2027-01-01', input: 2, output: 8 }, { from: '2027-07-01', output: 10 }, { from: 'soon', input: 99 }, { from: '2027-13-45', input: 98 }] };
+  const usage = { ...NO_USAGE, input: 1_000_000, output: 1_000_000 };
+  const day = (/** @type {string} */ iso) => Date.parse(iso);
+  close(costOf(usage, prices, [], day('2026-12-31T23:59:59.999Z')), 5);
+  close(costOf(usage, prices, [], day('2027-01-01T00:00:00Z')), 10);
+  close(costOf(usage, prices, [], day('2027-06-30T23:59:59Z')), 10);
+  close(costOf(usage, prices, [], day('2027-07-01T00:00:00Z')), 12); // an entry names only what changes
+  close(costOf(usage, { input: 1, output: 4 }, [], day('2030-01-01T00:00:00Z')), 5); // no schedule, no change
+  close(speechCost({ perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }, { chars: 1_000_000, at: day('2026-12-31T12:00:00Z') }), 15);
+  close(speechCost({ perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }, { chars: 1_000_000, at: day('2027-01-01T12:00:00Z') }), 30);
+});
+
+test("provider-gemini's prices: 3.8 and 3.6 Flash and the TTS voices double from 2027-01-01 on Google's pricing page (checked 2026-10-23); Flash Lite, Live and transcription do not", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+  const models = Object.fromEntries(Object.values(d.provider.abilities).flatMap((/** @type {any} */ a) => a.models.map((/** @type {any} */ m) => [`${a.kind}/${m.providerId}`, m.prices])));
+  const before = Date.parse('2026-12-31T23:59:59Z');
+  const after = Date.parse('2027-01-01T00:00:00Z');
+  const usage = { ...NO_USAGE, input: 1_000_000, cacheRead: 1_000_000, output: 1_000_000 };
+  for (const id of ['chat/gemini-3.8-flash', 'chat/gemini-3.6-flash']) {
+    close(costOf(usage, models[id], [], before), 0.75 + 0.075 + 3.75);
+    close(costOf(usage, models[id], [], after), 1.5 + 0.15 + 7.5);
+  }
+  for (const [id, was] of [['voice/gemini-3.8-flash-tts', 15], ['voice/gemini-3.8-flash-lite-tts', 10]]) {
+    close(speechCost(models[String(id)], { chars: 1_000_000, at: before }), Number(was));
+    close(speechCost(models[String(id)], { chars: 1_000_000, at: after }), Number(was) * 2);
+  }
+  for (const id of ['chat/gemini-3.5-flash-lite', 'realtime/gemini-3.8-live', 'transcription/gemini-3.5-transcribe']) {
+    assert.equal(models[id].schedule, undefined, id);
+  }
+});
+
+test("a call is priced at the time it was made: the same Gemini 3.8 Flash call costs twice as much after the date (callOnce, with its clock)", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { callOnce } = await import('../../src/core/llm/call.js');
+  const { startGeminiServer } = await import('../fakes/gemini-server.js');
+  const { loadGemini, endpointOf, modelOf, KEY } = await import('./gemini-kit.js');
+  const d = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+  const prices = d.provider.abilities.chat.models.find((/** @type {any} */ m) => m.providerId === 'gemini-3.8-flash').prices;
+  const type = loadGemini();
+  const s = await startGeminiServer({ key: KEY, replies: [{ text: 'OK' }, { text: 'OK' }] });
+  try {
+    /** @param {string} iso */
+    const costAt = async (iso) => (await callOnce({
+      type, endpoint: endpointOf(type, { baseUrl: s.url }), model: modelOf({ providerId: 'gemini-3.8-flash', prices }), key: KEY,
+      request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, now: () => Date.parse(iso),
+    })).cost;
+    const early = await costAt('2026-12-31T12:00:00Z');
+    const late = await costAt('2027-01-02T12:00:00Z');
+    close(early, (100 * 0.75 + 10 * 3.75) / 1e6);
+    close(late, (100 * 1.5 + 10 * 7.5) / 1e6);
+  } finally {
+    await s.close();
+  }
+});
+
+test("a model's prices with a schedule are valid when each entry has a real date and prices that are not negative; anything else is refused", async () => {
+  const { saveModel, newModel, saveProvider, newProvider } = await import('../../src/core/llm/config.js');
+  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const provider = newProvider('provider-x', { user: { name: 'X', abilities: { chat: { kind: 'chat', type: 'x' } } } });
+  await saveProvider(ws, provider);
+  const save = (/** @type {any} */ prices) => saveModel(ws, newModel(provider.id, 'chat', { user: { providerId: 'm', prices } }));
+  await save({ input: 1, output: 2, schedule: [{ from: '2027-01-01', input: 2, output: 4 }] });
+  for (const bad of [[{ input: 2 }], [{ from: '2027-13-45', input: 2 }], [{ from: 'soon', input: 2 }], [{ from: '2027-01-01', input: -1 }], 'tomorrow']) {
+    await assert.rejects(save({ input: 1, schedule: bad }), undefined, JSON.stringify(bad));
+  }
 });

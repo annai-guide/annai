@@ -44,7 +44,7 @@ export async function speechCall(c) {
   const built = hearing
     ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
     : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });
-  const cost = endpoint.free ? 0 : hearing ? speechCost(model.prices, { seconds: c.audio?.seconds }) : speechCost(model.prices, { chars: text.length + (type.extraChars?.(spec) ?? 0) });
+  const cost = endpoint.free ? 0 : hearing ? speechCost(model.prices, { seconds: c.audio?.seconds, at: now() }) : speechCost(model.prices, { chars: text.length + (type.extraChars?.(spec) ?? 0), at: now() });
   const started = now();
   let status = 0;
   const streams = !hearing && c.stream === true && typeof type.readSpeechStream === 'function' && spec.tunables.stream !== false;

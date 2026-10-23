@@ -4,9 +4,25 @@
  * @typedef {import('./contract.js').Usage} Usage
  * @typedef {{ input?: number, output?: number, cacheRead?: number, cacheWrite?: number, cacheWrite1h?: number, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number, cacheReadImage?: number }} PriceSet
  *   audioIn, audioOut, image: a realtime model's audio tokens, and its image and video tokens (K4), else priced as input and output; cacheReadAudio, cacheReadImage: cached audio and images (K6)
- * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[], perMinute?: number, perMillionChars?: number, minSeconds?: number }} Prices
- *   perMinute: USD per minute of audio transcribed (at least minSeconds a request); perMillionChars: USD per million characters a voice says
+ * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[], perMinute?: number, perMillionChars?: number, minSeconds?: number }} PriceFields
+ * @typedef {PriceFields & { schedule?: (PriceFields & { from: string })[] }} Prices
+ *   perMinute: USD per minute of audio transcribed (at least minSeconds a request); perMillionChars: USD per million characters a voice says;
+ *   schedule: prices that start on a date (`from`, YYYY-MM-DD, UTC midnight): from then each entry's fields replace the base ones, the latest date last
  */
+
+/**
+ * The prices in force at a time: the base, with the fields of each schedule entry that has started laid over it, in date order.
+ * An entry whose date is not a real date never applies.
+ * @param {Prices} prices @param {number} at ms since 1970 @returns {PriceFields}
+ */
+export function pricesAt(prices, at) {
+  const { schedule, ...base } = prices;
+  const started = (schedule ?? [])
+    .map(({ from, ...entry }) => ({ start: /^\d{4}-\d{2}-\d{2}$/.test(String(from)) ? Date.parse(`${from}T00:00:00Z`) : NaN, entry }))
+    .filter((e) => e.start <= at)
+    .sort((a, b) => a.start - b.start);
+  return Object.assign(base, ...started.map((e) => e.entry));
+}
 
 /** @type {Readonly<Usage>} */
 export const NO_USAGE = Object.freeze({ input: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0, output: 0, reasoning: 0 });
@@ -44,18 +60,19 @@ export function addUsage(a, b) {
 /**
  * The cost of a call in USD: what the provider reported, else usage × prices. Undefined when
  * neither is known. Cache prices the model doesn't list cost what input costs. The provider's own
- * tools add their price per call (spec §9.5).
+ * tools add their price per call (spec §9.5). at: when the call was made, for prices that start on a date.
  * @param {Usage} usage @param {Prices | null | undefined} prices
- * @param {{ pricePerCall?: number, usageKey?: string }[]} [providerTools] @returns {number | undefined}
+ * @param {{ pricePerCall?: number, usageKey?: string }[]} [providerTools] @param {number} [at] @returns {number | undefined}
  */
-export function costOf(usage, prices, providerTools = []) {
+export function costOf(usage, prices, providerTools = [], at = Date.now()) {
   if (typeof usage.cost === 'number') return usage.cost;
   let calls = 0;
   for (const t of providerTools) if (t.usageKey && t.pricePerCall) calls += (usage.serverTools?.[t.usageKey] ?? 0) * t.pricePerCall;
   if (!prices) return calls || undefined;
+  const now = pricesAt(prices, at);
   const prompt = usage.input + usage.cacheRead + usage.cacheWrite + usage.cacheWrite1h;
-  const tier = (prices.tiers ?? []).filter((t) => prompt > t.above).sort((x, y) => y.above - x.above)[0];
-  const p = { ...prices, ...tier };
+  const tier = (now.tiers ?? []).filter((t) => prompt > t.above).sort((x, y) => y.above - x.above)[0];
+  const p = { ...now, ...tier };
   const input = p.input ?? 0;
   const per = (/** @type {number} */ n, /** @type {number | undefined} */ price) => (n * (price ?? 0)) / 1e6;
   return per(usage.input, input) + per(usage.cacheRead, p.cacheRead ?? input) + per(usage.cacheWrite, p.cacheWrite ?? input)
@@ -72,10 +89,12 @@ export function addCost(a, b) {
 /**
  * The cost of one speech call in USD (spec §9.9): a transcription by the minute of audio, a voice
  * by the character. Undefined when the model has no such price.
- * @param {Prices | null | undefined} prices @param {{ seconds?: number, chars?: number }} amount
+
+ * @param {Prices | null | undefined} prices @param {{ seconds?: number, chars?: number, at?: number }} amount at: when the call was made
  */
-export function speechCost(prices, { seconds, chars }) {
+export function speechCost(prices, { seconds, chars, at = Date.now() }) {
   if (!prices) return undefined;
+  prices = pricesAt(prices, at);
   if (seconds !== undefined && typeof prices.perMinute === 'number') return (Math.max(seconds, prices.minSeconds ?? 0) * prices.perMinute) / 60;
   if (chars !== undefined && typeof prices.perMillionChars === 'number') return (chars * prices.perMillionChars) / 1e6;
   return undefined;

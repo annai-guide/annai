@@ -92,6 +92,11 @@ const MODEL_DEFAULTS = Object.freeze({
 });
 
 const OBJECT = { type: 'object' };
+const PRICE = { type: 'number', minimum: 0 };
+/** Prices that start on a date: each entry a `from` (YYYY-MM-DD) and the price fields that change from then. */
+const PRICE_SCHEDULE = { type: 'array', items: { type: 'object', required: ['from'], properties: {
+  from: { type: 'string', format: 'date' }, input: PRICE, output: PRICE, cacheRead: PRICE, cacheWrite: PRICE, cacheWrite1h: PRICE, audioIn: PRICE, audioOut: PRICE, image: PRICE,
+  cacheReadAudio: PRICE, cacheReadImage: PRICE, perMinute: PRICE, perMillionChars: PRICE, minSeconds: PRICE, tiers: { type: 'array' } } } };
 const VALUES = {
   type: 'object',
   properties: {
@@ -106,7 +111,7 @@ const VALUES = {
     tools: { type: 'boolean' },
     contextWindow: { type: ['integer', 'null'], minimum: 1 },
     maxOutput: { type: ['integer', 'null'], minimum: 1 },
-    prices: { type: ['object', 'null'] },
+    prices: { type: ['object', 'null'], properties: { schedule: PRICE_SCHEDULE } },
     providerTools: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'patch'],
       properties: { id: { type: 'string', minLength: 1 }, name: { type: 'string' }, kind: { enum: ['search', 'fetch', 'other'] }, patch: OBJECT,
         pricePerCall: { type: 'number', minimum: 0 }, usageKey: { type: 'string' }, paidOnly: { type: 'boolean' }, freePerMonth: { type: 'integer', minimum: 0 },
