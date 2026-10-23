@@ -218,3 +218,19 @@ test('a press elsewhere that brings no click (iOS, on plain content) still close
   await expect(box(page)).toBeVisible();
   await expect(box(page)).toBeHidden({ timeout: 2000 });
 });
+
+// Follow-up 4: a drag (the pointer moved) or a mouse (which always sends its click) is no tap elsewhere.
+test('a drag elsewhere, or a mouse press with no click, leaves the empty box open', async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await expect(box(page)).toBeVisible();
+  await page.evaluate(() => {
+    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, pointerType: 'touch', clientX: 20, clientY: 100 }));
+    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, isPrimary: true, pointerType: 'touch', clientX: 20, clientY: 160 }));
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, pointerType: 'mouse', clientX: 20, clientY: 100 }));
+    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, isPrimary: true, pointerType: 'mouse', clientX: 20, clientY: 100 }));
+  });
+  await page.waitForTimeout(800);
+  await expect(box(page)).toBeVisible();
+});

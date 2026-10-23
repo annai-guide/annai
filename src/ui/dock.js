@@ -5,6 +5,7 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
+import { SYS_SETTINGS } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
@@ -164,20 +165,32 @@ export function createDock(ctx) {
     captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
     letGo();
   };
-  // Each line reads "Show what she says" and its stored text before it shows (off, mid-speech, the bubble goes at once, words and all): a
-  // slower read of an earlier line never replaces a later one's words.
+  const clearCaption = () => {
+    hideCaption();
+    captionText.textContent = '';
+  };
+  /** "Show what she says", read once and again whenever the app settings change: switched off mid-speech, the bubble goes at once, words and all. */
+  const readOn = () => readAppSettings(ctx.ws).then((a) => shownSettings(a).showWords, () => true);
+  let wordsOn = readOn();
+  offs.push(ctx.ws?.onChange?.((/** @type {{ scope: string, path: string }} */ c) => {
+    if (c.scope !== SYS_SETTINGS || c.path !== '/app.json') return;
+    wordsOn = readOn();
+    wordsOn.then((on) => {
+      if (on) return;
+      latest++;
+      clearCaption();
+    });
+  }));
+  // Each line reads its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
   let latest = 0;
   /** @param {() => Promise<string> | string} words */
   const show = async (words) => {
     const mine = ++latest;
-    const on = shownSettings(await readAppSettings(ctx.ws).catch(() => ({}))).showWords;
+    const on = await wordsOn;
     const text = on ? await words() : '';
     if (mine !== latest) return;
     if (on) showCaption(text);
-    else {
-      hideCaption();
-      captionText.textContent = '';
-    }
+    else clearCaption();
   };
   offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
     if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''));

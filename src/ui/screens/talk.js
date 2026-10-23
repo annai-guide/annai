@@ -11,6 +11,8 @@ import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
 import { onTap } from '../dock-hides.js';
 
+/** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
+const HEARD_MS = 600;
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
@@ -92,6 +94,17 @@ export async function renderTalk(ctx) {
   const list = h('ol', { class: 'convo' });
   const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
   const tell = (/** @type {string} */ text) => { if (built && text) announce.replaceChildren(h('span', { text })); };
+  /** Heard lines announced, and those waiting HEARD_MS for more words: each is announced once, as its last revision. @type {Map<string, any>} */
+  const hearing = new Map();
+  /** @param {string} id @param {HTMLElement} words */
+  const hearSoon = (id, words) => {
+    if (!built || hearing.get(id) === true) return;
+    clearTimeout(hearing.get(id));
+    hearing.set(id, setTimeout(() => {
+      hearing.set(id, true);
+      tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
+    }, HEARD_MS));
+  };
   const cost = h('p', { class: 'sub' });
   const showCost = async () => {
     const c = await costs(ctx.store, scope);
@@ -152,7 +165,7 @@ export async function renderTalk(ctx) {
       const words = unheard.get(d.of);
       if (words) {
         words.textContent = String(d.text ?? '');
-        tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
+        hearSoon(d.of, words);
       }
       return null;
     }
@@ -239,8 +252,10 @@ export async function renderTalk(ctx) {
         }
         empty.remove();
         list.append(node);
-        tell(e.type === 'msg.user' || e.type === 'note' ? '' : e.type === 'out.speak' ? `Shiori: ${node.querySelector('p')?.textContent ?? ''}`
-          : e.type !== 'heard' ? node.textContent ?? '' : typeof e.data?.text !== 'string' ? '' : e.data.dismissed ? node.textContent ?? '' : `Heard: ${e.data.text}`);
+        if (e.type === 'heard') {
+          const words = unheard.get(e.data?.id);
+          if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
+        } else tell(e.type === 'msg.user' || e.type === 'note' ? '' : e.type === 'out.speak' ? `Shiori: ${node.querySelector('p')?.textContent ?? ''}` : node.textContent ?? '');
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
@@ -270,6 +285,7 @@ export async function renderTalk(ctx) {
   // Gone, it stops listening at once, and the photos it showed let their memory go.
   whenGone(screen, () => {
     stop();
+    for (const t of hearing.values()) clearTimeout(t);
     removeEventListener('message', fit);
     for (const t of USER) removeEventListener(t, own);
     grows.disconnect();
