@@ -921,7 +921,10 @@ test("a spoken turn answered only by tool calls, no sound and no word (already_t
     assert.equal((await k.events(['out.speak']))[0].data.text, 'Great, I will keep an eye out.');
     const silent = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent');
     assert.equal(silent.length, 1, 'the tool call alone answered nobody');
-    assert.ok(texts(k).some((t) => t.includes('Yes.')), 'their words, as text, in the fresh session');
+    assert.match(silent[0].data.message, /asked again/);
+    // Review M2: the session is alive (it called a tool), so it is asked again there, in annai's words; its handle and context kept.
+    assert.equal(k.server.connections().length, 1, 'no fresh session');
+    assert.ok(texts(k).some((t) => t.startsWith('[annai]') && /answer them/.test(t)), JSON.stringify(texts(k)));
   } finally {
     await k.done();
   }
@@ -938,6 +941,51 @@ test("a spoken turn answered only by tool calls, no sound and no word (already_t
     assert.equal(k2.server.connections().length, 1);
   } finally {
     await k2.done();
+  }
+});
+
+// realtime-fix2 review M2: a tool call alone that does reach the user, or Kokoro still working on Koe's question, is no silence to rescue.
+for (const [what, tool] of /** @type {const} */ ([
+  ['show', { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } }],
+  ['ask', { name: 'ask', args: { question: 'Tacos or ramen?', options: ['Tacos', 'Ramen'] } }],
+])) {
+  test(`a spoken turn answered by ${what} alone, which succeeded, is answered: no rescue, and nothing shown twice`, async () => {
+    const k = await liveKit([{ heard: 'Show me', tool }, { said: 'Here.', audio: tone(0.1) }]);
+    try {
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+      k.agent.tap();
+      await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+      await say(k, 'gas-station');
+      await soon(async () => (await k.events([`out.${what}`])).length === 1, 5000);
+      await new Promise((r) => setTimeout(r, 2500)); // past the watchdog's 1 s here, twice
+      assert.equal((await k.events([`out.${what}`])).length, 1);
+      assert.equal((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 0);
+      assert.equal(k.server.connections().length, 1);
+      assert.equal(texts(k).length, 0, 'nothing asked again');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("a spoken turn answered by tell_kokoro alone: the wait holds while Kokoro works, however long, and Kokoro's note is what answers; Kokoro is asked once", async () => {
+  const note = { toolCalls: [{ name: 'tell_koe', input: { text: 'Bixby Bridge is about twenty minutes ahead.', for_user: 'About twenty minutes ahead.' } }, { name: 'sleep', input: {} }] };
+  const k = await liveKit([{ heard: 'How far is Bixby Bridge?', tool: { name: 'tell_kokoro', args: { text: 'How far is Bixby Bridge?' } } }, { said: 'About twenty minutes ahead.', audio: tone(0.2) }], {
+    kokoro: [{ rules: [{ match: 'Bixby', reply: note }, { match: '.', reply: sleep }] }],
+  });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    const call = k.llm.call;
+    k.llm.call = async (/** @type {any} */ c) => { await new Promise((r) => setTimeout(r, 2500)); return call(c); }; // a slow Kokoro: past the watchdog's 1 s, twice
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await say(k, 'gas-station');
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'About twenty minutes ahead.'), 8000);
+    assert.equal((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent').length, 0);
+    assert.equal(k.server.connections().length, 1);
+    assert.equal(got(k, 'toolResponse').filter((/** @type {any} */ m) => m.toolResponse.functionResponses.some((/** @type {any} */ r) => r.name === 'tell_kokoro')).length, 1, 'Kokoro asked once');
+  } finally {
+    await k.done();
   }
 });
 
