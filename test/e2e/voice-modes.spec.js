@@ -118,6 +118,18 @@ test('what she says aloud is shown: its words in the conversation, marked "said 
     expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'the bubble showed while she spoke').toBe(true);
     await expect(page.locator('.dock .caption')).toHaveText('Nepenthe is 25 minutes south.');
     await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
+    // Announced once (fix pass 3): the caption is the live region for her spoken words; the conversation's list holds the same words but is not
+    // live, and the hidden announcer for new lines never carries them.
+    const holders = await page.evaluate(() => {
+      const words = 'Nepenthe is 25 minutes south.';
+      const live = (/** @type {Element} */ el) => !!el.closest('[aria-live]:not([aria-live="off"])');
+      return {
+        listLive: live(/** @type {Element} */ (document.querySelector('.convo .shiori.said'))),
+        announcers: [...document.querySelectorAll('[aria-live]:not([aria-live="off"])')].filter((el) => !el.closest('.dock') && (el.textContent ?? '').includes(words)).length,
+      };
+    });
+    expect(holders).toEqual({ listLive: false, announcers: 0 });
+    await expect(page.locator('.dock .caption')).toHaveAttribute('aria-live', 'polite');
     // It lets go a moment after she stops.
     await expect(page.locator('.dock .caption')).toBeHidden({ timeout: 8000 });
     // The transcript stays: the line is still there to look back on.

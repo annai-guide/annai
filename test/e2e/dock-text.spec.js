@@ -102,3 +102,39 @@ test('the box and its send arrow are labelled for a screen reader, and the keybo
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
   await expect(typeButton(page)).toHaveAttribute('aria-expanded', 'true');
 });
+
+// The user types Chinese and Japanese: Enter that picks a candidate in an IME must never send the half-composed text.
+test('Enter while an IME is composing does not send; nothing is sent until a real Enter after the composition ends', async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await box(page).fill('にほん');
+  const prevented = await page.evaluate(() => {
+    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    // Chrome and Firefox say isComposing; Safari's Enter that ends a composition comes after compositionend with keyCode 229.
+    const a = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true });
+    input.dispatchEvent(a);
+    // The form's own submit (implicit submission) while composing.
+    input.form?.requestSubmit();
+    return a.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+  await expect(box(page)).toBeVisible();
+  await expect(box(page)).toHaveValue('にほん');
+  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+    // Safari: keydown Enter with keyCode 229 right after compositionend.
+    const b = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
+    input.dispatchEvent(b);
+    return b.defaultPrevented;
+  }).then((p) => expect(p, 'the 229 Enter is not allowed to submit the form').toBe(true));
+  await expect(box(page)).toHaveValue('にほん');
+  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  // A real Enter, later, sends.
+  await page.waitForTimeout(300);
+  await box(page).press('Enter');
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.locator('.convo .you').first()).toContainText('にほん');
+});
