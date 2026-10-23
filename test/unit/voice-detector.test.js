@@ -52,6 +52,45 @@ test('48 kHz works the same', () => {
   assert.equal(/** @type {any} */ (events.find((e) => e.type === 'segment')).sampleRate, 48_000);
 });
 
+/** The detector at a sample rate, fed in chunks of 4096 samples. @param {Float32Array} pcm 16 kHz @param {number} rate 16000 or 48000 */
+function detectAt(pcm, rate) {
+  const k = rate / RATE;
+  const at = Float32Array.from({ length: pcm.length * k }, (_, i) => pcm[Math.floor(i / k)]);
+  const d = new Detector({ sampleRate: rate });
+  const events = [];
+  for (let i = 0; i < at.length; i += 4096) events.push(...d.push(at.subarray(i, i + 4096)));
+  return events;
+}
+
+// The iPhone opens a microphone with digital silence (zeros), then gives sound (the iPhone trace, 2026-10-22). The detector learns its floor
+// from the first frame with sound in it and ignores zeros, so speech that starts the instant the zeros end must still be cut as a segment.
+for (const rate of [16_000, 48_000]) {
+  test(`a microphone just opened: digital silence, then a sentence that starts the instant the zeros end, is a segment (${rate / 1000} kHz)`, async () => {
+    for (const name of ['where-lunch', 'where-eat', 'gas-station', 'first-one']) {
+      const words = await clip(name);
+      for (const zeros of [0.4, 1]) {
+        const events = detectAt(cat(new Float32Array(Math.round(zeros * RATE)), words, quiet(1.2, 0)), rate);
+        assert.equal(segments(events).length, 1, `${name} after ${zeros} s of zeros`);
+      }
+    }
+  });
+}
+
+test('the same sentence after zeros and after a faint hiss: a hiss is what the fake microphone of the e2e tests puts under everything', async () => {
+  const words = await clip('where-eat');
+  assert.equal(segments(detectAt(cat(quiet(0.4), words, quiet(1.2, 0)), 16_000)).length, 1);
+});
+
+// KNOWN GAP, not yet decided (the young-floor change waits for a phone test; src/core/voice/detector.js is not changed here): an utterance of
+// under about half a second ("Yes", "Thanks") that starts the instant the zeros end gives no segment today, because the floor is learned
+// from its first frame with sound, and it is not 10 dB over itself for the 250 ms that speech needs. After a hiss it is a segment. A todo
+// test: it reports, and does not fail the run, until the detector is changed (then it passes, and its todo goes).
+test('a short utterance (0.3 s) that starts the instant the zeros end is a segment', { todo: 'the floor is learned from the first frame with sound; a phone test decides the change' }, async () => {
+  const short = (await clip('where-eat')).subarray(0, Math.round(0.3 * RATE));
+  assert.equal(segments(detectAt(cat(quiet(0.4), short, quiet(1.2, 0)), 16_000)).length, 1, 'after a hiss it is (the same words)');
+  assert.equal(segments(detectAt(cat(new Float32Array(RATE), short, quiet(1.2, 0)), 16_000)).length, 1, 'after zeros: no segment today (the gap)');
+});
+
 test('the level rises while someone speaks; end() keeps speech that was still going', () => {
   const d = new Detector({ sampleRate: RATE });
   d.push(quiet(0.5));
