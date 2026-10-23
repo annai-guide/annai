@@ -48,6 +48,7 @@ export function useClock(t) {
     // As Node's own: 1 ms at least, and no more than 2^31 - 1.
     const delay = Number.isFinite(Number(ms)) ? Math.max(1, Math.min(Number(ms), 2 ** 31 - 1)) : 1;
     const timer = { at: now + delay, id: next++, fn, every, delay };
+    if (!timers.length) quiet = 0; // the turns counted were for timers now gone: this one waits its own
     timers.push(timer);
     timers.sort(before);
     if (!turn) turn = real.setImmediate(run);
@@ -86,7 +87,10 @@ export function useClock(t) {
   function run() {
     turn = null;
     try {
-      if (!timers.length) return;
+      if (!timers.length) {
+        quiet = 0;
+        return;
+      }
       if (busy()) {
         quiet = 0;
         return;
