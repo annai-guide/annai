@@ -408,14 +408,14 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
         else a = { status: 200, headers: { 'access-control-allow-methods': wanted, 'access-control-allow-headers': asked.join(', '), 'access-control-max-age': '600' } };
       } else if (raw.length > maxBody) {
         a = { status: 413, raw: Buffer.from('<html><head><title>413 Request Entity Too Large</title></head><body><center><h1>413 Request Entity Too Large</h1></center><hr><center>nginx</center></body></html>'), headers: { 'content-type': 'text/html' }, cors: false };
-      } else if (next && method === next.method && url.pathname.includes(next.part)) {
-        const made = next.answer;
-        next = null;
-        // A function is given the answer the stand-in would have given this very request (the file at the ref it asked for), to change.
-        a = typeof made === 'function' ? made(answer(method, url, req.headers, raw.length ? JSON.parse(raw.toString('utf8')) : null)) : made;
       } else {
+        // answerNext's answer: given as it is, or, a function, the answer the stand-in would have given this very request (the file at the ref
+        // it asked for) to change. Either way a throw is an answer (400 for a body that didn't parse, else 500), never a request left unanswered.
+        const made = next && method === next.method && url.pathname.includes(next.part) ? next.answer : null;
+        if (made) next = null;
         try {
-          a = answer(method, url, req.headers, raw.length ? JSON.parse(raw.toString('utf8')) : null);
+          const own = () => answer(method, url, req.headers, raw.length ? JSON.parse(raw.toString('utf8')) : null);
+          a = typeof made === 'function' ? made(own()) : made ?? own();
         } catch (e) {
           a = raw.length ? { status: 400, json: err(`[]: ${String(/** @type {any} */ (e)?.message ?? e)}`) } : { status: 500, json: err(String(e)) };
         }
