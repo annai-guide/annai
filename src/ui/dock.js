@@ -39,12 +39,18 @@ export function createDock(ctx) {
   // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
   const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': 'Message to Shiori', enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
   // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text. Chrome and Firefox
-  // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229.
+  // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229. Some Android keyboards send
+  // every Enter as 229: one with no composition just ended sends. A composition the box loses (blur, closed) holds nothing back after.
   let composing = false;
+  let endedAt = -Infinity;
   input.addEventListener('compositionstart', () => { composing = true; });
-  input.addEventListener('compositionend', () => { composing = false; });
+  input.addEventListener('compositionend', (e) => {
+    composing = false;
+    endedAt = e.timeStamp;
+  });
+  input.addEventListener('blur', () => { composing = false; });
   input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
-    if (e.key === 'Enter' && (e.isComposing || composing || e.keyCode === 229)) e.preventDefault();
+    if (e.key === 'Enter' && (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100))) e.preventDefault();
   });
   const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': 'Send', title: 'Send' }, icon('M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   const sheet = h('form', {
@@ -56,20 +62,22 @@ export function createDock(ctx) {
       if (!text) return;
       input.value = '';
       closeTyping();
+      typeButton.focus(); // not left in the hidden box
       ctx.agent.send(text);
       if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
     },
   }, h('div', { class: 'type-box' }, input, sendArrow));
   const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', 'aria-expanded': 'false', title: 'Type', onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
-  /** A tap or press elsewhere on the page: an empty box closes; one with a draft stays. @param {Event} e */
+  /** A tap elsewhere on the page, at its click (a press closing it would move the page under the finger): an empty box closes; one with a draft stays. @param {Event} e */
   const elsewhere = (e) => {
     const t = /** @type {Node} */ (e.target);
     if (!input.value.trim() && !sheet.contains(t) && !typeButton.contains(t)) closeTyping();
   };
   const closeTyping = () => {
     sheet.hidden = true;
+    composing = false;
     typeButton.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('pointerdown', elsewhere, true);
+    document.removeEventListener('click', elsewhere, true);
     ctx.agent.typing?.(false);
   };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
@@ -83,7 +91,7 @@ export function createDock(ctx) {
     sheet.hidden = false;
     typeButton.setAttribute('aria-expanded', 'true');
     input.focus();
-    document.addEventListener('pointerdown', elsewhere, true);
+    document.addEventListener('click', elsewhere, true);
     ctx.agent.typing?.(Boolean(input.value.trim())); // a draft kept from before is typed text again
   };
   const camera = h('input', { id: 'dock-camera', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
@@ -224,7 +232,8 @@ export function createDock(ctx) {
     el, avatar, refreshSlots,
     dispose: () => {
       for (const off of offs.splice(0)) off?.();
-      document.removeEventListener('pointerdown', elsewhere, true);
+      composing = false;
+      document.removeEventListener('click', elsewhere, true);
       ctx.agent.typing?.(false);
     },
     /** @param {boolean} on */
