@@ -43,6 +43,29 @@ export function routeOf(devices) {
   return others.length ? 'unknown' : 'speaker';
 }
 
+/**
+ * What the voice chip adds for Koe while voice is on (the user, 2026-10-22: "how koe work or in which mode it is"), from Halves' way:
+ * the list that talks; when Classic stands in for a chosen Realtime, why, in reason (kept on one line); Koe down; Classic chosen
+ * but empty, when Shiori is one. note: the menu's sentence. Nothing with voice off, no Koe model, or a way worked out with voice off.
+ * @param {{ mode: string, using: string, why: string, koe: boolean, split: boolean, path: string | null } | null} way @param {boolean} on
+ * @returns {{ text: string, reason?: string, note: string }}
+ */
+export function koeWords(way, on) {
+  if (!way?.koe || !on || way.why === 'voice off') return { text: '', note: '' };
+  if (way.using === 'realtime') return { text: ' · Realtime', note: '' };
+  const realtime = way.mode === 'realtime';
+  if (!way.path && way.split) {
+    return realtime && way.why !== 'none' ? { text: ` · Realtime ${way.why === 'off' ? 'off' : 'resting'}`, note: 'Shiori answers directly until it can.' }
+      : { text: ' · Classic unavailable', note: "Koe · Classic can't answer now. Shiori answers directly until it can." };
+  }
+  if (!way.split) return { text: ' · Classic', reason: '(no model)', note: 'Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.' };
+  if (!realtime || !way.why) return { text: ' · Classic', note: '' };
+  return {
+    none: { text: ' · Classic', reason: '(no Realtime model)', note: 'Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.' },
+    resting: { text: ' · Classic', reason: '(Realtime resting)', note: 'Realtime is resting after a failure. Classic talks until it can.' },
+  }[way.why] ?? { text: ' · Classic', reason: '(Realtime off)', note: "Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile." };
+}
+
 /** The chip's words: "Voice auto · off", "Voice on · car audio", "Voice on", "Voice off". @param {VoiceMode} m */
 export function chipText(m) {
   if (m.setting === 'auto') return m.on ? `Voice on · ${m.why}` : 'Voice auto · off';

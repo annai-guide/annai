@@ -15,6 +15,7 @@ import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
 import { createLlm } from '../core/llm/service.js';
 import { moveOver } from '../core/llm/move-over.js';
+import { splitOldKoe } from '../core/llm/config.js';
 import { finishReturn } from '../ui/provider-setup.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
 import { disabledCard, reloadCard, startCards, NEEDS_RELOAD } from '../ui/plugin-cards.js';
@@ -84,6 +85,8 @@ async function boot() {
   await removeLeftovers(store).catch(() => {});
   // Endpoints from before providers go, with their keys, before Models is first drawn; a card says so once the shell is up.
   const moved = await moveOver(ws, store).catch((e) => { console.warn("the old endpoints couldn't be moved over", e); return null; });
+  // Koe's one list from before Realtime and Classic is written split, once (spec §9.6).
+  await splitOldKoe(ws).catch((e) => console.warn("Koe's old list couldn't be split", e));
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);

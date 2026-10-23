@@ -1,5 +1,6 @@
 import { SYS } from '../scopes.js';
-import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords } from './config.js';
+import { readConfig, getKey, endpointOf, modelOf, saveModel, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
+import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
@@ -303,6 +304,7 @@ export function createLlm({
      */
     restorePlugins: ({ imported = false } = {}) => queued(async () => {
       await ready;
+      await splitOldKoe(ws).catch(() => {}); // an old backup's one Koe list, written split as at start-up (spec §9.6)
       await pluginsCanLoad();
       const had = await plugins.installed();
       /** @type {import('./official.js').CatalogPlugin[] | Error} */
@@ -407,7 +409,8 @@ export function createLlm({
       const rec = cfg.providers[providerId];
       const src = providers().find((s) => s.plugin === rec?.plugin);
       if (!rec || !src) throw new ProviderError('not-found', "That provider no longer exists, or its plugin isn't running.");
-      const named = new Set(Object.values(src.provider.roles?.[which] ?? {}).flat());
+      // Only roles this annai knows switch an ability on (one it doesn't is skipped, as the description check has it).
+      const named = new Set(Object.entries(src.provider.roles?.[which] ?? {}).filter(([r]) => ROLE_KINDS[r] || OLD_KOE[r]).flatMap(([, ids]) => ids));
       /** @type {{ on: string[], failed: { name: string, error: unknown }[] }} */
       const out = { on: [], failed: [] };
       for (const a of Object.values(providerOf(rec).abilities)) {
@@ -599,8 +602,9 @@ export function createLlm({
       const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
       // Test asks at the level of the first role that asks this model at one (fix pass).
       const { roles } = await readConfig(ws);
-      const r = ['main', 'koe', 'utility'].find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
-      const role = r ? { name: r[0].toUpperCase() + r.slice(1), level: roles[r].level } : undefined;
+      const names = { main: 'Main', 'koe-classic': 'Koe · Classic', utility: 'Utility' };
+      const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
+      const role = r ? { name: names[r], level: roles[r].level } : undefined;
       const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));

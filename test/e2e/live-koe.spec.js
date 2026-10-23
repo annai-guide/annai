@@ -41,17 +41,16 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await address.fill(p.address(live));
   await leaveSaved(address);
   await page.goto('/#/models');
-  await page.getByLabel('Add a model to Koe').selectOption({ label: p.model });
-  await page.getByRole('button', { name: 'Add to Koe' }).click();
-  await expect(page.getByLabel('Add a model to Koe').locator('option', { hasText: new RegExp(`^${p.model.replace(/\./g, '\\.')}$`) })).toHaveCount(0);
-  await expect(page.getByText('With voice off, a text model here answers before a live voice, whose sound nobody would hear.')).toBeVisible();
+  await page.getByLabel('Add a model to Koe · Realtime').selectOption({ label: p.model });
+  await page.getByRole('button', { name: 'Add to Koe · Realtime' }).click();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText(`1. ${p.model}`)).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await page.locator('.voice-chip').click();
   await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
-  await expect(page.locator('.voice-chip')).toHaveText('Voice on');
+  await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
 }
 
 test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud and a tell_kokoro; Kokoro\'s answer arrives as <from_kokoro> text and is said; the microphone streamed only speech; voice off closes it; Trace shows the session, its data and cost, never the key', async ({ page }) => {
@@ -125,10 +124,10 @@ test('the page out of view: the session closes and the microphone stops; back in
       document.dispatchEvent(new Event('visibilitychange'));
     }, state);
     await view('hidden');
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
     await view('visible');
     await page.waitForTimeout(500);
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });

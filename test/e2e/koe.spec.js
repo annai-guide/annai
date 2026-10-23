@@ -3,24 +3,32 @@ import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer,
 
 // Koe and Kokoro, K1: the text split (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md).
 
-test('Models shows one Koe list right after Main, taking chat models (the user, 2026-10-19: one Koe list)', async ({ page }) => {
+test("Models shows Koe's two lists right after Main, each with a line on when it is used: Realtime takes realtime models, Classic chat models (the user, 2026-10-22)", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   const roles = page.getByRole('region', { name: 'Roles' });
   await expect(roles.locator('h3')).toHaveText([
-    'Main: talks with you', 'Koe: answers you at once, typed or spoken',
+    'Main: talks with you', 'Koe · Realtime: hears you and speaks in one stream', 'Koe · Classic: a chat model, with Speech in and Speech out',
     'Utility: summaries and small jobs', 'Quick decision: yes-or-no checks', 'Speech in: how Shiori hears you', "Speech out: Shiori's voice",
   ]);
-  await expect(roles.getByText('Empty: Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toHaveCount(1);
-  await expect(page.getByLabel('Wait for the first words (seconds)').nth(1)).toHaveAttribute('placeholder', '8');
+  const realtime = roles.locator('.role').nth(1);
+  const classic = roles.locator('.role').nth(2);
+  await expect(realtime.getByText('Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.')).toBeVisible();
+  await expect(realtime.getByText('Empty: Koe has no realtime voice, so Classic answers.', { exact: false })).toBeVisible();
+  await expect(classic.getByText("Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer", { exact: false })).toBeVisible();
+  await expect(classic.getByText('Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toBeVisible();
+  // A live session takes no level and has its own wait: Realtime shows neither.
+  await expect(realtime.getByLabel('Reasoning for Koe · Realtime')).toHaveCount(0);
+  await expect(realtime.getByLabel('Wait for the first words (seconds)')).toHaveCount(0);
+  await expect(classic.getByLabel('Reasoning for Koe · Classic')).toHaveValue('low');
+  await expect(classic.getByLabel('Wait for the first words (seconds)')).toHaveAttribute('placeholder', '8');
   await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
-  await page.getByLabel('Add a model to Koe').selectOption({ label: 'fast-model' });
-  await page.getByRole('button', { name: 'Add to Koe' }).click();
-  await expect(roles.locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
+  await expect(page.getByLabel('Add a model to Koe · Realtime')).toHaveCount(0);
+  await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'fast-model' });
+  await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
+  await expect(roles.locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. fast-model')).toBeVisible();
-  // The note on voice off is for a list with a live voice in it (live-koe.spec): none here.
-  await expect(page.getByText('With voice off, a text model here answers before a live voice', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(0).getByText('No models yet. Add one.')).toBeVisible();
 });
 
@@ -77,7 +85,7 @@ test("Trace shows both halves' turns and their notes; the toggle shows the notes
     await expect(page.getByText('Koe to Kokoro · append · Is Nepenthe open now?')).toBeVisible();
     await expect(page.getByText('Kokoro to Koe · append · Nepenthe is open till 10 tonight (nepenthe.com).')).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'model.turn' });
-    await expect(page.getByText(/Koe · koe: koe-model · 1 attempt/).first()).toBeVisible();
+    await expect(page.getByText(/Koe · koe-classic: koe-model · 1 attempt/).first()).toBeVisible();
     await expect(page.getByText(/Kokoro · main: kokoro-model · 1 attempt/).first()).toBeVisible();
     await page.goto('/#/talk');
     const toggle = page.getByLabel('Show what the halves tell each other');

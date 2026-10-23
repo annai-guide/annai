@@ -23,10 +23,10 @@ export const ABILITY_KINDS = Object.freeze(['chat', 'transcription', 'voice', 'r
 export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools', 'skills', 'developer']);
 /** Which abilities' models each role takes. @type {Readonly<Record<string, readonly string[]>>} */
 export const ROLE_KINDS = Object.freeze({
-  main: ['chat'], utility: ['chat'], decide: ['chat'], koe: ['chat', 'realtime'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
+  main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-realtime': ['realtime'], 'koe-classic': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
-/** Koe's two lists before they were one (2026-10-19): a description naming them still checks, and they are ignored. */
-const OLD_KOE_ROLES = Object.freeze(['koe-talk', 'koe-type']);
+/** Koe's one list (2026-10-19 to 2026-10-22): a description naming it still checks, and its models go into the two lists by kind. */
+export const OLD_KOE = Object.freeze({ koe: Object.freeze(['chat', 'realtime']) });
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
 /** The tunables protocols join onto an ability's address. */
@@ -87,11 +87,10 @@ export function checkProviderDesc(desc) {
   }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
-      const kinds = ROLE_KINDS[role];
-      if (!kinds) {
-        if (!OLD_KOE_ROLES.includes(role)) errors.push(`$.roles.${which}.${role}: there is no such role`);
-        continue;
-      }
+      const kinds = ROLE_KINDS[role] ?? /** @type {Record<string, readonly string[]>} */ (OLD_KOE)[role];
+      // A role this annai doesn't know (Koe's two lists from before 2026-10-19, or one a later version names) is skipped, never a
+      // reason to refuse the whole description: an older tab can still offer an update that renames one.
+      if (!kinds) continue;
       const have = new Set(abilities.filter(([, a]) => kinds.includes(a.kind)).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));
       for (const p of ids) if (!have.has(p)) errors.push(`$.roles.${which}.${role}: ${p} isn't a ${kinds.join(' or ')} model of this provider`);
     }

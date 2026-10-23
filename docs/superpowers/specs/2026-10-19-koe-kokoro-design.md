@@ -60,8 +60,15 @@ In code and the spec they're Koe and Kokoro.
 - **No stalls on Koe's side.** A realtime model's tool call to Kokoro is answered at once with "sent", and the user hears "I'm checking…" rather than silence.
 - **Triggers** (a reminder, an arrival): both halves get them. Kokoro decides what matters, and Koe tells the user. If it's something Koe can simply say, it says it right away; otherwise it waits for Kokoro's context.
 - **"Realtime" means any realtime voice model,** with Gemini Live as the free first one. A model's abilities decide the pathway, not a special mode.
-- **The Koe role is one ordered list, like Main** (changed on 2026-10-19; it had a "for talking" list and a "for typing" list, picked by the voice setting). Its first model that can answer decides the pathway; annai's voice setting (§10.5: Auto, On, Off) decides whether Koe talks aloud or in text, and with voice off a text model that can answer comes before a realtime one.
-  - Every model can do both: a muted realtime model shows its transcript, and a text model can speak through the speech pipeline.
+- **Koe has two lists and a switch: Realtime and Classic** (the user, 2026-10-22, testing on an iPhone: "I know I said just combine these pipelines together … but it seems bit confusing even to me what it is doing.... maybe have it seperate configurable and maybe a button to switch the mode? how koe work or in which mode it is"; their choices: "Two lists + a switch", named "Realtime / Classic"). This replaces the one list below, which replaced the two lists for talking and typing.
+  - **Koe · Realtime:** realtime models that hear and speak (Gemini Live, OpenAI Realtime). **Koe · Classic:** chat models, used with the Speech in and Voice lists: transcription, then chat, then voice.
+  - **The voice chip** shows which one talks ("Voice on · Realtime", "Voice on · Classic") and its menu switches the mode. When Realtime fails or has no usable model, Koe falls back to Classic and the chip says so ("Classic (Realtime resting)", "Classic (Realtime off)", "Classic (no Realtime model)"), never silently; with nothing in Classic that can answer, Koe is down and the chip says "Realtime resting" or "Realtime off", never Classic. Realtime is used again when it can answer, only while it is the user's choice, once a Classic turn with the voice has ended.
+  - **With voice off, Koe types through Classic,** since a realtime reply would be sound nobody hears. Kokoro (Main) is unchanged behind both.
+  - **An empty Classic** leaves Shiori one half while Classic is in use, as an empty Koe list always did; Realtime chosen with a model that can't answer and nothing in Classic is Koe down.
+  - **A stored config's one list is split:** realtime models into Realtime, chat models into Classic, keeping their order, Classic keeping the level and wait; the mode starts as whichever its first usable model implied. "Use the recommended models" puts Gemini Live in Realtime, Flash Lite in Classic, and chooses Realtime with Live switched on.
+  - Spec §6.8, §9.6, §10.5, §10.7 and §10.8 have the details.
+- **The Koe role was one ordered list, like Main, from 2026-10-19 to 2026-10-22** (it had a "for talking" list and a "for typing" list, picked by the voice setting). Its first model that can answer decided the pathway; annai's voice setting (§10.5: Auto, On, Off) decided whether Koe talked aloud or in text, and with voice off a text model that could answer came before a realtime one.
+  - Every model could do both: a muted realtime model showed its transcript, and a text model can speak through the speech pipeline. (Since 2026-10-22, with voice off Koe types through Classic, never a muted realtime model.)
   - The user asked whether this should be a manual mode; we agreed that following the voice setting is enough.
   - **Why one list (the user, 2026-10-19):** "currently the two settings looks exactly the same lol and I think we are building it so live or not the koe still functions right? then no problem." A realtime model as Koe already worked with voice off, and a text model already talked through the speech pipeline. The second list's only real job was the fallback when a live session can't go on, and the one list's own fallback does that. A stored config's two lists became one: the talking list's models, then the typing list's, with a wait the user had set (the talking list's first); not their level, since old files hold the old default, off, explicitly.
   - **With voice off, a text model comes before a realtime one** (2026-10-19, the user's standing rule: take data-saving optimizations by default). Gemini Live's setup asks for audio replies only (`responseModalities: ['AUDIO']`), so a typed conversation through it downloads about 65 KB a second of reply as 24 kHz PCM in base64 and never plays it, where a text model's reply is a few KB. So with the list [Gemini 3.8 Live, gemini-3.5-flash-lite], voice off uses flash-lite in the loop and voice on Gemini Live. A realtime model runs muted, its transcript the reply, only when no text model in the list can answer now (there is none, or all rest). With voice on, the list is walked in order.
@@ -80,15 +87,15 @@ In code and the spec they're Koe and Kokoro.
 
 ### The halves and their models
 - **Kokoro is the main role** (spec §9.6): Shiori's deep model, unchanged in its tools.
-- **Koe is a new role:** one ordered list, taking text and realtime models, which falls back down its models as roles do today.
+- **Koe is a new role:** two ordered lists since 2026-10-22, Koe · Realtime (realtime models) and Koe · Classic (chat models), with the mode chosen on the voice chip (above); each falls back down its models as roles do today, and Realtime falls back to Classic.
 - **The split is opt-in** (my call, from the user's "both can do both"):
-  - Shiori is two halves only when the Koe role has at least one model. With no Koe model, she works exactly as today: one half, the main model, talking through output tools. That's also the failure path.
+  - Shiori is two halves only when the Koe list in use has at least one model. With no Koe model, she works exactly as today: one half, the main model, talking through output tools. That's also the failure path.
   - That keeps a new user's free start (OpenRouter's 50 free requests a day) at one call per message.
-  - **Voice on or off, Koe uses the same list.** With Gemini Live first and voice off, a text model after it answers; with none that can, Koe uses Gemini Live in text: a realtime model's transcript is the reply. With a text model first and voice on, Koe talks with it through the speech pipeline.
-  - So the split never flips with the voice setting. Kokoro's instructions always include the Koe-aware part while any Koe model is set.
+  - **Voice on, the mode decides; voice off, Classic.** With Realtime chosen and voice on, Gemini Live talks; with voice off, Koe types through Classic. With Classic chosen, Koe talks with its chat model through the speech pipeline. (Under the one list, voice off used Gemini Live in text when no text model could answer; since 2026-10-22 it never does.)
+  - So the split flips with the voice setting only when Classic is empty and Realtime is chosen: then Shiori is one half with voice off. Kokoro's instructions include the Koe-aware part while she is two halves.
 - **The pathway comes from the model's abilities:**
   - **A text model as Koe:** typed and transcribed text in, text out. When voice is on, speech-in and speech-out work as today: dictation, Whisper, send audio, browser voice, TTS.
-  - **A realtime voice model as Koe:** a live session. Audio streams both ways, typed text and photos go in, and audio comes out with transcripts of both sides. In a typing conversation, a realtime model's reply is shown as its transcript, and the audio is played only when voice is on.
+  - **A realtime voice model as Koe:** a live session. Audio streams both ways, typed text and photos go in, and audio comes out with transcripts of both sides. Since 2026-10-22 it runs only with voice on and Koe · Realtime chosen: a typed message then opens a session without the microphone, whose reply is said and shown as its transcript. With voice off, Koe types through Koe · Classic (until then, a realtime model's reply in a typing conversation was shown as its transcript and its audio dropped).
 - **One personality** (Shiori's) is in both halves' instructions. Koe carries her voice and manner. Kokoro gets the same personality, plus how to work behind Koe.
 
 ### Koe's context (compact, for speed)
@@ -135,9 +142,9 @@ In code and the spec they're Koe and Kokoro.
 
 ### Failures
 - **Kokoro's speak, show and ask while Koe works:** annai doesn't run them. It turns them into a `tell_koe` append, so nothing is lost, and the tool result says "Koe is speaking for you; use tell_koe." This is enforced in code, because instructions alone leak.
-- **When every model in Koe's list has failed,** annai adds a message block, "Koe can't speak right now; talk to the user directly", and lets Kokoro's output tools run. The user still gets an answer, as Shiori answers today. When Koe works again, a block says so.
+- **When every model in the Koe list in use has failed** (Realtime's fall to Classic first), annai adds a message block, "Koe can't speak right now; talk to the user directly", and lets Kokoro's output tools run. The user still gets an answer, as Shiori answers today. When Koe works again, a block says so.
 - **When Kokoro's models all fail,** Koe tells the user it couldn't check, in plain words, and offers to try again.
-- **A realtime session that drops** (a connection limit, a network change) resumes with its handle. If it can't, Koe goes on with the next model down its list (a text model through the speech pipeline) for that turn, and says so only if the user would notice.
+- **A realtime session that drops** (a connection limit, a network change) resumes with its handle. If it can't, Koe goes on with the next model in Realtime, or else Classic (a text model through the speech pipeline), for that turn, and says so only if the user would notice.
 
 ### Triggers and wakes (§6.1)
 - **Kokoro hears all, and wakes on cue** (the user's choice). Every heard sentence, everything Koe says, and every typed message and photo goes into Kokoro's transcript at once.
@@ -155,7 +162,7 @@ In code and the spec they're Koe and Kokoro.
 - **Chatter** in the car, speech not meant for Shiori: Koe may stay silent, using the realtime model's own choice (Gemini's proactive audio) or the quick-decision gate (§10.4) for text pathways. It still goes into both transcripts, as dismissed speech does today.
 
 ### Realtime sessions
-- **Opening:** a session opens when voice turns on with a realtime model first in Koe's list. It needs the user's tap for audio, as voice does today. The setup carries Koe's instructions, compact context and tools.
+- **Opening:** a session opens when voice is on with Koe · Realtime chosen and one of its models able to answer. It needs the user's tap for audio, as voice does today. The setup carries Koe's instructions, compact context and tools.
 - **Closing:** it closes when voice turns off, or after a quiet spell (the builder picks the length and says why), so the free limits aren't wasted.
 - **Reopening while voice is on** (the user's choice: "tap or a reminder"), as Shiori wakes today:
   - a tap on Shiori;
@@ -187,14 +194,14 @@ The user: "maybe let's try to use the most efficient codec each provider support
 
 ### Spending and the Trace
 - Both halves' model calls count toward Spend per day. The Trace shows each call, which half made it, and the notes between them.
-- Settings → Models shows the Koe role, one list, right after Main.
+- Settings → Models shows Koe's two lists, Koe · Realtime and Koe · Classic, right after Main, each with a line on when it is used.
 
 ## Spec changes
 docs/superpowers/specs/2026-10-15-annai-design.md:
 - §6: wakes to both halves, Kokoro's work log, the notes, the final-text rule;
 - §6.3: the context for each half, with the instruction blocks as messages;
 - §7.1–7.2: output tools by half, the code gate, `tell_koe` and `tell_kokoro`, and the tool split;
-- §9.6: the Koe role, one list;
+- §9.6: the Koe role, two lists and the mode (2026-10-22; one list before);
 - §10: the pathways, and realtime sessions within voice mode (§10.5);
 - §11: triggers to both halves;
 - §15: realtime connections and their keys, and the "listening live" disclosure;
