@@ -37,11 +37,9 @@ test('tell_kokoro returns "sent" in the same step, before Kokoro has done anythi
   const k = await kokoroKit([{ delayMs: 200, toolCalls: [{ name: 'sleep', input: {} }] }]);
   const tool = channelTool('koe', k.channel);
   assert.equal(tool.name, 'tell_kokoro');
-  const started = Date.now();
   const out = await tool.run({ text: 'Is Nepenthe open now?' }, /** @type {any} */ ({ wake: 'k1' }));
   assert.equal(out, 'sent');
-  assert.ok(Date.now() - started < 100, 'it never waits for Kokoro');
-  assert.equal(k.requests.length, 0);
+  assert.equal(k.requests.length, 0, 'it never waits for Kokoro: when it returns, Kokoro has not so much as sent its request');
   await k.agent.idle();
   assert.equal(k.requests.length, 1, 'then Kokoro works on it');
   assert.equal(channelTool('kokoro', k.channel).name, 'tell_koe');
@@ -70,15 +68,14 @@ test('append to a busy Kokoro arrives before its next model call; to an idle one
 
 test('immediate cuts the current call and the turn continues with the note', async () => {
   const k = await kokoroKit([
-    { delayMs: 500, text: 'Looking up the lunch places' },
+    { delayMs: 30_000, text: 'Looking up the lunch places' },
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ]);
   k.agent.send('Where for lunch?');
   await until(() => k.requests.length === 1);
-  const started = Date.now();
   await k.channel.send('koe', 'Not lunch: they mean dinner.', 'immediate', 'tool', 'k1');
+  await until(() => k.requests.length === 2, 5000); // the call was cut: waited out, it would take 30 s
   await k.agent.idle();
-  assert.ok(Date.now() - started < 400, 'the call was cut, not waited out');
   assert.deepEqual(k.order, ['logged', 'delivered', 'cut']);
   assert.equal(k.requests.length, 2);
   assert.ok(lastUser(k.requests[1]).includes('[Koe notes] "Not lunch: they mean dinner."'));
