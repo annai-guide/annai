@@ -39,4 +39,4 @@ On a real iPhone (Safari, and the installed app) and a real Android phone (Chrom
 - [ ] **The first tap on iPhone.** Close annai fully and open it from the Home Screen. Before tapping anything else, let a reply come without a tap (a reminder, once milestone 5 has them; for now, send a message with the keyboard's return key): does she speak, or does a card ask for a tap?
 - [ ] **Dictation in the installed app on iPhone.** Speech in: Phone dictation first, no transcription model. In Safari and in the installed app: does dictation hear you? If it fails, does recording take over (with a transcription model second)?
 - [ ] **Interrupting and chatter in the car,** as in 3b's list, with road noise.
-- [ ] **Show what she's saying.** While she speaks, a passenger taps "Captions": her words show above the dock.
+- [ ] **Show what she's saying.** While she speaks, her words show in a bubble above the dock by themselves (there is no Captions chip), and in the conversation marked "said aloud". Settings → Voice → "Show what she says" off hides both.

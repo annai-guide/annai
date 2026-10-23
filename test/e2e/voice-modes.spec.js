@@ -63,7 +63,8 @@ test('where annai cannot tell what audio is connected, Auto follows your last ch
   await expect(chip).toHaveText('Voice on · your last choice');
 });
 
-test('spoken words stay hidden unless asked: folded in the conversation, and shown over the dock on request (spec §2, §16.1, §16.2)', async ({ page }) => {
+/** Her one spoken line, from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */
+async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /** @type {(server: Awaited<ReturnType<typeof startModelServer>>) => Promise<void>} */ fn, /** @type {() => Promise<void>} */ before = async () => {}) {
   const server = await startModelServer({
     '/b/v1/messages': sse(anthropicToolReply([{ name: 'speak', input: { text: 'Nepenthe is 25 minutes south.' } }, { name: 'sleep', input: {} }])),
     '/voice/audio/speech': wav,
@@ -80,22 +81,60 @@ test('spoken words stay hidden unless asked: folded in the conversation, and sho
     await page.getByLabel('Add a model to speech-out').selectOption({ label: 'voice' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice on · car audio');
+    await before();
     await page.goto('/#/trips'); // the Models screen has a Send button of its own
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    // The bubble above Shiori: whether it was ever shown, even for a moment.
+    await page.evaluate(() => {
+      const caption = document.querySelector('.dock .caption');
+      /** @type {any} */ (window).sawBubble = false;
+      new MutationObserver(() => { if (caption && !(/** @type {HTMLElement} */ (caption)).hidden) /** @type {any} */ (window).sawBubble = true; }).observe(/** @type {Element} */ (caption), { attributes: true, attributeFilter: ['hidden'] });
+    });
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Where should we eat?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect.poll(() => server.bodies('/voice/audio/speech').length).toBe(1);
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk', { timeout: 20_000 });
+    await fn(server);
+  } finally {
+    await server.stop();
+  }
+}
+
+// "for the shiori said aloud card, it is a bit redundant ... maybe let's just show what she is speaking? this also let us able to remove the
+// captions button?" and "I still want the transcript of what she said available to look back if I missed it" (the user, 2026-10-23)
+test('what she says aloud is shown: its words in the conversation, marked "said aloud", and in the bubble over the dock while she speaks, with no Captions chip (spec §2, §16.1, §16.2)', async ({ page }) => {
+  await sheSpeaks(page, async () => {
+    const said = page.locator('.convo .shiori.said');
+    await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
+    await expect(said.getByText('said aloud')).toBeVisible();
+    await expect(said.getByRole('button', { name: 'Show what she said' })).toHaveCount(0);
+    expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'the bubble showed while she spoke').toBe(true);
+    await expect(page.locator('.dock .caption')).toHaveText('Nepenthe is 25 minutes south.');
+    await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
+    // It lets go a moment after she stops.
+    await expect(page.locator('.dock .caption')).toBeHidden({ timeout: 8000 });
+    // The transcript stays: the line is still there to look back on.
+    await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
+  });
+});
+
+test('"Show what she says" in Settings → Voice is on, and off it hides both: the bubble, and the words in the conversation until asked', async ({ page }) => {
+  await sheSpeaks(page, async () => {
+    expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'no bubble').toBe(false);
+    await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toContainText('Said aloud');
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeHidden();
     await said.getByRole('button', { name: 'Show what she said' }).click();
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
-    const caption = page.locator('.dock .caption');
-    await expect(caption).toBeHidden();
-    await page.getByRole('button', { name: 'Captions' }).click();
-    await expect(caption).toHaveText('Nepenthe is 25 minutes south.');
-  } finally {
-    await server.stop();
-  }
+    await page.goto('/#/voice');
+    await expect(page.getByLabel('Show what she says')).not.toBeChecked();
+  }, async () => {
+    await page.goto('/#/voice');
+    const show = page.getByLabel('Show what she says');
+    await expect(show).toBeChecked();
+    await show.uncheck();
+    await expect(page.locator('.saving', { hasText: 'Show what she says' }).locator('.saved')).toHaveText('Saved');
+  });
 });

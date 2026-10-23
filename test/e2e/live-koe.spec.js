@@ -91,7 +91,12 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     await expect(said).toHaveCount(2, { timeout: 20_000 });
     await expect(said.nth(0)).toContainText("I'm checking.");
     await expect(said.nth(1)).toContainText("It's open until ten tonight.");
-    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toHaveCount(0);
+    // The halves' notes show by default (the user, 2026-10-23), as quiet lines between the bubbles.
+    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toHaveText([
+      'annai to Kokoro: A live voice session opened: Koe speaks natively, and its words reach you as [Koe said aloud].',
+      'Koe to Kokoro: Is Nepenthe open now?',
+      'Kokoro to Koe: Nepenthe is open until 22:00 tonight (nepenthe.com).',
+    ]);
     // Voice off closes it, the microphone with it.
     await page.locator('.voice-chip').click();
     await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
