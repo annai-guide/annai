@@ -21,14 +21,14 @@ export const SOURCES = [
   {
     name: 'Nominatim',
     hosts: ['nominatim.openstreetmap.org'],
-    use: "Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools. annai asks it once a second at most, as its usage policy asks.",
+    use: "Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.",
     credit: "Data © OpenStreetMap contributors, used under Nominatim's usage policy.",
     links: [{ href: 'https://operations.osmfoundation.org/policies/nominatim/', text: 'usage policy' }],
   },
   {
     name: 'Wikipedia',
     hosts: ['en.wikipedia.org'],
-    use: 'Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address.',
+    use: "Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.",
     credit: "Text by Wikipedia's contributors, under CC BY-SA 4.0.",
     links: [{ href: 'https://en.wikipedia.org/', text: 'Wikipedia' }, CC_BY_SA],
   },

@@ -13,10 +13,11 @@ const ADDRESS = { exa: 'https://mcp.exa.ai/mcp', parallel: 'https://search.paral
 for (const p of FREE_PROVIDERS) {
   test(`${p.name}: answers a keyless search from annai's origin, and lets a web app read it`, { skip }, async () => {
     // A browser asks first whether annai's origin may send the request's headers; the answer must allow it.
-    const pre = await fetch(/** @type {Record<string, string>} */ (ADDRESS)[p.id], { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' } });
+    const pre = await fetch(/** @type {Record<string, string>} */ (ADDRESS)[p.id], { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': 'POST', 'access-control-request-headers': p.id === 'exa' ? 'content-type,x-exa-source' : 'content-type' } });
     assert.ok(pre.status >= 200 && pre.status < 300, `preflight ${pre.status}`);
     assert.match(String(pre.headers.get('access-control-allow-origin')), new RegExp(`^(\\*|${ORIGIN.replace(/\./g, '\\.')})$`));
     assert.match(String(pre.headers.get('access-control-allow-headers')), /content-type|\*/i);
+    if (p.id === 'exa') assert.match(String(pre.headers.get('access-control-allow-headers')), /x-exa-source|\*/i);
     /** @type {string | null} */
     let allowed = null;
     const asBrowser = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {

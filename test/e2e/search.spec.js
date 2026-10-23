@@ -25,17 +25,18 @@ const appSettings = (page) => page.evaluate(async () => {
 /** The names in the search order, top to bottom. @param {import('@playwright/test').Page} page */
 const order = (page) => page.locator('#search-order li').evaluateAll((lis) => lis.map((li) => (li.querySelector('span')?.textContent ?? '').replace(/^\d+\. /, '').replace(/ \(.*$/, '')));
 
-test('Settings → Tools → Search lists the providers in the order web_search tries them; a tick switches one off, a handle moves it, and both are saved', async ({ page }) => {
+test('Settings → Tools → Search lists the providers in the order web_search tries them; a tick switches one off, a handle moves it (arrow keys, its menu, a drag), and all are saved', async ({ page, browserName }) => {
   await openApp(page, '#/tools');
   await expect(page.getByRole('heading', { name: 'Tools', level: 1 })).toBeVisible();
   await expect(page.locator('#search-order li').first()).toBeVisible();
   // Keyed ones first (Jina, with no key yet), the free services, and the floor last.
-  expect(await order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage and Wikipedia']);
+  expect(await order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage, Wikipedia and Nominatim']);
   await expect(page.locator('#search-order li', { hasText: 'Jina Search' })).toContainText('needs a key');
   await expect(page.locator('#search-order li', { hasText: 'Exa' })).toContainText('free, no key');
   await expect(page.locator('#search-order li', { hasText: 'Wikivoyage' })).toContainText('always on');
   await expect(page.locator('#search-order li', { hasText: 'Wikivoyage' }).getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByText("Free search sends your searches to Exa, Parallel or Firecrawl")).toBeVisible();
+  await expect(page.getByText('Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim)')).toBeVisible();
   for (const n of ['Exa', 'Parallel', 'Firecrawl']) await expect(page.getByRole('checkbox', { name: `Use ${n}` })).toBeChecked();
   // Off by a tick.
   await page.getByRole('checkbox', { name: 'Use Parallel' }).uncheck();
@@ -44,11 +45,30 @@ test('Settings → Tools → Search lists the providers in the order web_search 
   await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 5' }).focus();
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'exa', 'firecrawl', 'parallel', 'wiki']);
-  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Firecrawl', 'Parallel', 'Wikivoyage and Wikipedia']);
+  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Firecrawl', 'Parallel', 'Wikivoyage, Wikipedia and Nominatim']);
   await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
+  // Moved by the handle's menu (a tap on it): Move up puts Parallel above Firecrawl again.
+  await page.getByRole('button', { name: 'Reorder Parallel, 4 of 5' }).click();
+  await page.getByRole('group', { name: 'Move Parallel' }).getByRole('button', { name: 'Move up' }).click();
+  await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'exa', 'parallel', 'firecrawl', 'wiki']);
+  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage, Wikipedia and Nominatim']);
+  await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
+  // Dragged by the handle with a mouse (Chromium; WebKit's phone has no mouse): Firecrawl above Exa.
+  if (browserName === 'chromium') {
+    const grip = page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 5' });
+    const to = /** @type {{ x: number, y: number, height: number }} */ (await page.locator('#search-order li', { hasText: 'Exa' }).boundingBox());
+    const from = /** @type {{ x: number, y: number, width: number, height: number }} */ (await grip.boundingBox());
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2, to.y + 4, { steps: 12 });
+    await page.mouse.up();
+    await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'firecrawl', 'exa', 'parallel', 'wiki']);
+    await expect.poll(() => order(page)).toEqual(['Jina Search', 'Firecrawl', 'Exa', 'Parallel', 'Wikivoyage, Wikipedia and Nominatim']);
+  }
   // Still so after a reload.
+  const kept = await order(page);
   await page.reload();
-  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Firecrawl', 'Parallel', 'Wikivoyage and Wikipedia']);
+  await expect.poll(() => order(page)).toEqual(kept);
   await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Use Exa' })).toBeChecked();
 });
