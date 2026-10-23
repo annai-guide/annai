@@ -7,14 +7,14 @@ import { readyFeatured } from '../provider-setup.js';
 import { officialPlugins } from '../../core/llm/official.js';
 
 /**
- * The welcome (the user, 2026-10-18): five short steps in annai's own words, not Shiori's, at
- * #/welcome and #/welcome/2 to 5. It shows once per device at annai's plain start (../welcome.js), and
+ * The welcome (the user, 2026-10-18): six short steps in annai's own words, not Shiori's, at
+ * #/welcome and #/welcome/2 to 6. It shows once per device at annai's plain start (../welcome.js), and
  * again from Settings → About. Each step's heading takes the focus; Next, Back and Skip are buttons, so
  * a keyboard reaches them in every browser; the last step is the onboarding: installing annai where
  * it isn't, then Settings → Models with the catalog's featured provider's sign-in (spec §9.8).
  */
 
-const TITLES = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
+const TITLES = ['Welcome to annai', 'Shiori, Koe and Kokoro', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
 const LAST = TITLES.length;
 
 /** @param {number} n */
@@ -34,6 +34,16 @@ function body(n, ctx) {
     ];
   }
   if (n === 2) {
+    // The architecture, plainly (the user, 2026-10-23: "explain who is shiori, what is kokoro and what is koe").
+    return [
+      h('p', { class: 'lead', text: 'Shiori is your guide. She has two halves that work together.' }),
+      h('ul', { class: 'can' },
+        can('Koe (声, voice)', 'talks with you and answers at once.'),
+        can('Kokoro (心, heart and mind)', 'thinks things through and does the work: planning, searching, reading your bookings.')),
+      h('p', { class: 'sub', text: 'You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. Settings → Shiori shows what they tell each other.' }),
+    ];
+  }
+  if (n === 3) {
     return [h('ul', { class: 'can' },
       can('Plans and bookings.', 'Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.'),
       can('GPS.', "With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late."),
@@ -44,8 +54,8 @@ function body(n, ctx) {
       can('Plugins and MCP servers.', 'Skills, tools and screens that others make.'),
       can('Recap and replay.', 'Afterwards, a recap of the trip, and its route played back.'))];
   }
-  if (n === 3) return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
-  if (n === 4) return finePrint();
+  if (n === 4) return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
+  if (n === 5) return finePrint();
   return start(ctx);
 }
 

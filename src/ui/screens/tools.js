@@ -4,8 +4,8 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
 
 const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
-/** Jina's page for its API keys ("Manage API Key"), where a free key is made. */
-const JINA_KEYS = 'https://jina.ai/api-dashboard/key-manager/';
+/** Jina's main page, which shows the key to copy in its API box (the user, 2026-10-23: its API page "will not give you a copiable api there while the main page does"). */
+const JINA_KEYS = 'https://jina.ai/';
 
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
 export async function toolSwitchList(ctx) {
@@ -66,7 +66,7 @@ export async function renderTools(ctx) {
         ? h('p', { class: 'sub', text: 'A key is set. It stays on this device and is never shown again.' })
         // A real link, so an iPhone Home Screen app opens it in Safari from the tap itself (as a provider's sign-in does).
         : h('p', { class: 'sub' }, "Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. ",
-          h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: 'Get a free key from Jina' }), '.'),
+          h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: 'Get a free key from Jina' }), '. On that page the key is in the API key box: copy it and paste it above.'),
       h('div', { class: 'acts' },
         h('button', { class: 'btn pri', type: 'button', onclick: () => {
           const v = key.value.trim();
