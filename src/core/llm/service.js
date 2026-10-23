@@ -532,9 +532,10 @@ export function createLlm({
      * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would; "not found" too, unless
      * it was a resume handle the provider no longer keeps, which Koe follows with a fresh session (the iPhone trace, 2026-10-22).
      * @param {string} modelId @param {Omit<import('./contract.js').LiveSetup, 'audioIn' | 'audioOut'> & Partial<import('./contract.js').LiveSetup>} setup
-     * @param {{ scope?: string, wake?: string }} [o] @returns {Promise<import('../realtime/open.js').LiveSession>}
+     * @param {{ scope?: string, wake?: string, output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} [o] output: the phone's sound, traced as it is ready
+     * @returns {Promise<import('../realtime/open.js').LiveSession>}
      */
-    async live(modelId, setup, { scope = SYS, wake } = {}) {
+    async live(modelId, setup, { scope = SYS, wake, output } = {}) {
       const { type, endpoint, model, key, secret } = await resolve(modelId);
       if (!type.realtime || !type.audio) throw new ProviderError('bad-request', `${model.name} isn't a live voice model.`);
       const trace = modelTrace(store, scope);
@@ -542,7 +543,7 @@ export function createLlm({
       const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
       const session = openLive({
         type, endpoint, model, key, tunables, setup, trace,
-        registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
+        registry: plugins.registry, wake, output, ...(openSocket ? { socket: openSocket } : {}),
       });
       // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it
       // reopened then fails for another reason: the next one need not pay a refused socket again. Only the keys the refusal changed are

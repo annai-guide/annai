@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
+import { liveKit, got, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { quiet, cat, clip, room, hum } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
@@ -57,6 +57,89 @@ test('what was heard and what Koe said are logged per turn; Kokoro reads "[heard
     // Koe as a text model would read the same lines, live ones as what was said to the user.
     assert.ok(read(k.agent.koe).join('|').includes(`[said to the user] "There's a taco stand ahead."`));
     assert.ok(k.platform.streams.every((/** @type {any} */ s) => s.ended || s.stopped), 'every stream ended or stopped');
+  } finally {
+    await k.done();
+  }
+});
+
+test("her voice is traced per reply in numbers only, from the player's own (holes, the start's wait, cut or not); the ready line has the phone's sound rate and output latency (the pops investigation)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone() }]);
+  try {
+    await exchange(k, 'where-eat');
+    await soon(async () => (await k.events(['live.reply'])).length === 1);
+    const [reply] = await k.events(['live.reply']);
+    const { wake, ms, ...rest } = reply.data;
+    assert.ok(wake && ms > 500, `${ms} ms`);
+    assert.deepEqual(rest, { holes: 0, holeMs: 0, waitMs: 0, player: 'fake', cut: false });
+    const [ready] = await lives(k, 'ready');
+    assert.deepEqual([ready.data.sampleRate, ready.data.baseLatency], [48_000, 0.01]);
+  } finally {
+    await k.done();
+  }
+});
+
+for (const why of ['voice', 'away']) {
+  test(`closed while she speaks (${why}): her voice stops, traced as cut, and playback comes back ${why === 'away' ? 'at once, the page going' : 'only once its fade is over, not under it'}`, async () => {
+    const k = await liveKit([{ said: 'The bridge ahead was built in 1932 and it is one of the most photographed on the coast.', audio: tone(3) }], { pace: 1 });
+    try {
+      k.platform.streamSpeed = 1;
+      k.agent.tap();
+      await until(() => k.agent.live.listening);
+      k.agent.send('Tell me about the bridge');
+      await until(() => k.agent.live.view.name === 'speaking');
+      await new Promise((r) => setTimeout(r, 300));
+      if (why === 'away') k.agent.hush('away');
+      else k.agent.live.close('voice');
+      assert.equal(k.agent.live.state, 'closed');
+      assert.ok(k.platform.streams[0].stopped);
+      if (why === 'away') assert.equal(k.platform.sessions.at(-1), 'playback');
+      else {
+        assert.equal(k.platform.sessions.at(-1), 'play-and-record', 'not yet: her voice is fading out');
+        await until(() => k.platform.sessions.at(-1) === 'playback', 1000); // 12 ms, the output's 10 ms, and 20 more
+      }
+      await soon(async () => (await k.events(['live.reply'])).length === 1);
+      const [reply] = await k.events(['live.reply']);
+      assert.equal(reply.data.cut, true);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("a stream that never plays out (a context suspended mid-reply) is stopped past its length: her line cut where heard, the reply traced as stalled, and Koe free again (review 5)", async () => {
+  const words = 'The bridge ahead was built in 1932.';
+  const k = await liveKit([{ heard: 'Where should we eat?', said: words, audio: tone(0.6) }, { heard: 'And then?', said: 'Then the coast.', audio: tone(0.3) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // no quiet spell closes it between the two
+    k.platform.streamStalls = true;
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['live.reply'])).length === 1, 8000); // 0.6 s of her sound and 3 s, on the real clock
+    const [reply] = await k.events(['live.reply']);
+    assert.deepEqual([reply.data.stalled, reply.data.cut, reply.data.ms], [true, true, 0]);
+    assert.deepEqual(await k.events(['out.speak']), [], 'none of it was heard: no line');
+    assert.equal(k.platform.streams[0].stopped, true);
+    assert.notEqual(k.agent.live.view.name, 'speaking');
+    k.platform.streamStalls = false;
+    await say(k, 'gas-station');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'Then the coast.', 'the next turn plays');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a stream whose sound can't play (the page may not play sound now) is stopped at once, traced as stalled (review 5)", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone() }]);
+  try {
+    k.platform.streamRunning = false;
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['live.reply'])).length === 1);
+    const [reply] = await k.events(['live.reply']);
+    assert.equal(reply.data.stalled, true);
   } finally {
     await k.done();
   }
