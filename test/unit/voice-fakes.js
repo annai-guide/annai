@@ -177,7 +177,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         openedWith = null;
         openedWith = platform.mic.inUse();
         return {
-          close() { log.push('mic close'); frames = null; },
+          // Each open closes only its own: a start let go that finishes after a newer microphone opened must not take that one's frames away.
+          close() { log.push('mic close'); if (frames === onFrames) frames = null; },
           ...(record ? {
             take: async () => { log.push('mic take'); return enc.encode(`${record} file ${++files}`); },
             again: () => { log.push('mic again'); },
