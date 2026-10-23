@@ -5,18 +5,30 @@ const NO_CLICK_MS = 400;
 
 /**
  * Calls fn with what a tap or press on the page landed on, at its click, or NO_CLICK_MS after its pointer is up when none comes (iOS sends
- * none for a tap on plain content, or a drag): never at the press, which would move the page under the finger. @param {(at: EventTarget | null) => void} fn
+ * none for a tap on plain content): never at the press, which would move the page under the finger. A drag (the pointer moved) or a mouse
+ * (which always sends its click) waits for no click. @param {(at: EventTarget | null) => void} fn
  * @param {Document} [doc] @returns {() => void} stops
  */
 export function onTap(fn, doc = document) {
   /** @type {EventTarget | null} */
   let at = null;
+  let x = 0;
+  let y = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
-  /** @type {[string, (e: Event) => void][]} */
+  /** @type {[string, (e: any) => void][]} */
   const on = [
-    ['pointerdown', (e) => { clearTimeout(timer); at = e.target; }],
-    ['pointerup', () => { clearTimeout(timer); timer = setTimeout(() => { if (at) fn(at); at = null; }, NO_CLICK_MS); }],
+    ['pointerdown', (/** @type {PointerEvent} */ e) => {
+      clearTimeout(timer);
+      at = e.pointerType === 'mouse' ? null : e.target;
+      x = e.clientX;
+      y = e.clientY;
+    }],
+    ['pointerup', (/** @type {PointerEvent} */ e) => {
+      clearTimeout(timer);
+      if (Math.hypot(e.clientX - x, e.clientY - y) > 10) at = null;
+      timer = setTimeout(() => { if (at) fn(at); at = null; }, NO_CLICK_MS);
+    }],
     ['click', (e) => { clearTimeout(timer); at = null; fn(e.target); }],
   ];
   for (const [type, f] of on) doc.addEventListener(type, f, true);

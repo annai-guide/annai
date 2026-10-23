@@ -200,7 +200,7 @@ test('in Koe · Realtime the bubble over Shiori holds her words while she speaks
 
 // Fix pass 3, item 5: Gemini's input transcript often finishes after her turn: the heard line takes its last words, and they are announced.
 test('in Koe · Realtime the last words heard, coming after her turn, reach the heard line and the announcer', async ({ page }) => {
-  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we', heardAfter: ' eat tonight?', said: 'Somewhere nice by the water.', audio: voice(1), usage }] });
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we', heardAfter: ' eat tonight?', said: 'Somewhere nice by the water.', audio: voice(0.4), usage }] });
   const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
   try {
     await fakeMicrophone(page, [clipPath('where-eat')]);
@@ -216,7 +216,9 @@ test('in Koe · Realtime the last words heard, coming after her turn, reach the 
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect(page.locator('.convo .shiori.said')).toContainText('Somewhere nice by the water.', { timeout: 20_000 });
     await expect(page.locator('.convo .you.heard')).toHaveText(['Where should we eat tonight?'], { timeout: 10_000 });
-    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced)).toContain('Heard: Where should we eat tonight?');
+    // Announced once, its last words, however many times they were revised (follow-up 2).
+    await page.waitForTimeout(1200);
+    expect((await page.evaluate(() => /** @type {any} */ (window).announced)).filter((/** @type {string} */ t) => t.startsWith('Heard'))).toEqual(['Heard: Where should we eat tonight?']);
   } finally {
     await s.stop();
     await kokoro.stop();

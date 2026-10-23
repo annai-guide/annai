@@ -270,7 +270,10 @@ export default function (test, assert) {
     const agent = fakeAgent();
     /** @type {Record<string, any>} */
     const app = {};
-    const ws = { readJSON: async () => app };
+    let reads = 0;
+    /** @type {Set<(c: any) => void>} */
+    const changes = new Set();
+    const ws = { readJSON: async () => { reads++; return app; }, onChange: (/** @type {(c: any) => void} */ fn) => { changes.add(fn); return () => changes.delete(fn); } };
     const ctx = { registry, agent, ws, store: {}, notices: { card() {}, toast() {} }, go() {}, voice: { mode: { on: true, setting: 'on' }, on: true, onLevel: () => () => {}, onChange: () => () => {}, choose: async () => {} } };
     const dock = createDock(ctx);
     const caption = /** @type {HTMLElement} */ (dock.el.querySelector('.caption'));
@@ -278,13 +281,17 @@ export default function (test, assert) {
     try {
       agent.state = { name: 'speaking', label: '' };
       agent.emit('state', agent.state);
-      agent.emit('saying', 'It is open');
+      for (const words of ['It', 'It is', 'It is open']) agent.emit('saying', words);
       await tick();
       assert.deepEqual([caption.hidden, caption.textContent], [false, 'It is open']);
+      assert.equal(reads, 1, 'read once, not for every piece of her words (follow-up 5)');
       app.shiori = { showWords: false }; // switched off in Settings → Voice while she speaks
-      agent.emit('saying', 'It is open until ten');
+      for (const fn of changes) fn({ scope: 'sys:settings', path: '/app.json' });
       await tick();
       assert.deepEqual([caption.hidden, caption.textContent], [true, ''], 'gone at once, with its words');
+      agent.emit('saying', 'It is open until ten');
+      await tick();
+      assert.deepEqual([caption.hidden, caption.textContent], [true, '']);
       agent.emit('event', { type: 'out.speak', seq: 3, data: { voice: true, text: 'Her next line.' } });
       await tick();
       assert.deepEqual([caption.hidden, caption.textContent], [true, '']);
