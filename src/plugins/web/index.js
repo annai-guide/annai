@@ -2,13 +2,16 @@ import { VERSION } from '../../app/version.js';
 import { htmlToText } from '../../core/html-text.js';
 import { toBase64 } from '../../core/bytes.js';
 import { anySignal } from '../../core/signals.js';
+import { readAppSettings } from '../../core/settings.js';
+import { normalizeRows, restsOn, cooldowns, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
+import { FREE_PROVIDERS, KNOWLEDGE, exaRead } from './free.js';
 
 export const manifest = {
   id: 'web',
   name: 'Web tools',
   version: VERSION,
   api: 1,
-  description: 'fetch reads any web page, through Jina Reader when a site doesn\'t let web apps read it; web_search searches with Jina Search.',
+  description: 'fetch reads any web page, through Jina Reader or Exa when a site doesn\'t let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.',
 };
 
 const READER = 'https://r.jina.ai/';
@@ -18,13 +21,32 @@ const FILE_MAX = 10 * 2 ** 20;
 /** Each step's time limit, as the places tools' requests: a site that never answers is left for the next way to read it. */
 export const STEP_MS = { ms: 25_000 };
 
-/** fn with a signal the user's stop and STEP_MS both end; past the limit, an error marked late. @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn */
-async function step(call, fn) {
-  const late = AbortSignal.timeout(STEP_MS.ms);
+export { READY_MS };
+
+/**
+ * fn with a signal the user's stop and STEP_MS (or less, ms) both end; past the limit, an error marked late. It
+ * stops waiting at the signal even when fn ignores it (a plugin's provider may), so one stuck call can't hold the chain.
+ * @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn @param {number} [ms]
+ */
+async function step(call, fn, ms = Infinity) {
+  const late = AbortSignal.timeout(Math.min(STEP_MS.ms, ms));
+  const signal = anySignal([call.signal, late]);
+  /** @type {() => void} */
+  let off = () => {};
+  const ended = new Promise((_, reject) => {
+    const stop = () => reject(signal.reason);
+    if (signal.aborted) stop();
+    else signal.addEventListener('abort', stop, { once: true });
+    off = () => signal.removeEventListener('abort', stop);
+  });
+  const work = Promise.resolve().then(() => fn(signal));
+  work.catch(() => {}); // abandoned at the signal, it may still fail later
   try {
-    return await fn(anySignal([call.signal, late]));
+    return await Promise.race([work, ended]);
   } catch (e) {
     throw late.aborted && !call.signal.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+  } finally {
+    off();
   }
 }
 
@@ -102,7 +124,7 @@ export function activate(annai) {
       } else {
         why.push('an http address can only be read through a reader');
       }
-      // 2. Through the reader service.
+      // 2. Through Jina Reader.
       const k = await key();
       try {
         const got = await step(call, async (signal) => {
@@ -117,7 +139,20 @@ export function activate(annai) {
         if (call.signal.aborted) throw e;
         why.push(/** @type {any} */ (e)?.late ? "Jina Reader didn't answer in time" : "Jina Reader couldn't be reached");
       }
-      // 3. The model provider's own fetch tool, if one is on (spec §9.5).
+      // 3. Exa's reader, which needs no key, unless the user unticked Exa (Settings → Tools).
+      if (!((await readAppSettings(annai.files)).web?.searchOff ?? []).includes('exa') && !cooldowns.left('exa')) {
+        try {
+          const text = await step(call, (signal) => exaRead(href, from + TEXT_MAX + 1000, { fetch: call.fetch, signal }), FREE_PROVIDERS[0].limitMs);
+          cooldowns.clear('exa');
+          if (text.trim()) return piece(text, from, `Source: ${href} (read through Exa)`);
+          why.push('Exa found no text there');
+        } catch (e) {
+          if (call.signal.aborted) throw e;
+          if (restsOn(e)) cooldowns.rest('exa');
+          why.push(/** @type {any} */ (e)?.late ? "Exa didn't answer in time" : String(/** @type {any} */ (e)?.message ?? e));
+        }
+      }
+      // 4. The model provider's own fetch tool, if one is on (spec §9.5).
       try {
         const r = await call.llm.call({
           role: 'main', scope: call.scope, signal: call.signal, record: { tag: 'fetch' },
@@ -135,44 +170,129 @@ export function activate(annai) {
   };
 
   const jina = {
-    id: 'jina', name: 'Jina Search', needsKey: true,
-    /** @param {string} query @param {{ key: string | null, fetch: any, signal: AbortSignal }} c */
-    async search(query, { key: k, fetch: get, signal }) {
-      const res = await get(`${SEARCH}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: 'application/json', authorization: `Bearer ${k}`, 'x-respond-with': 'no-content' } });
-      if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Jina Search refused the key' : `Jina Search answered ${res.status}`);
-      const body = await res.json();
-      return (body?.data ?? []).map((/** @type {any} */ d) => ({ title: String(d.title ?? ''), url: String(d.url ?? ''), snippet: String(d.description ?? d.content ?? '').slice(0, 300) }));
+    id: 'jina', name: 'Jina Search', kind: /** @type {const} */ ('web'),
+    async ready() {
+      return (await key()) ? { ok: true } : { ok: false, why: 'needs a key (Settings → Tools)' };
     },
+    /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
+    async search(query, { fetch: get, signal }) {
+      const res = await get(`${SEARCH}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: 'application/json', authorization: `Bearer ${await key()}`, 'x-respond-with': 'no-content' } });
+      if (!res.ok) throw Object.assign(new Error(res.status === 401 || res.status === 403 ? 'Jina Search refused the key' : `Jina Search answered ${res.status}`), { status: res.status });
+      const body = await res.json();
+      return (body?.data ?? []).map((/** @type {any} */ d) => ({ title: d.title, url: d.url, snippet: d.description ?? d.content }));
+    },
+  };
+
+  /** The conversation Parallel's free tier counts searches by: one random id for the open conversation, in memory only. */
+  const session = { scope: '', id: '' };
+  /** @param {string} scope */
+  const sessionFor = (scope) => {
+    if (session.scope !== scope || !session.id) Object.assign(session, { scope, id: crypto.randomUUID() });
+    return session.id;
   };
 
   const searchTool = {
     name: 'web_search', group: 'Web',
     description: 'Search the web. Answers as TSV: title, url, snippet. fetch a result to read it.',
     input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
-    /** @param {{ query: string }} i @param {any} call */
+    /**
+     * The search providers in the user's order, each asked in turn (spec §7.2): one that isn't ready, or is resting after a
+     * failure, is passed over; one that fails or finds nothing hands on to the next; the first answer with rows wins. The whole
+     * search has a deadline (CHAIN), with a reserve kept for the floor; when every provider is resting, the one whose rest ends first is tried.
+     * @param {{ query: string }} i @param {any} call
+     */
     async run(i, call) {
-      /** @type {string[]} */
+      const deadline = Date.now() + CHAIN.ms;
+      const providers = await annai.searchProvidersAsync();
+      /** @type {string[]} failures */
       const why = [];
-      const listed = annai.searchProvidersAsync ? await annai.searchProvidersAsync() : [];
-      for (const p of listed.length ? listed : [jina]) {
-        // The key is for this plugin's own Jina alone, never another provider by that name.
-        const k = p === jina ? await key() : null;
-        if (p.needsKey && !k) {
-          why.push(`${p.name} needs a key (Settings → Tools)`);
-          continue;
+      /** @type {string[]} passed over, with the reason */
+      const passed = [];
+      /** @type {{ p: any, e: any }[]} */
+      const failed = [];
+      /** @type {any[]} */
+      const resting = [];
+      let empty = false;
+      /** Asks one provider; its TSV when it has rows. @param {any} p @param {number} [reserve] */
+      const ask = async (p, reserve = 0) => {
+        const room = deadline - Date.now() - reserve;
+        if (room < 100) {
+          passed.push(`${p.name} was left out: the search ran out of time`);
+          return null;
         }
         try {
-          const rows = await step(call, (signal) => p.search(i.query, { key: k, fetch: call.fetch, signal }));
-          return rows.length ? tsv(['title', 'url', 'snippet'], rows.map((/** @type {any} */ r) => [r.title, r.url, r.snippet])) : `Nothing found for "${i.query}".`;
+          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit: ROWS, session: sessionFor(call.scope) }), Math.min(p.limitMs ?? Infinity, room)), i.query);
+          cooldowns.clear(p.id);
+          if (rows.length) return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));
+          empty = true;
         } catch (e) {
           if (call.signal.aborted) throw e;
+          failed.push({ p, e });
           why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
         }
+        return null;
+      };
+      /** Rests what failed: a failure by timeout or network alone, with nothing answering, may be the connection's, so nobody climbs. @param {boolean} answered */
+      const settle = (answered) => {
+        const link = (/** @type {any} */ e) => e?.late || e?.kind === 'network' || e?.kind === 'cors' || e instanceof TypeError;
+        const climb = answered || empty || !failed.every((f) => link(f.e));
+        for (const f of failed) if (restsOn(f.e)) cooldowns.rest(f.p.id, climb);
+      };
+      /** Whether a provider can run, asked for no longer than READY_MS or what the search has left. @param {any} p @param {number} room */
+      const ready = async (p, room) => {
+        if (!p.ready) return { ok: true };
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
+        let timer;
+        const slow = new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, why: "couldn't check if it can run" }), Math.min(READY_MS.ms, room)); });
+        try {
+          return await Promise.race([Promise.resolve().then(() => p.ready()).catch((/** @type {any} */ e) => ({ ok: false, why: String(e?.message ?? e) })), slow]);
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+      /** What is left of the search for this provider: the floor's share is kept for it. @param {any} p @param {number} k */
+      const reserveFor = (p, k) => (p.always || !providers.slice(k + 1).some((q) => q.always) ? 0 : CHAIN.reserve);
+      for (const [k, p] of providers.entries()) {
+        const rest = cooldowns.left(p.id);
+        if (rest > 0) {
+          resting.push(p);
+          passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
+          continue;
+        }
+        const reserve = reserveFor(p, k);
+        const room = deadline - Date.now() - reserve;
+        if (room < 100) {
+          passed.push(`${p.name} was left out: the search ran out of time`);
+          continue;
+        }
+        const r = await ready(p, room);
+        if (!r.ok) {
+          passed.push(`${p.name} ${r.why ?? "isn't ready"}`);
+          continue;
+        }
+        const out = await ask(p, reserve);
+        if (out) {
+          settle(true);
+          return out;
+        }
       }
-      throw new Error(`Web search didn't work: ${why.join('; ')}. Or turn on your model's own search in Settings → Tools.`);
+      // Everything is resting and nothing else ran: the one whose rest ends first gets another try.
+      if (!failed.length && !empty && resting.length) {
+        const next = resting.sort((a, b) => cooldowns.left(a.id) - cooldowns.left(b.id))[0];
+        if ((await ready(next, deadline - Date.now())).ok) {
+          const out = await ask(next);
+          if (out) {
+            settle(true);
+            return out;
+          }
+        }
+      }
+      settle(false);
+      if (empty) return `Nothing found for "${i.query}".${why.length ? ` (${why.join('; ')}.)` : ''}`;
+      throw new Error(`Web search didn't work: ${[...why, ...passed].join('; ') || 'every search provider is switched off'}. Or turn on your model's own search in Settings → Tools.`);
     },
   };
 
-  const off = [annai.register('search', jina), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
+  const off = [...[jina, ...FREE_PROVIDERS, KNOWLEDGE].map((p) => annai.register('search', p)), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
   return () => off.forEach((fn) => fn());
 }

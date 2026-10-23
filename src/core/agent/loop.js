@@ -1,5 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
+import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, providerOf, saveModel } from '../llm/config.js';
@@ -412,6 +413,11 @@ export class Agent {
     if (!online()) this.state = { name: 'offline', label: LABELS.offline };
     // The connection coming and going: the dock says so at once, not only when a turn ends (emulator pass m2b #10).
     for (const type of ['online', 'offline']) globalThis.addEventListener?.(type, () => this.#connection());
+  }
+
+  /** The languages setting (phase 2), the browser's language where none is chosen. */
+  async #languages() {
+    return languageSettings(await readAppSettings(this.ws), this.voice?.locale);
   }
 
   /** While she rests, her state follows the connection (spec §16.3). */
@@ -1139,10 +1145,15 @@ export class Agent {
     const items = [];
     /** What the user wrote last, their last few messages, for the summary's language. @type {string[]} */
     const said = [];
+    /** Heard lines the gate set aside as chatter, whose words may be written down later. @type {Set<string>} */
+    const aside = new Set();
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const text = texts.text ?? e.data?.text; // a short text is kept in data
-      if (e.type === 'msg.user' && typeof text === 'string' && text !== '(a photo)' && said.push(text) > 3) said.shift();
+      // What the user wrote, and what they said aloud (a heard line with its words, or the words written down for it later).
+      if (e.type === 'heard' && e.data?.dismissed) aside.add(e.data.id); // talk among themselves: not the user's to this
+      const spoken = (e.type === 'heard' && !e.data?.dismissed) || (e.type === 'heard.text' && !aside.has(e.data?.of));
+      if (((e.type === 'msg.user' && text !== '(a photo)') || (spoken && text !== NOT_TRANSCRIBED)) && typeof text === 'string' && text && said.push(text) > 3) said.shift();
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
@@ -1156,7 +1167,7 @@ export class Agent {
     const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
     const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
     this.#setState('away', 'tidying up the conversation');
-    const language = summaryLanguage(said);
+    const language = summaryLanguage(said, await this.#languages());
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language) : await this.#coldSummary(cut, language);
     if (!summary) return false;
     // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
@@ -1277,7 +1288,7 @@ export class Agent {
   /** Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. @param {string} marker @param {AgentSettings} settings @param {string} language */
   async #warmSummary(marker, settings, language) {
     const { tools, providerTools, shows } = await this.#toolsNow();
-    if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
+    if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
@@ -1525,10 +1536,10 @@ export class Agent {
     const settings = await this.settings();
     const last = this.#warmth.last;
     const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
-    const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
+    const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
     // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
-    if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
+    if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
     /** What woke her, then what joins her turn, until a request of hers has said it (the now block says each once). */
     const reasons = wakes.map((w) => this.#reason(w));
     // The user reordered the list (or changed it) since: their order applies from this turn, warm cache or not (emulator pass).
@@ -1624,7 +1635,7 @@ export class Agent {
       // The voice changed hands mid-turn (Koe down, or back): this step follows it.
       if (this.#half.voice() !== this.#mayVoice) await this.#workOutVoice(wakes);
       // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
-      if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality });
+      if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
       settle();
       const owing = owes();
       const { tools, via, providerTools, shows } = await this.#toolsNow();
@@ -1665,7 +1676,7 @@ export class Agent {
         }
         if (done) {
           this.#lastPrompt = 0;
-          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality }), { cold: true });
+          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
       }
@@ -2802,7 +2813,8 @@ export class Agent {
         }
       }
       this.#writeTries.delete(id);
-      await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
+      const stray = r?.text ? strayLanguage(r.text, await this.#languages()) : '';
+      await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null, ...(stray ? { strayLanguage: stray } : {}) } });
       voice.memory.drop(id, r?.text);
     }
     return left;
@@ -2827,10 +2839,12 @@ export class Agent {
   async #logHeard(h, o, log = (ev) => this.#log(ev)) {
     // The sound is kept only with "keep voice clips" (spec §10.2), as a blob the event names (§4.9), in the smallest format this phone makes and plays.
     const clip = this.voice ? await this.voice.keep(h) : { data: {}, blobs: [] };
+    // A word or two plainly in a language the user doesn't speak is flagged, as on the live path (spec §10.9): never a change of language.
+    const stray = typeof h.text === 'string' && !o.dismissed ? strayLanguage(h.text, await this.#languages()) : '';
     await log({
       type: 'heard', actor: 'user',
       data: {
-        id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}),
+        id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}), ...(stray ? { strayLanguage: stray } : {}),
         ...(o.meanwhile ? { meanwhile: true } : {}), ...(o.answer ? { answer: o.answer } : {}), ...(o.dismissed ? { dismissed: true } : {}), ...(o.gate ? { gate: o.gate } : {}),
         ...clip.data,
       },

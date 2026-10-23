@@ -55,3 +55,12 @@ test('parseArgs: words, --name value, and flags that take no value; a missing va
   assert.deepEqual(parseArgs(['run', '--only', 'a,b', '--force', '--lines', '1-11'], { flags: ['force'] }), { words: ['run'], opts: { only: 'a,b', force: true, lines: '1-11' } });
   assert.throws(() => parseArgs(['run', '--only']), /needs a value/);
 });
+
+test('the setup frame says which language hints it carried and whether its instructions name the languages, never the instructions themselves (phase 2)', () => {
+  const setup = (/** @type {any} */ over) => framesOf('out', j({ setup: { model: 'm', systemInstruction: { parts: [{ text: 'You are Koe.\n\n# Languages\nThe user speaks English and Japanese; SECRET' }] }, ...over } }), 5);
+  assert.deepEqual(setup({ inputAudioTranscription: { languageCodes: ['en', 'zh-Hans', 'ja'] } }), [{ at: 5, dir: 'out', kind: 'setup', text: 'languageCodes en,zh-Hans,ja; the instructions have a Languages section' }]);
+  assert.deepEqual(setup({ inputAudioTranscription: {} }), [{ at: 5, dir: 'out', kind: 'setup', text: 'no languageCodes; the instructions have a Languages section' }]);
+  const plain = framesOf('out', j({ setup: { model: 'm', systemInstruction: { parts: [{ text: 'You are Koe.' }] }, inputAudioTranscription: {} } }), 5);
+  assert.deepEqual(plain, [{ at: 5, dir: 'out', kind: 'setup', text: 'no languageCodes; the instructions have no Languages section' }]);
+  assert.ok(!JSON.stringify(setup({})).includes('SECRET'));
+});

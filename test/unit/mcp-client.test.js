@@ -289,3 +289,39 @@ test("minors 8: a server that can't be reached while the device is offline is a 
   }
   await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'cors');
 });
+
+test('a stateless client calls a tool with one request: no initialize, no session, and the answer\'s HTTP status kept on a refusal', async () => {
+  const seen = /** @type {any[]} */ ([]);
+  const fetchOnce = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+    const body = JSON.parse(String(init.body));
+    seen.push(body);
+    return new Response(`event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: 'ok' }] } })}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
+  };
+  const c = new McpClient({ url: 'https://mcp.example/mcp', server: 'Free', auth: async () => ({}), stateless: true });
+  assert.deepEqual((await c.callTool('web_search', { query: 'q' }, { fetch: fetchOnce })).content, [{ type: 'text', text: 'ok' }]);
+  assert.deepEqual(seen.map((m) => m.method), ['tools/call']);
+  await assert.rejects(c.callTool('web_search', {}, { fetch: async () => new Response('slow down', { status: 429 }) }), (e) => e instanceof McpError && e.kind === 'server' && e.status === 429);
+});
+
+test('a stateless client that a server refuses without a session (400) starts one and goes on, once and for good; clientInfo names annai; a 401 keeps its status', async () => {
+  /** @type {any[]} */
+  const seen = [];
+  const needsSession = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+    const body = JSON.parse(String(init.body));
+    const session = new Headers(init.headers).get('mcp-session-id');
+    seen.push({ method: body.method, session, info: body.params?.clientInfo });
+    if (body.method === 'initialize') return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-06-18' } }), { headers: { 'Content-Type': 'application/json', 'Mcp-Session-Id': 's1' } });
+    if (body.method === 'notifications/initialized') return new Response(null, { status: 202 });
+    if (!session) return new Response('Bad Request: no session', { status: 400 });
+    return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: 'ok' }] } }), { headers: { 'Content-Type': 'application/json' } });
+  };
+  const c = new McpClient({ url: 'https://mcp.example/mcp', server: 'Free', auth: async () => ({}), stateless: true });
+  assert.equal((await c.callTool('web_search', {}, { fetch: needsSession })).content[0].text, 'ok');
+  assert.deepEqual(seen.map((m) => m.method), ['tools/call', 'initialize', 'notifications/initialized', 'tools/call']);
+  assert.equal(seen[1].info.name, 'annai');
+  assert.equal((await c.callTool('web_search', {}, { fetch: needsSession })).content[0].text, 'ok');
+  assert.equal(seen.filter((m) => m.method === 'initialize').length, 1, 'the session is kept');
+  // A real refusal: the status stays on the error, for the chain to say "asks for a key".
+  const guarded = new McpClient({ url: 'https://mcp.example/mcp', server: 'Free', auth: async () => ({}), stateless: true });
+  await assert.rejects(guarded.callTool('x', {}, { fetch: async () => new Response('', { status: 401 }) }), (e) => e instanceof McpError && e.kind === 'auth' && e.status === 401);
+});

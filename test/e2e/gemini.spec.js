@@ -96,12 +96,15 @@ test("the free-tier switch shows only for a provider whose description offers it
 test("Gemini's voice and transcription (G3): a sample streams Google's PCM through the stream player; phone quality asks for μ-law; with streaming off it plays whole; the transcription Test sends the phone's Opus as audio/ogg", async ({ page }) => {
   const s = await startGeminiServer({ key: KEY });
   try {
-    // Every piece the stream player schedules starts an AudioBufferSourceNode; a whole clip plays in the audio element.
+    // Every piece the stream player plays goes to its worklet as 16-bit PCM over its port; a whole clip plays in the audio element.
     await page.addInitScript(() => {
       const w = /** @type {any} */ (window);
       w.__streamed = 0;
-      const start = AudioBufferSourceNode.prototype.start;
-      AudioBufferSourceNode.prototype.start = function (when, offset, duration) { w.__streamed++; return start.call(this, when, offset, duration); };
+      const post = MessagePort.prototype.postMessage;
+      MessagePort.prototype.postMessage = /** @type {any} */ (function (/** @type {any} */ m, /** @type {any} */ t) {
+        if (m instanceof Int16Array) w.__streamed++;
+        return /** @type {any} */ (post).call(this, m, t);
+      });
     });
     await fakeMicrophone(page, [fileURLToPath(new URL('../fixtures/voice/where-eat.wav', import.meta.url))]);
     await openApp(page, '#/models');

@@ -20,11 +20,13 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const IMAGE_MAX = 5 * 1024 * 1024;
 
 export class McpError extends Error {
-  /** @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message */
-  constructor(kind, message) {
+  /** @type {number | undefined} */ status;
+  /** @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message @param {number} [status] the HTTP status a server answered with */
+  constructor(kind, message, status) {
     super(message);
     this.name = 'McpError';
     this.kind = kind;
+    if (status !== undefined) this.status = status;
   }
 }
 
@@ -45,15 +47,18 @@ export class McpClient {
   #connecting = null;
   /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
   #closed = false;
+  #stateless;
 
   /**
-   * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>> }} o
-   *   url: the server's address, or where to read it (it may hold a key, so annai keeps it in secrets)
+   * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>>, stateless?: boolean }} o
+   *   url: the server's address, or where to read it (it may hold a key, so annai keeps it in secrets);
+   *   stateless: calls go with no session started first, one request each (annai's own search providers)
    */
-  constructor({ url, server, auth }) {
+  constructor({ url, server, auth, stateless = false }) {
     this.url = url;
     this.server = server;
     this.auth = auth;
+    this.#stateless = stateless;
   }
 
   /** Starts a session: initialize, then notifications/initialized. @param {{ fetch: Fetch, signal?: AbortSignal }} o */
@@ -101,7 +106,17 @@ export class McpClient {
 
   /** Calls a tool; its result. @param {string} name @param {any} args @param {{ fetch: Fetch, signal?: AbortSignal }} o */
   async callTool(name, args, o) {
-    return this.#inSession(o, () => this.#request('tools/call', { name, arguments: args ?? {} }, o));
+    const call = () => this.#request('tools/call', { name, arguments: args ?? {} }, o);
+    if (this.#stateless) {
+      try {
+        return await call();
+      } catch (e) {
+        // A server that wants a session first refuses the bare call (400, 404, 405): start one, and keep to sessions from here.
+        if (!(e instanceof McpError && e.kind === 'server' && (e.status === 400 || e.status === 404 || e.status === 405))) throw e;
+        this.#stateless = false;
+      }
+    }
+    return this.#inSession(o, call);
   }
 
   /** Ends the session, when the server can be reached (milestone 8c, choice 6). @param {{ fetch: Fetch, signal?: AbortSignal }} o */
@@ -160,7 +175,7 @@ export class McpClient {
    */
   async #ready(o) {
     if (this.#closed) throw this.#removed();
-    if (this.#version) return;
+    if (this.#version || this.#stateless) return;
     let c = this.#connecting;
     if (!c) {
       const stop = new AbortController();
@@ -219,10 +234,10 @@ export class McpClient {
       // A server guarding against DNS rebinding refuses an Origin it doesn't know with 403, and says so (the SDK: "Invalid Origin header").
       if (res.status === 403 && /origin/i.test(await startOf(res, 2000))) {
         const here = globalThis.location?.origin;
-        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`);
+        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`, 403);
       }
       res.body?.cancel().catch(() => {});
-      throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`);
+      throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`, res.status);
     }
     if (res.status === 404 && this.#session && !init) {
       res.body?.cancel().catch(() => {});
@@ -237,12 +252,12 @@ export class McpClient {
     if (init) this.#session = res.headers.get('mcp-session-id') || null;
     if (id === null) {
       res.body?.cancel().catch(() => {});
-      if (!res.ok) throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`);
+      if (!res.ok) throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
       return null;
     }
     if (!res.ok) {
       res.body?.cancel().catch(() => {});
-      throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`);
+      throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
     }
     const unreadable = () => new McpError('answer', `The MCP server ${this.server} sent an answer annai can't read.`);
     if ((res.headers.get('content-type') ?? '').includes('text/event-stream')) {

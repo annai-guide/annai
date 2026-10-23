@@ -9,6 +9,7 @@ import { chromium, devices } from '@playwright/test';
 import { installMic } from './page-mic.mjs';
 import { SOUND } from './analyse.mjs';
 import { framesOf } from './frames.mjs';
+import { LANGUAGES } from '../../src/core/languages.js';
 
 const SERVE = fileURLToPath(new URL('../serve.mjs', import.meta.url));
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
@@ -147,6 +148,51 @@ export async function setUp(page, key, log, { standIn } = {}) {
   await page.locator('.voice-chip').filter({ hasText: 'Voice on' }).waitFor();
 }
 
+/**
+ * The languages setting, set the way a user would, in Settings → Shiori → Languages (phase 2): the browser's language (English) is the
+ * list's first, the others are added in order (a list of English alone is made by adding a language and removing it again, so it is the
+ * user's own), and the answer language is chosen. A build with no such section (the control run on the
+ * build before the setting) is left as it is, and the record says so. Returns what the record says of it.
+ * @param {import('@playwright/test').Page} page @param {{ spoken: string[], answer: string }} want
+ * @returns {Promise<{ spoken: string[], answer: string, applied: boolean, why?: string }>}
+ */
+export async function setLanguages(page, want) {
+  const back = new URL(page.url()).hash || '#/trips';
+  await page.goto('/#/shiori');
+  const panel = page.getByRole('region', { name: 'Languages', exact: true });
+  if (!(await panel.waitFor({ timeout: 8000 }).then(() => true, () => false))) {
+    await page.goto(`/${back}`);
+    return { ...want, applied: false, why: 'this build of annai has no languages setting' };
+  }
+  const list = panel.getByRole('list', { name: 'Languages you speak' });
+  await list.getByRole('listitem').first().waitFor();
+  const shown = (await list.getByRole('listitem').allInnerTexts()).map((t) => t.trim());
+  for (const id of want.spoken) {
+    const name = LANGUAGES.find((l) => l.id === id)?.name ?? id;
+    if (shown.some((t) => t.startsWith(name))) continue;
+    await panel.getByLabel('Add a language').selectOption(id);
+    await panel.getByRole('button', { name: 'Add', exact: true }).click();
+    await list.getByRole('listitem').filter({ hasText: name }).waitFor();
+    await panel.getByRole('status').filter({ hasText: 'Saved' }).first().waitFor();
+  }
+  // The browser's language alone is only a default, which no model is given as a hint: a user who means it picks it, which is a list of the user's own.
+  if (await panel.getByText('None picked').count()) {
+    await panel.getByLabel('Add a language').selectOption('ja');
+    await panel.getByRole('button', { name: 'Add', exact: true }).click();
+    await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor();
+    await panel.getByRole('button', { name: 'Remove Japanese' }).click();
+    await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor({ state: 'detached' });
+    await panel.getByText('None picked').waitFor({ state: 'detached' });
+  }
+  if (want.answer !== 'follow') {
+    const answer = panel.getByLabel('Shiori answers in');
+    await answer.selectOption(want.answer);
+    await answer.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor();
+  }
+  await page.goto(`/${back}`);
+  return { ...want, applied: true };
+}
+
 /** What one scenario run is given. @typedef {{ origin: string, standIn?: string, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, log: (s: string) => void, scrub: (s: string) => string }} Env */
 
 /**
@@ -190,13 +236,19 @@ export async function runScenario(browser, name, sc, env) {
     for (const t of trace) {
       if (t.type === 'live.session' && t.data.state === 'closed' && t.data.kind) frames.push({ at: t.at, dir: 'in', kind: 'close', code: t.data.code, reason: `${t.data.kind}: ${t.data.why ?? ''}` });
     }
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo };
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(languages ? { languages } : {}) };
   };
   let opened = began;
+  /** What the scenario asked of the languages setting, and whether this build took it (phase 2). @type {import('./analyse.mjs').Rec['languages']} */
+  let languages;
   /** The cards on the page as she starts listening: only those that come after are hers to report. @type {string[]} */
   let before = [];
   try {
     await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn } : {});
+    if (sc.languages) {
+      languages = await setLanguages(page, sc.languages);
+      log(`    languages: ${languages.applied ? `${languages.spoken.join(', ')}; answers in ${languages.answer}` : `not applied (${languages.why})`}`);
+    }
     log('    annai is set up; tapping Shiori');
     await page.getByRole('button', { name: 'Shiori' }).click();
     await page.locator('.voice-chip').filter({ hasText: 'Listening live' }).waitFor({ timeout: 40_000 });
@@ -269,7 +321,7 @@ export async function runScenario(browser, name, sc, env) {
     // The run goes no further, but what was recorded is kept, with the page's words as they stood.
     errors.push(`harness: ${env.scrub(String(/** @type {any} */ (e)?.message ?? e)).split('\n').filter((l) => l.trim() && !/^Call log:/.test(l)).slice(0, 3).join(' | ').slice(0, 400)}`);
     notes.push(`the page said: ${env.scrub(await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 500)}`);
-    return await collect(opened).catch((/** @type {any} */ x) => ({ scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: [], frames, level: [], trace: [], errors: [...errors, `collect: ${env.scrub(String(x?.message ?? x)).slice(0, 200)}`], notes, convo: [] }));
+    return await collect(opened).catch((/** @type {any} */ x) => ({ scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: [], frames, level: [], trace: [], errors: [...errors, `collect: ${env.scrub(String(x?.message ?? x)).slice(0, 200)}`], notes, convo: [], ...(languages ? { languages } : {}) }));
   } finally {
     await context.close();
   }

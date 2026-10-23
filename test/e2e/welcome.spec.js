@@ -4,7 +4,10 @@ import { openApp, waitForServiceWorker } from './helpers.js';
 import { SOURCES, FONTS, ART } from '../../src/ui/credits.js';
 
 // The welcome and Settings → About (the user, 2026-10-18).
-const STEPS = ['Welcome to annai', 'Shiori, Koe and Kokoro', 'What annai can do', 'Your keys and your data', 'The fine print', 'Get started'];
+const STEPS = ['Welcome to annai', 'Shiori, Koe and Kokoro', 'What annai can do', 'Your keys and your data', 'The fine print', 'Searching the web', 'Get started'];
+/** The last step (Get started) and the one about searching, found by their titles so a step added between them moves nothing. */
+const LAST = STEPS.length;
+const SEARCH = STEPS.indexOf('Searching the web') + 1;
 const h1 = (/** @type {import('@playwright/test').Page} */ page) => page.getByRole('heading', { level: 1 });
 
 /** What /app.json in sys:settings says, through annai's own modules. @param {import('@playwright/test').Page} page */
@@ -94,8 +97,8 @@ test("Erase as a start's first tap, five times over: the welcome shows each time
 });
 
 test("the last step, where annai isn't installed: on an iPhone in Safari, look around first, and set the model up in the Home Screen app; elsewhere, set up a model", async ({ page, browserName }) => {
-  await openApp(page, '#/welcome/6');
-  await expect(h1(page)).toHaveText(STEPS[5]);
+  await openApp(page, `#/welcome/${LAST}`);
+  await expect(h1(page)).toHaveText(STEPS[LAST - 1]);
   const primary = page.locator('.welcome .acts .btn.pri').last();
   if (browserName === 'webkit') {
     // The iPhone project: Safari, not the Home Screen app.
@@ -112,7 +115,7 @@ test("the last step, where annai isn't installed: on an iPhone in Safari, look a
 });
 
 test("the welcome's last step names the featured provider's sign-in from annai's catalog; outside Safari on an iPhone, its plugin installs in the background, so Models' sign-in is ready before the tap", async ({ page, browserName }) => {
-  await openApp(page, '#/welcome/6');
+  await openApp(page, `#/welcome/${LAST}`);
   await waitForServiceWorker(page);
   const lead = page.locator('.welcome p', { hasText: 'so Shiori can think' });
   await expect(lead).toContainText('Sign in with OpenRouter is the quickest way, and it starts you on free models.');
@@ -140,7 +143,7 @@ test("the welcome's sentence on the featured sign-in comes with annai's catalog,
     await new Promise((resolve) => setTimeout(resolve, 8000));
     await route.continue().catch(() => {});
   });
-  await openApp(page, '#/welcome/6');
+  await openApp(page, `#/welcome/${LAST}`);
   await expect(page.locator('.welcome p', { hasText: 'so Shiori can think' })).toContainText('Sign in with OpenRouter is the quickest way', { timeout: 4000 });
 });
 
@@ -180,7 +183,7 @@ test('a step says who Shiori is, and what Koe (声) and Kokoro (心) each do, pl
   // The Japanese words are marked as such, for a screen reader (fix pass 2); and where the halves' notes are, said rightly.
   await expect(step.locator('[lang="ja"]')).toHaveText(['声', '心']);
   await expect(step).toContainText('What they tell each other shows in the conversation; Settings → Shiori can hide it.');
-  await expect(step.getByText('2 of 6')).toBeVisible();
+  await expect(step.getByText(`2 of ${LAST}`)).toBeVisible();
   // It is skippable like every step: Next goes on, Back returns.
   await step.getByRole('button', { name: 'Next' }).click();
   await expect(h1(page)).toHaveText('What annai can do');
@@ -206,12 +209,12 @@ test('every step is reached with the keyboard alone, its heading taking the focu
   }
   await tabTo('Back');
   await page.keyboard.press('Enter');
-  await expect(h1(page)).toHaveText(STEPS[4]);
+  await expect(h1(page)).toHaveText(STEPS[LAST - 2]);
   await expect(h1(page)).toBeFocused();
   // Skip goes to the last step, which ends on the onboarding: Settings → Models.
   await tabTo('Skip');
   await page.keyboard.press('Enter');
-  await expect(h1(page)).toHaveText(STEPS[5]);
+  await expect(h1(page)).toHaveText(STEPS[LAST - 1]);
   await tabTo('Set up a model');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
@@ -288,4 +291,25 @@ test('About fits a phone 320 px wide', async ({ page }) => {
     await expect(h1(page)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), at).toBe(0);
   }
+});
+
+test('the search step: Shiori can search out of the box through three free services, all ticked; unticking one is saved to the same settings as Settings → Tools', async ({ page }) => {
+  await openApp(page, `#/welcome/${SEARCH}`);
+  await expect(h1(page)).toHaveText('Searching the web');
+  const ticks = page.locator('.welcome .free-search input[type=checkbox]');
+  await expect(ticks).toHaveCount(3);
+  for (const name of ['Exa', 'Parallel', 'Firecrawl']) await expect(page.getByRole('checkbox', { name })).toBeChecked();
+  await expect(page.locator('.welcome')).toContainText("They're free tiers that can change or stop");
+  await expect(page.locator('.welcome')).not.toContainText('Jina');
+  await expect(page.locator('.welcome')).toContainText('Wikimedia');
+  await expect(page.locator('.welcome')).toContainText('addresses of pages it reads for her');
+  await page.getByRole('checkbox', { name: 'Exa' }).uncheck();
+  await expect.poll(async () => (await appSettings(page)).web?.searchOff).toEqual(['exa']);
+  // Back to the step: drawn from what is saved. Settings → Tools shows the same.
+  await openApp(page, `#/welcome/${SEARCH}`);
+  await expect(page.getByRole('checkbox', { name: 'Exa' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Parallel' })).toBeChecked();
+  await openApp(page, '#/tools');
+  await expect(page.getByRole('checkbox', { name: 'Use Exa' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).toBeChecked();
 });

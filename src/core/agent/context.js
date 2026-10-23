@@ -3,6 +3,8 @@ import { ME } from '../scopes.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
+import { readAppSettings } from '../settings.js';
+import { languageSettings, languagesText } from '../languages.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -11,15 +13,17 @@ import { utf8 } from '../bytes.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[] }} Snapshot
+ *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[], languages?: string }} Snapshot
+ *   languages: the languages section's words (phase 2), from the languages setting
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
 /**
- * @param {{ ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, trip: string | null, personalityName: string }} c
+ * @param {{ ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, trip: string | null, personalityName: string, locale?: string }} c
+ *   locale: the browser's language, which the languages are until the user chooses
  * @returns {Promise<Snapshot>}
  */
-export async function takeSnapshot({ ws, registry, trip, personalityName }) {
+export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
   return {
@@ -31,6 +35,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName }) {
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     tripMemory: trip ? await read(trip, '/memory.md') : '',
     skills: skillIndex(registry),
+    languages: languagesText(languageSettings(await readAppSettings(ws), locale)),
   };
 }
 
@@ -45,8 +50,9 @@ export function nextSnapshot(prev, fresh, { cold }) {
   const samePersonality = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName;
   // A skill installed or removed shows at once, as a new tool does (choice 10 of milestone 8a).
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
-  if (samePersonality && sameSkills) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills };
+  // So does a change of the languages setting: the user chose it just now.
+  if (samePersonality && sameSkills && prev.languages === fresh.languages) return prev;
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages };
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
@@ -54,9 +60,10 @@ function skillIndex(registry) {
   return registry.list('skill').filter((s) => s?.name).map((s) => ({ name: String(s.name), description: String(s.description ?? '') }));
 }
 
-/** The system text: core, personality, a half's own part (Kokoro's, while Shiori is two halves), then the snapshot. @param {Snapshot} s @param {string} [part] */
+/** The system text: core, personality, a half's own part (Kokoro's, while Shiori is two halves), the languages, then the snapshot. @param {Snapshot} s @param {string} [part] */
 export function systemText(s, part = '') {
   const parts = [CORE, s.personality.trim(), ...(part ? [part] : [])];
+  if (s.languages) parts.push(`# Languages\n${s.languages}`);
   if (s.profile.trim()) parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
   if (s.memory.trim()) parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);
   if (s.skills.length) parts.push(`# Skills (load one with the skill tool)\n${s.skills.map((k) => `${k.name}: ${k.description}`).join('\n')}`);

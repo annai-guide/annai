@@ -5,6 +5,7 @@ import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
 import { LABELS } from '../../core/agent/loop.js';
 import { createAvatar } from '../avatar.js';
+import { languagesSection } from '../languages.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -134,6 +135,7 @@ export async function renderShiori(ctx, route) {
     section('Her two halves',
       h('p', { class: 'sub', text: 'Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.' }),
       showHalves.el),
+    languagesSection(ctx, app),
     // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape (the user, 2026-10-18).
     section('How often she acts on her own',
       h('p', { class: 'sub', text: 'Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),

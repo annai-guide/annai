@@ -35,6 +35,7 @@ A plugin's manifest:
   - `skills`: skill folders in the package, each holding a `SKILL.md` (`"."` is the package's top).
   - `personalities`: Markdown files, each a personality named by its file (`ranger.md` is "ranger"). Settings → Shiori offers them; Add makes a copy the user owns.
   - `provider`: a model provider's description, inline. See "Model providers" below.
+  - `search`: a search provider's description, inline: its `id`, `kind`, `origins` and key. See "Search providers" below.
   - `requires`: the plugins yours needs, `[{ "id": "chat-completions", "version": "^0" }, { "id": "acme-proto", "version": "^2", "homepage": "https://…" }]`, at most 10. A range is `^N`, the same major; for a protocol plugin the major is its interface version. annai's own come with yours from its catalog; a third party's must be installed first, and the install stops naming it, with its `homepage` (https). A package can't require itself.
   - `category`: `providers`, `speech`, `backup`, `tools`, `skills` or `developer`, the kind it is listed under on the Add screen and in Settings → Plugins (Model providers, Voices and transcription, Backup places, Tools and MCP, Skills and personalities, Developer). When absent it is worked out: a provider with chat is `providers`, one with speech only `speech`, a backup place's plugin `backup`, a protocol `developer`, skills or personalities without code `skills`, other code `tools`.
   - `keywords`: up to 20 other names it is searched by, 1 to 40 characters each, written as they are shown (`["Unsloth", "LM Studio"]`). They aren't hidden: a row found by a keyword says so, "Also for: LM Studio". A name match ranks above a keyword match, so a plugin made for LM Studio comes before one that lists it as a keyword. Give the names of things your plugin also serves (a server built on the one you describe, a product's other spelling), not words for what it does: its description and its abilities are searched too.
@@ -89,9 +90,9 @@ export function activate(annai) {
 | `annai.hooks.on(fn, { types? })` | follows the log: see "Following the log" below |
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
 | `annai.settings.get()`, `.set(changes)` | your plugin's own settings, a JSON object (merge patch to change); a key nothing is saved for has your schema's `default` |
-| `annai.searchProviders()` | the search providers, in the order the user set |
+| `annai.searchProviders()`, `await annai.searchProvidersAsync()` | the search providers in the order `web_search` tries them: the user's list (Settings → Tools → Search), then keyed ones, the free ones and the knowledge floor. The async one reads the user's order and leaves out those they switched off. |
 | `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
-| `annai.register('search', { id, name, needsKey?, search(query, { key, fetch, signal }) })` | a search provider for `web_search`: returns `[{ title, url, snippet }]` |
+| `annai.register('search', { id, name, kind?, ready?(), search(query, { fetch, signal, limit }) })` | a search provider for `web_search`: see "Search providers" below |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
@@ -424,6 +425,16 @@ A protocol whose server can keep a conversation's turns, so the next sends only 
   - `forgetRequest({ endpoint, key, id })` gives the server's delete call for one turn: `{ url, headers, method: 'DELETE' }`, to the ability's address. annai counts a 200 or a 404 as done, and a 429 rests that address as long as it asks.
 - **annai's side:** it remembers each kept turn by its id, its trip and fingerprints of the messages sent (never their content), on this device alone, and matches the longest one the new request begins with, then its reply, within `hours` of its chain's first turn (src/core/llm/kept.js says why). It keeps a turn only if, when it is recorded, its provider, key and address, switch and trip still allow it; otherwise the call deletes it at once. It deletes them when the user removes their trip, the provider or everything, changes or removes the key or address, or turns the switch off, only ever with the key and address that made them. Deletions wait for a connection, and each is in the trace.
 
+### The languages the user speaks
+
+The user lists the languages they speak, and the one Shiori answers in, in Settings → Shiori (spec §10.9). annai tells every model the words ("The user speaks English and Japanese; they may switch between these. Answer in the language they used…") in the instructions it gives a live protocol (`setup.instructions`) and in Shiori's system text, so your code adds none. What your code may add is the protocol's own language fields, from plain data:
+
+- **A transcription type** gets `languages` beside `audio` in `transcribeRequest`: `{ spoken: Language[], answer: Language | null }`, empty `spoken` until the user has chosen. A live type gets the same as `setup.languages`.
+- **A `Language`** is `{ id, name, locale, iso, live, google }`: annai's id (`ja`), its English name, a BCP-47 tag for browsers (`ja-JP`), the code Whisper-style models take (`ja`; ISO 639-1, or 639-3 where OpenAI takes it), Gemini Live's code (`ja`, `zh-Hans`) and Gemini's transcription tag (`ja-JP`, `cmn-Hans-CN`; null where it has none).
+- **All of them or none.** A hint that names only some of the languages listed (a language the provider has no code for left out) biases the transcript against the rest: send none then. `live` and `google` are null where a protocol has no code for a language.
+- **A provider may refuse the field.** Read a refusal that names it, send the request again without the hint, once, and remember that for the model (a live protocol's `reopen()` is called up to twice before a session is ready, for two fields).
+- **Send what the provider takes, and no more.** A field that takes one language (Whisper's `language`) gets one only when exactly one is listed; several are better left to the model to detect than cut to the first. A voice API that takes none is sent none: the text decides. A tunable the user typed by hand (`language`) wins over the setting.
+
 ### Audio formats
 
 Speech travels in the smallest format both the phone and the provider handle (spec §10.6). Your protocol and your provider description say what that is, as tunables. annai reads them; your code only names files and formats.
@@ -446,7 +457,7 @@ Speech travels in the smallest format both the phone and the provider handle (sp
 A voice model has a **voice** and a **style**, saved on its page (spec §10.1) and sent with every request, so every sentence has the same voice. A voice type reads them from its tunables, which the model's values override the ability's:
 
 - **`voice`**: the provider's voice name or id (OpenAI's `marin`, Google's `Sulafat`, a Fish Audio library voice id). Send it whenever it is set. A provider that is sent none may pick a voice for itself, and some pick another speaker for each request (Fish Audio's free voice on OpenRouter does, as the user heard and two calls on 2026-10-22 bore out), so a description gives every voice model one.
-- **`style`**: a few words on how she should sound (`calm, warm and friendly`): whitespace collapsed, no trailing punctuation, at most 200 characters, sent only when it isn't empty, so the request stays small and the same each time. A user's own `instructions` tunable (its name before the Style field, never in a description) wins over a description's `style`. Each protocol sends it its own way: OpenAI's Speech API as `instructions` (the OpenAI-compatible type reads the older tunable name `instructions` too; OpenRouter passes it to Gemini and puts it in square brackets before Fish Audio's text); Gemini's voice as the `speech_metadata` annotation `{ "type": "speech_metadata", "style": … }` on the text of Gemini 3.8 TTS, whose guide has delivery there, and in the text (`Say <style>: …`) for the 2.5 and 3.1 models, which read their text: only a few plain words go there (no colon, sentence or tag they might say aloud), else no style.
+- **`style`**: a few words on how she should sound (`young, cheerful and lively, yet calm and gentle`): whitespace collapsed, no trailing punctuation, at most 200 characters, sent only when it isn't empty, so the request stays small and the same each time. A user's own `instructions` tunable (its name before the Style field, never in a description) wins over a description's `style`. Each protocol sends it its own way: OpenAI's Speech API as `instructions` (the OpenAI-compatible type reads the older tunable name `instructions` too; OpenRouter passes it to Gemini and puts it in square brackets before Fish Audio's text); Gemini's voice as the `speech_metadata` annotation `{ "type": "speech_metadata", "style": … }` on the text of Gemini 3.8 TTS, whose guide has delivery there, and in the text (`Say <style>: …`) for the 2.5 and 3.1 models, which read their text: only a few plain words go there (no colon, sentence or tag they might say aloud), else no style.
 - **`styled: false`**: this voice can't take a style (OpenAI's `tts-1` and `tts-1-hd`, Kokoro, Speaches, and OpenRouter's vendors other than OpenAI's mini TTS, Gemini and Fish Audio). A type must not send one then, and the model's page says it is kept, not sent. Unknown (not set: any server's own list, a model added by id), a style is sent when one is set, and annai asks again without it, once, when the server answers a 400 naming `instructions` (the call's `unstyled` option, `styled: false` for that call; remembered until annai restarts). Honour `styled` in your own type's style, and the `unstyled` call sets it.
 - **`voices`**: voices to suggest in the Voice field, as a list of strings (a tunable, such as a model list gives: OpenRouter's `supported_voices` become it, with the first warm one as the model's `voice`), or on the type itself as `voices` (Gemini's 30). The field takes free text too; the Tunables (JSON) of the model page keeps `voices`, editable.
 - **The cost:** a type may give `extraChars(spec)`, the characters a request carries besides the text (the style, which OpenAI, Gemini and Fish Audio bill as input; OpenRouter adds 3 to a Fish Audio model's), counted with the text in the cost estimate.
@@ -562,6 +573,62 @@ export function activate(annai) {
   - `rate` (with `retryAt`) and `other` are tried again later.
   - A `TypeError` and the like count as a bug in your plugin.
 - **Send every request through `annai.net.fetch`,** so the trace shows it.
+
+## Search providers
+
+`web_search` asks the search providers one after another, in the order Settings → Tools → Search shows (the user can drag them and untick them). The first to answer with rows wins. A provider is one object you register:
+
+```js
+export function activate(annai) {
+  return annai.register('search', {
+    id: 'tavily', name: 'Tavily', kind: 'web',
+    async ready() { return (await annai.secrets.get('key')) ? { ok: true } : { ok: false, why: 'needs a key' }; },
+    async search(query, { fetch, signal, limit }) {
+      const key = await annai.secrets.get('key');
+      const res = await fetch('https://api.tavily.com/search', { method: 'POST', signal,
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({ query, max_results: limit }) });
+      if (!res.ok) throw Object.assign(new Error(`Tavily answered ${res.status}`), { status: res.status });
+      const body = await annai.helpers.readAnswer(res, 'json', 'Tavily'); // never res.json(): a hostile answer can be huge
+      return body.results.map((r) => ({ title: r.title, url: r.url, snippet: r.content }));
+    },
+  });
+}
+```
+
+- **`id`** is the provider's name, one owner like a tool's (see "Names and conflicts"); the user's order and their ticks are kept by it.
+- **`ready()`** says whether the provider can run now: `{ ok: true }`, or `{ ok: false, why }` in plain words ("needs a key"). A provider that isn't ready is passed over, and the screen shows `why`. Leave it out when nothing is needed. **Read your own key in it and in `search`:** `annai.secrets.get('key')` gives your plugin's secret, and no other plugin's. annai hands `search` no key.
+- **`search(query, { fetch, signal, limit })`** returns rows: any list of `{ title, url, snippet }` (`description` and `content` are read as `snippet`). `fetch` is the traced fetch, with secrets blanked; `signal` ends when the user stops Shiori or the step's 25 seconds pass; `limit` is 8. Throw an `Error` in plain words for a failure. Put `status` (the HTTP status) on it, or `kind: 'cors'` for a request the browser couldn't make: a 429, a 402, a 5xx, a timeout and a failed request make the provider **rest**, a minute at first and up to 30 minutes after each failure in a row, in memory only; a 401 or other refusal doesn't, because it is the user's to fix.
+- **An empty answer is no failure and no answer:** with no rows, the next provider is asked. "Nothing found" is said only when every provider that ran found nothing.
+- **annai makes the rows,** so return whatever the service sends: tags and entities are taken out, whitespace folded, addresses must be http(s) and are cleaned of `utm_*`, `srsltid`, `msockid` and the like, one row stays per host and path, a long excerpt is cut to the sentences that share the most words with the query (400 characters), and at most 8 rows go to Shiori as TSV.
+- **`kind`** is `web`. (`knowledge`, `free` and `always`, which put a provider last, among the keyless ones, or beyond the user's ticks, are annai's own web tools' alone: a plugin's provider is always listed as a keyed or self-hosted web one that the user can untick.)
+- **The order** with nothing set is: keyed providers in the order installed, the free ones, the knowledge ones. Whatever the user drags is kept in `web.search`, and what they untick in `web.searchOff`. A provider installed after the user has reordered goes before the first free service in their list. Removing your plugin takes its id out of both lists.
+- **Time:** `ready()` gets 3 seconds, a `search()` its step (25 seconds, or `limitMs` if less); annai stops waiting at the signal even if your code ignores it, and a whole search ends by 45 seconds, with the last 10 kept for the floor. `search` also gets `session`, one random id for the open conversation, kept in memory (annai's own services use it).
+- **`annai.searchProviders()`** answers as of the last read of the settings, without the switched-off ones; `await annai.searchProvidersAsync()` reads them now.
+
+### A search provider plugin
+
+Describe it in the manifest, so the install screen can say where searches and the key go before any code runs:
+
+```json
+{
+  "id": "search-tavily", "name": "Tavily Search", "version": "0.1.0", "api": 1, "entry": "index.js", "category": "tools",
+  "provides": { "search": ["tavily"] },
+  "search": {
+    "id": "tavily", "kind": "web", "origins": ["https://api.tavily.com"],
+    "key": { "setting": "key", "url": "https://app.tavily.com", "note": "1,000 free credits a month, no card." }
+  },
+  "settings": { "type": "object", "properties": { "key": { "type": "string", "title": "Tavily API key", "writeOnly": true } } }
+}
+```
+
+- **`search.id`** is the id you register. **`kind`**: `web`.
+- **`search.origins`:** every origin (scheme and host) the searches and the key are sent to, as `https://host` with nothing after. The install screen says "Your search words and the key you give it are sent to …", an update that adds one asks again, and annai's credits list the host. **A provider for the user's own server** (SearXNG) has `"origins": []`, and the install screen says searches go only to the address the user gives it.
+- **`search.key`** names the `writeOnly` setting that holds the key (`setting`), where to get one (`url`, https) and a line about the free tier (`note`). annai keeps the key as the secret `plugin:<id>:key` and draws a password field for it on your plugin's page.
+- **Browser access is yours to check.** A web app can call a service only if it allows annai's address (CORS), including the request's headers: Tavily (`authorization`, `content-type`) and Serper (`x-api-key`) do; Brave, Kagi's REST API, You.com's and Exa's REST API don't, and a plugin for them fails with "Failed to fetch". A SearXNG instance sends no CORS header unless its operator adds one, and has JSON off unless `json` is under `search: formats:` in `settings.yml`; its plugin says so.
+- The official ones are Tavily, Serper and SearXNG (`plugins-official/search-*`); read them as examples.
+
+annai's own free search is not a plugin you can replace one by one: Exa, Parallel and Firecrawl (each through its MCP address, one request per search with no session), and a floor of Wikivoyage, Wikipedia and Nominatim, are built into the web tools. Only the words searched go to them.
 
 ## MCP servers
 

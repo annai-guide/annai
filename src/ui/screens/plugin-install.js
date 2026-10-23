@@ -45,7 +45,7 @@ export const NO_SERVICE = "Plugins load through annai's offline service, which i
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
  * its model provider, and (in an update) the new origins its provider sends keys to.
- * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, origins?: string[] }} pkg @returns {string[]}
+ * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, search?: any, origins?: string[], searchOrigins?: string[] }} pkg @returns {string[]}
  */
 export function whatItBrings(pkg) {
   const out = [];
@@ -53,20 +53,38 @@ export function whatItBrings(pkg) {
   for (const s of pkg.skills ?? []) out.push(`Skill "${s.name}": ${s.description}`);
   for (const p of pkg.personalities ?? []) out.push(`Personality "${p.name}"`);
   if (pkg.provider) out.push(`A model provider: ${abilityWords(pkg.provider)}`);
-  if (pkg.origins?.length) out.push(`Its provider now sends keys you give it to ${pkg.origins.join(', ')}`);
+  if (pkg.search) out.push('A search provider for web_search');
+  const searches = pkg.searchOrigins ?? [];
+  const keys = (pkg.origins ?? []).filter((o) => !searches.includes(o));
+  if (keys.length) out.push(`Its provider now sends keys you give it to ${keys.join(', ')}`);
+  if (searches.length) out.push(`Its searches now go to ${searches.join(', ')}`);
   return out.length ? out : ['Nothing annai uses yet'];
 }
 
 
 /**
  * Where a provider sends the keys a user gives it, by origin with its scheme (security review): said on
- * a fresh install as on an update. null for a package that isn't a provider.
- * @param {{ provider?: any }} pkg @returns {string | null}
+ * a fresh install as on an update; a search provider's, where its searches go. null for a package that is neither.
+ * @param {{ provider?: any, search?: any }} pkg @returns {string | null}
  */
 export function keysNote(pkg) {
-  if (!pkg.provider) return null;
-  const origins = descOrigins(pkg.provider);
-  return origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.';
+  /** @type {string[]} */
+  const out = [];
+  if (pkg.provider) {
+    const origins = descOrigins(pkg.provider);
+    out.push(origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.');
+  }
+  if (pkg.search) {
+    const o = [...(pkg.search.origins ?? [])].sort();
+    out.push(o.length ? `Your search words${pkg.search.key && !pkg.provider ? ' and the key you give it' : ''} are sent to ${andList(o)}.` : 'Your search words are sent only to the address you give it.');
+  }
+  return out.length ? out.join(' ') : null;
+}
+
+/** Where to get a search plugin's key and its free-tier line (its manifest's search.key), or null. @param {{ search?: any }} pkg @returns {{ text: string, url: string } | null} */
+export function searchKeyInfo(pkg) {
+  const k = pkg.search?.key;
+  return k && (k.url || k.note) ? { text: String(k.note ?? ''), url: String(k.url ?? '') } : null;
 }
 
 /**
@@ -220,6 +238,7 @@ export async function renderPluginInstall(ctx) {
         // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: "It can't run anything: it is data that tells annai how to reach a model provider." }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: 'A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.' }),
+    searchKeyInfo(pkg) ? h('p', { class: 'sub' }, `${searchKeyInfo(pkg)?.text ?? ''} `, searchKeyInfo(pkg)?.url ? h('a', { href: searchKeyInfo(pkg)?.url, target: '_blank', rel: 'noopener noreferrer', text: 'Get a key' }) : null) : null,
     pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
     pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': 'New in this version' },

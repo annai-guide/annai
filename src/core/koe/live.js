@@ -8,6 +8,7 @@ import { spentToday, budgetStop } from '../agent/budgets.js';
 import { definitions } from '../agent/tools.js';
 import { modelOf } from '../llm/config.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
+import { strayLanguage } from '../languages.js';
 
 /**
  * Koe live (the Koe and Kokoro design, "Realtime sessions"; spec §10.8): Koe as a realtime voice model, a session at a time,
@@ -15,12 +16,12 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean }} Turn  one of Koe's; held: its sound until a real word;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
- *   heard or written
+ *   heard or written; audible: its sound has started playing, so its words may show
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
- *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
+ *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
@@ -72,6 +73,14 @@ export function mayPlay(input, { duplex, sinceEndMs, sinceWordMs }) {
   if (input.hearing || sinceEndMs < HOLD_MS) return false;
   return input.stillMs >= STILL_MS || Math.min(sinceEndMs - HOLD_MS, sinceWordMs) >= CAP_MS;
 }
+/** Her voice's stop fades out over 12 ms at most; with the output's latencies and this margin after, it is surely silent. */
+const STOP_FADE_MS = 12;
+const FADED_MARGIN_MS = 20;
+/**
+ * Her turn's sound all in, its stream is stopped as stalled this long past its length (a context iOS suspends mid-reply never
+ * plays it out, which would leave the microphone deaf and Koe busy until a tap).
+ */
+const STALL_S = 3;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -100,6 +109,8 @@ export class LiveKoe {
   /** The resume handle, in memory only (decision 28). @type {string | undefined} */
   #handle;
   #wake = '';
+  /** What the user speaks, the browser's language where they chose none (phase 2): a very short transcript in another language is flagged against it. @type {import('../languages.js').LanguageSettings | null} */
+  #languages = null;
   /** The user is in this session (they typed, or spoke, or turned it on), so what Koe tells Kokoro is watched (isWatched); a session a trigger opened is not, until they do. */
   #watched = false;
   /** @type {LiveInput | null} */
@@ -144,6 +155,8 @@ export class LiveKoe {
   #queue = [];
   /** @type {any} */
   #holdTimer = null;
+  /** Playback back once her stopped voice has faded out (close). @type {any} */
+  #toPlayback = null;
   /** @type {Turn | null} */
   #trail = null;
   /** What waits for Koe's turn and voice to end, or for the page to be in view: Kokoro's other notes, wrapped, and triggers. @type {string[]} */
@@ -289,10 +302,13 @@ export class LiveKoe {
 
   /** One connection, ready, its events handled while it is the session's. @param {string} id @param {string | undefined} resume @param {string} why @returns {Promise<LiveSession>} */
   async #connect(id, resume, why) {
-    const { instructions, context } = await this.c.setup();
+    const { instructions, context, languages, known } = await this.c.setup();
+    this.#languages = known ?? null;
     const tools = definitions(await this.c.koe.liveTools());
     this.#wake = newId('w');
-    const s = await this.c.llm.live(id, { instructions, context, tools, ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake });
+    // The phone's sound, for the Trace's ready line: its rate and the output's own latency (the pops investigation).
+    const output = this.c.voice?.platform?.player.output?.() ?? undefined;
+    const s = await this.c.llm.live(id, { instructions, context, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
@@ -360,6 +376,7 @@ export class LiveKoe {
       onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
     });
     this.listening = true;
+    clearTimeout(this.#toPlayback);
     p.session('play-and-record');
     this.#changed();
     await this.#input.start().then(() => this.#route(), (e) => this.#deaf(e));
@@ -440,6 +457,7 @@ export class LiveKoe {
     if (!forget && s?.handle) this.#handle = s.handle;
     if (why === 'tap') this.#handle = undefined; // the user stopped it: the next one starts fresh, with the last lines
     this.voiced = this.#rotate = false;
+    const fading = Boolean(this.#sounding?.stream);
     this.#cut(true);
     this.#t = null;
     this.#flushHeard(false);
@@ -447,7 +465,16 @@ export class LiveKoe {
     this.#waiting = [];
     clearTimeout(this.#quiet);
     clearTimeout(this.#holdTimer);
-    this.c.voice?.platform?.session('playback');
+    // Playback again once her stopped voice has faded out: the session switched under the fade might be heard (unverified; the
+    // pops investigation). Unless a microphone opened meanwhile, which wants play-and-record; a page going away switches at once.
+    const p = this.c.voice?.platform;
+    clearTimeout(this.#toPlayback);
+    if (!fading || why === 'away') p?.session('playback');
+    else {
+      const o = p?.player.output?.();
+      const ms = STOP_FADE_MS + ((o?.baseLatency ?? 0) + (o?.outputLatency ?? 0)) * 1000 + FADED_MARGIN_MS;
+      this.#toPlayback = setTimeout(() => { if (!this.#input && !p?.mic.inUse?.()) p?.session('playback'); }, ms);
+    }
     s?.close(why);
     this.modelId = null;
     if (this.#toldOpen) this.c.told('live-closed');
@@ -767,14 +794,19 @@ export class LiveKoe {
     } else if (e.type === 'said' && !this.#t && this.#trail) {
       const t = this.#trail;
       if (!t.cut && !t.logged) t.said += e.text;
-      if (this.#sounding === t && !t.cut) this.c.saying?.(cleanSaid(t.said)); // after the provider's turn ended, while her voice plays
+      this.#saying(t); // after the provider's turn ended, while her voice plays
     } else if (e.type === 'said') {
       const t = (this.#t ??= newTurn());
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
-      else if (this.#sounding === t) this.c.saying?.(cleanSaid(t.said));
+      else this.#saying(t);
     }
     this.#changed();
+  }
+
+  /** Her words so far, for the bubble: only once her voice is heard, and never after it was cut. @param {Turn} t */
+  #saying(t) {
+    if (t.audible && this.#sounding === t && !t.cut) this.c.saying?.(cleanSaid(t.said));
   }
 
   /**
@@ -846,11 +878,34 @@ export class LiveKoe {
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
-      this.c.saying?.(cleanSaid(t.said));
-      t.stream.done.then(({ playedMs }) => this.#said(t, playedMs));
-      if (t.done) t.stream.end();
+      t.stream.done.then((r) => {
+        if (r.stalled && !t.cut) Object.assign(t, { cut: true, whole: false, stalled: true }); // the player stopped it: heard this far
+        this.#said(t, r.playedMs);
+        this.#played(t, r);
+      });
+      t.stream.running?.then((ok) => { if (!ok) this.#stalled(t); }); // the page may not play sound now
+      // Her words show as her voice starts (after the player's start buffer), never before it.
+      (t.stream.started ?? Promise.resolve(true)).then((ok) => {
+        t.audible = ok;
+        this.#saying(t);
+      });
+      if (t.done) this.#ending(t);
     } else if (t.done) this.#said(t, null);
     t.held = [];
+  }
+
+  /** All of her turn's sound is in: its stream plays out, or is stopped as stalled STALL_S past its length. @param {Turn} t */
+  #ending(t) {
+    t.stream?.end();
+    // Both on the real clock, as her sound plays: never the test clock, which only the session's own timers keep.
+    setTimeout(() => this.#stalled(t), t.bytes / (this.#rate / 500) + STALL_S * 1000);
+  }
+
+  /** Her voice stopped coming out: cut where it was heard, and traced as stalled. @param {Turn} t */
+  #stalled(t) {
+    if (t.logged || !t.stream) return;
+    t.stalled = true;
+    this.#stop(t);
   }
 
   /** The provider's turn ended: her voice plays out, or her words are a bubble; a turn with no real word is dropped. */
@@ -858,7 +913,7 @@ export class LiveKoe {
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
-    if (t?.stream) t.stream.end();
+    if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     this.#answered(!t?.spoken && !t?.tools);
@@ -912,6 +967,16 @@ export class LiveKoe {
     return playedMs === undefined ? {} : { playedMs };
   }
 
+  /**
+   * How her voice played, in numbers only, for the Trace (the pops investigation, 2026-10-23): heard ms; the holes where her sound
+   * ran out before more came, and their ms; how long her first sound waited to start; whether it was cut, or stalled; and which player played it.
+   * @param {Turn} t @param {import('../voice/platform.js').Played} r
+   */
+  #played(t, r) {
+    const { playedMs, ...rest } = r;
+    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole, ...(t.stalled ? { stalled: true } : {}) } });
+  }
+
   /** What Koe said, written once: whole, or cut where its voice stopped (✂). @param {Turn} t @param {number | null} playedMs null: none played */
   #said(t, playedMs) {
     if (t.logged) return;
@@ -949,7 +1014,9 @@ export class LiveKoe {
     return this.#write(async () => {
       if (!first) return { type: 'heard.text', actor: 'system', data: { of: h.id, wake: this.#wake, text, by: this.modelId } };
       const clip = await this.#clip(h);
-      return { type: 'heard', actor: 'user', blobs: clip.blobs, data: { id: h.id, wake: this.#wake, ms: h.ms, source: 'live', text, ...(dismissed ? { dismissed: true, gate: 'chatter' } : {}), ...clip.data } };
+      // A word or two plainly in a language the user doesn't speak is Gemini mishearing a short reply ("¿Qué?" for "What?"): flagged, never a change of language.
+      const stray = this.#languages ? strayLanguage(text, this.#languages) : '';
+      return { type: 'heard', actor: 'user', blobs: clip.blobs, data: { id: h.id, wake: this.#wake, ms: h.ms, source: 'live', text, ...(dismissed ? { dismissed: true, gate: 'chatter' } : {}), ...(stray ? { strayLanguage: stray } : {}), ...clip.data } };
     });
   }
 
