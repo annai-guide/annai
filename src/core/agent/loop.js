@@ -2115,9 +2115,8 @@ export class Agent {
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope);
     }
-    // A tell_koe that came back as an error told no one, whatever the error: refused (Koe can't speak right now), no text to pass on, or
-    // the tool switched off. The user is still owed an answer, so the turn does not count it as told, and a batch of [tell_koe, sleep] is
-    // not allowed to end the turn on it (nudge() asks Kokoro once more). Forcing a tool call on the steps after it is capped by FORCED_STEPS.
+    // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
+    // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
     if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
