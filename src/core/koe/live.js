@@ -1,7 +1,8 @@
 import { LiveInput } from '../realtime/input.js';
 import { escapeTags, wrapNote, theirs } from '../agent/blocks.js';
 import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
-import { newId } from '../scopes.js';
+import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
+import { forget } from '../forget.js';
 import { resolveEvent } from '../agent/transcript.js';
 import { spentToday, budgetStop } from '../agent/budgets.js';
 import { definitions } from '../agent/tools.js';
@@ -22,10 +23,10 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void }} LiveHost
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
- *   conversation leaves, shown there; spoke: the user's spoken turn ended
+ *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -36,6 +37,8 @@ const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
+/** This device's record of the cards about voice it has shown once. */
+const HINTS = '/voice-hints.json';
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
 const DUPLEX = ['headphones', 'car'];
 /** A turn ends once its streamed transcript (heardLive) stops growing this long past the pause, 3 s at least, if the microphone agrees. */
@@ -102,9 +105,10 @@ export class LiveKoe {
   #duplex = false;
   /** It follows the audio devices coming and going. */
   #devices = false;
-  /** Speech begun over her on the speaker this session, let go; and whether the card saying a tap talks over her was shown. */
+  /** Speech begun over her on the speaker this session, let go; whether the card saying a tap talks over her was shown; the route. */
   #overs = 0;
   #hinted = false;
+  #routeName = 'unknown';
   /** Why it closes once Koe's sentence has ended (Auto turned voice off), the microphone closed already. @type {string | null} */
   #closing = null;
   /** A tap opened it to talk: Kokoro's kept notes wait for the user's first turn to end, or 2 s with no speech (review S3). @type {any} */
@@ -307,8 +311,11 @@ export class LiveKoe {
     const v = this.c.voice;
     const input = this.#input;
     if (!v) return;
-    const duplex = await Promise.all([v.settings(), v.route()]).then(([{ bargeIn }, route]) => bargeIn && DUPLEX.includes(route), () => false);
-    if (this.#input === input) this.#duplex = duplex;
+    /** @type {[boolean, string]} */
+    const [duplex, route] = await Promise.all([v.settings(), v.route()]).then(([{ bargeIn }, r]) => [Boolean(bargeIn && DUPLEX.includes(r)), r], () => [false, 'unknown']);
+    if (this.#input !== input) return;
+    this.#duplex = duplex;
+    this.#routeName = route;
   }
 
   /** The microphone opens on the open session; what is said streams live, only while someone speaks. */
@@ -340,7 +347,7 @@ export class LiveKoe {
     }
     this.#input = new LiveInput({
       // Deaf while her sound plays, not while her turn's end is still to come after it (a quick reply then is heard whole).
-      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, onOver: () => this.#talkedOver(),
+      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, onOver: () => void this.#talkedOver().catch(() => {}),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
       // Each turn's end, why and in numbers only, for the Trace.
       onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
@@ -352,11 +359,20 @@ export class LiveKoe {
     this.#poke();
   }
 
-  /** Speech begun over her on the speaker was let go: a second time in a session, a quiet card says a tap talks over her, once. */
-  #talkedOver() {
-    if (++this.#overs < 2 || this.#hinted) return;
+  /**
+   * Speech begun over her on the phone's speaker was let go: a second time in a session, a quiet card says a tap talks over her, once
+   * on this device (kept in its own scope, which no backup carries).
+   */
+  async #talkedOver() {
+    if (this.#routeName !== 'speaker' || ++this.#overs < 2 || this.#hinted) return;
     this.#hinted = true;
+    const ws = this.c.ws;
+    if (ws && (await ws.readJSON(SYS_DEVICE, HINTS).catch(() => null))?.talkOver) return;
     this.c.notice({ tone: 'info', title: 'Tap Shiori to talk over her', body: "On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens." });
+    if (!ws) return;
+    await ensureDeviceScope(ws.store, ws.now());
+    await ws.write(SYS_DEVICE, HINTS, { talkOver: true }, { author: 'system' });
+    await forget(ws.store, SYS_DEVICE, { history: (p) => p === HINTS });
   }
 
   /** The microphone failed (refused, or taken): a card says why; the session goes on without it. @param {unknown} e */
