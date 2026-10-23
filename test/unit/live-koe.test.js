@@ -115,7 +115,7 @@ test("a stream that never plays out (a context suspended mid-reply) is stopped p
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await say(k, 'where-eat');
-    await soon(async () => (await k.events(['live.reply'])).length === 1, 3000);
+    await soon(async () => (await k.events(['live.reply'])).length === 1, 8000); // 0.6 s of her sound and 3 s, on the real clock
     const [reply] = await k.events(['live.reply']);
     assert.deepEqual([reply.data.stalled, reply.data.cut, reply.data.ms], [true, true, 0]);
     assert.deepEqual(await k.events(['out.speak']), [], 'none of it was heard: no line');

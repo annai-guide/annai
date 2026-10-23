@@ -131,6 +131,7 @@ test("the trace's lines for her live voice (the pops fix): the sound's rate and 
   assert.equal(traceSummary(e('live.session', { state: 'ready', model: 'Gemini Live', ms: 900, sampleRate: 48_000, baseLatency: 0.0058, outputLatency: 0.032 })),
     'live session ready · Gemini Live · 0.9 s · sound at 48.0 kHz, 6 ms processing latency, 32 ms output latency');
   assert.equal(traceSummary(e('live.session', { state: 'resumed', model: 'Gemini Live', ms: 900, sampleRate: 44_100 })), 'live session resumed · Gemini Live · 0.9 s · sound at 44.1 kHz');
+  assert.equal(traceSummary(e('live.session', { state: 'ready', model: 'Gemini Live', ms: 900, sampleRate: 44_100, baseLatency: null, outputLatency: null })), 'live session ready · Gemini Live · 0.9 s · sound at 44.1 kHz');
   assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 3450, holes: 2, holeMs: 310, waitMs: 40, player: 'worklet', cut: true })),
     'her voice: 3.5 s played · cut · started after 40 ms · 2 holes, 310 ms · on worklet');
   assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 2000, holes: 0, holeMs: 0, waitMs: 0, player: 'buffers', cut: false })), 'her voice: 2.0 s played · started after 0 ms · 0 holes · on buffers');

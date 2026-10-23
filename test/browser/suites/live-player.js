@@ -364,6 +364,46 @@ export default function (test, assert) {
     return () => { proto.addModule = real; };
   }));
 
+  test('a stream on buffers made while its context has not run yet (still resuming) waits for it: not stalled, all of it played (follow-up 5)', async () => {
+    const w = /** @type {any} */ (window);
+    const real = { context: w.AudioContext, node: w.AudioWorkletNode };
+    const off = new OfflineAudioContext({ numberOfChannels: 1, length: 48_000, sampleRate: 48_000 });
+    w.AudioContext = function () { return off; };
+    w.AudioWorkletNode = undefined;
+    try {
+      const s = /** @type {any} */ (browserPlatform().player).stream({ rate: 24_000 });
+      for (let i = 0; i < 5; i++) s.push(piece());
+      s.end();
+      await wait(1300); // its clock stands still, but it never ran
+      await off.startRendering();
+      const r = await s.done;
+      assert.equal(r.stalled, undefined);
+      assert.ok(Math.abs(r.playedMs - 500) < 60, `played ${r.playedMs} ms`);
+      assert.equal(await s.started, true);
+    } finally {
+      w.AudioContext = real.context;
+      w.AudioWorkletNode = real.node;
+    }
+  });
+
+  test('started is false for a stream stopped before its sound started, its player known or still loading (follow-up 4)', async () => {
+    const known = player.stream({ rate: 24_000 });
+    known.push(piece());
+    known.stop();
+    assert.equal(await known.started, false);
+    const w = /** @type {any} */ (window);
+    const real = w.AudioContext;
+    w.AudioContext = function () { return new OfflineAudioContext({ numberOfChannels: 1, length: 4800, sampleRate: 48_000 }); };
+    try {
+      const loading = /** @type {any} */ (browserPlatform().player).stream({ rate: 24_000 });
+      loading.push(piece());
+      loading.stop();
+      assert.equal(await loading.started, false);
+    } finally {
+      w.AudioContext = real;
+    }
+  });
+
   test("a module load that hangs gives up after 1.5 s, the stream on buffers; the next stream tries again, and plays on the worklet (review 5)", async () => {
     const w = /** @type {any} */ (window);
     const proto = /** @type {any} */ (AudioWorklet.prototype);

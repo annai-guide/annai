@@ -869,7 +869,8 @@ export class LiveKoe {
   /** All of her turn's sound is in: its stream plays out, or is stopped as stalled STALL_S past its length. @param {Turn} t */
   #ending(t) {
     t.stream?.end();
-    setTimeout(() => this.#stalled(t), t.bytes / (this.#rate / 500) + STALL_S * (this.c.secondMs ?? 1000));
+    // Both on the real clock, as her sound plays: never the test clock, which only the session's own timers keep.
+    setTimeout(() => this.#stalled(t), t.bytes / (this.#rate / 500) + STALL_S * 1000);
   }
 
   /** Her voice stopped coming out: cut where it was heard, and traced as stalled. @param {Turn} t */

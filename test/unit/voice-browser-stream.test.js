@@ -158,11 +158,44 @@ test('a player that tells nothing for a while (a context suspended mid-reply) is
   const { s, node, posted, clock } = stream(60);
   s.push(new Int16Array(4800));
   node.report({ frame: 4800, played: 4800, read: 2400, playing: true });
-  clock.now = 0.1; // its clock went on 0 ms past the report: it stood still
+  clock.now = 0.15; // the context's clock went on, but the worklet said nothing: no more of it is known to have played
   const r = await s.done;
   assert.equal(posted.at(-1), 'stop');
   assert.deepEqual([r.stalled, r.playedMs, s.queued()], [true, 100, 0]);
   assert.equal(node.disconnected, true);
+});
+
+test('stopped, it never stalls later: the watch ends with it, and the node is let go once the worklet is done, or after the stall time if it never says (follow-up 3)', async () => {
+  const a = stream(30);
+  a.s.push(new Int16Array(4800));
+  const r = a.s.stop();
+  await new Promise((res) => setTimeout(res, 80));
+  assert.equal(a.posted.filter((m) => m === 'stop').length, 1, 'one stop');
+  assert.equal(r.stalled, undefined);
+  assert.equal(a.node.disconnected, true, 'let go after the stall time');
+  const b = stream(30);
+  b.s.push(new Int16Array(4800));
+  b.s.stop();
+  b.node.report({ done: true, played: 100 });
+  assert.equal(b.node.disconnected, true);
+  await new Promise((res) => setTimeout(res, 60));
+  assert.equal(b.posted.filter((m) => m === 'stop').length, 1);
+});
+
+test('started settles false on a stream stopped or ended before its sound started, so nobody waits for it forever (follow-up 4)', async () => {
+  const a = stream();
+  a.s.push(new Int16Array(2400));
+  a.s.stop();
+  assert.equal(await a.s.started, false);
+  const b = stream();
+  b.s.end();
+  b.node.report({ done: true });
+  assert.equal(await b.s.started, false);
+  const c = stream();
+  c.s.push(new Int16Array(2400));
+  c.node.report({ playing: true });
+  c.s.stop();
+  assert.equal(await c.s.started, true);
 });
 
 test("a processor error stops it as a stall", async () => {
