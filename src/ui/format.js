@@ -1,5 +1,6 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
+import { t } from '../core/l10n.js';
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
@@ -50,8 +51,8 @@ export function takenText(taken, locale) {
  * @param {{ at: number | null, changed: boolean }} state @param {number} [now]
  */
 export function backupText({ at, changed }, now = Date.now()) {
-  if (at === null) return 'not backed up';
-  return `backed up ${relTime(at, now)}${changed ? ', changed since' : ''}`;
+  if (at === null) return t`not backed up`;
+  return changed ? t`backed up ${relTime(at, now)}, changed since` : t`backed up ${relTime(at, now)}`;
 }
 
 /** A cost in USD for people: "free", "$0.0042", "$1.23", or "cost unknown". @param {number | undefined} usd */

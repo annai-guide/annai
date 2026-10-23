@@ -32,10 +32,10 @@ export function languagesSection(ctx, app) {
   const addButton = h('button', { class: 'btn', type: 'button', disabled: true, onclick: () => pick() }, W.addButton);
   const answer = h('select', { id: 'language-answer' });
 
-  /** Writes what is shown, after the writes queued before it; the last one written is the list as the user left it. @param {string} said */
+  /** Writes what is shown, after the writes queued before it; the last one written is the list as the user left it. @param {string[]} said what the line says while it is written, and once it has been */
   const save = (said) => {
     const mine = ++version;
-    note.textContent = said;
+    note.textContent = said[0];
     return queueSave(async () => {
       // What this write sends, taken before it waits: the screen goes on changing meanwhile, and is not what was kept. Until the user
       // has chosen a list, only the answer is saved: the browser's language shown is not their pick.
@@ -44,7 +44,7 @@ export function languagesSection(ctx, app) {
         await updateAppSettings(ctx.ws, { languages: sent.chosen ? { spoken: sent.ids, answer: sent.answerId } : { answer: sent.answerId } });
         stored = sent;
         error.hidden = true;
-        if (mine === version) note.textContent = `${said}. ${W.saved}`;
+        if (mine === version) note.textContent = said[1];
       } catch (e) {
         // With a newer change after it, that one writes the whole list again; else the screen goes back to what the store has.
         if (mine === version) {
@@ -58,7 +58,7 @@ export function languagesSection(ctx, app) {
     });
   };
 
-  /** Shows the new list at once, then saves it. @param {string[]} next @param {string} said @param {{ id: string, act: string } | 'add'} [focus] where focus goes @param {string} [nextAnswer] */
+  /** Shows the new list at once, then saves it. @param {string[]} next @param {string[]} said @param {{ id: string, act: string } | 'add'} [focus] where focus goes @param {string} [nextAnswer] */
   const change = (next, said, focus = 'add', nextAnswer = answerId) => {
     ids = next;
     chosen = true;
@@ -119,7 +119,7 @@ export function languagesSection(ctx, app) {
   add.addEventListener('change', () => { addButton.disabled = !add.value; });
   answer.addEventListener('change', () => {
     answerId = answer.value;
-    save(answerId === 'follow' ? W.answered(W.follow.toLowerCase()) : W.answered(/** @type {any} */ (language(answerId)).name));
+    save(answerId === 'follow' ? W.answeredFollow() : W.answered(/** @type {any} */ (language(answerId)).name));
   });
   draw();
 

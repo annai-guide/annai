@@ -1,7 +1,7 @@
 /**
  * The languages you speak (phase 2; spec §10.9): the list the setting picks from, the setting read from the app settings, and the
  * words and codes every model that hears or speaks is given, so a short reply is not taken for another language (the user,
- * 2026-10-23). The user-facing words (names, the setting's labels) are all here, for a later pass that localizes the interface.
+ * 2026-10-23). The setting's own words are all here, as messages (LANGUAGE_WORDS).
  * @typedef {{ id: string, name: string, locale: string, iso: string, live: string | null, google: string | null }} Language
  *   id: annai's; locale: a BCP-47 tag a browser's dictation and voice take; iso: Whisper-style models (ISO 639-1, or -3 where OpenAI
  *   takes it); live: Gemini Live's own code for it; google: Gemini's transcription model's tag (null: it has none; Cantonese has none for Live,
@@ -9,7 +9,9 @@
  * @typedef {{ explicit: boolean, spoken: Language[], answer: Language | null }} LanguageSettings
  *   explicit: the user chose the list (else it is the browser's language); answer: the one language she answers in, null to follow the user
  */
+import { t } from './l10n.js';
 
+/* en: the names of the languages, until the formatting helpers name them */
 /**
  * id, name, locale, then only what differs: iso (else the id), live (else the id; null: none), google (else the locale; null: none). Chinese is
  * Mandarin (Gemini Live: Simplified); Cantonese is its own. A language's name for itself comes from the browser (nativeName).
@@ -68,12 +70,15 @@ export function languageSettings(app, locale) {
   return { explicit: false, spoken: [browserLanguage(locale)], answer };
 }
 
+/* en */
 /** "English", "English and Japanese", "English, Chinese (Mandarin) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
 export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n, i, a) => (i ? `${s}${i === a.length - 1 ? ` ${and} ` : ', '}${n}` : n), '');
 
+/* en */
 /** What a model that writes speech down is told (phase 2), after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
 export const speakerLine = (s) => (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
 
+/* en */
 /**
  * What every model that hears or speaks is told (the user, 2026-10-23), once, in the same words: Shiori's and Kokoro's system text,
  * Koe's, and a live session's. OpenAI's own prompting guide warns against "reply in the user's language" (the model takes an
@@ -102,6 +107,7 @@ const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hang
 /** How many words a text has, counting each Chinese, Japanese or Korean character as one (they have no spaces between words). @param {string} text */
 const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ').match(/[\p{L}\p{N}]+/gu)?.length ?? 0);
 
+/* en */
 /**
  * Writing systems that name their language when they make up most of a text's letters (review A6: a place name in kanji in an
  * English line is no Chinese): Chinese characters with kana are Japanese, without, Chinese (the Han alone of a short Japanese reply is
@@ -109,6 +115,7 @@ const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ')
  */
 const SCRIPTS = /** @type {const} */ ([[/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu, 'Chinese'], [/\p{Script=Hangul}/gu, 'Korean'], [/\p{Script=Thai}/gu, 'Thai'],
   [/\p{Script=Arabic}/gu, 'Arabic'], [/\p{Script=Hebrew}/gu, 'Hebrew'], [/\p{Script=Greek}/gu, 'Greek'], [/\p{Script=Devanagari}/gu, 'Hindi'], [/\p{Script=Cyrillic}/gu, 'Russian']]);
+/* en */
 /**
  * The commonest small words of languages written in Latin letters, without the words another of them (or English) shares: the one with
  * the most of them, alone at the top, is it.
@@ -125,6 +132,7 @@ const COMMON = Object.entries({
 /** A mark only one of them has counts as a word: ¿ ¡ ñ (Spanish), ß (German), ã õ (Portuguese). */
 const MARKS = /** @type {Record<string, RegExp>} */ ({ Spanish: /[¿¡ñ]/u, German: /ß/u, Portuguese: /[ãõ]/u });
 
+/* en */
 /**
  * The language a text is written in, by name, or '' when it can't be told. min: how many words of one language's list (a mark counts as
  * one) a Latin text needs, alone at the top: 1 for a long text (a summary's language); 2 for a word or two, where one hit is a name or a
@@ -148,6 +156,7 @@ const SHARED_MARKS = /[âêôđ]/iu;
 /** Listed languages that use â ê ô or đ themselves: with one listed, those marks alone say nothing of Vietnamese. */
 const USES_SHARED = ['fr', 'pt', 'ro', 'tr', 'sk', 'hr'];
 
+/* en */
 /**
  * 'Vietnamese' when a text has its marks. spoken: the listed languages, which keep â ê ô đ from meaning Vietnamese when one of them uses
  * those letters. @param {string} text @param {Language[]} [spoken]
@@ -194,32 +203,40 @@ export function strayLanguage(text, s) {
   return guess && !listedFor(guess, s.spoken) ? guess : '';
 }
 
+/* en */
 /** What the model that reads a flagged heard line is told beside it (review: Kokoro should know a line may be a mishearing). @param {string} language */
 export const strayNote = (language) => ` (heard; may be misheard as ${language})`;
 
-/** The setting's own words, in one place for a later pass that localizes the interface. */
+/**
+ * The setting's own words, in one place: each a message (localization L1), so the screen draws them in the language of the day. A
+ * status is a pair, what the line says while the change is written and what it says once it has been, each whole so each can be
+ * translated whole.
+ */
 export const LANGUAGE_WORDS = {
-  heading: 'Languages',
-  intro: 'The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.',
-  spokenLabel: 'Languages you speak',
-  spokenHint: 'In order of use. Phone dictation listens in the first one only; models that take several are given all of them.',
-  add: 'Add a language',
-  addButton: 'Add',
-  remove: 'Remove',
+  heading: t`Languages`,
+  intro: t`The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.`,
+  spokenLabel: t`Languages you speak`,
+  spokenHint: t`In order of use. Phone dictation listens in the first one only; models that take several are given all of them.`,
+  add: t`Add a language`,
+  addButton: t`Add`,
+  remove: t`Remove`,
   moveUpText: '↑',
   moveDownText: '↓',
-  removeLabel: (/** @type {string} */ name) => `Remove ${name}`,
-  moveUpLabel: (/** @type {string} */ name) => `Move ${name} up`,
-  moveDownLabel: (/** @type {string} */ name) => `Move ${name} down`,
+  removeLabel: (/** @type {string} */ name) => t`Remove ${name}`,
+  moveUpLabel: (/** @type {string} */ name) => t`Move ${name} up`,
+  moveDownLabel: (/** @type {string} */ name) => t`Move ${name} down`,
   /** A language as the pickers show it: its English name, then its own. */
-  option: (/** @type {string} */ name, /** @type {string} */ own) => `${name} · ${own}`,
-  added: (/** @type {string} */ name) => `Added ${name}`,
-  moved: (/** @type {string} */ name, /** @type {number} */ place) => `${name} moved to ${place}`,
-  removed: (/** @type {string} */ name) => `${name} removed`,
-  removedAnswer: (/** @type {string} */ name) => `${name} removed; Shiori answers in the language you speak to her again`,
-  answered: (/** @type {string} */ name) => `Shiori answers in ${name}`,
-  saved: 'Saved',
-  answerLabel: 'Shiori answers in',
-  follow: 'The language you speak to her',
-  empty: 'None picked: annai uses the browser’s language.',
+  option: (/** @type {string} */ name, /** @type {string} */ own) => t`${name} · ${own}`,
+  added: (/** @type {string} */ name) => [t`Added ${name}`, t`Added ${name}. Saved`],
+  moved: (/** @type {string} */ name, /** @type {number} */ place) => [t`${name} moved to ${place}`, t`${name} moved to ${place}. Saved`],
+  removed: (/** @type {string} */ name) => [t`${name} removed`, t`${name} removed. Saved`],
+  removedAnswer: (/** @type {string} */ name) => [
+    t`${name} removed; Shiori answers in the language you speak to her again`,
+    t`${name} removed; Shiori answers in the language you speak to her again. Saved`,
+  ],
+  answered: (/** @type {string} */ name) => [t`Shiori answers in ${name}`, t`Shiori answers in ${name}. Saved`],
+  answeredFollow: () => [t`Shiori answers in the language you speak to her`, t`Shiori answers in the language you speak to her. Saved`],
+  answerLabel: t`Shiori answers in`,
+  follow: t`The language you speak to her`,
+  empty: t`None picked: annai uses the browser’s language.`,
 };

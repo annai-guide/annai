@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, field, t } from '../dom.js';
 import { listTrips, createTrip, backupState } from '../../core/scopes.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -18,14 +18,14 @@ export async function renderTrips(ctx) {
   const cards = await Promise.all(active.map(async (s) => tripCard(s, await ctx.ws.readJSON(s.id, '/trip.json').catch(() => null), await backupState(ctx.store, s.id), await tripStamps(ctx, s.id))));
   const archivedCards = await Promise.all(archived.map(async (s) => tripCard(s, null, await backupState(ctx.store, s.id), await tripStamps(ctx, s.id))));
   return h('div', { class: 'screen' },
-    h('h1', { class: 'title', text: 'Trips' }),
-    active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: 'No trips yet. Start one below, or open a trip someone sent you.' }),
+    h('h1', { class: 'title', text: t`Trips` }),
+    active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: t`No trips yet. Start one below, or open a trip someone sent you.` }),
     newTripForm(ctx),
     openFileButton(ctx),
-    h('p', { class: 'sub', text: latest ? `Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
-      : settings.lastExportAt ? `Last export ${relTime(settings.lastExportAt)}.` : 'No backup yet. Export everything from Settings, or set up automatic backups there.' }),
+    h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
+      : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }),
     archived.length
-      ? h('details', { class: 'archived' }, h('summary', { text: `Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
+      ? h('details', { class: 'archived' }, h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null);
 }
 
@@ -38,13 +38,13 @@ function tripCard(s, trip, backup, stamps) {
   return h('li', {}, h('a', { class: 'card trip-card', href: `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', text: s.title }),
-      h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, `updated ${relTime(s.updated)}`, backupText(backup)]))),
+      h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, t`updated ${relTime(s.updated)}`, backupText(backup)]))),
     stampMarks(stamps)));
 }
 
 /** @param {any} ctx */
 function newTripForm(ctx) {
-  const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: 'Big Sur · Thanksgiving' });
+  const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving` });
   const start = h('input', { id: 'trip-start', name: 'start', type: 'date' });
   const end = h('input', { id: 'trip-end', name: 'end', type: 'date' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
@@ -64,17 +64,17 @@ function newTripForm(ctx) {
       }
     },
   },
-  h('h2', { class: 'section', text: 'Start a trip' }),
-  field('Trip name', title),
-  h('div', { class: 'row' }, field('Starts', start), field('Ends', end)),
+  h('h2', { class: 'section', text: t`Start a trip` }),
+  field(t`Trip name`, title),
+  h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end)),
   error,
-  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, 'Start trip')));
+  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
 }
 
 /** @param {any} err */
 function explain(err) {
   if (!(err instanceof ValidationError)) return String(err?.message ?? err);
-  if (err.errors.some((m) => m.startsWith('$.title'))) return 'Give the trip a name.';
-  if (err.errors.some((m) => /date/.test(m))) return 'Use real dates for the start and end.';
+  if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give the trip a name.`;
+  if (err.errors.some((m) => /date/.test(m))) return t`Use real dates for the start and end.`;
   return err.errors.join(' ');
 }
