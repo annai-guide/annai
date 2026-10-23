@@ -6,6 +6,7 @@ import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { resolveEvent } from '../../src/core/agent/transcript.js';
 import { Channel, channelTool } from '../../src/core/agent/halves.js';
 import { ALWAYS_ON, toolList } from '../../src/core/agent/tools.js';
+import { useClock } from './clock.js';
 
 /** Kokoro as the receiving half, and a channel whose Koe side writes into the same log. @param {any[]} script */
 async function kokoroKit(script) {
@@ -14,6 +15,8 @@ async function kokoroKit(script) {
   });
   /** @type {string[]} */
   const order = [];
+  /** When each cut went out, on the clock the test uses (useClock). @type {number[]} */
+  const cutAt = [];
   const channel = new Channel({
     log: {
       koe: async (/** @type {any} */ ev) => {
@@ -25,20 +28,25 @@ async function kokoroKit(script) {
       kokoro: (/** @type {any} */ ev) => k.agent.log(ev),
     },
     deliver: { kokoro: (/** @type {any} */ w) => { order.push('delivered'); k.agent.wake(w); }, koe: () => {} },
-    cut: { kokoro: () => { order.push('cut'); k.agent.cutIn(); }, koe: () => {} },
+    cut: { kokoro: () => { order.push('cut'); cutAt.push(Date.now()); k.agent.cutIn(); }, koe: () => {} },
   });
-  return { ...k, channel, order };
+  return { ...k, channel, order, cutAt };
 }
 
 /** The text parts of a request's last user message. @param {any} req */
 const lastUser = (req) => req.messages.filter((/** @type {any} */ m) => m.role === 'user').at(-1).parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text);
 
-test('tell_kokoro returns "sent" in the same step, before Kokoro has done anything', async () => {
+test('tell_kokoro returns "sent" in the same step, before Kokoro has done anything', async (t) => {
+  useClock(t);
   const k = await kokoroKit([{ delayMs: 200, toolCalls: [{ name: 'sleep', input: {} }] }]);
   const tool = channelTool('koe', k.channel);
   assert.equal(tool.name, 'tell_kokoro');
+  const before = Date.now();
   const out = await tool.run({ text: 'Is Nepenthe open now?' }, /** @type {any} */ ({ wake: 'k1' }));
   assert.equal(out, 'sent');
+  // On the test's clock, time passes only when a timer fires: a tool that waited for one (a pause, Kokoro's 200 ms call, anything) would
+  // return later than it was called. It returns at the same millisecond, and Kokoro has not so much as sent its request.
+  assert.equal(Date.now(), before, 'it never waits: no time passed');
   assert.equal(k.requests.length, 0, 'it never waits for Kokoro: when it returns, Kokoro has not so much as sent its request');
   await k.agent.idle();
   assert.equal(k.requests.length, 1, 'then Kokoro works on it');
@@ -66,15 +74,21 @@ test('append to a busy Kokoro arrives before its next model call; to an idle one
   assert.deepEqual(k.order.slice(0, 2), ['logged', 'delivered']);
 });
 
-test('immediate cuts the current call and the turn continues with the note', async () => {
+test('immediate cuts the current call and the turn continues with the note', async (t) => {
+  useClock(t);
   const k = await kokoroKit([
     { delayMs: 30_000, text: 'Looking up the lunch places' },
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ]);
   k.agent.send('Where for lunch?');
   await until(() => k.requests.length === 1);
+  const sentAt = Date.now();
   await k.channel.send('koe', 'Not lunch: they mean dinner.', 'immediate', 'tool', 'k1');
-  await until(() => k.requests.length === 2, 5000); // the call was cut: waited out, it would take 30 s
+  // The cut goes out at once: at the same millisecond of the test's clock as the note (a cut that waited for anything, 5 s or 400 ms, would
+  // be later), and the second call is made long before the 30 s the cut call would have taken.
+  assert.deepEqual(k.cutAt, [sentAt], 'the cut went out at the same millisecond');
+  await until(() => k.requests.length === 2, 5000);
+  assert.ok(Date.now() - sentAt < 1000, `${Date.now() - sentAt} ms of the clock passed before the second call: the cut call was not waited out`);
   await k.agent.idle();
   assert.deepEqual(k.order, ['logged', 'delivered', 'cut']);
   assert.equal(k.requests.length, 2);
