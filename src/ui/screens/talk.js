@@ -342,9 +342,9 @@ function tidyMenu(ctx) {
       /** @type {HTMLElement | null} */ (document.querySelector('.tidy-toggle'))?.focus(); // the new screen's, after the divider
     },
   }, 'Start fresh');
-  // A tap elsewhere closes it.
+  // A tap elsewhere closes it, at its click: nothing moves under a finger still down.
   const outside = (/** @type {Event} */ e) => { if (!menu.hidden && !menu.contains(/** @type {Node} */ (e.target)) && e.target !== toggle) close(); };
-  document.addEventListener('pointerdown', outside, true);
+  document.addEventListener('click', outside, true);
   // Escape closes it wherever the focus is (Safari doesn't focus a button on a tap).
   const escape = (/** @type {KeyboardEvent} */ e) => {
     if (e.key !== 'Escape' || menu.hidden) return;
@@ -357,7 +357,7 @@ function tidyMenu(ctx) {
     h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.' }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.' }), fresh);
   whenGone(el, () => {
-    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('click', outside, true);
     document.removeEventListener('keydown', escape);
   });
   return el;

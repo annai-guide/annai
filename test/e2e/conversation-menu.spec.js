@@ -147,4 +147,13 @@ test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   await toggle.click();
   await page.locator('main').click({ position: { x: 5, y: 300 }, force: true });
   await expect(menu).toBeHidden();
+  // At the click, never at the press: nothing moves under a finger still down (as the dock's box, fix pass 2).
+  await toggle.click();
+  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Conversation' }).boundingBox());
+  await page.mouse.move(at.x + 5, at.y + 5);
+  await page.mouse.down();
+  await page.waitForTimeout(100);
+  await expect(menu).toBeVisible();
+  await page.mouse.up();
+  await expect(menu).toBeHidden();
 });
