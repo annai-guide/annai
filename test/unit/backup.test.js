@@ -353,3 +353,27 @@ test("a backup that fails while this phone is offline says it is offline, not th
   assert.equal(after.count, 1);
   assert.equal(after.retryAt, d.now() + 15 * 60_000);
 });
+
+test('a place that can peek tells what a backup holds from its manifest alone; one that cannot gets null (spec §12.4)', async () => {
+  const plain = await device(memoryPlace());
+  const plainId = await placeOn(plain);
+  await plain.backups.backUp(plainId);
+  assert.equal(await plain.backups.peek(plainId, 'b1'), null, 'a place without peek: the caller downloads, as before');
+
+  const place = memoryPlace({ peek: true });
+  const phone = await device(place);
+  const id = await placeOn(phone);
+  await phone.backups.backUp(id);
+  const manifest = await phone.backups.peek(id, 'b1');
+  assert.equal(place.peeks(), 1);
+  assert.deepEqual(manifest, (await peekArchive(place.kept[0].blob)).manifest);
+  assert.deepEqual(phone.backups.running(), [], 'it is no download: nothing waits behind it, and an automatic backup is left alone');
+  await assert.rejects(phone.backups.peek(id, 'gone'), (e) => e instanceof TargetError && e.kind === 'missing');
+  // A manifest from a newer annai, or one that isn't one, is refused in plain words, as a file would be.
+  const real = place.type.peek;
+  place.type.peek = async () => ({ ...manifest, format: 99 });
+  await assert.rejects(phone.backups.peek(id, 'b1'), /newer version of annai/);
+  place.type.peek = /** @type {any} */ (async () => ({ files: 'no' }));
+  await assert.rejects(phone.backups.peek(id, 'b1'), /damaged/);
+  place.type.peek = real;
+});
