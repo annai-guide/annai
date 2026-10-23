@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, hear } from './agent-kit.js';
+import { useClock } from './clock.js';
 
 const choose = (/** @type {'A' | 'B'} */ letter) => ({ toolCalls: [{ name: 'decide', input: { option: letter } }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -10,7 +11,8 @@ const mainRequests = (k) => k.requests.filter((/** @type {any} */ r) => !String(
 /** The gate's requests. @param {any} k */
 const gateRequests = (k) => k.requests.filter((/** @type {any} */ r) => String(r.system ?? '').startsWith('You make one quick decision'));
 
-test('chatter after she speaks is recorded, and she goes back to sleep without a call (spec §10.4)', async () => {
+test('chatter after she speaks is recorded, and she goes back to sleep without a call (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakOnly('Bixby Bridge is ahead.')]], { voice: { decide: [choose('B')], speechIn: ['m-hear'], hears: ['turn the radio down'] } });
   k.agent.send('What is ahead?');
   await until(() => k.agent.state.name === 'listening');
@@ -27,7 +29,8 @@ test('chatter after she speaks is recorded, and she goes back to sleep without a
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('meant for Shiori, or unsure: it reaches the main model (spec §10.4)', async () => {
+test('meant for Shiori, or unsure: it reaches the main model (spec §10.4)', async (t) => {
+  useClock(t);
   for (const [decide, gate] of /** @type {[any[], string][]} */ ([[[choose('A')], 'shiori'], [[{ error: 'bad-request', status: 400 }], 'unsure']])) {
     const k = await agentKit([[speakOnly('Want tacos?'), say('Tacos it is.')]], { voice: { decide, speechIn: ['m-hear'], hears: ['yes please'] } });
     k.agent.send('Lunch?');
@@ -39,7 +42,8 @@ test('meant for Shiori, or unsure: it reaches the main model (spec §10.4)', asy
   }
 });
 
-test("a tap's first words need no gate; without a quick-decision model there is none", async () => {
+test("a tap's first words need no gate; without a quick-decision model there is none", async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Sure.')]], { voice: { decide: [choose('B')], speechIn: ['m-hear'] } });
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
@@ -56,7 +60,8 @@ test("a tap's first words need no gate; without a quick-decision model there is 
   assert.equal(mainRequests(plain).length, 2);
 });
 
-test('chatter while she thinks is written in at her next step, and wakes nothing (spec §10.4)', async () => {
+test('chatter while she thinks is written in at her next step, and wakes nothing (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     speakOnly('Want tacos?'),
     { delayMs: 120, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] },
@@ -74,7 +79,8 @@ test('chatter while she thinks is written in at her next step, and wakes nothing
   assert.deepEqual([chatter.data.dismissed, chatter.data.meanwhile], [true, true]);
 });
 
-test('chatter during an ask is written in, and the buttons keep waiting (spec §10.4)', async () => {
+test('chatter during an ask is written in, and the buttons keep waiting (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } }] },
     say('Kept.'),
@@ -92,7 +98,8 @@ test('chatter during an ask is written in, and the buttons keep waiting (spec §
   assert.equal(heard[0].data.dismissed, true);
 });
 
-test('after chatter ends her turn, a later speak in the same reply is not said and does not listen; the gate is told only what she said (spec §10.4)', async () => {
+test('after chatter ends her turn, a later speak in the same reply is not said and does not listen; the gate is told only what she said (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is ahead.' } }, { name: 'speak', input: { text: 'Want to stop there?' } }] },
     { delayMs: 150, toolCalls: [{ name: 'sleep', input: {} }] },

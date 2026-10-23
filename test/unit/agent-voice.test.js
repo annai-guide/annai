@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, hear } from './agent-kit.js';
 import { clip, quiet, cat } from './voice-kit.js';
+import { useClock } from './clock.js';
 
 /** speak, as a model whose arguments stream would send it. @param {string} text @param {any} [more] */
 const speakStep = (text, more = {}) => ({ stream: true, toolCalls: [{ name: 'speak', input: { text } }], ...more });
@@ -13,7 +14,8 @@ const mics = (k) => k.platform.log.filter((/** @type {string} */ l) => l.startsW
 /** Each call of a tool's result, in order. @param {any} k @param {string} name */
 const results = async (k, name) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === name);
 
-test('speak plays as the reply streams in, sentence by sentence, then listens; the spoken answer comes back as heard speech (spec §7.1, §10.1)', async () => {
+test('speak plays as the reply streams in, sentence by sentence, then listens; the spoken answer comes back as heard speech (spec §7.1, §10.1)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakStep('There is a taco stand ahead. Want to stop?', { pieceMs: 15 }), say('Great.')]], { voice: { speechIn: ['m-hear'], hears: ['yes the first one'] } });
   let playedBeforeTheCall = -1;
   k.agent.on('event', (e) => { if (e.type === 'tool.call' && e.data.name === 'speak' && playedBeforeTheCall < 0) playedBeforeTheCall = plays(k).length; });
@@ -36,7 +38,8 @@ test('speak plays as the reply streams in, sentence by sentence, then listens; t
   assert.deepEqual(k.platform.sessions, ['playback', 'play-and-record', 'playback', 'playback']);
 });
 
-test('sleep in the same reply: she speaks and does not listen; the microphone never opens (spec §7.1)', async () => {
+test('sleep in the same reply: she speaks and does not listen; the microphone never opens (spec §7.1)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Noted.')]], { voice: {} });
   k.agent.send('Dinner is at 6:30');
   await k.agent.idle();
@@ -47,7 +50,8 @@ test('sleep in the same reply: she speaks and does not listen; the microphone ne
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('heard nothing: speak stops listening after the silence limit (spec §7.1)', async () => {
+test('heard nothing: speak stops listening after the silence limit (spec §7.1)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
   k.agent.send('Thanks');
   await k.agent.idle();
@@ -55,7 +59,8 @@ test('heard nothing: speak stops listening after the silence limit (spec §7.1)'
   assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic')), ['mic open', 'mic close']);
 });
 
-test('voice off: speak shows a bubble and listens to nothing; the now block says which; voice on asks for first words sooner (spec §6.3, §9.6)', async () => {
+test('voice off: speak shows a bubble and listens to nothing; the now block says which; voice on asks for first words sooner (spec §6.3, §9.6)', async (t) => {
+  useClock(t);
   const off = await agentKit([[say('Here.')]], { voice: { mode: 'off' } });
   off.agent.send('Hi');
   await off.agent.idle();
@@ -74,7 +79,8 @@ test('voice off: speak shows a bubble and listens to nothing; the now block says
   assert.equal(typeof calls[0].speech, 'function');
 });
 
-test('tapping her while she speaks stops her, keeps where, and opens the microphone; what is said next answers (spec §10.4)', async () => {
+test('tapping her while she speaks stops her, keeps where, and opens the microphone; what is said next answers (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakStep('Bixby Bridge is two miles ahead. It opened in 1932.'), say('OK, the beach.')]], { voice: { playMs: 60, speechIn: ['m-hear'], hears: ['tell me about the beach'] } });
   k.agent.send('What is ahead?');
   await until(() => plays(k).length === 1);
@@ -88,7 +94,8 @@ test('tapping her while she speaks stops her, keeps where, and opens the microph
   assert.equal(k.requests.length, 2);
 });
 
-test('a spoken question answered only in plain text is asked again too, as a typed one is (review a2)', async () => {
+test('a spoken question answered only in plain text is asked again too, as a typed one is (review a2)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'Nepenthe is a good choice.' }, say('Nepenthe, on the cliffs.')]], { voice: { playMs: 5, speechIn: ['m-hear'], hears: ['where should we eat'] } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
@@ -99,7 +106,8 @@ test('a spoken question answered only in plain text is asked again too, as a typ
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Nepenthe, on the cliffs.']);
 });
 
-test('a heard segment, once it has come, is not still "speaking": the turn it wakes starts at once (GATHER; the full e2e run)', async () => {
+test('a heard segment, once it has come, is not still "speaking": the turn it wakes starts at once (GATHER; the full e2e run)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Nepenthe.')]], { voice: { playMs: 5, speechIn: ['m-hear'], hears: ['where should we eat'] }, agent: { secondMs: 1000 } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
@@ -110,7 +118,8 @@ test('a heard segment, once it has come, is not still "speaking": the turn it wa
   await k.agent.idle();
 });
 
-test('two speaks in one streamed reply: the second plays after the first has listened, never over the open microphone (spec §10.4)', async () => {
+test('two speaks in one streamed reply: the second plays after the first has listened, never over the open microphone (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { stream: true, toolCalls: [{ name: 'speak', input: { text: 'First thing.' } }, { name: 'speak', input: { text: 'Second thing.' } }] },
     { toolCalls: [{ name: 'sleep', input: {} }] },
@@ -120,7 +129,8 @@ test('two speaks in one streamed reply: the second plays after the first has lis
   assert.deepEqual(k.platform.log, ['play m-say:First thing.', 'mic open', 'mic close', 'play m-say:Second thing.', 'mic open', 'mic close']);
 });
 
-test('once she is stopped, a later speak in the same reply is not said and does not listen; it shows as a bubble (spec §10.4)', async () => {
+test('once she is stopped, a later speak in the same reply is not said and does not listen; it shows as a bubble (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { stream: true, toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is two miles ahead. It opened in 1932.' } }, { name: 'speak', input: { text: 'Want to stop there?' } }] },
     say('OK, the beach.'),
@@ -140,7 +150,8 @@ test('once she is stopped, a later speak in the same reply is not said and does 
   assert.equal(k.requests.length, 2);
 });
 
-test('tapping her while she sleeps starts listening; the first thing said wakes her; the microphone closes after her turn (spec §10.4)', async () => {
+test('tapping her while she sleeps starts listening; the first thing said wakes her; the microphone closes after her turn (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Yes, there is a café ahead.')]], { voice: { speechIn: ['m-hear'], hears: ['is there coffee nearby'] } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
@@ -153,7 +164,8 @@ test('tapping her while she sleeps starts listening; the first thing said wakes 
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('a tap nobody speaks into closes after the silence limit; a tap while she listens stops listening; voice off opens typing', async () => {
+test('a tap nobody speaks into closes after the silence limit; a tap while she listens stops listening; voice off opens typing', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('x')]], { voice: {} });
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
@@ -169,7 +181,8 @@ test('a tap nobody speaks into closes after the silence limit; a tap while she l
   assert.equal(off.agent.tap(), 'typing');
 });
 
-test('while she thinks, the microphone keeps recording; what is heard reaches her next call as heard while you were thinking (spec §6.1, §10.4)', async () => {
+test('while she thinks, the microphone keeps recording; what is heard reaches her next call as heard while you were thinking (spec §6.1, §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] },
     { delayMs: 120, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] },
@@ -185,7 +198,8 @@ test('while she thinks, the microphone keeps recording; what is heard reaches he
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [Boolean(e.data.answer), Boolean(e.data.meanwhile)]), [[true, false], [false, true]]);
 });
 
-test('speech heard while she thinks: her next speak does not wait a silence for an answer; what was said reaches her at once (spec §10.4)', async () => {
+test('speech heard while she thinks: her next speak does not wait a silence for an answer; what was said reaches her at once (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] },
     { delayMs: 120, toolCalls: [{ name: 'speak', input: { text: 'Tacos it is.' } }] },
@@ -203,7 +217,8 @@ test('speech heard while she thinks: her next speak does not wait a silence for 
   assert.deepEqual(k.requests[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard while you were thinking]' }, { type: 'text', text: 'and a coffee' }]);
 });
 
-test('nothing heard is lost: speech that comes as she goes to sleep starts a new turn (spec §10.4)', async () => {
+test('nothing heard is lost: speech that comes as she goes to sleep starts a new turn (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] },
     { delayMs: 120, toolCalls: [{ name: 'sleep', input: {} }] },
@@ -221,7 +236,8 @@ test('nothing heard is lost: speech that comes as she goes to sleep starts a new
   assert.equal(plays(k).at(-1), 'Got it, a gas station.');
 });
 
-test('speech still going on when the microphone closes for her to speak is kept, and reaches her (spec §10.4)', async () => {
+test('speech still going on when the microphone closes for her to speak is kept, and reaches her (spec §10.4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }] },
     { delayMs: 60, stream: true, toolCalls: [{ name: 'speak', input: { text: 'Here is what I found.' } }] },
@@ -236,7 +252,8 @@ test('speech still going on when the microphone closes for her to speak is kept,
   assert.deepEqual(k.requests[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard while you were thinking]' }, { type: 'text', text: 'and also' }]);
 });
 
-test('a reply that breaks off mid-speak stops what it had begun; the next model says its own, whole (spec §9.6)', async () => {
+test('a reply that breaks off mid-speak stops what it had begun; the next model says its own, whole (spec §9.6)', async (t) => {
+  useClock(t);
   const k = await agentKit([[speakStep('First sentence here. Second one never comes.', { breakAt: 4 })], [say('From the other model.')]], { voice: {} });
   k.agent.send('Hi');
   await k.agent.idle();
@@ -246,7 +263,8 @@ test('a reply that breaks off mid-speak stops what it had begun; the next model 
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('ask is spoken too, and a spoken answer answers it; wait listens (spec §7.1)', async () => {
+test('ask is spoken too, and a spoken answer answers it; wait listens (spec §7.1)', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } }] },
     { toolCalls: [{ name: 'wait', input: { seconds: 10 } }] },

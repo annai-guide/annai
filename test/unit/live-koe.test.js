@@ -1327,7 +1327,9 @@ test('a live session is told the languages: the section in its instructions, the
 test('a very short transcript in a language that is not listed is flagged in the trace, and still written: it is never a change of language, and nothing drops it (the user, 2026-10-23)', async () => {
   const k = await liveKit([{ heard: '¿Qué?', said: 'Sorry, could you say that again?', audio: tone() }, { heard: 'Where should we eat tonight?', said: 'There is a taco stand ahead.', audio: tone() }]);
   try {
-    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+    // Open between the two exchanges: at the default, the session closes after 30 of its seconds (300 ms here) of quiet, and an
+    // exchange begun as that happens says its words to a microphone that has just closed.
+    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] }, voice: { closeAfterSeconds: 300 } });
     await exchange(k, 'where-eat');
     await exchange(k, 'where-eat', 2);
     const [stray, whole] = await k.events(['heard']);
@@ -1342,12 +1344,112 @@ test('a very short transcript in a language that is not listed is flagged in the
 test('with no languages chosen, a very short transcript is held against the browser\'s language: English is never stray, "¿Qué?" is (the first real run called "What?" English and "No." Spanish)', async () => {
   const k = await liveKit([{ heard: 'What?', said: 'Sorry.', audio: tone() }, { heard: '¿Qué?', said: 'Sorry.', audio: tone() }]);
   try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // open between the two exchanges (as the test above)
     await exchange(k, 'where-eat');
     await exchange(k, 'where-eat', 2);
     const [english, spanish] = await k.events(['heard']);
     assert.deepEqual([english.data.text, english.data.strayLanguage], ['What?', undefined]);
     assert.deepEqual([spanish.data.text, spanish.data.strayLanguage], ['¿Qué?', 'Spanish']);
     assert.deepEqual(got(k, 'setup')[0].setup.inputAudioTranscription, {}, 'and still no hint: the browser is no evidence of what the user speaks');
+  } finally {
+    await k.done();
+  }
+});
+
+// The dock says she listens only once the microphone is open: the glow is the user's cue to speak, and on a phone where getUserMedia or the
+// capture worklet is slow, words said at the glow before that were lost (flake-sweep fix pass, P2).
+/** The microphone's opening held until the returned function is called (or, given an error name, failing then). @param {any} k @returns {(failWith?: string) => void} */
+function slowMic(k) {
+  const open = k.platform.mic.open;
+  /** @type {(failWith?: string) => void} */
+  let release = () => {};
+  const gate = new Promise((resolve) => { release = (failWith) => resolve(failWith); });
+  k.platform.mic.open = async (/** @type {any} */ o) => {
+    const failWith = await gate;
+    if (failWith) throw Object.assign(new Error('Permission denied'), { name: failWith });
+    return open.call(k.platform.mic, o);
+  };
+  return release;
+}
+
+test('P2: while the microphone starts she does not listen yet: the dock says she is working, and the chip stays as it was; once it is open she listens', async () => {
+  const k = await liveKit([]);
+  try {
+    const release = slowMic(k);
+    /** @type {string[]} */
+    const views = [];
+    k.agent.on('state', (/** @type {any} */ s) => views.push(s.name));
+    /** @type {(string | null)[]} what the chip is told: 'listening' is "Listening live" */
+    const chip = [];
+    k.agent.on('halves', (/** @type {any} */ x) => chip.push(x.live));
+    k.agent.tap();
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    await new Promise((r) => setTimeout(r, 30)); // the microphone is still being asked for
+    assert.equal(k.agent.live.listening, false, 'not listening: nothing is open to hear');
+    assert.equal(k.platform.mic.isOpen(), false);
+    assert.equal(k.agent.live.view.name, 'thinking', 'the dock shows what it shows while opening, not asleep');
+    assert.ok(!views.includes('listening'), JSON.stringify(views));
+    assert.ok(!chip.includes('listening'), `the chip says "Listening live" only with the microphone open: ${JSON.stringify(chip)}`);
+    release();
+    await until(() => k.agent.live.listening, 3000);
+    assert.equal(k.platform.mic.isOpen(), true, 'she listens only because the microphone is open');
+    assert.equal(k.agent.live.view.name, 'listening');
+    assert.ok(views.includes('listening'), JSON.stringify(views));
+    assert.equal(chip.at(-1), 'listening');
+  } finally {
+    await k.done();
+  }
+});
+
+test('P2: a microphone that fails to start never makes her listen: a card says why, and the session goes on without it', async () => {
+  const k = await liveKit([]);
+  try {
+    const release = slowMic(k);
+    k.agent.tap();
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    release('NotAllowedError');
+    await soon(async () => k.notices.some((/** @type {any} */ n) => /microphone/i.test(`${n.title} ${n.body}`)));
+    assert.equal(k.agent.live.listening, false);
+    assert.equal(k.agent.live.state, 'open');
+    assert.notEqual(k.agent.live.view.name, 'listening');
+  } finally {
+    await k.done();
+  }
+});
+
+test('P2: a tap while the microphone starts stops the session, as a tap on a listening one does, and the microphone that finishes opening afterwards is let go', async () => {
+  const k = await liveKit([]);
+  try {
+    const release = slowMic(k);
+    k.agent.tap();
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    assert.equal(k.agent.tap(), 'stopped');
+    assert.equal(k.agent.live.state, 'closed');
+    release();
+    await soon(async () => k.platform.log.includes('mic open') && k.platform.log.at(-1) === 'mic close');
+    assert.equal(k.agent.live.listening, false, 'it does not wake up listening');
+    assert.equal(k.platform.mic.isOpen(), false);
+  } finally {
+    await k.done();
+  }
+});
+
+test('F1: tap, tap, tap with a slow microphone: the third session opens a microphone of its own, not the first one\'s start that was let go', async () => {
+  const k = await liveKit([]);
+  try {
+    const release = slowMic(k);
+    k.agent.tap(); // opens a session; its microphone is being asked for
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    assert.equal(k.agent.tap(), 'stopped'); // closes it, the microphone's start still out
+    assert.equal(k.agent.live.state, 'closed');
+    assert.equal(k.agent.tap(), 'listening'); // a new session, which listens
+    await until(() => k.agent.live.state === 'open', 5000);
+    release();
+    await until(() => k.agent.live.listening, 3000); // before the change: never (the new session was given the first one's start)
+    assert.equal(k.platform.mic.isOpen(), true, 'the third session has a microphone');
+    assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 2, 'the first start finished, and let go; the third opened its own');
+    await say(k, 'where-eat'); // and what it hears goes to the provider
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
   } finally {
     await k.done();
   }
