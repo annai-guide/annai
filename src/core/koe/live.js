@@ -39,6 +39,11 @@ const DUPLEX = ['headphones', 'car'];
 const STALL_MS = 1500;
 const STALL_MIN_MS = 3000;
 const HEARD_AFTER_MS = 1000;
+/**
+ * After the user's turn ends, her answer's voice waits until the microphone has been quiet this long since: a thinking pause
+ * ended it, and they may go on (the realtime check, 2026-10-22; her first sound comes about 0.9 s after the end anyway).
+ */
+const HOLD_MS = 500;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -81,8 +86,9 @@ export class LiveKoe {
   #hearFirst = null;
   /** @type {any} */
   #stall = null;
-  /** When the user's turn began; the pause that ends a sentence. */
+  /** When the user's turn began, and ended; the pause that ends a sentence. */
   #turnAt = 0;
+  #endedAt = 0;
   #pauseMs = 700;
   /** Waiting for an answer: to a text turn's words, or the user's turn (null); tools: tool calls came, and nothing else yet. @type {{ timer: any, text: string | null, tools: boolean } | null} */
   #due = null;
@@ -96,6 +102,10 @@ export class LiveKoe {
   #t = null;
   /** @type {Turn | null} */
   #sounding = null;
+  /** Koe's turn with a word, its voice waiting while the user may still speak (HOLD_MS). @type {Turn | null} */
+  #pending = null;
+  /** @type {any} */
+  #holdTimer = null;
   /** @type {Turn | null} */
   #trail = null;
   /** What waits for Koe's turn and voice to end, or for the page to be in view: Kokoro's other notes, wrapped, and triggers. @type {string[]} */
@@ -146,13 +156,13 @@ export class LiveKoe {
 
   /** Opening or reconnecting, Koe's turn or voice, a tool, or the user speaking. */
   get busy() {
-    return Boolean(this.#opening || this.#t || this.#sounding || this.#tools || this.#input?.active || (this.state === 'open' && !this.#s));
+    return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#tools || this.#input?.active || (this.state === 'open' && !this.#s));
   }
 
   /** The dock's state, as a half's (spec §16.3). @returns {import('../agent/loop.js').State} */
   get view() {
     const name = this.state === 'opening' ? 'thinking' : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : this.#t ? 'thinking' : this.listening ? 'listening' : 'sleeping';
+      : this.#input?.active ? 'hearing' : this.#t || this.#pending ? 'thinking' : this.listening ? 'listening' : 'sleeping';
     return { name, label: LABELS[name] };
   }
 
@@ -370,6 +380,7 @@ export class LiveKoe {
     this.#hear = null;
     this.#waiting = [];
     clearTimeout(this.#quiet);
+    clearTimeout(this.#holdTimer);
     this.c.voice?.platform?.session('playback');
     s?.close(why);
     this.modelId = null;
@@ -605,12 +616,13 @@ export class LiveKoe {
       this.#turnAt = Date.now();
       this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
-      if (this.#sounding || this.#t) cut = this.#cut();
+      if (this.#sounding || this.#t || this.#pending) cut = this.#cut();
       this.#flushHeard(false);
       this.#hear = hearing();
     } else {
       if (this.#hear) this.#hear.ms = Date.now() - this.#hear.at;
       this.#trail = null;
+      this.#endedAt = Date.now();
     }
     this.#poke();
     this.#send((s) => s.activity(edge, cut));
@@ -696,11 +708,36 @@ export class LiveKoe {
     return e.type === 'turn' && !due.tools;
   }
 
-  /** Koe's first real word: what was heard is written, and its voice starts (decision 11). @param {Turn} t */
+  /** Koe's first real word: what was heard is written, and its voice starts (decision 11), once the user may have stopped. @param {Turn} t */
   #speak(t) {
     t.spoken = true;
-    if (!t.cut) this.#passed();
     this.#answered(false);
+    if (t.cut || this.#mayPlay()) return this.#play(t);
+    this.#pending = t;
+    this.#later();
+  }
+
+  /** Whether her voice may start: no speech begun, and HOLD_MS quiet since the user's turn ended. */
+  #mayPlay() {
+    return !this.#input || (!this.#input.hearing && Date.now() - this.#endedAt >= HOLD_MS);
+  }
+
+  /** Her waiting voice starts once it may; speech the user began meanwhile starts their turn, which cuts it (#activity). */
+  #later() {
+    clearTimeout(this.#holdTimer);
+    this.#holdTimer = setTimeout(() => {
+      const t = this.#pending;
+      if (!t) return;
+      if (!this.#mayPlay()) return this.#later();
+      this.#pending = null;
+      this.#play(t);
+      this.#changed();
+    }, Math.max(50, this.#endedAt + HOLD_MS - Date.now()));
+  }
+
+  /** @param {Turn} t */
+  #play(t) {
+    if (!t.cut) this.#passed();
     this.unmute(); // a tap may have unlocked sound since the session opened
     const v = this.c.voice;
     if (this.voiced && v?.platform?.player.stream && !t.cut) {
@@ -708,7 +745,8 @@ export class LiveKoe {
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
       t.stream.done.then(({ playedMs }) => this.#said(t, playedMs));
-    }
+      if (t.done) t.stream.end();
+    } else if (t.done) this.#said(t, null);
     t.held = [];
   }
 
@@ -718,7 +756,7 @@ export class LiveKoe {
     this.#t = null;
     this.#tries = 0;
     if (t?.stream) t.stream.end();
-    else if (t?.spoken) this.#said(t, null);
+    else if (t?.spoken && t !== this.#pending) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     this.#answered(!t?.spoken && !t?.tools);
     if (t) t.done = true;
@@ -737,6 +775,10 @@ export class LiveKoe {
   #stop(t) {
     t.cut = true;
     if (t.stream) return t.stream.stop().playedMs; // its done writes it
+    if (t === this.#pending) {
+      this.#said(t, 0); // never heard: nothing written
+      return 0;
+    }
     if (t.spoken) this.#said(t, null);
     return undefined;
   }
@@ -744,7 +786,7 @@ export class LiveKoe {
   /** Koe's voice stops wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). */
   #cut() {
     let playedMs;
-    for (const t of [this.#t, this.#sounding]) if (t) playedMs = this.#stop(t) ?? playedMs;
+    for (const t of [this.#t, this.#sounding, this.#pending]) if (t) playedMs = this.#stop(t) ?? playedMs;
     return playedMs === undefined ? {} : { playedMs };
   }
 
@@ -753,6 +795,7 @@ export class LiveKoe {
     if (t.logged) return;
     t.logged = true;
     if (this.#sounding === t) this.#sounding = null;
+    if (this.#pending === t) this.#pending = null;
     let text = cleanSaid(t.said);
     const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
