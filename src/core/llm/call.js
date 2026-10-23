@@ -3,7 +3,7 @@ import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
-import { UPLOAD_TTL_S } from './uploads.js';
+import { UPLOAD_TTL_S, MARGIN_MS } from './uploads.js';
 import { deleteTurn, keyPrint } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -115,7 +115,12 @@ async function billed(usage, tools, tally) {
   return out;
 }
 
-/** A conversation's turn kept (G2, kept.js): chain false sends it whole; secret: the provider's key the call has. @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null }} Keep */
+/**
+ * A conversation's turn kept (G2, kept.js): chain false sends it whole; secret: the provider's key the call has (without one,
+ * nothing is kept: it couldn't be deleted); borrow: warm housekeeping, which continues the live chain, records nothing and
+ * deletes its own response, so the provider's cache sees the same prefix, and sends and stores nothing when there is no chain.
+ * @typedef {{ kept: import('./kept.js').Kept, scope: string, chain: boolean, secret: string | null, borrow?: boolean }} Keep
+ */
 
 /**
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
@@ -134,20 +139,29 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
     if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
   }
-  const sent = await withUploads(type.tail ? request : withTail(request), { type, endpoint, model, key, uploads, get, trace, signal, now });
+  const base = type.tail ? request : withTail(request);
   // The cache lifetime this model has, as its warmth counts it (spec §6.4).
-  const req = sent.cacheTtl ? { ...sent, cacheTtl: ttlFor(model, sent.cacheTtl) } : sent;
+  const timed = base.cacheTtl ? { ...base, cacheTtl: ttlFor(model, base.cacheTtl) } : base;
+  const tunables = { ...endpoint.tunables, ...model.tunables };
+  // Found before the photos are: one in what the kept turn already holds is neither sent nor uploaded.
+  let keeping = keep && type.keeps && tunables.keep !== false && keep.secret && !keep.kept.isOff(endpoint.id) ? keep : null;
+  const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl, endpoint.headers) : '';
+  // A record that can't be read is a whole send.
+  const matched = keeping?.chain ? await keeping.kept.match(endpoint.id, portable(timed.messages, model.providerId), { scope: keeping.scope, key: print, ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
+  if (keeping?.borrow && !matched) keeping = null;
+  // The id OpenAI repeats in an error for a turn it no longer has is not for the trace.
+  if (matched) trace?.secret(matched.id);
+  const { request: sent, expires } = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
   /** @type {CallSpec} */
-  const spec = { endpoint, model, key, tunables: { ...endpoint.tunables, ...model.tunables }, request: { ...req, messages: portable(req.messages, model.providerId) } };
-  const keeping = keep && type.keeps && spec.tunables.keep !== false ? keep : null;
-  const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl) : '';
+  const spec = { endpoint, model, key, tunables, request: { ...sent, messages: portable(sent.messages, model.providerId) } };
   if (keeping) {
     spec.keep = true;
-    // A record that can't be read is a whole send.
-    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope, key: print, ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
+    if (matched) spec.kept = matched;
   }
   /** @type {string | null} the turn the provider kept */
   let keptId = null;
+  /** Settles once the turn's id is written down (kept.json's pending). @type {Promise<unknown>} */
+  let named = Promise.resolve();
   let bytes = 0;
   /**
    * The turn kept, settled: remembered, or deleted now with this call's key (also when it can't be written down); a
@@ -155,9 +169,11 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
    */
   const settle = async (how) => {
     if (!keeping || !keptId) return;
+    await named; // its pending record is written first
     const c = { id: keptId, endpoint: endpoint.id, scope: keeping.scope, key: print, days: Number(type.keeps?.days) || 1 };
     if ((await how(c).catch(() => 'now')) !== 'now') return;
-    if (!(await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => null))?.done) await keeping.kept.wait(c).catch(() => {});
+    if ((await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => null))?.done) await keeping.kept.done(keptId).catch(() => {});
+    else await keeping.kept.wait(c).catch(() => {});
   };
   const started = now();
   const timer = new AbortController();
@@ -183,8 +199,11 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   /** @param {StreamEvent} ev */
   const take = (ev) => {
     if (ev.type === 'kept') {
-      // Not output: the provider named the turn it keeps. Only annai reads it.
-      if (keeping) keptId = ev.id;
+      // Not output: the provider named the turn it keeps. Only annai reads it, and writes it down now, in case the page closes first.
+      if (keeping && !keptId) {
+        keptId = ev.id;
+        named = keeping.kept.pending({ id: ev.id, endpoint: endpoint.id, scope: keeping.scope, key: print, days: Number(type.keeps?.days) || 1 }).catch(() => {});
+      }
       return;
     }
     clearTimeout(t);
@@ -257,7 +276,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     // A failed call's kept turn is deleted. A chained call refused, or whose turn was forgotten, drops its chain and goes once
     // more whole (callRole); forgotten on an unchained call is not-found.
     await settle((c) => /** @type {any} */ (keeping).kept.record(c));
-    if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request')) {
+    // A server that ignored the turn it was told to continue keeps nothing from now on (until annai starts again).
+    if (keeping && err.noChain) keeping.kept.off(endpoint.id);
+    // A photo the chain points at that the provider can't find is as good as a chain it forgot.
+    if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request' || err.kind === 'upload' || err.kind === 'image')) {
       await keeping.kept.forget(spec.kept.id, err.kind === 'forgotten').catch(() => {});
       err.whole = true;
     } else if (err.kind === 'forgotten') err.kind = 'not-found';
@@ -266,8 +288,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   }
   clearTimeout(t);
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
-  await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
-    : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(type.keeps?.perModel ? { model: model.providerId } : {}), ...(spec.kept ? { after: spec.kept.id } : {}) }));
+  // Borrowed (warm housekeeping): nothing is recorded, the response is deleted, and the chain it continued is as it was.
+  await settle((c) => (keeping?.borrow || /** @type {StopReason} */ (stop) === 'refusal' ? Promise.resolve('now') : /** @type {any} */ (keeping).kept.record(
+    { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(type.keeps?.perModel ? { model: model.providerId } : {}), ...(expires ? { limit: expires - MARGIN_MS } : {}), ...(spec.kept ? { after: spec.kept.id } : {}) })));
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
   const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
@@ -344,19 +367,24 @@ const EXT = /** @type {Record<string, string>} */ ({ 'image/webp': 'webp', 'imag
  * annai-…, expiring after 48 hours. A failed upload sends the bytes, and stops uploading there
  * until annai restarts.
  * @param {Request} request
- * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number }} c
- * @returns {Promise<Request>}
+ * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
+ * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
+ * @returns {Promise<{ request: Request, expires: number }>}
  */
-async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now }) {
-  if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return request;
+async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, from = 0 }) {
+  if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return { request, expires: 0 };
   /** @type {Map<string, string>} */
   const ids = new Map();
-  for (const m of request.messages) {
+  /** When each photo's upload expires. @type {Map<string, number>} */
+  const expiry = new Map();
+  // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
+  for (const m of request.messages.slice(from)) {
     for (const p of m.parts) {
       if (p.type !== 'image' || !p.hash || !p.data || ids.has(p.hash) || uploads.isOff(endpoint.id)) continue;
       const known = await uploads.get(endpoint.id, p.hash, now());
       if (known) {
         ids.set(p.hash, known);
+        expiry.set(p.hash, (await uploads.expires?.(endpoint.id, p.hash)) || 0);
         continue;
       }
       const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: `annai-${p.hash.slice(0, 16)}.${EXT[p.mediaType] ?? 'bin'}`, expiresInSeconds: UPLOAD_TTL_S });
@@ -370,8 +398,10 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         noRedirect(res, endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const up = type.readUpload(await res.json());
-        await uploads.set(endpoint.id, p.hash, up.id, up.expiresAt ?? now() + UPLOAD_TTL_S * 1000, now());
+        const expiresAt = up.expiresAt ?? now() + UPLOAD_TTL_S * 1000;
+        await uploads.set(endpoint.id, p.hash, up.id, expiresAt, now());
         ids.set(p.hash, up.id);
+        expiry.set(p.hash, expiresAt);
       } catch (e) {
         if (signal?.aborted) throw e;
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: r.url, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
@@ -379,6 +409,11 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       }
     }
   }
-  if (!ids.size) return request;
-  return { ...request, messages: request.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' && p.hash && ids.has(p.hash) ? { ...p, fileId: ids.get(p.hash) } : p)) })) };
+  if (!ids.size) return { request, expires: 0 };
+  // The earliest expiry of the photos sent by id: a chain that points at them must end before it.
+  const times = [...expiry.values()].filter(Boolean);
+  return {
+    request: { ...request, messages: request.messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' && p.hash && ids.has(p.hash) ? { ...p, fileId: ids.get(p.hash) } : p)) })) },
+    expires: times.length ? Math.min(...times) : 0,
+  };
 }

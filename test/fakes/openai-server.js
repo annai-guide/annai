@@ -17,14 +17,17 @@ import http from 'node:http';
  * - `GET /v1/models`.
  * It records each request's address, headers and body, so a test can check what was sent. Tests and the end-to-end suite run it
  * on 127.0.0.1, on a port of its own (port 0), with CORS for any page.
- * @typedef {{ text?: string, calls?: { name: string, input: any }[], error?: { status: number, body: any }, delayMs?: number }} Reply
- *   one answer: words, or calls (a function_call each), or an error response; delayMs: a pause after the response is named
+ * - An organization with Zero Data Retention (`zdr`): `store` is treated as false whatever the request says: the response
+ *   says `store: false`, nothing is kept, and a later `previous_response_id` is not found.
+ * @typedef {{ text?: string, calls?: { name: string, input: any }[], reasoning?: { summary: string, encrypted: string }, error?: { status: number, body: any }, delayMs?: number }} Reply
+ *   one answer: words, or calls (a function_call each), or an error response; reasoning: an encrypted reasoning item first, as a
+ *   reasoning model sends it; delayMs: a pause after the response is named
  * @typedef {{ method: string, url: string, headers: Record<string, any>, body: any }} Seen  body: parsed JSON, else its length
- * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], notFoundStatus?: number }} [o]
+ * @param {{ key?: string, replies?: (Reply | ((body: any) => Reply))[], notFoundStatus?: number, zdr?: boolean }} [o]
  *   key: the only key it takes (else any); replies: given in turn, the last repeats; none: "OK";
- *   notFoundStatus: the status of an unknown previous_response_id (400)
+ *   notFoundStatus: the status of an unknown previous_response_id (400); zdr: an organization with Zero Data Retention
  */
-export async function startOpenAIServer({ key, replies = [], notFoundStatus = 400 } = {}) {
+export async function startOpenAIServer({ key, replies = [], notFoundStatus = 400, zdr = false } = {}) {
   /** @type {Seen[]} */
   const seen = [];
   /** @type {string[]} */
@@ -83,6 +86,7 @@ export async function startOpenAIServer({ key, replies = [], notFoundStatus = 40
       const id = `resp_stand-in-${++n}`;
       /** @type {any[]} */
       const output = [
+        ...(reply.reasoning ? [{ id: `rs_${n}`, type: 'reasoning', summary: [{ type: 'summary_text', text: reply.reasoning.summary }], encrypted_content: reply.reasoning.encrypted }] : []),
         ...(reply.text !== undefined ? [{ id: `msg_${n}`, type: 'message', status: 'completed', role: 'assistant', content: [{ type: 'output_text', text: reply.text, annotations: [], logprobs: [] }], phase: 'final_answer' }] : []),
         ...(reply.calls ?? []).map((c, i) => ({ id: `fc_${n}_${i}`, type: 'function_call', status: 'completed', call_id: `call_${n}_${i}`, name: c.name, arguments: JSON.stringify(c.input) })),
       ];
@@ -93,10 +97,11 @@ export async function startOpenAIServer({ key, replies = [], notFoundStatus = 40
         input_tokens: all, input_tokens_details: { cached_tokens: Math.floor(before / 128) * 128, cache_write_tokens: 0 },
         output_tokens: tokens(output), output_tokens_details: { reasoning_tokens: 0 }, total_tokens: all + tokens(output),
       };
-      if (body?.store !== false) stored.set(id, [...context, ...output]);
+      const keeps = body?.store !== false && !zdr;
+      if (keeps) stored.set(id, [...context, ...output]);
       const object = (/** @type {string} */ status, /** @type {any[]} */ out) => ({
         id, object: 'response', created_at: 1792310400, status, error: null, incomplete_details: null, instructions: body?.instructions ?? null,
-        model: body?.model, output: out, previous_response_id: prev ?? null, store: body?.store !== false, usage: status === 'completed' ? usage : null, metadata: {},
+        model: body?.model, output: out, previous_response_id: prev ?? null, store: keeps, usage: status === 'completed' ? usage : null, metadata: {},
       });
       if (!body?.stream) return void json(200, object('completed', output));
       res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' });
@@ -106,7 +111,10 @@ export async function startOpenAIServer({ key, replies = [], notFoundStatus = 40
       send('response.in_progress', { response: object('in_progress', []) });
       const rest = () => {
         output.forEach((item, i) => {
-          if (item.type === 'message') {
+          if (item.type === 'reasoning') {
+            send('response.output_item.added', { output_index: i, item: { id: item.id, type: 'reasoning', summary: [] } });
+            send('response.reasoning_summary_text.delta', { item_id: item.id, output_index: i, summary_index: 0, delta: item.summary[0].text });
+          } else if (item.type === 'message') {
             const text = item.content[0].text;
             const half = Math.ceil(text.length / 2);
             send('response.output_item.added', { output_index: i, item: { ...item, status: 'in_progress', content: [] } });

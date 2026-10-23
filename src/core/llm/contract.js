@@ -90,8 +90,8 @@ export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
 export class ProviderError extends Error {
   /**
    * @param {ErrorKind} kind @param {string} message
-   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown }} [more]
-   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said
+   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean }} [more]
+   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said; noChain: the server ignored the kept turn it was told to continue
    */
   constructor(kind, message, more = {}) {
     super(message, more.cause === undefined ? undefined : { cause: more.cause });
@@ -103,6 +103,8 @@ export class ProviderError extends Error {
     this.partial = more.partial ?? '';
     /** A kept turn the call continued failed: annai sends the conversation whole, once (G2). */
     this.whole = false;
+    /** The server ignored the kept turn it was told to continue: annai keeps nothing there until it starts again. */
+    this.noChain = more.noChain === true;
   }
 }
 
@@ -284,8 +286,9 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
- * @property {{ name?: string, days: number, hours: number, uniform?: boolean, perModel?: boolean }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
- *   who, for the switch's words; the longest it keeps one (uniform: on any key, not just a paid one); how long a chain is continued; perModel: only the model that made a turn continues it
+ * @property {{ name?: string, days: number, hours: number, holds?: string, note?: string, provider?: string, perModel?: boolean }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
+ *   who, for the switch's words; the longest annai tracks one; how long a chain is continued; holds: how long it keeps one on any key, for the page (else the page tells free from paid keys); note: more for the page to say;
+ *   provider: the plugin these words are for (another provider using the protocol gets its own name); perModel: only the model that made a turn continues it
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [forgetRequest]
  *   its delete call for one kept turn
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
