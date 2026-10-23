@@ -14,10 +14,12 @@ import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.
  * annai-plugin.json, or a bare skill in the Agent Skills format (§5.1). Nothing here stores anything.
  * @typedef {import('./skills.js').Skill} Skill
  * @typedef {{ name: string, description: string, folder: string }} SkillInfo  folder: '' for the package's top, else "skills/tides"
+ * @typedef {{ id: string, kind: 'web' | 'knowledge', origins: string[], key?: { setting: string, url?: string, note?: string }, credit?: string }} SearchDesc
+ *   a search provider's description (docs/plugins.md, "Search providers"): the id it registers, the origins its searches and key go to
  * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major (milestone 1, decision 7)
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
  *   files: Map<string, Uint8Array>, code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[],
- *   provider: import('./llm/provider-desc.js').ProviderDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
+ *   provider: import('./llm/provider-desc.js').ProviderDesc | null, search: SearchDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
  *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
  *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version;
  *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace
@@ -45,6 +47,7 @@ export const PLUGIN_MANIFEST_SCHEMA = {
     personalities: { type: 'array', items: { type: 'string' } },
     settings: { type: 'object' },
     provider: { type: 'object' },
+    search: { type: 'object' },
     requires: {
       type: 'array', maxItems: 10,
       items: { type: 'object', required: ['id', 'version'], properties: {
@@ -76,6 +79,48 @@ export function checkManifest(manifest) {
     const wrong = checkProviderDesc(manifest.provider);
     if (wrong.length) throw new PluginError(id, `its provider isn't valid: ${wrong.join('; ')}`);
   }
+  if (manifest.search !== undefined) {
+    const wrong = checkSearchDesc(manifest.search, manifest);
+    if (wrong.length) throw new PluginError(id, `its search isn't valid: ${wrong.join('; ')}`);
+  }
+}
+
+const SEARCH_SCHEMA = {
+  type: 'object',
+  required: ['id', 'kind', 'origins'],
+  properties: {
+    id: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,40}$' },
+    kind: { enum: ['web', 'knowledge'] },
+    origins: { type: 'array', maxItems: 10, items: { type: 'string', maxLength: 200 } },
+    key: { type: 'object', required: ['setting'], properties: { setting: { type: 'string' }, url: { type: 'string', pattern: '^https://', maxLength: 500 }, note: { type: 'string', maxLength: 300 } } },
+    credit: { type: 'string', maxLength: 300 },
+  },
+};
+
+/**
+ * A search provider's description (the manifest's search): its id, kind, the origins its searches and key go to (none: the address
+ * the user gives it), and the setting that holds its key, which must be a write-only one so annai keeps it as a secret.
+ * @param {any} search @param {any} manifest @returns {string[]} what is wrong, empty when nothing
+ */
+export function checkSearchDesc(search, manifest) {
+  const errors = validate(SEARCH_SCHEMA, search);
+  if (errors.length) return errors;
+  for (const o of search.origins) {
+    try {
+      const u = new URL(o);
+      if (u.protocol !== 'https:' || u.origin !== o) errors.push(`$.origins: ${o} must be an https origin: the scheme and host, nothing after`);
+    } catch {
+      errors.push(`$.origins: ${o} isn't an address`);
+    }
+  }
+  if (search.key && manifest.settings?.properties?.[search.key.setting]?.writeOnly !== true) errors.push(`$.key.setting: ${search.key.setting} must be a writeOnly setting of the plugin`);
+  return errors;
+}
+
+/** Every origin a package's provider or search sends keys and searches to, sorted: what an update asks about when it brings a new one. @param {any} manifest @returns {string[]} */
+export function originsOf(manifest) {
+  if (manifest?.provider) return descOrigins(manifest.provider);
+  return Array.isArray(manifest?.search?.origins) ? [...new Set(/** @type {string[]} */ (manifest.search.origins))].sort() : [];
 }
 
 /** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses (fix pass 8a-4). */
@@ -201,7 +246,7 @@ async function skillPackage(files, checkNames) {
   const manifest = skillManifest(skill);
   return {
     kind: 'skill', id: skill.name, name: skill.name, version: manifest.version, shownVersion: skill.metadata.version ?? '', manifest, files, code: false,
-    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, requires: [], category: '', keywords: [], replaces: [], description: skill.description,
+    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, search: null, requires: [], category: '', keywords: [], replaces: [], description: skill.description,
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}), ...(skill.license ? { license: skill.license } : {}),
     fingerprint: await fingerprint(files),
   };
@@ -251,7 +296,7 @@ async function pluginPackage(files, checkNames) {
   }
   return {
     kind: 'plugin', id, name: manifest.name, version: manifest.version, shownVersion: manifest.version, manifest, files, code: Boolean(manifest.entry),
-    skills, personalities, provider: manifest.provider ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [], replaces: manifest.replaces ?? [],
+    skills, personalities, provider: manifest.provider ?? null, search: manifest.search ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [], replaces: manifest.replaces ?? [],
     description: manifest.description ?? '',
     ...(manifest.author ? { author: manifest.author } : {}), ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
     fingerprint: await fingerprint(files),
@@ -426,7 +471,7 @@ export function addedParts(before, pkg) {
     code: !before.code && pkg.code,
     skills: pkg.skills.filter((s) => !before.skills.includes(s.name)),
     personalities: pkg.personalities.filter((p) => !before.personalities.includes(p.name)),
-    origins: pkg.provider ? descOrigins(pkg.provider).filter((o) => !(before.origins ?? []).includes(o)) : [],
+    origins: originsOf(pkg.manifest).filter((o) => !(before.origins ?? []).includes(o)),
   };
 }
 

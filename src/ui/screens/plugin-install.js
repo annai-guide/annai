@@ -45,7 +45,7 @@ export const NO_SERVICE = "Plugins load through annai's offline service, which i
 /**
  * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
  * its model provider, and (in an update) the new origins its provider sends keys to.
- * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, origins?: string[] }} pkg @returns {string[]}
+ * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, search?: any, origins?: string[] }} pkg @returns {string[]}
  */
 export function whatItBrings(pkg) {
   const out = [];
@@ -53,17 +53,22 @@ export function whatItBrings(pkg) {
   for (const s of pkg.skills ?? []) out.push(`Skill "${s.name}": ${s.description}`);
   for (const p of pkg.personalities ?? []) out.push(`Personality "${p.name}"`);
   if (pkg.provider) out.push(`A model provider: ${abilityWords(pkg.provider)}`);
-  if (pkg.origins?.length) out.push(`Its provider now sends keys you give it to ${pkg.origins.join(', ')}`);
+  if (pkg.search) out.push('A search provider for web_search');
+  if (pkg.origins?.length) out.push(`${pkg.search ? 'Its searches and key now go to' : 'Its provider now sends keys you give it to'} ${pkg.origins.join(', ')}`);
   return out.length ? out : ['Nothing annai uses yet'];
 }
 
 
 /**
  * Where a provider sends the keys a user gives it, by origin with its scheme (security review): said on
- * a fresh install as on an update. null for a package that isn't a provider.
- * @param {{ provider?: any }} pkg @returns {string | null}
+ * a fresh install as on an update; a search provider's, where its searches go. null for a package that is neither.
+ * @param {{ provider?: any, search?: any }} pkg @returns {string | null}
  */
 export function keysNote(pkg) {
+  if (pkg.search) {
+    const o = pkg.search.origins ?? [];
+    return o.length ? `Your search words${pkg.search.key ? ' and the key you give it' : ''} are sent to ${andList(o)}.` : 'Your search words are sent only to the address you give it.';
+  }
   if (!pkg.provider) return null;
   const origins = descOrigins(pkg.provider);
   return origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.';
