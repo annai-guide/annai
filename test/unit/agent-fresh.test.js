@@ -216,3 +216,29 @@ test("the fresh note's range starts at the conversation's first event, even afte
   assert.equal(fresh.data.from, first.seq);
   assert.match(k.agent.transcript.messages[0].parts[0].text, new RegExp(`\\(events ${first.seq}–${fresh.data.to}\\)`));
 });
+
+test('what waited behind her turn is marked stopped only when Start fresh goes ahead: a conversation opening during its hold keeps it (follow-up 1)', async () => {
+  const k = await agentKit([[{ ...sleep, delayMs: 800 }, say('Answered.')]]);
+  const first = k.trip;
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  k.agent.send('First question');
+  await until(() => k.requests.length >= 1); // her slow turn is under way
+  k.agent.send('Second question, waiting');
+  k.agent.wake({ kind: 'plugin', plugin: 'timers', text: 'Leave at five', fallbacks: [{ watch: '', text: 'Leave at five', title: 'Reminder' }] });
+  await new Promise((r) => setTimeout(r, 50)); // its budgets checked, it waits in the queue
+  // Another conversation opens as soon as anything of what waited is written down (here, the reminder's words).
+  /** @type {Promise<unknown> | null} */
+  let opened = null;
+  const off = k.agent.on('event', (/** @type {any} */ e) => { if (!opened && e.type === 'reminder') opened = k.agent.open(other); });
+  const result = await k.agent.startFresh();
+  off();
+  await opened;
+  await k.agent.idle();
+  const there = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(first, {}));
+  const wake = there.find((/** @type {any} */ e) => e.type === 'wake' && JSON.stringify(e.data).includes('Second question'));
+  const stopped = Boolean(wake && there.some((/** @type {any} */ e) => e.type === 'error' && e.data.kind === 'stopped' && e.data.wake === wake.data.id));
+  const fresh = there.some((/** @type {any} */ e) => e.type === 'compaction' && e.data.mode === 'fresh');
+  if (stopped) assert.deepEqual([result, fresh], ['done', true], 'marked stopped only when Start fresh went ahead');
+  else assert.ok(there.some((/** @type {any} */ e) => JSON.stringify(e.data ?? {}).includes('Second question, waiting')), 'kept in its own conversation');
+});

@@ -313,7 +313,7 @@ export class LiveKoe {
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
     this.#s = s;
-    this.#rate = s.audioOut.rate;
+    this.#rate = s.audioOut.rate || 24_000; // never 0 or missing: her stall wait is worked out from it
     for (const fn of this.#waiting.splice(0)) fn(s);
     this.#arm();
     return s;

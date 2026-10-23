@@ -518,6 +518,8 @@ export class Halves {
    * @param {Wake[]} notes
    */
   #handOn(notes) {
+    notes = notes.filter((w) => !this.#shown.has(w)); // shown already, by Start fresh or a switch
+    if (!notes.length) return;
     this.#route(async () => {
       await this.#refresh();
       if (this.koeState === 'text') for (const w of notes) this.koe.enqueue(w);
@@ -710,6 +712,8 @@ export class Halves {
       this.#unsaid = [];
       this.#retell = [];
       await Promise.all([this.koe.holdStill(), this.kokoro.holdStill()]);
+      if (this.kokoro.switching || this.koe.switching) return 'opening'; // what waited stays, for the conversation it was in
+      await this.koe.dropWaiting();
       await Promise.all(this.#left); // shown above the divider
       return await this.kokoro.startFresh();
     } finally {

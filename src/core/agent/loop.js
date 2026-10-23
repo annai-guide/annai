@@ -262,6 +262,8 @@ export class Agent {
   #due = false;
   /** Start fresh holds this half still: no turn and no housekeeping starts until it lets go (holdStill). */
   #still = false;
+  /** What waited in the queue as Start fresh began holding still. @type {Wake[]} */
+  #before = [];
   /** Kokoro's notes for the user that the turn running owes (Koe's), taken: Start fresh shows them instead. @type {(() => Wake[]) | null} */
   #owing = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
@@ -1212,8 +1214,7 @@ export class Agent {
    * leaves nothing to summarize), and a turn that runs is stopped. Settles once none runs; letGo() ends it.
    */
   async holdStill() {
-    // What waited behind the turn it stops came before it: the fresh context would have nothing to go on for it.
-    const before = this.#still ? [] : this.#queue.filter((w) => w.scope === this.scope);
+    if (!this.#still) this.#before = this.#queue.filter((w) => w.scope === this.scope);
     this.#still = true;
     this.#due = false;
     this.#clearTimer();
@@ -1221,17 +1222,26 @@ export class Agent {
       this.interrupt();
       await this.#whenFree();
     }
-    const left = this.#queue.filter((w) => before.includes(w));
+  }
+
+  /**
+   * Start fresh goes ahead: what waited behind the turn it stopped came before it, and the fresh context would have nothing to go on for it,
+   * so it is written down as stopped, a reminder's words still shown. Not before: a conversation opening meanwhile keeps it.
+   */
+  async dropWaiting() {
+    const left = this.#queue.filter((w) => this.#before.includes(w));
+    this.#before = [];
     this.#queue = this.#queue.filter((w) => !left.includes(w));
     this.#stopWakes(left);
     const owed = left.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) await this.remind(owed, this.scope, { silent: true }); // a reminder's words are still shown
+    if (owed.length) await this.remind(owed, this.scope, { silent: true });
   }
 
   /** Start fresh is done: what waited (the user's words meanwhile) runs. */
   letGo() {
     if (!this.#still) return;
     this.#still = false;
+    this.#before = [];
     this.#settle();
     if (this.#queue.length) this.#drain();
   }
@@ -1259,6 +1269,7 @@ export class Agent {
     }
     this.#busy = true;
     try {
+      await this.dropWaiting();
       const unwritten = this.transcript.unwritten();
       if (unwritten.length) await this.#writeDown('fresh', unwritten, { final: true });
       /** @type {Fresh} */
