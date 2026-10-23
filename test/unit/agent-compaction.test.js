@@ -262,3 +262,18 @@ test('what the user said aloud counts for the summary\'s language, not only what
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language the user wrote in last\.$/);
 });
+
+test('chatter the gate set aside (a dismissed heard line, and the words written for it) does not set the summary\'s language (review follow-up 4)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['ok', 'ok ok', 'fine', 'hmm', 'go']) { // none of them places a language
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  // People talking among themselves in Japanese: heard, "not meant for you", its words written later.
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'ch1', ms: 1200, source: 'mic', dismissed: true, gate: 'chatter' } });
+  await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'ch1', text: '今日の夕食はどこにしますか', by: 'm-hear' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
+});

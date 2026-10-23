@@ -545,8 +545,12 @@ export function createLlm({
         registry: plugins.registry, wake, ...(openSocket ? { socket: openSocket } : {}),
       });
       // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it
-      // reopened then fails for another reason: the next one need not pay a refused socket again.
-      const learned = () => { if (session.tunables !== tunables) liveTunables.set(modelId, session.tunables); };
+      // reopened then fails for another reason: the next one need not pay a refused socket again. Only the keys the refusal changed are
+      // kept, never a copy of all of them, so what the user edits on the model meanwhile still reaches the next session.
+      const learned = () => {
+        const taught = Object.fromEntries(Object.entries(session.tunables).filter(([k, v]) => tunables[k] !== v));
+        if (Object.keys(taught).length) liveTunables.set(modelId, { ...liveTunables.get(modelId), ...taught });
+      };
       session.ready.then(learned, learned);
       session.closed.then(({ kind }) => {
         if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS);

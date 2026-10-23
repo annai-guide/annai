@@ -90,6 +90,8 @@ export function activate(annai) {
   const note = (type, data) => Promise.resolve(annai.secrets?.blank(data) ?? data).then((x) => annai.events?.append('sys', type, x)).catch(() => {});
   /** Transcription models whose language fields OpenAI refused: asked without them from then on. @type {Set<string>} */
   const noHints = new Set();
+  /** Models whose language fields were refused in the session now being opened: a close before it is ready reopens without them only then. @type {Set<string>} */
+  const refusedNow = new Set();
   return annai.providers.register({
     type: 'openai-realtime',
     name: 'OpenAI Realtime',
@@ -116,6 +118,7 @@ export function activate(annai) {
       /** Whether the user's languages go with the transcription: not once OpenAI has refused them for this model. */
       const hinted = () => t.languageHints !== false && !noHints.has(heardBy);
       let retried = false;
+      refusedNow.delete(heardBy);
       const encode = G711[setup.audioIn.format]?.[0];
       const decode = G711[setup.audioOut.format]?.[1];
       /** @type {(v?: unknown) => void} */
@@ -239,6 +242,7 @@ export function activate(annai) {
           case 'session.updated':
             if (!up) {
               up = true;
+              refusedNow.delete(heardBy); // the refusal was dealt with in place
               renew = setTimeout(() => emit({ type: 'goaway', ms: Math.round((60 - t.renewMinutes) * 60_000) }), t.renewMinutes * 60_000);
               renew.unref?.(); // in Node's tests, a session's hour never holds the process
               isReady();
@@ -251,6 +255,7 @@ export function activate(annai) {
               // Refused for the language fields: sent again without them (the session is not ready yet; it goes on, or its close opens another).
               retried = true;
               noHints.add(heardBy);
+              refusedNow.add(heardBy);
               send(update());
             } else if (!up) refused(new ProviderError(kindOf(e), words));
             // A cancel that crossed the answer's end, or a commit with nothing in it: races annai expects, not errors.
@@ -365,8 +370,13 @@ export function activate(annai) {
       };
     },
     // A close's words: OpenAI's error type, as in 3000 "invalid_request_error".
-    // A refusal of the language fields that closes the socket: opened again without them.
-    reopen: (/** @type {number} */ _code, /** @type {string} */ _reason, /** @type {any} */ t) => (t.languageHints !== false && noHints.has(String(t.transcription ?? '')) ? { ...t, languageHints: false } : null),
+    // A refusal of the language fields that closes the socket: opened again without them. Only a close that follows such a refusal in this
+    // session, or whose words name the fields: a model that refused them once is not given a second try for every close before ready.
+    reopen: (/** @type {number} */ _code, /** @type {string} */ reason, /** @type {any} */ t) => {
+      const model = String(t.transcription ?? '');
+      const refused = refusedNow.delete(model) || /languages?\b/i.test(reason);
+      return t.languageHints !== false && refused ? { ...t, languageHints: false } : null;
+    },
     classifyClose: (/** @type {number} */ _code, /** @type {string} */ reason) => (/server_error/.test(reason) ? 'server' : /invalid_request_error/.test(reason) ? 'bad-request' : null),
   });
 }
