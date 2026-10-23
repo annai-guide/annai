@@ -102,7 +102,7 @@ A scenario **passes** when:
 
 A sixth check, **whole sentences heard**, is a *warning* (`WARN`, "PASS (2 warnings)"): it fails when a question's turns carried less than
 three quarters of its sound or Gemini's transcript has less than 60% of its words. It is what a sentence cut at a thinking pause longer
-than annai waits for (her voice waits 1 s after the turn's end for the user to go on), or a question's tail sent alone, shows; it does
+than annai waits for (her voice waits 1.2 s after the turn's end for the user to go on), or a question's tail sent alone, shows; it does
 not fail the scenario, and it is for people to read.
 
 The notes are for people too: a transcript that is not what was said, a first sound later than 3 s, and, in echo mode, whether her

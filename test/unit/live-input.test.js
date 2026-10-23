@@ -238,6 +238,19 @@ test('half-duplex: the user speaking after her voice ends starts a turn, and not
   r.input.stop();
 });
 
+// realtime-fix2 P1: her answer waits while the microphone is not quiet now; a resumption's first frames come before it is surely speech.
+test('stillMs: how long nothing has been over the floor, from the first louder frame on, before a turn is sure of it', async () => {
+  const r = rig();
+  assert.equal(r.input.stillMs, Infinity, 'nothing heard yet');
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  assert.ok(r.input.stillMs >= 900, `${r.input.stillMs} ms`);
+  r.feed(yes.subarray(0, RATE * 0.06), RATE); // 60 ms of speech: not yet speech to the detector
+  assert.ok(r.input.stillMs < 60, `${r.input.stillMs} ms`);
+  assert.equal(r.sent.length, 0);
+  r.input.stop();
+});
+
 test('full duplex (headphones or the car, with cutting in by voice on): the user speaking over her starts a turn', async () => {
   let playing = true;
   const r = rig({ speaking: () => playing, duplex: () => true });
