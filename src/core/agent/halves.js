@@ -326,10 +326,7 @@ export class Halves {
   /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
   #fresh = null;
 
-  /**
-   * Kokoro's words for the user that a switch or Start fresh left unsaid (tell_koe's for_user): shown in the conversation left, or
-   * above the divider, never aloud (Koe is in another now, or starts fresh). @param {Wake[]} notes
-   */
+  /** Kokoro's words for the user (for_user) a switch or Start fresh left unsaid: shown, never aloud. @param {Wake[]} notes */
   #leftUnsaid(notes) {
     const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
     if (!list.length) return;

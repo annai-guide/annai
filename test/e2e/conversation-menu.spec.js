@@ -104,7 +104,7 @@ test('Tidy up is a disclosure whose buttons say what they do; Start fresh says i
     const toggle = page.getByRole('button', { name: 'Tidy up' });
     expect(await toggle.getAttribute('aria-haspopup')).toBeNull();
     await toggle.click();
-    await expect(page.getByRole('button', { name: 'Summarize now' })).toHaveAccessibleDescription(/housekeeping/i);
+    await expect(page.getByRole('button', { name: 'Summarize now' })).toHaveAccessibleDescription(/sums up/);
     await expect(page.getByRole('button', { name: 'Start fresh' })).toHaveAccessibleDescription(/divider/);
     await page.getByRole('button', { name: 'Start fresh' }).click();
     await page.getByRole('dialog', { name: 'Start fresh?' }).getByRole('button', { name: 'Cancel' }).click();

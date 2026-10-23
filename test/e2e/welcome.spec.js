@@ -177,6 +177,9 @@ test('a step says who Shiori is, and what Koe (声) and Kokoro (心) each do, pl
   await expect(step.locator('li', { hasText: 'Koe' })).toContainText('talks with you and answers at once');
   await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('心');
   await expect(step.locator('li', { hasText: 'Kokoro' })).toContainText('thinks things through and does the work');
+  // The Japanese words are marked as such, for a screen reader (fix pass 2); and where the halves' notes are, said rightly.
+  await expect(step.locator('[lang="ja"]')).toHaveText(['声', '心']);
+  await expect(step).toContainText('What they tell each other shows in the conversation; Settings → Shiori can hide it.');
   await expect(step.getByText('2 of 6')).toBeVisible();
   // It is skippable like every step: Next goes on, Back returns.
   await step.getByRole('button', { name: 'Next' }).click();
