@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { xmlElements, xmlText } from '../../src/core/xml.js';
+import { cpuMs } from './cpu.js';
 
 const LIST = `<?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>trips</Name><Prefix>annai/</Prefix><KeyCount>2</KeyCount><MaxKeys>1000</MaxKeys><IsTruncated>true</IsTruncated>
@@ -55,15 +56,15 @@ test('entities, CDATA, empty and self-closing elements, attributes', () => {
 test("a server's broken or hostile answer can't make annai throw or stall", { timeout: 10_000 }, () => {
   assert.equal(xmlText('<a>&#x110000;&#9999999999;&#xD800;&#0;ok</a>', 'a'), '����ok');
   const flood = '<Key>'.repeat(200_000); // 1 MB of openings without a close
-  const started = Date.now();
+  const started = cpuMs();
   assert.deepEqual(xmlElements(flood, 'Key'), []);
   assert.equal(xmlText(flood, 'Key'), null);
-  assert.ok(Date.now() - started < 200, `${Date.now() - started} ms`);
-  const more = Date.now();
+  assert.ok(cpuMs() - started < 200, `${cpuMs() - started} ms of CPU`);
+  const more = cpuMs();
   assert.equal(xmlElements(`<a>${'<![CDATA['.repeat(100_000)}</a>`, 'a').length, 1);
   xmlText(`<a>${'<![CDATA['.repeat(100_000)}</a>`, 'a');
   xmlText(`<a>${'<'.repeat(1_000_000)}</a>`, 'a');
   xmlText(`<a>${'&#'.repeat(500_000)}</a>`, 'a');
   xmlElements(`${'</Key'.repeat(200_000)}`, 'Key');
-  assert.ok(Date.now() - more < 1000, `${Date.now() - more} ms`);
+  assert.ok(cpuMs() - more < 1000, `${cpuMs() - more} ms of CPU`);
 });
