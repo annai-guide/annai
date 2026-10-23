@@ -1105,3 +1105,30 @@ test('a live session is told the Gemini voice\'s speaking style as one stable li
     await k.done();
   }
 });
+
+test("a live Koe's words reach the bubble only once her voice is heard (the stream player's started), never before it, and none for a stream that never plays (with pops-fix)", async () => {
+  for (const plays of [true, false]) {
+    const k = await liveKit([{ said: 'Rain comes at four, so bring a coat.', audio: tone(1.0) }]);
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      /** @type {((ok: boolean) => void) | null} */
+      let start = null;
+      const stream = k.platform.player.stream.bind(k.platform.player);
+      k.platform.player.stream = (/** @type {any} */ o) => ({ ...stream(o), started: new Promise((r) => { start = r; }) });
+      /** @type {string[]} */
+      const seq = [];
+      k.agent.on('saying', (/** @type {string} */ t) => seq.push(t));
+      k.agent.send('Will it rain?');
+      await until(() => start !== null, 5000);
+      await new Promise((r) => setTimeout(r, 200));
+      assert.deepEqual(seq, [], 'nothing before her voice starts');
+      /** @type {any} */ (start)(plays);
+      await new Promise((r) => setTimeout(r, 100));
+      if (plays) assert.equal(seq.at(-1), 'Rain comes at four, so bring a coat.');
+      else assert.deepEqual(seq, [], 'a stream that never plays shows no words');
+    } finally {
+      await k.done();
+    }
+  }
+});
