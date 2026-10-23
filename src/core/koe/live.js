@@ -41,9 +41,10 @@ const STALL_MIN_MS = 3000;
 const HEARD_AFTER_MS = 1000;
 /**
  * After the user's turn ends, her answer's voice waits until the microphone has been quiet this long since: a thinking pause
- * ended it, and they may go on (the realtime check, 2026-10-22; her first sound comes about 0.9 s after the end anyway).
+ * ended it, and they may go on. The realtime check (2026-10-22): a 1.5 s pause goes on 0.8 s after the turn's end, Gemini's first
+ * sound came 0.75 to 1.4 s after it (0.9 s, the median), so 500 ms let one in over the user.
  */
-const HOLD_MS = 500;
+const HOLD_MS = 1000;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 

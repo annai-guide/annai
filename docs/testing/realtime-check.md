@@ -83,7 +83,7 @@ with no network, after the analysis changed.
 | silence | phone speaker | 22 s of a quiet room (nothing should be sent, nothing should fail), then a question |
 | echo-quiet, echo-loud | phone speaker | two questions, her voice back into the microphone at -12 dB and at 0 dB, 60 ms late |
 | barge-in | headphones | the user speaks over her answer: she should be cut, and the new question answered |
-| talk-over | phone speaker | the same on the speaker, where annai hears nothing while she speaks, by design; then a question |
+| talk-over | phone speaker | the same on the speaker, where annai hears nothing while she speaks, by design, and lets go of what was begun over her (no turn); then a question |
 | echo-late (only by name) | phone speaker | two questions, her voice back at -6 dB, 400 ms late (a slow speaker, a car) |
 
 ## What the report says, and when it passes
@@ -93,15 +93,17 @@ For each scenario: each clip, with its turns (how long each sent, why it ended: 
 tools she called first, what Gemini heard (with the share of the words), and what she said; then her cuts, the checks and notes.
 
 A scenario **passes** when:
-1. **answered**: every question gets audio back (a question begun over her voice, on the speaker, is not expected to: annai is deaf then, by design, and the report says so);
+1. **answered**: every question gets audio back (a question begun over her voice, on the speaker, is not expected to: annai is deaf then, by design, lets go of all of it, and the report says so; the run then waits only for quiet before the next clip);
 2. **no echo cut**: no turn began that nobody made while she sounded (her own echo), none began in silence, and no cut of hers followed one;
 3. **turn ends in time**: each turn ended within 2 s of the user stopping;
-4. **no errors**: no `error` entry in the trace, no socket closed with a kind annai did not ask for, no console error once she is listening;
+4. **no errors**: no `error` entry in the trace, no socket closed with a kind annai did not ask for, no console error once she is listening
+   (a silent session the watchdog replaced, with her answer after it, is a note, "rescued", not an error: the user was answered, late);
 5. barge-in only: **she is cut by the user**.
 
 A sixth check, **whole sentences heard**, is a *warning* (`WARN`, "PASS (2 warnings)"): it fails when a question's turns carried less than
-three quarters of its sound or Gemini's transcript has less than 60% of its words. It is what a sentence cut at a thinking pause, or a
-question begun over her voice, shows, and it does not fail the scenario because annai does that by design; it is for people to read.
+three quarters of its sound or Gemini's transcript has less than 60% of its words. It is what a sentence cut at a thinking pause longer
+than annai waits for (her voice waits 1 s after the turn's end for the user to go on), or a question's tail sent alone, shows; it does
+not fail the scenario, and it is for people to read.
 
 The notes are for people too: a transcript that is not what was said, a first sound later than 3 s, and, in echo mode, whether her
 voice did reach the microphone at the level asked (a check that proves nothing if it did not).

@@ -131,6 +131,18 @@ test('an error in the trace or a close with a code fails "no errors", with its w
   assert.match(String(c?.detail), /1011/);
 });
 
+// realtime-fix2 P5: a "yes" answered only with already_told is silence the watchdog rescues; the user is answered, late.
+test('a silent session the watchdog rescued, with her answer after it, is a note, not an error; with none after, it stays an error', () => {
+  const r = clean();
+  r.endedAt = 20_000;
+  r.trace.push({ at: 9000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave no answer within 8 seconds: a fresh one gets it again.', quiet: true } });
+  r.frames.push(f(9800, 'in', 'audio', { bytes: 9600 }), f(11_000, 'in', 'turnComplete'));
+  const a = run(r);
+  assert.equal(a.checks.find((x) => x.name === 'no errors')?.ok, true);
+  assert.ok(a.notes.some((n) => /rescued/.test(n) && /live-silent|8 seconds/.test(n)), a.notes.join(' | '));
+  assert.equal(a.pass, true);
+});
+
 test('what Gemini heard is joined from the transcript frames of a turn and scored against the words said', () => {
   const a = run(clean());
   assert.equal(a.clips[0].heard, 'Where should we stop for lunch?');
