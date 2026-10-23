@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
-import { quiet, cat, clip, room } from './voice-kit.js';
+import { quiet, cat, clip, room, hum } from './voice-kit.js';
 import { cleanSaid, realWord } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
@@ -182,27 +182,79 @@ for (const [where, devices, input] of /** @type {const} */ ([
 }
 
 // realtime-fix2 P2: on the speaker, a question begun over her had its tail sent ("on the way.") and answered as the question.
-test("on the phone's speaker, speech begun over her and going on after her voice ends sends nothing; a second time in the session, a quiet card says a tap talks over her, once", async () => {
+/** She speaks (1.2 s) as the user talks over her, on and on, n times. @param {any} k @param {number} n @param {string} words */
+async function talkOver(k, n, words) {
+  const before = (await k.events(['out.speak'])).length;
+  for (let i = 1; i <= n; i++) {
+    k.agent.send(`Tell me about a hike (${i})`);
+    await until(() => k.agent.live.view.name === 'speaking');
+    await talk(k, cat(hum(2), quiet(1))); // over her 1.2 s, and on 0.8 s after, without a breath
+    await soon(async () => (await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === words).length === before + i, 3000);
+  }
+}
+
+test("on the phone's speaker, speech begun over her and going on after her voice ends sends nothing; a second time, a quiet card says a tap talks over her, once on this device", async () => {
   const words = 'Let me check what great trails are nearby for you.';
   const k = await liveKit([{ said: words, audio: tone(1.2) }], { pace: 1 });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.platform.streamSpeed = 1;
-    const over = cat(await clip('where-lunch'), quiet(1)); // from her first sound: over her 1.2 s, and on 0.6 s after
+    k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
     k.agent.tap();
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
     await talk(k, quiet(0.5));
-    for (const n of [1, 2, 3]) {
-      k.agent.send(`Tell me about a hike (${n})`);
-      await until(() => k.agent.live.view.name === 'speaking');
-      await talk(k, over);
-      await soon(async () => (await k.events(['out.speak'])).length === n, 3000);
-    }
+    await talkOver(k, 3, words);
     assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'no turn of what was begun over her');
     assert.ok((await k.events(['out.speak'])).every((/** @type {any} */ e) => e.data.text === words && !e.data.cut), 'she was never cut');
     const hints = k.notices.filter((/** @type {any} */ n) => /Tap Shiori/.test(n.title));
     assert.equal(hints.length, 1, 'once');
     assert.equal(hints[0].tone, 'info');
+    // Review N3: once on this device, kept in its own scope (no backup carries it); a new session shows it no more.
+    assert.deepEqual(await k.ws.readJSON('sys:device', '/voice-hints.json'), { talkOver: true });
+    k.agent.live.close('tap');
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    await talk(k, quiet(0.5));
+    await talkOver(k, 2, words);
+    assert.equal(k.notices.filter((/** @type {any} */ n) => /Tap Shiori/.test(n.title)).length, 1);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a route annai cannot name (half-duplex, but maybe not the speaker): talking over her is let go, and no card says to tap', async () => {
+  const words = 'Let me check what great trails are nearby for you.';
+  const k = await liveKit([{ said: words, audio: tone(1.2) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await talk(k, quiet(0.5));
+    await talkOver(k, 2, words);
+    assert.ok(!got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart));
+    assert.equal(k.notices.filter((/** @type {any} */ n) => /Tap Shiori/.test(n.title)).length, 0);
+  } finally {
+    await k.done();
+  }
+});
+
+// Review N6: the tap tells the microphone; without it, what the user says at once would be let go as begun over her.
+test('on the speaker, a tap while she speaks and the user already talking: what they say is their turn, from the tap on', async () => {
+  const k = await liveKit([{ said: 'The bridge ahead was built in 1932 and it is one of the most photographed on the coast.', audio: tone(3) }, { heard: 'Wait', said: 'Yes?', audio: tone(0.2) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await talk(k, quiet(0.5));
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.agent.live.view.name === 'speaking');
+    const talking = talk(k, cat(hum(2.5), quiet(1))); // they start over her
+    await new Promise((r) => setTimeout(r, 500));
+    assert.equal(k.agent.tap(), 'cut');
+    await talking;
+    assert.ok(got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityStart), 'their turn');
   } finally {
     await k.done();
   }

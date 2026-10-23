@@ -278,7 +278,7 @@ export class Halves {
       changed: () => this.#liveChanged(),
       budgets: async () => (await this.kokoro.settings()).budgets,
       timeZone: () => this.kokoro.timeZone(), secondMs: c.secondMs,
-      asked: () => this.#asked && this.kokoro.busy,
+      asked: () => this.#asked && this.kokoro.busy, ws: c.ws,
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),

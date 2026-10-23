@@ -25,6 +25,14 @@ export function quiet(seconds, amp = 0.0005) {
   return Float32Array.from({ length: Math.round(seconds * RATE) }, () => r() * amp);
 }
 
+/**
+ * Speech with no gap in it: a 600 Hz voice whose loudness rises and falls four times a second, never to quiet (talking on and on
+ * without a breath, or her voice's echo). @param {number} seconds @param {number} [amp]
+ */
+export function hum(seconds, amp = 0.1) {
+  return Float32Array.from({ length: Math.round(seconds * RATE) }, (_, i) => Math.sin((2 * Math.PI * 600 * i) / RATE) * amp * (0.575 + 0.425 * Math.sin((2 * Math.PI * 4 * i) / RATE)));
+}
+
 /** A short loud noise: a click, a door. @param {number} seconds @param {number} amp */
 export function burst(seconds, amp) {
   const r = random(5);

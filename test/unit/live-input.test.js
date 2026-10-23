@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, room, RATE } from './voice-kit.js';
+import { clip, quiet, cat, burst, room, hum, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -190,6 +190,57 @@ test('half-duplex: a quick "yes" 100 or 200 ms after her voice ends is sent whol
     assert.ok(ms >= 450 + 700 - 20, `${after} ms after: ${Math.round(ms)} ms sent for a 450 ms yes`);
     r.input.stop();
   }
+});
+
+// realtime-fix2 review S2: her echo, late (a slow speaker), is let go as begun over her; it must not swallow a reply after it, nor
+// count as the user talking over her.
+test('half-duplex: a late echo of her voice (400 ms past it) is let go without counting as talking over her, and a reply 100 ms after it is a turn', async () => {
+  let playing = false;
+  let over = 0;
+  const r = rig({ speaking: () => playing, onOver: () => over++ });
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  playing = true;
+  r.feed(hum(1), RATE);
+  playing = false;
+  r.feed(cat(hum(0.4), quiet(0.1)), RATE); // her echo, then quiet
+  assert.equal(r.sent.length, 0, 'the echo is let go');
+  r.feed(cat(gas, quiet(1.5)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end'], 'the reply is a turn of its own');
+  assert.ok(msOf(r.sent) > (gas.length / RATE) * 1000, `${Math.round(msOf(r.sent))} ms sent`);
+  assert.equal(over, 0, 'an echo is not the user talking over her');
+  r.input.stop();
+});
+
+test('half-duplex: speech with no gap, begun over her and going on 600 ms past her end, is talking over her: counted once, and let go to its pause', async () => {
+  let playing = false;
+  let over = 0;
+  const r = rig({ speaking: () => playing, onOver: () => over++ });
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  playing = true;
+  r.feed(hum(1), RATE);
+  playing = false;
+  r.feed(cat(hum(1.2), quiet(1)), RATE);
+  assert.equal(r.sent.length, 0);
+  assert.equal(over, 1);
+  r.input.stop();
+});
+
+// Step's note on S2: speech beginning just as her held voice is let go is the user's, not swallowed with her voice.
+test('speech begun just before her voice plays is the user\'s: their turn starts (and cuts her), never let go as hers', async () => {
+  let playing = false;
+  const r = rig({ speaking: () => playing });
+  const send = r.input.send.activity;
+  r.input.send.activity = (edge) => { if (edge === 'start') playing = false; send(edge); }; // as live.js does: the user's turn cuts her
+  await r.input.start();
+  r.feed(quiet(1), RATE);
+  r.feed(yes.subarray(0, 640), RATE); // a word's first 40 ms: not yet sure to be speech
+  playing = true; // she is let go as it goes on (at the cap, or in a noisy room)
+  r.feed(cat(yes.subarray(640), quiet(1.5)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+  assert.ok(msOf(r.sent) >= 450, `${Math.round(msOf(r.sent))} ms`);
+  r.input.stop();
 });
 
 // realtime-fix2 P2: speech begun over her voice on the speaker, going on after it, had its tail sent as a turn ("on the way."), and answered.

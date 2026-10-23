@@ -21,6 +21,8 @@ import { Detector } from '../voice/detector.js';
 const GO_ON_MS = 60;
 /** Speech in her voice's tail with no quiet this long since she stopped was going on as she did: begun over her. */
 const GAP_MS = 80;
+/** Speech let go as begun over her that goes on this long past her end is the user talking over her (onOver); her echo is shorter. */
+const OVER_MS = 600;
 /** Since a turn's end, this many frames over the floor outside speech, or a run thrown away, make the room noisy (a word's start is 4 at most). */
 const NOISY_FRAMES = 6;
 
@@ -49,8 +51,12 @@ export class LiveInput {
   #startFloor = null;
   /** Samples sent in the turn going on. */
   #sent = 0;
-  /** A tap stopped her voice: speech going on now is the user's. */
-  #tapped = false;
+  /** Speech going on now is the user's, not begun over her: a tap stopped her voice, or what was let go ended in a quiet. */
+  #theirs = false;
+  /** She played in the last frames, and when she last did (the clock); speech let go as begun over her: 1, not yet counted, 2: counted. */
+  #was = false;
+  #herEnd = 0;
+  #letGo = 0;
   /** Runs thrown away before they were sent, and the detector's blips and those runs when the last turn ended. */
   #thrown = 0;
   #mark = 0;
@@ -126,7 +132,7 @@ export class LiveInput {
 
   /** A tap stopped her voice: what is said at once is the user's, never begun over her. */
   tapped() {
-    this.#tapped = true;
+    this.#theirs = true;
   }
 
   /** The turn going on ends now (its transcript stalled); the floor goes back to where it began. @param {TurnEnd} why */
@@ -147,12 +153,18 @@ export class LiveInput {
     }
     const d = this.#detector;
     const playing = this.speaking();
+    // Her voice's first frames, if speech had begun just before (held, or loud frames in the last 40 ms, which her voice can't be yet:
+    // she is let go, at the cap or in a noisy room, as a word begins), are still heard: the user's.
+    const first = playing && !this.#was && (this.#held || d.stillMs < 40);
+    this.#was = playing;
     this.#clock += pcm.length;
     if (this.duplex()) this.#gate = 0;
     else if (playing) {
       this.#gate = this.#clock + Math.round(((this.tailMs + GO_ON_MS) * sampleRate) / 1000);
-      this.#tapped = false;
-      return this.#deaf(d);
+      this.#theirs = false;
+      this.#herEnd = this.#clock;
+      this.#letGo = 0;
+      if (!first) return this.#deaf(d);
     }
     d.startDb = this.startDb + (playing ? this.bargeInDb : 0);
     const out = Int16Array.from(/** @type {StreamResampler} */ (this.#resampler).push(pcm), (v) => Math.round(Math.max(-1, Math.min(1, v)) * (v < 0 ? 0x8000 : 0x7fff)));
@@ -161,12 +173,26 @@ export class LiveInput {
     this.#events(d.push(pcm));
     // Speech that began in her voice's tail starts a turn only once it is still going on past the gate.
     if (this.#held && d.speechMs >= this.minSpeechMs && (!this.#tailRun || (this.#clock >= this.#gate && d.quietMs < 100))) {
-      if (!this.#tailRun || this.#tapped || d.gapMs >= GAP_MS) this.#start();
+      if (!this.#tailRun || this.#theirs || d.gapMs >= GAP_MS) this.#start();
       else {
-        this.#held = false; // the run is let go, to its pause
-        this.onOver?.();
+        this.#held = false; // the run is let go
+        this.#letGo = 1;
       }
-      this.#tapped = false;
+      this.#theirs = false;
+    }
+    if (first && !this.duplex()) {
+      if (!this.#held && !this.active) return this.#deaf(d);
+      if (this.#held) this.#start(); // the user's turn, which cuts her
+    }
+    // What was let go ends at its first quiet: her echo is over, and what follows is fresh. Going on OVER_MS past her end, it is the user
+    // talking over her, let go to its pause (a quiet in it then is a breath).
+    if (this.#letGo === 1 && d.stillMs >= GAP_MS) {
+      d.reset();
+      this.#letGo = 0;
+      this.#theirs = true;
+    } else if (this.#letGo === 1 && this.#clock - this.#herEnd >= (OVER_MS * sampleRate) / 1000) {
+      this.#letGo = 2;
+      this.onOver?.();
     }
     this.onLevel?.(d.level);
   }
