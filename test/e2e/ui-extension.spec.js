@@ -101,11 +101,21 @@ test("Shiori shows a plugin's kind of card: the plugin draws it, and its label n
   try {
     await modelSetUp(page, llm.origin);
     await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install anyway and use it');
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+    });
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Show me the falls');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.locator('.convo .trail-card')).toHaveText('Trail: Pfeiffer Falls');
     await expect(page.locator('.convo .who').last()).toHaveText('SHIORI · TRAIL');
+    // The announcer names her, as it does for a spoken line, rather than running the label into the card's words.
+    expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual(['Shiori (Trail): Trail: Pfeiffer Falls']);
   } finally {
     await llm.stop();
   }

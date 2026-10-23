@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow } from '../../src/ui/screens/talk.js';
+import { follow, announcement } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -601,4 +601,16 @@ test("Trace order: newest first by when an entry was written, so a simulated tri
   const a = e('trip', 7, 5, 100);
   const b = e('trip', 8, 5, 100);
   assert.deepEqual(newestFirst([a, b], 1), [b]);
+});
+
+test('the announcer reads her lines as "Shiori: …": a spoken line, a card (its kind named), a question with its choices ("SHIORINepenthe" was the label run into the words)', () => {
+  assert.equal(announcement('out.speak', 'SHIORI', "I'm checking."), "Shiori: I'm checking.");
+  assert.equal(announcement('out.show', 'SHIORI', 'Nepenthe Open till 10 tonight.'), 'Shiori: Nepenthe Open till 10 tonight.');
+  assert.equal(announcement('out.show', 'SHIORI · TRAIL', 'Trail: Pfeiffer Falls'), 'Shiori (Trail): Trail: Pfeiffer Falls');
+  assert.equal(announcement('out.ask', 'SHIORI', 'Where should we eat?', ['Ramen', 'Sushi']), 'Shiori asks: Where should we eat? Choices: Ramen, Sushi.');
+  assert.equal(announcement('out.ask', 'SHIORI', 'Is that right?', []), 'Shiori asks: Is that right?');
+  // Anything else is as written; what you typed and the halves' notes are not announced.
+  assert.equal(announcement('reminder', '', 'Reminder: Leave at 5.'), 'Reminder: Leave at 5.');
+  assert.equal(announcement('msg.user', '', 'Hello'), '');
+  assert.equal(announcement('note', '', 'Koe to Kokoro: …'), '');
 });

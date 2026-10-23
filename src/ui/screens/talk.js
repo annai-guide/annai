@@ -18,6 +18,25 @@ const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 
 /**
+ * What the announcer says of a line: her lines read "Shiori: …" (a plugin's kind of card, "Shiori (Trail): …"; a question,
+ * "Shiori asks: …" with its choices), as her spoken lines always did, rather than her label run into the words. Nothing for
+ * what you typed or the halves' notes; any other line as written.
+ * @param {string} type the event's @param {string} who the label over the line, as drawn: SHIORI, or SHIORI · KIND
+ * @param {string} words the line's words without its label @param {string[]} [options] a question's choices
+ */
+export function announcement(type, who, words, options = []) {
+  if (type === 'msg.user' || type === 'note') return '';
+  const kind = who.split(' · ')[1]?.toLowerCase();
+  const name = kind ? `Shiori (${kind[0].toUpperCase()}${kind.slice(1)})` : 'Shiori';
+  if (type === 'out.speak' || type === 'out.show') return `${name}: ${words}`;
+  if (type === 'out.ask') return `${name} asks: ${words}${options.length ? ` Choices: ${options.join(', ')}.` : ''}`;
+  return words;
+}
+
+/** A line's words as plain text, its blocks apart. @param {HTMLElement} node */
+const plain = (node) => (node.innerText ?? node.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+/**
  * The copy a photo ended up as, following its replacements (each refused copy names the next).
  * @param {string} hash @param {Map<string, { new: string }>} replaced
  */
@@ -255,7 +274,13 @@ export async function renderTalk(ctx) {
         if (e.type === 'heard') {
           const words = unheard.get(e.data?.id);
           if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
-        } else tell(e.type === 'msg.user' || e.type === 'note' ? '' : e.type === 'out.speak' ? `Shiori: ${node.querySelector('p')?.textContent ?? ''}` : node.textContent ?? '');
+        } else {
+          const who = node.querySelector('.who');
+          const words = e.type === 'out.speak' ? node.querySelector('p')?.textContent ?? ''
+            : e.type === 'out.ask' ? String(e.data?.question ?? '')
+              : e.type === 'out.show' ? [...node.children].filter((c) => c !== who).map(plain).join(' ') : plain(node);
+          tell(announcement(e.type, who?.textContent ?? '', words, Array.isArray(e.data?.options) ? e.data.options.slice(0, 6).map(String) : []));
+        }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
