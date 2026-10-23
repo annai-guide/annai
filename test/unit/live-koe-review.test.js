@@ -293,9 +293,14 @@ test("item 11 (consent): a session a trigger opened listens after it speaks only
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } }); // 3 s and 20 ms here
     await k.voice.unlock();
+    // Whether it listens is read as her line is written, not when the test looks: the answer window is 20 ms here, and a look from the test
+    // can come after it on a slow machine.
+    /** @type {boolean | null} */
+    let listensAfter = null;
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.speak' && listensAfter === null) listensAfter = k.agent.live.listening; });
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    assert.ok(k.agent.live.listening, 'it listens after');
+    assert.ok(listensAfter, 'it listens after');
     await until(() => k.agent.live.state === 'closed', 1000); // the answer window, not the 3 s spell
     // Tapped open, the spell holds, a trigger after it changing nothing.
     k.agent.tap();
