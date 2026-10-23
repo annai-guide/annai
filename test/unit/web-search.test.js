@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { orderSearch, normalizeRows, Cooldowns, restsOn, FREE_SERVICES, searchOffIn, trusted, cut, wellFormed } from '../../src/core/web-search.js';
+import { cpuMs } from './cpu.js';
 
 const p = (/** @type {string} */ id, /** @type {any} */ over = {}) => ({ id, name: id, search: async () => [], ...over });
 
@@ -99,16 +100,16 @@ test('M1: a search plugin installed after a reorder lands before the saved free 
 });
 
 test('rows are made in time: a megabyte of "<" or of unclosed links takes a fraction of a second, and each field is cut first', () => {
-  const t = performance.now();
+  const t = cpuMs();
   for (const bad of ['<'.repeat(1_000_000), '[a]('.repeat(250_000), '['.repeat(1_000_000), `&#${'1'.repeat(1_000_000)};`]) {
     const [row] = normalizeRows([{ title: bad, url: 'https://a.test/', snippet: bad }], 'tokyo ramen hours');
     assert.ok(row.title.length <= 160 && row.snippet.length <= 400);
   }
-  assert.ok(performance.now() - t < 1500, `took ${Math.round(performance.now() - t)} ms`);
+  assert.ok(cpuMs() - t < 1500, `took ${Math.round(cpuMs() - t)} ms of CPU`);
   // A million junk rows are not all looked at.
-  const t2 = performance.now();
+  const t2 = cpuMs();
   assert.deepEqual(normalizeRows(Array.from({ length: 1_000_000 }, () => ({ url: 'nope' })), 'q'), []);
-  assert.ok(performance.now() - t2 < 1500);
+  assert.ok(cpuMs() - t2 < 1500);
 });
 
 test('S11: two videos on one page are two rows; the path\'s case counts; tracking parameters and their order do not', () => {
