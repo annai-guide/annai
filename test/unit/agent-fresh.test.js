@@ -124,3 +124,19 @@ test('Start fresh with both halves: each reads the conversation again from there
   await k.agent.idle();
   for (const r of k.requests.slice(-2)) assert.equal(JSON.stringify(r.messages).includes('otters'), false);
 });
+
+// Fix pass 2, item 2: the user's own Summarize now kept the last third of the threshold, so on a long window only the oldest
+// exchange went. Asked for by hand, it keeps only the last exchange word for word (spec §6.5); the overflow-forced path is unchanged.
+for (const window of [null, 1_000_000]) {
+  test(`Summarize now on eight exchanges keeps only the last one word for word (window ${window ?? 'unknown'})`, async () => {
+    const k = await agentKit([[...Array.from({ length: 8 }, (_, i) => say(`Answer ${i}`)), { text: 'SUMMARY' }]], window ? { models: [{ contextWindow: window }] } : {});
+    for (let i = 0; i < 8; i++) {
+      k.agent.send(`Question ${i}`);
+      await k.agent.idle();
+    }
+    assert.equal(await k.agent.summarizeNow(), 'done');
+    const ctx = JSON.stringify(k.agent.transcript.messages);
+    assert.deepEqual(Array.from({ length: 8 }, (_, i) => i).filter((i) => ctx.includes(`Question ${i}`)), [7]);
+    assert.match(ctx, /SUMMARY/);
+  });
+}
