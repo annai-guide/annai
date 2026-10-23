@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { orderSearch, normalizeRows, Cooldowns, restsOn, FREE_SERVICES, searchOffIn, trusted, cut } from '../../src/core/web-search.js';
+import { orderSearch, normalizeRows, Cooldowns, restsOn, FREE_SERVICES, searchOffIn, trusted, cut, wellFormed } from '../../src/core/web-search.js';
 
 const p = (/** @type {string} */ id, /** @type {any} */ over = {}) => ({ id, name: id, search: async () => [], ...over });
 
@@ -152,4 +152,23 @@ test('S2: only the built-in web plugin\'s providers may be always on, free or kn
   assert.deepEqual(out.map((p) => [p.id, p.kind ?? 'web', Boolean(p.always), Boolean(p.free)]), [['wiki', 'knowledge', true, false], ['sticky', 'web', false, false]]);
   assert.equal(out[1].name, 'S');
   assert.deepEqual(searchOffIn({ searchOff: ['sticky', 'wiki'] }, out), ['sticky']);
+});
+
+test('a lone surrogate already in an answer is replaced with U+FFFD in every field, with and without String.prototype.toWellFormed', () => {
+  const rows = [{ title: '\udc00 title \ud800x', url: 'https://a.test/', snippet: 'a\ud800 b \udc00c and 😀 whole' }];
+  const check = () => {
+    const [row] = normalizeRows(rows, 'q');
+    assert.equal(row.title, '� title �x');
+    assert.equal(row.snippet, 'a� b �c and 😀 whole');
+    assert.equal(wellFormed('ok 😀'), 'ok 😀');
+  };
+  check();
+  const proto = /** @type {any} */ (String.prototype);
+  const native = proto.toWellFormed;
+  try {
+    delete proto.toWellFormed; // the fallback, as on a browser without it
+    check();
+  } finally {
+    if (native) proto.toWellFormed = native;
+  }
 });

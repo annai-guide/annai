@@ -238,18 +238,20 @@ export function activate(annai) {
         const climb = answered || empty || !failed.every((f) => link(f.e));
         for (const f of failed) if (restsOn(f.e)) cooldowns.rest(f.p.id, climb);
       };
-      /** @param {any} p */
-      const ready = async (p) => {
+      /** Whether a provider can run, asked for no longer than READY_MS or what the search has left. @param {any} p @param {number} room */
+      const ready = async (p, room) => {
         if (!p.ready) return { ok: true };
         /** @type {ReturnType<typeof setTimeout> | undefined} */
         let timer;
-        const slow = new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, why: "couldn't check if it can run" }), READY_MS.ms); });
+        const slow = new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, why: "couldn't check if it can run" }), Math.min(READY_MS.ms, room)); });
         try {
           return await Promise.race([Promise.resolve().then(() => p.ready()).catch((/** @type {any} */ e) => ({ ok: false, why: String(e?.message ?? e) })), slow]);
         } finally {
           clearTimeout(timer);
         }
       };
+      /** What is left of the search for this provider: the floor's share is kept for it. @param {any} p @param {number} k */
+      const reserveFor = (p, k) => (p.always || !providers.slice(k + 1).some((q) => q.always) ? 0 : CHAIN.reserve);
       for (const [k, p] of providers.entries()) {
         const rest = cooldowns.left(p.id);
         if (rest > 0) {
@@ -257,12 +259,18 @@ export function activate(annai) {
           passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
           continue;
         }
-        const r = await ready(p);
+        const reserve = reserveFor(p, k);
+        const room = deadline - Date.now() - reserve;
+        if (room < 100) {
+          passed.push(`${p.name} was left out: the search ran out of time`);
+          continue;
+        }
+        const r = await ready(p, room);
         if (!r.ok) {
           passed.push(`${p.name} ${r.why ?? "isn't ready"}`);
           continue;
         }
-        const out = await ask(p, p.always || !providers.slice(k + 1).some((q) => q.always) ? 0 : CHAIN.reserve);
+        const out = await ask(p, reserve);
         if (out) {
           settle(true);
           return out;
@@ -271,7 +279,7 @@ export function activate(annai) {
       // Everything is resting and nothing else ran: the one whose rest ends first gets another try.
       if (!failed.length && !empty && resting.length) {
         const next = resting.sort((a, b) => cooldowns.left(a.id) - cooldowns.left(b.id))[0];
-        if ((await ready(next)).ok) {
+        if ((await ready(next, deadline - Date.now())).ok) {
           const out = await ask(next);
           if (out) {
             settle(true);
