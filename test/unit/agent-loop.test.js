@@ -9,10 +9,12 @@ import { createTrip } from '../../src/core/scopes.js';
 import { Agent, UNANSWERED, FORCED_STEPS } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { useClock } from './clock.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
-test('a typed message wakes Shiori; she speaks and sleeps; the whole turn is in the log, and survives a reload', async () => {
+test('a typed message wakes Shiori; she speaks and sleeps; the whole turn is in the log, and survives a reload', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Nepenthe is 25 minutes south.')]]);
   /** @type {string[]} */
   const states = [];
@@ -30,7 +32,8 @@ test('a typed message wakes Shiori; she speaks and sleeps; the whole turn is in 
   assert.deepEqual(k.requests[0].tools.map((/** @type {any} */ t) => t.name).slice(0, 5), ['speak', 'show', 'ask', 'wait', 'sleep']);
 });
 
-test('tool calls run in order, sleep last, and every call gets a result', async () => {
+test('tool calls run in order, sleep last, and every call gets a result', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }, { name: 'write', input: { path: '/trip/notes/a.md', content: 'x' } }, { name: 'speak', input: { text: 'Noted.' } }] }]]);
   k.agent.send('Note x');
   await k.agent.idle();
@@ -39,7 +42,8 @@ test('tool calls run in order, sleep last, and every call gets a result', async 
   assert.deepEqual(k.agent.transcript.open(), []);
 });
 
-test('fallback across two providers: the first is out of credit, the second answers (spec §9.6)', async () => {
+test('fallback across two providers: the first is out of credit, the second answers (spec §9.6)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Here.')]]);
   k.agent.send('Hi');
   await k.agent.idle();
@@ -49,7 +53,8 @@ test('fallback across two providers: the first is out of credit, the second answ
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Here.');
 });
 
-test('ask waits for a tap; a later step continues with the answer', async () => {
+test('ask waits for a tap; a later step continues with the answer', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } }] }, say('Kept.')]]);
   k.agent.send('We are running late');
   await new Promise((r) => setTimeout(r, 30));
@@ -62,7 +67,8 @@ test('ask waits for a tap; a later step continues with the answer', async () => 
   assert.equal(k.requests.length, 2);
 });
 
-test('typing answers a pending ask, and is not repeated as its own message', async () => {
+test('typing answers a pending ask, and is not repeated as its own message', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, say('OK.')]]);
   k.agent.send('Start');
   await new Promise((r) => setTimeout(r, 30));
@@ -73,7 +79,8 @@ test('typing answers a pending ask, and is not repeated as its own message', asy
   assert.equal(texts.split('Neither, the café').length - 1, 1);
 });
 
-test('typing while she works arrives at her next call as "meanwhile" (spec §6.1)', async () => {
+test('typing while she works arrives at her next call as "meanwhile" (spec §6.1)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 40, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Both noted.')]]);
   k.agent.send('First thing');
   await new Promise((r) => setTimeout(r, 10));
@@ -85,7 +92,8 @@ test('typing while she works arrives at her next call as "meanwhile" (spec §6.1
   assert.equal(last.parts[1].text, '[meanwhile, the user wrote] Second thing');
 });
 
-test('wait returns what the user typed, or that nothing came', async () => {
+test('wait returns what the user typed, or that nothing came', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Ready?' } }, { name: 'wait', input: { seconds: 3 } }] }, { toolCalls: [{ name: 'wait', input: { seconds: 1 } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   k.agent.send('Go');
   await new Promise((r) => setTimeout(r, 15));
@@ -95,7 +103,8 @@ test('wait returns what the user typed, or that nothing came', async () => {
   assert.deepEqual(waits.map((e) => e.data.content), ['The user wrote: Yes!', 'Nothing yet (1 seconds).']);
 });
 
-test('tapping Shiori stops a hanging tool and the turn; every call still has a result (spec §6.7)', async () => {
+test('tapping Shiori stops a hanging tool and the turn; every call still has a result (spec §6.7)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'hang', input: {} }, { name: 'speak', input: { text: 'Never said.' } }] }]]);
   /** @type {() => void} */
   let started = () => {};
@@ -111,7 +120,8 @@ test('tapping Shiori stops a hanging tool and the turn; every call still has a r
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test("the user's message, answered only in plain text: she is asked once more; still nothing for the user, a card with Try again (spec §7.1, emulator pass)", async () => {
+test("the user's message, answered only in plain text: she is asked once more; still nothing for the user, a card with Try again (spec §7.1, emulator pass)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'Big Sur is known for its coast.' }, { toolCalls: [{ name: 'sleep', input: {} }] }, say('Its wild coast, mostly.')]]);
   k.agent.send('What is Big Sur known for?');
   await k.agent.idle();
@@ -130,7 +140,8 @@ test("the user's message, answered only in plain text: she is asked once more; s
   assert.equal(k.notices.length, 1);
 });
 
-test('a turn that spoke to the user, or one the user didn\'t start, ends as it is: no second ask, no card', async () => {
+test('a turn that spoke to the user, or one the user didn\'t start, ends as it is: no second ask, no card', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Big Sur: the coast.')]]);
   k.agent.send('What is Big Sur known for?');
   await k.agent.idle();
@@ -142,7 +153,8 @@ test('a turn that spoke to the user, or one the user didn\'t start, ends as it i
   assert.deepEqual(quiet.notices, []);
 });
 
-test("the connection going and coming back sets a resting Shiori's state at once, not only at a turn's end (emulator pass m2b #10)", async () => {
+test("the connection going and coming back sets a resting Shiori's state at once, not only at a turn's end (emulator pass m2b #10)", async (t) => {
+  useClock(t);
   /** @type {Record<string, (() => void)[]>} */
   const on = { online: [], offline: [] };
   const g = /** @type {any} */ (globalThis);
@@ -163,7 +175,8 @@ test("the connection going and coming back sets a resting Shiori's state at once
   }
 });
 
-test('the warm model goes first only in the order it answered in: an order the user changed applies from the next turn (emulator pass)', async () => {
+test('the warm model goes first only in the order it answered in: an order the user changed applies from the next turn (emulator pass)', async (t) => {
+  useClock(t);
   const { readConfig, saveRoles } = await import('../../src/core/llm/config.js');
   const k = await agentKit([[say('From the first.')], [say('From the second.')]]);
   const roles = (await readConfig(k.ws)).roles;
@@ -182,7 +195,8 @@ test('the warm model goes first only in the order it answered in: an order the u
   assert.deepEqual((await k.events(['model.turn'])).map((e) => e.data.answeredBy), ['model-1', 'model-1', 'model-0', 'model-0']);
 });
 
-test("a tap while she's thinking stops her turn, and a new one starts at once with what was sent meanwhile; the dock says a tap stops her (item 17)", async () => {
+test("a tap while she's thinking stops her turn, and a new one starts at once with what was sent meanwhile; the dock says a tap stops her (item 17)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 5000, ...say('Never said.') }, say('Somewhere vegetarian, then: Big Sur Bakery.')]]);
   k.agent.send('Where should we eat?');
   await until(() => k.requests.length === 1);
@@ -197,7 +211,8 @@ test("a tap while she's thinking stops her turn, and a new one starts at once wi
   assert.deepEqual(k.notices, []);
 });
 
-test("no model answers: a system card, never in Shiori's voice", async () => {
+test("no model answers: a system card, never in Shiori's voice", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hi');
   await k.agent.idle();
@@ -206,7 +221,8 @@ test("no model answers: a system card, never in Shiori's voice", async () => {
   assert.equal((await k.events(['error']))[0].data.kind, 'model');
 });
 
-test("a model error card is taken down when a later turn works: the same key, then a clear; a \"didn't answer\" card when she then speaks (the second emulator pass)", async () => {
+test("a model error card is taken down when a later turn works: the same key, then a clear; a \"didn't answer\" card when she then speaks (the second emulator pass)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'auth', status: 401 }, say('Back again.')]]);
   /** @type {any[]} */
   const seen = [];
@@ -234,7 +250,8 @@ test("a model error card is taken down when a later turn works: the same key, th
   assert.equal((await q.events(['out.speak']))[0].data.text, 'Now aloud.');
 });
 
-test("the \"didn't answer\" card goes only with a later turn the user started in its conversation that spoke to them: not a reminder's, nor another conversation's (the fix pass)", async () => {
+test("the \"didn't answer\" card goes only with a later turn the user started in its conversation that spoke to them: not a reminder's, nor another conversation's (the fix pass)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, say('Fuel is low.'), say('Kyoto is lovely.'), say('Now aloud.')]]);
   /** @type {string[]} */
   const seen = [];
@@ -258,7 +275,8 @@ test("the \"didn't answer\" card goes only with a later turn the user started in
   assert.ok(seen.includes(key));
 });
 
-test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async () => {
+test("the card says why each model failed on one line, each reason once, in words; offline, that the device is (emulator pass)", async (t) => {
+  useClock(t);
   const busy = 'This model is currently experiencing high demand. Please try again later.';
   const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });
   k.agent.send('Hi');
@@ -271,7 +289,8 @@ test("the card says why each model failed on one line, each reason once, in word
   assert.equal(off.notices[0].body, 'This device is offline.');
 });
 
-test("a model that reads no PDFs reads one: a model that does tells it in words, and says so; with none here, the result says that (the second emulator pass)", async () => {
+test("a model that reads no PDFs reads one: a model that does tells it in words, and says so; with none here, the result says that (the second emulator pass)", async (t) => {
+  useClock(t);
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Check-in is at 3 PM.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM, 2 nights.' }] });
   const u = (await k.llm.config()).models['m-u'];
@@ -305,7 +324,8 @@ async function pdfKit(script, utility) {
 }
 const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
 
-test('a PDF told only up to the output limit says it stops there; a second read in the session is told from what was told, never sent again (the fix pass, S6)', async () => {
+test('a PDF told only up to the output limit says it stops there; a second read in the session is told from what was told, never sent again (the fix pass, S6)', async (t) => {
+  useClock(t);
   const k = await pdfKit([readPdf, readPdf, say('Check-in is at 3 PM.')], [{ text: 'Hotel booking: check-in 3 PM, 2 nights. Room', stop: 'length' }]);
   k.agent.send('When is check-in?');
   await k.agent.idle();
@@ -316,7 +336,8 @@ test('a PDF told only up to the output limit says it stops there; a second read 
   assert.equal(k.sent['model-u'].length, 1, 'the PDF went to be told once');
 });
 
-test("the told PDFs are keyed by the bytes told, in their conversation: a part claiming an earlier PDF's hash with other bytes is told afresh, and another conversation never gets the first one's words (the fix pass's security review)", async () => {
+test("the told PDFs are keyed by the bytes told, in their conversation: a part claiming an earlier PDF's hash with other bytes is told afresh, and another conversation never gets the first one's words (the fix pass's security review)", async (t) => {
+  useClock(t);
   const { toBase64 } = await import('../../src/core/bytes.js');
   const claim = { toolCalls: [{ name: 'claim', input: {} }] };
   const k = await pdfKit([readPdf, claim, say('Done.'), readPdf, say('Done.')], [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'Ferry ticket: 9:10 AM.' }, { text: 'Kyoto hotel: check-in 4 PM.' }]);
@@ -337,7 +358,8 @@ test("the told PDFs are keyed by the bytes told, in their conversation: a part c
   assert.equal(k.sent['model-u'].length, 3, 'told in the other conversation afresh');
 });
 
-test('Erase forgets the PDFs told this session (the fix pass\'s security review)', async () => {
+test('Erase forgets the PDFs told this session (the fix pass\'s security review)', async (t) => {
+  useClock(t);
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPdf, then: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
   const u = (await k.llm.config()).models['m-u'];
@@ -354,7 +376,8 @@ test('Erase forgets the PDFs told this session (the fix pass\'s security review)
   assert.equal(k.sent['model-u'].length, 2, 'forgotten at Erase');
 });
 
-test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async () => {
+test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async (t) => {
+  useClock(t);
   const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/loop.js');
   assert.ok(DESCRIBE_PDF_S > DESCRIBE_S);
   // secondMs is 10 here: 30 seconds are 300 ms.
@@ -365,7 +388,8 @@ test("a PDF has longer to be told than a photo to be described: a telling that t
   assert.match(read.data.content, /What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\.$/);
 });
 
-test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async () => {
+test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Read it.')], [say('Anything else?')]], { models: [{ input: ['text', 'image', 'pdf'] }, { input: ['text', 'image'] }] });
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
   k.agent.send('Read the booking');
@@ -382,7 +406,8 @@ test('a PDF read earlier does not close the conversation to a model that reads n
   assert.equal(k.notices.length, 0);
 });
 
-test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async () => {
+test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Pfeiffer Beach is close.')]], { models: [{}, { input: ['text'] }] });
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
@@ -397,7 +422,8 @@ test('a model that takes no photos answers once the conversation holds one; a ph
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Pfeiffer Beach is close.');
 });
 
-test('a reload before Shiori answered: the message still gets its answer', async () => {
+test('a reload before Shiori answered: the message still gets its answer', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Yes, here.')]], { open: false });
   await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Are you there?', wake: 'w-0' } });
@@ -407,7 +433,8 @@ test('a reload before Shiori answered: the message still gets its answer', async
   assert.match(JSON.stringify(k.requests[0].messages), /Are you there\?/);
 });
 
-test('a reload mid-turn: open tool calls get "interrupted by app restart", then a catch-up wake runs (spec §6.7)', async () => {
+test('a reload mid-turn: open tool calls get "interrupted by app restart", then a catch-up wake runs (spec §6.7)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Back again.')]], { open: false });
   await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
     [{ type: 'tool_call', id: 'f1', name: 'fetch', input: { url: 'https://x' } }]);
@@ -420,7 +447,8 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
 });
 
-test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async () => {
+test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
   await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Also, we are vegetarian.', wake: 'w-0' } });
@@ -441,7 +469,8 @@ test('killed after her tool calls came back, before her next reply: opening the 
   assert.equal(k.requests.length, 1);
 });
 
-test("a turn the user stopped isn't taken up when the conversation opens again, even if her tool calls had come back (spec §6.7)", async () => {
+test("a turn the user stopped isn't taken up when the conversation opens again, even if her tool calls had come back (spec §6.7)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, { delayMs: 5000, ...say('Never said.') }]]);
   k.agent.send('What is in the trip?');
   await until(() => k.requests.length === 2);
@@ -455,7 +484,8 @@ test("a turn the user stopped isn't taken up when the conversation opens again, 
   assert.equal(k.requests.length, 2, 'nothing ran again');
 });
 
-test("Shiori's turns ask the model to call a tool (she reaches the user only through tools); housekeeping and the utility model's jobs don't, nor a turn with the model's own search on (item 15)", async () => {
+test("Shiori's turns ask the model to call a tool (she reaches the user only through tools); housekeeping and the utility model's jobs don't, nor a turn with the model's own search on (item 15)", async (t) => {
+  useClock(t);
   const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
   for (const m of ['first', 'second', 'third', 'fourth']) {
     k.agent.send(m);
@@ -473,7 +503,8 @@ test("Shiori's turns ask the model to call a tool (she reaches the user only thr
   assert.equal(search.requests[0].toolRequired, undefined, "its search answers in words, shown as written (G4): nothing is forced");
 });
 
-test("warm housekeeping asks to borrow the conversation's kept chain (it continues it and deletes its own response); cold housekeeping and turns don't", async () => {
+test("warm housekeeping asks to borrow the conversation's kept chain (it continues it and deletes its own response); cold housekeeping and turns don't", async (t) => {
+  useClock(t);
   const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
   /** @type {any[]} */
   const calls = [];
@@ -489,7 +520,8 @@ test("warm housekeeping asks to borrow the conversation's kept chain (it continu
   assert.equal(calls.filter((c) => c.record?.tag === 'compaction').length, 2);
 });
 
-test("leaving the page, or tapping Shiori, cuts a warm housekeeping call short (the call then deletes the provider's turn it borrowed)", async () => {
+test("leaving the page, or tapping Shiori, cuts a warm housekeeping call short (the call then deletes the provider's turn it borrowed)", async (t) => {
+  useClock(t);
   const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
   for (const m of ['first', 'second', 'third', 'fourth']) {
     k.agent.send(m);
@@ -515,7 +547,8 @@ test("leaving the page, or tapping Shiori, cuts a warm housekeeping call short (
   assert.ok(out instanceof ProviderError && out.kind === 'cancelled');
 });
 
-test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {
+test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Big Sur: the coast.' } }] }, { text: 'Done.' }]]);
   k.agent.send('What is Big Sur known for?');
   await k.agent.idle();
@@ -523,7 +556,8 @@ test('a tool call is asked for only until she has reached the user in the turn: 
   assert.deepEqual(k.notices, [], 'it reached the user: no nudge');
 });
 
-test('with no steps-per-wake limit set, a long turn runs past 25 steps and reaches the user, with no step card', async () => {
+test('with no steps-per-wake limit set, a long turn runs past 25 steps and reaches the user, with no step card', async (t) => {
+  useClock(t);
   const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
   const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
   const k = await agentKit([[...Array.from({ length: 30 }, (_, i) => (i % 2 ? b : a)), say('The whole day is planned.')]]);
@@ -533,7 +567,8 @@ test('with no steps-per-wake limit set, a long turn runs past 25 steps and reach
   assert.deepEqual(k.notices, [], 'no step-limit card, and she reached the user');
 });
 
-test(`forcing stops after ${FORCED_STEPS} forced calls without reaching the user: she may then end in words, is nudged once, and the card follows`, async () => {
+test(`forcing stops after ${FORCED_STEPS} forced calls without reaching the user: she may then end in words, is nudged once, and the card follows`, async (t) => {
+  useClock(t);
   const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
   const b = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
   const k = await agentKit([[...Array.from({ length: FORCED_STEPS }, (_, i) => (i % 2 ? b : a)), { text: 'Here is the plan.' }, { text: 'Still no tool.' }]]);
@@ -545,7 +580,8 @@ test(`forcing stops after ${FORCED_STEPS} forced calls without reaching the user
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
 });
 
-test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async () => {
+test("with the model's own search, Shiori's request has no web_search of annai's and asks for the provider's", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { models: [{ providerTools: [{ id: 'p-search', name: 'S', kind: 'search', patch: {} }] }] });
   k.host && await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
   k.agent.send('Hi');
@@ -556,7 +592,8 @@ test("with the model's own search, Shiori's request has no web_search of annai's
   assert.deepEqual(k.requests[0].providerTools, { kinds: ['search'], off: [] });
 });
 
-test("on a key marked free tier, a paid-only search isn't the model's own (G4): Shiori keeps annai's web_search, and asks for none", async () => {
+test("on a key marked free tier, a paid-only search isn't the model's own (G4): Shiori keeps annai's web_search, and asks for none", async (t) => {
+  useClock(t);
   const { readConfig, saveProvider } = await import('../../src/core/llm/config.js');
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { models: [{ providerTools: [{ id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true }] }] });
   const rec = (await readConfig(k.ws)).providers['pv-0'];
@@ -568,7 +605,8 @@ test("on a key marked free tier, a paid-only search isn't the model's own (G4): 
   assert.equal(k.requests[0].providerTools, undefined);
 });
 
-test("a reply grounded in the provider's own search is logged for the conversation as it came (G4: \"From Google Search\"), its suggestions kept as a blob the entry names", async () => {
+test("a reply grounded in the provider's own search is logged for the conversation as it came (G4: \"From Google Search\"), its suggestions kept as a blob the entry names", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'Open till 10.', toolCalls: [{ name: 'sleep', input: {} }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   const html = `<div class="container">${'<a class="chip" href="https://www.google.com/search?q=nepenthe">nepenthe</a>'.repeat(40)}</div>`;
   const scripted = k.llm.types().get('scripted');
@@ -600,7 +638,8 @@ test("a reply grounded in the provider's own search is logged for the conversati
   assert.ok(JSON.stringify(k.requests.at(-1).messages).includes('Open till 10.'));
 });
 
-test('a search whose replies are shown as written (Google Search): one Shiori is told so while it is on, in the same words every turn, so she writes that reply for the user; Kokoro, behind Koe, is not (G4)', async () => {
+test('a search whose replies are shown as written (Google Search): one Shiori is told so while it is on, in the same words every turn, so she writes that reply for the user; Kokoro, behind Koe, is not (G4)', async (t) => {
+  useClock(t);
   const search = { id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true, shows: 'From Google Search' };
   const words = 'A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -631,7 +670,8 @@ const eventsIn = (k, scope, types) => k.store.tx(['events'], 'readonly', (/** @t
 /** The user texts a request sends. @param {any} request */
 const userTexts = (request) => JSON.stringify(request.messages);
 
-test('opening two conversations in a row: the last one opens, and nothing of the first is written into it', async () => {
+test('opening two conversations in a row: the last one opens, and nothing of the first is written into it', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('About the temple.')]], { open: false });
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
@@ -652,7 +692,8 @@ test('opening two conversations in a row: the last one opens, and nothing of the
   assert.doesNotMatch(JSON.stringify(k.agent.transcript.messages), /A: where to eat/);
 });
 
-test('a message typed while a conversation opens waits for it, and reaches the model there', async () => {
+test('a message typed while a conversation opens waits for it, and reaches the model there', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Hello.')]], { open: false });
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
@@ -667,7 +708,8 @@ test('a message typed while a conversation opens waits for it, and reaches the m
   assert.match(JSON.stringify(k.agent.transcript.messages), /typed right away/);
 });
 
-test('opening another conversation while Shiori works: she stops, and a message still waiting is kept where it was typed', async () => {
+test('opening another conversation while Shiori works: she stops, and a message still waiting is kept where it was typed', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 60, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
@@ -685,7 +727,8 @@ test('opening another conversation while Shiori works: she stops, and a message 
   assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
 });
 
-test('the "didn\'t answer" cards of two conversations name their own: the trip, or Me (the third emulator pass)', async () => {
+test('the "didn\'t answer" cards of two conversations name their own: the trip, or Me (the third emulator pass)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
   k.agent.send('Hi');
@@ -699,7 +742,8 @@ test('the "didn\'t answer" cards of two conversations name their own: the trip, 
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto', 'Me']);
 });
 
-test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async () => {
+test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back in Big Sur.')]]);
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
@@ -725,7 +769,8 @@ test('a turn cut by opening another conversation leaves a line in the one left, 
   assert.equal((await eventsIn(k, A, ['paused'])).length, 1);
 });
 
-test('no paused line when the turn was not left undone, or the cut is not one that gets taken up: finished after she spoke, her own Stop, the page leaving, a trip being removed (fix pass)', async () => {
+test('no paused line when the turn was not left undone, or the cut is not one that gets taken up: finished after she spoke, her own Stop, the page leaving, a trip being removed (fix pass)', async (t) => {
+  useClock(t);
   const slow = { delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
   const notices = (/** @type {any} */ k) => { /** @type {any[]} */ const n = []; k.agent.on('notice', (/** @type {any} */ x) => n.push(x)); return n; };
   // She has spoken and slept: the last model call is done, and opening another conversation right then cuts nothing.
@@ -764,7 +809,8 @@ test('no paused line when the turn was not left undone, or the cut is not one th
   assert.equal(n4.filter((n) => n.toast).length, 0);
 });
 
-test("opening a conversation leaves the last one's housekeeping behind: no compaction of the new one for the old one's size", async () => {
+test("opening a conversation leaves the last one's housekeeping behind: no compaction of the new one for the old one's size", async (t) => {
+  useClock(t);
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
   /** @type {any[]} */
   const timers = [];
@@ -788,7 +834,8 @@ test("opening a conversation leaves the last one's housekeeping behind: no compa
   assert.equal(timers.filter(Boolean).length, 0, 'nothing is due in B');
 });
 
-test('an error card and error event never show a key, even when the provider echoes it', async () => {
+test('an error card and error event never show a key, even when the provider echoes it', async (t) => {
+  useClock(t);
   const KEY = 'sk-ant-SECRETKEY1234567890';
   const k = await agentKit([[{ error: 'auth', status: 401, message: `Incorrect API key provided: ${KEY}` }]]);
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
@@ -800,7 +847,8 @@ test('an error card and error event never show a key, even when the provider ech
   assert.doesNotMatch(JSON.stringify(await k.events(['error'])), /SECRETKEY/);
 });
 
-test("housekeeping that fails inside a turn ends it with a card and an error event that say so", async () => {
+test("housekeeping that fails inside a turn ends it with a card and an error event that say so", async (t) => {
+  useClock(t);
   const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]],
     { utility: [{ error: 'auth', status: 401, message: 'bad utility key' }] });
   for (const m of ['first', 'second', 'third']) { k.agent.send(m); await k.agent.idle(); }
@@ -811,7 +859,8 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.equal(k.agent.transcript.unanswered, false);
 });
 
-test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without is not a failure: no card, no error event", async () => {
+test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without is not a failure: no card, no error event", async (t) => {
+  useClock(t);
   // In a turn that can't go on without it (the forced tidy-up).
   const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [{ text: 'Summary.' }] });
   const was = k.llm.call;
@@ -825,7 +874,8 @@ test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without
   assert.equal(k.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
 });
 
-test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so it would ask for a card) is no failure either", async () => {
+test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so it would ask for a card) is no failure either", async (t) => {
+  useClock(t);
   // Housekeeping that came due waits for the cache to go cold, then runs at the start of the next turn (#tidyUp, not forced).
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
   const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
@@ -848,7 +898,8 @@ test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so
   assert.equal(o.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0, 'no card');
 });
 
-test('a turn that failed is over: later starts do not wake Shiori again for it', async () => {
+test('a turn that failed is over: later starts do not wake Shiori again for it', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ error: 'auth', status: 401 }]]);
   k.agent.send('Hello?');
   await k.agent.idle();
@@ -862,7 +913,8 @@ test('a turn that failed is over: later starts do not wake Shiori again for it',
   assert.doesNotMatch(JSON.stringify(k.agent.transcript.messages), /\[annai\]/);
 });
 
-test('ask with options that are not a list of one to six strings is an error Shiori sees, and nothing is shown', async () => {
+test('ask with options that are not a list of one to six strings is an error Shiori sees, and nothing is shown', async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'ask', input: { question: 'Go?', options: 'yes' } }] },
     { toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['1', '2', '3', '4', '5', '6', '7'] } }] },
@@ -876,7 +928,8 @@ test('ask with options that are not a list of one to six strings is an error Shi
   for (const a of asks) assert.match(a.data.content, /options: a list of 1 to 6/);
 });
 
-test('a request cut off because the page is being left is not a failed turn: the next start answers the message', async () => {
+test('a request cut off because the page is being left is not a failed turn: the next start answers the message', async (t) => {
+  useClock(t);
   // Every try of the first request fails (the call retries a network failure), then the model answers.
   const cut = { delayMs: 30, error: 'network', message: 'Load failed' };
   const k = await agentKit([[...Array(1 + NETWORK_RETRIES.length).fill(cut), say('Yes, still here.')]]);
@@ -892,7 +945,8 @@ test('a request cut off because the page is being left is not a failed turn: the
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Yes, still here.']);
 });
 
-test('read sends a request copy, named by the turn that sends it, with both sizes; a later read reuses it', async () => {
+test('read sends a request copy, named by the turn that sends it, with both sizes; a later read reuses it', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/big.webp' } }] }, { toolCalls: [{ name: 'read', input: { path: '/trip/files/big.webp' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('Look');
@@ -908,7 +962,8 @@ test('read sends a request copy, named by the turn that sends it, with both size
   assert.equal(sent.path, '/trip/files/big.webp');
 });
 
-test("a model that can't see photos reads one: a model that can describes it, the part asked for too, and says it did (emulator pass, the user: 5b)", async () => {
+test("a model that can't see photos reads one: a model that can describes it, the part asked for too, and says it did (emulator pass, the user: 5b)", async (t) => {
+  useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }, { name: 'read', input: { path: '/trip/files/menu.webp', region: [0.5, 0.5, 1, 1] } }] },
     say('The fish is $32.'),
@@ -928,7 +983,8 @@ test("a model that can't see photos reads one: a model that can describes it, th
   assert.equal(JSON.stringify(k.requests[0].tools), JSON.stringify(k.sent['model-0'].at(-1).tools), 'the same tools: the cached prefix holds');
 });
 
-test("a model that can't see photos reads one, and no model here can: the result says so", async () => {
+test("a model that can't see photos reads one, and no model here can: the result says so", async (t) => {
+  useClock(t);
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] }, say('I can\'t see it.')]], { models: [{ input: ['text'] }], utility: [{ text: 'never' }] });
   const u = (await k.llm.config()).models['m-u'];
@@ -941,7 +997,8 @@ test("a model that can't see photos reads one, and no model here can: the result
   assert.equal(k.sent['model-u'], undefined);
 });
 
-test("describing a photo for a model that can't see it has a time limit, and stops with the turn; either way the result says so in words and the turn goes on (review A5)", async () => {
+test("describing a photo for a model that can't see it has a time limit, and stops with the turn; either way the result says so in words and the turn goes on (review A5)", async (t) => {
+  useClock(t);
   const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
   // A describer slower than the limit (30 s; 300 ms at secondMs 10): words, and her turn goes on.
@@ -967,7 +1024,8 @@ test("describing a photo for a model that can't see it has a time limit, and sto
   assert.equal((await stopped.events(['out.speak'])).length, 0);
 });
 
-test('read with a region sends a crop, kept in the conversation, and says which region was used', async () => {
+test('read with a region sends a crop, kept in the conversation, and says which region was used', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp', region: [0.75, 0.6, 0.25, 0.1] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   k.agent.send('What does the menu say?');
@@ -980,7 +1038,8 @@ test('read with a region sends a crop, kept in the conversation, and says which 
   assert.equal((await k.ws.list(k.trip, '/files/')).length, 1);
 });
 
-test('a photo the user sends goes in their message as a request copy, and comes back the same after a reload', async () => {
+test('a photo the user sends goes in their message as a request copy, and comes back the same after a reload', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp', region: [0, 0, 0.5, 0.5] }] });
@@ -993,7 +1052,8 @@ test('a photo the user sends goes in their message as a request copy, and comes 
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
 });
 
-test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer reaches her right after it', async () => {
+test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer reaches her right after it', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send('Hi');
@@ -1009,7 +1069,8 @@ test('a photo sent with no words says "(a photo)"; one sent while Shiori waits f
   assert.deepEqual(last.map((/** @type {any} */ p) => p.type), ['tool_result', 'text', 'image']);
 });
 
-test('a wake for a trip that is not open is written into its conversation, and answered when it opens (spec §7.3)', async () => {
+test('a wake for a trip that is not open is written into its conversation, and answered when it opens (spec §7.3)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Your flight pass: I put it in the plan.')]]);
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
@@ -1028,7 +1089,8 @@ test('a wake for a trip that is not open is written into its conversation, and a
   assert.deepEqual((await eventsIn(k, B, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight pass: I put it in the plan.']);
 });
 
-test('a wake kept for a trip that is not open is written by the time wake() settles', async () => {
+test('a wake kept for a trip that is not open is written by the time wake() settles', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Noted.')]]);
   const B = await createTrip(k.ws, { title: 'Kyoto' });
   // A slow disk: a write starts a moment later, so only waiting for it finds it written.
@@ -1041,14 +1103,16 @@ test('a wake kept for a trip that is not open is written by the time wake() sett
   await k.agent.idle();
 });
 
-test('a wake for the open trip, named by its scope, runs there as before', async () => {
+test('a wake for the open trip, named by its scope, runs there as before', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('Got it.')]]);
   k.agent.wake({ kind: 'file', scope: k.trip, text: 'The user added a file to the trip: /trip/files/a.pdf (application/pdf).' });
   await k.agent.idle();
   assert.equal(k.requests.length, 1);
 });
 
-test("show: a plugin's card type joins the tool's card, its data is checked, and an unknown type is refused (spec §16.4)", async () => {
+test("show: a plugin's card type joins the tool's card, its data is checked, and an unknown type is refused (spec §16.4)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [
     { name: 'show', input: { card: { type: 'tides', data: { low: '05:40' } } } },
     { name: 'show', input: { card: { type: 'tides', data: { low: 540 } } } },
@@ -1068,7 +1132,8 @@ test("show: a plugin's card type joins the tool's card, its data is checked, and
   assert.equal((await k.events(['out.show'])).length, 1);
 });
 
-test("show keeps only http(s) links, a photo and a booking inside the trip (or /me), and choices that are words (the fix pass's security review)", async () => {
+test("show keeps only http(s) links, a photo and a booking inside the trip (or /me), and choices that are words (the fix pass's security review)", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [
     { name: 'show', input: { card: { title: 'Bixby', links: [{ label: 'Map', url: 'https://maps.example' }, { label: 'Run', url: 'javascript:alert(1)' }], image: '/etc/hosts', booking: '/me/../trip/x.json', choice: ['Go', { no: 1 }] } } },
     { name: 'show', input: { card: { title: 'Kept', image: '/trip/files/bixby.webp', booking: '/trip/bookings/hotel.json' } } },
@@ -1082,7 +1147,8 @@ test("show keeps only http(s) links, a photo and a booking inside the trip (or /
   ]);
 });
 
-test("show and ask take only so much (the second fix pass): a title of 200 characters, a text of 4,000, 6 links and 6 choices of 100 characters, a URL of 2,000; a question of 500 and options of 100, else ask is refused", async () => {
+test("show and ask take only so much (the second fix pass): a title of 200 characters, a text of 4,000, 6 links and 6 choices of 100 characters, a URL of 2,000; a question of 500 and options of 100, else ask is refused", async (t) => {
+  useClock(t);
   const long = (/** @type {number} */ n) => 'x'.repeat(n);
   const links = [{ label: long(150), url: 'https://e.example/0' }, ...Array.from({ length: 6 }, (_, i) => ({ label: `L${i + 1}`, url: `https://e.example/${i + 1}` }))];
   const card = { title: long(300), text: long(5000), place: { name: long(300), address: 'Big Sur' }, links: [{ label: 'far', url: `https://e.example/${long(2100)}` }, ...links], choice: [long(150), ...Array.from({ length: 7 }, (_, i) => `C${i}`)] };
@@ -1108,7 +1174,8 @@ test("show and ask take only so much (the second fix pass): a title of 200 chara
   assert.equal((await k.events(['out.ask'])).length, 0);
 });
 
-test('show refuses a card with nothing to show, once what can\'t be shown is left out (the second fix pass)', async () => {
+test('show refuses a card with nothing to show, once what can\'t be shown is left out (the second fix pass)', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'show', input: { card: { links: [{ label: 'Run', url: 'javascript:alert(1)' }] } } }, { name: 'sleep', input: {} }] }]]);
   k.agent.send('Hi');
   await k.agent.idle();
@@ -1118,7 +1185,8 @@ test('show refuses a card with nothing to show, once what can\'t be shown is lef
   assert.equal((await k.events(['out.show'])).length, 0);
 });
 
-test('a wake already in the log that joins mid-turn (a review, "Koe answered the user") stays a line of the conversation: "woke for" gives it once, and later steps still read it (the second fix pass, M5)', async () => {
+test('a wake already in the log that joins mid-turn (a review, "Koe answered the user") stays a line of the conversation: "woke for" gives it once, and later steps still read it (the second fix pass, M5)', async (t) => {
+  useClock(t);
   const list = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
   const k = await agentKit([[{ delayMs: 200, ...list }, list, say('Nothing to add.')]]);
   k.agent.send('Look around');
@@ -1131,7 +1199,8 @@ test('a wake already in the log that joins mid-turn (a review, "Koe answered the
   assert.match(JSON.stringify(k.requests[2].messages), /\[annai\] a review: tell Koe what it got wrong; otherwise sleep/);
 });
 
-test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async () => {
+test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shiori's turn goes on", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'snap', input: {} }] }, say('That picture was broken.')]]);
   k.registry.add('test', 'tool', { name: 'snap', description: 'A picture.', input: { type: 'object' }, run: async () => ({ content: 'A picture.', images: [{ mediaType: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }] }) });
   k.agent.send('Show me the trail.');
@@ -1144,7 +1213,8 @@ test("8c-1: an image a tool returns that isn't base64 is that tool's error; Shio
   assert.deepEqual(k.agent.transcript.open(), []);
 });
 
-test('the cache lasts an hour unless the user chose five minutes; a model without the hour asks for five minutes (the user, 2026-10-18)', async () => {
+test('the cache lasts an hour unless the user chose five minutes; a model without the hour asks for five minutes (the user, 2026-10-18)', async (t) => {
+  useClock(t);
   const k = await agentKit([[say('One.'), say('Two.')], [say('Three.')]], { models: [{ cacheTtls: ['5m', '1h'] }, {}] });
   assert.equal((await k.agent.settings()).cacheTtl, '1h'); // never chosen
   k.agent.send('Hi');
@@ -1162,7 +1232,8 @@ test('the cache lasts an hour unless the user chose five minutes; a model withou
   assert.equal(k.agent.cacheState()?.ttlMs, 5 * 60_000);
 });
 
-test('a tool result with a photo and a PDF, for a model that reads PDFs but sees no photos: the photo in words, the PDF as it is (fix pass)', async () => {
+test('a tool result with a photo and a PDF, for a model that reads PDFs but sees no photos: the photo in words, the PDF as it is (fix pass)', async (t) => {
+  useClock(t);
   const { toBase64 } = await import('../../src/core/bytes.js');
   const k = await agentKit([[{ toolCalls: [{ name: 'claim', input: {} }] }, say('Seen.')]], { models: [{ input: ['text', 'pdf'] }] });
   k.registry.add('test', 'tool', { name: 'claim', description: 'Both.', input: { type: 'object' }, run: async () => ({
@@ -1177,7 +1248,8 @@ test('a tool result with a photo and a PDF, for a model that reads PDFs but sees
   assert.doesNotMatch(second, /"type":"image"/);
 });
 
-test('describing is never started once the turn is stopped: an already-stopped signal sends nothing to a model (fix pass)', async () => {
+test('describing is never started once the turn is stopped: an already-stopped signal sends nothing to a model (fix pass)', async (t) => {
+  useClock(t);
   const { toBase64 } = await import('../../src/core/bytes.js');
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([[say('x')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'never' }] });
