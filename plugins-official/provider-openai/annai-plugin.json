@@ -1,7 +1,7 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "api": 1,
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
   "category": "providers",
@@ -307,7 +307,7 @@
             "name": "OpenAI: GPT-4o mini TTS (Marin)",
             "tunables": {
               "voice": "marin",
-              "style": "Speak in a calm, warm and friendly tone.",
+              "style": "Speak in a young, cheerful and lively, yet calm and gentle tone.",
               "voices": [
                 "alloy",
                 "ash",

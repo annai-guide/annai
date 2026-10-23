@@ -205,3 +205,34 @@ test('the summary is asked for in a language named: the one the user wrote in la
   const { instruction } = await import('../../src/core/agent/compaction.js');
   assert.match(instruction('event 12', 'Spanish, the language the user wrote in last'), /as plain text, in Spanish, the language the user wrote in last\.$/);
 });
+
+test('with the languages setting the summary is written in the language it names, not guessed from the text (phase 2); with none it is guessed as before', async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const three = languageSettings({ languages: { spoken: ['en', 'zh', 'ja'] } }, 'en-US');
+  // A listed language the user wrote in last is it.
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか', three), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage('Where should we eat?', three), 'English, the language the user wrote in last');
+  // A short or unplaceable message, or one in a language not listed, is the first listed language: the guess is never taken for the user's.
+  assert.equal(summaryLanguage('OK', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  assert.equal(summaryLanguage('', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  // A fixed answer language is the summary's.
+  const fixed = languageSettings({ languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US');
+  assert.equal(summaryLanguage('Where should we eat?', fixed), 'Japanese, the language Shiori answers in');
+  // Nothing chosen (the browser's language is only a default): the guess, as before.
+  const none = languageSettings({}, 'en-US');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', none), 'Spanish, the language the user wrote in last');
+  assert.equal(summaryLanguage('', none), "English, the app's language (the user hasn't written anything yet)");
+});
+
+test('housekeeping reads the setting: a fixed answer language is the summary\'s, whatever the last message looks like (phase 2)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'ja' } });
+  for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language Shiori answers in\.$/);
+});

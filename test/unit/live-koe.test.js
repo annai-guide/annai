@@ -1218,3 +1218,40 @@ test('a new session waits afresh: the fresh session the watchdog made last time,
   }
 });
 
+
+// Phase 2: the languages you speak, told to a live session; a stray short transcript flagged, never a change of language.
+test('a live session is told the languages: the section in its instructions, the hints in input transcription (from the setting, once chosen)', async () => {
+  const k = await liveKit([]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const first = got(k, 'setup')[0].setup;
+    assert.match(first.systemInstruction.parts[0].text, /# Languages\nThe user speaks English\. Answer in the language they used\. Never switch to another language because of one word you're unsure of;/);
+    assert.deepEqual(first.inputAudioTranscription, {}, "nothing chosen: the browser's language is told in words, not as a hint that could mistranscribe another");
+    k.agent.hush('away');
+    await soon(async () => k.agent.live.state === 'closed');
+    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+    k.agent.tap();
+    await soon(async () => got(k, 'setup').length === 2);
+    const second = got(k, 'setup')[1].setup;
+    assert.match(second.systemInstruction.parts[0].text, /# Languages\nThe user speaks English, Chinese \(Mandarin\) and Japanese; they may switch between these\. Answer in the language they used\./);
+    assert.deepEqual(second.inputAudioTranscription, { languageCodes: ['en', 'zh-Hans', 'ja'] });
+  } finally {
+    await k.done();
+  }
+});
+
+test('a very short transcript in a language that is not listed is flagged in the trace, and still written: it is never a change of language, and nothing drops it (the user, 2026-10-23)', async () => {
+  const k = await liveKit([{ heard: '¿Qué?', said: 'Sorry, could you say that again?', audio: tone() }, { heard: 'Where should we eat tonight?', said: 'There is a taco stand ahead.', audio: tone() }]);
+  try {
+    await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+    await exchange(k, 'where-eat');
+    await exchange(k, 'where-eat', 2);
+    const [stray, whole] = await k.events(['heard']);
+    assert.deepEqual([stray.data.text, stray.data.strayLanguage], ['¿Qué?', 'Spanish']);
+    assert.deepEqual([whole.data.text, whole.data.strayLanguage], ['Where should we eat tonight?', undefined]);
+    assert.ok(read(k.agent.kokoro).join('|').includes('speech:¿Qué?'), 'the line is in the conversation as it was heard');
+  } finally {
+    await k.done();
+  }
+});

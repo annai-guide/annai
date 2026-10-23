@@ -10,6 +10,8 @@ import { ProviderError, explain } from '../llm/contract.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
+import { readAppSettings } from '../settings.js';
+import { languageSettings, modelLanguages } from '../languages.js';
 import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.js';
 
 /**
@@ -527,11 +529,13 @@ export class Halves {
 
   /** A live session's setup: Koe's live instructions and Shiori's personality; the conversation's last lines, the now block and the trip's view. */
   async #liveSetup() {
-    const s = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.koe.trip, personalityName: (await this.kokoro.settings()).personality });
+    const s = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.koe.trip, personalityName: (await this.kokoro.settings()).personality, locale: this.voice?.locale });
     const { place, activity } = this.sense?.() ?? {};
     const voice = this.voice?.on ? 'on: you speak aloud in this live session' : 'off: what you say shows as text';
     const tail = await this.#koeTail({ now: this.koe.now(), timeZone: this.koe.timeZone(), voice, online: this.koe.online(), reasons: ['a live session opened'], place, activity });
-    return { instructions: koeSystem(s, true), context: [await this.#recent(), tail].filter(Boolean).join('\n') };
+    // The protocol's own language fields (Gemini Live's transcription hints, OpenAI's transcription language) get the setting; the words are in the instructions.
+    const languages = languageSettings(await readAppSettings(this.ws), this.voice?.locale);
+    return { instructions: koeSystem(s, true), context: [await this.#recent(), tail].filter(Boolean).join('\n'), languages: modelLanguages(languages) };
   }
 
   /** The conversation's last 12 lines, for a live session that starts without a handle: annai's labels, every word quoted and escaped. */

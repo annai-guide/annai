@@ -38,7 +38,7 @@ test("a Gemini voice's page: Sulafat and a calm, warm style by default, Google's
     const voice = page.getByRole('combobox', { name: 'Voice' });
     const style = page.getByLabel('Style', { exact: true });
     await expect(voice).toHaveValue('Sulafat');
-    await expect(style).toHaveValue('calm, warm and friendly');
+    await expect(style).toHaveValue('young, cheerful and lively, yet calm and gentle');
     await expect(page.locator('#model-voices option')).toHaveCount(30);
     await expect(page.locator('#model-voices option[value="Achird"]')).toHaveCount(1);
     await expect(page.locator('#model-style-note')).toContainText('How she should sound');
@@ -47,7 +47,7 @@ test("a Gemini voice's page: Sulafat and a calm, warm style by default, Google's
     await expect(page.getByText('It works: that was this voice.')).toBeVisible({ timeout: 20_000 });
     const asked = () => s.bodies().filter((b) => b.response_format?.type === 'audio');
     expect(asked()[0].generation_config).toEqual({ speech_config: [{ voice: 'Sulafat' }] });
-    expect(asked()[0].input[0].content[0].annotations).toEqual([{ type: 'speech_metadata', style: 'calm, warm and friendly' }]);
+    expect(asked()[0].input[0].content[0].annotations).toEqual([{ type: 'speech_metadata', style: 'young, cheerful and lively, yet calm and gentle' }]);
     // Both fields save as they change, and the next sample sends them.
     await voice.fill('Achird');
     await leaveSaved(voice);
@@ -210,13 +210,13 @@ test("OpenAI's gpt-4o-mini-tts page: a style the user set before the Style field
     await page.reload();
     await still(page);
     await expect(page.getByLabel('Style', { exact: true })).toHaveValue('');
-    await expect(page.getByLabel('Style', { exact: true })).toHaveAttribute('placeholder', 'Speak in a calm, warm and friendly tone.');
+    await expect(page.getByLabel('Style', { exact: true })).toHaveAttribute('placeholder', 'Speak in a young, cheerful and lively, yet calm and gentle tone.');
     // The style that is the default is no override: put back, it follows the description again.
-    await page.getByLabel('Style', { exact: true }).fill('Speak in a calm, warm and friendly tone.');
+    await page.getByLabel('Style', { exact: true }).fill('Speak in a young, cheerful and lively, yet calm and gentle tone.');
     await leaveSaved(page.getByLabel('Style', { exact: true }));
     await page.getByRole('button', { name: 'Play a sample' }).click();
     await expect.poll(() => spoken().length).toBe(5);
-    expect(spoken()[4].instructions).toBe('Speak in a calm, warm and friendly tone');
+    expect(spoken()[4].instructions).toBe('Speak in a young, cheerful and lively, yet calm and gentle tone');
   } finally {
     await server.stop();
   }

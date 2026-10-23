@@ -20,11 +20,26 @@
  *   OpenAI refuses (its error names the create's event_id) ends that turn, and what waited goes;
  * - a session lasts at most an hour, with no handle to resume it: after renewMinutes, a goaway asks annai for a
  *   fresh one;
- * - usage comes with response.done, by modality, cached tokens apart.
+ * - usage comes with response.done, by modality, cached tokens apart;
+ * - languages (phase 2; OpenAI's Realtime reference and transcription guide, read 2026-10-22): input transcription is "not native to the
+ *   model" and takes `language` (one ISO-639-1 code, "will improve accuracy and latency") or, for gpt-transcribe and gpt-live-transcribe,
+ *   `languages` (several; "Don't send both"); the model itself hears the audio, so what keeps it from taking a filler or one foreign
+ *   word for a change of language is the instructions (OpenAI's prompting guide says so, and annai's setup carries the languages section).
+ *   A Whisper-style model is given a language only when the user speaks exactly one: the first of several would force a sentence in the
+ *   others into it.
  */
 
 /** annai's formats as OpenAI names them. @param {{ format: string, rate: number }} f */
 const wire = (f) => (f.format === 'pcm16' ? { type: 'audio/pcm', rate: f.rate } : { type: `audio/${f.format}` });
+/**
+ * What the transcription model is told of the user's languages (ISO-639-1 or -3 codes, once each, in order).
+ * @param {string} model @param {{ spoken?: { iso?: string }[] } | undefined} languages
+ */
+const hearing = (model, languages) => {
+  const codes = [...new Set((languages?.spoken ?? []).map((l) => l?.iso).filter(Boolean))];
+  if (/^gpt-(?:live-)?transcribe(?:-|$)/.test(model)) return codes.length ? { languages: codes } : {};
+  return codes.length === 1 ? { language: codes[0] } : {};
+};
 /** A number, or 0. @param {unknown} x */
 const n = (x) => Number(x) || 0;
 
@@ -288,7 +303,7 @@ export function activate(annai) {
           instructions: [setup.instructions, setup.context].filter(Boolean).join('\n\n'),
           output_modalities: ['audio'],
           audio: {
-            input: { format: wire(setup.audioIn), turn_detection: null, transcription: t.transcription ? { model: String(t.transcription) } : null, noise_reduction: t.noiseReduction ? { type: String(t.noiseReduction) } : null },
+            input: { format: wire(setup.audioIn), turn_detection: null, transcription: t.transcription ? { model: String(t.transcription), ...hearing(String(t.transcription), setup.languages) } : null, noise_reduction: t.noiseReduction ? { type: String(t.noiseReduction) } : null },
             output: { format: wire(setup.audioOut), ...(t.voice ? { voice: String(t.voice) } : {}) },
           },
           tools: setup.tools.map((/** @type {any} */ x) => ({ type: 'function', name: x.name, description: x.description, parameters: x.input })),
