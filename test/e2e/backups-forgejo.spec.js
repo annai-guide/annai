@@ -96,9 +96,11 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
     // The restored phone builds on that backup: its next one goes on top, with no warning.
-    await expect.poll(() => fj.commits(REPO).length, { timeout: 30_000 }).toBe(3);
-    const [restored, before] = fj.commits(REPO);
-    expect(restored.parents).toEqual([before.sha]);
+    // How many it makes is not fixed: the import and opening a trip are each a change, and each may be backed up on its own.
+    // Whatever it makes goes on top of the one before, in a line with no merge.
+    await expect.poll(() => fj.commits(REPO).length, { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+    const log = fj.commits(REPO);
+    for (const [i, commit] of log.slice(0, -1).entries()) expect(commit.parents, `commit ${i}`).toEqual([log[i + 1].sha]);
   } finally {
     await fj.stop();
   }
@@ -155,6 +157,9 @@ test('a place whose backups stopped is named on its card, by where it is', async
     await openApp(page);
     await addForgejo(page, fj);
     await expect(page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`)).toBeVisible();
+    // The first backup goes up by itself once the place is saved. Wait for it to land before the hold is written: a backup still
+    // running finishes by clearing the hold (and writes the same file), so a hold written meanwhile is lost, and no card comes.
+    await expect(page.getByText(/^Last backup/)).toBeVisible({ timeout: 30_000 });
     // The server stops taking its token, as it does once the token is deleted: what the next backup would meet.
     await page.evaluate(async () => {
       const at = (/** @type {string} */ p) => p;
