@@ -1,6 +1,6 @@
 import { validate } from '../schema.js';
 import { mergePatch, diffPatch } from '../patch.js';
-import { ValidationError } from '../workspace.js';
+import { ValidationError, NotFoundError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
 
@@ -372,6 +372,17 @@ export async function saveModel(ws, rec) {
     }
   }
   await ws.write(SYS_SETTINGS, path, rec, { author: 'user' });
+}
+
+/**
+ * Records what a Test found on a model: only `verified`, merged in under the model's file lock, so a field the user saved while
+ * the Test ran (it can take seconds) is not written back as it was. A model removed meanwhile stays removed.
+ * @param {Workspace} ws @param {string} id @param {Record<string, any>} verified
+ */
+export async function markVerified(ws, id, verified) {
+  await ws.patch(SYS_SETTINGS, modelPath(id), { verified }, { author: 'user' }).catch((/** @type {unknown} */ e) => {
+    if (!(e instanceof NotFoundError)) throw e;
+  });
 }
 
 /**
