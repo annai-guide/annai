@@ -1131,11 +1131,14 @@ export class Agent {
     const items = [];
     /** What the user wrote last, their last few messages, for the summary's language. @type {string[]} */
     const said = [];
+    /** Heard lines the gate set aside as chatter, whose words may be written down later. @type {Set<string>} */
+    const aside = new Set();
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const text = texts.text ?? e.data?.text; // a short text is kept in data
       // What the user wrote, and what they said aloud (a heard line with its words, or the words written down for it later).
-      const spoken = (e.type === 'heard' && !e.data?.dismissed) || e.type === 'heard.text';
+      if (e.type === 'heard' && e.data?.dismissed) aside.add(e.data.id); // talk among themselves: not the user's to this
+      const spoken = (e.type === 'heard' && !e.data?.dismissed) || (e.type === 'heard.text' && !aside.has(e.data?.of));
       if (((e.type === 'msg.user' && text !== '(a photo)') || (spoken && text !== NOT_TRANSCRIBED)) && typeof text === 'string' && text && said.push(text) > 3) said.shift();
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });

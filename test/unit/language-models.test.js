@@ -230,6 +230,28 @@ test('OpenAI Realtime: a session.update refused for the language fields is sent 
   }
 });
 
+test('OpenAI Realtime: a pre-ready close that has nothing to do with the language fields does not reopen with the hints off, even for a model that refused them before (review follow-up 5)', async () => {
+  const fresh = typeOf(activateOpenaiRealtime);
+  const refusing = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [], noLanguages: true });
+  const closing = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [], closeWith: { code: 3000, reason: 'invalid_request_error' } });
+  try {
+    const tunables = { transcription: 'gpt-transcribe' };
+    // One refusal for the language fields: remembered for the model.
+    const a = openLive({ type: fresh, endpoint: openaiEndpoint(`${refusing.origin}/v1`), model: openaiModel, key: OKEY, tunables: { ...fresh.tunables, ...tunables }, setup: { instructions: '', context: '', tools: [], languages: three }, trace: modelTrace(createMemoryStore(), SYS) });
+    await a.ready;
+    a.close();
+    await a.closed;
+    // A later session closed before it is ready for another reason: one connection, no second try.
+    const b = openLive({ type: fresh, endpoint: openaiEndpoint(`${closing.origin}/v1`), model: openaiModel, key: OKEY, tunables: { ...fresh.tunables, ...tunables }, setup: { instructions: '', context: '', tools: [], languages: three }, trace: modelTrace(createMemoryStore(), SYS) });
+    await assert.rejects(b.ready, (e) => e instanceof ProviderError);
+    assert.equal(closing.connections().length, 1, 'no reopen');
+    assert.equal(b.tunables.languageHints, true);
+  } finally {
+    await refusing.stop();
+    await closing.stop();
+  }
+});
+
 test('OpenAI Realtime: a refusal of the language fields that closes the socket opens once more without them (review item 10)', async () => {
   const s = await startRealtimeServer({ flavour: 'openai', key: OKEY, turns: [], noLanguages: 'close' });
   try {

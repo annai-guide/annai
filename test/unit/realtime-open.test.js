@@ -318,7 +318,7 @@ test('what a refusal taught the protocol is remembered for the model even when t
     reopen: (/** @type {number} */ code, /** @type {string} */ reason, /** @type {any} */ t) => (code === 1007 && /languageCodes/.test(reason) && t.languageHints !== false ? { ...t, languageHints: false } : null),
   });
   const p = newProvider('provider-test', { user: { name: 'Gemini', baseUrl: 'https://live.test', abilities: { live: { kind: 'realtime', type: 'echo-live' } } } });
-  const m = newModel(p.id, 'live', { user: { providerId: 'live-1' } });
+  const m = newModel(p.id, 'live', { user: { providerId: 'live-1', tunables: { voice: 'Kore' } } });
   await saveProvider(ws, p, [m]);
   await setKey(store, p.id, KEY);
   FakeSocket.made = [];
@@ -330,9 +330,13 @@ test('what a refusal taught the protocol is remembered for the model even when t
   await tick();
   FakeSocket.made[1].drop(1011, 'the server had a bad moment'); // the reopened attempt fails for another reason
   await assert.rejects(first.ready, (e) => e instanceof ProviderError);
+  // What the user edits on the model meanwhile still reaches the next session: only what the refusal taught is remembered, not a copy of all.
+  m.user.tunables = { voice: 'Achird' };
+  await saveProvider(ws, p, [m]);
   const second = await llm.live(m.id, setup);
   await tick();
   assert.deepEqual(opened.map((t) => t.languageHints), [undefined, false, false], 'the second session starts without the hints');
+  assert.deepEqual(opened.map((t) => t.voice), ['Kore', 'Kore', 'Achird'], 'and with the voice the user chose since (review follow-up 3)');
   second.close();
 });
 
