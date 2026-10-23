@@ -74,10 +74,23 @@ async function addGemini(page, key) {
 }
 
 /**
+ * Adds a model to Koe's list on the Models screen: "Koe · Realtime" where Koe has two lists (a realtime one and a classic one),
+ * else "Koe" (the build with one). @param {import('@playwright/test').Page} page @param {string} model its name in the list
+ */
+export async function addToKoe(page, model) {
+  await page.getByLabel(/^Add a model to Koe/).first().waitFor();
+  const name = (await page.getByLabel('Add a model to Koe · Realtime').count()) ? 'Koe · Realtime' : 'Koe';
+  const list = page.getByLabel(`Add a model to ${name}`);
+  await list.selectOption({ label: model });
+  await page.getByRole('button', { name: `Add to ${name}` }).click();
+  await list.locator('option', { hasText: new RegExp(`^${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).waitFor({ state: 'detached' });
+}
+
+/**
  * annai set up as a user would: the Google Gemini provider from the catalog, the key typed in, the free-tier switch, a trip,
  * voice on, and (the tap on Shiori is the caller's). With Gemini for Kokoro too, "Use the recommended models" fills Main and Koe
- * (Gemini Live first in Koe). With a stand-in Kokoro (an Anthropic Messages server at standIn), Custom provider is Main and Gemini
- * only Koe's: Live voice switched on and its model added to Koe, as the e2e tests do.
+ * (Gemini Live first in Koe, or in Koe · Realtime where Koe has two lists). With a stand-in Kokoro (an Anthropic Messages server at standIn),
+ * Custom provider is Main and Gemini only Koe's: Live voice switched on and its model added to Koe (Koe · Realtime), as the e2e tests do.
  * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string }} [o]
  */
 export async function setUp(page, key, log, { standIn } = {}) {
@@ -117,9 +130,7 @@ export async function setUp(page, key, log, { standIn } = {}) {
     await live.check();
     await live.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
     await page.goto('/#/models');
-    await page.getByLabel('Add a model to Koe').selectOption({ label: 'Gemini 3.8 Live' });
-    await page.getByRole('button', { name: 'Add to Koe' }).click();
-    await page.getByLabel('Add a model to Koe').locator('option', { hasText: /^Gemini 3\.8 Live$/ }).waitFor({ state: 'detached' });
+    await addToKoe(page, 'Gemini 3.8 Live');
     log('    providers: Kokoro on a stand-in, Koe on Gemini Live');
   } else {
     await addGemini(page, key);
