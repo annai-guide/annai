@@ -356,3 +356,16 @@ test("Sign in with OpenRouter's address is made before annai is told to expect i
     delete at.location;
   }
 });
+
+test('OpenRouter web search is priced per request (G4): a call with no reported cost counts its search at $0.007', async () => {
+  const { costOf } = await import('../../src/core/llm/cost.js');
+  const manifest = JSON.parse(await readFile(new URL('plugins-official/provider-openrouter/annai-plugin.json', root), 'utf8'));
+  const tools = [manifest.provider.abilities.chat.modelDefaults.providerTools[0]];
+  assert.equal(tools[0].id, 'openrouter-web-search');
+  assert.equal(tools[0].pricePerCall, 0.007);
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0, reasoning: 0, serverTools: { web_search_requests: 2 } };
+  assert.ok(Math.abs(/** @type {number} */ (costOf(usage, null, tools)) - 0.014) < 1e-9);
+  // Every copy of the tool in the manifest carries the price.
+  const all = JSON.stringify(manifest).match(/"usageKey":"web_search_requests"/g)?.length ?? 0;
+  assert.equal(JSON.stringify(manifest).match(/"pricePerCall":0\.007/g)?.length, all);
+});
