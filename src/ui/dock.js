@@ -3,8 +3,13 @@ import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
+import { readAppSettings } from '../core/settings.js';
+import { shownSettings } from '../core/shown.js';
+import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 
+/** How long her last words stay in the bubble once she has stopped, to read them. */
+const CAPTION_LINGER_MS = 2500;
 const SVG = 'http://www.w3.org/2000/svg';
 /** A line icon the dock's buttons show, drawn in the text colour. @param {string} d @param {string} [extra] the shapes beyond the path */
 function icon(d, extra = '') {
@@ -103,26 +108,32 @@ export function createDock(ctx) {
     if ((who === 'her' && s === 'speaking') || (who === 'you' && s === 'hearing')) avatar.setLevel(x, who);
   }));
   avatar.setState(ctx.agent.state.name);
-  // Voice (spec §10.5, §16.2): the chip, Captions, and a larger dock while voice is on.
+  // Voice (spec §10.5, §16.2): the chip, her words, and a larger dock while voice is on.
   const chip = ctx.voice ? voiceChip(ctx) : null;
   const live = ctx.live ? liveChip(ctx) : null;
   offs.push(chip?.dispose, live?.dispose);
-  // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22).
+  // Her words, in a bubble of their own that points down at her, and never like a box to type in (the user, 2026-10-22). It shows them while
+  // she speaks, with voice on, and lets go a moment after she stops; "Show what she says" in Settings → Voice turns it off (the user, 2026-10-23).
   const caption = h('p', { class: 'caption', 'aria-live': 'polite', hidden: true });
-  let lastSaid = '';
-  const showWords = h('button', {
-    class: 'chip', type: 'button', 'aria-expanded': 'false', hidden: !ctx.voice?.on,
-    onclick: () => {
-      caption.hidden = !caption.hidden;
-      caption.textContent = lastSaid || 'She hasn’t said anything yet.';
-      showWords.setAttribute('aria-expanded', String(!caption.hidden));
-    },
-  }, 'Captions');
-  offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let lingering;
+  const hideCaption = () => { clearTimeout(lingering); caption.hidden = true; };
+  /** Hides the bubble once she is not speaking: at once, if she is not now, else when she stops. */
+  const letGo = () => {
+    clearTimeout(lingering);
+    if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
+  };
+  offs.push(ctx.agent.on('event', async (/** @type {any} */ e) => {
     if (e.type !== 'out.speak' || !e.data?.voice) return;
-    lastSaid = String(e.data.text ?? '');
-    if (!caption.hidden) caption.textContent = lastSaid;
+    if (!shownSettings(await readAppSettings(ctx.ws)).showWords) return;
+    caption.textContent = String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '');
+    caption.hidden = !caption.textContent;
+    letGo();
   }));
+  offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
+    if (s.name === 'speaking') clearTimeout(lingering);
+    else if (!caption.hidden) letGo();
+  }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },
     h('span', { class: 'chip', role: 'status', text: 'Kokoro is working' }),
@@ -144,7 +155,7 @@ export function createDock(ctx) {
       h('span', { class: 'dock-end' },
         h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', title: 'Type', onclick: openTyping }, keyboardIcon()),
         pluginActions)),
-    h('div', { class: 'voice-row' }, chip?.el, live?.el, showWords, halves, pluginChips));
+    h('div', { class: 'voice-row' }, chip?.el, live?.el, halves, pluginChips));
   const refreshSlots = () => {
     cleanUp('dock');
     pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
@@ -163,8 +174,7 @@ export function createDock(ctx) {
   /** @param {{ on: boolean }} m */
   const layout = (m) => {
     el.classList.toggle('voice', m.on || large);
-    showWords.hidden = !m.on;
-    if (!m.on) caption.hidden = true;
+    if (!m.on) hideCaption();
   };
   offs.push(ctx.voice?.onChange(layout));
   if (ctx.voice) layout(ctx.voice.mode);

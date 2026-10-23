@@ -70,7 +70,8 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await expect(page.locator('.convo .you')).toHaveText(['Is Nepenthe open now?']);
     await expect(page.locator('.convo .system-line').filter({ hasText: 'Heard, not for Shiori' })).toHaveText('Heard, not for Shiori: Did you lock the car?');
     await expect(page.locator('.convo .shiori.said')).toHaveCount(2);
-    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toHaveCount(0);
+    // The halves' notes show by default (the user, 2026-10-23), as quiet lines between the bubbles.
+    await expect(page.locator('.convo .system-line').filter({ hasText: /Kokoro|Koe/ })).toContainText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(2);
   } finally {
     await server.stop();

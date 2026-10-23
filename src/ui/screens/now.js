@@ -3,6 +3,8 @@ import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
 import { distanceText } from '../../core/plan.js';
 import { storedTexts } from '../../core/agent/log.js';
+import { readAppSettings } from '../../core/settings.js';
+import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
@@ -160,7 +162,8 @@ export async function eventCard(ctx, e) {
   if (e.type === 'reminder') return h('p', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { text }));
-  // Said aloud: hidden unless asked (spec §2 principle 4).
+  // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
+  if (shownSettings(await readAppSettings(ctx.ws)).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { text }));
   const words = h('p', { text, hidden: true });
   const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, 'Show what she said');
   return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: 'Said aloud' }), show, words);
