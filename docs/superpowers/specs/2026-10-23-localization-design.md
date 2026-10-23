@@ -1,6 +1,6 @@
 # Localization: annai's screens in other languages, design
 
-Date: 2026-10-23. Status: a draft for the user. Nothing here is built, and the decisions only the user can make are listed at the end, each with a recommendation. The plan to build it is `docs/superpowers/plans/2026-10-23-localization.md`.
+Date: 2026-10-23. Status: accepted. On 2026-10-23 the user took all 11 recommendations in "Decisions for the user" as written. Building starts with L1. The plan to build it is `docs/superpowers/plans/2026-10-23-localization.md`.
 
 Builds on the phase2-language branch (spec §10.9, merging tonight): the languages the user speaks, the language Shiori answers in, `src/core/languages.js` (41 languages) and its words module, `LANGUAGE_WORDS`. Line numbers below are main at d0658c5 unless a branch is named.
 
@@ -482,6 +482,8 @@ Other changes: §5.2 gains `language` and `l10n`; §6.3 item 2's languages secti
 `docs/plugins.md` gets "Translations"; `docs/translating.md` is new; the README's "Languages" line, if any, says which.
 
 ## Decisions for the user
+
+Answered 2026-10-23: each as recommended.
 
 1. **English in the code, marked, instead of "all strings in one module".** §14.3's letter is one module; this design keeps each message in English where it is used (marked with the `t` tag) and gathers them into one translator's file per language. Keyed messages in a module would cost about 100 KiB of shell and move the words away from the code and the tests. *Recommended: marked English.*
 2. **Is the interface language its own setting?** *Recommended: yes, "annai's screens in", defaulting to the phone's language; not tied to "Languages you speak", which drives dictation.*

@@ -13,7 +13,7 @@
 
 **Tech Stack:** native ES modules, no build step, zero runtime dependencies; JSDoc checked by TypeScript 6.0.3; `node:test` on Node 26 (full ICU); Playwright 1.63.0 (Chromium as Pixel 7, WebKit as iPhone 15). `scripts/strings.mjs` uses the `typescript` package already in devDependencies for its parser; nothing is added.
 
-**Spec:** `docs/superpowers/specs/2026-10-23-localization-design.md` (the design; its "Decisions for the user" must be answered before L4 and L6, and decision 1 before L1). The main spec is `docs/superpowers/specs/2026-10-15-annai-design.md` (§10.9 and §14.3 after phase2-language).
+**Spec:** `docs/superpowers/specs/2026-10-23-localization-design.md` (the design; its "Decisions for the user" were all answered as recommended on 2026-10-23). The main spec is `docs/superpowers/specs/2026-10-15-annai-design.md` (§10.9 and §14.3 after phase2-language).
 
 **Starts from:** main **after** phase2-screens, phase2-language and pops-fix have merged (tonight, 2026-10-23). L1 needs phase2-language's `src/core/languages.js`; every step touches `sw.js` and `scripts/size.mjs`, which all three change.
 
