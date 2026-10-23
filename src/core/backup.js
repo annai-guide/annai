@@ -437,6 +437,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       return serial(async () => {
         if (signal?.aborted) throw stopped();
         const rec = await target(id);
+        // A cancel that came while the place's record was read has no listener to reach: look again, then listen, with nothing between.
+        if (signal?.aborted) throw stopped();
         const stop = new AbortController();
         const forward = () => stop.abort();
         signal?.addEventListener('abort', forward, { once: true });
@@ -450,8 +452,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
               emit();
             },
           }));
-          if (signal?.aborted) throw stopped();
-          await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size });
+          // A cancel as the download ends throws the backup away, and the trace says so.
+          const cut = Boolean(signal?.aborted);
+          await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size, ...(cut ? { stopped: true } : {}) });
+          if (cut) throw stopped();
           return blob;
         } finally {
           signal?.removeEventListener('abort', forward);

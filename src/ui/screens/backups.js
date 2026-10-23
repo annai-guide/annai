@@ -3,6 +3,7 @@ import { placeStatus, placeHref, newerText, withArticle, relTime, bytes, limitFr
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf } from '../auto-backup.js';
+import { leaveSignal } from '../import-state.js';
 
 /** What a place's test said, shown once on its screen as it opens again. @type {Map<string, string>} */
 const notes = new Map();
@@ -59,6 +60,8 @@ async function renderPlace(ctx, id) {
   const status = h('p', { class: 'sub', role: 'status', text: notes.get(id) ?? '' });
   notes.delete(id);
   const say = (/** @type {string} */ s) => { status.textContent = s; };
+  // A backup opened from here stops if the user leaves this screen before it has opened (the import screen takes over from there).
+  const leaving = leaveSignal();
   const live = h('p', { class: 'sub', text: placeStatus(t, ctx.backups.progress(id)) });
   const stop = h('button', { class: 'btn', type: 'button', hidden: !ctx.backups.progress(id), onclick: () => ctx.backups.stop(id) }, 'Stop');
   const off = ctx.backups.on(async () => {
@@ -160,7 +163,7 @@ async function renderPlace(ctx, id) {
       h('h2', { class: 'section', text: t.last ? 'A newer backup is here' : 'A backup is already here' }),
       h('p', { text: newerText(t, { where: whereOf(ctx, t), noun, tree: type.stores === 'tree' }) }),
       h('div', { class: 'acts' },
-        h('button', { class: 'btn pri', type: 'button', onclick: () => restoreFrom(ctx, t, hold.remote, say) }, 'Import it as a copy'),
+        h('button', { class: 'btn pri', type: 'button', onclick: () => restoreFrom(ctx, t, hold.remote, say, { signal: leaving.signal }) }, 'Import it as a copy'),
         h('button', { class: 'btn', type: 'button', onclick: () => backUpNow({ over: true }) }, `Back up this ${noun} over it`)))
     : hold?.kind === 'large'
       ? h('section', { class: 'panel', 'aria-label': 'A large backup' },
@@ -193,7 +196,7 @@ async function renderPlace(ctx, id) {
         list.replaceChildren(...all.slice(0, 10).map((/** @type {any} */ r) => h('li', { class: 'card' },
           h('span', { class: 'name', text: new Date(r.at).toLocaleString() }),
           h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, r.encrypted ? 'encrypted' : null, relTime(r.at)].filter(Boolean).join(' · ') }),
-          h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say) }, 'Open')))));
+          h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say, { signal: leaving.signal }) }, 'Open')))));
       } catch (e) {
         say(messageOf(e));
       }
