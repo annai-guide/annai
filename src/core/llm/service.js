@@ -532,7 +532,7 @@ export function createLlm({
      * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would; "not found" too, unless
      * it was a resume handle the provider no longer keeps, which Koe follows with a fresh session (the iPhone trace, 2026-10-22).
      * @param {string} modelId @param {Omit<import('./contract.js').LiveSetup, 'audioIn' | 'audioOut'> & Partial<import('./contract.js').LiveSetup>} setup
-     * @param {{ scope?: string, wake?: string, output?: { sampleRate: number, baseLatency?: number } }} [o] output: the phone's sound, traced as it is ready
+     * @param {{ scope?: string, wake?: string, output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} [o] output: the phone's sound, traced as it is ready
      * @returns {Promise<import('../realtime/open.js').LiveSession>}
      */
     async live(modelId, setup, { scope = SYS, wake, output } = {}) {

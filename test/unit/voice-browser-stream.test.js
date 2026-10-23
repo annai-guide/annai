@@ -15,6 +15,8 @@ function fakeNode() {
     port: {
       /** @type {((e: any) => void) | null} */
       onmessage: null,
+      closed: false,
+      close() { node.port.closed = true; },
       /** @param {any} m @param {any[]} [t] */
       postMessage(m, t = []) {
         posted.push(m);
@@ -24,19 +26,19 @@ function fakeNode() {
     disconnect() { node.disconnected = true; },
     /** @param {Partial<import('../../src/plugins/voice-browser/index.js').Report>} r */
     report(r) {
-      node.port.onmessage?.({ data: { frame: 0, played: 0, read: 0, written: 0, level: 0, playing: false, dry: false, done: false, holes: 0, holeFrames: 0, waited: 0, ...r } });
+      node.port.onmessage?.({ data: { frame: 0, played: 0, read: 0, had: 0, level: 0, playing: false, dry: false, done: false, holes: 0, holeFrames: 0, waited: 0, ...r } });
     },
   };
   return { node, posted, transfers };
 }
 
 /** A stream at 24 kHz into a 48 kHz context whose clock is clock.now (s). */
-function stream() {
+function stream(stallMs = 1000) {
   const { node, posted, transfers } = fakeNode();
   const clock = { now: 0 };
   /** @type {number[]} */
   const levels = [];
-  const s = workletStream(node, { rate: 24_000, sampleRate: 48_000, now: () => clock.now, onLevel: (x) => levels.push(x), running: Promise.resolve(true) });
+  const s = workletStream(node, { rate: 24_000, sampleRate: 48_000, now: () => clock.now, onLevel: (x) => levels.push(x), running: Promise.resolve(true), stallMs });
   return { s, node, posted, transfers, clock, levels };
 }
 
@@ -52,22 +54,22 @@ test('each piece goes to the worklet as a copy of its own, transferred; the call
   assert.deepEqual([...pcm], [1, 2, 3]);
 });
 
-test('queued() counts the pieces the worklet has not played past; run dry and faded out, none of what it had (its faded tail goes unplayed until more comes)', () => {
+test('queued() counts the pieces the worklet has not played past; run dry and faded out, none of what it had as it began to fade, and every piece after (review 3)', () => {
   const { s, node } = stream();
   s.push(new Int16Array(2400));
   s.push(new Int16Array(2400));
   s.push(new Int16Array(2400));
   assert.equal(s.queued(), 3, 'before any report: all of it is still to play');
-  node.report({ read: 2399, written: 7200, playing: true });
+  node.report({ read: 2399, had: 7200, playing: true });
   assert.equal(s.queued(), 3);
-  node.report({ read: 2400, written: 7200, playing: true });
+  node.report({ read: 2400, had: 7200, playing: true });
   assert.equal(s.queued(), 2);
-  s.push(new Int16Array(2400)); // pushed as it ran dry: the report below is from before the worklet had it
-  node.report({ read: 7156, written: 7200, dry: true });
-  assert.equal(s.queued(), 1, 'a piece pushed after what it had stays queued');
-  node.report({ read: 7300, written: 9600, playing: true });
+  s.push(new Int16Array(2400)); // it came as the last faded out: the worklet has it, waiting for its start buffer
+  node.report({ read: 7156, had: 7200, dry: true });
+  assert.equal(s.queued(), 1, 'what came after it ran dry stays queued, though the worklet has it');
+  node.report({ read: 7300, had: 9600, playing: true });
   assert.equal(s.queued(), 1);
-  node.report({ read: 9556, written: 9600, dry: true });
+  node.report({ read: 9556, had: 9600, dry: true });
   assert.equal(s.queued(), 0);
   s.push(new Int16Array(2400));
   assert.equal(s.queued(), 1, 'a new piece is queued at once, before any report (the microphone is deaf from it on)');
@@ -97,6 +99,7 @@ test("ended: done settles at the worklet's done report, with what it played and 
   assert.deepEqual(await s.done, { playedMs: 200, holes: 1, holeMs: 100, waitMs: 30, player: 'worklet' });
   assert.equal(node.disconnected, true);
   assert.equal(node.port.onmessage, null);
+  assert.equal(node.port.closed, true);
   assert.equal(s.queued(), 0);
 });
 
@@ -135,4 +138,36 @@ test("a sync's answer (the browser suite's handshake) is no report", () => {
   s.push(new Int16Array(2400));
   node.port.onmessage?.(/** @type {any} */ ({ data: { sync: 1 } }));
   assert.equal(s.queued(), 1);
+});
+
+test('started settles at the first report that it plays, after its start buffer: what goes with her sound starts there', async () => {
+  const { s, node } = stream();
+  let started = false;
+  s.started?.then(() => { started = true; });
+  s.push(new Int16Array(2400));
+  node.report({ frame: 128 });
+  await Promise.resolve();
+  assert.equal(started, false, 'waiting for its start buffer');
+  node.report({ frame: 256, playing: true });
+  await Promise.resolve();
+  assert.equal(started, true);
+  s.stop();
+});
+
+test('a player that tells nothing for a while (a context suspended mid-reply) is stopped: done, stalled, what was heard kept, nothing queued (review 5)', async () => {
+  const { s, node, posted, clock } = stream(60);
+  s.push(new Int16Array(4800));
+  node.report({ frame: 4800, played: 4800, read: 2400, playing: true });
+  clock.now = 0.1; // its clock went on 0 ms past the report: it stood still
+  const r = await s.done;
+  assert.equal(posted.at(-1), 'stop');
+  assert.deepEqual([r.stalled, r.playedMs, s.queued()], [true, 100, 0]);
+  assert.equal(node.disconnected, true);
+});
+
+test("a processor error stops it as a stall", async () => {
+  const { s, node } = stream();
+  s.push(new Int16Array(4800));
+  /** @type {any} */ (node).onprocessorerror();
+  assert.equal((await s.done).stalled, true);
 });
