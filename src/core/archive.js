@@ -569,11 +569,19 @@ export async function importArchive(store, opened, choices = {}) {
       const replaced = [];
       for (const p of plan) replaced.push(await replacedBy(t, p));
       const out = { held: new Set(), own: new Set() };
+      // A record an older annai kept without its bytes isn't held: read, checked and written again.
+      const whole = async (/** @type {string} */ hash) => (await t.getBlob(hash))?.data instanceof ArrayBuffer;
       for (const [hash, c] of content) {
         if (!(await t.hasBlob(hash))) continue;
-        out.held.add(hash);
-        if (!c.bytes && !(await t.blobSized(hash, zip.size(c.name)))) throw new ArchiveError(`This file is damaged: ${c.name} was changed.`);
+        if (!c.bytes && !(await t.blobSized(hash, zip.size(c.name)))) {
+          if (await whole(hash)) throw new ArchiveError(`This file is damaged: ${c.name} was changed.`);
+          continue;
+        }
+        // Vouched for: what it replaces names it already, as it is (spec §12.3). Otherwise its entry is read anyway,
+        // and the record is looked at too, so one without its bytes is written again.
         if (!c.bytes && (await vouched(t, hash, c.uses, replaced))) out.own.add(hash);
+        else if (!(await whole(hash))) continue;
+        out.held.add(hash);
       }
       return out;
     });

@@ -468,6 +468,28 @@ test('removing the provider deletes first, while its key is there; offline, what
   }
 });
 
+test("removing a trip, and Erase, forget the photos' hashes kept for uploads: removing means removing in memory too (re-verification, 3)", async () => {
+  const { photoHash } = await import('../../src/core/llm/call.js');
+  const c = await serviceKit();
+  const digest = crypto.subtle.digest.bind(crypto.subtle);
+  let digests = 0;
+  crypto.subtle.digest = /** @type {any} */ ((/** @type {any[]} */ ...a) => { digests++; return /** @type {any} */ (digest)(...a); });
+  try {
+    for (const forget of [() => c.llm.forgetScope(c.tripA), () => c.llm.forgetAll({ timeoutMs: 0 })]) {
+      await photoHash('a2lvdG8gcGhvdG8=');
+      digests = 0;
+      await photoHash('a2lvdG8gcGhvdG8=');
+      assert.equal(digests, 0, 'kept');
+      await forget();
+      await photoHash('a2lvdG8gcGhvdG8=');
+      assert.equal(digests, 1, 'forgotten');
+    }
+  } finally {
+    crypto.subtle.digest = digest;
+    await c.s.close();
+  }
+});
+
 test('Erase: forgetAll asks for every deletion first, for up to its time, and says what is left', async () => {
   const c = await serviceKit();
   try {

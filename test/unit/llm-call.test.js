@@ -347,6 +347,27 @@ test("a photo's hash is its bytes' own, worked out once while the same data is s
   assert.notEqual(await photoHash('b3RoZXI='), want);
 });
 
+test("photos' hashes asked for at once are counted once, so the cache keeps as many as its bound allows (re-verification, 2; V15b)", async () => {
+  const { photoHash, forgetPhotoHashes } = await import('../../src/core/llm/call.js');
+  const { toBase64 } = await import('../../src/core/bytes.js');
+  forgetPhotoHashes();
+  const digest = crypto.subtle.digest.bind(crypto.subtle);
+  let digests = 0;
+  crypto.subtle.digest = /** @type {any} */ ((/** @type {any[]} */ ...a) => { digests++; return /** @type {any} */ (digest)(...a); });
+  try {
+    const photo = (/** @type {number} */ i) => toBase64(new Uint8Array(750_000).fill(i)); // 1,000,000 characters
+    const held = Array.from({ length: 24 }, (_, i) => photo(i + 1)); // 24M characters: as many as fit with one more
+    for (const d of held) await photoHash(d);
+    await Promise.all(Array.from({ length: 6 }, () => photoHash(photo(200)))); // one new photo, asked for six times at once
+    digests = 0;
+    for (const d of held.slice(1)) await photoHash(d);
+    assert.equal(digests, 0, 'the newest are all still known');
+  } finally {
+    crypto.subtle.digest = digest;
+    forgetPhotoHashes();
+  }
+});
+
 test('uploads: each photo is uploaded once and sent by id; a failed upload sends the bytes and stops uploading', async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');

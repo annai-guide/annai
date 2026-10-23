@@ -678,3 +678,18 @@ test("an imported file's size is its content's, never what the manifest says, wh
   const [replaced] = (await importArchive(v.store, opened, { trips: { [opened.manifest.scopes[0].record.id]: 'replace' } })).trips;
   assert.equal(/** @type {any} */ (await v.ws.read(replaced, '/files/temple.jpg')).entry.size, real);
 });
+
+test("an honest import over a record an older annai left without its bytes: read, checked and written again, with or without its size (re-verification, 1; V13b)", async () => {
+  for (const sized of [false, true]) {
+    const v = await freshDevice();
+    const real = utf8('the real ticket');
+    const H = await sha256Hex(real);
+    await v.store.tx(['blobs'], 'readwrite', (t) => t.putBlob(/** @type {any} */ ({ hash: H, type: 'application/pdf', ...(sized ? { size: real.byteLength } : {}), data: undefined })));
+    const x = await freshDevice();
+    const t = await createTrip(x.ws, { title: 'T' });
+    await x.ws.write(t, '/files/t.pdf', real, { author: 'user', type: 'application/pdf' });
+    const { blob } = await exportArchive(x.store, { kind: 'trip', scopes: [t], include: PRESETS.backup, app: '0.1.0' });
+    const { trips } = await importArchive(v.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())));
+    assert.equal(await v.ws.readText(trips[0], '/files/t.pdf'), 'the real ticket', sized ? 'with its size' : 'without its size');
+  }
+});

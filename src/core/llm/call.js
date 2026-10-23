@@ -345,6 +345,12 @@ const photoHashes = new Map();
 let photoChars = 0;
 const PHOTO_CHARS = 24 * 2 ** 20;
 
+/** Forgets every photo's hash, and so its data: a trip removed, or Erase (removing means removing, in memory too). */
+export function forgetPhotoHashes() {
+  photoHashes.clear();
+  photoChars = 0;
+}
+
 /** The hash of a photo's bytes, by its base64 data: worked out once while it is sent again and again. @param {string} data */
 export async function photoHash(data) {
   const had = photoHashes.get(data);
@@ -354,8 +360,8 @@ export async function photoHash(data) {
     return /** @type {string} */ (had);
   }
   const hash = await sha256Hex(fromBase64(data));
+  if (!photoHashes.has(data)) photoChars += data.length; // asked for again while it was being worked out: counted once
   photoHashes.set(data, hash);
-  photoChars += data.length;
   for (const k of photoHashes.keys()) {
     if (photoChars <= PHOTO_CHARS || k === data) break;
     photoHashes.delete(k);
