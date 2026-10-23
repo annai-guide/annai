@@ -1,4 +1,4 @@
-import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts } from './packages.js';
+import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts, originsOf } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, COMPONENTS } from './ui-slots.js';
@@ -19,8 +19,9 @@ import { parsePartialJSON } from './llm/partial-json.js';
 import { retry } from './llm/retry.js';
 import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
+import { orderSearch, searchOffIn } from './web-search.js';
 import { mergePatch } from './patch.js';
-import { descOrigins, addressProblem } from './llm/provider-desc.js';
+import { addressProblem } from './llm/provider-desc.js';
 import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 import { toBase64, fromBase64 } from './bytes.js';
@@ -198,7 +199,7 @@ export class PluginHost {
       const m = await this.#stored(id);
       const skills = await this.#skillNames(id);
       const personalities = (Array.isArray(m.personalities) ? m.personalities : []).map((p) => String(p).split('/').pop()?.replace(/\.md$/, '') ?? '');
-      const origins = Array.isArray(s.origins) ? s.origins.map(String) : m.provider ? descOrigins(m.provider) : [];
+      const origins = Array.isArray(s.origins) ? s.origins.map(String) : originsOf(m);
       return { code: Boolean(m.entry), skills, personalities, origins };
     } catch {
       return none;
@@ -259,7 +260,7 @@ export class PluginHost {
       // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank.
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
-      ...(pkg.provider ? { origins: descOrigins(pkg.provider) } : {}), ...(pkg.manifest.provides ? { provides: pkg.manifest.provides } : {}),
+      ...(pkg.provider || pkg.search ? { origins: originsOf(pkg.manifest) } : {}), ...(pkg.manifest.provides ? { provides: pkg.manifest.provides } : {}),
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
@@ -753,12 +754,9 @@ export class PluginHost {
       if (!svc) throw new PluginError(id, `${what} isn't ready yet; use it after annai has started`);
       return svc;
     };
-    /** @type {string[]} */
-    let searchOrder = [];
-    const ordered = () => {
-      const all = registry.list('search');
-      return [...searchOrder.map((sid) => all.find((p) => p.id === sid)).filter(Boolean), ...all.filter((p) => !searchOrder.includes(p.id))];
-    };
+    /** @type {Record<string, any>} */
+    let searchWeb = {};
+    const ordered = () => orderSearch(registry.list('search'), searchWeb);
     const llm = Object.assign(
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
@@ -851,9 +849,11 @@ export class PluginHost {
         set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, SETTINGS(id), changes, { author: `plugin:${id}`, create: true }),
       }),
       searchProviders: ordered,
+      /** The search providers in the user's order (web.search, then keyed, free, knowledge), less those they switched off (web.searchOff). */
       searchProvidersAsync: async () => {
-        searchOrder = (await readAppSettings(this.ws)).web?.search ?? [];
-        return ordered();
+        searchWeb = (await readAppSettings(this.ws)).web ?? {};
+        const off = searchOffIn(searchWeb, ordered());
+        return ordered().filter((p) => !off.includes(p.id));
       },
       providers: Object.freeze({
         /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network; a realtime one open() and attach(). */

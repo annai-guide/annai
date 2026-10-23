@@ -20,11 +20,13 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const IMAGE_MAX = 5 * 1024 * 1024;
 
 export class McpError extends Error {
-  /** @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message */
-  constructor(kind, message) {
+  /** @type {number | undefined} */ status;
+  /** @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message @param {number} [status] the HTTP status a server answered with */
+  constructor(kind, message, status) {
     super(message);
     this.name = 'McpError';
     this.kind = kind;
+    if (status !== undefined) this.status = status;
   }
 }
 
@@ -45,15 +47,18 @@ export class McpClient {
   #connecting = null;
   /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
   #closed = false;
+  #stateless;
 
   /**
-   * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>> }} o
-   *   url: the server's address, or where to read it (it may hold a key, so annai keeps it in secrets)
+   * @param {{ url: string | (() => Promise<string>), server: string, auth: () => Promise<Record<string, string>>, stateless?: boolean }} o
+   *   url: the server's address, or where to read it (it may hold a key, so annai keeps it in secrets);
+   *   stateless: calls go with no session started first, one request each (annai's own search providers)
    */
-  constructor({ url, server, auth }) {
+  constructor({ url, server, auth, stateless = false }) {
     this.url = url;
     this.server = server;
     this.auth = auth;
+    this.#stateless = stateless;
   }
 
   /** Starts a session: initialize, then notifications/initialized. @param {{ fetch: Fetch, signal?: AbortSignal }} o */
@@ -160,7 +165,7 @@ export class McpClient {
    */
   async #ready(o) {
     if (this.#closed) throw this.#removed();
-    if (this.#version) return;
+    if (this.#version || this.#stateless) return;
     let c = this.#connecting;
     if (!c) {
       const stop = new AbortController();
@@ -237,12 +242,12 @@ export class McpClient {
     if (init) this.#session = res.headers.get('mcp-session-id') || null;
     if (id === null) {
       res.body?.cancel().catch(() => {});
-      if (!res.ok) throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`);
+      if (!res.ok) throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
       return null;
     }
     if (!res.ok) {
       res.body?.cancel().catch(() => {});
-      throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`);
+      throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
     }
     const unreadable = () => new McpError('answer', `The MCP server ${this.server} sent an answer annai can't read.`);
     if ((res.headers.get('content-type') ?? '').includes('text/event-stream')) {

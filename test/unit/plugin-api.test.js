@@ -61,6 +61,10 @@ test('search providers in the order the settings give', async () => {
   await updateAppSettings(k.ws, { web: { search: ['two', 'one'] } });
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['two', 'one']);
+  // Switched off, a provider is left out; one that is always on stays.
+  k.registry.add('three', 'search', { id: 'three', name: 'Three', always: true, kind: 'knowledge', search: async () => [] });
+  await updateAppSettings(k.ws, { web: { search: ['two', 'one'], searchOff: ['two', 'three'] } });
+  assert.deepEqual((await a.searchProvidersAsync()).map((/** @type {any} */ p) => p.id), ['one', 'three']);
 });
 
 test("annai.secrets.blank gives a copy with every secret annai keeps, and anything shaped like a credential, blanked in every string, however deep; other text and values are unchanged", async () => {

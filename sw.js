@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '2b42b6429cf3';
+const BUILD = '2050f76e9f9c';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -171,6 +171,7 @@ const SHELL = [
   '/src/core/voice/where.js',
   '/src/core/types.js',
   '/src/core/ui-slots.js',
+  '/src/core/web-search.js',
   '/src/core/workspace.js',
   '/src/core/zip.js',
   '/src/plugins/core-schemas/index.js',
@@ -184,6 +185,7 @@ const SHELL = [
   '/src/plugins/skills/index.js',
   '/src/plugins/voice-browser/capture-worklet.js',
   '/src/plugins/voice-browser/index.js',
+  '/src/plugins/web/free.js',
   '/src/plugins/web/index.js',
   '/src/ui/base.css',
   '/src/ui/cards.js',
@@ -255,6 +257,7 @@ const SHELL = [
   '/src/ui/screens/updates.js',
   '/src/ui/screens/voice.js',
   '/src/ui/screens/welcome.js',
+  '/src/ui/search-panel.js',
   '/src/ui/shell.js',
   '/src/ui/slots.js',
   '/src/ui/stamps.js',

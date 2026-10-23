@@ -2,13 +2,16 @@ import { VERSION } from '../../app/version.js';
 import { htmlToText } from '../../core/html-text.js';
 import { toBase64 } from '../../core/bytes.js';
 import { anySignal } from '../../core/signals.js';
+import { readAppSettings } from '../../core/settings.js';
+import { normalizeRows, restsOn, cooldowns, ROWS } from '../../core/web-search.js';
+import { FREE_PROVIDERS, KNOWLEDGE, exaRead } from './free.js';
 
 export const manifest = {
   id: 'web',
   name: 'Web tools',
   version: VERSION,
   api: 1,
-  description: 'fetch reads any web page, through Jina Reader when a site doesn\'t let web apps read it; web_search searches with Jina Search.',
+  description: 'fetch reads any web page, through Jina Reader or Exa when a site doesn\'t let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.',
 };
 
 const READER = 'https://r.jina.ai/';
@@ -18,9 +21,9 @@ const FILE_MAX = 10 * 2 ** 20;
 /** Each step's time limit, as the places tools' requests: a site that never answers is left for the next way to read it. */
 export const STEP_MS = { ms: 25_000 };
 
-/** fn with a signal the user's stop and STEP_MS both end; past the limit, an error marked late. @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn */
-async function step(call, fn) {
-  const late = AbortSignal.timeout(STEP_MS.ms);
+/** fn with a signal the user's stop and STEP_MS (or less, ms) both end; past the limit, an error marked late. @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn @param {number} [ms] */
+async function step(call, fn, ms = Infinity) {
+  const late = AbortSignal.timeout(Math.min(STEP_MS.ms, ms));
   try {
     return await fn(anySignal([call.signal, late]));
   } catch (e) {
@@ -102,7 +105,7 @@ export function activate(annai) {
       } else {
         why.push('an http address can only be read through a reader');
       }
-      // 2. Through the reader service.
+      // 2. Through Jina Reader.
       const k = await key();
       try {
         const got = await step(call, async (signal) => {
@@ -117,7 +120,20 @@ export function activate(annai) {
         if (call.signal.aborted) throw e;
         why.push(/** @type {any} */ (e)?.late ? "Jina Reader didn't answer in time" : "Jina Reader couldn't be reached");
       }
-      // 3. The model provider's own fetch tool, if one is on (spec §9.5).
+      // 3. Exa's reader, which needs no key, unless the user unticked Exa (Settings → Tools).
+      if (!((await readAppSettings(annai.files)).web?.searchOff ?? []).includes('exa') && !cooldowns.left('exa')) {
+        try {
+          const text = await step(call, (signal) => exaRead(href, from + TEXT_MAX + 1000, { fetch: call.fetch, signal }), FREE_PROVIDERS[0].limitMs);
+          cooldowns.clear('exa');
+          if (text.trim()) return piece(text, from, `Source: ${href} (read through Exa)`);
+          why.push('Exa found no text there');
+        } catch (e) {
+          if (call.signal.aborted) throw e;
+          if (restsOn(e)) cooldowns.rest('exa');
+          why.push(/** @type {any} */ (e)?.late ? "Exa didn't answer in time" : String(/** @type {any} */ (e)?.message ?? e));
+        }
+      }
+      // 4. The model provider's own fetch tool, if one is on (spec §9.5).
       try {
         const r = await call.llm.call({
           role: 'main', scope: call.scope, signal: call.signal, record: { tag: 'fetch' },
@@ -135,13 +151,16 @@ export function activate(annai) {
   };
 
   const jina = {
-    id: 'jina', name: 'Jina Search', needsKey: true,
-    /** @param {string} query @param {{ key: string | null, fetch: any, signal: AbortSignal }} c */
-    async search(query, { key: k, fetch: get, signal }) {
-      const res = await get(`${SEARCH}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: 'application/json', authorization: `Bearer ${k}`, 'x-respond-with': 'no-content' } });
-      if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Jina Search refused the key' : `Jina Search answered ${res.status}`);
+    id: 'jina', name: 'Jina Search', kind: /** @type {const} */ ('web'),
+    async ready() {
+      return (await key()) ? { ok: true } : { ok: false, why: 'needs a key (Settings → Tools)' };
+    },
+    /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
+    async search(query, { fetch: get, signal }) {
+      const res = await get(`${SEARCH}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: 'application/json', authorization: `Bearer ${await key()}`, 'x-respond-with': 'no-content' } });
+      if (!res.ok) throw Object.assign(new Error(res.status === 401 || res.status === 403 ? 'Jina Search refused the key' : `Jina Search answered ${res.status}`), { status: res.status });
       const body = await res.json();
-      return (body?.data ?? []).map((/** @type {any} */ d) => ({ title: String(d.title ?? ''), url: String(d.url ?? ''), snippet: String(d.description ?? d.content ?? '').slice(0, 300) }));
+      return (body?.data ?? []).map((/** @type {any} */ d) => ({ title: d.title, url: d.url, snippet: d.description ?? d.content }));
     },
   };
 
@@ -149,30 +168,47 @@ export function activate(annai) {
     name: 'web_search', group: 'Web',
     description: 'Search the web. Answers as TSV: title, url, snippet. fetch a result to read it.',
     input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
-    /** @param {{ query: string }} i @param {any} call */
+    /**
+     * The search providers in the user's order, each asked in turn (spec §7.2): one that isn't ready, or is resting after a
+     * failure, is passed over; one that fails or finds nothing hands on to the next; the first answer with rows wins.
+     * @param {{ query: string }} i @param {any} call
+     */
     async run(i, call) {
-      /** @type {string[]} */
+      /** @type {string[]} failures */
       const why = [];
-      const listed = annai.searchProvidersAsync ? await annai.searchProvidersAsync() : [];
-      for (const p of listed.length ? listed : [jina]) {
-        // The key is for this plugin's own Jina alone, never another provider by that name.
-        const k = p === jina ? await key() : null;
-        if (p.needsKey && !k) {
-          why.push(`${p.name} needs a key (Settings → Tools)`);
+      /** @type {string[]} passed over, with the reason */
+      const passed = [];
+      let empty = false;
+      for (const p of await annai.searchProvidersAsync()) {
+        const rest = cooldowns.left(p.id);
+        if (rest > 0) {
+          passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
+          continue;
+        }
+        const ready = p.ready ? await p.ready().catch((/** @type {any} */ e) => ({ ok: false, why: String(e?.message ?? e) })) : { ok: true };
+        if (!ready.ok) {
+          passed.push(`${p.name} ${ready.why ?? "isn't ready"}`);
           continue;
         }
         try {
-          const rows = await step(call, (signal) => p.search(i.query, { key: k, fetch: call.fetch, signal }));
-          return rows.length ? tsv(['title', 'url', 'snippet'], rows.map((/** @type {any} */ r) => [r.title, r.url, r.snippet])) : `Nothing found for "${i.query}".`;
+          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit: ROWS }), p.limitMs), i.query);
+          cooldowns.clear(p.id);
+          if (!rows.length) {
+            empty = true;
+            continue;
+          }
+          return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));
         } catch (e) {
           if (call.signal.aborted) throw e;
+          if (restsOn(e)) cooldowns.rest(p.id);
           why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
         }
       }
-      throw new Error(`Web search didn't work: ${why.join('; ')}. Or turn on your model's own search in Settings → Tools.`);
+      if (empty) return `Nothing found for "${i.query}".${why.length ? ` (${why.join('; ')}.)` : ''}`;
+      throw new Error(`Web search didn't work: ${[...why, ...passed].join('; ') || 'every search provider is switched off'}. Or turn on your model's own search in Settings → Tools.`);
     },
   };
 
-  const off = [annai.register('search', jina), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
+  const off = [...[jina, ...FREE_PROVIDERS, KNOWLEDGE].map((p) => annai.register('search', p)), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
   return () => off.forEach((fn) => fn());
 }

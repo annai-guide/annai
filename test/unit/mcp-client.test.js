@@ -289,3 +289,16 @@ test("minors 8: a server that can't be reached while the device is offline is a 
   }
   await assert.rejects(client('https://mcp.example/mcp').listTools({ fetch: down }), (e) => e instanceof McpError && e.kind === 'cors');
 });
+
+test('a stateless client calls a tool with one request: no initialize, no session, and the answer\'s HTTP status kept on a refusal', async () => {
+  const seen = /** @type {any[]} */ ([]);
+  const fetchOnce = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+    const body = JSON.parse(String(init.body));
+    seen.push(body);
+    return new Response(`event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: 'ok' }] } })}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
+  };
+  const c = new McpClient({ url: 'https://mcp.example/mcp', server: 'Free', auth: async () => ({}), stateless: true });
+  assert.deepEqual((await c.callTool('web_search', { query: 'q' }, { fetch: fetchOnce })).content, [{ type: 'text', text: 'ok' }]);
+  assert.deepEqual(seen.map((m) => m.method), ['tools/call']);
+  await assert.rejects(c.callTool('web_search', {}, { fetch: async () => new Response('slow down', { status: 429 }) }), (e) => e instanceof McpError && e.kind === 'server' && e.status === 429);
+});
