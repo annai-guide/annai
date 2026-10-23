@@ -13,7 +13,7 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * opened and closed as §10.8 says, never by itself.
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
- * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean,
+ * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
  *   tools: boolean, cut: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
@@ -42,11 +42,29 @@ const STALL_MS = 1500;
 const STALL_MIN_MS = 3000;
 const HEARD_AFTER_MS = 1000;
 /**
- * After the user's turn ends, her answer's voice waits until the microphone has been quiet this long since: a thinking pause
- * ended it, and they may go on. The realtime check (2026-10-22): its pause clip's 1.74 s gap goes on about 1.05 s after the turn's
- * end, and Gemini's first sound came 0.75 to 1.4 s after it (0.9 s, the median): 500 ms and 1 s let one in over the user.
+ * After the user's turn ends (in half-duplex), her answer's voice waits at least this long from that end (mayPlay), the user's pause
+ * setting before it: a thinking pause ended the turn, and they may go on. The realtime check (2026-10-22): its pause clip's 1.74 s gap
+ * goes on about 1.05 s after the turn's end, and Gemini's first sound came 0.75 to 1.4 s after it (0.9 s, the median): 500 ms and
+ * 1 s let one in over the user.
  */
-const HOLD_MS = 1200;
+export const HOLD_MS = 1200;
+/** Her waiting voice starts once the microphone has been quiet this long, or this much past the wait, whatever it hears. */
+const STILL_MS = 100;
+const CAP_MS = 1000;
+
+/**
+ * Whether her waiting voice may start (half-duplex only): never while speech has begun (held, or a turn: bounded by the turn); else
+ * once HOLD_MS have passed since the user's turn ended and the microphone is quiet now (a word's first frames come before the
+ * detector is sure of it), or CAP_MS past the later of that and her first word, whatever it hears. In full duplex the user cuts her
+ * by speaking, and in a noisy room (frames over the floor that never became speech since the turn ended) a wait would only let the
+ * noise's turns cut more answers: she plays at once, as before the wait.
+ * @param {{ hearing: boolean, stillMs: number, noisy: boolean } | null} input @param {{ duplex: boolean, sinceEndMs: number, sinceWordMs: number }} o
+ */
+export function mayPlay(input, { duplex, sinceEndMs, sinceWordMs }) {
+  if (!input || duplex || input.noisy) return true;
+  if (input.hearing || sinceEndMs < HOLD_MS) return false;
+  return input.stillMs >= STILL_MS || Math.min(sinceEndMs - HOLD_MS, sinceWordMs) >= CAP_MS;
+}
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent (the iPhone trace, 2026-10-22). */
 const SILENT_S = 8;
 
@@ -57,7 +75,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, tools: false, cut: false, logged: false, goesOn: false, calls: 0, done: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, tools: false, cut: false, logged: false, goesOn: false, calls: 0, done: false });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -743,16 +761,17 @@ export class LiveKoe {
   /** Koe's first real word: what was heard is written, and its voice starts (decision 11), once the user may have stopped. @param {Turn} t */
   #speak(t) {
     t.spoken = true;
+    t.wordAt = Date.now();
     this.#answered(false);
-    if (t.cut || this.#mayPlay()) return this.#play(t);
+    if (t.cut || this.#mayPlay(t)) return this.#play(t);
     this.#pending = t;
     this.#later();
   }
 
-  /** Whether her voice may start: no speech begun, the microphone quiet now (a word's first frames), and HOLD_MS since the user's turn ended. */
-  #mayPlay() {
-    const i = this.#input;
-    return !i || (!i.hearing && i.stillMs >= 100 && Date.now() - this.#endedAt >= HOLD_MS);
+  /** @param {Turn} t */
+  #mayPlay(t) {
+    const now = Date.now();
+    return mayPlay(this.#input, { duplex: this.#duplex, sinceEndMs: now - this.#endedAt, sinceWordMs: now - t.wordAt });
   }
 
   /** Her waiting voice starts once it may; speech the user began meanwhile starts their turn, which cuts it (#activity). */
@@ -761,7 +780,7 @@ export class LiveKoe {
     this.#holdTimer = setTimeout(() => {
       const t = this.#pending;
       if (!t) return;
-      if (!this.#mayPlay()) return this.#later();
+      if (!this.#mayPlay(t)) return this.#later();
       this.#pending = null;
       this.#play(t);
       this.#changed();

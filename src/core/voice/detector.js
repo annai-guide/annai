@@ -58,6 +58,8 @@ export class Detector {
   /** Quiet frames (nothing keepDb over the floor) in a row now, and the most in a row since reset(). */
   #still = 0;
   #gap = 0;
+  /** Frames over the floor's keep margin outside speech: noise that never became speech, and a word's first frames. */
+  #blips = 0;
   /** Frames heard, and the last one louder than markDb. */
   #count = 0;
   #marked = 0;
@@ -130,6 +132,11 @@ export class Detector {
   /** How long nothing has been keepDb over the floor, in ms (Infinity before a frame). */
   get stillMs() {
     return this.#count ? this.#still * FRAME_MS : Infinity;
+  }
+
+  /** Frames heard over the floor's keep margin outside speech, so far. */
+  get blips() {
+    return this.#blips;
   }
 
   /** The longest quiet since reset(), in ms: speech that went on through it is one run, begun before. */
@@ -210,6 +217,7 @@ export class Detector {
     this.level = Math.max(0, Math.min(1, over / 30));
     const s = this.#seg;
     if (!s) {
+      if (over > this.keepDb) this.#blips++;
       this.#recent.push(over > this.startDb && db > FLOOR_MIN_DB);
       if (this.#recent.length > 4) this.#recent.shift();
       this.#before.push(raw);

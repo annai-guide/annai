@@ -359,6 +359,48 @@ test('the user quiet after their turn: her answer plays once the microphone has 
   }
 });
 
+// realtime-fix2 review M1: the wait is capped, and only in half-duplex.
+test("a rattle at the microphone after the user's turn, never speech, never holds her answer past the cap", async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.5) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    // 10 ms clicks every 100 ms: never 3 loud frames in 4 (no speech), never 100 ms quiet.
+    const rattle = Float32Array.from({ length: 16_000 * 4 }, (_, i) => (i % 1600 < 160 ? Math.sin(i / 3) * 0.05 : 0.0005 * Math.sin(i * 7.1)));
+    const talking = talk(k, cat(quiet(0.5), await clip('where-eat'), quiet(0.8), rattle));
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 6000);
+    const ended = Date.now();
+    await soon(async () => k.platform.streams.length === 1, 3500);
+    assert.ok(Date.now() - ended <= 1200 + 1000 + 300, `played ${Date.now() - ended} ms after the turn ended`);
+    assert.equal(got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.activityStart).length, 1, 'the rattle made no turn');
+    await talking;
+  } finally {
+    await k.done();
+  }
+});
+
+test('with headphones (cutting in by voice on), her answer never waits: the user can go on over her', async () => {
+  const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone(0.5) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.platform.streamSpeed = 1;
+    k.platform.setDevices([{ kind: 'audioinput', label: 'AirPods Pro' }]);
+    k.agent.tap();
+    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+    await new Promise((r) => setTimeout(r, 50)); // the route read
+    const talking = talk(k, cat(quiet(0.5), await clip('where-eat'), quiet(0.9)));
+    await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 6000);
+    const ended = Date.now();
+    await soon(async () => k.platform.streams.length === 1, 3000);
+    assert.ok(Date.now() - ended < 400, `played ${Date.now() - ended} ms after the turn ended`);
+    await talking;
+  } finally {
+    await k.done();
+  }
+});
+
 // realtime-fix2 P2, the race: the user began 0.14 s before her note's answer sounded, and the whole question was lost.
 test("speech begun just before her answer comes holds its voice: the user's turn starts and cuts it, and nothing of it plays over them", async () => {
   const k = await liveKit([{ said: 'It is about twenty minutes down the road.', audio: tone(1) }, { heard: 'What time is sunset?', said: 'Around seven.', audio: tone(0.2) }], { pace: 1 });
