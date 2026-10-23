@@ -1,9 +1,9 @@
 {
   "id": "openai-responses",
   "name": "OpenAI Responses",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "api": 1,
   "entry": "index.js",
-  "description": "Talks to OpenAI's Responses API and to servers that speak it, keeping nothing on the server.",
+  "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
   "provides": { "endpoint-type": ["openai-responses"] }
 }

@@ -144,7 +144,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   if (keeping) {
     spec.keep = true;
     // A record that can't be read is a whole send.
-    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope, key: print }).catch(() => null) : null;
+    spec.kept = keeping.chain ? await keeping.kept.match(endpoint.id, spec.request.messages, { scope: keeping.scope, key: print, ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
   }
   /** @type {string | null} the turn the provider kept */
   let keptId = null;
@@ -267,7 +267,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   clearTimeout(t);
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
   await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
-    : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(spec.kept ? { after: spec.kept.id } : {}) }));
+    : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(type.keeps?.perModel ? { model: model.providerId } : {}), ...(spec.kept ? { after: spec.kept.id } : {}) }));
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
   const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
