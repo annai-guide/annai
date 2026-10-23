@@ -29,8 +29,16 @@ function showingHalves() {
  */
 export function latestCopy(hash, replaced) {
   let h = hash;
-  for (let i = 0; i < 10 && replaced.has(h); i++) h = /** @type {{ new: string }} */ (replaced.get(h)).new;
+  for (let i = 0; i < 10 && replaced.has(h); i++) {
+    const d = /** @type {any} */ (replaced.get(h));
+    h = d.new ?? d.was?.new;
+  }
   return h;
+}
+
+/** Each refused copy's replacement, by the refused copy's hash (one an import didn't carry is in data.was, spec §12.3). @param {any[]} events photo.replace entries */
+export function replacements(events) {
+  return new Map(events.map((e) => [e.data?.old ?? e.data?.was?.old, e.data]));
 }
 
 /**
@@ -109,15 +117,16 @@ export async function renderTalk(ctx) {
   /** @type {Map<string, HTMLElement>} heard speech whose words are still being written down */
   const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
-  const replaced = new Map((await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })))
-    .map((/** @type {any} */ e) => [e.data?.old, e.data]));
+  const replaced = replacements(await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['photo.replace'] })));
   /** @type {string[]} the photos' addresses, whose memory goes with the screen */
   const urls = [];
-  /** The photos the user sent, as Shiori was sent them, read for this conversation (reach.js); a tap opens one full size. @param {any} images */
-  const sentPhotos = async (images) => {
+  /** The photos the user sent, as Shiori was sent them, read for this conversation (reach.js); a tap opens one full size. @param {any} e their message */
+  const sentPhotos = async (e) => {
     const out = [];
-    for (const im of Array.isArray(images) ? images : []) {
-      const bytes = await blobBytes(ctx.store, scope, latestCopy(String(im?.hash ?? ''), replaced), { via: 'the conversation' });
+    for (const im of Array.isArray(e.data?.images) ? e.data.images : []) {
+      const copy = latestCopy(String(im?.hash ?? ''), replaced);
+      // As sent: read through the message that names it; a later copy, through the conversation.
+      const bytes = await blobBytes(ctx.store, scope, copy, copy === im?.hash ? { named: e } : { quiet: true });
       if (!bytes) continue;
       const url = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (bytes)], { type: String(im.mediaType ?? 'image/webp') }));
       urls.push(url);
@@ -131,7 +140,7 @@ export async function renderTalk(ctx) {
   const item = async (e) => {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
-    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(d.images)));
+    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(e)));
     if (e.type === 'out.speak') {
       if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
       // Said aloud: hidden unless asked (spec §2 principle 4, §16.1).

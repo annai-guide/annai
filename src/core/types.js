@@ -21,6 +21,7 @@
  * @property {(hash: string) => Promise<void>} deleteBlob
  * @property {(hash: string, scope: string, which?: { events?: boolean }) => Promise<boolean>} blobNamedIn  whether a file or a log entry
  *   (refs, data.old, data.new) of that scope names the blob (reach.js); with events false, its files alone. Needs files and events in the transaction.
+ * @property {(hash: string, size: number) => Promise<boolean>} blobSized  whether the blob is stored with exactly that size, without reading it.
  * @property {() => Promise<{ hash: string, size: number }[]>} listBlobs  every blob's hash and size, without reading its content.
  * @property {(hash: string, which?: { files?: boolean, events?: boolean, exceptScope?: string }) => Promise<boolean>} blobInUse  whether a file, or a log
  *   entry (its refs, or the file versions data.old and data.new), names the blob (spec §4.9). Needs files and events in the transaction.

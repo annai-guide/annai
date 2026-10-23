@@ -19,7 +19,7 @@ export async function reachable(t, scope, hash) {
 
 /**
  * Looks a hash up for a scope; refusals are logged. @param {Store} store @param {string} scope @param {unknown} hash
- * @param {{ named?: { scope: string, data?: any, refs?: string[] }, via?: string }} o @param {boolean} bytes
+ * @param {{ named?: { scope: string, data?: any, refs?: string[] }, via?: string, quiet?: boolean }} o @param {boolean} bytes
  */
 async function look(store, scope, hash, o, bytes) {
   if (!isName(hash)) return undefined;
@@ -28,15 +28,16 @@ async function look(store, scope, hash, o, bytes) {
   const got = await store.tx(own ? ['blobs'] : ['files', 'events', 'blobs'], 'readonly', async (t) => (own || (await reachable(t, scope, h))
     ? { found: bytes ? await t.getBlob(h) : await t.hasBlob(h) }
     : { held: await t.hasBlob(h) }));
-  if (got.held) await refused(store, scope, h, o.via);
+  if (got.held && !o.named && !o.quiet) await refused(store, scope, h, o.via);
   return got.found;
 }
 
 /**
  * Stored content by hash, read for a scope: undefined when not stored or not reached.
  * @param {Store} store @param {string} scope @param {unknown} hash
- * @param {{ named?: { scope: string, data?: any, refs?: string[] }, via?: string }} [o] named: a log entry as stored, of
- *   the scope, that names the hash, so nothing else is looked up; via: what asked, for the log of a refusal
+ * @param {{ named?: { scope: string, data?: any, refs?: string[] }, via?: string, quiet?: boolean }} [o] named: the log entry
+ *   as stored, of the scope, whose data has the hash: if it names it, nothing else is looked up, and an entry's own data
+ *   is never a refusal to log; quiet: no log either (a hash from the conversation's own entries); via: what asked
  * @returns {Promise<BlobRecord | undefined>}
  */
 export const readBlob = (store, scope, hash, o = {}) => /** @type {Promise<BlobRecord | undefined>} */ (look(store, scope, hash, o, true));

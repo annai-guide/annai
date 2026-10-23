@@ -200,7 +200,7 @@ async function forged(edit) {
   return new Uint8Array(await z.finish().arrayBuffer());
 }
 
-test("a forged archive's log naming a trip's photo it doesn't carry: the name is dropped, so the imported trip never reads it", async () => {
+test("a forged archive's log naming a trip's photo it doesn't carry: the name is moved out of what names content, so the imported trip never reads it", async () => {
   const v = await twoTrips(); // the device it is imported on: bPhoto is Big Sur's
   const file = await forged((_m, _e, log) => log((lines) => [...lines, { seq: lines.at(-1).seq + 1, ts: 9, type: 'tool.result', actor: 'system', data: { id: 'c', name: 'read', ok: true, images: [{ hash: v.bPhoto, mediaType: 'image/jpeg' }], old: v.bPhoto }, refs: [v.bPhoto] }]));
   const [mine] = (await importArchive(v.store, await peekArchive(file))).trips;
@@ -208,8 +208,11 @@ test("a forged archive's log naming a trip's photo it doesn't carry: the name is
   const planted = /** @type {any} */ (events.find((e) => e.data?.id === 'c'));
   assert.deepEqual(planted.refs, ['']);
   assert.equal(planted.data.old, null);
+  assert.deepEqual(planted.data.was, { old: v.bPhoto });
   assert.equal(await blobBytes(v.store, mine, v.bPhoto), null);
-  assert.deepEqual(events.find((e) => e.type === 'content.refused')?.data, { content: `${v.bPhoto.slice(0, 12)}…`, via: 'import' });
+  // Said quietly, on the import's own line: no error in the Trace (review, 12).
+  assert.equal(events.find((e) => e.type === 'content.refused'), undefined);
+  assert.equal(events.find((e) => e.type === 'import')?.data.uncarried, 1);
   // A Backup of the imported trip doesn't carry Big Sur's photo either.
   const { manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [mine], include: PRESETS.backup, app: '0.1.0' });
   assert.ok(![...manifest.files, ...manifest.blobs].some((x) => x.hash === v.bPhoto));
@@ -227,13 +230,13 @@ test("a forged archive whose file claims a trip's photo by its hash, with other 
   assert.deepEqual((await listTrips(v.store)).active.map((t) => t.title).sort(), ['Big Sur', 'Kyoto']);
 });
 
-test("an archive's own content, and content its maker no longer had, import as they were", async () => {
+test("an archive's own content imports as it was; content its maker no longer had is kept as what it was, naming nothing", async () => {
   const v = await twoTrips();
   const gone = 'e'.repeat(64); // a refused request copy, removed on the device that made the archive
   const file = await forged((_m, _e, log) => log((lines) => [...lines, { seq: lines.at(-1).seq + 1, ts: 9, type: 'photo.replace', actor: 'system', data: { old: gone, new: gone, mediaType: 'image/webp' } }]));
   const [mine] = (await importArchive(v.store, await peekArchive(file))).trips;
   const events = await v.store.tx(['events'], 'readonly', (t) => t.listEvents(mine));
-  assert.equal(events.find((e) => e.type === 'photo.replace')?.data.old, gone);
+  assert.deepEqual(events.find((e) => e.type === 'photo.replace')?.data, { old: null, new: null, was: { old: gone, new: gone }, mediaType: 'image/webp' });
   assert.equal(events.find((e) => e.type === 'content.refused'), undefined);
   assert.equal(await v.ws.readText(mine, '/notes/plan.md'), 'their plan');
   const photo = /** @type {any} */ (await v.ws.read(mine, '/files/temple.jpg'));
@@ -350,4 +353,121 @@ test("an entry that says it stored texts but names none reads as none (Step, 9)"
   const e = await v.store.tx(['events'], 'readwrite', (t) => t.appendEvent(v.b, { ts: 1, type: 'msg.user', actor: 'user', data: { stored: ['text', 'more'] }, refs: [''] }));
   const { storedTexts } = await import('../../src/core/agent/log.js');
   assert.deepEqual(await storedTexts(v.store, e), {});
+});
+
+// The import, again (review items 2, 3, 5b, 7, 12 and 14).
+const { Transcript } = await import('../../src/core/agent/transcript.js');
+const { latestCopy, replacements } = await import('../../src/ui/screens/talk.js');
+const { traceSummary } = await import('../../src/ui/screens/trace.js');
+/** A device with nothing on it yet. */
+const freshDevice = async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  return { store, ws };
+};
+
+test("an import names nothing it doesn't carry, held here or not: content the device gets later stays out of its reach, and goes with its owner (review, 2; probe Q1)", async () => {
+  const secret = utf8('photo of the victim, later');
+  const H = await sha256Hex(secret);
+  const file = await forged((_m, _e, log) => log((lines) => [...lines, { seq: lines.at(-1).seq + 1, ts: 9, type: 'tool.result', actor: 'system', data: { images: [{ hash: H, mediaType: 'image/jpeg' }] }, refs: [H] }]));
+  const v = await twoTrips();
+  const [planted] = (await importArchive(v.store, await peekArchive(file))).trips;
+  const own = await createTrip(v.ws, { title: 'Mine' });
+  await v.ws.write(own, '/files/me.jpg', secret, { author: 'user', type: 'image/jpeg' });
+  assert.equal(await blobBytes(v.store, planted, H), null);
+  const { manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [planted], include: PRESETS.backup, app: '0.1.0' });
+  assert.ok(!manifest.blobs.some((b) => b.hash === H));
+  await removeTrip(v.store, own);
+  assert.equal(await held(v.store, H), false, 'removing its owner frees it');
+});
+
+test("a refused photo copy its maker removed still maps to its replacement after an import, for the model and on the conversation's screen (review, 2)", async () => {
+  const x = await twoTrips();
+  const [c1, c2] = [utf8('copy one'), utf8('copy two')];
+  const [h1, h2] = [await sha256Hex(c1), await sha256Hex(c2)];
+  // As the loop logs it: the message sent copy one; a model refused it, copy two replaced it, and copy one went.
+  await record(x.store, x.a, { type: 'msg.user', actor: 'user', data: { text: 'look', images: [{ hash: h1, mediaType: 'image/webp' }] }, blobs: [{ bytes: c1, type: 'image/webp' }] });
+  await record(x.store, x.a, { type: 'photo.replace', actor: 'system', data: { old: h1, new: h2, mediaType: 'image/webp' }, blobs: [{ bytes: c2, type: 'image/webp' }] });
+  await x.store.tx(['blobs'], 'readwrite', (t) => t.deleteBlob(h1));
+  const { blob } = await exportArchive(x.store, { kind: 'trip', scopes: [x.a], include: PRESETS.backup, app: '0.1.0' });
+  const d = await freshDevice();
+  const [mine] = (await importArchive(d.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())))).trips;
+  const t = await Transcript.load(d.store, mine);
+  const sent = t.messages.flatMap((m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(sent.map((/** @type {any} */ p) => p.data), [toBase64(c2)]);
+  const events = await d.store.tx(['events'], 'readonly', (tx) => tx.listEvents(mine, { types: ['photo.replace'] }));
+  assert.equal(latestCopy(h1, replacements(events)), h2);
+});
+
+test("reading an entry's own data is quiet: what it names only in its data reads as missing and logs nothing, load after load (review, 5b; probe P5)", async () => {
+  const v = await twoTrips();
+  const file = await forged((_m, _e, log) => log((lines) => [...lines, { seq: lines.at(-1).seq + 1, ts: 9, type: 'msg.user', actor: 'user', data: { text: 'x', images: [{ hash: v.bPhoto, mediaType: 'image/jpeg' }] }, refs: [v.bPhoto] }]));
+  const [mine] = (await importArchive(v.store, await peekArchive(file))).trips;
+  const [e] = await v.store.tx(['events'], 'readonly', (t) => t.listEvents(mine, { types: ['msg.user'] }));
+  for (let load = 0; load < 3; load++) {
+    /** @type {any} a page load: a store annai hasn't logged anything for yet */
+    const page = { tx: (/** @type {any[]} */ ...a) => /** @type {any} */ (v.store.tx)(...a), close: () => {} };
+    assert.equal(/** @type {any} */ ((await resolveEvent(page, e)).images[0]).missing, true);
+  }
+  assert.equal((await refusals(v.store, mine)).length, 0);
+});
+
+test("a Share with its history, imported again on the same device: its older photo versions are left out quietly, and their history rows have no version to restore (review, 14; probe P7)", async () => {
+  const v = await twoTrips();
+  await v.ws.write(v.a, '/files/temple.jpg', utf8('photo of a temple, edited'), { author: 'user', type: 'image/jpeg' });
+  const { blob, manifest } = await exportArchive(v.store, { kind: 'trip', scopes: [v.a], include: PRESETS.backup, app: '0.1.0', share: { places: true } });
+  assert.ok(!manifest.blobs.some((b) => b.hash === v.aPhoto), 'a Share leaves older photos out');
+  const [t] = (await importArchive(v.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())))).trips;
+  assert.equal((await refusals(v.store, t)).length, 0);
+  assert.deepEqual((await v.ws.history(t, '/files/temple.jpg')).map((h) => h.new === null), [true, false]);
+  const [imported] = await v.store.tx(['events'], 'readonly', (tx) => tx.listEvents(t, { types: ['import'] }));
+  assert.equal(imported.data.uncarried, 1);
+  assert.equal(traceSummary(imported), "from a trip's file, annai 0.1.0 · 1 earlier version it didn't hold left out");
+});
+
+test("restoring everything with 'me' kept: the trips' names of the user's own photos stay, carried by the file's 'me' (review, 3; probes P4, P4b)", async () => {
+  const v = await twoTrips();
+  await record(v.store, v.a, { type: 'msg.user', actor: 'user', data: { text: 'my passport', images: [{ hash: v.mePhoto, mediaType: 'image/jpeg', path: '/me/files/passport.jpg' }] }, blobs: [{ hash: v.mePhoto, type: 'image/jpeg' }] });
+  const { blob } = await exportArchive(v.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  // The same device (P4), and a second phone that holds the same /me/ photo (P4b); "me" is kept, the default.
+  for (const d of [v, await twoTrips()]) {
+    const { trips } = await importArchive(d.store, await peekArchive(bytes));
+    const sent = (await d.store.tx(['events'], 'readonly', async (t) => (await Promise.all(trips.map((id) => t.listEvents(id, { types: ['msg.user'] })))).flat()));
+    assert.equal(sent.length, 1);
+    assert.deepEqual(sent[0].refs, [v.mePhoto]);
+    // The /me/ photo changes: the restored trip keeps the photo it sent, as the original does.
+    await d.ws.write(ME, '/files/passport.jpg', utf8('passport, renewed'), { author: 'user', type: 'image/jpeg' });
+    assert.ok(await blobBytes(d.store, sent[0].scope, v.mePhoto));
+  }
+});
+
+test('"Replace mine" reads none of the content the copy it replaces already has (review, 7)', async () => {
+  const v = await twoTrips();
+  for (let i = 0; i < 3; i++) await v.ws.write(v.a, `/files/p${i}.jpg`, utf8(`photo ${i}`), { author: 'user', type: 'image/jpeg' });
+  const { blob } = await exportArchive(v.store, { kind: 'trip', scopes: [v.a], include: PRESETS.backup, app: '0.1.0' });
+  const opened = await peekArchive(new Uint8Array(await blob.arrayBuffer()));
+  /** @type {string[]} */
+  const read = [];
+  const was = opened.zip.read.bind(opened.zip);
+  opened.zip.read = async (/** @type {string} */ name) => { read.push(name); return was(name); };
+  const { trips, archived } = await importArchive(v.store, opened, { trips: { [opened.manifest.scopes[0].record.id]: 'replace' } });
+  assert.deepEqual(archived, [v.a]);
+  assert.deepEqual(read.filter((n) => !n.endsWith('events.jsonl')), []);
+  assert.equal(await v.ws.readText(trips[0], '/files/p2.jpg'), 'photo 2');
+});
+
+test("a held hash whose entry is another size is refused before the entry is read (review, 7)", async () => {
+  const v = await twoTrips();
+  const file = await forged((manifest) => {
+    manifest.files.find((/** @type {any} */ x) => x.path === '/notes/plan.md').hash = v.bPhoto; // "their plan": not the photo's size
+  });
+  const opened = await peekArchive(file);
+  /** @type {string[]} */
+  const read = [];
+  const was = opened.zip.read.bind(opened.zip);
+  opened.zip.read = async (/** @type {string} */ name) => { read.push(name); return was(name); };
+  await assert.rejects(importArchive(v.store, opened), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
+  assert.ok(!read.some((n) => n.endsWith('/notes/plan.md')), read.join());
 });

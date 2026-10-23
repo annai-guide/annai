@@ -161,14 +161,16 @@ export class Transcript {
     } else if (e.type === 'photo.replace') {
       // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy. When that
       // copy was itself replaced later (its bytes gone), the swap still happens, so the next one finds it.
+      // A copy an import didn't carry is kept as data.was (spec §12.3).
       const copy = r.images[0];
+      const [old, next] = [d.old ?? d.was?.old, d.new ?? d.was?.new];
       this.messages = this.messages.map((m) => ({
         role: m.role,
         parts: m.parts.map((p) => {
-          if (p.type !== 'image' || p.hash !== d.old) return p;
+          if (p.type !== 'image' || p.hash !== old) return p;
           const { missing, ...rest } = p;
           const data = copy?.type === 'image' ? copy.data : '';
-          return { ...rest, hash: d.new, mediaType: d.mediaType, data, ...(data ? {} : { missing: true }) };
+          return { ...rest, hash: next, mediaType: d.mediaType, data, ...(data ? {} : { missing: true }) };
         }),
       }));
       return;

@@ -85,6 +85,17 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobNamedIn(/** @type {any} */ (undefined), 'trip-m')), false);
   });
 
+  test('blobSized: whether a blob is stored with exactly that size, without reading it (an import checks held content, backlog-hash)', async () => {
+    const s = await makeStore();
+    await s.tx(['blobs'], 'readwrite', async (t) => {
+      await t.putBlob({ hash: 'b', type: 'text/plain', size: 5, data: buf('hello') });
+      await t.putBlob({ hash: 'a', type: 'text/plain', size: 5, data: buf('olleh') });
+      await t.putBlob({ hash: 'c', type: 'text/plain', size: 2, data: buf('hi') });
+    });
+    const sized = (/** @type {string} */ h, /** @type {number} */ n) => s.tx(['blobs'], 'readonly', (t) => t.blobSized(h, n));
+    assert.deepEqual(await Promise.all([sized('b', 5), sized('a', 5), sized('c', 2), sized('b', 2), sized('c', 5), sized('z', 5)]), [true, true, true, false, false, false]);
+  });
+
   test('scopesWithData: each scope id that has files or log entries, once, in order, with a record or not', async () => {
     const s = await makeStore();
     await s.tx(['scopes', 'files', 'events'], 'readwrite', async (t) => {

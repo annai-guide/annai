@@ -207,6 +207,8 @@ function makeTx(t) {
       for (const name of ['refs', 'old', 'new']) if (await named(ev.index(name))) return true;
       return false;
     },
+    // The blobs of that size, by the size index: a record is never read whole for its size.
+    blobSized: async (hash, size) => (await req(os('blobs').index('size').getAllKeys(IDBKeyRange.only(size)))).includes(hash),
     listBlobs: () => new Promise((res, rej) => {
       /** @type {{ hash: string, size: number }[]} */
       const out = [];

@@ -104,7 +104,18 @@ function historyView(ctx, id, path, history, current) {
     h('h2', { class: 'section', text: 'History' }),
     h('ol', { class: 'history' }, ...history.slice().reverse().map((v) => h('li', {},
       h('span', { text: `${v.type === 'file.delete' ? 'Deleted' : 'Saved'} by ${v.actor} ${relTime(v.ts)}` }),
-      v.type === 'file.write' && v.new !== current
-        ? h('button', { class: 'btn', type: 'button', onclick: async () => { await ctx.ws.restore(id, path, v.new, { author: 'user' }); await ctx.render(); ctx.notices.toast('Version restored'); } }, 'Restore this version')
-        : v.new === current ? h('span', { class: 'sub', text: 'Current' }) : null))));
+      // A version an import didn't carry has no content here (spec §12.3), and one may be gone: said, never thrown.
+      v.type === 'file.write' && !v.new ? h('span', { class: 'sub', text: 'Not kept in this copy' })
+        : v.type === 'file.write' && v.new !== current
+          ? h('button', { class: 'btn', type: 'button', onclick: async () => {
+            try {
+              await ctx.ws.restore(id, path, v.new, { author: 'user' });
+            } catch {
+              ctx.notices.toast("That version isn't stored on this device.");
+              return;
+            }
+            await ctx.render();
+            ctx.notices.toast('Version restored');
+          } }, 'Restore this version')
+          : v.new === current ? h('span', { class: 'sub', text: 'Current' }) : null))));
 }
