@@ -5,7 +5,7 @@ import { STEPS as INSTALL_STEPS, installButton } from '../install.js';
 import { platform, isStandalone } from '../platform.js';
 import { readyFeatured } from '../provider-setup.js';
 import { officialPlugins } from '../../core/llm/official.js';
-import { freeTicks } from '../search-panel.js';
+import { freeTicks, WELCOME_SEARCH } from '../search-panel.js';
 
 /**
  * The welcome (the user, 2026-10-18): six short steps in annai's own words, not Shiori's, at
@@ -15,8 +15,12 @@ import { freeTicks } from '../search-panel.js';
  * it isn't, then Settings → Models with the catalog's featured provider's sign-in (spec §9.8).
  */
 
-const TITLES = ['Welcome to annai', 'What annai can do', 'Your keys and your data', 'The fine print', 'Searching the web', 'Get started'];
-const LAST = TITLES.length;
+/** The steps, each by an id its body is found by (not its number, so a step added between them moves nothing). */
+const STEPS = /** @type {const} */ ([['welcome', 'Welcome to annai'], ['can', 'What annai can do'], ['keys', 'Your keys and your data'], ['fine', 'The fine print'], ['search', 'Searching the web'], ['start', 'Get started']]);
+const TITLES = STEPS.map((s) => s[1]);
+const LAST = STEPS.length;
+/** @param {number} n */
+const idOf = (n) => STEPS[n - 1][0];
 
 /** @param {number} n */
 const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
@@ -24,9 +28,10 @@ const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
 /** @param {string} lead @param {string} text */
 const can = (lead, text) => h('li', {}, h('strong', { text: lead }), ' ', text);
 
-/** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (step 5) @returns {any[]} */
+/** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (the search step) @returns {any[]} */
 function body(n, ctx, ticks) {
-  if (n === 1) {
+  const id = idOf(n);
+  if (id === 'welcome') {
     return [
       h('p', { class: 'lead', text: 'annai is a free, open-source travel guide that lives on your phone.' }),
       h('p', { text: 'Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.' }),
@@ -34,7 +39,7 @@ function body(n, ctx, ticks) {
       h('p', { class: 'sub', text: 'annai (案内) is Japanese for "guidance; showing someone around".' }),
     ];
   }
-  if (n === 2) {
+  if (id === 'can') {
     return [h('ul', { class: 'can' },
       can('Plans and bookings.', 'Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.'),
       can('On the road.', "annai follows where you are with GPS, and reminds you at the right time and place: when to leave, when you've arrived, when you're running late."),
@@ -45,14 +50,14 @@ function body(n, ctx, ticks) {
       can('Plugins and MCP servers.', 'Skills, tools and screens that others make.'),
       can('Recap and replay.', 'Afterwards, a recap of the trip, and its route played back.'))];
   }
-  if (n === 3) return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
-  if (n === 4) return finePrint();
-  if (n === 5) {
+  if (id === 'keys') return [h('p', { class: 'lead', text: 'annai is built so your keys and data stay yours. Here is exactly how, and where that stops.' }), ...keysAndData('h2')];
+  if (id === 'fine') return finePrint();
+  if (id === 'search') {
     return [
       h('p', { class: 'lead', text: 'Shiori can search the web as soon as you start, through free services. No key, nothing to set up.' }),
       h('p', { text: 'These are on. Untick any you would rather not use.' }),
       ticks,
-      h('p', { class: 'sub', text: "Only the words she searches for go to the ones ticked, nothing of your trips. They're free tiers that can change or stop. You can change this any time in Settings → Tools." }),
+      h('p', { class: 'sub', text: WELCOME_SEARCH }),
     ];
   }
   return start(ctx);
@@ -125,7 +130,7 @@ export async function renderWelcome(ctx, route) {
   const screen = h('div', { class: 'screen welcome', dataset: { step: String(n) } },
     h('p', { class: 'step', text: `${n} of ${LAST}` }),
     title,
-    ...body(n, ctx, n === 5 ? await freeTicks(ctx.ws) : null),
+    ...body(n, ctx, idOf(n) === 'search' ? await freeTicks(ctx.ws) : null),
     h('div', { class: 'acts' }, ...nav));
   // Once the shell has put the step on screen, its heading takes the focus, so a screen reader starts there.
   setTimeout(() => { if (title.isConnected) title.focus(); }, 0);

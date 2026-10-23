@@ -61,7 +61,7 @@ export async function renderTools(ctx) {
     h('section', { class: 'panel', 'aria-label': 'Web' },
       h('h2', { class: 'section', text: 'Web' }),
       savedRadios('Search via', [['auto', "Your model's own search when it has one, else annai's providers (below)"], ['provider', "Your model's own search"], ['annai', "annai's providers (below)"], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
-      savedRadios('Fetch via', [['annai', 'annai: directly, then Jina Reader, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
+      savedRadios('Fetch via', [['annai', 'annai: directly, then Jina Reader, then Exa, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
       field('Jina key', key),
       hasKey
         ? h('p', { class: 'sub', text: 'A key is set. It stays on this device and is never shown again.' })
