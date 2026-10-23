@@ -14,8 +14,9 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
- *   tools: boolean, cut: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
- *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
+ *   heard or written
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string }>, visible: () => boolean,
@@ -75,7 +76,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, tools: false, cut: false, logged: false, goesOn: false, calls: 0, done: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -130,8 +131,10 @@ export class LiveKoe {
   #t = null;
   /** @type {Turn | null} */
   #sounding = null;
-  /** Koe's turn with a word, its voice waiting while the user may still speak (HOLD_MS). @type {Turn | null} */
+  /** Koe's turn with a word, its voice waiting while the user may still speak (HOLD_MS); and its turns that came after, in order. @type {Turn | null} */
   #pending = null;
+  /** @type {Turn[]} */
+  #queue = [];
   /** @type {any} */
   #holdTimer = null;
   /** @type {Turn | null} */
@@ -184,13 +187,13 @@ export class LiveKoe {
 
   /** Opening or reconnecting, Koe's turn or voice, a tool, or the user speaking. */
   get busy() {
-    return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#tools || this.#input?.active || (this.state === 'open' && !this.#s));
+    return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#queue.length || this.#tools || this.#input?.active || (this.state === 'open' && !this.#s));
   }
 
   /** The dock's state, as a half's (spec §16.3). @returns {import('../agent/loop.js').State} */
   get view() {
     const name = this.state === 'opening' ? 'thinking' : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : this.#t || this.#pending ? 'thinking' : this.listening ? 'listening' : 'sleeping';
+      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length ? 'thinking' : this.listening ? 'listening' : 'sleeping';
     return { name, label: LABELS[name] };
   }
 
@@ -201,7 +204,7 @@ export class LiveKoe {
   }
 
   #changed() {
-    if (this.#closing && !this.#sounding && !this.#t) {
+    if (this.#closing && !this.#sounding && !this.#t && !this.#pending && !this.#queue.length) {
       const why = this.#closing;
       this.#closing = null;
       return this.close(why);
@@ -411,7 +414,7 @@ export class LiveKoe {
     if (!forget && s?.handle) this.#handle = s.handle;
     if (why === 'tap') this.#handle = undefined; // the user stopped it: the next one starts fresh, with the last lines
     this.voiced = this.#rotate = false;
-    this.#cut();
+    this.#cut(true);
     this.#t = null;
     this.#flushHeard(false);
     this.#hear = null;
@@ -431,13 +434,14 @@ export class LiveKoe {
    * AirPods come out, review S1). @param {string} why
    */
   closeSoon(why) {
-    if (this.state === 'closed' || !(this.#sounding || this.#t)) return this.close(why);
+    if (this.state === 'closed' || !(this.#sounding || this.#t || this.#pending)) return this.close(why);
     this.#closing = why;
     const input = this.#input;
     this.#input = null;
     this.listening = false;
     clearTimeout(this.#stall);
     input?.stop();
+    if (this.#pending) this.#release(); // nobody can go on now: what waited is said at once
     this.#changed();
   }
 
@@ -664,7 +668,7 @@ export class LiveKoe {
       this.#turnAt = Date.now();
       this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
-      if (this.#sounding || this.#t || this.#pending) cut = this.#cut();
+      if (this.#sounding || this.#t || this.#pending || this.#queue.length) cut = this.#cut();
       this.#flushHeard(false);
       this.#hear = hearing();
     } else {
@@ -763,6 +767,7 @@ export class LiveKoe {
     t.spoken = true;
     t.wordAt = Date.now();
     this.#answered(false);
+    if (this.#pending || this.#sounding) return void this.#queue.push(t); // after the one before it
     if (t.cut || this.#mayPlay(t)) return this.#play(t);
     this.#pending = t;
     this.#later();
@@ -778,13 +783,28 @@ export class LiveKoe {
   #later() {
     clearTimeout(this.#holdTimer);
     this.#holdTimer = setTimeout(() => {
-      const t = this.#pending;
-      if (!t) return;
-      if (!this.#mayPlay(t)) return this.#later();
-      this.#pending = null;
-      this.#play(t);
-      this.#changed();
+      if (!this.#pending) return;
+      if (this.#sounding || !this.#mayPlay(this.#pending)) return this.#later();
+      this.#release();
     }, Math.max(50, this.#endedAt + HOLD_MS - Date.now()));
+  }
+
+  /** What waited plays now. */
+  #release() {
+    clearTimeout(this.#holdTimer);
+    const t = this.#pending;
+    this.#pending = null;
+    if (t) this.#play(t);
+    this.#changed();
+  }
+
+  /** The turn after the one just said, if one came meanwhile, as its first word would have. */
+  #next() {
+    const t = this.#queue.shift();
+    if (!t) return;
+    if (t.cut || this.#mayPlay(t)) return this.#play(t);
+    this.#pending = t;
+    this.#later();
   }
 
   /** @param {Turn} t */
@@ -808,7 +828,7 @@ export class LiveKoe {
     this.#t = null;
     this.#tries = 0;
     if (t?.stream) t.stream.end();
-    else if (t?.spoken && t !== this.#pending) this.#said(t, null);
+    else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     this.#answered(!t?.spoken && !t?.tools);
     if (t) t.done = true;
@@ -823,22 +843,41 @@ export class LiveKoe {
     return this.#flushHeard(dismissed);
   }
 
-  /** Koe cut off: its voice stops, its words kept up to where they were heard. @param {Turn} t @returns {number | undefined} ms heard */
-  #stop(t) {
+  /** Its voice waits: to start, or behind another of hers. @param {Turn} t */
+  #waits(t) {
+    return t === this.#pending || this.#queue.includes(t);
+  }
+
+  /**
+   * Koe cut off: its voice stops, its words kept up to where they were heard; one all of whose sound had played is whole. One still
+   * waiting was never heard: let go by the user going on, or, shown, written as her answer (a close or a drop: never an answer lost).
+   * @param {Turn} t @param {boolean} [shown] @returns {number | undefined} ms heard
+   */
+  #stop(t, shown = false) {
+    if (t.stream && !t.cut) t.whole = !t.stream.queued();
     t.cut = true;
     if (t.stream) return t.stream.stop().playedMs; // its done writes it
-    if (t === this.#pending) {
-      this.#said(t, 0); // never heard: nothing written
+    if (this.#waits(t)) {
+      t.whole = t.done;
+      this.#said(t, shown ? null : 0);
       return 0;
     }
     if (t.spoken) this.#said(t, null);
     return undefined;
   }
 
-  /** Koe's voice stops wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). */
-  #cut() {
-    let playedMs;
-    for (const t of [this.#t, this.#sounding, this.#pending]) if (t) playedMs = this.#stop(t) ?? playedMs;
+  /** Koe's voice stops wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). @param {boolean} [shown] what waited is written */
+  #cut(shown = false) {
+    const waiting = [this.#pending, ...this.#queue].filter((t) => t !== null);
+    this.#pending = null; // none of them plays meanwhile
+    this.#queue = [];
+    clearTimeout(this.#holdTimer);
+    let playedMs = waiting.length ? 0 : undefined;
+    for (const t of [this.#t, this.#sounding]) if (t && !waiting.includes(t)) playedMs = this.#stop(t) ?? playedMs;
+    for (const t of waiting) {
+      Object.assign(t, { cut: true, whole: t.done });
+      this.#said(t, shown ? null : 0);
+    }
     return playedMs === undefined ? {} : { playedMs };
   }
 
@@ -846,8 +885,10 @@ export class LiveKoe {
   #said(t, playedMs) {
     if (t.logged) return;
     t.logged = true;
+    const next = this.#sounding === t || this.#pending === t;
     if (this.#sounding === t) this.#sounding = null;
     if (this.#pending === t) this.#pending = null;
+    this.#queue = this.#queue.filter((x) => x !== t);
     let text = cleanSaid(t.said);
     const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
@@ -855,8 +896,10 @@ export class LiveKoe {
       const space = text.lastIndexOf(' ', end);
       text = text.slice(0, space > 0 ? space : end).trim();
     }
-    if (text && t.cut) text += '✂';
-    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, ...(t.stream ? { voice: true } : {}), ...(t.cut ? { cut: true } : {}) }, texts: [['text', text]] });
+    const cut = t.cut && !t.whole;
+    if (text && cut) text += '✂';
+    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
+    if (next) this.#next();
     this.#idle();
     this.#changed();
   }
@@ -972,8 +1015,8 @@ export class LiveKoe {
   async #closed(s, { kind }, why) {
     if (s !== this.#s || !kind) return;
     this.#hold();
-    const cut = Boolean(this.#sounding || this.#t?.spoken);
-    this.#cut();
+    const cut = Boolean(this.#sounding || this.#t?.spoken || this.#pending);
+    this.#cut(true);
     this.#t = null;
     this.#cutHearing();
     if (s.handle) this.#handle = s.handle;
