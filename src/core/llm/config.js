@@ -111,7 +111,7 @@ const VALUES = {
     tools: { type: 'boolean' },
     contextWindow: { type: ['integer', 'null'], minimum: 1 },
     maxOutput: { type: ['integer', 'null'], minimum: 1 },
-    prices: { type: ['object', 'null'], properties: { schedule: PRICE_SCHEDULE } },
+    prices: { type: ['object', 'null'], properties: { schedule: { ...PRICE_SCHEDULE, type: ['array', 'null'] } } }, // null on the user layer: the description's schedule removed
     providerTools: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'patch'],
       properties: { id: { type: 'string', minLength: 1 }, name: { type: 'string' }, kind: { enum: ['search', 'fetch', 'other'] }, patch: OBJECT,
         pricePerCall: { type: 'number', minimum: 0 }, usageKey: { type: 'string' }, paidOnly: { type: 'boolean' }, freePerMonth: { type: 'integer', minimum: 0 },
@@ -253,6 +253,13 @@ export function modelBase(rec) {
 /** The model as calls see it; it is named by its provider id until the user names it. @param {ModelRecord} rec @returns {Model} */
 export function modelOf(rec) {
   const v = { ...MODEL_DEFAULTS, ...mergePatch(modelBase(rec), rec.user ?? {}) };
+  // A price the user set stays theirs: the description's schedule no longer changes that field (a typed input price must not
+  // become Google's from its date). A schedule of the user's own, or null, is theirs to say.
+  const own = rec.user?.prices;
+  if (own && typeof own === 'object' && !('schedule' in own) && Array.isArray(v.prices?.schedule)) {
+    const set = Object.keys(own);
+    v.prices = { ...v.prices, schedule: v.prices.schedule.map((/** @type {any} */ e) => Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !set.includes(k)))).filter((/** @type {any} */ e) => Object.keys(e).length > 1) };
+  }
   return { id: rec.id, provider: rec.provider, ability: rec.ability, ...v, name: v.name || v.providerId };
 }
 

@@ -1,4 +1,5 @@
 import { validate } from '../schema.js';
+import { pricesProblem } from './cost.js';
 
 /**
  * A provider description (spec §5.2, §9.1): what a provider plugin's annai-plugin.json says of one
@@ -83,7 +84,11 @@ export function checkProviderDesc(desc) {
     };
     paths(`$.abilities.${id}`, a.tunables);
     paths(`$.abilities.${id}.modelDefaults`, a.modelDefaults?.tunables);
-    (a.models ?? []).forEach((/** @type {any} */ m, /** @type {number} */ i) => paths(`$.abilities.${id}.models[${i}]`, m.tunables));
+    (a.models ?? []).forEach((/** @type {any} */ m, /** @type {number} */ i) => {
+      paths(`$.abilities.${id}.models[${i}]`, m.tunables);
+      const wrong = m.prices === undefined || m.prices === null ? null : pricesProblem(m.prices);
+      if (wrong) errors.push(`$.abilities.${id}.models[${i}].prices: ${wrong}`);
+    });
   }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {

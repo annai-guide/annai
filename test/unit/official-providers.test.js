@@ -250,6 +250,11 @@ test('catalogFacts: abilities in order, free from zero prices, local, code, the 
   assert.equal(facts({ provider: { abilities: { a: { kind: 'transcription' }, b: { kind: 'voice' } } } }).category, 'speech');
   assert.equal(facts({ provider: { local: true, abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 1, output: 0 } }] } } } }).free, false);
   assert.equal(facts({ provider: { local: true, abilities: {} } }).local, true);
+  // Free is judged by the prices in force today: free that turned paid on a date past is not free; free until a date to come is.
+  /** @param {string} from */
+  const freeUntil = (from) => facts({ provider: { abilities: { a: { kind: 'chat', models: [{ providerId: 'p', prices: { input: 0, output: 0, schedule: [{ from, input: 1, output: 4 }] } }] } } } }).free;
+  assert.equal(freeUntil('2020-01-01'), false);
+  assert.equal(freeUntil('2999-01-01'), true);
   assert.equal(facts({ entry: 'index.js', provides: { 'storage-type': ['s3'] } }).category, 'backup');
   assert.equal(facts({ entry: 'index.js', provides: { 'endpoint-type': ['x'] } }).category, 'developer');
   assert.equal(facts({ skills: ['s'] }).category, 'skills');
