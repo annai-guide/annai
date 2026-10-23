@@ -990,6 +990,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - Android share target (installed web apps can receive shares on Android; iOS doesn't support it)
   - `annai.guide/#import=<url>`, for archives the sender hosts somewhere that allows browser access, such as GitHub raw files or Dropbox
 - **Preview card:** name, dates, size, contents, exporter, format version.
+  - A backup opened from a git backup place previews from its manifest alone (§12.4); Import then gets the files.
 - **Choice:** "Add as a new trip", or "Replace mine", which moves the existing copy to archived trips. Nothing is overwritten silently.
 - **Checks:** fingerprints are verified and older formats are migrated. Files belonging to plugins that aren't installed are kept, inactive.
 - **Providers come with their plugins.** An import that replaces the settings brings their providers back, and in the same step installs the plugins those providers and their abilities that are on use: annai's own from its catalog, hash-checked, as adding a provider does (§9.8). A provider whose plugin isn't annai's own, or can't be had now (offline), is named, with Try again.
@@ -997,7 +998,10 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 
 ### 12.4 Backup targets
 
-- **Interface:** archive-level `put / get / list / delete`, via storage plugins.
+- **Interface:** archive-level `put / get / list / delete`, and for a place that can, `peek`, via storage plugins.
+  - **`peek` tells what a backup holds from its `annai-archive.json` alone**, in a few requests however many files the backup has (Forgejo / Gitea: two; GitHub: one). Git targets (GitHub, Forgejo / Gitea) have it, so opening a backup from "Show the backups here" or from a newer-backup card shows its preview at once (the trips, their sizes and dates), without downloading the files. A manifest that is damaged, unsafe or from a newer annai is refused in a few plain words ("This backup is damaged."), with the details in the Trace.
+  - **The files come when the user imports** (`get`), up to six at a time, with "Getting files: 120 of 650". Every file is still checked against the manifest's hashes as it is imported, and a file changed on the server is refused. The files must come with the manifest that was previewed: Import refuses a backup whose manifest differs ("This backup changed on the server…"), since the user's choices name its trips. A place without `peek` (S3, WebDAV, which may also be encrypted) sends the whole backup first, as before.
+  - **Cancel, and leaving the import screen any way** (the crumb, Back, the dock, a swipe), stop the download, wherever it is: under way, or still waiting for a backup in flight. Nothing is imported after that, what the import had stored goes again (§4.9), and the place's next backup does not build on a backup that was not taken in.
 - **Automatic backup:** daily or after changes, while on Wi-Fi with the app open. It runs alongside the install nudge, not instead of it.
   - **The pace after changes:** git targets (GitHub, Forgejo / Gitea) back up within the hour, since each backup sends only what changed. Targets that keep the whole archive file (S3, WebDAV) back up at most every 6 hours.
 - **Git targets store the unpacked tree, not a zip.** One backup is one commit, and only changed files are uploaded. They are unencrypted, so public repositories are refused.

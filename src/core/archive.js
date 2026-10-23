@@ -327,6 +327,24 @@ async function readBlob(store, hash, path) {
 }
 
 /**
+ * Checks a manifest as the preview needs it: from a newer annai, damaged, or naming an unsafe path are refused.
+ * peekArchive does this for a file, and the import screen for a backup place that tells the manifest alone (storage-types.js peek).
+ * @param {any} manifest @returns {asserts manifest is Manifest}
+ */
+export function checkManifest(manifest) {
+  const newer = (/** @type {unknown} */ f) => typeof f === 'number' && f > FORMAT;
+  if ((typeof manifest?.format === 'number' && manifest.format > ARCHIVE_FORMAT)
+    || (Array.isArray(manifest?.scopes) && manifest.scopes.some((/** @type {any} */ s) => newer(s?.record?.format)))) {
+    throw new ArchiveError('This file was made by a newer version of annai. Update annai, then open it again.');
+  }
+  const errors = validate(MANIFEST_SCHEMA, manifest);
+  if (errors.length) throw new ArchiveError(`This file is damaged: ${errors.join('; ')}`);
+  for (const f of manifest.files) {
+    if (!isSafePath(f.path)) throw new ArchiveError(`This file contains an unsafe file path (${JSON.stringify(f.path)}), so annai won't open it.`);
+  }
+}
+
+/**
  * Decrypts (if needed) and opens an archive, and reads only its manifest: enough for the preview,
  * however large the file. The content is checked when it is imported, one entry at a time
  * (importArchive). Throws ArchiveError (or NeedsPassphraseError /
@@ -357,16 +375,7 @@ export async function peekArchive(file, passphrase) {
     if (e instanceof ArchiveError) throw e;
     throw new ArchiveError('This file is damaged: its manifest is not readable.');
   }
-  const newer = (/** @type {unknown} */ f) => typeof f === 'number' && f > FORMAT;
-  if ((typeof manifest?.format === 'number' && manifest.format > ARCHIVE_FORMAT)
-    || (Array.isArray(manifest?.scopes) && manifest.scopes.some((/** @type {any} */ s) => newer(s?.record?.format)))) {
-    throw new ArchiveError('This file was made by a newer version of annai. Update annai, then open it again.');
-  }
-  const errors = validate(MANIFEST_SCHEMA, manifest);
-  if (errors.length) throw new ArchiveError(`This file is damaged: ${errors.join('; ')}`);
-  for (const f of manifest.files) {
-    if (!isSafePath(f.path)) throw new ArchiveError(`This file contains an unsafe file path (${JSON.stringify(f.path)}), so annai won't open it.`);
-  }
+  checkManifest(manifest);
   /** @type {string[]} */
   const missing = [];
   for (const f of [...manifest.files, ...manifest.blobs, ...manifest.extras]) if (!zip.has(f.name)) missing.push(`${f.name} is missing`);
@@ -440,7 +449,7 @@ function readLog(name, bytes) {
 /**
  * What the import preview shows, including which trips already exist here.
  * @param {Store} store
- * @param {OpenedArchive} opened
+ * @param {Pick<OpenedArchive, 'manifest'>} opened a backup that is only previewed has its manifest alone
  */
 export async function describeArchive(store, { manifest }) {
   const local = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
@@ -470,8 +479,9 @@ export async function describeArchive(store, { manifest }) {
  * @param {Store} store
  * @param {OpenedArchive} opened
  * @param {{ trips?: Record<string, 'new'|'replace'|'skip'>, me?: 'keep'|'replace', settings?: 'keep'|'replace',
- *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number, onProgress?: (done: number, total: number) => void }} [choices]
- *   onProgress: how many of the entries to store have been read, for "Importing 12 of 340"
+ *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number, onProgress?: (done: number, total: number) => void, signal?: AbortSignal }} [choices]
+ *   onProgress: how many of the entries to store have been read, for "Importing 12 of 340";
+ *   signal: the user cancelled or left: the content stored so far goes again and nothing is imported (an AbortError)
  */
 export async function importArchive(store, opened, choices = {}) {
   const { manifest, zip } = opened;
@@ -552,12 +562,14 @@ export async function importArchive(store, opened, choices = {}) {
     let done = 0;
     for (const [hash, c] of content) {
       choices.onProgress?.(done++, content.size);
+      choices.signal?.throwIfAborted();
       if (held.has(hash)) continue;
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
     choices.onProgress?.(content.size, content.size);
+    choices.signal?.throwIfAborted(); // the last step can't be stopped once it starts
     await commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes: [...content.keys()] });
   } catch (e) {
     await removeUnused(store, added).catch(() => {});

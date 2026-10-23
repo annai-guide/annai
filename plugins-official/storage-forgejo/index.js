@@ -128,6 +128,7 @@ export function activate(annai) {
     list: (/** @type {any} */ c) => list(client(c)),
     put: (/** @type {any} */ c, /** @type {any} */ archive, /** @type {any} */ o) => put(client(c), archive, o),
     get: (/** @type {any} */ c, /** @type {string} */ id, /** @type {any} */ o) => get(client(c), id, o),
+    peek: (/** @type {any} */ c, /** @type {string} */ id, /** @type {any} */ o) => peek(client(c), id, o),
   });
 }
 
@@ -619,12 +620,10 @@ async function answers(g, branch) {
 }
 
 /**
- * One backup, as an archive file annai opens on its import screen: the files the backup's
- * annai-archive.json names, read from that commit.
- * @param {F} g @param {string} id @param {{ onProgress?: (p: any) => void, signal?: AbortSignal }} [o]
+ * Checks that an id is one of the place's backups, and not just part of one cut off half way.
+ * @param {F} g @param {string} id @param {AbortSignal} [signal]
  */
-async function get(g, id, { onProgress = () => {}, signal } = {}) {
-  ready(g);
+async function backupCommit(g, id, signal) {
   const E = g.TargetError;
   const commit = HEX.test(id) ? await call(g, 'GET', `/git/commits/${id}?stat=false&verification=false&files=false`, { signal }) : null;
   if (!commit || [400, 404, 422].includes(commit.status)) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
@@ -634,17 +633,50 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
   if (PARTIAL.test(String(c.commit?.message ?? ''))) {
     throw new E('missing', "That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.");
   }
+}
+
+/** A backup's annai-archive.json, read. @param {F} g @param {Uint8Array} bytes */
+function manifestOf(g, bytes) {
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new g.TargetError('other', 'This backup is damaged: its annai-archive.json is not readable.');
+  }
+}
+
+/**
+ * What one backup holds, from its annai-archive.json alone: two requests, whatever the number of files.
+ * The import screen previews with this, and the files come when the user imports (get).
+ * @param {F} g @param {string} id @param {{ signal?: AbortSignal }} [o]
+ */
+async function peek(g, id, { signal } = {}) {
+  ready(g);
+  await backupCommit(g, id, signal);
+  /** @type {Uint8Array} */
+  let bytes;
+  try {
+    bytes = await raw(g, MANIFEST, id, signal, MANIFEST_MAX);
+  } catch (e) {
+    if (e instanceof g.TargetError && /** @type {any} */ (e).kind === 'missing') throw new g.TargetError('missing', "That commit isn't an annai backup.");
+    throw e;
+  }
+  return manifestOf(g, bytes);
+}
+
+/**
+ * One backup, as an archive file annai opens on its import screen: the files the backup's
+ * annai-archive.json names, read from that commit.
+ * @param {F} g @param {string} id @param {{ onProgress?: (p: any) => void, signal?: AbortSignal }} [o]
+ */
+async function get(g, id, { onProgress = () => {}, signal } = {}) {
+  ready(g);
+  const E = g.TargetError;
+  await backupCommit(g, id, signal);
   const files = await snapshot(g, id, signal);
   if (!files) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
   if (!files.has(MANIFEST)) throw new E('missing', "That commit isn't an annai backup.");
   const manifestBytes = await raw(g, MANIFEST, id, signal, MANIFEST_MAX);
-  /** @type {any} */
-  let manifest;
-  try {
-    manifest = JSON.parse(new TextDecoder().decode(manifestBytes));
-  } catch {
-    throw new E('other', 'This backup is damaged: its annai-archive.json is not readable.');
-  }
+  const manifest = manifestOf(g, manifestBytes);
   const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
   const names = [...new Set(lists.flat().map((x) => x?.name).filter((n) => typeof n === 'string' && n !== MANIFEST))];
   for (const name of names) if (!files.has(name)) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from ${named(g)}.`);
