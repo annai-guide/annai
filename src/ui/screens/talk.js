@@ -185,7 +185,7 @@ export async function renderTalk(ctx) {
     }
     if (e.type === 'paused') return h('li', { class: 'system-line', text: String(d.text ?? '') });
     // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
-    if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', role: 'separator', text: 'Started fresh' });
+    if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', text: 'Started fresh' }); // a list item with its words: a separator has no name
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: 'Earlier conversation summarized. The full log is in Trace.' });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
     if (e.type === 'error' && (d.quiet || d.aside)) return null;
@@ -286,7 +286,7 @@ export async function renderTalk(ctx) {
  */
 function tidyMenu(ctx) {
   const agent = ctx.agent;
-  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu' }, 'Tidy up');
+  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu' }, 'Tidy up');
   const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': 'Tidy up the conversation', hidden: true });
   const close = () => {
     menu.hidden = true;
@@ -298,7 +298,7 @@ function tidyMenu(ctx) {
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
   });
   const summarize = h('button', {
-    class: 'btn', type: 'button',
+    class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
     onclick: async () => {
       close();
       ctx.notices.toast('Summarizing…');
@@ -314,7 +314,7 @@ function tidyMenu(ctx) {
     toggle.textContent = on ? 'Starting fresh…' : 'Tidy up';
   };
   const fresh = h('button', {
-    class: 'btn', type: 'button',
+    class: 'btn', type: 'button', 'aria-describedby': 'tidy-fresh',
     onclick: async () => {
       close();
       const yes = await ask({
@@ -354,8 +354,8 @@ function tidyMenu(ctx) {
   document.addEventListener('keydown', escape);
   const el = h('div', { class: 'tidy' }, toggle, menu);
   menu.append(
-    h('p', { class: 'sub', text: 'Summarize now: housekeeping, now. The earlier lines stay readable and recallable.' }), summarize,
-    h('p', { class: 'sub', text: 'Start fresh: a new context from this point. Earlier lines stay, with a divider.' }), fresh);
+    h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: housekeeping, now. The earlier lines stay readable and recallable.' }), summarize,
+    h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: a new context from this point. Earlier lines stay, with a divider.' }), fresh);
   whenGone(el, () => {
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', escape);

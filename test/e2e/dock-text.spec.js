@@ -138,3 +138,69 @@ test('Enter while an IME is composing does not send; nothing is sent until a rea
   await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
   await expect(page.locator('.convo .you').first()).toContainText('にほん');
 });
+
+// Fix pass 2, item 7: focus after a send goes to the keyboard button, never into the hidden box.
+test('after a send from the box, focus is on the keyboard button, and keys typed then go nowhere hidden', async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await box(page).fill('first');
+  await box(page).press('Enter');
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(box(page)).toBeHidden();
+  await expect(typeButton(page)).toBeFocused();
+  await page.keyboard.type('unseen'); // no space: a space on the focused button opens the box, as it should
+  expect(await page.evaluate(() => /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).value)).toBe('');
+});
+
+// Fix pass 2, item 11: a press elsewhere never closes the box under the finger: it closes with the press's click.
+test('a press elsewhere closes the empty box only with its click, so nothing moves under the finger while it is down', async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await expect(box(page)).toBeVisible();
+  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Trips', exact: true }).boundingBox());
+  await page.mouse.move(at.x + 5, at.y + 5);
+  await page.mouse.down();
+  await page.waitForTimeout(100);
+  await expect(box(page)).toBeVisible();
+  await page.mouse.up();
+  await expect(box(page)).toBeHidden();
+});
+
+// Fix pass 2, item 12 and Step's S1: Android keyboards may send Enter as keyCode 229 with no composition: that Enter sends. A 229 Enter is
+// held back only while composing, or right after a composition ended (Safari's confirming Enter), and a composition the box lost (blur,
+// closed) holds nothing back afterwards.
+test("Enter as keyCode 229 holds back only while composing or right after a composition ended; with none, an Android keyboard's Enter is let through", async ({ page }) => {
+  await onTrips(page);
+  await typeButton(page).click();
+  await box(page).fill('hello');
+  const enter229 = () => page.evaluate(() => {
+    const e = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
+    /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  const composition = (/** @type {'compositionstart' | 'compositionend'} */ type) => page.evaluate((t) => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(new CompositionEvent(t, { bubbles: true })); }, type);
+  expect(await enter229(), 'no composition: Android').toBe(false);
+  await composition('compositionstart');
+  expect(await enter229(), 'while composing').toBe(true);
+  await composition('compositionend');
+  expect(await enter229(), "Safari's Enter that confirms a candidate").toBe(true);
+  await page.waitForTimeout(300);
+  expect(await enter229(), 'a while after the composition ended').toBe(false);
+});
+
+test('a composition the box lost (it closed, or lost focus) holds back nothing: a real Enter afterwards sends', async ({ page }) => {
+  await onTrips(page);
+  for (const lose of ['close', 'blur']) {
+    await typeButton(page).click();
+    await box(page).fill(`words after ${lose}`);
+    await page.evaluate(() => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })); });
+    if (lose === 'close') {
+      await typeButton(page).click();
+      await expect(box(page)).toBeHidden();
+      await typeButton(page).click();
+    } else await page.evaluate(() => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).blur(); });
+    await page.waitForTimeout(300);
+    await box(page).press('Enter');
+    await expect(page.locator('.convo .you').last()).toHaveText(`words after ${lose}`);
+  }
+});
