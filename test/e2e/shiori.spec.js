@@ -96,7 +96,9 @@ test("her states show the right parts and eyes, as the expression sheet draws th
   expect(asleep.tail, 'her tail, wider than her shoulders').toBeGreaterThan(700);
   expect(asleep.asleep).toBeGreaterThan(400);
   await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5, ears: '1 1 0 0 0', face: '1 0 0', streamer: 0, tape: 1 });
-  expect((await look(page, 'listening')).wide, 'an open eye').toBeLessThan(1.5);
+  // She blinks from time to time, a blink lasts as long as the page's frames take to draw, and on a busy machine that is long enough to be
+  // caught half shut: an open eye is waited for, not sampled once.
+  await expect.poll(async () => (await look(page, 'listening')).wide, { message: 'an open eye' }).toBeLessThan(1.5);
   // Hearing you, her eyes are wide: a bigger highlight.
   await expect.poll(async () => (await look(page, 'hearing')).light).toBe(17.4);
   // Thinking: her head turned (in the middle of a blink).
