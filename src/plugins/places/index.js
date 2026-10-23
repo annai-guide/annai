@@ -88,6 +88,13 @@ function guideText(title, text, section, source) {
   return `${title}: ${heads[k][2]} ${from}\n\n${body}`;
 }
 
+/** A Nominatim place's website and opening hours, from its extratags, as OpenStreetMap has them: empty where it doesn't. @param {any} f @returns {[string, string]} */
+function extras(f) {
+  const t = f?.extratags && typeof f.extratags === 'object' ? f.extratags : {};
+  const text = (/** @type {unknown} */ v) => (typeof v === 'string' ? v : '');
+  return [text(t.website) || text(t['contact:website']), text(t.opening_hours)];
+}
+
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
 const UNREADABLE = (where) => `${where} sent an answer annai can't read.`;
@@ -112,7 +119,7 @@ export function activate(annai) {
   const tools = [
     {
       name: 'nearby', group: 'Places',
-      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note. kinds: ${KIND_NAMES.join(', ')} (default sights and food). Reads the trip's offline pack first, so it works without a connection along the planned route.`,
+      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note (website, opening hours). kinds: ${KIND_NAMES.join(', ')} (default sights and food). Reads the trip's offline pack first, so it works without a connection along the planned route.`,
       input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: KIND_NAMES } } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, radius?: number, kinds?: string[] }} i @param {any} call */
       async run(i, call) {
@@ -141,7 +148,8 @@ export function activate(annai) {
             const rows = [];
             for (const e of Array.isArray(data?.elements) ? data.elements : []) {
               const r = osmRow(e);
-              if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', r[5]]);
+              // The note: its website (or Wikipedia page), and its opening hours where OpenStreetMap has them.
+              if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
             }
             osm = rows;
             break;
@@ -171,15 +179,15 @@ export function activate(annai) {
     },
     {
       name: 'geocode', group: 'Places',
-      description: 'Find a place by name or address, as TSV: name, lat, lng, type.',
+      description: 'Find a place by name or address, as TSV: name, lat, lng, type, website, opening_hours (the last two where OpenStreetMap has them).',
       input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
       /** @param {{ query: string }} i @param {any} call */
       async run(i, call) {
-        const found = await nominatim(`${NOMINATIM}/search?q=${encodeURIComponent(i.query)}&format=jsonv2&limit=5`, call);
+        const found = await nominatim(`${NOMINATIM}/search?q=${encodeURIComponent(i.query)}&format=jsonv2&limit=5&extratags=1`, call);
         if (!Array.isArray(found)) throw new Error(UNREADABLE('Nominatim'));
         const places = found.filter((f) => f && typeof f === 'object');
         if (!places.length) return `Nothing found for "${i.query}".`;
-        return tsv(['name', 'lat', 'lng', 'type'], places.map((/** @type {any} */ f) => [f.display_name, f.lat, f.lon, `${f.category ?? f.class}/${f.type}`]));
+        return tsv(['name', 'lat', 'lng', 'type', 'website', 'opening_hours'], places.map((/** @type {any} */ f) => [f.display_name, f.lat, f.lon, `${f.category ?? f.class}/${f.type}`, ...extras(f)]));
       },
     },
     {
@@ -188,10 +196,11 @@ export function activate(annai) {
       input: { type: 'object', properties: POINT, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number }} i @param {any} call */
       async run(i, call) {
-        const f = await nominatim(`${NOMINATIM}/reverse?lat=${i.lat}&lon=${i.lng}&format=jsonv2&zoom=18`, call);
+        const f = await nominatim(`${NOMINATIM}/reverse?lat=${i.lat}&lon=${i.lng}&format=jsonv2&zoom=18&extratags=1`, call);
         if (!f || typeof f !== 'object' || Array.isArray(f)) throw new Error(UNREADABLE('Nominatim'));
         if (f.error) return `Nothing is known at ${i.lat}, ${i.lng}.`;
-        return JSON.stringify({ name: f.name ?? '', address: f.display_name ?? '', type: `${f.category ?? f.class}/${f.type}` });
+        const [website, opening_hours] = extras(f);
+        return JSON.stringify({ name: f.name ?? '', address: f.display_name ?? '', type: `${f.category ?? f.class}/${f.type}`, ...(website ? { website } : {}), ...(opening_hours ? { opening_hours } : {}) });
       },
     },
     {
