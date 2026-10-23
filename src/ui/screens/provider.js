@@ -8,6 +8,7 @@ import { speechTestPanel } from '../speech-check.js';
 import { sourceLine } from './plugin-install.js';
 import { addressProblem, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
+import { pricesAt } from '../../core/llm/cost.js';
 import { andList } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { OFFICIAL_NAMES } from '../../core/official-names.js';
@@ -16,9 +17,10 @@ import { toolSwitches, setToolSwitch } from '../../core/agent/tools.js';
 
 export { messageOf };
 
-/** A model's prices in a line: tokens, minutes of speech, or characters. @param {import('../../core/llm/cost.js').Prices | null} prices */
-export function priceLine(prices) {
+/** A model's prices in a line: tokens, minutes of speech, or characters; those in force at `at`. @param {import('../../core/llm/cost.js').Prices | null} prices @param {number} [at] */
+export function priceLine(prices, at = Date.now()) {
   if (!prices) return null;
+  prices = pricesAt(prices, at);
   if (typeof prices.perMinute === 'number') return `$${prices.perMinute} a minute of speech`;
   if (typeof prices.perMillionChars === 'number') return `$${prices.perMillionChars} per million characters`;
   if (!prices.input && !prices.output) return 'free';

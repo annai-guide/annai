@@ -364,10 +364,13 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   }
 });
 
-test('provider-gemini 2.5.1: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
+/** Google's pricing page, 2026-10-23: 3.8 and 3.6 Flash double from 2027-01-01. */
+const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 }];
+
+test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.5.1');
+  assert.equal(m.version, '2.6.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -378,8 +381,8 @@ test('provider-gemini 2.5.1: Gemini through its own API (gemini-api), its chat m
   // No audioIn or cacheReadAudio: the page gives each one input and one caching price, for every kind of input (flash-lite's says
   // "text / image / video / audio"; 3.8's and 3.6's have no audio row; checked again in the fix pass), so audio costs what words do.
   assert.deepEqual(chat.models.map((/** @type {any} */ x) => [x.providerId, x.prices]), [
-    ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
-    ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075 }],
+    ['gemini-3.8-flash', { input: 0.75, output: 3.75, cacheRead: 0.075, schedule: DOUBLES }],
+    ['gemini-3.6-flash', { input: 0.75, output: 3.75, cacheRead: 0.075, schedule: DOUBLES }],
     ['gemini-3.5-flash-lite', { input: 0.3, output: 2.5, cacheRead: 0.03 }],
   ]);
   for (const x of chat.models) {
@@ -447,8 +450,8 @@ test("provider-gemini's transcription and voices (G3): Google's transcription mo
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash Lite (transcription)', { perMinute: 0.0009 }],
   ]);
   assert.deepEqual(say.models.map((/** @type {any} */ x) => [x.providerId, x.name, x.prices]), [
-    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS', { perMillionChars: 10 }],
-    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', { perMillionChars: 15 }],
+    ['gemini-3.8-flash-lite-tts', 'Gemini 3.8 Flash Lite TTS', { perMillionChars: 10, schedule: [{ from: '2027-01-01', perMillionChars: 20 }] }],
+    ['gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', { perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] }],
   ]);
   assert.match(say.note, /only 10 requests a day and 3 a minute: far fewer than a day of replies/, "the free tier's limits, too small for a day of replies, in words");
   assert.match(say.note, /Switch streaming off/);

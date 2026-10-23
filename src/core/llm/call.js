@@ -269,7 +269,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   await settle((c) => /** @type {any} */ (keeping).kept.record(/** @type {StopReason} */ (stop) === 'refusal' ? c
     : { ...c, messages: spec.request.messages, reply: { role: 'assistant', parts }, hours: Number(type.keeps?.hours) || 0, ...(spec.kept ? { after: spec.kept.id } : {}) }));
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
-  const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools);
+  const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools, started);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}), ...(attribution ? { attribution } : {}) };
 }

@@ -675,7 +675,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
 
 ### 9.9 Usage, cost, errors, keys
 
-- **Usage is normalized** to input, cache read, cache write, output and reasoning, and for a realtime model's turn its audio tokens in and out, its image and video tokens, and its cached audio and image tokens. Multiplied by the model's prices (these at the input and output prices when a model has none of its own), that gives cost per call, wake and trip.
+- **Usage is normalized** to input, cache read, cache write, output and reasoning, and for a realtime model's turn its audio tokens in and out, its image and video tokens, and its cached audio and image tokens. Multiplied by the model's prices (these at the input and output prices when a model has none of its own), that gives cost per call, wake and trip. A price may start on a date (`prices.schedule`: entries with `from`, a YYYY-MM-DD at UTC midnight, and the fields that change from then): a call is priced by what was in force when it was made, so a price change Google announced needs no release. provider-gemini 2.6 holds the doubling of 3.8 and 3.6 Flash and the Flash TTS voices on 2027-01-01 (Google's pricing page, 2026-10-23: input $0.75 to $1.50, output $3.75 to $7.50, cached input $0.075 to $0.15; voices by the character, $15 to $30 and $10 to $20).
 - **Error kinds:**
 
   | Kind | Response |

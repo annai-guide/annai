@@ -328,6 +328,9 @@ test('a microphone that fails says what happened and what to do, for this phone 
 test('model prices in a line: tokens, minutes of speech, or characters', () => {
   assert.equal(priceLine({ input: 2, output: 10 }), '$2 in, $10 out per million tokens');
   assert.equal(priceLine({ input: 0, output: 0 }), 'free');
+  const doubling = { input: 1, output: 4, schedule: [{ from: '2027-01-01', input: 2, output: 8 }] };
+  assert.equal(priceLine(doubling, Date.parse('2026-12-31T23:00:00Z')), '$1 in, $4 out per million tokens');
+  assert.equal(priceLine(doubling, Date.parse('2027-01-01T00:00:00Z')), '$2 in, $8 out per million tokens', 'the price in force, not the base');
   assert.equal(priceLine({ perMinute: 0.006 }), '$0.006 a minute of speech');
   assert.equal(priceLine({ perMillionChars: 15 }), '$15 per million characters');
   assert.equal(priceLine(null), null);
