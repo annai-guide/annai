@@ -71,6 +71,9 @@ test('a backup of everything restores onto an empty device, history included', a
   const evB = await b.store.tx(['events'], 'readonly', (t) => t.listEvents(copy));
   // B's log: A's events with the same numbers, then the import, then the restore made above.
   assert.deepEqual(evB.slice(0, evA.length).map((e) => [e.seq, e.type, e.data]), evA.map((e) => [e.seq, e.type, e.data]));
+  // Each carries the time it was written, which the Trace orders by.
+  assert.ok(evA.every((e) => typeof e.at === 'number'));
+  assert.deepEqual(evB.slice(0, evA.length).map((e) => e.at), evA.map((e) => e.at));
   assert.deepEqual(evB.slice(evA.length).map((e) => e.type), ['import', 'file.write']);
 });
 
@@ -313,6 +316,7 @@ test('an archive whose history log is damaged is refused before anything is impo
     '{"seq":0,"ts":1,"type":"file.write","actor":"user"}',
     '{"seq":99,"type":"file.write","actor":"user"}',
     '{"seq":99,"ts":1,"actor":"user"}',
+    '{"seq":99,"ts":1,"at":"yesterday","type":"file.write","actor":"user"}',
     '{"seq":1,"ts":1,"type":"file.write","actor":"user"}', // a second seq 1 would silently replace the first
   ];
   for (const line of bad) {

@@ -114,6 +114,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
 
 Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `paused` (a turn cut by opening another conversation), `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
 
+- **Two times.** `ts` is when it happened (a simulated trip's clock may run ahead); `at` is when the store wrote it. The Trace lists newest first by `at`, and an entry from before `at` existed (or imported from such a backup) by `ts`. Backups and archives carry `at` as part of the entry; an app that doesn't know it ignores it.
 - **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it, by listing its fingerprint in `refs` (§4.9).
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
 - **Location points are thinned.** A point is kept only after moving about 20 m (or the GPS accuracy, if worse), or after 1 minute while moving. Until the phone reports a speed, it takes 100 m of movement: a parked phone's GPS jitter otherwise reads as walking.
