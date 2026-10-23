@@ -404,6 +404,24 @@ test('an import that runs out of space partway leaves none of its content behind
   assert.deepEqual((await listTrips(b.store)).active, []);
 });
 
+test('an import that is cancelled partway, or just before its last step, imports nothing and leaves none of its content behind', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const hashes = [...new Set([...manifest.files, ...manifest.blobs].map((x) => x.hash))];
+  for (const stopAt of [2, hashes.length]) {
+    const b = await device();
+    const has = (/** @type {string} */ h) => b.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(h));
+    const stop = new AbortController();
+    await assert.rejects(importArchive(b.store, await peekArchive(await bytesOf(blob)), {
+      signal: stop.signal,
+      onProgress: (done) => { if (done === stopAt) stop.abort(); },
+    }), (e) => /** @type {any} */ (e).name === 'AbortError');
+    for (const h of hashes) assert.equal(await has(h), false, `after stopping at ${stopAt}: ${h} was removed`);
+    assert.deepEqual((await listTrips(b.store)).active, []);
+  }
+});
+
 test('opening a file that says it unpacks to gigabytes is refused before anything is unpacked (zip bomb)', async () => {
   const z = new ZipWriter();
   await z.add('trips/x/files/zeros.bin', new Uint8Array(1024));

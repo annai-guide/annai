@@ -268,6 +268,17 @@ export async function startGitHub({ token = TOKEN, repos = {} } = {}) {
       repo.refs.set(branch, body.sha);
       return { status: 201, json: { ref: `refs/heads/${branch}`, object: { sha: body.sha, type: 'commit' } } };
     }
+    // A file at a commit, as GitHub's contents API gives it: ref is a branch, a tag or a commit. Raw gives the bytes; 404 when there is no such file.
+    if (method === 'GET' && (r = /^\/contents\/(.+)$/.exec(rest))) {
+      const ref = url.searchParams.get('ref') ?? repo.defaultBranch;
+      const at = /^[0-9a-f]{40}$/.test(ref) ? ref : repo.refs.get(ref);
+      const c = at ? repo.objects.get(at) : undefined;
+      const f = c?.type === 'commit' ? flatten(repo, c.tree).get(decodeURIComponent(r[1])) : undefined;
+      const b = f ? repo.objects.get(f.sha) : undefined;
+      if (b?.type !== 'blob') return NOT_FOUND;
+      if (String(headers.accept ?? '').includes('raw')) return { status: 200, raw: b.data };
+      return { status: 200, json: { type: 'file', path: decodeURIComponent(r[1]), sha: f?.sha, size: b.data.length, content: b.data.toString('base64'), encoding: 'base64' } };
+    }
     if (method === 'PUT' && (r = /^\/contents\/(.+)$/.exec(rest))) {
       const path = decodeURIComponent(r[1]);
       const branch = body?.branch ?? repo.defaultBranch;

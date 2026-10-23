@@ -479,8 +479,9 @@ export async function describeArchive(store, { manifest }) {
  * @param {Store} store
  * @param {OpenedArchive} opened
  * @param {{ trips?: Record<string, 'new'|'replace'|'skip'>, me?: 'keep'|'replace', settings?: 'keep'|'replace',
- *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number, onProgress?: (done: number, total: number) => void }} [choices]
- *   onProgress: how many of the entries to store have been read, for "Importing 12 of 340"
+ *   plugins?: 'keep'|'replace', secrets?: boolean, now?: number, onProgress?: (done: number, total: number) => void, signal?: AbortSignal }} [choices]
+ *   onProgress: how many of the entries to store have been read, for "Importing 12 of 340";
+ *   signal: the user cancelled or left: the content stored so far goes again and nothing is imported (an AbortError)
  */
 export async function importArchive(store, opened, choices = {}) {
   const { manifest, zip } = opened;
@@ -561,12 +562,14 @@ export async function importArchive(store, opened, choices = {}) {
     let done = 0;
     for (const [hash, c] of content) {
       choices.onProgress?.(done++, content.size);
+      choices.signal?.throwIfAborted();
       if (held.has(hash)) continue;
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
       added.push(hash);
     }
     choices.onProgress?.(content.size, content.size);
+    choices.signal?.throwIfAborted(); // the last step can't be stopped once it starts
     await commitImport(store, { manifest, plan, overrides, secrets, now, result, hashes: [...content.keys()] });
   } catch (e) {
     await removeUnused(store, added).catch(() => {});

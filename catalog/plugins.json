@@ -735,7 +735,7 @@
     {
       "id": "storage-github",
       "name": "GitHub",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -743,7 +743,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 29252,
+      "size": 29359,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -751,9 +751,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "5c03e1806536823d7b4e2289f4b06e655b054a83bf8cd57de01f58a95c03b32f",
+        "annai-plugin.json": "c061ad76e9782e9ac58d0813dbaf2a22825697cdeee4c73769653945a7594278",
         "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "574f5d46961cc4f7d961694d50bfe7300e1dd41c2cb4f78fea1aecfd46602f55"
+        "index.js": "8ec7530a9665d4bbad7a7f59d4d71bbf11dbdf294eee65be0e0579cc56e25a89"
       }
     },
     {

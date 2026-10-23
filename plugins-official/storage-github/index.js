@@ -390,19 +390,20 @@ function manifestOf(g, bytes) {
 }
 
 /**
- * What one backup holds, from its annai-archive.json alone: the commit, the top of its tree and the
- * manifest, three requests whatever the number of files. The import screen previews with this, and the
- * files come when the user imports (get).
+ * What one backup holds, from its annai-archive.json alone: one request, the file at that commit through the contents API
+ * (a commit is a ref it takes; the raw media type gives the bytes up to 100 MB), whatever the number of files. The import screen
+ * previews with this, and the files come when the user imports (get).
  * @param {G} g @param {string} id @param {{ signal?: AbortSignal }} [o]
  */
 async function peek(g, id, { signal } = {}) {
   ready(g);
-  const commit = await json(g, 'GET', `/git/commits/${id}`);
-  const top = await json(g, 'GET', `/git/trees/${shaOf(g, commit?.tree?.sha)}`);
-  if (!isObject(top) || !Array.isArray(top.tree)) throw unreadable(g);
-  const m = top.tree.find((e) => isObject(e) && e.type === 'blob' && e.path === MANIFEST);
-  if (!m) throw new g.TargetError('missing', "That commit isn't an annai backup.");
-  return manifestOf(g, await blob(g, shaOf(g, m.sha), signal, MANIFEST_MAX));
+  signal?.throwIfAborted();
+  const E = g.TargetError;
+  if (!/^[0-9a-f]{40}$/.test(id)) throw new E('missing', `That backup isn't in ${g.repo} on GitHub.`);
+  const res = await call(g, 'GET', `/contents/${MANIFEST}?ref=${id}`, { raw: true, signal });
+  if (res.status === 404) throw new E('missing', "That commit isn't an annai backup.");
+  if (!res.ok) throw await failure(g, res);
+  return manifestOf(g, /** @type {Uint8Array} */ (await g.read(res, 'bytes', 'GitHub', { max: MANIFEST_MAX })));
 }
 
 /**

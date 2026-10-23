@@ -98,20 +98,24 @@ function backUpFromCard(ctx, id, o) {
  * Opens a backup from a place on the import screen, where the user chooses what comes in (spec §12.3). A place that can tell
  * what a backup holds from its manifest alone (a git place) opens at once, and its files come when the user imports; any other
  * place sends the whole backup first.
- * @param {Ctx} ctx @param {Target} t @param {RemoteBackup} remote @param {(status: string) => void} say
+ * @param {Ctx} ctx @param {Target} t @param {RemoteBackup} remote @param {(status: string) => void} say @param {{ signal?: AbortSignal }} [o]
  */
-export async function restoreFrom(ctx, t, remote, say) {
+export async function restoreFrom(ctx, t, remote, say, { signal } = {}) {
   const from = { target: t.id, remote };
-  if (typeof ctx.backups.typeOf?.(t.type)?.peek === 'function') {
+  const type = ctx.backups.typeOf?.(t.type);
+  if (type?.stores === 'tree' && typeof type.peek === 'function') {
     try {
       say('Opening the backup…');
-      const peeked = await ctx.backups.peek(t.id, remote.id);
-      setPendingImport([], { archive: true, from, peeked });
-      ctx.go('#/import');
+      const peeked = await ctx.backups.peek(t.id, remote.id, { signal });
+      if (peeked) {
+        setPendingImport([], { archive: true, from, peeked });
+        ctx.go('#/import');
+        return;
+      }
     } catch (e) {
       say(String(/** @type {any} */ (e)?.message ?? e));
+      return;
     }
-    return;
   }
   const off = ctx.backups.on(() => {
     const p = ctx.backups.progress(t.id);
@@ -119,7 +123,7 @@ export async function restoreFrom(ctx, t, remote, say) {
   });
   try {
     // An automatic backup in the way stops; one the user started is waited for, and the user is told.
-    const downloading = ctx.backups.download(t.id, remote.id);
+    const downloading = ctx.backups.download(t.id, remote.id, { signal });
     say(ctx.backups.running().some((r) => r.reason === 'user') ? "Waiting for the backup that's running to finish…" : gettingFiles(null));
     const blob = await downloading;
     const day = localDay(remote.at || Date.now());

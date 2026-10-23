@@ -410,19 +410,36 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
      */
     async peek(id, backupId, o = {}) {
       const rec = await target(id);
-      if (typeof typeOf(rec.type)?.peek !== 'function') return null;
+      const type = typeOf(rec.type);
+      // Only a place that keeps the unpacked tree: a whole archive file may be encrypted, and its preview needs the passphrase form.
+      if (type?.stores !== 'tree' || typeof type.peek !== 'function') return null;
       const manifest = await call(rec, 'peek', (t, c) => /** @type {NonNullable<StorageType['peek']>} */ (t.peek)(c, backupId, { signal: o.signal }));
-      checkManifest(manifest);
+      try {
+        checkManifest(manifest);
+      } catch (e) {
+        // What is wrong with it goes to the Trace; the screen says it in a few plain words.
+        const why = String(/** @type {any} */ (e)?.message ?? e);
+        await log('backup.peek', { target: id, type: rec.type, backup: backupId, problem: (await withoutSecrets(store, why)).slice(0, 500) });
+        throw new TargetError('other', /newer version of annai/.test(why) ? 'This backup was made by a newer annai: update annai first.' : 'This backup is damaged.');
+      }
       return manifest;
     },
 
-    /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */
-    download: (id, backupId) => {
+    /**
+     * Downloads one backup from a place, as an archive file for the import screen (spec §12.3). signal: the user left or cancelled; a
+     * download still waiting its turn then never reaches the place, and one under way stops it.
+     * @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
+     */
+    download: (id, backupId, { signal } = {}) => {
       // The user is waiting for this: an automatic backup in its way stops, and carries on later as usual.
       for (const p of running.values()) if (p.reason === 'auto') p.stop.abort();
+      const stopped = () => new DOMException('The backup was stopped.', 'AbortError');
       return serial(async () => {
+        if (signal?.aborted) throw stopped();
         const rec = await target(id);
         const stop = new AbortController();
+        const forward = () => stop.abort();
+        signal?.addEventListener('abort', forward, { once: true });
         running.set(id, { phase: 'downloading', done: 0, total: 0, stop, reason: 'download' });
         emit();
         try {
@@ -433,9 +450,11 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
               emit();
             },
           }));
+          if (signal?.aborted) throw stopped();
           await log('backup.download', { target: id, type: rec.type, backup: backupId, bytes: blob.size });
           return blob;
         } finally {
+          signal?.removeEventListener('abort', forward);
           running.delete(id);
           emit();
         }

@@ -19,7 +19,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
-  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.prune'],
+  Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.peek', 'backup.prune'],
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });
 
@@ -172,6 +172,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
   if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}`;
+  if (e.type === 'backup.peek') return `${d.type} · ${d.backup} can't be opened: ${cut(d.problem)}`;
   if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   if (e.type === 'plugin.reset') {
     const n = (/** @type {number} */ c, /** @type {string} */ w) => `${c} ${w}${c === 1 ? '' : 's'}`;

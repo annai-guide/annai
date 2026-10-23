@@ -370,7 +370,7 @@ test('opening a backup reads its files six at a time, and the archive keeps the 
 });
 
 // Backlog: the preview of a backup reads its manifest alone, however many files it has.
-test('peek tells what a backup holds in three requests, whatever its number of files, and get still brings the files', { timeout: 120_000 }, async () => {
+test('peek tells what a backup holds in one request, whatever its number of files, and get still brings the files', { timeout: 120_000 }, async () => {
   const gh = await startGitHub({ repos: { [REPO]: {} } });
   try {
     const { type } = github();
@@ -380,12 +380,31 @@ test('peek tells what a backup holds in three requests, whatever its number of f
     const put = await type.put(ctx(gh), made, opts());
     let from = gh.log.length;
     assert.deepEqual(await type.peek(ctx(gh), put.id, {}), made.manifest);
-    assert.deepEqual(gh.log.slice(from).map((l) => l.method), ['GET', 'GET', 'GET']);
+    assert.deepEqual(gh.log.slice(from).map((l) => `${l.method} ${l.path.replace(/^.*\/repos\/[^/]+\/[^/]+/, '')}`), ['GET /contents/annai-archive.json']);
     from = gh.log.length;
     const blob = await type.get(ctx(gh), put.id, { onProgress: () => {} });
     assert.ok(gh.log.slice(from).length > 150, 'the files come with get');
     assert.ok((await peekArchive(blob)).manifest.files.length > 150);
-    await assert.rejects(type.peek(ctx(gh), gh.commits(REPO).at(-1).sha, {}), refused('missing', /isn't an annai backup/));
+  } finally {
+    await gh.stop();
+  }
+});
+
+test("peek stops when told to, and refuses what isn't a backup in plain words", async () => {
+  const gh = await startGitHub({ repos: { [REPO]: {} } });
+  try {
+    const { type, sent } = github();
+    const made = await archive(await device());
+    const put = await type.put(ctx(gh), made, opts());
+    const before = sent.length;
+    await assert.rejects(type.peek(ctx(gh), put.id, { signal: AbortSignal.abort() }), (/** @type {any} */ e) => e.name === 'AbortError');
+    assert.equal(sent.length, before, 'no request was made once stopped');
+    await assert.rejects(type.peek(ctx(gh), 'not-a-commit', {}), refused('missing', /isn't in me\/annai-backup/));
+    assert.equal(sent.length, before, 'and none for an id that is no commit');
+    await assert.rejects(type.peek(ctx(gh), gh.commits(REPO).at(-1).sha, {}), refused('missing', /isn't an annai backup/), 'a commit without the manifest');
+    gh.garbleNext({ method: 'GET', part: '/contents/', body: '<html>Unicorn!</html>' });
+    await assert.rejects(type.peek(ctx(gh), put.id, {}), refused('other', /damaged/));
+    assert.deepEqual(await type.peek(ctx(gh), put.id, {}), made.manifest);
   } finally {
     await gh.stop();
   }

@@ -18,6 +18,9 @@ export const TOKEN = 'sekrit-token-0001';
  */
 export function memoryPlace({ peek = false } = {}) {
   let peeks = 0;
+  let gets = 0;
+  /** @type {((signal: AbortSignal) => Promise<unknown>) | null} */
+  let getHold = null;
   /** @type {{ id: string, at: number, device: string, label: string, blob: Blob }[]} */
   const kept = [];
   /** @type {unknown} */
@@ -54,7 +57,9 @@ export function memoryPlace({ peek = false } = {}) {
       kept.push(b);
       return { id: b.id, at: b.at, uploaded: a.blob.size, files: 1 };
     },
-    get: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+    get: async (/** @type {any} */ _c, /** @type {string} */ id, /** @type {any} */ o = {}) => {
+      gets++;
+      if (getHold) await getHold(o.signal);
       const b = kept.find((x) => x.id === id);
       if (!b) throw new TargetError('missing', 'That backup is gone.');
       return b.blob;
@@ -71,6 +76,23 @@ export function memoryPlace({ peek = false } = {}) {
   return {
     kept, type,
     peeks: () => peeks,
+    /** How many times get was called. */
+    gets: () => gets,
+    /** Gets wait until released, or until their signal aborts. @returns {() => void} release */
+    pauseGets() {
+      /** @type {(v: unknown) => void} */
+      let open = () => {};
+      const gate = new Promise((resolve) => { open = resolve; });
+      getHold = (signal) => new Promise((resolve, reject) => {
+        if (signal?.aborted) return reject(signal.reason);
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+        gate.then(resolve);
+      });
+      return () => {
+        getHold = null;
+        open(undefined);
+      };
+    },
     waiting: () => waiting,
     /** The next put throws e. @param {unknown} e */
     failNext(e) { fail = e; },
