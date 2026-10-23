@@ -1,4 +1,4 @@
-import { SYS, SYS_DEVICE } from './scopes.js';
+import { SYS, SYS_DEVICE, NOTES_ONLY } from './scopes.js';
 
 /**
  * Automatic backups (spec §12.4): daily or after changes, while on Wi-Fi with the app open. Only
@@ -41,7 +41,7 @@ export function changedSince(store, seqs, now = Date.now()) {
     /** @type {number | null} */
     let lastChangeAt = null;
     for (const s of scopes) {
-      const [e] = await t.listEvents(s.id, { reverse: true, limit: 1 });
+      const [e] = await t.listEvents(s.id, { reverse: true, limit: 1, notTypes: [...NOTES_ONLY] }); // a note is no change
       if (e && e.seq > (seqs?.[s.id] ?? 0)) {
         changed = true;
         if (e.ts <= now) lastChangeAt = Math.max(lastChangeAt ?? 0, e.ts);

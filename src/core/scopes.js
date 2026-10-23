@@ -159,8 +159,10 @@ export async function removeLeftovers(store, now = Date.now()) {
   });
 }
 
-/** Changes to a trip's status, not to what it holds: a Backup made before them still has everything (spec §4.9). */
-const STATUS_ONLY = new Set(['scope.archive', 'scope.unarchive']);
+/** Log entries that change nothing a Backup holds: a refused read's note (reach.js). */
+export const NOTES_ONLY = Object.freeze(['content.refused']);
+/** Changes to a trip's status, not to what it holds, and notes: a Backup made before them still has everything (spec §4.9). */
+const STATUS_ONLY = new Set(['scope.archive', 'scope.unarchive', ...NOTES_ONLY]);
 
 /**
  * Notes a saved Backup on each trip it held (spec §4.9). A scope that isn't a trip, a trip

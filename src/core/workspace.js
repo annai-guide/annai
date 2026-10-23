@@ -176,7 +176,8 @@ export class Workspace {
    * Points the path back at an earlier version (its blob is kept forever in M1).
    * The version keeps the type it was saved with: blobs are shared between files
    * with the same bytes, so the blob's own type may belong to another file.
-   * Only content the scope reaches can be restored (reach.js): never another trip's, named by its hash.
+   * Only content the scope's own files and history name can be restored (reach.js): never another trip's, named by its
+   * hash, nor the user's own (/me/) into a trip.
    * @param {string} scope @param {string} path @param {string} hash @param {WriteOptions} opts
    * @returns {Promise<FileEntry>}
    */
@@ -184,7 +185,7 @@ export class Workspace {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
       const { blob, held, events, current } = await this.store.tx(['blobs', 'events', 'files'], 'readonly', async (t) => {
-        const own = await reachable(t, scope, hash);
+        const own = await reachable(t, scope, hash, { me: false });
         return {
           blob: own ? await t.getBlob(hash) : undefined,
           held: !own && (await t.hasBlob(hash)),

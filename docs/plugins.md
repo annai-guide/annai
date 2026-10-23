@@ -694,5 +694,6 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
   - Content a plugin writes with `annai.files` is always safe.
   - Content put into storage any other way, for example through the database directly, disappears the next time someone removes a trip.
   - Content a plugin keeps in a log entry goes through `annai.events.append(scope, type, data, { texts, blobs })`, which stores it and names it in the entry's refs.
+- **Name only content that scope has.** Content is stored once for every trip, so a hash alone would reach another trip's. A log entry, a tool's photo or a request copy named by its hash alone must be content the scope already has (a file of it, of `/me/` beside a trip, or something its log names), or it reads as not stored (spec §4.1). For a plugin with code this is a rule of consistency, not a wall: it runs with annai's full access, and `annai.files` holds annai's store, so it could read anything. The rule keeps annai's own records, exports and removals right.
 - **Use only what `annai` gives you.** Anything else annai has is internal and changes without notice.
 - **Never put API keys or other secrets in files or log entries.** Files and logs end up in exports and backups.

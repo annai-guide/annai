@@ -7,6 +7,7 @@ import { logEvent } from '../../src/core/events.js';
 import { readBlob, blobBytes, reachable } from '../../src/core/reach.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { text } from '../../src/core/bytes.js';
+import { noteStores } from './store-spy.js';
 
 /** Two trips on one device, each with a photo of its own, and a photo of the user's own. */
 async function twoTrips() {
@@ -70,7 +71,11 @@ test("a log entry's refs and file versions make content reachable; a hash only i
 test("a read through the log entry that names the content looks nothing else up, and only for that entry's own scope", async () => {
   const { store, a, b, aPhoto } = await twoTrips();
   const [own] = await store.tx(['events'], 'readonly', (t) => t.listEvents(a, { types: ['file.write'], reverse: true, limit: 1 }));
+  const opened = noteStores(store);
   assert.ok(await blobBytes(store, a, aPhoto, { named: own }));
+  assert.deepEqual(opened, [['blobs']], 'the content alone: no files or log looked up (review, 13)');
+  assert.ok(await blobBytes(store, a, aPhoto));
+  assert.deepEqual(opened[1], ['files', 'events', 'blobs'], 'without the entry, its names are looked up');
   // The same entry offered for another scope is no shortcut there.
   assert.equal(await blobBytes(store, b, aPhoto, { named: own }), null);
   // An entry that names other content gives no shortcut either.

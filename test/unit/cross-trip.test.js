@@ -129,6 +129,8 @@ test('a photo in both trips is sent from each: its request copy is made for each
   assert.deepEqual(reads, [[{ ok: true, images: 1 }], [{ ok: true, images: 1 }]]);
   assert.equal(imagesIn(k.requests.at(-1)).length, 1);
   assert.equal((await k.events(['error'])).length, 0);
+  // Neither trip asked for the other's copy: no refusal in either (review, 5a; probe Q2).
+  assert.deepEqual([(await refusals(k.store, k.kyoto)).length, (await refusals(k.store, k.trip)).length], [0, 0]);
 });
 
 test("the task helper's tools get no other trip's photo by its hash", async () => {
@@ -470,4 +472,43 @@ test("a held hash whose entry is another size is refused before the entry is rea
   opened.zip.read = async (/** @type {string} */ name) => { read.push(name); return was(name); };
   await assert.rejects(importArchive(v.store, opened), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
   assert.ok(!read.some((n) => n.endsWith('/notes/plan.md')), read.join());
+});
+
+// False changes and false refusals (review items 4, 5a and 10).
+const { backupState, recordBackup } = await import('../../src/core/scopes.js');
+const { changedSince } = await import('../../src/core/backup-auto.js');
+
+test("a refused read's note is no change to the trip: no 'hasn't been backed up' question, and no backup due for it (review, 4; probe P6)", async () => {
+  const v = await twoTrips();
+  const seqs = await v.store.tx(['scopes', 'events'], 'readonly', async (t) => Object.fromEntries(await Promise.all((await t.listScopes()).map(async (s) => [s.id, await t.lastSeq(s.id)]))));
+  await recordBackup(v.store, new Map([[v.b, seqs[v.b]]]), 1);
+  assert.equal(await blobBytes(v.store, v.b, v.aPhoto, { via: 'show' }), null);
+  assert.equal((await refusals(v.store, v.b)).length, 1);
+  assert.equal((await backupState(v.store, v.b)).changed, false);
+  assert.deepEqual(await changedSince(v.store, seqs), { changed: false, lastChangeAt: null });
+  // A real change after it still counts.
+  await v.ws.write(v.b, '/notes/n.md', 'new', { author: 'user' });
+  assert.equal((await backupState(v.store, v.b)).changed, true);
+  assert.equal((await changedSince(v.store, seqs)).changed, true);
+});
+
+test("restoring a trip file's version takes only the trip's own history: the user's own photo isn't copied into a trip that way (Step, 10)", async () => {
+  const v = await twoTrips();
+  await assert.rejects(v.ws.restore(v.b, '/files/passport.jpg', v.mePhoto, { author: 'user' }), NotFoundError);
+  assert.equal(await v.ws.read(v.b, '/files/passport.jpg'), undefined);
+  // From the user's own conversation, their own history restores as before.
+  const first = (await v.ws.read(ME, '/files/passport.jpg'))?.entry.hash;
+  await v.ws.write(ME, '/files/passport.jpg', utf8('passport, renewed'), { author: 'user', type: 'image/jpeg' });
+  await v.ws.restore(ME, '/files/passport.jpg', /** @type {string} */ (first), { author: 'user' });
+  assert.equal(await v.ws.readText(ME, '/files/passport.jpg'), 'photo of a passport');
+});
+
+test("the user's own photo a trip's conversation sent stays while /me/'s history or the trip names it (Step, 10)", async () => {
+  const v = await twoTrips();
+  await record(v.store, v.b, { type: 'msg.user', actor: 'user', data: { text: 'my passport', images: [{ hash: v.mePhoto, mediaType: 'image/jpeg' }] }, blobs: [{ hash: v.mePhoto, type: 'image/jpeg' }] });
+  // Deleting the /me/ file keeps its history (spec §4.2), so its content stays named there.
+  await v.ws.delete(ME, '/files/passport.jpg', { author: 'user' });
+  assert.ok(await blobBytes(v.store, v.b, v.mePhoto), 'the trip still has the photo it sent');
+  await removeTrip(v.store, v.b);
+  assert.equal(await held(v.store, v.mePhoto), true, "/me/'s history still names it: only Erase everything removes that");
 });
