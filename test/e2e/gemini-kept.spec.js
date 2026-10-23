@@ -24,6 +24,8 @@ async function geminiTrip(page, url, trip = 'Kyoto') {
 
 /** Types to Shiori and waits for her answer. @param {import('@playwright/test').Page} page @param {string} text @param {number} n her answers so far, after this one */
 async function say(page, text, n) {
+  // The box closes once a message is sent (the user, 2026-10-23): open it again if it is shut.
+  if (!(await page.getByLabel('Message to Shiori').isVisible())) await page.getByRole('button', { name: 'Type', exact: true }).click();
   await page.getByLabel('Message to Shiori').fill(text);
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.locator('.convo .shiori')).toHaveCount(n, { timeout: 30_000 });
@@ -148,6 +150,7 @@ test("Erase while Shiori is answering: her turn stops first, so it leaves nothin
     await geminiTrip(page, s.url);
     await page.getByRole('button', { name: 'Type' }).click();
     await say(page, 'Hello!', 1);
+    await page.getByRole('button', { name: 'Type', exact: true }).click(); // the box closed with the first message
     await page.getByLabel('Message to Shiori').fill('And now a long answer, please.');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => s.bodies().some(long)).toBe(true); // Google has named her turn, and is still answering

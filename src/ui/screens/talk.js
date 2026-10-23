@@ -124,7 +124,7 @@ export async function renderTalk(ctx) {
     if (e.type === 'out.speak') {
       if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
       // Said aloud: its words show like any of hers, marked; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
-      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { text: texts.text ?? '' }));
+      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { class: 'said-words', text: texts.text ?? '' }));
       const words = h('p', { text: texts.text ?? '', hidden: true });
       const show = h('button', {
         class: 'btn ghost', type: 'button', 'aria-expanded': 'false',

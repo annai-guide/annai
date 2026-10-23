@@ -106,8 +106,12 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .plugin-chips[hidden], .plugin-chip[hidden] { display: none; }
 .plugin-actions { display: contents; }
 .ib:focus-visible, .talk:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
-.type-sheet { max-width: 560px; margin: 0 auto 8px; display: flex; flex-direction: column; gap: 6px; }
-.type-sheet textarea { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--sheet); color: var(--ink); }
+.type-sheet { max-width: 560px; margin: 0 auto 8px; }
+.type-box { position: relative; }
+.type-sheet input { width: 100%; box-sizing: border-box; min-height: 48px; font: inherit; border: 1px solid var(--line); border-radius: 24px; padding: 8px 52px 8px 16px; background: var(--sheet); color: var(--ink); }
+/* The send arrow sits inside the box, on its right: for a keyboard with no send key, and for a mouse. */
+.send-arrow { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; border: 0; background: var(--ai); color: var(--ai-ink); cursor: pointer; }
+.send-arrow:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */
@@ -150,14 +154,15 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
   .dock.voice .seat.dock { width: 72px; height: 72px; }
   .dock.voice .ib { width: 50px; height: 50px; }
 }
-/* And a phone on its side, which has little height and plenty of width: the text panel is one row (the box, Send, Close), not
-   three stacked, so the page keeps a third of the height with it open (the third emulator pass: 11 px of 296). */
+/* And a phone on its side, which has little height: the box is a single line with no panel around it, so the page keeps a third of the height
+   with it open (the third emulator pass: 11 px of 296). */
 @media (orientation: landscape) and (max-height: 420px) {
-  .type-sheet { flex-direction: row; align-items: stretch; gap: 8px; margin-bottom: 0; }
-  .type-sheet textarea { flex: 1; min-width: 0; height: 44px; min-height: 0; resize: none; padding: 8px 12px; }
-  .type-sheet .acts { flex-wrap: nowrap; }
+  .type-sheet { margin-bottom: 0; }
+  .type-sheet input { min-height: 44px; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
+/* What she said aloud is read live in the bubble over the dock; here it is there to look back on, so it is quieter than her written lines. */
+.convo .shiori .said-words, .shiori-card .said-words { font-size: 0.875em; color: var(--ink-2); }
 
 /* The conversation: speech bubbles carry a SHIORI label instead of a second avatar. */
 .convo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

@@ -519,7 +519,7 @@ test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a 
   expect(Math.round(voice.y + voice.height)).toBe(544);
 });
 
-test('landscape at SE size (568 × 296) with the dock\'s text panel open: the page keeps about a third of the height (a third less 5 px), and the box, Send and Close still work (the third emulator pass: 11 px)', async ({ page }) => {
+test('landscape at SE size (568 × 296) with the dock\'s text box open: the page keeps about a third of the height (a third less 5 px), and the box and its send arrow are on screen, and tapping the keyboard button again closes it (the third emulator pass: 11 px)', async ({ page }) => {
   await page.setViewportSize({ width: 568, height: 296 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
@@ -534,12 +534,12 @@ test('landscape at SE size (568 × 296) with the dock\'s text panel open: the pa
   const open = await room();
   expect(open.page).toBeGreaterThanOrEqual(296 * 0.32);
   // Everything in the panel is on screen and can be tapped.
-  for (const b of [box, page.getByRole('button', { name: 'Send' }), page.getByRole('button', { name: 'Close' })]) {
+  for (const b of [box, page.getByRole('button', { name: 'Send' })]) {
     const r = /** @type {{ y: number, height: number }} */ (await b.boundingBox());
     expect(r.y).toBeGreaterThanOrEqual(0);
     expect(r.y + r.height).toBeLessThanOrEqual(296);
   }
   expect((/** @type {{ height: number }} */ (await box.boundingBox())).height).toBeGreaterThanOrEqual(30);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Type', exact: true }).click();
   await expect(box).toBeHidden();
 });
