@@ -424,6 +424,14 @@ A protocol whose server can keep a conversation's turns, so the next sends only 
   - `forgetRequest({ endpoint, key, id })` gives the server's delete call for one turn: `{ url, headers, method: 'DELETE' }`, to the ability's address. annai counts a 200 or a 404 as done, and a 429 rests that address as long as it asks.
 - **annai's side:** it remembers each kept turn by its id, its trip and fingerprints of the messages sent (never their content), on this device alone, and matches the longest one the new request begins with, then its reply, within `hours` of its chain's first turn (src/core/llm/kept.js says why). It keeps a turn only if, when it is recorded, its provider, key and address, switch and trip still allow it; otherwise the call deletes it at once. It deletes them when the user removes their trip, the provider or everything, changes or removes the key or address, or turns the switch off, only ever with the key and address that made them. Deletions wait for a connection, and each is in the trace.
 
+### The languages the user speaks
+
+The user lists the languages they speak, and the one Shiori answers in, in Settings → Shiori (spec §10.9). annai tells every model the words ("The user speaks English and Japanese; they may switch between these. Answer in the language they used…") in the instructions it gives a live protocol (`setup.instructions`) and in Shiori's system text, so your code adds none. What your code may add is the protocol's own language fields, from plain data:
+
+- **A transcription type** gets `languages` beside `audio` in `transcribeRequest`: `{ spoken: Language[], answer: Language | null }`, empty `spoken` until the user has chosen. A live type gets the same as `setup.languages`.
+- **A `Language`** is `{ id, name, locale, iso, live, google }`: annai's id (`ja`), its English name, a BCP-47 tag for browsers (`ja-JP`), the code Whisper-style models take (`ja`; ISO 639-1, or 639-3 where OpenAI takes it), Gemini Live's code (`ja`, `zh-Hans`) and Gemini's transcription tag (`ja-JP`, `cmn-Hans-CN`; null where it has none).
+- **Send what the provider takes, and no more.** A field that takes one language (Whisper's `language`) gets one only when exactly one is listed; several are better left to the model to detect than cut to the first. A voice API that takes none is sent none: the text decides. A tunable the user typed by hand (`language`) wins over the setting.
+
 ### Audio formats
 
 Speech travels in the smallest format both the phone and the provider handle (spec §10.6). Your protocol and your provider description say what that is, as tunables. annai reads them; your code only names files and formats.

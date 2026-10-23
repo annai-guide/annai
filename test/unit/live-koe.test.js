@@ -1255,3 +1255,17 @@ test('a very short transcript in a language that is not listed is flagged in the
     await k.done();
   }
 });
+
+test('with no languages chosen, a very short transcript is held against the browser\'s language: English is never stray, "¿Qué?" is (the first real run called "What?" English and "No." Spanish)', async () => {
+  const k = await liveKit([{ heard: 'What?', said: 'Sorry.', audio: tone() }, { heard: '¿Qué?', said: 'Sorry.', audio: tone() }]);
+  try {
+    await exchange(k, 'where-eat');
+    await exchange(k, 'where-eat', 2);
+    const [english, spanish] = await k.events(['heard']);
+    assert.deepEqual([english.data.text, english.data.strayLanguage], ['What?', undefined]);
+    assert.deepEqual([spanish.data.text, spanish.data.strayLanguage], ['¿Qué?', 'Spanish']);
+    assert.deepEqual(got(k, 'setup')[0].setup.inputAudioTranscription, {}, 'and still no hint: the browser is no evidence of what the user speaks');
+  } finally {
+    await k.done();
+  }
+});

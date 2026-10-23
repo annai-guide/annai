@@ -63,13 +63,21 @@ test('askTts gives up with the keys used up, and its error never holds a key', a
   await assert.rejects(askTts({ text: 'x', voice: 'Kore', model: 'm', keys, fetcher, pauseMs: 0 }), (/** @type {any} */ e) => /429|quota/i.test(e.message) && !e.message.includes('AIza'));
 });
 
-test('the clip set: 5 to 8 travel questions, a quick yes, a sentence with a thinking pause, a long question, and silence', () => {
+test('the clip set: 5 to 8 travel questions, a quick yes, a sentence with a thinking pause, a long question, and silence; for the languages check, more short English replies and a sentence in Japanese and one in Chinese (phase 2)', () => {
   const kinds = Object.values(CLIPS).map((c) => c.kind);
   const count = (/** @type {string} */ k) => kinds.filter((x) => x === k).length;
   assert.ok(count('question') >= 5 && count('question') <= 8);
   for (const k of ['yes', 'pause', 'long', 'silence']) assert.equal(count(k), 1, k);
   const pause = Object.values(CLIPS).find((c) => c.kind === 'pause');
   assert.ok(pause?.parts?.some((p) => typeof p === 'number' && p >= 1 && p <= 2), 'a 1 to 2 s pause inside it');
+  // The short replies the user's trace of 2026-10-22 had misheard as other languages, and a sentence in each of his other languages.
+  assert.deepEqual(['yes', 'sure', 'what', 'alright', 'no'].map((n) => CLIPS[n].text), ['Yes.', 'Sure.', 'What?', 'Alright.', 'No.']);
+  assert.equal(count('reply'), 4);
+  assert.deepEqual([CLIPS.ja.kind, CLIPS.ja.lang, CLIPS.zh.kind, CLIPS.zh.lang], ['sentence', 'ja', 'sentence', 'zh']);
+  assert.match(CLIPS.ja.text ?? '', /[\u3040-\u30ff]/, 'kana');
+  assert.match(CLIPS.zh.text ?? '', /[\u4e00-\u9fff]/);
+  assert.doesNotMatch(CLIPS.zh.text ?? '', /[\u3040-\u30ff]/);
+  for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !['ja', 'zh'].includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
 });
 
 test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every clip that has speech, none with a key in it', async () => {
@@ -86,8 +94,9 @@ test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every cl
     assert.ok(w.pcm.reduce((m, x) => Math.max(m, Math.abs(x)), 0) > 0.05, `${f} is not silent`);
     assert.ok(!/AIza/.test(Buffer.from(bytes).toString('latin1')), `${f} holds a key`);
   }
-  assert.ok(total < 1_300_000, `${total} bytes in all`);
+  assert.ok(total < 1_600_000, `${total} bytes in all`);
   const loaded = await loadClips();
   assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).sort());
   assert.ok(loaded.lunch.pcm instanceof Float32Array && loaded.lunch.seconds > 0.5);
+  assert.deepEqual([loaded.lunch.lang, loaded.ja.lang, loaded.zh.lang, loaded.silence.lang], ['en', 'ja', 'zh', 'en']);
 });

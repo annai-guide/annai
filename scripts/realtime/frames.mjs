@@ -18,7 +18,12 @@ export function framesOf(dir, payload, at) {
   const add = (/** @type {string} */ kind, /** @type {Partial<import('./analyse.mjs').Frame>} */ more = {}) => out.push({ at, dir, kind, ...more });
   const bytes = (/** @type {string} */ b64) => Math.floor((String(b64).length * 3) / 4) - (String(b64).endsWith('==') ? 2 : String(b64).endsWith('=') ? 1 : 0);
   if (dir === 'out') {
-    if (m.setup) add('setup');
+    if (m.setup) {
+      // Which language hints went, and whether the instructions name the languages: a fact about the setup, never the instructions themselves.
+      const codes = m.setup.inputAudioTranscription?.languageCodes;
+      const named = (m.setup.systemInstruction?.parts ?? []).some((/** @type {any} */ p) => /# Languages\n/.test(String(p?.text ?? '')));
+      add('setup', m.setup.inputAudioTranscription ? { text: `${Array.isArray(codes) ? `languageCodes ${codes.join(',')}` : 'no languageCodes'}; the instructions have ${named ? 'a' : 'no'} Languages section` } : {});
+    }
     const ri = m.realtimeInput;
     if (ri?.activityStart) add('activityStart');
     if (ri?.activityEnd) add('activityEnd');
