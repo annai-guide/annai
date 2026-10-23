@@ -76,8 +76,13 @@ export function cut(s, n) {
   const c = s.charCodeAt(n - 1);
   return s.slice(0, c >= 0xd800 && c <= 0xdbff ? n - 1 : n);
 }
+/** s with each unpaired surrogate replaced by U+FFFD (String.prototype.toWellFormed where the browser has it). @param {string} s */
+export function wellFormed(s) {
+  const native = /** @type {any} */ (s).toWellFormed;
+  return typeof native === 'function' ? native.call(s) : s.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '\ufffd');
+}
 /** A field as plain one-line text. Cut first and matched by bounded patterns (as html-text.js does), so a hostile answer costs linear time. @param {unknown} s */
-const text = (s) => decodeEntities(cut(String(s ?? ''), FIELD).replace(/<[^<>]*>/g, ' ')).replace(/\[([^[\]]*)\]\(([^()]*)\)/g, '$1').replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, ' ').trim();
+const text = (s) => decodeEntities(wellFormed(cut(String(s ?? ''), FIELD)).replace(/<[^<>]*>/g, ' ')).replace(/\[([^[\]]*)\]\(([^()]*)\)/g, '$1').replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, ' ').trim();
 /** @param {string} s */
 const words = (s) => [...new Set(cut(s, FIELD).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [])];
 

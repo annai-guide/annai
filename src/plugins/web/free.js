@@ -28,13 +28,22 @@ function failure(name, e) {
   return Object.assign(new Error(why), { status: s, kind: e?.kind });
 }
 
+/** One client for each service's address for the page's life, so a session that a server wants is started once and then reused. @type {Map<string, McpClient>} */
+const clients = new Map();
+/** Lets go of them (for tests). */
+export function forgetClients() {
+  clients.clear();
+}
+
 /**
- * One call of an MCP search tool: a single request, no session. Its result, or a failure in words.
+ * One call of an MCP search tool: a single request, no session unless the server wants one. Its result, or a failure in words.
  * @param {string} name @param {string} url @param {Record<string, string>} headers @param {string} tool @param {any} args @param {{ fetch: any, signal: AbortSignal }} c
  */
 async function callTool(name, url, headers, tool, args, c) {
   try {
-    const result = await new McpClient({ url, server: name, auth: async () => headers, stateless: true }).callTool(tool, args, { fetch: c.fetch, signal: c.signal });
+    let client = clients.get(url);
+    if (!client) clients.set(url, client = new McpClient({ url, server: name, auth: async () => headers, stateless: true }));
+    const result = await client.callTool(tool, args, { fetch: c.fetch, signal: c.signal });
     const out = toolOutput(result);
     if (out.isError) throw Object.assign(new Error(cut(out.content, 200)), { status: /rate.?limit|too many/i.test(out.content) ? 429 : undefined });
     return { text: out.content, result };

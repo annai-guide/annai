@@ -10,12 +10,22 @@ import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
+import { forgetClients } from '../../src/plugins/web/free.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
+
+/** The recorded MCP answers carry id 1; a client that keeps its session across searches counts on, as a real server echoes the request's id. @param {any} init @param {Response} res */
+async function withId(init, res) {
+  if (init?.method !== 'POST' || typeof init.body !== 'string' || !init.body.includes('"jsonrpc"') || !(res instanceof Response) || res.status !== 200) return res;
+  const id = JSON.parse(init.body).id;
+  if (!id || id === 1) return res;
+  return new Response((await res.text()).replace(/"id":1([,}])/, `"id":${id}$1`), { status: res.status, headers: res.headers });
+}
 
 async function setup({ traced = false } = {}) {
   NOMINATIM_GAP.ms = 1;
   nominatimReset();
+  forgetClients();
   for (const id of ['jina', 'exa', 'parallel', 'firecrawl', 'wiki', 'stuck', 'slow', 'tavily']) cooldowns.clear(id);
   const registry = new Registry();
   const store = createMemoryStore();
@@ -30,8 +40,8 @@ async function setup({ traced = false } = {}) {
   const run = (name, input, answer, over = {}) => tools[name].run(input, {
     scope: 'me', trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori', providerOff: [],
     fetch: traced
-      ? tracedFetch(store, 'me', { tool: name }, async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return answer(url, init); })
-      : async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return answer(url, init); },
+      ? tracedFetch(store, 'me', { tool: name }, async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return withId(init, await answer(url, init)); })
+      : async (/** @type {string} */ url, /** @type {any} */ init = {}) => { asked.push({ url, init }); return withId(init, await answer(url, init)); },
     llm: { call: async () => { throw new Error('no model'); } },
     ...over,
   });
@@ -443,4 +453,46 @@ test('the floor reads no more of an answer than annai reads', async () => {
   await t.settings({ searchOff: ['jina', 'exa', 'parallel', 'firecrawl'] });
   const huge = () => new Response('x', { headers: { 'content-length': String(9 * 2 ** 20), 'content-type': 'application/json' } });
   await assert.rejects(t.run('web_search', { query: 'nepenthe lunch' }, huge), /more than annai reads/);
+});
+
+
+test('a server that wants a session first is given one once: two searches make one initialize, and the session is reused', async () => {
+  const t = await setup();
+  await t.settings({ searchOff: ['jina', 'parallel', 'firecrawl'] });
+  const fixtureText = await fixture('exa-search.sse');
+  /** @type {{ method: string, session: string | null }[]} */
+  const seen = [];
+  const answer = (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (url !== EXA) return wikiAnswer(url);
+    const body = JSON.parse(init.body);
+    const session = new Headers(init.headers).get('mcp-session-id');
+    seen.push({ method: body.method, session });
+    if (body.method === 'initialize') return new Response(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-06-18' } }), { headers: { 'content-type': 'application/json', 'mcp-session-id': 'sess-1' } });
+    if (body.method === 'notifications/initialized') return new Response(null, { status: 202 });
+    if (!session) return new Response('no session', { status: 400 });
+    return new Response(fixtureText.replace(/"id":1\}/, `"id":${body.id}}`), { headers: { 'content-type': 'text/event-stream' } });
+  };
+  assert.match(await t.run('web_search', { query: 'nepenthe hours' }, answer), /Hours and Directions/);
+  assert.match(await t.run('web_search', { query: 'bixby bridge' }, answer), /Hours and Directions/);
+  assert.equal(seen.filter((m) => m.method === 'initialize').length, 1);
+  assert.deepEqual(seen.filter((m) => m.method === 'tools/call').map((m) => m.session), [null, 'sess-1', 'sess-1']);
+});
+
+test('ready() is charged to the search\'s deadline: several slow ones cannot hold it past its time, and the floor still answers', async () => {
+  const was = [CHAIN.ms, CHAIN.reserve, READY_MS.ms];
+  CHAIN.ms = 500;
+  CHAIN.reserve = 150;
+  READY_MS.ms = 1_000;
+  try {
+    const t = await setup();
+    for (const n of ['a', 'b', 'c', 'd']) t.registry.add(`third-${n}`, 'search', { id: `slow-${n}`, name: `Slow ${n}`, ready: () => new Promise(() => {}), search: async () => [] });
+    await t.settings({ search: ['slow-a', 'slow-b', 'slow-c', 'slow-d'], searchOff: ['jina', 'exa', 'parallel', 'firecrawl'] });
+    const started = Date.now();
+    const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
+    assert.match(out, /Wikivoyage/);
+    const took = Date.now() - started;
+    assert.ok(took < 700, `took ${took} ms`);
+  } finally {
+    [CHAIN.ms, CHAIN.reserve, READY_MS.ms] = was;
+  }
 });
