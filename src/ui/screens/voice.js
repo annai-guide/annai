@@ -1,7 +1,7 @@
 import { h, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { voiceSettings } from '../../core/voice/settings.js';
-import { modelOf, abilityOf, providerOf, KOE_ROLE } from '../../core/llm/config.js';
+import { modelOf, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
 import { SAMPLE, speechProblem } from '../speech-check.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
@@ -44,7 +44,7 @@ export async function renderVoice(ctx) {
   const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
   const clips = savedCheck('Keep voice clips', s.keepClips, (on) => save({ keepClips: on }));
   // Koe live (K5): where a live session's audio goes, said plainly; its quiet spell, and whether speaking cuts her off.
-  const live = [...new Set((cfg.roles[KOE_ROLE]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
+  const live = [...new Set((cfg.roles[KOE_REALTIME]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
     .map((/** @type {string} */ id) => providerOf(cfg.providers[cfg.models[id].provider]).name))];
   const closeAfter = h('input', { id: 'voice-close-after', type: 'number', min: '10', max: '300', step: '1', value: String(s.closeAfterSeconds) });
   const bargeIn = savedCheck('Cut her off by speaking', s.bargeIn, (on) => save({ bargeIn: on }));

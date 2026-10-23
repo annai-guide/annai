@@ -306,14 +306,12 @@ test("item 11 (consent): a session a trigger opened listens after it speaks only
 });
 
 test('item 12 (probe B3): a tap that first unlocks sound on a session already open gives Koe her voice', async () => {
-  const { updateAppSettings } = await import('../../src/core/settings.js');
-  const k = await liveKit([{ said: 'First.', audio: tone(0.2) }, { heard: 'where to eat', said: 'Tacos ahead.', audio: tone(0.2) }], { voice: { mode: 'off' } });
+  // Voice on, sound not unlocked yet: a typed message opens a session (since 2026-10-22 voice off types through Classic, so the
+  // session is opened with voice on, its first words unheard until a tap unlocks sound).
+  const k = await liveKit([{ said: 'First.', audio: tone(0.2) }, { heard: 'where to eat', said: 'Tacos ahead.', audio: tone(0.2) }]);
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
-    await updateAppSettings(k.ws, { voice: { mode: 'on' } });
-    await k.voice.refresh();
     await k.agent.idle();
     assert.equal(k.voice.unlocked, false);
     k.platform.player.unlock = async () => { await wait(80); return true; }; // an unlock slower than the microphone

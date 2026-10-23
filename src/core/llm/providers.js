@@ -1,4 +1,4 @@
-import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLE } from './config.js';
+import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 
 /**
@@ -72,15 +72,23 @@ export function speechBehind(list, add) {
 
 /**
  * Roles with a suggestion filled in. onlyEmpty keeps chat roles the user set; speech models move ahead
- * of the stand-ins (withSpeech), or, behind, join the end. Koe's list is filled only when koe is
- * asked (the tap on "Use the recommended models"): the split is opt-in, so adding a provider never turns it on.
+ * of the stand-ins (withSpeech), or, behind, join the end. Koe's lists are filled only when koe is
+ * asked (the tap on "Use the recommended models"): the split is opt-in, so adding a provider never turns it on. An older
+ * description's one Koe list puts its realtime models in Realtime and its chat models in Classic.
  * @param {Roles} roles @param {(role: string, providerModelId: string) => string | undefined} pick the model id
  * @param {Record<string, string[]> | undefined} suggestion @param {{ onlyEmpty: boolean, behind: boolean, speech: boolean, chat: boolean, koe?: boolean }} o
  */
 function suggested(roles, pick, suggestion, o) {
   const next = structuredClone(roles);
-  for (const [role, ids] of Object.entries(suggestion ?? {})) {
-    if (role === KOE_ROLE && !o.koe) continue;
+  /** @type {Record<string, string[]>} */
+  const given = { ...suggestion };
+  if (given.koe && !given[KOE_REALTIME] && !given[KOE_CLASSIC]) {
+    given[KOE_REALTIME] = given.koe.filter((p) => pick(KOE_REALTIME, p));
+    given[KOE_CLASSIC] = given.koe.filter((p) => pick(KOE_CLASSIC, p));
+  }
+  delete given.koe;
+  for (const [role, ids] of Object.entries(given)) {
+    if (KOE_ROLES.includes(role) && !o.koe) continue;
     const models = ids.map((p) => pick(role, p)).filter((x) => typeof x === 'string');
     if (!models.length) continue;
     if (SPEECH_ROLES.includes(role)) {
@@ -215,11 +223,17 @@ export async function syncProviders({ ws }, sources) {
   return n;
 }
 
-/** A suggestion ("free", "recommended") put in its roles on the user's tap, speech models ahead of the stand-ins. @param {{ ws: Workspace }} c @param {string} providerId @param {ProviderSource} src @param {string} which
+/**
+ * A suggestion ("free", "recommended") put in its roles on the user's tap, speech models ahead of the stand-ins. A live model it
+ * puts in Koe · Realtime makes Realtime Koe's mode (its ability is on: models come only from abilities switched on).
+ * @param {{ ws: Workspace }} c @param {string} providerId @param {ProviderSource} src @param {string} which
  */
 export async function useSuggestion({ ws }, providerId, src, which) {
   const cfg = await readConfig(ws);
-  await saveRoles(ws, suggested(cfg.roles, picker(cfg, providerId), src.provider.roles?.[which], { onlyEmpty: false, behind: false, speech: true, chat: true, koe: true }));
+  const o = { onlyEmpty: false, behind: false, speech: true, chat: true, koe: true };
+  const pick = picker(cfg, providerId);
+  const live = Boolean(suggested({}, pick, src.provider.roles?.[which], o)[KOE_REALTIME]?.models.length);
+  await saveRoles(ws, suggested(cfg.roles, pick, src.provider.roles?.[which], o), live ? { koeMode: 'realtime' } : {});
 }
 
 /** What a model added by id or from a list starts with: its ability's modelDefaults. @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId */
