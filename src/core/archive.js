@@ -538,7 +538,9 @@ export async function importArchive(store, opened, choices = {}) {
       content.set(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes });
     }
   }
-  for (const b of manifest.blobs) if (!content.has(b.hash)) content.set(b.hash, { name: b.name, type: b.type });
+  // Older versions only where a scope it takes names them: a skipped trip's stay out, never stored unnamed (spec §4.9).
+  const named = new Set(plan.flatMap((p) => p.events.flatMap(blobsOf)));
+  for (const b of manifest.blobs) if (named.has(b.hash) && !content.has(b.hash)) content.set(b.hash, { name: b.name, type: b.type });
   /** @type {string[]} */
   const added = [];
   try {

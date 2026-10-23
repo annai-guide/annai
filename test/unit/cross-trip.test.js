@@ -293,3 +293,18 @@ test("a name planted in another scope, by a plugin's log entry or a forged impor
   assert.equal(await held(v.store, v.bPhoto), false, 'Big Sur removed: its photo goes');
   assert.equal(await blobBytes(v.store, mine, v.bPhoto), null);
 });
+
+
+test("an import stores only content the scopes it takes name: a skipped trip's older versions aren't left behind, named by nothing", async () => {
+  const x = await twoTrips();
+  await x.ws.write(x.a, '/notes/plan.md', 'their first plan', { author: 'user' });
+  await x.ws.write(x.a, '/notes/plan.md', 'their second plan', { author: 'user' });
+  const old = await sha256Hex(utf8('their first plan'));
+  const { blob } = await exportArchive(x.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const v = await twoTrips();
+  const opened = await peekArchive(new Uint8Array(await blob.arrayBuffer()));
+  assert.ok(opened.manifest.blobs.some((b) => b.hash === old), 'the archive carries the older version');
+  // Every trip in it skipped: nothing of theirs comes in.
+  await importArchive(v.store, opened, { trips: Object.fromEntries(opened.manifest.scopes.filter((s) => s.record.kind === 'trip').map((s) => [s.record.id, 'skip'])) });
+  assert.equal(await held(v.store, old), false);
+});
