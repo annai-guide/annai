@@ -212,9 +212,11 @@ async function savingBesideIt(page, save, field) {
       const w = /** @type {any} */ (window);
       const placeholder = () => [...document.querySelectorAll('label.field')].find((l) => l.querySelector('.field-label')?.textContent === label)?.querySelector('input')?.placeholder ?? null;
       w.seen = {};
+      // A toast from an earlier step (they last 3.5 s) is not the one this save brings.
+      const earlier = new Set(document.querySelectorAll('.toast'));
       const look = () => {
         if (!w.seen.gone && ![...document.querySelectorAll('.sub')].some((e) => e.textContent === 'Saving…')) w.seen.gone = placeholder();
-        if (!w.seen.toast && document.querySelector('.toast')) w.seen.toast = placeholder();
+        if (!w.seen.toast && [...document.querySelectorAll('.toast')].some((t) => !earlier.has(t))) w.seen.toast = placeholder();
       };
       new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true });
     }, field.label);
