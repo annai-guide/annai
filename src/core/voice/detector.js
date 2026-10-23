@@ -55,6 +55,9 @@ export class Detector {
   #dips = 0;
   /** Frames with sound since the floor was set from one: a young floor (a first frame that was speech) falls freely. */
   #learned = 0;
+  /** Quiet frames (nothing keepDb over the floor) in a row now, and the most in a row since reset(). */
+  #still = 0;
+  #gap = 0;
   /** Frames heard, and the last one louder than markDb. */
   #count = 0;
   #marked = 0;
@@ -124,6 +127,11 @@ export class Detector {
     this.#marked = this.#count;
   }
 
+  /** The longest quiet since reset(), in ms: speech that went on through it is one run, begun before. */
+  get gapMs() {
+    return this.#gap * FRAME_MS;
+  }
+
   /** The loudest frame of the speech going on, in dB; null with none. */
   get peakDb() {
     return this.#seg?.peak ?? null;
@@ -135,6 +143,7 @@ export class Detector {
     this.#seg = null;
     this.#before = [];
     this.#recent = [];
+    this.#still = this.#gap = 0;
     this.level = 0;
   }
 
@@ -176,6 +185,8 @@ export class Detector {
   #step(raw, db, events) {
     this.#count++;
     if (this.markDb !== null && db > this.markDb) this.#marked = this.#count;
+    this.#still = db < SILENT_DB || (this.#floor !== null && db - this.#floor <= this.keepDb) ? this.#still + 1 : 0;
+    this.#gap = Math.max(this.#gap, this.#still);
     if (db < SILENT_DB) {
       this.level = 0;
       const s = this.#seg;

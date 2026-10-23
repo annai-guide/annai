@@ -80,6 +80,9 @@ export class LiveKoe {
   #duplex = false;
   /** It follows the audio devices coming and going. */
   #devices = false;
+  /** Speech begun over her on the speaker this session, let go; and whether the card saying a tap talks over her was shown. */
+  #overs = 0;
+  #hinted = false;
   /** Why it closes once Koe's sentence has ended (Auto turned voice off), the microphone closed already. @type {string | null} */
   #closing = null;
   /** A tap opened it to talk: Kokoro's kept notes wait for the user's first turn to end, or 2 s with no speech (review S3). @type {any} */
@@ -224,6 +227,7 @@ export class LiveKoe {
     this.modelId = id;
     this.state = 'open';
     this.#rescued = false;
+    this.#overs = 0;
     this.c.told('live-open');
     this.#toldOpen = true;
     this.unmute();
@@ -307,7 +311,8 @@ export class LiveKoe {
       });
     }
     this.#input = new LiveInput({
-      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding), duplex: () => this.#duplex,
+      // Deaf while her sound plays, not while her turn's end is still to come after it (a quick reply then is heard whole).
+      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, onOver: () => this.#talkedOver(),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
       // Each turn's end, why and in numbers only, for the Trace.
       onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
@@ -317,6 +322,13 @@ export class LiveKoe {
     this.#changed();
     await this.#input.start().then(() => this.#route(), (e) => this.#deaf(e));
     this.#poke();
+  }
+
+  /** Speech begun over her on the speaker was let go: a second time in a session, a quiet card says a tap talks over her, once. */
+  #talkedOver() {
+    if (++this.#overs < 2 || this.#hinted) return;
+    this.#hinted = true;
+    this.c.notice({ tone: 'info', title: 'Tap Shiori to talk over her', body: "On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens." });
   }
 
   /** The microphone failed (refused, or taken): a card says why; the session goes on without it. @param {unknown} e */
@@ -434,6 +446,7 @@ export class LiveKoe {
   interrupt() {
     if (!this.#sounding) return;
     const playedMs = this.#stop(this.#sounding);
+    this.#input?.tapped();
     this.#send((s) => s.cut?.(playedMs));
   }
 
