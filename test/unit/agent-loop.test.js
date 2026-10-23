@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { TALK_TAG, record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -486,6 +487,32 @@ test("warm housekeeping asks to borrow the conversation's kept chain (it continu
   assert.equal(await k.agent.compact('cold', { forced: true }), true);
   assert.deepEqual(calls.filter((c) => c.borrow).map((c) => c.record?.tag), ['compaction'], 'only the warm summary');
   assert.equal(calls.filter((c) => c.record?.tag === 'compaction').length, 2);
+});
+
+test("leaving the page, or tapping Shiori, cuts a warm housekeeping call short (the call then deletes the provider's turn it borrowed)", async () => {
+  const k = await agentKit([[say('one'), say('two'), say('three'), say('four'), { text: 'Summary.' }]], { utility: [{ text: 'Summary.' }] });
+  for (const m of ['first', 'second', 'third', 'fourth']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  /** @type {AbortSignal[]} */
+  const signals = [];
+  const was = k.llm.call;
+  k.llm.call = async (/** @type {any} */ c) => {
+    if (!c.borrow) return was(c);
+    signals.push(c.signal);
+    await new Promise((r) => setTimeout(r, 200));
+    if (c.signal?.aborted) throw new ProviderError('cancelled', 'Stopped.');
+    return was(c);
+  };
+  const done = k.agent.compact('warm').catch((/** @type {any} */ e) => e);
+  await new Promise((r) => setTimeout(r, 50));
+  k.agent.leaving();
+  k.agent.interrupt();
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0].aborted, true);
+  const out = await done;
+  assert.ok(out instanceof ProviderError && out.kind === 'cancelled');
 });
 
 test('a tool call is asked for only until she has reached the user in the turn: after that she may end in words (review A4)', async () => {

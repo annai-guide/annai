@@ -147,7 +147,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let keeping = keep && type.keeps && tunables.keep !== false && keep.secret && !keep.kept.isOff(endpoint.id) ? keep : null;
   const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl, endpoint.headers) : '';
   // A record that can't be read is a whole send.
-  const matched = keeping?.chain ? await keeping.kept.match(endpoint.id, portable(timed.messages, model.providerId), { scope: keeping.scope, key: print, ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
+  const matched = keeping?.chain ? await keeping.kept.match(endpoint.id, portable(timed.messages, model.providerId), { scope: keeping.scope, key: print, ...(keeping.borrow ? { borrow: true } : {}), ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
   if (keeping?.borrow && !matched) keeping = null;
   // The id OpenAI repeats in an error for a turn it no longer has is not for the trace.
   if (matched) trace?.secret(matched.id);
@@ -171,9 +171,13 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (!keeping || !keptId) return;
     await named; // its pending record is written first
     const c = { id: keptId, endpoint: endpoint.id, scope: keeping.scope, key: print, days: Number(type.keeps?.days) || 1 };
-    if ((await how(c).catch(() => 'now')) !== 'now') return;
-    if ((await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => null))?.done) await keeping.kept.done(keptId).catch(() => {});
-    else await keeping.kept.wait(c).catch(() => {});
+    try {
+      if ((await how(c).catch(() => 'now')) !== 'now') return;
+      if ((await deleteTurn({ type, endpoint, key, id: keptId, fetch: get, trace, now }).catch(() => null))?.done) await keeping.kept.done(keptId).catch(() => {});
+      else await keeping.kept.wait(c).catch(() => {});
+    } finally {
+      keeping.kept.ended(keptId); // a drain may take what is still pending
+    }
   };
   const started = now();
   const timer = new AbortController();
@@ -202,6 +206,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       // Not output: the provider named the turn it keeps. Only annai reads it, and writes it down now, in case the page closes first.
       if (keeping && !keptId) {
         keptId = ev.id;
+        trace?.secret(ev.id); // an error may repeat it
         named = keeping.kept.pending({ id: ev.id, endpoint: endpoint.id, scope: keeping.scope, key: print, days: Number(type.keeps?.days) || 1 }).catch(() => {});
       }
       return;
@@ -280,7 +285,14 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (keeping && err.noChain) keeping.kept.off(endpoint.id);
     // A photo the chain points at that the provider can't find is as good as a chain it forgot.
     if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request' || err.kind === 'upload' || err.kind === 'image')) {
-      await keeping.kept.forget(spec.kept.id, err.kind === 'forgotten').catch(() => {});
+      // A turn the server lost is dropped; one it still holds (a proxy that dropped the chain) is queued for deletion like the rest.
+      const lost = err.kind === 'forgotten' && !err.noChain;
+      // One gone within minutes of its chain's first turn was never stored: the server isn't keeping what it is told to.
+      if (lost && type.keeps?.minLife && (await keeping.kept.ageOf(spec.kept.id).catch(() => Infinity)) < type.keeps.minLife) {
+        keeping.kept.off(endpoint.id);
+        err.message = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+      }
+      await keeping.kept.forget(spec.kept.id, lost).catch(() => {});
       err.whole = true;
     } else if (err.kind === 'forgotten') err.kind = 'not-found';
     await trace?.request({ ...info(), outcome: err.kind, error: err.message });

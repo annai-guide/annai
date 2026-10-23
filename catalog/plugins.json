@@ -50,7 +50,7 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.8.1",
+      "version": "0.9.0",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 64124,
+      "size": 64309,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,14 +68,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "4bb0f0bfc649170104ce603b028fa567c96b3c0b9b4f3751606b8fa8d5514b66",
+        "annai-plugin.json": "984942622f5f2327d4e8a212563a3e865683e2ef1d0acf1255f57e07f2cec66d",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
         "speech.js": "c2bac69131fe23026545899fa60befa9848175308ea07e71cbbaaec5610191b4",
-        "steps.js": "dbcf97565b97807d0ad44a159a327526cb5fa7804032424a42b2f4519b5576d2"
+        "steps.js": "094f1c64c2a2fc168ec659144ced0795533d7e58686b7525bffd8a6a9cc17d10"
       }
     },
     {
@@ -127,7 +127,7 @@
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
       "category": "developer",
       "keywords": [],
@@ -135,7 +135,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 25359,
+      "size": 25381,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -143,8 +143,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "92c441de3ece0777108a32ca597031d7fc3ad0a55ccdc5db907cef9eaa7ad5ec",
-        "index.js": "c49734a05133c85c73475be80f7953193f91b81647dd3abdde1065e27a44701f"
+        "annai-plugin.json": "42d645fa0d5f2ff94a6544a36c6785817a8dd468cb8a7776a11c603ee88970a3",
+        "index.js": "a0a0cd9fd1e72c6b192d44ca61b12b77f468022ff8d553943df7bd73cc811078"
       }
     },
     {

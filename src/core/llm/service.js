@@ -475,6 +475,8 @@ export function createLlm({
     async forgetAll({ timeoutMs = 10_000 } = {}) {
       erasing = true;
       await within(Promise.allSettled([...inflight]), 5000);
+      // Whatever a call under way did not settle in time, and what a page killed before left pending, is deleted before the wipe too.
+      await kept.release();
       await kept.queue();
       await drainFor(timeoutMs);
       const n = await kept.count();

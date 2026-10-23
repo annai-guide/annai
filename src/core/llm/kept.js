@@ -16,9 +16,9 @@ import { anySignal } from '../signals.js';
  * Under one lock a turn is kept only if it still may be (alive, as things are now), else its call deletes it at once,
  * with its own key; a removal changes that state first, then queues. A turn is deleted only with its key and address (key).
  * @typedef {import('./contract.js').Message} Message
- * @typedef {{ id: string, endpoint: string, scope: string, key: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number, model?: string }} KeptTurn
+ * @typedef {{ id: string, endpoint: string, scope: string, key: string, chain: string, ends: number, n: number, prefix: string, reply: string, until: number, model?: string, began?: number }} KeptTurn
  *   chain: its first turn's id, continued until ends; n: messages sent, prefix: their fingerprint; until: when it expires;
- *   model: the model that made it, for a provider whose turns only that model continues (OpenAI's)
+ *   model: the model that made it, for a provider whose turns only that model continues (OpenAI's); began: when its chain's first turn was made
  * @typedef {{ id: string, endpoint: string, key: string, until: number }} Deletion
  * @typedef {{ id: string, endpoint: string, scope: string, key: string, until: number, at: number }} Pending
  *   a turn the provider has named and its call hasn't settled: written down at once, so a page closed meanwhile still knows it
@@ -100,11 +100,13 @@ const ofProvider = (endpoint, provider) => endpoint.startsWith(`${provider}/`);
 /** @param {{ scope?: string, endpoint: string }} x @param {Which} o */
 const matches = (x, o) => (!o.scope || x.scope === o.scope) && (!o.endpoint || x.endpoint === o.endpoint) && (!o.provider || [o.provider].flat().some((p) => ofProvider(x.endpoint, p)));
 
-/** Queues the deletions of the turns that match, each once; how many. @param {KeptFile} f @param {(t: KeptTurn) => boolean} which */
-function take(f, which) {
+/** Queues the deletions of the turns that match, each once; how many. @param {KeptFile} f @param {(t: KeptTurn) => boolean} which @param {Set<string>} [owned] pending ids a call still answers */
+function take(f, which, owned = new Set()) {
   const hit = f.turns.filter(which);
   for (const t of hit) wait(f, t);
   f.turns = f.turns.filter((t) => !which(t));
+  // A turn named but not settled goes too, unless a call of this process still answers it: that call deletes it itself.
+  for (const p of f.pending.filter((x) => !owned.has(x.id) && which(/** @type {any} */ (x)))) wait(f, p);
   return hit.length;
 }
 
@@ -125,6 +127,8 @@ export class Kept {
   #nextDrain = null;
   /** Endpoints a 429 rests, until when. @type {Map<string, number>} */
   #rest = new Map();
+  /** Pending ids whose call, in this process, is still answering: a drain leaves them to it. @type {Set<string>} */
+  #live = new Set();
   /** Endpoints whose server ignored the turn it was told to continue: nothing is kept there until annai starts again. @type {Set<string>} */
   #off = new Set();
 
@@ -170,16 +174,16 @@ export class Kept {
    * The kept turn a request continues: the longest whose messages begin it, then its reply, then something new, same
    * trip, endpoint and key, its chain still continued; and its model, where the provider's turns are its model's alone.
    * @param {string} endpointId @param {Message[]} messages as sent
-   * @param {{ scope: string, key: string, model?: string }} o @returns {Promise<{ id: string, from: number } | null>} from: the first to send
+   * @param {{ scope: string, key: string, model?: string, borrow?: boolean }} o borrow: warm housekeeping, which may continue the turn the conversation ends with @returns {Promise<{ id: string, from: number } | null>} from: the first to send
    */
-  match(endpointId, messages, { scope, key, model }) {
+  match(endpointId, messages, { scope, key, model, borrow = false }) {
     return this.#change((f, now) => {
       /** @type {ReturnType<typeof prints> | null} */
       let p = null;
       /** @type {KeptTurn | null} */
       let best = null;
       for (const t of f.turns) {
-        if (t.endpoint !== endpointId || t.scope !== scope || t.key !== key || t.model !== model || t.n + 1 >= messages.length || t.ends <= now) continue;
+        if (t.endpoint !== endpointId || t.scope !== scope || t.key !== key || t.model !== model || t.n + 1 > messages.length || (t.n + 1 === messages.length && !borrow) || t.ends <= now) continue;
         p ??= prints(messages);
         if (p.prefix[t.n] !== t.prefix || p.each[t.n] !== t.reply) continue;
         if (!best || t.n > best.n || (t.n === best.n && t.until > best.until)) best = t;
@@ -200,7 +204,7 @@ export class Kept {
       if (!messages || !reply || (after && !prev) || !(await this.alive({ endpoint, scope, key }))) return 'now';
       f.turns = f.turns.filter((t) => t.id !== id);
       f.pending = f.pending.filter((p) => p.id !== id);
-      f.turns.push({ id, endpoint, scope, key, chain: prev?.chain ?? id, ends: Math.min(prev?.ends ?? now + hours * HOUR, limit ?? Infinity), n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until: now + days * 24 * HOUR, ...(model ? { model } : {}) });
+      f.turns.push({ id, endpoint, scope, key, chain: prev?.chain ?? id, ends: Math.min(prev?.ends ?? now + hours * HOUR, limit ?? Infinity), began: prev?.began ?? now, n: messages.length, prefix: prints(messages).prefix[messages.length], reply: fingerprint(reply), until: now + days * 24 * HOUR, ...(model ? { model } : {}) });
       return 'kept';
     });
   }
@@ -210,9 +214,28 @@ export class Kept {
    * for the next drain to delete once no call could still be answering. @param {{ id: string, endpoint: string, scope: string, key: string, days: number }} t
    */
   pending({ id, endpoint, scope, key, days }) {
+    this.#live.add(id);
     return this.#change((f, now) => {
       f.pending = f.pending.filter((p) => p.id !== id);
       f.pending.push({ id, endpoint, scope, key, until: now + days * 24 * HOUR, at: now });
+    });
+  }
+
+  /** Its call has ended (settled, deleted or queued): a drain may now take its pending record if it is still there. @param {string} id */
+  ended(id) {
+    this.#live.delete(id);
+  }
+
+  /** Queues the deletion of every pending turn, a call's own too (Erase: nothing is left to settle it after the wipe). */
+  release() {
+    return this.#change((f) => { for (const p of f.pending.slice()) wait(f, p); });
+  }
+
+  /** How long ago the chain a turn is in began, ms; Infinity where it isn't known. @param {string} id */
+  ageOf(id) {
+    return this.#change((f, now) => {
+      const began = f.turns.find((t) => t.id === id)?.began;
+      return began === undefined ? Infinity : now - began;
     });
   }
 
@@ -247,7 +270,7 @@ export class Kept {
 
   /** Queues the deletion of the turns that match; how many. @param {Which} [o] */
   queue(o = {}) {
-    return this.#change((f) => take(f, (t) => matches(t, o)));
+    return this.#change((f) => take(f, (t) => matches(t, o), this.#live));
   }
 
   /** Lets go of a provider's turns and deletions: its key or address changed, or it went. @param {string} provider */
@@ -259,10 +282,11 @@ export class Kept {
     });
   }
 
-  /** Turns kept, deletions waiting, when the last expires (0: none), their endpoints. @param {Which} [o] */
+  /** Turns kept (also those named and not yet settled), deletions waiting, when the last expires (0: none), their endpoints. @param {Which} [o] */
   count(o = {}) {
     return this.#change((f) => {
-      const turns = f.turns.filter((t) => matches(t, o));
+      // A turn named and not yet settled counts: it is at the provider all the same.
+      const turns = [...f.turns, ...f.pending].filter((t) => matches(t, o));
       const waiting = o.scope ? [] : f.forget.filter((d) => matches(d, o));
       return { turns: turns.length, waiting: waiting.length, until: Math.max(0, ...[...turns, ...waiting].map((x) => x.until)), endpoints: [...new Set([...turns, ...waiting].map((x) => x.endpoint))] };
     });
@@ -292,10 +316,10 @@ export class Kept {
   async #drainOnce({ resolve, fetch, scopes, signal, trace }) {
     if (scopes) {
       const here = await scopes();
-      await this.#change((f) => take(f, (t) => !here.has(t.scope)));
+      await this.#change((f) => take(f, (t) => !here.has(t.scope), this.#live));
     }
     // A turn named but never settled, long enough ago that no call could still be answering: deleted like the rest.
-    await this.#change((f, now) => { for (const p of f.pending.filter((x) => x.at + PENDING_MS <= now)) wait(f, p); });
+    await this.#change((f, now) => { for (const p of f.pending.filter((x) => x.at + PENDING_MS <= now && !this.#live.has(x.id))) wait(f, p); });
     const list = await this.#change((f) => f.forget.slice());
     /** @type {Set<string>} */
     const done = new Set();
