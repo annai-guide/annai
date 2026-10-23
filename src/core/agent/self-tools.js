@@ -1,6 +1,7 @@
 import { tunePersonality } from './personalities.js';
 import { toolList, definitions, runTool, toolSwitches, TALK, Stuck } from './tools.js';
-import { record, storedTexts, blobBytes } from './log.js';
+import { record, storedTexts } from './log.js';
+import { blobBytes } from '../reach.js';
 import { photoStub } from './compaction.js';
 import { tracedFetch } from './net.js';
 import { newId } from '../scopes.js';
@@ -73,7 +74,7 @@ export function selfTools(agent) {
               // A photo or PDF reaches it as one, or in words from a model that can, as it does for Shiori (never as a bare stub).
               const output = await agent.describe(ran.output, call.wake, call.signal, model ?? { input: ['text'] }, failed);
               await record(agent.store, agent.scope, { now: agent.now(), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: call.wake, task: taskId }, texts: [['content', output.content]] });
-              const media = await mediaParts(agent.store, output);
+              const media = await mediaParts(agent.store, agent.scope, output);
               results.push({ type: 'tool_result', id: c.id, content: media.lost.length ? `${output.content}\n${media.lost.join('\n')}` : output.content, ...(output.isError ? { isError: true } : {}) }, ...media.parts);
               if (stuck.see(c.name, c.input ?? {}, output.content)) return `The helper stopped: it made the same call three times with the same result.${said ? ` What it had: ${said}` : ''}`;
             }
@@ -105,16 +106,17 @@ export function selfTools(agent) {
 
 /**
  * The photos and PDF a tool returned, as parts for a model that takes them, and a line for each whose bytes are no longer stored
- * (the helper is told, not left with a result that looks whole). @param {import('../types.js').Store} store
+ * (the helper is told, not left with a result that looks whole). Bytes named by their hash are read for the conversation's
+ * scope: another trip's are not stored here (reach.js). @param {import('../types.js').Store} store @param {string} scope
  * @param {import('./tools.js').ToolOutput} output @returns {Promise<{ parts: import('../llm/contract.js').Part[], lost: string[] }>}
  */
-async function mediaParts(store, output) {
+async function mediaParts(store, scope, output) {
   /** @type {import('../llm/contract.js').Part[]} */
   const parts = [];
   /** @type {string[]} */
   const lost = [];
   for (const m of [...(output.images ?? []), ...(output.document ? [output.document] : [])]) {
-    const data = m.data ?? (m.hash ? await blobBytes(store, m.hash).then((b) => (b ? toBase64(b) : '')) : '');
+    const data = m.data ?? (m.hash ? await blobBytes(store, scope, m.hash, { via: 'task' }).then((b) => (b ? toBase64(b) : '')) : '');
     const isDoc = m === output.document;
     if (!data) {
       lost.push(`The ${isDoc ? 'PDF' : 'photo'}${m.path ? ` ${m.path}` : ''} couldn't be read: its file is no longer stored.`);

@@ -58,6 +58,33 @@ export function storeContract(test, assert, makeStore) {
     assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobInUse('by-file', { exceptScope: 'trip-1' })), true);
   });
 
+  test('blobNamedIn: only what a file or a log entry of that one scope names (a read by hash for a trip, backlog-hash)', async () => {
+    const s = await makeStore();
+    await s.tx(['files', 'events'], 'readwrite', async (t) => {
+      // Scopes on both sides of trip-m in key order, so a store that looks past them must still find trip-m's own.
+      for (const scope of ['trip-a', 'trip-m', 'trip-z']) {
+        await t.putFile(file(scope, '/shared.md', 'shared'));
+        await t.appendEvent(scope, { ts: 1, type: 'tool.result', actor: 'system', refs: ['shared'] });
+      }
+      await t.putFile(file('trip-a', '/a.md', 'a-file'));
+      await t.putFile(file('trip-m', '/m.md', 'm-file'));
+      await t.putFile(file('trip-z', '/z.md', 'z-file'));
+      await t.appendEvent('trip-a', { ts: 1, type: 'tool.result', actor: 'system', refs: ['a-ref'] });
+      await t.appendEvent('trip-m', { ts: 1, type: 'tool.result', actor: 'system', refs: ['m-text', 'm-ref'] });
+      await t.appendEvent('trip-m', { ts: 1, type: 'file.write', actor: 'user', data: { path: '/m.md', old: 'm-old', new: 'm-file' } });
+      await t.appendEvent('trip-z', { ts: 1, type: 'file.write', actor: 'user', data: { path: '/z.md', old: 'z-old', new: 'z-file' } });
+    });
+    const named = (/** @type {string} */ h, /** @type {any} */ which) => s.tx(['files', 'events'], 'readonly', (t) => t.blobNamedIn(h, 'trip-m', which));
+    const asked = ['shared', 'm-file', 'm-text', 'm-ref', 'm-old', 'a-file', 'a-ref', 'z-file', 'z-old', 'nobody'];
+    assert.deepEqual(await Promise.all(asked.map((h) => named(h))), [true, true, true, true, true, false, false, false, false, false]);
+    // Files alone: what the user's own files are, seen from a trip (spec §4.3).
+    assert.deepEqual(await Promise.all(['m-file', 'm-ref', 'm-old'].map((h) => named(h, { events: false }))), [true, false, false]);
+    // A scope with nothing, and an empty or missing hash, name nothing.
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobNamedIn('shared', 'trip-none')), false);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobNamedIn('', 'trip-m')), false);
+    assert.equal(await s.tx(['files', 'events'], 'readonly', (t) => t.blobNamedIn(/** @type {any} */ (undefined), 'trip-m')), false);
+  });
+
   test('scopesWithData: each scope id that has files or log entries, once, in order, with a record or not', async () => {
     const s = await makeStore();
     await s.tx(['scopes', 'files', 'events'], 'readwrite', async (t) => {

@@ -16,6 +16,7 @@ import { micProblem } from './mic.js';
 import { browserVoiceFor } from './where.js';
 import { languageSettings, modelLanguages, speakerLine, speechLocale, dictationLocale } from '../languages.js';
 import { record as logEvent } from '../agent/log.js';
+import { readBlob } from '../reach.js';
 import { encodeWav } from './pcm.js';
 import { sha256Hex } from '../hash.js';
 
@@ -608,8 +609,9 @@ export class Voice {
       memory: this.memory,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now(),
       transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal),
+      // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
-        const b = await this.store?.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
+        const b = this.store ? await readBlob(this.store, scope, hash, { via: 'heard' }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
       onFail: (id, e) => this.llm.bench.bench(id, restFor(e), this.now()),

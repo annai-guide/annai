@@ -3,6 +3,7 @@ import { STAY_MIN } from './route.js';
 import { tsv } from '../tsv.js';
 import { dayIn, timeIn } from '../time.js';
 import { record } from '../agent/log.js';
+import { blobBytes } from '../reach.js';
 import { modelOf } from '../llm/config.js';
 import { stricter } from '../agent/refusals.js';
 import { PhotoCopies, requestLimits } from '../request-photos.js';
@@ -161,12 +162,6 @@ export function recapError(e) {
   return String(/** @type {any} */ (e)?.message ?? e);
 }
 
-/** @param {import('../types.js').Store} store @param {string} hash */
-async function bytesOf(store, hash) {
-  const b = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-  return b ? new Uint8Array(b.data) : null;
-}
-
 /**
  * Writes /trip/recap.md with the utility model (spec §13, choice 5), and logs a recap entry that names
  * the photo copies it sent (§4.9). Errors are plain: what happened and what to do next.
@@ -198,7 +193,8 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
     const app = await readAppSettings(ws);
     const limits = requestLimits(photoSettings(app).request, images);
     const room = (app.shiori?.compaction?.maxRequestMiB ?? 8) * 2 ** 20 * PHOTO_SHARE;
-    const copies = codec ? new PhotoCopies({ codec: /** @type {any} */ (codec), read: (h) => bytesOf(store, h) }) : null;
+    // The trip's own photos, read for the trip (reach.js).
+    const copies = codec ? new PhotoCopies({ codec: /** @type {any} */ (codec), read: (h) => blobBytes(store, trip, h, { via: 'recap' }) }) : null;
     let used = 0;
     for (const p of recapPhotos(j, Math.min(RECAP_PHOTOS, limits.maxCount ?? RECAP_PHOTOS))) {
       const ph = /** @type {Extract<Entry, { kind: 'photo' }>} */ (p);
@@ -206,7 +202,7 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
         const c = copies
           ? await copies.copy({ hash: ph.hash, type: ph.type, width: ph.width, height: ph.height, size: ph.size }, limits)
           : { hash: ph.hash, mediaType: ph.type, data: undefined };
-        const data = c.data ?? toBase64(/** @type {Uint8Array} */ ((await bytesOf(store, c.hash)) ?? new Uint8Array()));
+        const data = c.data ?? toBase64(/** @type {Uint8Array} */ ((await blobBytes(store, trip, c.hash, { via: 'recap' })) ?? new Uint8Array()));
         if (!data || used + data.length > room) continue;
         used += data.length;
         parts.push({ type: 'text', text: `Photo /trip${ph.path}, ${dayIn(ph.at, j.tz)} ${timeIn(ph.at, j.tz)}:` }, { type: 'image', mediaType: c.mediaType, data, hash: c.hash, path: `/trip${ph.path}` });

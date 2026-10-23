@@ -71,6 +71,8 @@ One IndexedDB database:
 
 Not OPFS: one engine lets a file change and its log entry commit in **one transaction**.
 
+**Content is stored once, but read per trip.** Identical bytes are stored once for every trip, by their fingerprint, so a fingerprint alone must not open another trip's content. A read by fingerprint gets the bytes only for a scope that reaches them: one of its files names them, or one of its log entries does (`refs`, or a file version's `old` and `new`), or, from a trip, one of the user's own files (`/me/` is in view from every trip, §4.3). Anything else reads as not stored, and the scope's log says so once (`content.refused`: what asked and the start of the fingerprint, never the bytes). Writing a name without the bytes is held to the same rule: a log entry that points at stored content, and restoring a version, name only what the scope reaches, so a scope only ever reaches content it had. An import names only content it carries (§12.3). The device's own work (removing a trip, forgetting a plugin, exporting, importing) reads by what the scopes it works on name.
+
 ### 4.2 Write path
 
 Every write goes through one function:
@@ -112,7 +114,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
 
 ### 4.5 Events
 
-Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `paused` (a turn cut by opening another conversation), `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9).
+Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`, `tool.result`, `net.request`, `heard`, `decide`, `file.write`, `location`, `trigger.fired`, `wake`, `compaction`, `paused` (a turn cut by opening another conversation), `plugin.error`, `error`, `state` (live mode on/off, voice mode), `trip.remove` (§4.9), `content.refused` (another trip's content asked for by its fingerprint, §4.1).
 
 - **Large content** (fetched pages, response bodies, audio clips if kept) goes in `blobs`. Events only reference it, by listing its fingerprint in `refs` (§4.9).
 - **A model request is logged as a reference,** not a copy: the range of events in context, the prefix fingerprint, token counts, cost. Copying every context would grow storage quadratically.
@@ -989,6 +991,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **Preview card:** name, dates, size, contents, exporter, format version.
 - **Choice:** "Add as a new trip", or "Replace mine", which moves the existing copy to archived trips. Nothing is overwritten silently.
 - **Checks:** fingerprints are verified and older formats are migrated. Files belonging to plugins that aren't installed are kept, inactive.
+- **An archive names only content it carries** (§4.1). Every entry is read and checked, content this device already holds too, so a file's fingerprint is always the archive's own bytes. A log entry naming content the archive doesn't carry, which this device holds for another trip, loses that name (a ref left empty, a file version none), and the trip's log says so (`content.refused`); "me", the settings and the plugins replaced in place keep names of what they held before. Content its maker no longer had (a refused photo copy, removed) and this device doesn't hold stays named as it was, and reads as no longer stored.
 - **Providers come with their plugins.** An import that replaces the settings brings their providers back, and in the same step installs the plugins those providers and their abilities that are on use: annai's own from its catalog, hash-checked, as adding a provider does (§9.8). A provider whose plugin isn't annai's own, or can't be had now (offline), is named, with Try again.
 - **A trip archive never contains the sender's global memory.** The recipient's own Shiori, personality and memory pick up the trip.
 

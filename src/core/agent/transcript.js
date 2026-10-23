@@ -1,4 +1,5 @@
-import { TALK_TAG, KOE_TAG, record, storedTexts, blobBytes } from './log.js';
+import { TALK_TAG, KOE_TAG, record, storedTexts } from './log.js';
+import { blobBytes } from '../reach.js';
 import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
 import { strayNote } from '../languages.js';
@@ -325,23 +326,27 @@ export class Transcript {
   }
 }
 
-/** An event's stored texts, and the photos a tool result shows. @param {Store} store @param {any} e @returns {Promise<Resolved>} */
+/**
+ * An event's stored texts, and the photos a tool result shows: read for the entry's own scope, so a hash in its data
+ * that the scope doesn't reach (another trip's) is missing (reach.js). @param {Store} store @param {any} e a log entry as stored @returns {Promise<Resolved>}
+ */
 export async function resolveEvent(store, e) {
   const texts = await storedTexts(store, e);
+  const read = (/** @type {unknown} */ hash) => blobBytes(store, e.scope, hash, { named: e, via: e.type });
   /** @type {Part[]} */
   const images = [];
   for (const im of e.type === 'tool.result' || e.type === 'msg.user' ? e.data?.images ?? [] : []) {
-    const bytes = await blobBytes(store, im.hash);
+    const bytes = await read(im.hash);
     // Bytes that are gone (a refused copy, deleted) stay in the transcript as missing, so a replacement can find them.
     images.push({ type: 'image', mediaType: im.mediaType, data: bytes ? toBase64(bytes) : '', hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}), ...(bytes ? {} : { missing: true }) });
   }
   if (e.type === 'photo.replace') {
-    const bytes = await blobBytes(store, e.data?.new);
+    const bytes = await read(e.data?.new);
     images.push({ type: 'image', mediaType: e.data?.mediaType, data: bytes ? toBase64(bytes) : '', hash: e.data?.new, ...(bytes ? {} : { missing: true }) });
   }
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {
-    const bytes = await blobBytes(store, doc.hash);
+    const bytes = await read(doc.hash);
     images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
   }
   return { texts, images };

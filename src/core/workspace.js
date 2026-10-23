@@ -3,6 +3,7 @@ import { utf8, text, ownBuffer } from './bytes.js';
 import { normPath, normPrefix, typeForPath } from './paths.js';
 import { mergePatch } from './patch.js';
 import { validate } from './schema.js';
+import { reachable, refused } from './reach.js';
 
 export { StorageFullError } from './errors.js';
 
@@ -175,17 +176,23 @@ export class Workspace {
    * Points the path back at an earlier version (its blob is kept forever in M1).
    * The version keeps the type it was saved with: blobs are shared between files
    * with the same bytes, so the blob's own type may belong to another file.
+   * Only content the scope reaches can be restored (reach.js): never another trip's, named by its hash.
    * @param {string} scope @param {string} path @param {string} hash @param {WriteOptions} opts
    * @returns {Promise<FileEntry>}
    */
   async restore(scope, path, hash, opts) {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
-      const { blob, events, current } = await this.store.tx(['blobs', 'events', 'files'], 'readonly', async (t) => ({
-        blob: await t.getBlob(hash),
-        events: await t.listEvents(scope, { types: ['file.write'], reverse: true }),
-        current: await t.getFile(scope, p),
-      }));
+      const { blob, held, events, current } = await this.store.tx(['blobs', 'events', 'files'], 'readonly', async (t) => {
+        const own = await reachable(t, scope, hash);
+        return {
+          blob: own ? await t.getBlob(hash) : undefined,
+          held: !own && (await t.hasBlob(hash)),
+          events: await t.listEvents(scope, { types: ['file.write'], reverse: true }),
+          current: await t.getFile(scope, p),
+        };
+      });
+      if (held) await refused(this.store, scope, hash, 'restore');
       if (!blob) throw new NotFoundError(`that version of ${p}`);
       const saved = events.find((e) => e.data?.path === p && e.data?.new === hash);
       const type = typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(p);

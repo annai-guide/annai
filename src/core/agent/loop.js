@@ -6,7 +6,8 @@ import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, providerOf, saveModel } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { record, storedTexts, blobBytes, TALK_TAG } from './log.js';
+import { record, storedTexts, TALK_TAG } from './log.js';
+import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
@@ -396,7 +397,8 @@ export class Agent {
     this.get = get ?? ((/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init));
     /** The browser's photo codec: request copies and crops (spec §4.8). Without one, photos go as they are. */
     this.codec = codec ?? null;
-    this.#photos = codec ? new PhotoCopies({ codec, read: (hash) => blobBytes(this.store, hash) }) : null;
+    // Read for the conversation a copy is for (reach.js): one made for another trip is made again.
+    this.#photos = codec ? new PhotoCopies({ codec, read: (hash, scope) => blobBytes(this.store, scope ?? this.scope, hash, { via: 'a request copy' }) }) : null;
     this.#half = half;
     this.transcript = new Transcript({ half: this.#rules(), nonce: half.nonce });
     this.#loopTools = this.#talkTools();
@@ -459,10 +461,13 @@ export class Agent {
     return requestLimits(photoSettings(await readAppSettings(this.ws)).request, await this.#mainImages());
   }
 
-  /** A request copy of a stored photo, or a crop of it (spec §4.8). @param {import('../request-photos.js').Source} source @param {import('../request-photos.js').Crop} [crop] */
-  async #copy(source, crop) {
+  /**
+   * A request copy of a stored photo, or a crop of it (spec §4.8), read for the conversation it is sent in (reach.js).
+   * @param {import('../request-photos.js').Source} source @param {import('../request-photos.js').Crop | undefined} crop @param {string} scope
+   */
+  async #copy(source, crop, scope) {
     if (!this.#photos) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
-    return this.#photos.copy(source, await this.#limits(), crop);
+    return this.#photos.copy(source, await this.#limits(), crop, scope);
   }
 
   /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down. @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {(x: any) => void} fn */
@@ -1347,7 +1352,7 @@ export class Agent {
         const m = got.entry.meta ?? {};
         const source = { hash: got.entry.hash, type: got.entry.type, width: m.width ?? null, height: m.height ?? null, size: got.entry.size };
         const healed = p.region && m.width && m.height ? healRegion(p.region, m.width, m.height) : null;
-        const sent = await this.#copy(source, healed?.crop);
+        const sent = await this.#copy(source, healed?.crop, trip ?? ME);
         images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}) });
         blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
       } catch (e) {
@@ -1788,7 +1793,7 @@ export class Agent {
       if (p.type !== 'image' || !p.hash || swaps.has(p.hash)) continue;
       // Made again from the stored photo it came from, with its part (spec §4.8); else from what was sent.
       const from = (await this.#storedSource(p)) ?? { source: { hash: p.hash, type: p.mediaType, size: Math.floor((p.data.length * 3) / 4) }, crop: undefined };
-      const copy = await this.#photos.copy(from.source, limits, from.crop);
+      const copy = await this.#photos.copy(from.source, limits, from.crop, this.scope);
       if (copy.hash !== p.hash) swaps.set(p.hash, copy);
     }
     if (!swaps.size) return this.#cantSend(refusedText(learned), wakeId);
@@ -1802,7 +1807,7 @@ export class Agent {
     // A copy made before, or a stored photo sent as it is, has no data with it: its bytes come from storage.
     for (const [old, copy] of swaps) {
       if (copy.data) continue;
-      const bytes = await blobBytes(this.store, copy.hash);
+      const bytes = await blobBytes(this.store, this.scope, copy.hash);
       if (bytes) swaps.set(old, { ...copy, data: toBase64(bytes) });
     }
     return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount) };
@@ -1933,12 +1938,15 @@ export class Agent {
     else if (!tool) output = { content: `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
     else {
+      const scope = this.scope;
       const call = {
-        id: c.id, scope: this.scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
+        id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
         sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
-        photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop) },
+        photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
       ({ output, ms } = await runTool(tool, input, call));
+      // A photo or PDF by its hash alone must be this conversation's (reach.js): another trip's is the tool's error (as in 8c-1).
+      if (!(await this.#readable(output, scope, c.name))) output = { content: `Error: ${c.name} gave back an image annai can't read, so its answer was left out.`, isError: true };
       // Koe answers at once (the fix pass): a PDF its model can't read (a live one reads none) is Kokoro's to read, not told for it.
       if (output.document && this.#half.name === 'koe' && !o.model?.input?.includes('pdf')) {
         const { document, ...rest } = output;
@@ -1982,6 +1990,14 @@ export class Agent {
     return output;
   }
 
+  /** Whether this conversation can read every photo and PDF a tool named by its hash alone. @param {import('./tools.js').ToolOutput} output @param {string} scope @param {string} name */
+  async #readable(output, scope, name) {
+    for (const m of [...(output.images ?? []), ...(output.document ? [output.document] : [])]) {
+      if (!m.data && !(await canRead(this.store, scope, m.hash, { via: name }))) return false;
+    }
+    return true;
+  }
+
   /**
    * A tool's photos and PDF in words, for a model that can't see photos or read PDFs (emulator pass, 5b; the second pass, a PDF):
    * described by the utility role's models, then Main's, that can (the utility list first: a side job, like a summary, on the
@@ -2002,7 +2018,7 @@ export class Agent {
         said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
         return;
       }
-      const bytes = m.data ? null : await blobBytes(this.store, m.hash ?? '');
+      const bytes = m.data ? null : await blobBytes(this.store, this.scope, m.hash ?? '');
       // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
       // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';

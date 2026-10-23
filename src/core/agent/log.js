@@ -1,5 +1,7 @@
 import { sha256Hex } from '../hash.js';
 import { utf8, text, ownBuffer } from '../bytes.js';
+import { blobsOf } from '../events.js';
+import { reachable, refused } from '../reach.js';
 
 /**
  * Writing the conversation (spec §4.5). Each step is one event. Its long texts, and any bytes it
@@ -54,17 +56,34 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   if (stored.length) out.stored = stored;
   const refs = [...textRefs, ...blobRefs];
   const ev = { ts: now, type, actor, data: out, ...(refs.length ? { refs } : {}) };
-  return store.tx(['blobs', 'events'], 'readwrite', async (t) => {
-    for (const k of keep) {
-      if (!(await t.hasBlob(k.hash))) await t.putBlob({ hash: k.hash, type: k.type, size: k.bytes.byteLength, data: ownBuffer(k.bytes) });
-    }
-    // Content named by its hash alone must be stored: a log entry never names bytes that aren't there (spec §4.9).
-    for (const b of blobs) if (!b.bytes && b.hash && !(await t.hasBlob(b.hash))) throw new Error(`The content ${b.hash.slice(0, 12)}… is not stored.`);
-    return t.appendEvent(scope, ev);
-  });
+  const brought = new Set(keep.map((k) => k.hash));
+  const named = blobsOf(ev).filter((h) => h && !brought.has(h));
+  /** @type {string | null} another scope's content this entry tried to name */
+  let denied = null;
+  try {
+    return await store.tx(named.length ? ['blobs', 'events', 'files'] : ['blobs', 'events'], 'readwrite', async (t) => {
+      denied = null; // a store that tries again starts over
+      for (const k of keep) {
+        if (!(await t.hasBlob(k.hash))) await t.putBlob({ hash: k.hash, type: k.type, size: k.bytes.byteLength, data: ownBuffer(k.bytes) });
+      }
+      // Content named by its hash alone must be stored (spec §4.9), and the scope's own (§4.1): never another trip's.
+      for (const h of named) {
+        const own = await reachable(t, scope, h);
+        if (own && (!blobRefs.includes(h) || (await t.hasBlob(h)))) continue;
+        if (!own && (await t.hasBlob(h))) denied = h;
+        throw new Error(`The content ${h.slice(0, 12)}… is not stored.`);
+      }
+      return t.appendEvent(scope, ev);
+    });
+  } finally {
+    if (denied) await refused(store, scope, denied, type);
+  }
 }
 
-/** The texts an event keeps as blobs, by name (data.stored lines up with the start of refs). @param {Store} store @param {any} e */
+/**
+ * The texts an event keeps as blobs, by name (data.stored lines up with the start of refs). They are the entry's own names,
+ * so its scope reaches them by the rule reach.js keeps: nothing else is looked up. @param {Store} store @param {any} e a log entry as stored
+ */
 export async function storedTexts(store, e) {
   /** @type {string[]} */
   const names = e.data?.stored ?? [];
@@ -78,10 +97,4 @@ export async function storedTexts(store, e) {
     }
     return out;
   });
-}
-
-/** @param {Store} store @param {string} hash @returns {Promise<Uint8Array | null>} */
-export async function blobBytes(store, hash) {
-  const b = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-  return b ? new Uint8Array(b.data) : null;
 }
