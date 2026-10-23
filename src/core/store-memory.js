@@ -83,6 +83,7 @@ function makeTx(d, mode, allowed) {
       }
       return false;
     },
+    async blobSized(hash, size) { return use('blobs').get(hash)?.size === size; },
     async listBlobs() { return [...use('blobs').values()].map((b) => ({ hash: b.hash, size: b.size })); },
     async scopesWithData() {
       return [...new Set([...use('files').values(), ...use('events').values()].map((x) => x.scope))].sort();

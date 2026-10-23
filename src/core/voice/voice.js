@@ -611,7 +611,7 @@ export class Voice {
       transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal),
       // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
-        const b = this.store ? await readBlob(this.store, scope, hash, { via: 'heard' }) : undefined;
+        const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
       onFail: (id, e) => this.llm.bench.bench(id, restFor(e), this.now()),

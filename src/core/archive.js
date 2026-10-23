@@ -7,7 +7,7 @@ import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
-import { blobsOf } from './events.js';
+import { blobsOf, isName } from './events.js';
 import { dayIn, deviceZone } from './time.js';
 
 /**
@@ -530,31 +530,54 @@ export async function importArchive(store, opened, choices = {}) {
   // Content first, one entry at a time, each in its own transaction (spec §12.1: an archive
   // needn't fit in memory). Blobs are stored by their hash and nothing points at them yet, so
   // until the last step nothing is visible; if any step fails, the ones stored here go again.
-  /** @type {Map<string, { name: string, type: string, bytes?: Uint8Array }>} */
+  // What comes: the files of the scopes taken, and what their logs name that the archive carries, an older version or a
+  // file of a scope not taken (an export holds each content once); nothing nothing taken names (spec §4.9).
+  /** @type {Map<string, { name: string, type: string, bytes?: Uint8Array, plans: Set<number> }>} */
   const content = new Map();
-  for (const p of plan) {
+  const add = (/** @type {string} */ hash, /** @type {{ name: string, type: string, bytes?: Uint8Array }} */ c, /** @type {number} */ i) => {
+    if (!content.has(hash)) content.set(hash, { ...c, plans: new Set() });
+    content.get(hash)?.plans.add(i);
+  };
+  plan.forEach((p, i) => {
     for (const f of p.files) {
       const o = overrides.get(f.name);
-      content.set(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes });
+      add(o?.hash ?? f.hash, { name: f.name, type: f.type, bytes: o?.bytes }, i);
     }
-  }
-  // Older versions only where a scope it takes names them: a skipped trip's stay out, never stored unnamed (spec §4.9).
-  const named = new Set(plan.flatMap((p) => p.events.flatMap(blobsOf)));
-  for (const b of manifest.blobs) if (named.has(b.hash) && !content.has(b.hash)) content.set(b.hash, { name: b.name, type: b.type });
+  });
+  /** @type {Map<string, { name: string, type: string }>} */
+  const carriers = new Map();
+  for (const x of [...manifest.files, ...manifest.blobs]) if (!carriers.has(x.hash)) carriers.set(x.hash, { name: x.name, type: x.type });
+  plan.forEach((p, i) => {
+    for (const h of p.events.flatMap(blobsOf)) {
+      const c = carriers.get(h);
+      if (c) add(h, c, i);
+    }
+  });
   /** @type {string[]} */
   const added = [];
   try {
-    // Which of them this device holds already is asked once, not once per entry. Those are checked too, not stored
-    // again: an archive names only content it carries (reach.js), never another trip's by its hash.
-    const held = await store.tx(['blobs'], 'readonly', async (t) => {
-      /** @type {Set<string>} */
-      const have = new Set();
-      for (const hash of content.keys()) if (await t.hasBlob(hash)) have.add(hash);
-      return have;
+    // Content this device holds is checked, not stored again: an archive names only content it carries (reach.js),
+    // never another trip's by its hash. Asked once, not once per entry; an entry of another size is refused unread,
+    // and what each scope it would come to replaces names already (its own content) isn't read at all.
+    const { held, own } = await store.tx(['scopes', 'files', 'events', 'blobs'], 'readonly', async (t) => {
+      /** @type {string[][]} */
+      const replaced = [];
+      for (const p of plan) replaced.push(await replacedBy(t, p));
+      const out = { held: new Set(), own: new Set() };
+      for (const [hash, c] of content) {
+        if (!(await t.hasBlob(hash))) continue;
+        out.held.add(hash);
+        if (!c.bytes && !(await t.blobSized(hash, zip.size(c.name)))) throw new ArchiveError(`This file is damaged: ${c.name} was changed.`);
+        let theirs = true;
+        for (const i of c.plans) if (!(await namedIn(t, hash, replaced[i]))) theirs = false;
+        if (theirs) out.own.add(hash);
+      }
+      return out;
     });
     let done = 0;
     for (const [hash, c] of content) {
       choices.onProgress?.(done++, content.size);
+      if (own.has(hash)) continue;
       const bytes = c.bytes ?? (await readChecked(zip, c.name, hash));
       if (held.has(hash)) continue;
       await store.tx(['blobs'], 'readwrite', (t) => t.putBlob({ hash, type: c.type, size: bytes.byteLength, data: ownBuffer(bytes) }));
@@ -584,10 +607,11 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
     }
     const carried = new Set(hashes);
     for (const p of plan) {
-      const foreign = await foreignNames(t, p, carried);
+      const replaced = await replacedBy(t, p);
+      const uncarried = await uncarriedNames(t, p, carried, replaced);
       if (p.mode === 'replace') {
-        const copies = (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId);
-        for (const old of copies) {
+        for (const id of replaced) {
+          const old = /** @type {ScopeRecord} */ (await t.getScope(id));
           await t.putScope({ ...old, status: 'archived', updated: now });
           await t.appendEvent(old.id, { ts: now, type: 'scope.archive', actor: 'user', data: { reason: 'replaced by an import' } });
           result.archived.push(old.id);
@@ -607,10 +631,8 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
           created: f.created, modified: f.modified, ...(f.source ? { source: f.source } : {}), ...(f.meta ? { meta: f.meta } : {}),
         });
       }
-      for (const e of p.events) await t.putEvent({ ...withoutNames(e, foreign), scope: p.target });
-      await t.appendEvent(p.target, { ts: now, type: 'import', actor: 'user', data: { created: manifest.created, app: manifest.app, kind: manifest.kind } });
-      const [first] = foreign;
-      if (first) await t.appendEvent(p.target, { ts: now, type: 'content.refused', actor: 'system', data: { content: `${first.slice(0, 12)}…`, via: 'import', ...(foreign.size > 1 ? { count: foreign.size } : {}) } });
+      for (const e of p.events) await t.putEvent({ ...withoutNames(e, uncarried), scope: p.target });
+      await t.appendEvent(p.target, { ts: now, type: 'import', actor: 'user', data: { created: manifest.created, app: manifest.app, kind: manifest.kind, ...(uncarried.size ? { uncarried: uncarried.size } : {}) } });
       if (p.rec.kind === 'trip') result.trips.push(p.target);
       else if (p.target === ME) result.me = true;
       else if (p.target === SYS_SETTINGS) result.settings = true;
@@ -629,30 +651,50 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
 }
 
 /**
- * What an archive's log may not name (spec §12.3): content it doesn't carry that this device holds, unless the scope it
- * replaces in place named it. Content nobody here holds stays named, as it was. Run before a replaced scope goes.
- * @param {import('./types.js').Tx} t @param {{ target: string, mode: 'new'|'replace'|'system', events: EventRecord[] }} p @param {Set<string>} carried
+ * The scopes an import's part replaces: "me", the settings or the plugins in place, or a trip's active copies ("Replace mine").
+ * @param {import('./types.js').Tx} t @param {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system' }} p @returns {Promise<string[]>}
+ */
+async function replacedBy(t, p) {
+  if (p.mode === 'system') return [p.target];
+  if (p.mode !== 'replace') return [];
+  return (await t.listScopes()).filter((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === p.rec.tripId).map((l) => l.id);
+}
+
+/** Whether one of the scopes names a hash. @param {import('./types.js').Tx} t @param {string} hash @param {string[]} scopes */
+async function namedIn(t, hash, scopes) {
+  for (const s of scopes) if (await t.blobNamedIn(hash, s)) return true;
+  return false;
+}
+
+/**
+ * What an archive's log names that it doesn't carry (spec §12.3), held here or not, unless a scope it replaces named it
+ * already: these stop being names. Run before a replaced scope goes.
+ * @param {import('./types.js').Tx} t @param {{ events: EventRecord[] }} p @param {Set<string>} carried @param {string[]} replaced
  * @returns {Promise<Set<string>>}
  */
-async function foreignNames(t, p, carried) {
+async function uncarriedNames(t, p, carried, replaced) {
   /** @type {Set<string>} */
   const out = new Set();
   const seen = new Set(carried);
   for (const h of p.events.flatMap(blobsOf)) {
-    if (!h || seen.has(h)) continue;
+    if (seen.has(h)) continue;
     seen.add(h);
-    if ((await t.hasBlob(h)) && !(p.mode === 'system' && (await t.blobNamedIn(h, p.target)))) out.add(h);
+    if (!(await namedIn(t, h, replaced))) out.add(h);
   }
   return out;
 }
 
-/** A log entry without the names it may not keep: a ref left empty (in line with data.stored), a version null. @param {EventRecord} e @param {Set<string>} foreign @returns {EventRecord} */
-function withoutNames(e, foreign) {
-  const drop = (/** @type {unknown} */ h) => typeof h === 'string' && foreign.has(h);
+/**
+ * A log entry with names of content it doesn't carry taken out: a ref left empty (in line with data.stored), a file
+ * version null, kept as data.was, which names nothing (a refused photo copy's replacement is found by it).
+ * @param {EventRecord} e @param {Set<string>} out @returns {EventRecord}
+ */
+function withoutNames(e, out) {
+  const drop = (/** @type {unknown} */ h) => isName(h) && out.has(/** @type {string} */ (h));
   if (!blobsOf(e).some(drop)) return e;
-  const data = e.data && (drop(e.data.old) || drop(e.data.new))
-    ? { ...e.data, ...(drop(e.data.old) ? { old: null } : {}), ...(drop(e.data.new) ? { new: null } : {}) }
-    : e.data;
+  const d = e.data ?? {};
+  const was = { ...d.was, ...(drop(d.old) ? { old: d.old } : {}), ...(drop(d.new) ? { new: d.new } : {}) };
+  const data = drop(d.old) || drop(d.new) ? { ...d, ...(drop(d.old) ? { old: null } : {}), ...(drop(d.new) ? { new: null } : {}), was } : e.data;
   return { ...e, ...(data ? { data } : {}), ...(e.refs ? { refs: e.refs.map((h) => (drop(h) ? '' : h)) } : {}) };
 }
 
