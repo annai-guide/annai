@@ -1,0 +1,27 @@
+{
+  "id": "search-searxng",
+  "name": "SearXNG Search",
+  "version": "0.1.1",
+  "api": 1,
+  "entry": "index.js",
+  "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
+  "category": "tools",
+  "keywords": ["SearXNG", "self-hosted"],
+  "homepage": "https://docs.searxng.org",
+  "provides": { "search": ["searxng"] },
+  "search": {
+    "id": "searxng",
+    "kind": "web",
+    "origins": []
+  },
+  "settings": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "title": "Your SearXNG address",
+        "description": "Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost."
+      }
+    }
+  }
+}

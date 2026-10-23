@@ -175,7 +175,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       if (v?.failing?.includes(c.modelId)) throw new ProviderError('server', `${c.modelId} is down`);
       return { text: hears.length > 1 ? hears.shift() : hears[0], cost: 0, ms: 1 };
     },
-    /** A live session at the stand-in, as the service opens one: a refused key, a limit or a server failure rests the model. @param {string} modelId @param {any} setup @param {{ scope?: string, wake?: string }} [o] */
+    /** A live session at the stand-in, as the service opens one: a refused key, a limit or a server failure rests the model. @param {string} modelId @param {any} setup @param {{ scope?: string, wake?: string, output?: any }} [o] */
     live: async (modelId, setup, o = {}) => {
       const cfg = await readConfig(ws);
       const rec = cfg.models[modelId];
@@ -184,7 +184,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
       const endpoint = endpointOf(pRec, rec.ability, type.tunables);
       const s = openLive({
         type, endpoint, model: modelOf(rec), key: live?.key ?? 'k-live', tunables: { ...type.tunables, proactive: false, ...live?.tunables },
-        setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake,
+        setup: { audioIn: type.audio.in[0], audioOut: type.audio.out[0], ...setup }, trace: modelTrace(store, o.scope ?? SYS), wake: o.wake, output: o.output,
         socket: (/** @type {string} */ url, /** @type {string[]} */ protocols) => { const w = new WebSocket(url, protocols); sockets.push(w); return w; },
       });
       s.closed.then(({ kind }) => { if (kind === 'auth' || kind === 'rate' || kind === 'server' || (kind === 'not-found' && !setup.resume)) bench.bench(modelId, COOLDOWN_MS); });

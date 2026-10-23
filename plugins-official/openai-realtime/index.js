@@ -20,11 +20,29 @@
  *   OpenAI refuses (its error names the create's event_id) ends that turn, and what waited goes;
  * - a session lasts at most an hour, with no handle to resume it: after renewMinutes, a goaway asks annai for a
  *   fresh one;
- * - usage comes with response.done, by modality, cached tokens apart.
+ * - usage comes with response.done, by modality, cached tokens apart;
+ * - languages (phase 2; OpenAI's Realtime reference and transcription guide, read 2026-10-22): input transcription is "not native to the
+ *   model" and takes `language` (one ISO-639-1 code, "will improve accuracy and latency") or, for gpt-transcribe and gpt-live-transcribe,
+ *   `languages` (several; "Don't send both"); the model itself hears the audio, so what keeps it from taking a filler or one foreign
+ *   word for a change of language is the instructions (OpenAI's prompting guide says so, and annai's setup carries the languages section).
+ *   A Whisper-style model is given a language only when the user speaks exactly one: the first of several would force a sentence in the
+ *   others into it. A session.update OpenAI refuses for those fields is sent again without them, once, and that is remembered for the
+ *   transcription model until annai restarts (as a refused style is), whether the session goes on after the error or is closed (then it
+ *   opens again without them).
  */
 
 /** annai's formats as OpenAI names them. @param {{ format: string, rate: number }} f */
 const wire = (f) => (f.format === 'pcm16' ? { type: 'audio/pcm', rate: f.rate } : { type: `audio/${f.format}` });
+/**
+ * What the transcription model is told of the user's languages (ISO-639-1 or -3 codes, once each, in order): gpt-transcribe and
+ * gpt-live-transcribe take them all; another model one language, a two-letter ISO-639-1 code (no `yue`), when exactly one is listed.
+ * @param {string} model @param {{ spoken?: { iso?: string }[] } | undefined} languages
+ */
+const hearing = (model, languages) => {
+  const codes = [...new Set((languages?.spoken ?? []).map((l) => l?.iso).filter(Boolean))];
+  if (/^gpt-(?:live-)?transcribe(?:-|$)/.test(model)) return codes.length ? { languages: codes } : {};
+  return codes.length === 1 && /^[a-z]{2}$/.test(String(codes[0])) ? { language: codes[0] } : {};
+};
 /** A number, or 0. @param {unknown} x */
 const n = (x) => Number(x) || 0;
 
@@ -70,14 +88,19 @@ export function activate(annai) {
   const G711 = { pcmu: [g711.pcmToUlaw, g711.ulawToPcm], pcma: [g711.pcmToAlaw, g711.alawToPcm] };
   /** A note in the trace, every secret annai keeps blanked. @param {string} type @param {any} data */
   const note = (type, data) => Promise.resolve(annai.secrets?.blank(data) ?? data).then((x) => annai.events?.append('sys', type, x)).catch(() => {});
+  /** Transcription models whose language fields OpenAI refused: asked without them from then on. @type {Set<string>} */
+  const noHints = new Set();
+  /** Models whose language fields were refused in the session now being opened: a close before it is ready reopens without them only then. @type {Set<string>} */
+  const refusedNow = new Set();
   return annai.providers.register({
     type: 'openai-realtime',
     name: 'OpenAI Realtime',
     realtime: true,
     // input, output: the audio each way (pcmu, pcma, pcm16); voice: OpenAI's (marin and cedar are its best); transcription:
-    // the model that writes down what the user says ('' for none); noiseReduction: far_field (a phone on the dash), near_field or '';
+    // the model that writes down what the user says ('' for none); languageHints: the languages the user speaks, given to it (off: it detects);
+    // noiseReduction: far_field (a phone on the dash), near_field or '';
     // renewMinutes: when to ask for a fresh session, as OpenAI ends one at 60.
-    tunables: { input: 'pcmu', output: 'pcm16', voice: 'marin', transcription: 'gpt-transcribe', noiseReduction: 'far_field', renewMinutes: 55 },
+    tunables: { input: 'pcmu', output: 'pcm16', voice: 'marin', transcription: 'gpt-transcribe', languageHints: true, noiseReduction: 'far_field', renewMinutes: 55 },
     audio: {
       in: [{ format: 'pcmu', rate: 8000 }, { format: 'pcma', rate: 8000 }, { format: 'pcm16', rate: 24000 }],
       out: [{ format: 'pcm16', rate: 24000 }, { format: 'pcmu', rate: 8000 }, { format: 'pcma', rate: 8000 }],
@@ -91,6 +114,11 @@ export function activate(annai) {
     attach(socket, { tunables: t, setup, emit }) {
       /** @param {any} m */
       const send = (m) => socket.send(JSON.stringify(m));
+      const heardBy = String(t.transcription ?? '');
+      /** Whether the user's languages go with the transcription: not once OpenAI has refused them for this model. */
+      const hinted = () => t.languageHints !== false && !noHints.has(heardBy);
+      let retried = false;
+      refusedNow.delete(heardBy);
       const encode = G711[setup.audioIn.format]?.[0];
       const decode = G711[setup.audioOut.format]?.[1];
       /** @type {(v?: unknown) => void} */
@@ -214,6 +242,7 @@ export function activate(annai) {
           case 'session.updated':
             if (!up) {
               up = true;
+              refusedNow.delete(heardBy); // the refusal was dealt with in place
               renew = setTimeout(() => emit({ type: 'goaway', ms: Math.round((60 - t.renewMinutes) * 60_000) }), t.renewMinutes * 60_000);
               renew.unref?.(); // in Node's tests, a session's hour never holds the process
               isReady();
@@ -222,7 +251,13 @@ export function activate(annai) {
           case 'error': {
             const e = m.error ?? {};
             const words = `${e.message ?? e.code ?? 'OpenAI refused the session.'}${e.param ? ` (${e.param})` : ''}`;
-            if (!up) refused(new ProviderError(kindOf(e), words));
+            if (!up && !retried && hinted() && Object.keys(hearing(heardBy, setup.languages)).length && /transcription\.languages?\b|\blanguages?\b/i.test(`${e.param ?? ''} ${e.message ?? ''}`)) {
+              // Refused for the language fields: sent again without them (the session is not ready yet; it goes on, or its close opens another).
+              retried = true;
+              noHints.add(heardBy);
+              refusedNow.add(heardBy);
+              send(update());
+            } else if (!up) refused(new ProviderError(kindOf(e), words));
             // A cancel that crossed the answer's end, or a commit with nothing in it: races annai expects, not errors.
             else if (!/^(response_cancel_not_active|input_audio_buffer_commit_empty)$/.test(e.code)) {
               // A response.create refused (by name, or before OpenAI took it up, by none): what waits behind it goes, and its
@@ -281,20 +316,22 @@ export function activate(annai) {
           default:
         }
       });
-      send({
+      /** The session's whole configuration, with or without the language fields. */
+      const update = () => ({
         type: 'session.update',
         session: {
           type: 'realtime',
           instructions: [setup.instructions, setup.context].filter(Boolean).join('\n\n'),
           output_modalities: ['audio'],
           audio: {
-            input: { format: wire(setup.audioIn), turn_detection: null, transcription: t.transcription ? { model: String(t.transcription) } : null, noise_reduction: t.noiseReduction ? { type: String(t.noiseReduction) } : null },
+            input: { format: wire(setup.audioIn), turn_detection: null, transcription: t.transcription ? { model: heardBy, ...(hinted() ? hearing(heardBy, setup.languages) : {}) } : null, noise_reduction: t.noiseReduction ? { type: String(t.noiseReduction) } : null },
             output: { format: wire(setup.audioOut), ...(t.voice ? { voice: String(t.voice) } : {}) },
           },
           tools: setup.tools.map((/** @type {any} */ x) => ({ type: 'function', name: x.name, description: x.description, parameters: x.input })),
           tool_choice: 'auto',
         },
       });
+      send(update());
       return {
         ready,
         audio: (/** @type {Uint8Array} */ chunk) => {
@@ -333,6 +370,13 @@ export function activate(annai) {
       };
     },
     // A close's words: OpenAI's error type, as in 3000 "invalid_request_error".
+    // A refusal of the language fields that closes the socket: opened again without them. Only a close that follows such a refusal in this
+    // session, or whose words name the fields: a model that refused them once is not given a second try for every close before ready.
+    reopen: (/** @type {number} */ _code, /** @type {string} */ reason, /** @type {any} */ t) => {
+      const model = String(t.transcription ?? '');
+      const refused = refusedNow.delete(model) || /languages?\b/i.test(reason);
+      return t.languageHints !== false && refused ? { ...t, languageHints: false } : null;
+    },
     classifyClose: (/** @type {number} */ _code, /** @type {string} */ reason) => (/server_error/.test(reason) ? 'server' : /invalid_request_error/.test(reason) ? 'bad-request' : null),
   });
 }

@@ -290,7 +290,7 @@ export function safeId(id) {
  *   its delete call for one kept turn
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
- * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string } }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]
+ * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string }, languages?: Languages }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]  languages: what the user speaks (phase 2)
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
@@ -309,7 +309,10 @@ export function safeId(id) {
  * @property {(code: number, reason: string, tunables: Record<string, any>) => Record<string, any> | null} [reopen]  tunables to open with once more, before ready
  * @typedef {{ rate: number, chunks: AsyncIterable<Int16Array> }} SpeechStream  a voice's 16-bit PCM as it arrives, at rate (G3)
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
- * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat }} LiveSetup  resume: a handle
+ * @typedef {{ spoken: import('../languages.js').Language[], answer: import('../languages.js').Language | null }} Languages  the languages the user speaks, in order, each with the
+ *   codes models take (iso, live, google, locale), and the one Shiori answers in (null: she follows the user) (phase 2; spec §10.9)
+ * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat, languages?: Languages }} LiveSetup  languages: for the
+ *   protocol's own language fields (the words it is told are in instructions); resume: a handle
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches
  * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end', o?: { playedMs?: number }): void, text(t: string, o?: { interrupt?: boolean, playedMs?: number }): void,
  *   image(i: { mediaType: string, data: string }): void, answer(id: string, name: string, output: string, o?: { silent?: boolean }): void,

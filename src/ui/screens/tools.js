@@ -2,6 +2,7 @@ import { h, field, autosave, savedRadios, savingNote } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
+import { searchPanel } from '../search-panel.js';
 
 const GROUPS = ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
 /** Jina's main page, which shows the key to copy in its API box (the user, 2026-10-23: its API page "will not give you a copiable api there while the main page does"). */
@@ -59,8 +60,8 @@ export async function renderTools(ctx) {
     h('h1', { class: 'title', text: 'Tools' }),
     h('section', { class: 'panel', 'aria-label': 'Web' },
       h('h2', { class: 'section', text: 'Web' }),
-      savedRadios('Search via', [['auto', "Your model's own search when it has one, else Jina"], ['provider', "Your model's own search"], ['annai', 'Jina Search (needs the key below)'], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
-      savedRadios('Fetch via', [['annai', 'annai: directly, then Jina Reader, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
+      savedRadios('Search via', [['auto', "Your model's own search when it has one, else annai's providers (below)"], ['provider', "Your model's own search"], ['annai', "annai's providers (below)"], ['off', 'Off']], web.searchVia ?? 'auto', (v) => saveWeb({ searchVia: v })),
+      savedRadios('Fetch via', [['annai', 'annai: directly, then Jina Reader, then Exa, then your model'], ['provider', "Your model's own fetch"], ['off', 'Off']], web.fetchVia ?? 'annai', (v) => saveWeb({ fetchVia: v })),
       field('Jina key', key),
       hasKey
         ? h('p', { class: 'sub', text: 'A key is set. It stays on this device and is never shown again.' })
@@ -78,6 +79,7 @@ export async function renderTools(ctx) {
         } }, 'Save key'),
         saving,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.deleteSecret('plugin:web:jina')); ctx.render(); } }, 'Remove key') : null)),
+    await searchPanel(ctx),
     h('section', { class: 'panel', 'aria-label': 'MCP servers' },
       h('h2', { class: 'section', text: 'MCP servers' }),
       h('p', { class: 'sub', text: 'Servers that give Shiori tools of their own, with a token or headers kept on this device.' }),

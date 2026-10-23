@@ -1,7 +1,7 @@
 {
   "id": "gemini-live",
   "name": "Gemini Live",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "api": 1,
   "entry": "index.js",
   "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",

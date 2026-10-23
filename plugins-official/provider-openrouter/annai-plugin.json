@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "api": 1,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -54,7 +54,8 @@
                   }
                 ]
               },
-              "usageKey": "web_search_requests"
+              "usageKey": "web_search_requests",
+              "pricePerCall": 0.007
             }
           ]
         },
@@ -94,7 +95,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -157,7 +159,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -235,7 +238,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -285,7 +289,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -315,7 +320,8 @@
                     }
                   ]
                 },
-                "usageKey": "web_search_requests"
+                "usageKey": "web_search_requests",
+                "pricePerCall": 0.007
               }
             ],
             "prices": {
@@ -371,10 +377,10 @@
           "audioOut": [
             "mp3"
           ],
-          "voice": "e3cd384158934cc9a01029cd7d278634",
-          "style": "calm, warm and friendly"
+          "voice": "bddf65d5a84c4a9aa36b7136bdac57a9",
+          "style": "young, cheerful and lively, yet calm and gentle"
         },
-        "note": "Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Laura, a voice from Fish Audio's library, and a calm, warm style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.",
+        "note": "Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.",
         "models": [
           {
             "providerId": "fish-audio/s2.1-pro-free:free",
