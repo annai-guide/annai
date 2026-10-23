@@ -368,3 +368,25 @@ test('opening a backup reads its files six at a time, and the archive keeps the 
     await gh.stop();
   }
 });
+
+// Backlog: the preview of a backup reads its manifest alone, however many files it has.
+test('peek tells what a backup holds in three requests, whatever its number of files, and get still brings the files', { timeout: 120_000 }, async () => {
+  const gh = await startGitHub({ repos: { [REPO]: {} } });
+  try {
+    const { type } = github();
+    const d = await device();
+    for (let i = 0; i < 150; i++) await d.ws.write(d.trip, `/notes/n${i}.md`, `Note ${i}`, { author: 'user' });
+    const made = await archive(d);
+    const put = await type.put(ctx(gh), made, opts());
+    let from = gh.log.length;
+    assert.deepEqual(await type.peek(ctx(gh), put.id, {}), made.manifest);
+    assert.deepEqual(gh.log.slice(from).map((l) => l.method), ['GET', 'GET', 'GET']);
+    from = gh.log.length;
+    const blob = await type.get(ctx(gh), put.id, { onProgress: () => {} });
+    assert.ok(gh.log.slice(from).length > 150, 'the files come with get');
+    assert.ok((await peekArchive(blob)).manifest.files.length > 150);
+    await assert.rejects(type.peek(ctx(gh), gh.commits(REPO).at(-1).sha, {}), refused('missing', /isn't an annai backup/));
+  } finally {
+    await gh.stop();
+  }
+});

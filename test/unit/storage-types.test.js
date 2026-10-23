@@ -6,7 +6,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { Registry, PluginError } from '../../src/core/registry.js';
 import { PluginHost, isPluginBug } from '../../src/core/plugins.js';
-import { TargetError, NEEDS_YOU, storageTypes, readAnswer, TEXT_MAX } from '../../src/core/storage-types.js';
+import { TargetError, NEEDS_YOU, storageTypes, readAnswer, TEXT_MAX, checkStorageType } from '../../src/core/storage-types.js';
 import { ensureProvided, offeredTypes, officialUpdates } from '../../src/core/llm/official.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -175,4 +175,11 @@ test('"Turn it on" brings back a plugin annai switched off after repeated errors
   await ensureProvided(k.host, 'storage-type', 'probe', { fetch: p.get });
   assert.equal(storageTypes(k.registry).get('probe')?.pluginId, 'storage-probe');
   assert.equal(k.registry.isDisabled('storage-probe'), false);
+});
+
+test('a kind of backup place may have a peek, which must be a function', () => {
+  const ok = { type: 'x', name: 'X', stores: 'tree', where: () => '', check: () => {}, list: () => {}, put: () => {}, get: () => {}, fields: [], secret: [] };
+  assert.equal(checkStorageType(ok), null);
+  assert.equal(checkStorageType({ ...ok, peek: () => {} }), null);
+  assert.match(String(checkStorageType({ ...ok, peek: 'yes' })), /peek that isn't a function/);
 });

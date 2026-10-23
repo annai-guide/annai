@@ -1,4 +1,4 @@
-import { exportArchive, PRESETS } from './archive.js';
+import { exportArchive, checkManifest, PRESETS } from './archive.js';
 import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
 import { withoutSecrets, withoutSecretsIn } from './agent/net.js';
@@ -401,6 +401,19 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     /** The backups at a place, newest first. @param {string} id */
     async remote(id) {
       return listed(await target(id));
+    },
+
+    /**
+     * What one backup holds, from its manifest alone, for a place whose type can peek (storage-types.js): the import screen previews
+     * with it, and calls download when the user imports. Null for a place that can't. It reads nothing else, so an automatic
+     * backup running isn't in its way. @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
+     */
+    async peek(id, backupId, o = {}) {
+      const rec = await target(id);
+      if (typeof typeOf(rec.type)?.peek !== 'function') return null;
+      const manifest = await call(rec, 'peek', (t, c) => /** @type {NonNullable<StorageType['peek']>} */ (t.peek)(c, backupId, { signal: o.signal }));
+      checkManifest(manifest);
+      return manifest;
     },
 
     /** Downloads one backup from a place, as an archive file for the import screen (spec §12.3). @param {string} id @param {string} backupId */

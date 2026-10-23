@@ -81,13 +81,27 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
     await expect(page.getByText('No trips yet.')).toBeVisible();
+    const mark = fj.log.length;
+    /** The files of the backup the stand-in has sent since the wipe: every file but the manifest. */
+    const sentFiles = () => fj.log.slice(mark).filter((l) => l.method === 'GET' && l.path.includes('/media/') && !l.path.endsWith('/media/annai-archive.json')).length;
     await addForgejo(page, fj);
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await expect(page.getByText(new RegExp(`^An? (iPhone|Android phone|computer) backed up to ${host.replace(/[.]/g, '\\.')}/me/annai-backup`))).toBeVisible();
+    // The list of backups and the preview of one show without the files coming: those come with Import.
+    await page.getByRole('button', { name: 'Show the backups here' }).click();
+    await page.getByRole('button', { name: 'Open', exact: true }).first().click();
+    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
+    expect(sentFiles()).toBe(0);
+    await page.getByRole('link', { name: 'Cancel' }).click();
+    await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
+    expect(sentFiles()).toBe(0);
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByText("annai's next backup to that place builds on this one.")).toBeVisible();
+    expect(sentFiles()).toBeGreaterThan(3);
     await page.getByRole('link', { name: 'Open Big Sur' }).click();
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');

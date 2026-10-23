@@ -134,12 +134,18 @@ export const localDay = (ms) => {
 /** A backup place's own screen. @param {string} id */
 export const placeHref = (id) => `#/backups/place?id=${encodeURIComponent(id)}`;
 
+/** What a backup's download says it is doing: "Getting files: 120 of 650". @param {string} of ' 120 of 650' or '' */
+const gettingWords = (of) => (of ? `Getting files:${of}` : 'Getting the backup…');
+
+/** @param {{ done: number, total: number } | null} p */
+export const gettingFiles = (p) => gettingWords(p?.total ? ` ${p.done} of ${p.total}` : '');
+
 /** @type {Record<string, (of: string) => string>} */
 const PHASES = {
   building: () => 'Getting the backup ready…',
   checking: (of) => `Comparing files${of}…`,
   uploading: (of) => `Uploading${of}…`,
-  downloading: (of) => `Downloading${of}…`,
+  downloading: (of) => gettingWords(of),
 };
 
 /**

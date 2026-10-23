@@ -3,7 +3,7 @@ import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } fro
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
-import { relTime, bytes, placeHref } from '../format.js';
+import { relTime, bytes, placeHref, gettingFiles } from '../format.js';
 import { listTrips } from '../../core/scopes.js';
 import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
@@ -32,6 +32,11 @@ export async function renderImport(ctx, route) {
   const screen = h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: leave(from) }, `← ${from ? place?.name ?? 'Backups' : 'Trips'}`)),
     h('h1', { class: 'title', text: 'Open a trip' }), body);
+  // A backup a git place told by its manifest alone shows at once; its files come when the user imports.
+  if (pending?.peeked && from) {
+    openPeeked(ctx, body, pending.peeked, from).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(e?.message ?? e) }), openFileButton(ctx, 'Choose a file instead')));
+    return screen;
+  }
   /** @type {Source | null} */
   let source;
   try {
@@ -94,6 +99,44 @@ async function step(ctx, body, source, passphrase) {
   body.replaceChildren(preview(ctx, body, opened, await describeArchive(ctx.store, opened), source.from ?? null, !active.length && !archived.length));
 }
 
+/**
+ * The preview of a backup from its manifest alone (spec §12.4: a git place peeks). Nothing else of the backup is sent until Import.
+ * @param {any} ctx @param {HTMLElement} body @param {any} manifest @param {import('../import-state.js').From} from
+ */
+async function openPeeked(ctx, body, manifest, from) {
+  const { active, archived } = await listTrips(ctx.store);
+  const desc = await describeArchive(ctx.store, { manifest });
+  body.replaceChildren(preview(ctx, body, null, desc, from, !active.length && !archived.length, filesOf(ctx, manifest, from)));
+}
+
+/**
+ * Gets a previewed backup's files, up to six at a time (the place does that), and opens them. The archive must carry the manifest
+ * that was previewed: the choices on the preview name its trips, and each file is checked against the manifest as it is imported.
+ * @param {any} ctx @param {any} manifest @param {import('../import-state.js').From} from
+ * @returns {(say: (words: string) => void) => Promise<any>}
+ */
+function filesOf(ctx, manifest, from) {
+  const shown = JSON.stringify(manifest);
+  return async (say) => {
+    let said = 0;
+    const off = ctx.backups.on(() => {
+      const p = ctx.backups.progress(from.target);
+      if (p?.phase !== 'downloading' || (Date.now() - said < 1000 && p.done < p.total)) return;
+      said = Date.now();
+      say(gettingFiles(p));
+    });
+    try {
+      const downloading = ctx.backups.download(from.target, from.remote.id);
+      say(ctx.backups.running().some((/** @type {any} */ r) => r.reason === 'user') ? "Waiting for the backup that's running to finish…" : gettingFiles(null));
+      const opened = await peekArchive(await downloading);
+      if (JSON.stringify(opened.manifest) !== shown) throw new Error('This backup changed on the server while annai was getting it. Open it again from the backups.');
+      return opened;
+    } finally {
+      off();
+    }
+  };
+}
+
 /** @param {any} ctx @param {HTMLElement} body @param {Source} source @param {string | null} problem */
 function passphraseForm(ctx, body, source, problem) {
   const input = h('input', { id: 'import-pass', type: 'password', autocomplete: 'off' });
@@ -108,8 +151,10 @@ function passphraseForm(ctx, body, source, problem) {
  * @param {any} ctx @param {HTMLElement} body @param {any} opened @param {any} desc
  * @param {import('../import-state.js').From | null} from the backup place it came from
  * @param {boolean} fresh this device has no trips yet: restoring onto it brings the profile and settings too
+ * @param {((say: (words: string) => void) => Promise<any>) | null} [bring] a preview from a manifest alone has no archive (opened is null):
+ *   this gets the files when the user imports, saying how far it is, and gives the archive
  */
-function preview(ctx, body, opened, desc, from, fresh) {
+function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   /** @type {Record<string, 'new'|'replace'>} */
   const trips = {};
   const rows = desc.trips.map((/** @type {any} */ t) => {
@@ -126,6 +171,9 @@ function preview(ctx, body, opened, desc, from, fresh) {
   const plugins = desc.hasPlugins ? checkbox('Replace my plugins', false) : null;
   const keys = desc.hasSecrets ? checkbox('Restore API keys (keys already on this device are kept)', false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
+  // Cancel while the files are coming stops that download, and nothing is imported after it.
+  let getting = false;
+  let left = false;
   const go = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
@@ -133,7 +181,12 @@ function preview(ctx, body, opened, desc, from, fresh) {
       status.textContent = 'Reading…';
       let said = 0;
       try {
-        const result = await importArchive(ctx.store, opened, {
+        if (bring) getting = true;
+        const archive = bring ? await bring((words) => { status.textContent = words; }) : opened;
+        getting = false;
+        if (left) return;
+        status.textContent = 'Reading…';
+        const result = await importArchive(ctx.store, archive, {
           trips, me: me?.input.checked ? 'replace' : 'keep', settings: settings?.input.checked ? 'replace' : 'keep',
           plugins: plugins?.input.checked ? 'replace' : 'keep', secrets: keys?.input.checked ?? false,
           // A live region: said at most once a second, so a screen reader doesn't chatter through hundreds of entries.
@@ -161,6 +214,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
           result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
           from ? h('p', { class: 'sub', text: "annai's next backup to that place builds on this one." }) : null));
       } catch (e) {
+        getting = false;
         explainStorageFull(ctx, e);
         status.textContent = String(/** @type {any} */ (e)?.message ?? e);
         go.disabled = false;
@@ -171,7 +225,7 @@ function preview(ctx, body, opened, desc, from, fresh) {
     h('p', { text: `${desc.kind === 'everything' ? 'A backup of everything' : 'A trip'} exported ${relTime(desc.created)} from annai ${desc.app}${desc.encrypted ? ', encrypted' : ''}.` }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'sub', text: 'There are no trips in this file.' }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
-    h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from) }, 'Cancel')),
+    h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => { left = true; if (getting && ctx.backups.running().some((/** @type {any} */ r) => r.id === from?.target && r.reason === 'download')) ctx.backups.stop(from?.target); } }, 'Cancel')),
     status);
 }
 

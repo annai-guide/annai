@@ -1,5 +1,5 @@
 import { test } from 'node:test';
-import { isArchiveName } from '../../src/ui/import-state.js';
+import { isArchiveName, takePendingImport } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
@@ -295,8 +295,32 @@ test('a restore behind a backup the user started says it waits; then it says it 
   changed();
   finish(new Blob(['zip']));
   await done;
-  assert.deepEqual(said.slice(1), ['Downloading the backup…', 'Downloading 2 of 9 files…']);
+  assert.deepEqual(said.slice(1), ['Getting the backup…', 'Getting files: 2 of 9']);
   assert.deepEqual(went, ['#/import']);
+});
+
+test('a restore from a place that can peek opens the import screen at once, with the manifest and no download', async () => {
+  /** @type {string[]} */
+  const said = [];
+  const manifest = { scopes: [] };
+  let downloaded = 0;
+  const backups = {
+    typeOf: () => ({ peek() {} }),
+    peek: async () => manifest,
+    download: async () => { downloaded++; return new Blob(); },
+    on: () => () => {}, progress: () => null, running: () => [],
+  };
+  /** @type {string[]} */
+  const went = [];
+  await restoreFrom(/** @type {any} */ ({ backups, store: null, notices: null, go: (/** @type {string} */ h) => went.push(h) }), /** @type {any} */ ({ id: 'bt-1', type: 'forgejo' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([said, went, downloaded], [['Opening the backup…'], ['#/import'], 0]);
+  const pending = takePendingImport();
+  assert.deepEqual([pending?.peeked, pending?.from, pending?.files], [manifest, { target: 'bt-1', remote: { id: 'c1', at: 0 } }, []]);
+  // A backup that can't be peeked at says why in the words the place gave.
+  const broken = { ...backups, peek: async () => { throw new Error("That backup isn't there."); } };
+  said.length = 0;
+  await restoreFrom(/** @type {any} */ ({ backups: broken, store: null, notices: null, go: () => went.push('wrong') }), /** @type {any} */ ({ id: 'bt-1', type: 'forgejo' }), { id: 'c1', at: 0 }, (s) => said.push(s));
+  assert.deepEqual([said, went, takePendingImport()], [['Opening the backup…', "That backup isn't there."], ['#/import'], null]);
 });
 
 test('the limit for an unnamed connection, as typed and as shown', () => {

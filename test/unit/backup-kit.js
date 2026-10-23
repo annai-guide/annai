@@ -6,13 +6,18 @@ import { Registry } from '../../src/core/registry.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { TargetError, parseBackupFileName } from '../../src/core/storage-types.js';
 import { createBackups } from '../../src/core/backup.js';
+import { peekArchive } from '../../src/core/archive.js';
 
 // Shared by the backup tests: a place in memory, and devices that back up to it.
 
 export const TOKEN = 'sekrit-token-0001';
 
-/** A place that keeps backups in memory for every device given it, as the storage type contract says. */
-export function memoryPlace() {
+/**
+ * A place that keeps backups in memory for every device given it, as the storage type contract says.
+ * @param {{ peek?: boolean }} [o] peek: it can tell a backup's manifest alone, as a git place can; its peeks counts them
+ */
+export function memoryPlace({ peek = false } = {}) {
+  let peeks = 0;
   /** @type {{ id: string, at: number, device: string, label: string, blob: Blob }[]} */
   const kept = [];
   /** @type {unknown} */
@@ -54,9 +59,18 @@ export function memoryPlace() {
       if (!b) throw new TargetError('missing', 'That backup is gone.');
       return b.blob;
     },
+    ...(peek ? {
+      peek: async (/** @type {any} */ _c, /** @type {string} */ id) => {
+        peeks++;
+        const b = kept.find((x) => x.id === id);
+        if (!b) throw new TargetError('missing', 'That backup is gone.');
+        return (await peekArchive(b.blob)).manifest;
+      },
+    } : {}),
   };
   return {
     kept, type,
+    peeks: () => peeks,
     waiting: () => waiting,
     /** The next put throws e. @param {unknown} e */
     failNext(e) { fail = e; },
