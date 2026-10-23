@@ -157,9 +157,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   try {
     uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
   } catch (e) {
-    // A stop during an upload is a stop, not a failure of the protocol's plugin (which would bench the model).
-    const name = /** @type {any} */ (e)?.name;
-    throw signal?.aborted || name === 'AbortError' || name === 'TimeoutError' ? asProviderError(e, signal ?? new AbortController().signal, type, registry) : e;
+    // A stop during an upload is a stop, whether the caller stopped it or its deadline did (only an aborted call's upload throws; any
+    // other failure is caught there and sends the photo as bytes): never a failure of the protocol's plugin or the model, which would bench it.
+    if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', 'Stopped.', { cause: e });
+    throw e;
   }
   const { request: sent, expires } = uploaded;
   /** @type {CallSpec} */
@@ -293,6 +294,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     await settle((c) => /** @type {any} */ (keeping).kept.record(c));
     // A server that ignored the turn it was told to continue keeps nothing from now on (until annai starts again).
     if (keeping && err.noChain) keeping.kept.off(endpoint.id);
+    let traced = false;
     // A photo the chain points at that the provider can't find is as good as a chain it forgot.
     if (keeping && spec.kept && (err.kind === 'forgotten' || err.kind === 'bad-request' || err.kind === 'upload' || err.kind === 'image')) {
       // A turn the server lost is dropped; one it still holds (a proxy that dropped the chain) is queued for deletion like the rest.
@@ -300,12 +302,16 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       // One gone within minutes of its chain's first turn may never have been stored (an account with no storage), or the error may be
       // passing: the server is asked whether it has it. Not there: nothing is kept there until annai starts again. There: once more.
       if (lost && type.keeps?.minLife && (await keeping.kept.ageOf(spec.kept.id).catch(() => Infinity)) < type.keeps.minLife) {
-        const found = await lookTurn({ type, endpoint, key, id: spec.kept.id, fetch: get, trace, now }).catch(() => 'unknown');
-        if (found === 'there' && !keeping.again) {
+        const why = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+        // The call's own line first, then the look-up it led to; a stop ends the look-up and the retry.
+        await trace?.request({ ...info(), outcome: err.kind, error: err.message });
+        traced = true;
+        const found = await lookTurn({ type, endpoint, key, id: spec.kept.id, fetch: get, signal: linked, trace, now, missing: why }).catch(() => 'unknown');
+        if (found === 'there' && !keeping.again && !linked.aborted) {
           err.again = true;
         } else if (found === 'gone') {
           keeping.kept.off(endpoint.id);
-          err.message = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+          err.message = why;
         }
       }
       if (!err.again) {
@@ -313,7 +319,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
         err.whole = true;
       }
     } else if (err.kind === 'forgotten') err.kind = 'not-found';
-    await trace?.request({ ...info(), outcome: err.kind, error: err.message });
+    if (!traced) await trace?.request({ ...info(), outcome: err.kind, error: err.message });
     throw err;
   }
   clearTimeout(t);

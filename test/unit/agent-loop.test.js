@@ -811,7 +811,7 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.equal(k.agent.transcript.unanswered, false);
 });
 
-test("a tap on Shiori (or leaving) during housekeeping, in a turn or on its own, is not a failure: no card, no error event", async () => {
+test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without is not a failure: no card, no error event", async () => {
   // In a turn that can't go on without it (the forced tidy-up).
   const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [{ text: 'Summary.' }] });
   const was = k.llm.call;
@@ -823,24 +823,29 @@ test("a tap on Shiori (or leaving) during housekeeping, in a turn or on its own,
   for (const m of ['first', 'second', 'third']) { k.agent.send(m); await k.agent.idle(); }
   assert.deepEqual((await k.events(['error'])).map((e) => e.data.kind).filter((x) => x !== 'stopped'), []);
   assert.equal(k.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
-  // On its own, from the timer (#housekeep).
+});
+
+test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so it would ask for a card) is no failure either", async () => {
+  // Housekeeping that came due waits for the cache to go cold, then runs at the start of the next turn (#tidyUp, not forced).
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
-  /** @type {any[]} */
-  const timers = [];
-  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }]], {
+  const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
+  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, say('a2')]], {
     models: [{ contextWindow: 10_000 }], utility: [{ text: 'Summary.' }],
-    agent: { timers: { set: (/** @type {any} */ fn, /** @type {number} */ ms) => { timers.push({ fn, ms }); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } },
+    agent: { now: () => clock.t, timers: { set: () => 1, clear: () => {} } },
   });
   for (const m of ['one', 'two', 'three']) { o.agent.send(m); await o.agent.idle(); }
-  assert.ok(timers.some(Boolean), 'housekeeping is due');
+  clock.t += 3_600_000; // the cache is cold
   const was2 = o.llm.call;
+  let asked = 0;
   o.llm.call = async (/** @type {any} */ c) => {
     if (c.record?.tag !== 'compaction') return was2(c);
+    asked++;
     throw new ProviderError('cancelled', 'Stopped.');
   };
-  timers.filter(Boolean).at(-1).fn();
+  o.agent.send('four');
   await o.agent.idle();
-  assert.equal(o.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0);
+  assert.ok(asked >= 1, 'the cold tidy-up at the start of the turn ran, and was cut short');
+  assert.equal(o.notices.filter((n) => /tidy up/.test(n.title ?? '')).length, 0, 'no card');
 });
 
 test('a turn that failed is over: later starts do not wake Shiori again for it', async () => {
