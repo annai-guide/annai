@@ -21,7 +21,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: lunch, tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } } } });
     await page.goto('/#/now');
     await page.locator('.live-chip').click();
-    await page.getByRole('group', { name: 'On the road' }).getByRole('button', { name: 'Start on the road' }).click();
+    await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS on' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1); // she was told live mode is on
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
     for (let i = 1; i <= 10; i++) {
@@ -48,7 +48,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
       await context.setGeolocation({ latitude: 36.60 - i * 0.0011, longitude: -121.89, accuracy: 10 });
       await page.clock.fastForward(5000);
     }
-    await expect(page.locator('.live-chip')).toHaveText('On the road · moving fast');
+    await expect(page.locator('.live-chip')).toHaveText('GPS on · moving fast');
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
   } finally {

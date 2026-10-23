@@ -350,7 +350,7 @@ test("the trace's one-line summaries of live mode: points, firings, reminders an
   assert.equal(traceSummary({ type: 'trigger.fired', data: { watch: 'plan:hearst:leave', text: 'Plan: time to leave soon for "Hearst Castle tour"', late: 17, offline: true } }),
     'plan:hearst:leave · Plan: time to leave soon for "Hearst Castle tour" · late by 17 min · no connection');
   assert.equal(traceSummary({ type: 'reminder', data: { text: 'Tea time.', aloud: true } }), 'said aloud · Tea time.');
-  assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'on the road on');
+  assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'GPS on');
   assert.equal(traceSummary({ type: 'state', data: { voice: 'on', why: 'moving' } }), 'voice on (moving)');
 });
 
@@ -414,7 +414,7 @@ test("the live chip during a simulation, and where the user is by live mode's ow
   const live = { on: true, gps: 'ok', activity: 'moving-fast', fix, simulating: true, clock: { now: () => fix.at + 5000 } };
   assert.equal(liveText(live), 'Simulation · moving fast');
   assert.equal(knownFix(live), fix); // fresh by the simulation's clock, weeks from today
-  assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'On the road · stopped');
+  assert.equal(liveText({ ...live, simulating: false, activity: 'still' }), 'GPS on · stopped');
   assert.equal(knownFix({ ...live, clock: { now: () => fix.at + 3_600_000 } }), null);
 });
 

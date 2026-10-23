@@ -6,7 +6,7 @@ trip with three stops in annai (one fixed, two flexible, with places), and have 
 Note what you see in the trip's Trace (kind: Live) after each part.
 
 ## Live mode on both phones
-- [ ] Open the trip, tap the Live chip on the dock, and turn live mode on. The phone asks for location once; allow it "While Using". The chip says "Live · finding you", then "Live · stopped" (or on).
+- [ ] Open the trip, tap the GPS chip on the dock, and turn GPS on. The phone asks for location once; allow it "While Using". The chip says "GPS on · finding you", then "GPS on · stopped" (or on).
 - [ ] Shiori is woken once ("The user turned live mode on"); she sets an activity watch (Trace → Live: no; Trace → Tools: watch_set).
 - [ ] Now shows "At …" or "Near …" a plan stop, the sun chips, what's next and the latest card.
 - [ ] Close annai fully and open it again: live mode is still on, and nothing is asked again.
@@ -17,7 +17,7 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] Allow location again, turn live mode off and on: the GPS works.
 
 ## The drive
-- [ ] Drive off: within a minute the chip says "Live · moving fast", voice Auto turns on ("Voice on · moving") and Now hands over to Driving.
+- [ ] Drive off: within a minute the chip says "GPS on · moving fast", voice Auto turns on ("Voice on · moving") and Now hands over to Driving.
 - [ ] Driving shows You, the next stops with distances and minutes, Directions in Apple or Google Maps, and the quick-ask buttons; each button gets an answer, aloud.
 - [ ] Shiori narrates: a moved watch fires every 10–20 km and she says something worth hearing, or nothing.
 - [ ] Arriving at a plan stop: after about two minutes stopped, she knows you arrived.

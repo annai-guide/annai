@@ -15,7 +15,7 @@ export const NARRATE = 'Highway 1 runs on south along the coast.';
  * for each thing that can wake her. The first rule whose match finds what woke her answers.
  */
 export const RULES = [
-  { match: 'started On the road', reply: { toolCalls: [{ name: 'watch_set', input: { when: { type: 'activity', activity: 'moving-fast' }, repeat: true, fallback: 'On the road again. The plan has the next stop.' } }, sleep] } },
+  { match: 'turned GPS on', reply: { toolCalls: [{ name: 'watch_set', input: { when: { type: 'activity', activity: 'moving-fast' }, repeat: true, fallback: 'On the road again. The plan has the next stop.' } }, sleep] } },
   { match: '^Catch-up', reply: { toolCalls: [speak('Welcome back. We have covered some ground.'), sleep] } },
   { match: '^While there was no connection', reply: { toolCalls: [sleep] } },
   { match: 'is now moving fast', times: 1, reply: { toolCalls: [{ name: 'watch_set', input: { when: { type: 'moved', km: 15 }, repeat: true, fallback: NARRATE } }, speak('Off we go. Bixby Bridge comes first.'), sleep] } },

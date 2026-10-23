@@ -136,7 +136,7 @@ export async function renderShiori(ctx, route) {
       showHalves.el),
     // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape (the user, 2026-10-18).
     section('How often she acts on her own',
-      h('p', { class: 'sub', text: 'Plugins, reminders and On the road wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),
+      h('p', { class: 'sub', text: 'Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.' }),
       savedField('Wakes per hour, not counting yours', wakes, () => numberIn(wakes, 1, 10_000, 'Wakes per hour is a whole number from 1; leave it empty for no limit.', { whole: true }), (v) => budgets({ wakesPerHour: v })),
       h('div', { class: 'saving' }, quiet, quietNote, quietHint, quietError),
       savedField('Steps per wake', steps, () => numberIn(steps, 1, 10_000, 'Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.', { whole: true }), (v) => budgets({ stepsPerWake: v }))));

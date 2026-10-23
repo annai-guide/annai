@@ -7,7 +7,7 @@ wrong.
 
 ## Before: a simulated trip, from Developer
 - [ ] Settings → Developer → Simulate a trip → Big Sur sample, 600 times. The live chip says "Simulation · …"; Now and Driving follow the simulated day (Now hands over to Driving when the drive begins); Shiori wakes (Trace → Live).
-- [ ] Pause, then Resume from the live chip; change the speed on the screen. Stop it. The chip says "Live off", and live mode is as you left it (on or off).
+- [ ] Pause, then Resume from the live chip; change the speed on the screen. Stop it. The chip says "GPS off", and live mode is as you left it (on or off).
 - [ ] Simulate it again as fast as it can go: it ends in about a minute. Replay it and Recap it from the screen. Remove that trip afterwards (Trips → it → Remove trip).
 - [ ] Set a real time reminder for a few days ahead (ask Shiori: "remind me on Friday at 8 to pack the camera batteries"), then simulate the sample as fast as it can go. The reminder doesn't fire during the simulation and is still there afterwards (Trace → Live has nothing new in your trip); it fires on Friday at 8.
 - [ ] Reload annai in the middle of a simulation (or switch away on iPhone until iOS closes it, then open it again). annai opens the trip that was open before, not the simulation's; with live mode on, Trace → Location of that trip gets the new points, and the simulation's trip gets none.

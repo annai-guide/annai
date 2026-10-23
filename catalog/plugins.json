@@ -576,11 +576,11 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19397,
+      "size": 19407,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "e6fb7304137f12bee527a185b59324ad263364e476f32ef013dd8ccc137181b1",
+        "annai-plugin.json": "eedfc5535db2caf810e3bceb5089830278a2ba78e68f27d371b6733d9ac511b1",
         "index.js": "f92387d45592c957b3a1f914eacb42512d4d59158b79fb5f184d00897126282d"
       }
     },

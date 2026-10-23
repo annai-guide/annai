@@ -224,8 +224,8 @@ test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether
     };
     await install(page, await zipOf(broken), 'Looks break', 'Install anyway and use it');
     await page.goto('/#/now');
-    await expect(page.getByText("You're off the road, so annai isn't following where you are.")).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Start on the road' })).toBeVisible();
+    await expect(page.getByText("GPS is off, so annai isn't following where you are.")).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Turn GPS on' })).toBeVisible();
     await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();
     await page.goto('/#/plan');
     await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();

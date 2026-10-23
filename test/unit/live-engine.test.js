@@ -40,7 +40,7 @@ test('live mode on: GPS runs, the switch is kept, a state entry is logged and Sh
   assert.equal(k.sensors.gpsOn(), true);
   assert.equal((await readAppSettings(k.ws)).live.on, true);
   assert.deepEqual(k.agent.wakes.map((w) => w.kind), ['live']);
-  assert.match(k.agent.wakes[0].text, /started On the road.*driving-companion/);
+  assert.match(k.agent.wakes[0].text, /turned GPS on.*driving-companion/);
   await k.drive(MONTEREY, off(MONTEREY, 0, -3000), at('08:31'), at('08:34'));
   assert.equal(k.registry.list('activity')[0].now(), 'moving-fast');
   await k.live.setLive(false);
@@ -214,7 +214,7 @@ test('another trip opened: its watches and its log; a time watch of the first st
 
 test('the now block: where the user is, near which plan place, and what they are doing (spec §6.3)', async () => {
   const k = await liveKit({ live: false, plan: { nepenthe: NEP } });
-  assert.deepEqual(k.live.nowInfo(), { place: 'unknown (the user is not On the road, so annai has no GPS)', activity: 'unknown (the user is not On the road)' });
+  assert.deepEqual(k.live.nowInfo(), { place: 'unknown (GPS is off, so annai has none)', activity: 'unknown (GPS is off)' });
   await k.live.setLive(true);
   assert.deepEqual(k.live.nowInfo(), { place: 'unknown (waiting for GPS)', activity: 'unknown' });
   await k.drive(off(NEPENTHE, 0, 3000), off(NEPENTHE, 0, 400), at('11:40'), at('11:43'));
@@ -241,7 +241,7 @@ test("watch_set's checks, in plain words; the list shows hers and the plan's; th
   await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'time', at: iso('08:00') }, fallback: 'x' }), /has already passed/);
   await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'moved', km: 5 }, fallback: 'x', expires: 'soon' }), /expires must be an ISO date-time/);
   const w = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 15 }, repeat: true, fallback: 'Look for Point Sur.', expires: iso('18:00') });
-  assert.equal(k.live.watchText(w), `Set ${w.id}: after 15 km travelled, every time, until ${iso('18:00')}. On the road is off, so it waits until the user starts it. Now: unknown (the user is not On the road); unknown (the user is not On the road, so annai has no GPS).`);
+  assert.equal(k.live.watchText(w), `Set ${w.id}: after 15 km travelled, every time, until ${iso('18:00')}. GPS is off, so it waits until the user turns it on. Now: unknown (GPS is off); unknown (GPS is off, so annai has none).`);
   const list = await k.live.listWatches(k.trip);
   assert.equal(list.split('\n')[0], 'id\towner\twhen\trepeat\treminder\texpires\tlast_fired');
   assert.ok(list.includes(`${w.id}\tshiori\tafter 15 km travelled\tyes\tLook for Point Sur.\t${iso('18:00')}\t`));

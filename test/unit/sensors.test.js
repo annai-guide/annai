@@ -95,7 +95,7 @@ test('connectivity: as it is at the start, then offline and online', () => {
 
 test('a refused location gets one card, with steps for this phone (spec §17 rule 3)', () => {
   assert.equal(gpsProblem('ios').title, "annai can't see where you are");
-  assert.match(gpsProblem('ios').body, /Location Services must be on: Settings → Privacy & Security → Location Services\. Then stop on the road and start it again\./);
+  assert.match(gpsProblem('ios').body, /Location Services must be on: Settings → Privacy & Security → Location Services\. Then turn GPS off and on again\./);
   // In a Safari tab, "Don't Allow" is Safari's setting for this site (B4).
   assert.match(gpsProblem('ios', false).body, /On iPhone: tap aA in the address bar, then Website Settings → Location → Allow \(or Settings → Apps → Safari → Location → Allow\)\./);
   assert.doesNotMatch(gpsProblem('ios', false).body, /Safari Websites/);
@@ -103,7 +103,7 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   assert.match(gpsProblem('ios', true).body, /On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow\./);
   assert.match(gpsProblem('android').body, /allow Location/);
   assert.match(gpsProblem('desktop').body, /site settings/);
-  assert.match(gpsProblem('ios').body, /On the road → Where are you/);
+  assert.match(gpsProblem('ios').body, /tap the GPS chip → Where are you/);
   /** @type {Set<() => void>} */
   const fns = new Set();
   const live = { on: true, gps: 'waiting', onChange: (/** @type {() => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
