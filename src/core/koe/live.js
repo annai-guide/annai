@@ -213,7 +213,7 @@ export class LiveKoe {
   /** The dock's state, as a half's (spec §16.3). @returns {import('../agent/loop.js').State} */
   get view() {
     const name = this.state === 'opening' ? 'thinking' : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length ? 'thinking' : this.listening ? 'listening' : 'sleeping';
+      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length || (this.#input && !this.listening) ? 'thinking' : this.listening ? 'listening' : 'sleeping';
     return { name, label: LABELS[name] };
   }
 
@@ -343,8 +343,11 @@ export class LiveKoe {
 
   /** The microphone opens on the open session; what is said streams live, only while someone speaks. */
   listen() {
-    // One at a time: two in flight would open two microphones (review).
-    return (this.#listening ??= this.#listen().finally(() => { this.#listening = null; }));
+    // One at a time: two in flight would open two microphones (review); a close lets go of the one in flight, so the next session starts its own.
+    if (this.#listening) return this.#listening;
+    const p = this.#listen().finally(() => { if (this.#listening === p) this.#listening = null; });
+    this.#listening = p;
+    return p;
   }
 
   async #listen() {
@@ -368,18 +371,24 @@ export class LiveKoe {
         this.#route();
       });
     }
-    this.#input = new LiveInput({
+    const input = (this.#input = new LiveInput({
       // Deaf while her sound plays, not while her turn's end is still to come after it (a quick reply then is heard whole).
       mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, onOver: () => void this.#talkedOver().catch(() => {}),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
       // Each turn's end, why and in numbers only, for the Trace.
       onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
-    });
-    this.listening = true;
+    }));
     clearTimeout(this.#toPlayback);
     p.session('play-and-record');
-    this.#changed();
-    await this.#input.start().then(() => this.#route(), (e) => this.#deaf(e));
+    this.#changed(); // the microphone is being asked for: the dock shows her working (view), not listening
+    // She listens once it is open, not before: the glow is the user's cue to speak, and getUserMedia and the capture worklet can be slow.
+    // A close (or a stop, or a newer microphone) that came meanwhile has let this one go: it listens to nothing, and a failure is its own.
+    await input.start().then(() => {
+      if (this.#input !== input) return undefined;
+      this.listening = true;
+      this.#changed();
+      return this.#route();
+    }, (e) => { if (this.#input === input) this.#deaf(e); });
     this.#poke();
   }
 
@@ -442,6 +451,7 @@ export class LiveKoe {
     this.#cutHearing();
     const input = this.#input;
     this.#input = null;
+    this.#listening = null;
     this.listening = false;
     clearTimeout(this.#stall);
     input?.stop();
@@ -505,7 +515,7 @@ export class LiveKoe {
       this.listen();
       return 'cut';
     }
-    if (this.listening) {
+    if (this.listening || this.#input) { // listening, or its microphone is starting
       this.close('tap');
       return 'stopped';
     }
@@ -691,7 +701,12 @@ export class LiveKoe {
    */
   async #silent(s) {
     const due = this.#due;
-    if (!due || this.state !== 'open' || s !== this.#s || this.#old) return;
+    if (!due || this.state !== 'open') return;
+    // A timer of a connection that has been left: the wait goes on for the one in use (or, mid-move, for the one that comes: #arm).
+    if (s !== this.#s || this.#old) {
+      due.timer = null;
+      return this.#arm();
+    }
     if (this.c.asked() || this.#tools) {
       due.timer = null;
       return this.#arm();
@@ -1149,8 +1164,10 @@ export class LiveKoe {
   /** Re-arms the quiet spell: no speech either way and no tool call for that long closes it (decision 12). */
   #poke() {
     clearTimeout(this.#quiet);
-    // Kokoro working on Koe's question isn't quiet: its answer is coming.
-    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy || this.c.asked() ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
+    // Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is an answer the session still owes (#due): a text turn
+    // sent, or the user's turn ended, and nothing back yet, which with a slow model or network can be longer than the answer window.
+    // That wait has its own bound: #silent asks again, once, then lets the session go (SILENT_S each, so about twice that at most).
+    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy || this.c.asked() || this.#due ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
   }
 
   /** Today's spend reached (Spend per day): none opens, and one open closes, with the budget card. @returns {Promise<boolean>} */

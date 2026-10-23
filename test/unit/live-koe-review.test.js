@@ -293,9 +293,14 @@ test("item 11 (consent): a session a trigger opened listens after it speaks only
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } }); // 3 s and 20 ms here
     await k.voice.unlock();
+    // Whether it listens is read as her line is written, not when the test looks: the answer window is 20 ms here, and a look from the test
+    // can come after it on a slow machine.
+    /** @type {boolean | null} */
+    let listensAfter = null;
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.speak' && listensAfter === null) listensAfter = k.agent.live.listening; });
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    assert.ok(k.agent.live.listening, 'it listens after');
+    assert.ok(listensAfter, 'it listens after');
     await until(() => k.agent.live.state === 'closed', 1000); // the answer window, not the 3 s spell
     // Tapped open, the spell holds, a trigger after it changing nothing.
     k.agent.tap();
@@ -303,6 +308,45 @@ test("item 11 (consent): a session a trigger opened listens after it speaks only
     await k.agent.wake({ kind: 'trigger', text: 'Fuel is low' });
     await wait(400);
     assert.equal(k.agent.live.state, 'open');
+  } finally {
+    await k.done();
+  }
+});
+
+test("item 11b: a trigger's first words come later than the answer window: the session waits for them, she says it, and only then does the window run", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  // The answer takes 400 ms to begin; the window is 20 ms here ("Listen for an answer" at 2 s), and a slow network or model is longer.
+  const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1), delayMs: 400 }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } });
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.equal((await k.events(['out.speak']))[0].data.text, 'The sun sets in half an hour.');
+    // Said, the window runs as before: it closes for the quiet, not for what it was waiting for.
+    await until(() => k.agent.live.state === 'closed', 1500);
+    await soon(async () => (await lives(k, 'closed')).length === 1);
+    assert.equal((await lives(k, 'closed'))[0].data.why, 'quiet');
+  } finally {
+    await k.done();
+  }
+});
+
+test("item 11c: a trigger a session never answers is waited for only as long as the watchdog allows: asked again, replaced once, then the session is let go", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([{ silent: true }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } });
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
+    await until(() => k.agent.live.state === 'open', 5000);
+    await until(() => k.agent.live.state === 'closed', 10_000); // two rounds of 8 s at 125 ms a second, and a connection between
+    // The answer window (20 ms) never closed it: the watchdog spoke first and the silent connection was replaced; it spoke again, and the
+    // session was let go (dropped), not for quiet.
+    await soon(async () => (await lives(k, 'closed')).length === 2);
+    const trail = (await k.events(['error', 'live.session'])).map((e) => (e.type === 'error' ? `error:${e.data.kind}` : `${e.data.state}${e.data.state === 'closed' ? `:${e.data.why}` : ''}`)).filter((x) => /silent|closed/.test(x));
+    assert.deepEqual(trail, ['error:live-silent', 'closed:silent', 'error:live-silent', 'closed:dropped']);
+    assert.deepEqual(await k.events(['out.speak']), []);
   } finally {
     await k.done();
   }

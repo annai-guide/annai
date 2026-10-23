@@ -82,9 +82,14 @@ test('Import says how far the files are, and a manifest swapped between the prev
     await page.getByRole('button', { name: 'Show the backups here' }).click();
     await page.getByRole('button', { name: 'Open', exact: true }).first().click();
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
-    const swapped = manifestOf(fj);
-    swapped.scopes = swapped.scopes.map((/** @type {any} */ s) => (s.record.kind === 'trip' ? { ...s, record: { ...s.record, title: 'Somewhere else' } } : s));
-    fj.answerNext('GET', '/media/annai-archive.json', { status: 200, raw: Buffer.from(JSON.stringify(swapped)) });
+    // The manifest of the backup that was opened, with the trip renamed: made from the one the stand-in gives for the request, which is
+    // the backup's at the ref asked for. Not from the repository's latest, which a backup this phone made meanwhile (of the trip it
+    // imported above) has moved on, with files the opened one has not.
+    fj.answerNext('GET', '/media/annai-archive.json', (own) => {
+      const swapped = JSON.parse(String(own.raw));
+      swapped.scopes = swapped.scopes.map((/** @type {any} */ s) => (s.record.kind === 'trip' ? { ...s, record: { ...s.record, title: 'Somewhere else' } } : s));
+      return { status: 200, raw: Buffer.from(JSON.stringify(swapped)) };
+    });
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(page.getByText(/This backup changed on the server/)).toBeVisible();
     await expect(page.getByText('Imported.')).toHaveCount(0);

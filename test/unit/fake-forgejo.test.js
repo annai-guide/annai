@@ -223,3 +223,21 @@ test("the stand-in's account and search, as both servers answered (2026-10-18): 
     await fj.stop();
   }
 });
+
+test("answerNext given a function: it changes the stand-in's own answer to that very request; a function that throws is answered with a 500, not left hanging", async () => {
+  const fj = await startForgejo({ repos: { 'me/backup': { files: { 'annai-archive.json': '{"a":1}' } } }, cors: ORIGIN });
+  try {
+    const call = api(fj.origin);
+    fj.answerNext('GET', '/media/annai-archive.json', (own) => ({ status: 200, raw: Buffer.from(`${String(own.raw)}!`) }));
+    assert.deepEqual([(await call('GET', '/repos/me/backup/media/annai-archive.json')).status, (await call('GET', '/repos/me/backup/media/annai-archive.json')).text], [200, '{"a":1}'], 'taken once: the second request is the stand-in\'s own');
+    fj.answerNext('GET', '/media/annai-archive.json', () => { throw new Error('the test\'s own mistake'); });
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let giveUp;
+    const broken = await Promise.race([call('GET', '/repos/me/backup/media/annai-archive.json'), new Promise((r) => { giveUp = setTimeout(r, 5000, 'hung'); })]).finally(() => clearTimeout(giveUp));
+    assert.notEqual(broken, 'hung', 'the request was answered');
+    assert.equal(/** @type {any} */ (broken).status, 500);
+    assert.match(/** @type {any} */ (broken).text, /the test's own mistake/);
+  } finally {
+    await fj.stop();
+  }
+});
