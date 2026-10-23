@@ -28,7 +28,7 @@ It is **opt-in and never part of `npm run check` or CI**: it needs a Gemini key 
    free-tier switch, a trip, Voice on, a tap on Shiori. By default Kokoro (the thinking half) is a stand-in on a local port (an
    Anthropic Messages server) that answers every question at once with one note, so the voice path is measured alone and a free
    key's chat 429s and 503s do not blur it; `--kokoro gemini` uses Gemini's chat model for Kokoro too ("Use the recommended
-   models", Gemini Live first in Koe), and then a note can take 30 to 80 s on a free key.
+   models", Gemini Live first in Koe, or in Koe · Realtime where Koe has two lists), and then a note can take 30 to 80 s on a free key.
 5. **The live socket is watched** by Playwright (frame kinds and sizes, transcripts; never the address, which holds the key), and
    **annai's own trace** is read from its IndexedDB (`live.turn`, `live.session`, `out.speak`, `heard`, errors) and merged with both
    into one timeline.
