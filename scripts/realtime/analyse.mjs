@@ -3,7 +3,7 @@
 // timeline, so they are tested without a browser. Times are epoch ms; a record's startedAt is when its session opened.
 //
 
-import { languageOf } from '../../src/core/languages.js';
+import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
 
 /**
  * @typedef {{ at: number, name: string, end: number, gainDb: number }} MicPlay  a clip played into the microphone
@@ -42,8 +42,8 @@ export function wordRecall(said, heard) {
   return want.filter((w) => got.has(w)).length / want.length;
 }
 
-/** The language a text is written in, by name ('' when it can't be told): its script, the small words of English, Spanish, French and the like, and Spanish and Vietnamese marks. @param {string} text */
-export const seenLanguage = (text) => languageOf(text) || (/[¿¡ñ]/.test(text) ? 'Spanish' : /[ơưăạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(text) ? 'Vietnamese' : '');
+/** The language a text is written in, by name ('' when it can't be told): annai's own reading (its script, the small words of English, Spanish, French and the like, Spanish and Vietnamese marks). @param {string} text */
+export const seenLanguage = (text) => languageOf(text) || vietnameseMarks(text);
 /** The language a clip is spoken in, as languageOf names it. */
 const LANGUAGE_NAME = /** @type {Record<string, string>} */ ({ en: 'English', ja: 'Japanese', zh: 'Chinese' });
 

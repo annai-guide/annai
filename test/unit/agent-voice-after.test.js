@@ -33,7 +33,7 @@ test('sound sent to a model that takes audio is written down by that model, afte
   const k = await agentKit([[say('Tacos are close.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
   assert.equal(k.requests[0].messages[0].parts[1].type, 'audio');
-  assert.equal(k.requests[1].system, `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
+  assert.equal(k.requests[1].system, WRITE_DOWN);
   assert.deepEqual(k.requests[1].messages[0].parts.map((/** @type {any} */ p) => p.type), ['audio']);
   const [written] = await k.events(['heard.text']);
   assert.deepEqual([written.data.text, written.data.by], ['where should we eat', 'model-0']);
@@ -163,7 +163,7 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
 test('a write-down that fails keeps the sound: nothing is written as not transcribed, and the next turn that works writes the words (spec §10.3)', async () => {
   const k = await agentKit([[say('Tacos are close.'), { error: 'bad-request', status: 400 }, say('Still tacos.'), { text: 'where should we eat' }]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
-  assert.equal(k.requests[1].system, `${WRITE_DOWN} The speaker uses English: write it in the language spoken and never translate.`);
+  assert.equal(k.requests[1].system, WRITE_DOWN);
   assert.equal((await k.events(['heard.text'])).length, 0, 'nothing is written while the sound is at hand');
   assert.equal(k.voice.memory.size, 1);
   k.agent.send('And again?');
@@ -225,4 +225,38 @@ test('heard sound that is no longer in memory (annai restarted) is written as no
   const written = (await k.events(['heard.text'])).map((e) => [e.data.of, e.data.text]);
   assert.deepEqual(written, [['h-gone', NOT_TRANSCRIBED]]);
   assert.deepEqual(k.agent.transcript.unwritten(), []);
+});
+
+// Phase 2 (Step S3): the stray flag is not the live path's alone.
+test('a short dictated line in a language the user does not speak is flagged in the Trace and read by the model with a note; a sentence, or a listed language, is not (Step S3)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('Sorry?'), say('A station is near.')]], { voice: { dictation: true, speechIn: ['dictation', 'm-hear'] } });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.dictation.say('¿Qué?');
+  await k.agent.idle();
+  const [flagged] = await k.events(['heard']);
+  assert.deepEqual([flagged.data.text, flagged.data.strayLanguage], ['¿Qué?', 'Spanish']);
+  assert.deepEqual(k.requests[0].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: '¿Qué? (heard; may be misheard as Spanish)' }]);
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.dictation.say('is there a gas station nearby');
+  await k.agent.idle();
+  const heard = await k.events(['heard']);
+  assert.equal(heard.at(-1).data.strayLanguage, undefined);
+  assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /is there a gas station nearby"/);
+  assert.doesNotMatch(JSON.stringify(k.requests[1].messages.at(-1)), /misheard/);
+});
+
+test('words written down later (heard.text) are flagged too, and the model reads the note on later turns (Step S3)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('Sorry?'), say('Still here.')]], { voice: { speechIn: ['m-hear'], hears: ['¿Qué?'] } });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en'] } });
+  await tapAndSay(k, 'where-eat');
+  const [written] = await k.events(['heard.text']);
+  assert.deepEqual([written.data.text, written.data.strayLanguage], ['¿Qué?', 'Spanish']);
+  k.agent.send('Hello again');
+  await k.agent.idle();
+  assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: '¿Qué? (heard; may be misheard as Spanish)' }]);
 });

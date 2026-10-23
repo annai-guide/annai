@@ -1226,7 +1226,7 @@ test('a live session is told the languages: the section in its instructions, the
     k.agent.tap();
     await until(() => k.agent.live.listening);
     const first = got(k, 'setup')[0].setup;
-    assert.match(first.systemInstruction.parts[0].text, /# Languages\nThe user speaks English\. Answer in the language they used\. Never switch to another language because of one word you're unsure of;/);
+    assert.match(first.systemInstruction.parts[0].text, /# Languages\nThe user's phone is set to English, and they may speak other languages\. Answer in the language they used\. Never switch to another language because of one word you're unsure of;/);
     assert.deepEqual(first.inputAudioTranscription, {}, "nothing chosen: the browser's language is told in words, not as a hint that could mistranscribe another");
     k.agent.hush('away');
     await soon(async () => k.agent.live.state === 'closed');

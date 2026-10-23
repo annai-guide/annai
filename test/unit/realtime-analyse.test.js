@@ -353,3 +353,13 @@ test('the timeline shows the words of a heard line annai wrote, and marks one it
   assert.match(text, /trace\s+heard "¿Qué\?" STRAY\(Spanish\)/);
   assert.match(text, /trace\s+heard "Yes\."\n/);
 });
+
+test('the harness reads a language as annai does: Vietnamese by its marks (â ê ô đ too), a Spanish mark, kanji with kana (review item 4)', async () => {
+  const { seenLanguage } = await import('../../scripts/realtime/analyse.mjs');
+  assert.equal(seenLanguage('không'), 'Vietnamese');
+  assert.equal(seenLanguage('Tôi không biết'), 'Vietnamese');
+  assert.equal(seenLanguage('¿Qué?'), 'Spanish');
+  assert.equal(seenLanguage('今日の夕食'), 'Japanese');
+  assert.equal(seenLanguage('Bună'), '');
+  assert.equal(seenLanguage('Great, I will look into that.'), 'English');
+});

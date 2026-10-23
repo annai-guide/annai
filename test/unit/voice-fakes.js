@@ -41,6 +41,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     said: [],
     /** Whether dictation recognizes speech on the phone. */
     dictationLocal: false,
+    /** The languages dictation was asked about being on the phone. @type {(string | undefined)[]} */
+    dictationAsked: [],
     /** What each dictation was opened with. @type {any[]} */
     dictationOpened: [],
     log,
@@ -179,7 +181,10 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     },
     dictation: {
       available: () => dictation,
-      local: async () => platform.dictationLocal,
+      local: async (/** @type {string} */ lang) => {
+        platform.dictationAsked.push(lang);
+        return platform.dictationLocal;
+      },
       /** @param {{ onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error) => void }} o */
       open(o) {
         log.push('dictation open');

@@ -1,7 +1,7 @@
 /** The halves' own instructions (the Koe and Kokoro design). Keep them stable: any change restarts their caches. */
 const KOE = 'You are Koe, the voice of Shiori, a travel guide in the annai app, talking with the user';
 const BEHIND = 'Kokoro, your other half, looks things up and works behind you.';
-const ANSWER = 'Answer at once, briefly (one or two short sentences), warmly, in the language the user used (Languages says which they speak).';
+const ANSWER = 'Answer at once, briefly (one or two short sentences), warmly, in the language the Languages section says.';
 const STABLE = '- Stable general knowledge (what a landmark is, a dish, history, the story behind a photo) you may say yourself.';
 const CHANGES = '- Never state anything that changes: opening hours, prices, directions, drive times, schedules, availability, weather, anything about today, unless the <today> block or a note says it. For those, ';
 /** @param {string} id where the note's id is given */

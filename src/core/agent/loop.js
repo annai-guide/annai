@@ -1,6 +1,6 @@
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
-import { languageSettings } from '../languages.js';
+import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { modelOf, providerOf, saveModel } from '../llm/config.js';
@@ -1134,7 +1134,9 @@ export class Agent {
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const text = texts.text ?? e.data?.text; // a short text is kept in data
-      if (e.type === 'msg.user' && typeof text === 'string' && text !== '(a photo)' && said.push(text) > 3) said.shift();
+      // What the user wrote, and what they said aloud (a heard line with its words, or the words written down for it later).
+      const spoken = (e.type === 'heard' && !e.data?.dismissed) || e.type === 'heard.text';
+      if (((e.type === 'msg.user' && text !== '(a photo)') || (spoken && text !== NOT_TRANSCRIBED)) && typeof text === 'string' && text && said.push(text) > 3) said.shift();
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
@@ -2676,7 +2678,8 @@ export class Agent {
         }
       }
       this.#writeTries.delete(id);
-      await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null } });
+      const stray = r?.text ? strayLanguage(r.text, await this.#languages()) : '';
+      await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null, ...(stray ? { strayLanguage: stray } : {}) } });
       voice.memory.drop(id, r?.text);
     }
     return left;
@@ -2701,10 +2704,12 @@ export class Agent {
   async #logHeard(h, o, log = (ev) => this.#log(ev)) {
     // The sound is kept only with "keep voice clips" (spec §10.2), as a blob the event names (§4.9), in the smallest format this phone makes and plays.
     const clip = this.voice ? await this.voice.keep(h) : { data: {}, blobs: [] };
+    // A word or two plainly in a language the user doesn't speak is flagged, as on the live path (spec §10.9): never a change of language.
+    const stray = typeof h.text === 'string' && !o.dismissed ? strayLanguage(h.text, await this.#languages()) : '';
     await log({
       type: 'heard', actor: 'user',
       data: {
-        id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}),
+        id: h.id, ...(o.wake ? { wake: o.wake } : {}), ms: h.ms, source: h.source, ...(typeof h.text === 'string' ? { text: h.text } : {}), ...(stray ? { strayLanguage: stray } : {}),
         ...(o.meanwhile ? { meanwhile: true } : {}), ...(o.answer ? { answer: o.answer } : {}), ...(o.dismissed ? { dismissed: true } : {}), ...(o.gate ? { gate: o.gate } : {}),
         ...clip.data,
       },
