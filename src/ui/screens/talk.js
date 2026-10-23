@@ -291,7 +291,9 @@ export async function renderTalk(ctx) {
           if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
         } else {
           const who = node.querySelector('.who');
-          const choices = (e.type === 'out.ask' ? e.data?.options : e.data?.card?.choice);
+          // A plugin's kind of card is drawn by its plugin: the choices and the photo annai draws on its own cards are not on it.
+          const kind = e.type === 'out.show' ? cardKind(ctx, e.data?.card) : '';
+          const choices = (e.type === 'out.ask' ? e.data?.options : kind ? [] : e.data?.card?.choice);
           const pick = Array.isArray(choices) ? choices.slice(0, 6).map(String) : [];
           let words = plain(node);
           if (e.type === 'out.speak') words = node.querySelector('p')?.textContent ?? '';
@@ -300,7 +302,7 @@ export async function renderTalk(ctx) {
             // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
             words = textOf(node, pick.length ? '.who, .card .acts button' : '.who');
           }
-          tell(announcement(e.type, e.type === 'out.show' ? cardKind(ctx, e.data?.card) : '', words, pick, e.data?.card ?? {}));
+          tell(announcement(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {}));
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
