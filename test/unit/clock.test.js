@@ -74,3 +74,40 @@ test('the real clock is back when the test is over', async (t) => {
   await new Promise((r) => setTimeout(r, 30));
   assert.ok(performance.now() - before >= 25, 'a real 30 ms');
 });
+
+test('a timer waits for a chain of setImmediate a few turns deep to finish (the header says how deep, and what is not waited for)', async (t) => {
+  useClock(t);
+  /** @type {string[]} */
+  const order = [];
+  setTimeout(() => order.push('timer'), 20_000);
+  await new Promise((resolve) => {
+    let n = 8;
+    const hop = () => (--n ? setImmediate(hop) : resolve(undefined));
+    setImmediate(hop);
+  });
+  order.push('chain of 8');
+  await new Promise((r) => setTimeout(r, 25_000));
+  assert.deepEqual(order, ['chain of 8', 'timer']);
+});
+
+test("refresh() starts a timer's time again from now, as Node's does", async (t) => {
+  useClock(t);
+  const start = Date.now();
+  /** @type {number[]} */
+  const fired = [];
+  const timer = setTimeout(() => fired.push(Date.now() - start), 100);
+  setTimeout(() => timer.refresh(), 60); // at 60 ms: the 100 ms begin again, so it fires at 160
+  await new Promise((r) => setTimeout(r, 300));
+  assert.deepEqual(fired, [160]);
+});
+
+test('what the clock does not replace stays on real time (documented): new Date(), performance.now', async (t) => {
+  useClock(t);
+  const realBefore = performance.now();
+  const dateBefore = new Date().getTime();
+  const fake = Date.now();
+  await new Promise((r) => setTimeout(r, 60_000));
+  assert.equal(Date.now() - fake, 60_000, 'Date.now() moved a minute');
+  assert.ok(performance.now() - realBefore < 5000, 'performance.now() did not');
+  assert.ok(new Date().getTime() - dateBefore < 5000, 'nor did new Date()');
+});
