@@ -75,7 +75,7 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
   let beforeChange = null;
   /** @type {(() => void) | null} */
   let duringChange = null;
-  /** @type {{ method: string, part: string, answer: Answer } | null} */
+  /** @type {{ method: string, part: string, answer: Answer | ((own: Answer) => Answer) } | null} */
   let next = null;
   /** @type {{ gate: Promise<void>, pass: number } | null} */
   let held = null;
@@ -409,8 +409,10 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
       } else if (raw.length > maxBody) {
         a = { status: 413, raw: Buffer.from('<html><head><title>413 Request Entity Too Large</title></head><body><center><h1>413 Request Entity Too Large</h1></center><hr><center>nginx</center></body></html>'), headers: { 'content-type': 'text/html' }, cors: false };
       } else if (next && method === next.method && url.pathname.includes(next.part)) {
-        a = next.answer;
+        const made = next.answer;
         next = null;
+        // A function is given the answer the stand-in would have given this very request (the file at the ref it asked for), to change.
+        a = typeof made === 'function' ? made(answer(method, url, req.headers, raw.length ? JSON.parse(raw.toString('utf8')) : null)) : made;
       } else {
         try {
           a = answer(method, url, req.headers, raw.length ? JSON.parse(raw.toString('utf8')) : null);
@@ -498,7 +500,10 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     },
     /** How many requests for files are waiting in holdFiles. */
     waiting: () => waiting,
-    /** The next request with this method to a path holding part gets this answer instead. @param {string} method @param {string} part @param {Answer} a */
+    /**
+     * The next request with this method to a path holding part gets this answer instead; or, given a function, that function's answer
+     * to the stand-in's own for this request. @param {string} method @param {string} part @param {Answer | ((own: Answer) => Answer)} a
+     */
     answerNext(method, part, a) {
       next = { method, part, answer: a };
     },
