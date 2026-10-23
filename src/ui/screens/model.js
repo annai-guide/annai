@@ -21,8 +21,17 @@ export const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @ty
   const was = modelOf(rec).prices;
   if (key === 'prices' && v && !('schedule' in (rec.user?.prices ?? {})) && modelBase(rec).prices?.schedule && JSON.stringify(v.schedule) === JSON.stringify(was?.schedule)) {
     v = { ...v, schedule: modelBase(rec).prices?.schedule };
+  } else if (key === 'prices' && v && Array.isArray(v.schedule)) {
+    // A schedule of the user's own, and a price changed in this edit: the price wins from every date (typed, it is theirs).
+    const changed = Object.keys({ ...v, ...was }).filter((k) => k !== 'schedule' && JSON.stringify(v[k]) !== JSON.stringify(was?.[k]));
+    if (changed.length) {
+      v = { ...v, schedule: v.schedule.map((/** @type {any} */ e) => (e && typeof e === 'object' ? Object.fromEntries(Object.entries(e).filter(([k]) => k === 'from' || !changed.includes(k))) : e)).filter((/** @type {any} */ e) => !e || typeof e !== 'object' || Object.keys(e).length > 1) };
+    }
   }
-  const next = { ...rec, user: { ...rest, ...diffLayer({ [key]: v }, modelBase(rec)) } };
+  const layer = diffLayer({ [key]: v }, modelBase(rec));
+  // The description's schedule deleted is stored as an empty list: an older build reads that, and drops a model whose schedule is null.
+  if (key === 'prices' && layer.prices?.schedule === null) layer.prices.schedule = [];
+  const next = { ...rec, user: { ...rest, ...layer } };
   await saveModel(ctx.ws, next);
   ctx.llm.bench.clear(id);
   return modelOf(next);

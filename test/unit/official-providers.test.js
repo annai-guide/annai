@@ -637,3 +637,18 @@ test('Custom provider has a Realtime voice ability, off, for any server that spe
   assert.deepEqual([rt.kind, rt.type, rt.on], ['realtime', 'openai-realtime', false]);
   assert.ok(entry('provider-another-address').version > '2.0.0', 'a version past the one released');
 });
+
+test("no official model changes between free and paid across its schedule, so the catalog's `free` fact is the same on every day (catalog --check)", async () => {
+  const { pricesAt } = await import('../../src/core/llm/cost.js');
+  const free = (/** @type {any} */ p) => Object.values(p).filter((v) => typeof v === 'number').every((v) => v === 0) && Object.values(p).some((v) => typeof v === 'number');
+  for (const m of await officialManifests()) {
+    for (const [ability, a] of Object.entries(/** @type {Record<string, any>} */ (m.provider?.abilities ?? {}))) {
+      for (const model of a.models ?? []) {
+        const dates = (Array.isArray(model.prices?.schedule) ? model.prices.schedule : []).map((/** @type {any} */ e) => Date.parse(`${e.from}T00:00:00Z`));
+        const days = [Date.parse('2000-01-01T00:00:00Z'), ...dates, Date.parse('2999-01-01T00:00:00Z')];
+        const verdicts = new Set(days.map((d) => free(pricesAt(model.prices, d))));
+        assert.equal(verdicts.size, 1, `${m.id}/${ability}/${model.providerId} changes free-ness across its schedule`);
+      }
+    }
+  }
+});

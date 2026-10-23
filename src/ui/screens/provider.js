@@ -31,8 +31,9 @@ export function priceLine(prices, at = Date.now()) {
     return [`$${p.input ?? '?'} in, $${p.output ?? '?'} out`, ' per million tokens'];
   };
   const [now, per] = say(pricesAt(prices, at));
-  const next = (prices.schedule ?? []).map((e) => e.from).filter((d) => Date.parse(`${d}T00:00:00Z`) > at).sort()[0];
-  return `${now}${per}${next ? ` (from ${next}: ${say(pricesAt(prices, Date.parse(`${next}T00:00:00Z`)))[0]})` : ''}`;
+  const next = (Array.isArray(prices.schedule) ? prices.schedule : []).map((e) => e?.from).filter((d) => Date.parse(`${d}T00:00:00Z`) > at).sort()[0];
+  const then = next ? say(pricesAt(prices, Date.parse(`${next}T00:00:00Z`)))[0] : now;
+  return `${now}${per}${then !== now ? ` (from ${next}: ${then})` : ''}`;
 }
 
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */
