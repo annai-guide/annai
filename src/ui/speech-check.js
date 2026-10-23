@@ -1,4 +1,4 @@
-import { h, settled } from './dom.js';
+import { h, settled, queueSave } from './dom.js';
 import { relTime } from './format.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { saveModel } from '../core/llm/config.js';
@@ -24,10 +24,12 @@ export function speechProblem(e) {
 export function speechTestPanel(ctx, model, kind, verified, title = 'Test') {
   const status = h('p', { class: 'sub', role: 'status', text: verified?.at ? `Last tested ${relTime(verified.at)}: ${verified.speech ? 'it worked' : "it didn't work"}.` : 'Not tested yet.' });
   const meter = h('meter', { min: '0', max: '1', value: '0', 'aria-label': 'How loud the microphone hears you', hidden: kind === 'out' });
-  const mark = async (/** @type {boolean} */ ok) => {
+  // In the queue the page's field saves use: the whole record is read and written back, and a field saved meanwhile (the voice, say,
+  // changed as the sample ended) would be written over with what it was.
+  const mark = (/** @type {boolean} */ ok) => queueSave(async () => {
     const rec = (await ctx.llm.config()).models[model.id];
     if (rec) await saveModel(ctx.ws, { ...rec, verified: { ...(rec.verified ?? {}), speech: ok, at: Date.now() } });
-  };
+  });
   const run = h('button', {
     class: 'btn', type: 'button',
     onclick: async () => {

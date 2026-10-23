@@ -89,10 +89,26 @@ export function savedBy(control) {
   return control.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status');
 }
 
-/** Commits a field (leaving it) and waits for its "Saved". @param {import('@playwright/test').Locator} control */
+/**
+ * Commits a field (leaving it) and waits for its "Saved". A "Saved" from an earlier save stays up 4 s, and WebKit may send the change a
+ * moment after blur() returns, so reading the note's text can mistake that one for this save's (the next step then ran before the save,
+ * and read what was there before it). It counts the times the note becomes "Saved", and waits for one more.
+ * @param {import('@playwright/test').Locator} control
+ */
 export async function leaveSaved(control) {
+  const note = await savedBy(control).elementHandle({ timeout: 10_000 });
+  if (!note) throw new Error('This field has no note to say it was saved.');
+  /** @type {() => Promise<number>} */
+  const saves = () => note.evaluate((/** @type {any} */ el) => {
+    if (!el.savesSeen) {
+      el.savesSeen = 0;
+      new MutationObserver(() => { if (el.textContent === 'Saved') el.savesSeen += 1; }).observe(el, { childList: true, characterData: true, subtree: true });
+    }
+    return el.savesSeen;
+  });
+  const before = await saves();
   await control.blur();
-  await expect(savedBy(control)).toHaveText('Saved');
+  await expect.poll(saves, { timeout: 10_000, message: 'the field says Saved' }).toBeGreaterThan(before);
 }
 
 /** @param {import('@playwright/test').Page} page */
