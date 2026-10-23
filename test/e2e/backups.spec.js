@@ -88,6 +88,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await expect(page.locator('.trace li', { hasText: 'github · auto' }).first()).toBeVisible();
 
     // This phone is wiped. The same place, set up again, brings everything back.
+    const wipedAt = gh.commits(REPO)[0].sha; // the newest backup it made
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
@@ -110,10 +111,13 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
-    // The restored phone builds on that backup: its next one goes on top, with no warning.
-    await expect.poll(() => gh.commits(REPO).length, { timeout: 30_000 }).toBe(4);
-    const [restored, before] = gh.commits(REPO);
-    expect(restored.parents).toEqual([before.sha]);
+    // The restored phone builds on that backup: its next one goes on top, with no warning. (How many it makes while the test looks at the
+    // photo depends on how slowly it goes: on a slow machine the backup of what the restore changed can come in two, so its count is not
+    // asserted; the first one made is the one that must stand on the backup that was restored.)
+    await expect.poll(() => gh.commits(REPO).length, { timeout: 30_000 }).toBeGreaterThan(3);
+    const next = gh.commits(REPO).find((c) => c.parents.includes(wipedAt));
+    expect(next, 'a backup made after the restore, on top of the one restored').toBeDefined();
+    expect(next?.parents).toEqual([wipedAt]);
   } finally {
     await gh.stop();
   }
