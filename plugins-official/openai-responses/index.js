@@ -48,7 +48,7 @@ export function activate(annai) {
     // OpenAI keeps a stored response at least 30 days, whatever the key, so annai tracks each 35 (its deletion waits that long) and
     // continues a chain 29 days after its first turn (a day short of 30, as an earlier response going would break the chain);
     // a chain with a photo in it ends sooner, before the photo's upload expires (call.js).
-    keeps: { name: 'OpenAI', provider: 'provider-openai', days: 35, hours: 29 * 24, holds: 'at least 30 days', note: "OpenAI also shows stored responses in your organization's dashboard logs, to its other members.", perModel: true },
+    keeps: { name: 'OpenAI', provider: 'provider-openai', days: 35, hours: 29 * 24, minLife: 10 * 60_000, holds: 'at least 30 days', note: "OpenAI also shows stored responses in your organization's dashboard logs, to its other members.", perModel: true },
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res @param {any} c */

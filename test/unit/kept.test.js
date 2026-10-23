@@ -210,6 +210,28 @@ test("warm housekeeping borrows the live chain (Gemini too): previous_interactio
   }
 });
 
+test("warm housekeeping in the agent's real shape (the conversation ends with the last reply) continues that very turn and sends only the summary request", async () => {
+  const c = await callKit([{ text: 'Ichiran.' }, { text: 'Summary.' }]);
+  try {
+    const r = await c.call([m1]);
+    const m = said1([m1], r); // [question, reply]
+    await c.call(m, { record: { tag: 'compaction' }, borrow: true, request: { messages: m, tail: '[annai: housekeeping] Summarize.', tools: [TOOL] } });
+    const hb = c.s.bodies()[1];
+    assert.deepEqual([hb.store, hb.previous_interaction_id], [true, 'v1_stand-in-1']);
+    assert.ok(JSON.stringify(hb.input).includes('Summarize') && !JSON.stringify(hb.input).includes('Where can we eat?'), 'only the summary request');
+    assert.deepEqual(c.s.stored(), ['v1_stand-in-1']);
+  } finally {
+    await c.s.close();
+  }
+});
+
+test('a real turn never matches a conversation with nothing new after the reply; only a borrow does', async () => {
+  const { kept } = await keptKit();
+  await kept.record(turn());
+  assert.equal(await kept.match('pv-g/chat', [m1, r1], A), null);
+  assert.deepEqual(await kept.match('pv-g/chat', [m1, r1], { ...A, borrow: true }), { id: 'v1_a', from: 2 });
+});
+
 test('the interaction id is written down as soon as Google names it, and replaced when the turn ends (pending)', async () => {
   const c = await callKit([{ text: 'Ichiran.', delayMs: 400 }]);
   try {
@@ -225,17 +247,45 @@ test('the interaction id is written down as soon as Google names it, and replace
   }
 });
 
-test('a pending turn older than a call can last is queued for deletion at the next drain; a recent one stays; a removal lets go of a provider\'s', async () => {
-  const { kept, clock, file } = await keptKit();
+test("a pending turn older than a call can last is queued for deletion at the next drain, unless a call of this very process still owns it; a recent one stays; a removal lets go of a provider's", async () => {
+  const { kept, clock, file, ws } = await keptKit();
   const send = { resolve: async () => null };
   await kept.pending({ id: 'v1_old', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
   clock.t += 20 * 60_000;
   await kept.pending({ id: 'v1_recent', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  // Its call is still answering: a drain leaves it.
   await kept.drain({ ...send, fetch: async () => new Response('{}') });
+  assert.deepEqual((await file()).forget, []);
+  // annai started again (another Kept reads the file): no call owns it.
+  const again = new Kept({ ws, now: () => clock.t });
+  await again.drain({ ...send, fetch: async () => new Response('{}') });
   const f = await file();
   assert.deepEqual(f.forget.map((/** @type {any} */ d) => d.id), ['v1_old']);
   assert.deepEqual(f.pending.map((/** @type {any} */ d) => d.id), ['v1_recent']);
   await kept.drop('pv-g');
+  assert.deepEqual((await file()).pending, []);
+});
+
+test('a call that ended no longer owns its pending id: the next drain, past the time, deletes it', async () => {
+  const { kept, clock, file } = await keptKit();
+  await kept.pending({ id: 'v1_a', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  clock.t += 20 * 60_000;
+  kept.ended('v1_a');
+  await kept.drain({ resolve: async () => null, fetch: async () => new Response('{}') });
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id), ['v1_a']);
+});
+
+test("count includes pending ids; queue leaves a call's own and takes an orphan's; release takes all", async () => {
+  const { ws, clock, file } = await keptKit();
+  // Another process left one pending; this one's call is answering another.
+  await new Kept({ ws, now: () => clock.t }).pending({ id: 'v1_orphan', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  const kept = new Kept({ ws, now: () => clock.t });
+  await kept.pending({ id: 'v1_live', endpoint: 'pv-g/chat', scope: 'trip-a', key: 'K', days: 55 });
+  assert.equal((await kept.count({ provider: 'pv-g' })).turns, 2);
+  assert.equal(await kept.queue({ provider: 'pv-g' }), 0);
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id), ['v1_orphan'], "a call's own is left to that call; the other process's is not");
+  await kept.release();
+  assert.deepEqual((await file()).forget.map((/** @type {any} */ d) => d.id).sort(), ['v1_live', 'v1_orphan']);
   assert.deepEqual((await file()).pending, []);
 });
 
