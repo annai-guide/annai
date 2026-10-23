@@ -22,7 +22,7 @@ async function still(/** @type {import('@playwright/test').Page} */ page) {
   }));
 }
 
-test("a Gemini voice's page: Sulafat and a calm, warm style by default, Google's voices to pick from; what is typed is saved and sent by the sample", async ({ page }) => {
+test("a Gemini voice's page: Sulafat and the default style (young, cheerful and lively, yet calm and gentle), Google's voices to pick from; what is typed is saved and sent by the sample", async ({ page }) => {
   const s = await startGeminiServer({ key: KEY });
   try {
     await openApp(page, '#/models');

@@ -166,17 +166,19 @@ export async function setLanguages(page, want) {
   }
   const list = panel.getByRole('list', { name: 'Languages you speak' });
   await list.getByRole('listitem').first().waitFor();
-  const shown = (await list.getByRole('listitem').allInnerTexts()).map((t) => t.replace(/^\d+\.\s*/, '').trim());
+  const shown = (await list.getByRole('listitem').allInnerTexts()).map((t) => t.trim());
   for (const id of want.spoken) {
     const name = LANGUAGES.find((l) => l.id === id)?.name ?? id;
     if (shown.some((t) => t.startsWith(name))) continue;
     await panel.getByLabel('Add a language').selectOption(id);
+    await panel.getByRole('button', { name: 'Add', exact: true }).click();
     await list.getByRole('listitem').filter({ hasText: name }).waitFor();
     await panel.getByRole('status').filter({ hasText: 'Saved' }).first().waitFor();
   }
   // The browser's language alone is only a default, which no model is given as a hint: a user who means it picks it, which is a list of the user's own.
   if (await panel.getByText('None picked').count()) {
     await panel.getByLabel('Add a language').selectOption('ja');
+    await panel.getByRole('button', { name: 'Add', exact: true }).click();
     await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor();
     await panel.getByRole('button', { name: 'Remove Japanese' }).click();
     await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor({ state: 'detached' });
