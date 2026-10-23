@@ -1,0 +1,8 @@
+key	state	en	text	where	note
+h4lgdd	ok	Hello {0}.	こんにちは{0}。	src/a.mjs:4	{0} = who
+oka8hr	draft	Open	開ける	src/a.mjs:5	context: verb
+lkl8fn	draft	Saved to {0} for {1}	{0}に保存	src/a.mjs:6	{0} = where; {1} = who
+1e9ja08#one	draft	# stamp	スタンプ#個	src/a.mjs:7	plural
+1e9ja08#other	draft	# stamps	スタンプ#個	src/a.mjs:7	plural
+jar724	new	Not yet		src/a.mjs:10	
+qlryvk	ok	Gone away	消えた	src/a.mjs:12	

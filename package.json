@@ -15,7 +15,8 @@
     "size": "node scripts/size.mjs",
     "stamp": "node scripts/stamp.mjs",
     "catalog": "node scripts/catalog.mjs",
-    "check": "npm run typecheck && npm test && npm run size && node scripts/stamp.mjs --check && node scripts/catalog.mjs --check"
+    "strings": "node scripts/strings.mjs",
+    "check": "npm run typecheck && npm test && npm run size && node scripts/stamp.mjs --check && node scripts/catalog.mjs --check && node scripts/strings.mjs --check"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
