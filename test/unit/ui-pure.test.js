@@ -10,7 +10,7 @@ import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 import { follow } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
-import { traceSummary } from '../../src/ui/screens/trace.js';
+import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
 import { priceLine, freeTierLabel } from '../../src/ui/screens/provider.js';
 import { metaLine } from '../../src/ui/talk-panel.js';
@@ -580,4 +580,22 @@ test("localDay: a day in this device's own zone, not UTC's, for a backup's file 
     if (was === undefined) delete process.env.TZ;
     else process.env.TZ = was;
   }
+});
+
+test("Trace order: newest first by when an entry was written, so a simulated trip's future-dated events don't top it; older entries fall back to their event time", () => {
+  const day = 86_400_000;
+  const e = (/** @type {string} */ scope, /** @type {number} */ seq, /** @type {number} */ ts, /** @type {number | undefined} */ at) => ({ scope, seq, ts, at, type: 'x', actor: 'system' });
+  const written = Date.parse('2026-10-20T12:00:00Z');
+  // A simulation, run on the 20th, whose clock ran ahead by a week; then a real entry, written later.
+  const sim = e('trip', 1, written + 7 * day, written);
+  const real = e('me', 1, written + 3600_000, written + 3600_000);
+  assert.deepEqual(newestFirst([sim, real], 10), [real, sim]);
+  // Entries from before the field existed are ordered by their event time among themselves, and by it against the rest.
+  const old1 = e('trip', 5, written - 2 * day, undefined);
+  const old2 = e('trip', 6, written - day, undefined);
+  assert.deepEqual(newestFirst([old1, sim, old2, real], 10), [real, sim, old2, old1]);
+  // Ties go to the later entry, and the list is cut to the limit.
+  const a = e('trip', 7, 5, 100);
+  const b = e('trip', 8, 5, 100);
+  assert.deepEqual(newestFirst([a, b], 1), [b]);
 });

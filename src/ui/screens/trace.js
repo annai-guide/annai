@@ -23,6 +23,15 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });
 
+/**
+ * Entries newest first, by when each was written (`at`), not by its event time, which a simulated trip's clock puts in
+ * the future. An entry from before `at` existed is placed by its event time; ties go to the later entry.
+ * @param {import('../../core/types.js').EventRecord[]} events @param {number} limit
+ */
+export function newestFirst(events, limit) {
+  return [...events].sort((a, b) => (b.at ?? b.ts) - (a.at ?? a.ts) || b.seq - a.seq).slice(0, limit);
+}
+
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderTrace(ctx, route) {
   const scopes = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
@@ -52,7 +61,7 @@ export async function renderTrace(ctx, route) {
     const perWake = new Map();
     for (const id of ids) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
     if (my !== pending) return;
-    const rows = all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))).sort((a, b) => b.ts - a.ts || b.seq - a.seq).slice(0, 300);
+    const rows = newestFirst(all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))), 300);
     list.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: 'Nothing here yet.' })]));
     list.setAttribute('aria-busy', 'false');
   };
