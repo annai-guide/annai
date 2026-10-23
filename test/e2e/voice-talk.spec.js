@@ -102,13 +102,22 @@ test('cutting her off: a tap stops her mid-sentence and listens; she hears where
   });
   try {
     await fakeMicrophone(page, [clipPath('where-lunch')]);
+    await page.addInitScript(() => {
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        /** @type {any} */ (window).__voice = this; // the element her voice plays on
+        return play.call(this);
+      };
+    });
     await setUpVoice(page, server.origin);
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('What is ahead?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     const label = page.locator('.talk-label');
     await expect(label).toHaveText('Tap to interrupt', { timeout: 20_000 });
-    await page.waitForTimeout(800);
+    // Mid-sentence is when her voice has played a while by its own clock: 0.8 s of the 3 s clip, past the first words of the sentence (a wait
+    // of the test's, 800 ms, is not that on a slow machine, where the tap came before she had said anything).
+    await page.waitForFunction(() => /** @type {any} */ (window).__voice?.currentTime > 0.8);
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect(label).toHaveText('Tap to talk', { timeout: 30_000 });
     const [, second] = server.bodies('/b/v1/messages');
