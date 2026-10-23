@@ -104,14 +104,15 @@ function heldStream(made, running) {
   /** @type {Played | null} */
   let stopped = null;
   const [done, settle] = /** @type {[Promise<Played>, (r: Played) => void]} */ (settled());
-  const [started, start] = /** @type {[Promise<void>, () => void]} */ (settled());
+  const [started, start] = /** @type {[Promise<boolean>, (v: boolean) => void]} */ (settled());
+  done.then(() => start(false));
   made.then((s) => {
     if (stopped) return void s.stop();
     inner = s;
     for (const p of held.splice(0)) s.push(p);
     if (ended) s.end();
-    s.done.then(settle);
     s.started?.then(start);
+    s.done.then(settle);
   });
   return {
     push(pcm) {
@@ -155,28 +156,34 @@ export function workletStream(node, { rate, sampleRate, now, onLevel = () => {},
   /** @type {Played | null} */
   let result = null;
   const [done, settle] = /** @type {[Promise<Played>, (r: Played) => void]} */ (settled());
-  const [started, start] = /** @type {[Promise<void>, () => void]} */ (settled());
+  const [started, start] = /** @type {[Promise<boolean>, (v: boolean) => void]} */ (settled());
   const ms = (/** @type {number} */ frames) => Math.round((frames / sampleRate) * 1000);
   /** @param {number} playedMs @param {boolean} [stalled] */
   const finish = (playedMs, stalled = false) => {
     if (result) return result;
+    clearTimeout(watch);
     result = { playedMs, holes: last.holes, holeMs: ms(last.holeFrames), waitMs: ms(last.waited), player: 'worklet', ...(stalled ? { stalled } : {}) };
     onLevel(0);
+    start(false);
     settle(result);
     return result;
   };
-  /** Heard so far: the last report, and what has played since if it was playing. */
-  const heard = () => Math.round(Math.min(ms(last.played) + (last.playing ? Math.max(0, now() - last.frame / sampleRate) * 1000 : 0), (pushed / rate) * 1000));
+  /** Heard: the last report, and what has played since if it was playing (since: it still tells). */
+  const heard = (since = true) => Math.round(Math.min(ms(last.played) + (since && last.playing ? Math.max(0, now() - last.frame / sampleRate) * 1000 : 0), (pushed / rate) * 1000));
+  let gone = false;
   const letGo = () => {
+    if (gone) return;
+    gone = true;
     clearTimeout(watch);
     node.port.onmessage = null;
     node.onprocessorerror = null;
     node.port.close();
     node.disconnect();
   };
+  // Stalled, only what it last said it played is known to have been heard.
   const stall = () => {
     node.port.postMessage('stop');
-    const r = finish(heard(), true);
+    const r = finish(heard(false), true);
     ends.length = 0;
     letGo();
     return r;
@@ -189,8 +196,8 @@ export function workletStream(node, { rate, sampleRate, now, onLevel = () => {},
     if (r?.frame === undefined) return; // a sync's answer
     last = r;
     clearTimeout(watch);
-    watch = setTimeout(stall, stallMs);
-    if (r.playing) start();
+    watch = setTimeout(result ? letGo : stall, stallMs);
+    if (r.playing) start(true);
     // Run dry, what it had will not sound unless more comes: her sound has stopped (what came after it stays queued).
     const past = r.done ? Infinity : r.dry ? r.had : r.read;
     while (ends.length && ends[0] <= past) ends.shift();
@@ -213,7 +220,9 @@ export function workletStream(node, { rate, sampleRate, now, onLevel = () => {},
     stop() {
       if (result) return result;
       node.port.postMessage('stop'); // it fades out over 12 ms at most: the sound's tail, not counted
-      return finish(heard());
+      const r = finish(heard());
+      watch = setTimeout(letGo, stallMs); // if it never says it is done
+      return r;
     },
     done,
     started,
@@ -237,14 +246,16 @@ function bufferStream(c, { rate, onLevel, running }) {
   let holeS = 0;
   let clock = c.currentTime;
   let movedAt = Date.now();
+  let ran = false; // a context still resuming is not stalled
   /** @type {Played | null} */
   let result = null;
   const [done, settle] = /** @type {[Promise<Played>, (r: Played) => void]} */ (settled());
-  const [started, start] = /** @type {[Promise<void>, () => void]} */ (settled());
+  const [started, start] = /** @type {[Promise<boolean>, (v: boolean) => void]} */ (settled());
   const finish = (stalled = false) => {
     if (result) return result;
     clearInterval(ticker);
     onLevel(0);
+    start(false);
     // What was heard: sound only, never the gaps when pieces came late.
     const playedMs = Math.round((heard + pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0)) * 1000);
     result = { playedMs, holes, holeMs: Math.round(holeS * 1000), waitMs: 30, player: 'buffers', ...(stalled ? { stalled } : {}) };
@@ -260,13 +271,14 @@ function bufferStream(c, { rate, onLevel, running }) {
   // Its ticker runs until end() has played out or stop(): a caller always ends a stream one way or the other.
   const ticker = setInterval(() => {
     const now = c.currentTime;
-    if (now !== clock) [clock, movedAt] = [now, Date.now()];
+    ran ||= c.state === 'running';
+    if (now !== clock || !ran) [clock, movedAt] = [now, Date.now()];
     else if (Date.now() - movedAt >= STALL_MS) return void stop(true);
     while (pieces.length && pieces[0].end <= now) {
       const p = /** @type {{ at: number, end: number }} */ (pieces.shift());
       heard += p.end - p.at;
     }
-    if (pieces[0]?.at <= now) start();
+    if (heard > 0 || pieces[0]?.at <= now) start(true);
     onLevel(pieces.find((p) => p.at <= now)?.level ?? 0);
     if (ended && now >= next) finish();
   }, 50);
@@ -320,9 +332,14 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
     if (!playerModule && playerTries < PLAYER_TRIES && typeof AudioWorkletNode !== 'undefined' && context().audioWorklet) {
       playerTries++;
       const loading = context().audioWorklet.addModule(new URL('./player-worklet.js', import.meta.url).href).then(() => true, () => false);
-      const late = new Promise((r) => { setTimeout(() => r(false), PLAYER_LOAD_MS); });
+      /** @type {any} */
+      let timer;
+      const late = new Promise((r) => { timer = setTimeout(() => r(false), PLAYER_LOAD_MS); });
       const mine = (playerModule = Promise.race([loading, late]));
-      mine.then((ok) => { if (!ok && playerModule === mine) playerModule = null; });
+      mine.then((ok) => {
+        clearTimeout(timer);
+        if (!ok && playerModule === mine) playerModule = null;
+      });
     }
     return playerModule ?? Promise.resolve(false);
   };

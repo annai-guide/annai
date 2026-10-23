@@ -146,7 +146,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
     return [`live session ${d.state}`, d.model, d.ms !== undefined ? (d.ms >= 60_000 ? `${(d.ms / 60_000).toFixed(1)} min` : `${(d.ms / 1000).toFixed(1)} s`) : null, d.why ? cut(d.why) : null, d.kind,
       d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
       d.sampleRate ? [`sound at ${(d.sampleRate / 1000).toFixed(1)} kHz`, ...[['processing', d.baseLatency], ['output', d.outputLatency]]
-        .filter(([, x]) => x !== undefined).map(([name, x]) => `${Math.round(x * 1000)} ms ${name} latency`)].join(', ') : null].filter(Boolean).join(' · ');
+        .filter(([, x]) => x !== undefined && x !== null).map(([name, x]) => `${Math.round(x * 1000)} ms ${name} latency`)].join(', ') : null].filter(Boolean).join(' · ');
   }
   // How her voice played in a live session, in numbers only (the pops investigation, 2026-10-23).
   if (e.type === 'live.reply') {
