@@ -12,6 +12,8 @@ const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 const calls = (...calls) => ({ toolCalls: [...calls.map(([name, input]) => ({ name, input })), { name: 'sleep', input: {} }] });
 /** Every text of a request's user messages. @param {any} req */
 const userTexts = (req) => req.messages.filter((/** @type {any} */ m) => m.role === 'user').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text));
+/** Each call of a tool's result, in order. @param {any} k @param {string} name */
+const results = async (k, name) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === name);
 /** What the conversation view shows of a log: what the user typed, and every output line, with who made it. @param {any} k */
 const shown = async (k) => (await k.events(['msg.user', 'out.speak', 'out.show', 'out.ask'])).map((/** @type {any} */ e) => [e.type, e.data.half ?? '', e.data.text ?? e.data.question ?? e.data.card?.title ?? '']);
 
@@ -148,6 +150,23 @@ test("Koe goes down while Kokoro works: Kokoro tells the user directly once, not
   await k.agent.idle();
   assert.equal(k.agent.koeState, 'down');
   assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'kokoro', answer]]);
+});
+
+test("Koe is down when Kokoro answers [tell_koe, sleep]: tell_koe is refused and told no one, so the turn does not end there: Kokoro is asked once more and reaches the user (flake-sweep fix pass, P3)", async (t) => {
+  useClock(t);
+  // Koe's bad key fails (5 ms) before Kokoro's quiet (15 ms) ends: Kokoro begins its turn with Koe down, and answers as it would if Koe
+  // were up, ignoring the block that says Koe can't speak. Only the nudge's cue ("hasn't been answered") gets it to speak.
+  const k = await agentKit([{ rules: [
+    { match: "hasn't been answered", reply: calls(['speak', { text: 'Nepenthe is open till 10 tonight.' }]) },
+    { match: '.', reply: calls(['tell_koe', { text: 'Nepenthe is open till 10 tonight.' }]) },
+  ] }], { koe: { type: [{ delayMs: 5, error: 'auth', message: 'bad key' }] } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  const refused = (await results(k, 'tell_koe')).map((/** @type {any} */ e) => e.data.content);
+  assert.deepEqual(refused, ["Koe can't speak right now: talk to the user yourself, with speak, show and ask."]);
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'kokoro', 'Nepenthe is open till 10 tonight.']], 'the user is answered');
+  assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0);
 });
 
 test("Koe failing twice while Kokoro works asks Kokoro to talk directly once, not twice (review a4: the drop in #talkDirectly)", async (t) => {
