@@ -1,4 +1,7 @@
 import { McpClient, toolOutput } from '../mcp/client.js';
+import { answerJSON } from '../../core/answer.js';
+import { nominatimTurn } from '../../core/nominatim.js';
+import { cut } from '../../core/web-search.js';
 
 /**
  * annai's free search (the user, 2026-10-23): three services that answer a web app's search with no key,
@@ -17,6 +20,8 @@ const LIMIT_MS = 12_000;
 function failure(name, e) {
   if (e?.name === 'AbortError' || e?.name === 'TimeoutError') return e;
   const s = e?.status;
+  // A free service that now asks for a key has closed its free tier to annai: told so, and left alone for a while.
+  if (e?.kind === 'auth') return Object.assign(new Error(`${name} now asks for a key`), { status: s, kind: 'auth', rest: true });
   const why = s ? `${name} answered ${s}${s === 429 ? ' (its free limit)' : ''}`
     : e?.kind === 'cors' || e?.kind === 'network' || e instanceof TypeError ? `${name} couldn't be reached`
       : e?.kind === 'answer' ? `${name} sent an answer annai can't read` : `${name}: ${e?.message ?? e}`;
@@ -31,7 +36,7 @@ async function callTool(name, url, headers, tool, args, c) {
   try {
     const result = await new McpClient({ url, server: name, auth: async () => headers, stateless: true }).callTool(tool, args, { fetch: c.fetch, signal: c.signal });
     const out = toolOutput(result);
-    if (out.isError) throw Object.assign(new Error(out.content.slice(0, 200)), { status: /rate.?limit|too many/i.test(out.content) ? 429 : undefined });
+    if (out.isError) throw Object.assign(new Error(cut(out.content, 200)), { status: /rate.?limit|too many/i.test(out.content) ? 429 : undefined });
     return { text: out.content, result };
   } catch (e) {
     throw failure(name, e);
@@ -62,7 +67,8 @@ export const FREE_PROVIDERS = [
   {
     id: 'parallel', name: 'Parallel', kind: 'web', free: true, limitMs: LIMIT_MS,
     async search(query, c) {
-      const { text, result } = await callTool('Parallel', 'https://search.parallel.ai/mcp', {}, 'web_search', { objective: query, search_queries: [query] }, c);
+      // session_id is what Parallel's free tier counts by: the conversation's, made in memory by the chain.
+      const { text, result } = await callTool('Parallel', 'https://search.parallel.ai/mcp', {}, 'web_search', { objective: query, search_queries: [query], ...(c.session ? { session_id: c.session } : {}) }, c);
       const found = result?.structuredContent?.results ?? parseJSON(text)?.results;
       return (Array.isArray(found) ? found : []).map((/** @type {any} */ r) => ({ title: r?.title, url: r?.url, snippet: Array.isArray(r?.excerpts) ? r.excerpts.join(' ') : r?.excerpts }));
     },
@@ -96,7 +102,7 @@ const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? 
  * @type {import('../../core/web-search.js').SearchProvider}
  */
 export const KNOWLEDGE = {
-  id: 'wiki', name: 'Wikivoyage and Wikipedia', kind: 'knowledge', always: true, limitMs: LIMIT_MS,
+  id: 'wiki', name: 'Wikivoyage, Wikipedia and Nominatim', kind: 'knowledge', always: true, limitMs: LIMIT_MS,
   async search(query, { fetch: get, signal, limit }) {
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
@@ -105,9 +111,7 @@ export const KNOWLEDGE = {
     const json = async (url) => {
       const res = await get(url, { signal, referrerPolicy: 'origin' });
       if (!res.ok) throw Object.assign(new Error(`${new URL(url).hostname} answered ${res.status}`), { status: res.status });
-      return res.json().catch(() => {
-        throw new Error(`${new URL(url).hostname} sent an answer annai can't read`);
-      });
+      return answerJSON(res, new URL(url).hostname);
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
     // Questions rarely match whole; fewer words are tried when all of them find nothing.
@@ -131,6 +135,7 @@ export const KNOWLEDGE = {
       return [{ title: `${top.title} (Wikivoyage)`, url: wikiUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
     };
     const places = async () => {
+      await nominatimTurn(); // one request a second to Nominatim, for the whole app
       const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3`);
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));

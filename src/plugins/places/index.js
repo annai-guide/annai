@@ -5,6 +5,7 @@ import { answerJSON } from '../../core/answer.js';
 import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
 import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
+import { NOMINATIM_GAP, nominatimTurn } from '../../core/nominatim.js';
 
 export { KINDS };
 
@@ -18,8 +19,7 @@ export const manifest = {
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
-/** Nominatim allows one request a second (spec §7.2); the gap is a little more. */
-export const NOMINATIM_GAP = { ms: 1100 };
+export { NOMINATIM_GAP };
 /** Each request's time limit, so a server that never answers is left for the next: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
 export const ASK_MS = { ms: 25_000 };
 
@@ -103,12 +103,9 @@ const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type:
 /** @param {any} annai */
 export function activate(annai) {
   const { tsv } = annai.helpers;
-  let nextNominatim = 0;
-  /** Calls Nominatim no faster than once a second, across geocode and reverse. @param {string} url @param {any} call */
+  /** Calls Nominatim no faster than once a second, across geocode, reverse and free search's floor (core/nominatim.js). @param {string} url @param {any} call */
   const nominatim = async (url, call) => {
-    const wait = nextNominatim - Date.now();
-    nextNominatim = Math.max(Date.now(), nextNominatim) + NOMINATIM_GAP.ms;
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    await nominatimTurn();
     // Nominatim's usage policy asks apps to say who they are. The app's own policy sends no
     // Referer, so this request sends the origin, which its Origin header shows anyway.
     return ask(call, url, { headers: { accept: 'application/json' }, referrerPolicy: 'origin' });

@@ -19,7 +19,7 @@ import { parsePartialJSON } from './llm/partial-json.js';
 import { retry } from './llm/retry.js';
 import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
-import { orderSearch, searchOffIn } from './web-search.js';
+import { orderSearch, searchOffIn, trusted } from './web-search.js';
 import { mergePatch } from './patch.js';
 import { addressProblem } from './llm/provider-desc.js';
 import { checkSetup } from './llm/setup.js';
@@ -484,6 +484,9 @@ export class PluginHost {
     this.#removing.add(id);
     await this.#settled(id);
     const tools = new Set(this.registry.entries('tool', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name)));
+    // Its search providers' ids: those it registered, and those its record and manifest name (it may not be running).
+    const searches = new Set(this.registry.entries('search', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.id)));
+    for (const x of [...(this.#known[id]?.provides?.search ?? []), (await this.#stored(id).catch(() => null))?.search?.id]) if (typeof x === 'string') searches.add(x);
     await this.stop(id);
     const state = await this.installed();
     const was = state[id];
@@ -506,6 +509,12 @@ export class PluginHost {
       || Object.values(state).some((x) => x?.tools?.includes(t));
     const off = [...tools].filter((t) => Object.hasOwn(switches, t) && !others(t)).map((t) => [t, null]);
     if (off.length) await updateAppSettings(this.ws, { tools: Object.fromEntries(off) });
+    // Its search providers' places in the order and in the switched-off list, unless another plugin still has that id.
+    const web = (await readAppSettings(this.ws)).web ?? {};
+    const gone = [...searches].filter((x) => !this.registry.entries('search', { all: true }).some((e) => e.item?.id === x));
+    const drop = (/** @type {unknown} */ l) => (Array.isArray(l) && l.some((x) => gone.includes(String(x))) ? l.filter((x) => !gone.includes(String(x))) : undefined);
+    const [order, offList] = [drop(web.search), drop(web.searchOff)];
+    if (order || offList) await updateAppSettings(this.ws, { web: { ...(order ? { search: order } : {}), ...(offList ? { searchOff: offList } : {}) } });
     await this.#forgetChoices(id);
     await logEvent(this.ws.store, SYS, { type: 'plugin.remove', actor: 'user', data: { plugin: id, name: was?.name ?? id, kind: kindOfState(was), bytes } }).catch(() => {});
     return { bytes };
@@ -756,7 +765,7 @@ export class PluginHost {
     };
     /** @type {Record<string, any>} */
     let searchWeb = {};
-    const ordered = () => orderSearch(registry.list('search'), searchWeb);
+    const ordered = () => orderSearch(trusted(registry.entries('search')), searchWeb);
     const llm = Object.assign(
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
@@ -848,7 +857,11 @@ export class PluginHost {
         get: async () => ({ ...defaultsOf(manifest.settings), ...(await this.ws.readJSON(SYS_SETTINGS, SETTINGS(id))) }),
         set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, SETTINGS(id), changes, { author: `plugin:${id}`, create: true }),
       }),
-      searchProviders: ordered,
+      /** As of the last time annai read the settings (searchProvidersAsync reads them now): switched-off providers left out. */
+      searchProviders: () => {
+        const off = searchOffIn(searchWeb, ordered());
+        return ordered().filter((p) => !off.includes(p.id));
+      },
       /** The search providers in the user's order (web.search, then keyed, free, knowledge), less those they switched off (web.searchOff). */
       searchProvidersAsync: async () => {
         searchWeb = (await readAppSettings(this.ws)).web ?? {};

@@ -3,7 +3,7 @@ import { htmlToText } from '../../core/html-text.js';
 import { toBase64 } from '../../core/bytes.js';
 import { anySignal } from '../../core/signals.js';
 import { readAppSettings } from '../../core/settings.js';
-import { normalizeRows, restsOn, cooldowns, ROWS } from '../../core/web-search.js';
+import { normalizeRows, restsOn, cooldowns, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
 import { FREE_PROVIDERS, KNOWLEDGE, exaRead } from './free.js';
 
 export const manifest = {
@@ -21,13 +21,32 @@ const FILE_MAX = 10 * 2 ** 20;
 /** Each step's time limit, as the places tools' requests: a site that never answers is left for the next way to read it. */
 export const STEP_MS = { ms: 25_000 };
 
-/** fn with a signal the user's stop and STEP_MS (or less, ms) both end; past the limit, an error marked late. @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn @param {number} [ms] */
+export { READY_MS };
+
+/**
+ * fn with a signal the user's stop and STEP_MS (or less, ms) both end; past the limit, an error marked late. It
+ * stops waiting at the signal even when fn ignores it (a plugin's provider may), so one stuck call can't hold the chain.
+ * @template T @param {any} call @param {(signal: AbortSignal) => Promise<T>} fn @param {number} [ms]
+ */
 async function step(call, fn, ms = Infinity) {
   const late = AbortSignal.timeout(Math.min(STEP_MS.ms, ms));
+  const signal = anySignal([call.signal, late]);
+  /** @type {() => void} */
+  let off = () => {};
+  const ended = new Promise((_, reject) => {
+    const stop = () => reject(signal.reason);
+    if (signal.aborted) stop();
+    else signal.addEventListener('abort', stop, { once: true });
+    off = () => signal.removeEventListener('abort', stop);
+  });
+  const work = Promise.resolve().then(() => fn(signal));
+  work.catch(() => {}); // abandoned at the signal, it may still fail later
   try {
-    return await fn(anySignal([call.signal, late]));
+    return await Promise.race([work, ended]);
   } catch (e) {
     throw late.aborted && !call.signal.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+  } finally {
+    off();
   }
 }
 
@@ -164,46 +183,103 @@ export function activate(annai) {
     },
   };
 
+  /** The conversation Parallel's free tier counts searches by: one random id for the open conversation, in memory only. */
+  const session = { scope: '', id: '' };
+  /** @param {string} scope */
+  const sessionFor = (scope) => {
+    if (session.scope !== scope || !session.id) Object.assign(session, { scope, id: crypto.randomUUID() });
+    return session.id;
+  };
+
   const searchTool = {
     name: 'web_search', group: 'Web',
     description: 'Search the web. Answers as TSV: title, url, snippet. fetch a result to read it.',
     input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
     /**
      * The search providers in the user's order, each asked in turn (spec §7.2): one that isn't ready, or is resting after a
-     * failure, is passed over; one that fails or finds nothing hands on to the next; the first answer with rows wins.
+     * failure, is passed over; one that fails or finds nothing hands on to the next; the first answer with rows wins. The whole
+     * search has a deadline (CHAIN), with a reserve kept for the floor; when every provider is resting, the one whose rest ends first is tried.
      * @param {{ query: string }} i @param {any} call
      */
     async run(i, call) {
+      const deadline = Date.now() + CHAIN.ms;
+      const providers = await annai.searchProvidersAsync();
       /** @type {string[]} failures */
       const why = [];
       /** @type {string[]} passed over, with the reason */
       const passed = [];
+      /** @type {{ p: any, e: any }[]} */
+      const failed = [];
+      /** @type {any[]} */
+      const resting = [];
       let empty = false;
-      for (const p of await annai.searchProvidersAsync()) {
+      /** Asks one provider; its TSV when it has rows. @param {any} p @param {number} [reserve] */
+      const ask = async (p, reserve = 0) => {
+        const room = deadline - Date.now() - reserve;
+        if (room < 100) {
+          passed.push(`${p.name} was left out: the search ran out of time`);
+          return null;
+        }
+        try {
+          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit: ROWS, session: sessionFor(call.scope) }), Math.min(p.limitMs ?? Infinity, room)), i.query);
+          cooldowns.clear(p.id);
+          if (rows.length) return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));
+          empty = true;
+        } catch (e) {
+          if (call.signal.aborted) throw e;
+          failed.push({ p, e });
+          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
+        }
+        return null;
+      };
+      /** Rests what failed: a failure by timeout or network alone, with nothing answering, may be the connection's, so nobody climbs. @param {boolean} answered */
+      const settle = (answered) => {
+        const link = (/** @type {any} */ e) => e?.late || e?.kind === 'network' || e?.kind === 'cors' || e instanceof TypeError;
+        const climb = answered || empty || !failed.every((f) => link(f.e));
+        for (const f of failed) if (restsOn(f.e)) cooldowns.rest(f.p.id, climb);
+      };
+      /** @param {any} p */
+      const ready = async (p) => {
+        if (!p.ready) return { ok: true };
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
+        let timer;
+        const slow = new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, why: "couldn't check if it can run" }), READY_MS.ms); });
+        try {
+          return await Promise.race([Promise.resolve().then(() => p.ready()).catch((/** @type {any} */ e) => ({ ok: false, why: String(e?.message ?? e) })), slow]);
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+      for (const [k, p] of providers.entries()) {
         const rest = cooldowns.left(p.id);
         if (rest > 0) {
+          resting.push(p);
           passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
           continue;
         }
-        const ready = p.ready ? await p.ready().catch((/** @type {any} */ e) => ({ ok: false, why: String(e?.message ?? e) })) : { ok: true };
-        if (!ready.ok) {
-          passed.push(`${p.name} ${ready.why ?? "isn't ready"}`);
+        const r = await ready(p);
+        if (!r.ok) {
+          passed.push(`${p.name} ${r.why ?? "isn't ready"}`);
           continue;
         }
-        try {
-          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit: ROWS }), p.limitMs), i.query);
-          cooldowns.clear(p.id);
-          if (!rows.length) {
-            empty = true;
-            continue;
-          }
-          return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));
-        } catch (e) {
-          if (call.signal.aborted) throw e;
-          if (restsOn(e)) cooldowns.rest(p.id);
-          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
+        const out = await ask(p, p.always || !providers.slice(k + 1).some((q) => q.always) ? 0 : CHAIN.reserve);
+        if (out) {
+          settle(true);
+          return out;
         }
       }
+      // Everything is resting and nothing else ran: the one whose rest ends first gets another try.
+      if (!failed.length && !empty && resting.length) {
+        const next = resting.sort((a, b) => cooldowns.left(a.id) - cooldowns.left(b.id))[0];
+        if ((await ready(next)).ok) {
+          const out = await ask(next);
+          if (out) {
+            settle(true);
+            return out;
+          }
+        }
+      }
+      settle(false);
       if (empty) return `Nothing found for "${i.query}".${why.length ? ` (${why.join('; ')}.)` : ''}`;
       throw new Error(`Web search didn't work: ${[...why, ...passed].join('; ') || 'every search provider is switched off'}. Or turn on your model's own search in Settings → Tools.`);
     },
