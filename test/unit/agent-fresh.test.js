@@ -25,7 +25,7 @@ test('Start fresh: the context holds none of the earlier lines, the next request
   assert.equal(c.data.summary, undefined, 'no summary: nothing of the earlier lines is carried');
   const context = JSON.stringify(k.agent.transcript.messages);
   assert.equal(context.includes('pelicans'), false, 'none of the earlier lines are in her context');
-  assert.match(context, /Started fresh/);
+  assert.match(context, /Started fresh: at the user's request, the conversation before this point \(events \d+–\d+\) is not in your context/, 'the note names the events recall brings back');
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages, 'a fresh read of the log agrees');
   // The next turn is sent without them.
   k.agent.send('Hello again');

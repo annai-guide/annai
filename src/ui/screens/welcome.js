@@ -20,8 +20,10 @@ const LAST = TITLES.length;
 /** @param {number} n */
 const stepHash = (n) => (n === 1 ? '#/welcome' : `#/welcome/${n}`);
 
-/** @param {string} lead @param {string} text */
-const can = (lead, text) => h('li', {}, h('strong', { text: lead }), ' ', text);
+/** @param {string | Node} lead @param {string} text */
+const can = (lead, text) => h('li', {}, h('strong', {}, lead), ' ', text);
+/** A Japanese word, marked as one, for a screen reader to say it right. @param {string} text */
+const ja = (text) => h('span', { lang: 'ja', text });
 
 /** @param {number} n @param {any} ctx @returns {any[]} */
 function body(n, ctx) {
@@ -38,9 +40,9 @@ function body(n, ctx) {
     return [
       h('p', { class: 'lead', text: 'Shiori is your guide. She has two halves that work together.' }),
       h('ul', { class: 'can' },
-        can('Koe (声, voice)', 'talks with you and answers at once.'),
-        can('Kokoro (心, heart and mind)', 'thinks things through and does the work: planning, searching, reading your bookings.')),
-      h('p', { class: 'sub', text: 'You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. Settings → Shiori shows what they tell each other.' }),
+        can(h('span', {}, 'Koe (', ja('声'), ', voice)'), 'talks with you and answers at once.'),
+        can(h('span', {}, 'Kokoro (', ja('心'), ', heart and mind)'), 'thinks things through and does the work: planning, searching, reading your bookings.')),
+      h('p', { class: 'sub', text: 'You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.' }),
     ];
   }
   if (n === 3) {

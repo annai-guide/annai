@@ -86,8 +86,8 @@ export async function renderTalk(ctx) {
   const { showWords, showHalves: halves } = shownSettings(await readAppSettings(ctx.ws));
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
-  // Not a live region itself: `announce` says each new line of hers once, spoken or not, whatever "Show what she says" is (the dock's bubble is
-  // no live region), and what annai heard you say once its words are in; never what you typed, nor the halves' notes (fix pass 2).
+  // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
+  // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });
   const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
   const tell = (/** @type {string} */ text) => { if (built && text) announce.replaceChildren(h('span', { text })); };
@@ -303,7 +303,7 @@ function tidyMenu(ctx) {
       close();
       ctx.notices.toast('Summarizing…');
       const r = await agent.summarizeNow();
-      ctx.notices.toast({ done: 'Earlier conversation summarized. The lines stay here, and she can recall them.', nothing: 'There is not enough yet to summarize.', busy: 'Shiori is working. Try again in a moment.', failed: "She couldn't summarize it. A card says why." }[/** @type {'done' | 'nothing' | 'busy' | 'failed'} */ (r)]);
+      ctx.notices.toast({ done: 'Earlier conversation summed up. Every line stays here, and she can still look them up.', nothing: 'There is not enough yet to summarize.', busy: 'Shiori is working. Try again in a moment.', failed: "She couldn't summarize it. A card says why." }[/** @type {'done' | 'nothing' | 'busy' | 'failed'} */ (r)]);
       if (r === 'done') ctx.render();
     },
   }, 'Summarize now');
@@ -319,7 +319,7 @@ function tidyMenu(ctx) {
       close();
       const yes = await ask({
         title: 'Start fresh?',
-        body: "Shiori will start a new context from here, and won't have the earlier lines in mind. They all stay in the conversation, to read, search and have her recall: nothing is deleted. A live voice session restarts too.",
+        body: "Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.",
         yes: 'Start fresh',
       });
       if (!yes) return void toggle.focus();
@@ -354,8 +354,8 @@ function tidyMenu(ctx) {
   document.addEventListener('keydown', escape);
   const el = h('div', { class: 'tidy' }, toggle, menu);
   menu.append(
-    h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: housekeeping, now. The earlier lines stay readable and recallable.' }), summarize,
-    h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: a new context from this point. Earlier lines stay, with a divider.' }), fresh);
+    h('p', { id: 'tidy-summarize', class: 'sub', text: 'Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.' }), summarize,
+    h('p', { id: 'tidy-fresh', class: 'sub', text: 'Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.' }), fresh);
   whenGone(el, () => {
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', escape);

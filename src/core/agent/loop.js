@@ -1212,10 +1212,7 @@ export class Agent {
     if (this.#queue.length) this.#drain();
   }
 
-  /**
-   * Kokoro's notes for the user that this half owes (Koe's, §6.8), queued or in the turn that runs, taken from it: Start fresh shows
-   * their words above its divider before the turn is stopped, which would drop them. @returns {Wake[]}
-   */
+  /** Kokoro's notes for the user this half owes (Koe's, §6.8), queued or in its turn, taken: Start fresh shows them. @returns {Wake[]} */
   takeOwed() {
     const queued = this.#queue.filter((w) => w.scope === this.scope && isForUser(w));
     this.#queue = this.#queue.filter((w) => !queued.includes(w));

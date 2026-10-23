@@ -99,7 +99,7 @@ export function liveChip(ctx) {
           onclick: async () => {
             close();
             await live.place(p);
-            ctx.notices.toast(`annai takes it you are at ${p.name}.`);
+            ctx.notices.toast(`annai now knows you're at ${p.name}.`);
           },
         }, p.name));
       }
