@@ -124,6 +124,23 @@ export class Workspace {
     });
   }
 
+  /**
+   * Changes a JSON file in the path's lock: fn gets what is stored and gives the new content, so nothing written between the read
+   * and the write is lost (a Test's result recorded while a field is saved, say). A file that is not there is not found.
+   * @param {string} scope @param {string} path @param {(current: any) => any | Promise<any>} fn @param {WriteOptions} opts
+   * @returns {Promise<any>} the new content
+   */
+  async update(scope, path, fn, opts) {
+    const p = normPath(path);
+    return this.#locked(scope, p, async () => {
+      const current = await this.readJSON(scope, p);
+      if (current === undefined) throw new NotFoundError(p);
+      const next = await fn(current);
+      await this.#write(scope, p, next, opts);
+      return next;
+    });
+  }
+
   /** @param {string} scope @param {string} path @param {WriteOptions} opts */
   async delete(scope, path, opts) {
     const p = normPath(path);
@@ -156,21 +173,28 @@ export class Workspace {
       prepared.push({ path, version: { hash: await sha256Hex(bytes), type, size: bytes.byteLength, bytes } });
     }
     const now = this.now();
-    const done = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
-      /** @type {Change[]} */
-      const out = [];
-      for (const { path, version } of prepared) {
-        if (!version) {
-          await removeFile(t, scope, path, opts.author, now);
-          out.push({ op: 'delete', scope, path });
-          continue;
+    const commit = async () => {
+      const done = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
+        /** @type {Change[]} */
+        const out = [];
+        for (const { path, version } of prepared) {
+          if (!version) {
+            await removeFile(t, scope, path, opts.author, now);
+            out.push({ op: 'delete', scope, path });
+            continue;
+          }
+          const entry = await putVersion(t, scope, path, version, opts, now);
+          if (entry) out.push({ op: 'write', scope, path, entry });
         }
-        const entry = await putVersion(t, scope, path, version, opts, now);
-        if (entry) out.push({ op: 'write', scope, path, entry });
-      }
-      return out;
-    });
-    for (const change of done) await this.#emit(change);
+        return out;
+      });
+      for (const change of done) await this.#emit(change);
+    };
+    // In the lock of each path it changes, taken in sorted order (two calls never wait for each other), so it comes before or after a
+    // write, patch or update of that path, never between a read and a write of it.
+    const paths = [...new Set(prepared.map((c) => c.path))].sort();
+    const within = (/** @type {number} */ i) => (i === paths.length ? commit() : this.#locked(scope, paths[i], () => within(i + 1)));
+    await within(0);
   }
 
   /**

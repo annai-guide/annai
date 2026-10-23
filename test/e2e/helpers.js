@@ -98,19 +98,22 @@ export function savedBy(control) {
  */
 export async function leaveSaved(control) {
   const note = savedBy(control);
-  // Counts the times the element says Saved, from when it is first looked at: the count so far, or (given a count) whether it has gone past it.
-  // An element seen for the first time after the blur is a new one, and it is this save's if it says Saved.
-  const watch = (/** @type {any} */ el, /** @type {number | null} */ before) => {
-    const first = el.savesSeen === undefined;
-    if (first) {
+  // Counts the times the element says Saved. phase 'mark' (before the blur) notes how many so far; 'wait' (after) says whether it has said
+  // Saved since: an element met for the first time then is a new note, counted from nothing, and this save's if it says Saved.
+  const watch = (/** @type {any} */ el, /** @type {string} */ phase) => {
+    if (el.savesSeen === undefined) {
       el.savesSeen = 0;
       new MutationObserver(() => { if (el.textContent === 'Saved') el.savesSeen += 1; }).observe(el, { childList: true, characterData: true, subtree: true });
     }
-    return before === null ? el.savesSeen : first ? el.textContent === 'Saved' : el.savesSeen > before;
+    if (phase === 'mark') {
+      el.savesMarked = el.savesSeen;
+      return true;
+    }
+    return el.savesSeen > (el.savesMarked ?? 0) || (el.savesMarked === undefined && el.textContent === 'Saved');
   };
-  const before = await note.evaluate(watch, null, { timeout: 10_000 });
+  await note.evaluate(watch, 'mark', { timeout: 10_000 });
   await control.blur();
-  await expect.poll(() => note.evaluate(watch, before), { timeout: 10_000, message: 'the field says Saved' }).toBe(true);
+  await expect.poll(() => note.evaluate(watch, 'wait'), { timeout: 10_000, message: 'the field says Saved' }).toBe(true);
 }
 
 /** @param {import('@playwright/test').Page} page */
