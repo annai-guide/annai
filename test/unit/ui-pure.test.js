@@ -741,3 +741,14 @@ test('the road ahead: how far and how long, and never "about 0 ms" when standing
   assert.equal(roadText({ km: 0.02, minutes: null }), '≈ 0 mi · about 1 min');
   assert.equal(roadText({ km: null, minutes: null }), '');
 });
+
+test('linkIn puts each link where the words say it, in the order the words have them, and one the words lack after', async () => {
+  const { linkIn } = await import('../../src/ui/dom.js');
+  const a = /** @type {any} */ ({ textContent: 'Get a key' });
+  const b = /** @type {any} */ ({ textContent: 'OpenStreetMap' });
+  const c = /** @type {any} */ ({ textContent: 'missing' });
+  assert.deepEqual(linkIn('Some networks need a key. Get a key. Then paste it.', a), ['Some networks need a key. ', a, '. Then paste it.']);
+  // A translation may put the links in another order; each is still where its words are.
+  assert.deepEqual(linkIn('OpenStreetMapのデータ、Get a keyで', a, b), ['', b, 'のデータ、', a, 'で']);
+  assert.deepEqual(linkIn('Map data from OpenStreetMap.', b, c), ['Map data from ', b, '.', ' ', c]);
+});

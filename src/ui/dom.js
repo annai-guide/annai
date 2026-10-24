@@ -167,6 +167,26 @@ export function messageOf(e) {
 }
 
 /**
+ * A message with its links where its words say them: each link's words are a value of the message, so every translation holds them;
+ * a link the words don't hold comes after. @param {string} text @param {...HTMLElement} links @returns {(string | HTMLElement)[]}
+ */
+export function linkIn(text, ...links) {
+  /** @type {(string | HTMLElement)[]} */
+  const parts = [];
+  /** @type {(string | HTMLElement)[]} */
+  const rest = [];
+  let from = 0;
+  for (const { a, i } of links.map((a) => ({ a, i: text.indexOf(String(a.textContent)) })).sort((x, y) => x.i - y.i)) {
+    if (i < from) rest.push(' ', a);
+    else {
+      parts.push(text.slice(from, i), a);
+      from = i + String(a.textContent).length;
+    }
+  }
+  return [...parts, text.slice(from), ...rest];
+}
+
+/**
  * Shows what went wrong (messageOf) in el. A schema's refusal is its English (src/core/schema.js), a developer's words (decision
  * 11), so it goes in a span marked lang="en", which the next words shown there replace with it. @param {HTMLElement} el @param {unknown} e
  */

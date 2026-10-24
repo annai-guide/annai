@@ -1,4 +1,4 @@
-import { h, crumb, t } from '../dom.js';
+import { h, crumb, linkIn, t } from '../dom.js';
 import { SOURCES, FONTS, ART } from '../credits.js';
 import { keysAndData, finePrint, REPO } from '../privacy.js';
 
@@ -14,25 +14,6 @@ import { keysAndData, finePrint, REPO } from '../privacy.js';
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 /** @param {Link} l */
 const out = (l) => h('a', { href: l.href, target: '_blank', rel: 'noopener noreferrer', text: l.text });
-
-/** A credit's words with each link where the words say it, and the rest after. @param {string} text @param {Link[]} links */
-export function linked(text, links) {
-  const at = links.map((l) => ({ l, i: text.indexOf(l.text) })).filter((x) => x.i >= 0).sort((a, b) => a.i - b.i);
-  /** @type {any[]} */
-  const parts = [];
-  let from = 0;
-  /** @type {Link[]} */
-  const used = [];
-  for (const { l, i } of at) {
-    if (i < from) continue;
-    parts.push(text.slice(from, i), out(l));
-    used.push(l);
-    from = i + l.text.length;
-  }
-  parts.push(text.slice(from));
-  for (const l of links) if (!used.includes(l)) parts.push(' ', out(l));
-  return parts;
-}
 
 /**
  * The build of the service worker that runs annai now (sw.js answers "build" on a port), or null
@@ -95,7 +76,7 @@ export async function renderAbout(ctx, route) {
       ...SOURCES.map((s) => h('div', { class: 'credit' },
         h('h3', { class: 'credit-name', text: s.name }),
         h('p', { class: 'sub', text: s.use }),
-        h('p', {}, ...linked(s.credit, s.links)))),
+        h('p', {}, ...linkIn(s.credit, ...s.links.map(out))))),
       h('div', { class: 'credit' },
         h('h3', { class: 'credit-name', text: 'Fonts' }),
         h('p', { text: `${FONTS.map((f) => `${f.name} (${f.copyright.replace(/^Copyright (© )?/, '© ')})`).join('; ')}: each under the SIL Open Font License 1.1.` }),
