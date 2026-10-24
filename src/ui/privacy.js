@@ -1,4 +1,5 @@
 import { h, t } from './dom.js';
+import { sentenceGap } from './format.js';
 
 /**
  * What the welcome and Settings → About say about keys and data, and the fine print (the user,
@@ -11,7 +12,7 @@ export const REPO = 'https://github.com/annai-guide/annai';
 const LICENCE = /* en */ 'GNU Affero General Public License 3.0';
 
 /** @param {string} lead @param {...any} rest */
-const fact = (lead, ...rest) => h('li', {}, h('strong', { text: lead }), ' ', ...rest);
+const fact = (lead, ...rest) => h('li', {}, h('strong', { text: lead }), sentenceGap(), ...rest);
 /** A sentence with the link where it says the link's words (a value of the message). @param {string} text @param {HTMLElement} link */
 const linkIn = (text, link) => {
   const [before, after] = text.split(link.textContent ?? '');

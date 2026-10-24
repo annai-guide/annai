@@ -7,7 +7,7 @@ import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
 import { officialPlugins, makesProvider } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
-import { list } from './format.js';
+import { list, sentences } from './format.js';
 
 /**
  * Coming back to annai's address (decision 16): the plugin that sent the browser away expects the next load with a query, within 15 minutes, once.
@@ -15,11 +15,6 @@ import { list } from './format.js';
  */
 const SLOT = 'annai.return';
 
-/** Sentences side by side, the empty left out (a message: Japanese drops the space). @param {...string} parts */
-export function sentences(...parts) {
-  const some = parts.filter(Boolean);
-  return some.length ? some.reduce((a, b) => t`${a} ${b}`) : '';
-}
 const MAX_AGE = 15 * 60_000;
 
 /** Notes that a plugin expects annai's address back. @param {string} pluginId @param {{ storage?: KeyValue, now?: number }} [o] */

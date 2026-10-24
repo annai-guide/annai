@@ -1,5 +1,6 @@
 import { h, t } from './dom.js';
 import { isStandalone, platform } from './platform.js';
+import { sentenceGap } from './format.js';
 
 /** @type {any} */
 let deferred = null;
@@ -45,7 +46,7 @@ export function installBanner() {
   const how = h('ol', { class: 'steps', hidden: true }, ...[...STEPS[p], ...(p === 'ios' ? [TRIPS_HERE] : [])].map((s) => h('li', { text: s })));
   const install = installButton();
   return h('section', { class: 'risk', 'aria-label': t`Install annai` },
-    h('p', {}, h('strong', { text: t`annai isn't installed yet.` }), ' ',
+    h('p', {}, h('strong', { text: t`annai isn't installed yet.` }), sentenceGap(),
       p === 'ios'
         ? t`Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.`
         : t`Your browser may clear your trips when space runs low. Install annai to keep them safe.`),
