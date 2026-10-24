@@ -36,6 +36,15 @@ function accepts(header, coding) {
   return star;
 }
 
+/**
+ * Whether an If-None-Match header names this tag (weakly compared, as RFC 9110 has it for If-None-Match), or is "*".
+ * @param {string | undefined} header @param {string} tag
+ */
+function holds(header, tag) {
+  if (!header) return false;
+  return header.split(',').some((t) => { const v = t.trim(); return v === '*' || v.replace(/^W\//, '') === tag; });
+}
+
 const rules = parseHeaders(await readFile(join(root, '_headers'), 'utf8'));
 
 const server = http.createServer(async (req, res) => {
@@ -71,8 +80,17 @@ const server = http.createServer(async (req, res) => {
     if (packed) res.setHeader('Vary', 'Accept-Encoding');
     const head = req.method === 'HEAD';
     const brotli = packed !== null && accepts(req.headers['accept-encoding'], 'br');
-    const body = await readFile(brotli ? packed : file);
     if (brotli) res.setHeader('Content-Encoding', 'br');
+    // A browser that holds the file asks again with its tag, and is told it still has it: Chromium's and WebKit's checks for a new
+    // sw.js do, on every check. The tag is the sent file's size and time, as most servers make it.
+    const sent = brotli ? /** @type {import('node:fs').Stats} */ (b) : s;
+    const tag = `"${sent.size.toString(36)}-${Math.floor(sent.mtimeMs).toString(36)}${brotli ? '-br' : ''}"`;
+    res.setHeader('ETag', tag);
+    if (holds(req.headers['if-none-match'], tag)) {
+      res.writeHead(304).end();
+      return;
+    }
+    const body = await readFile(brotli ? packed : file);
     // Range is ignored, as HTTP allows: nothing annai serves is asked for in parts.
     res.writeHead(200, { 'Content-Length': body.length }).end(head ? undefined : body);
   } catch {
