@@ -631,26 +631,26 @@ test('under Japanese screens an English line is English, a script annai cannot t
 
 test('under Japanese screens the languages you speak are named in Japanese, each with its own name beside it', async ({ page }) => {
   needJapanese();
+  // All through the screen, as a user does it: a write of the settings from the test could race annai's own at the start.
   await openApp(page, '#/shiori');
-  await page.evaluate(async () => {
-    const at = (/** @type {string} */ p) => p;
-    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
-    const { Workspace } = await import(at('/src/core/workspace.js'));
-    const { updateAppSettings } = await import(at('/src/core/settings.js'));
-    const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { languages: { spoken: ['ja', 'en'], answer: 'en', ui: 'ja' } });
-    store.close();
-    localStorage.setItem('annai.ui', 'ja');
-  });
-  await page.reload();
+  await allowUnfinished(page);
+  await page.evaluate(() => { location.hash = '#/shiori'; });
+  const restarted = page.waitForEvent('load');
+  await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
+  await restarted;
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   const panel = page.getByRole('region', { name: JA[key('Languages')], exact: true });
+  const status = panel.getByRole('status');
+  await panel.locator('#language-add').selectOption('ja');
+  await panel.getByRole('button', { name: JA[key('Add')], exact: true }).click();
+  await expect(status).toHaveText(JA[key('Added {0}. Saved')].replace('{0}', '日本語'));
   await expect(panel.locator('li[data-lang="en"] .lang-name')).toHaveText('英語 English');
   await expect(panel.locator('li[data-lang="ja"] .lang-name')).toHaveText('日本語');
-  await expect(panel.getByRole('button', { name: JA[key('Remove {0}')].replace('{0}', '英語') })).toBeVisible();
-  await expect(page.locator('#language-answer option[value="en"]')).toHaveText(JA[key('{0} · {1}')].replace('{0}', '英語').replace('{1}', 'English'));
+  await expect(panel.locator('#language-answer option[value="en"]')).toHaveText(JA[key('{0} · {1}')].replace('{0}', '英語').replace('{1}', 'English'));
+  await panel.locator('#language-answer').selectOption('en');
+  await expect(status).toHaveText(JA[key('Shiori answers in {0}. Saved')].replace('{0}', '英語'));
   await panel.getByRole('button', { name: JA[key('Remove {0}')].replace('{0}', '英語') }).click();
-  await expect(panel.getByRole('status')).toHaveText(JA[key('{0} removed; Shiori answers in the language you speak to her again. Saved')].replace('{0}', '英語'));
+  await expect(status).toHaveText(JA[key('{0} removed; Shiori answers in the language you speak to her again. Saved')].replace('{0}', '英語'));
 });
 
 test('Don\'t restart, on the card that waits for Shiori, gives the row back and says the change waits', async ({ page }) => {
