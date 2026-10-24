@@ -186,6 +186,20 @@ test('asked for words it cannot keep, it says no', async () => {
   assert.ok([...(await swKit()).stores.values()].every((s) => s.size === 0));
 });
 
+test('a language already on the device is kept offline: asked again with no connection, the worker answers from its own cache', async () => {
+  const build = /const BUILD = '([^']*)';/.exec(await readFile(new URL('sw.js', root), 'utf8'))?.[1];
+  const now = `annai-shell-0.1.0-${build}`;
+  const k = await swKit({ cacheNames: [now, 'annai-shell-0.1.0-waiting'] });
+  k.stores.get(now)?.set('/l10n/ja.json', '{"a":"b"}');
+  k.offline();
+  assert.deepEqual(await k.ask('ja'), [{ ok: true }], 'chosen online once, then English, then 日本語 again offline');
+  assert.equal(k.stores.get('annai-shell-0.1.0-waiting')?.get('/l10n/ja.json'), '{"a":"b"}', 'and a version that waits has it too');
+  assert.deepEqual(await k.ask('zh-Hans'), [{ ok: false }], 'one not on the device still needs the connection');
+  const missing = await swKit({ cacheNames: [now], network: {} });
+  missing.stores.get(now)?.set('/l10n/ja.json', '{"a":"b"}');
+  assert.deepEqual(await missing.ask('ja'), [{ ok: true }], 'a 404 too');
+});
+
 test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
   for (const host of ['annai.guide', 'localhost']) {
     const k = await swKit({ host, cacheNames: [] });

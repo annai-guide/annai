@@ -326,15 +326,18 @@ async function wordsToCache() {
   return null;
 }
 
-/** Keeps a language's words in every shell cache (a waiting version's too), and answers on the port. @param {unknown} tag @param {MessagePort | undefined} port
+/**
+ * Keeps a language's words in every shell cache (a waiting version's too), and answers on the port. Offline, words already on the
+ * device do. @param {unknown} tag @param {MessagePort | undefined} port
  */
 async function cacheWords(tag, port) {
   let ok = false;
   try {
     if (typeof tag !== 'string' || !LANGS.includes(tag)) throw new Error('not a language annai has');
-    const res = await fetch(new Request(wordsPath(tag), { cache: 'reload' }));
-    const words = res.ok ? await res.clone().json() : null;
-    if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
+    let res = await fetch(new Request(wordsPath(tag), { cache: 'reload' })).catch(() => null);
+    if (!res?.ok) res = (await (await caches.open(CACHE)).match(wordsPath(tag))) ?? null;
+    const words = res?.ok ? await res.clone().json() : null;
+    if (!res || !words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
     for (const name of await caches.keys()) if (name.startsWith('annai-shell-')) await (await caches.open(name)).put(wordsPath(tag), res.clone());
     ok = true;
   } catch { /* said no below */ }
