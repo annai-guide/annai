@@ -61,7 +61,7 @@ test('bare English is found where a screen surely shows it, and /* en */ marks i
 });
 
 test('a mark on the statement covers what is inside it', () => {
-  const src = "import { h } from './dom.js';\n/* en: for a model */\nexport const a = () => h('p', { text: 'Only for Shiori' });\nexport const b = () => h('p', { text: 'For you' });\n";
+  const src = "import { h } from './dom.js';\n/* en: for a model */\nexport const a = [h('p', { text: 'Only for Shiori' })];\nexport const b = [h('p', { text: 'For you' })];\n";
   assert.deepEqual(bareEnglish('x.js', src).map((f) => f.line), [4]);
 });
 
@@ -159,4 +159,75 @@ test('--review is a Markdown table of the drafts', async () => {
   const table = await review(FIXTURE, 'ja');
   assert.match(table, /^\| English \| Draft \| Where \|\n\| --- \| --- \| --- \|\n\| Open \| 開ける \| src\/a\.mjs:5 \|/);
   assert.ok(!table.includes('Gone away'), 'only drafts');
+});
+
+// ---- the fix pass: imports, templates, concatenation, marks, helpers, CRLF ----
+
+const IMPORT = "import { h, t, tc, plural, field, savedField, radios, savedRadios, jsonField } from './dom.js';\n";
+
+test('a namespace import of the words is followed: L.t`…` is a message, and L.t(…) a mistake', () => {
+  const src = "import * as L from '../../core/l10n.js';\nexport const a = (n, who) => [L.t`Hello ${who}`, L.tc('verb')`Open`, L.plural(n, '# stamp', '# stamps')];\nexport const b = () => L.t('no');\n";
+  const { messages, errors } = readMessages('x.js', src);
+  assert.deepEqual(messages.map((m) => m.kind + m.source.replace('\0', '|')), ['tHello {0}', 'tOpen', 'plural# stamp|# stamps']);
+  assert.equal(messages[1].context, 'verb');
+  assert.ok(errors.some((e) => e.line === 3 && /used as a function/.test(e.message)));
+});
+
+test('an import shape of the words the script cannot follow is refused, and so is a re-export outside dom.js', () => {
+  const refused = (/** @type {string} */ src, /** @type {string} */ file = 'x.js') => readMessages(file, src).errors.map((e) => e.message);
+  assert.match(refused("import words from '../core/l10n.js';\n")[0], /can't follow/);
+  assert.match(refused("export { t } from '../core/l10n.js';\n")[0], /can't follow/);
+  assert.match(refused("export * from './dom.js';\n")[0], /can't follow/);
+  assert.deepEqual(refused("export { t, tc, plural } from '../core/l10n.js';\n", 'src/ui/dom.js'), [], 'dom.js is where the words are re-exported');
+  assert.deepEqual(refused("import { t as tr } from './dom.js';\nexport const a = tr`Hi`;\n"), []);
+});
+
+test('English inside a message\'s ${} is bare English, in the check and in --find', () => {
+  const src = `${IMPORT}export const a = (ok) => h('p', {}, t\`Saved \${ok ? 'Everything was kept' : 'Nothing was kept'}\`);\n`;
+  assert.deepEqual(bareEnglish('x.js', src).map((b) => b.text), ['Everything was kept', 'Nothing was kept']);
+  assert.deepEqual(findWords('x.js', src).map((b) => b.text), ['Everything was kept', 'Nothing was kept']);
+  const other = `${IMPORT}export const a = (ok) => svg\`<g>\${ok ? 'Everything was kept' : 'Nothing'}</g>\`;\n`;
+  assert.deepEqual(findWords('x.js', other).map((b) => b.text), ['Everything was kept', 'Nothing']);
+  const plain = `${IMPORT}export const a = (n) => plural(n, '# stamp', '# stamps', 'Kept for good');\n`;
+  assert.deepEqual(bareEnglish('x.js', plain).map((b) => b.text), ['Kept for good']);
+});
+
+test('English joined on in a shown place is bare English', () => {
+  const src = `${IMPORT}export const a = (ctx) => [h('p', { text: 'Trips for ' + ctx.name }), h('p', {}, ctx.n + ' trips'), h('p', {}, String('Nothing ' + ctx.x))];\n`;
+  assert.deepEqual(bareEnglish('x.js', src).map((b) => b.text), ['Trips for', 'trips', 'Nothing']);
+});
+
+test('a mark above a function or class does not cover its body; a mark on an ordinary statement does', () => {
+  const body = "  return h('p', { text: 'Trips' });\n";
+  assert.equal(bareEnglish('x.js', `${IMPORT}/* en */\nexport async function render() {\n${body}}\n`).length, 1);
+  assert.equal(bareEnglish('x.js', `${IMPORT}/* en */\nexport const render = () => {\n${body}};\n`).length, 1);
+  assert.equal(bareEnglish('x.js', `${IMPORT}/* en */\nexport class A {\n  render() {\n  ${body}  }\n}\n`).length, 1);
+  assert.equal(bareEnglish('x.js', `${IMPORT}export function render() {\n  /* en */\n${body}}\n`).length, 0, 'a mark inside, on the statement');
+  assert.equal(bareEnglish('x.js', `${IMPORT}/* en */\nexport const rows = [h('p', { text: 'Trips' })];\n`).length, 0, 'a mark on a statement that is data');
+  assert.equal(bareEnglish('x.js', `${IMPORT}export const say = (s) => /* en */ (s ? '' : h('p', { text: 'Trips' }));\n`).length, 0, 'a mark on an arrow\'s expression');
+});
+
+test('the label helpers of dom.js show their words too', () => {
+  const src = `${IMPORT}export const a = () => [savedField('Name', 1, 2, 3), jsonField('Schema', 'id', {}), radios('Pick one', [['a', 'First'], ['b', 'Second']], 'a'), savedRadios('Mode', [['x', 'Quick']], 'x', () => {})];\n`;
+  assert.deepEqual(bareEnglish('x.js', src).map((b) => b.text), ['Name', 'Schema', 'Pick one', 'First', 'Second', 'Mode', 'Quick']);
+});
+
+test('a translator\'s file saved with CRLF reads and ships without the \\r', () => {
+  const rows = readTsv('key\tstate\ten\ttext\twhere\tnote\r\nabc\tok\tHello\tこんにちは\tsrc/a.js:1\t\r\n\r\n');
+  assert.deepEqual(rows.map((r) => [r.key, r.text, r.note, r.where]), [['abc', 'こんにちは', '', 'src/a.js:1']]);
+});
+
+test('a plural\'s note names its first argument, and a carried draft\'s note does not start with a semicolon', async () => {
+  await inCopy(async (dir) => {
+    await writeFile(`${dir}/src/a.mjs`, (await readFile(`${dir}/src/a.mjs`, 'utf8')).replace('plural(n,', 'plural(stamps.length,'));
+    await update(dir);
+    const rows = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8'));
+    assert.match(rows.find((r) => r.key.startsWith(key('# stamp\0# stamps')))?.note ?? '', /^plural; # = stamps\.length;/);
+    // A message with no values has an empty note: carried over, the note is only what the English was.
+    await writeFile(`${dir}/src/a.mjs`, (await readFile(`${dir}/src/a.mjs`, 'utf8')).replace('t`Not yet`', 't`Not yet now`'));
+    await writeFile(`${dir}/l10n/ja.tsv`, (await readFile(`${dir}/l10n/ja.tsv`, 'utf8')).replace(/^(\S+)\tnew\tNot yet\t/m, '$1\tdraft\tNot yet\tまだ'));
+    await update(dir);
+    const carried = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8')).find((r) => r.en === 'Not yet now');
+    assert.equal(carried?.note, 'English was: Not yet');
+  });
 });
