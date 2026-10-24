@@ -218,9 +218,16 @@ function hanTag(text, l) {
   return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 
-/** What tagOf says for a line that must not take the screens' language and whose own can't be told (shown as `lang=""`, HTML's "unknown"). */
+/** What tagOf says for a line that must not take the screens' language and has none of its own (shown as `lang=""`). */
 export const NO_LANGUAGE = 'und';
-/** Whether a language is written in Latin letters, by its likeliest script; Bengali, Tamil and the like are not. @param {string} tag */
+/** Whether most of a text's letters are in the script a language tag is likeliest written in (false for Han, which Unicode scripts name apart). @param {string} text @param {string} tag */
+function writtenIn(text, tag) {
+  try {
+    const script = new Intl.Locale(tag).maximize().script;
+    return (text.match(new RegExp(`\\p{Script=${script}}`, 'gu'))?.length ?? 0) * 2 > (text.match(/[\p{L}\p{M}]/gu)?.length ?? 0);
+  } catch { return false; }
+}
+/** Whether a language is written in Latin letters, by its likeliest script. @param {string} tag */
 function latinTag(tag) {
   try { return new Intl.Locale(tag).maximize().script === 'Latn'; } catch { return false; }
 }
@@ -239,13 +246,11 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
   const kind = scriptOf(said);
   const answer = byShiori ? s.answer : null;
   if (!kind) {
-    const letters = said.match(/\p{L}/gu)?.length ?? 0;
-    if (!letters) return '';
-    const latin = (said.match(/\p{Script=Latin}/gu)?.length ?? 0) * 2 > letters;
-    // Hers, in a Latin-script language: her answer language.
-    if (answer && latin && latinTag(tagFor(answer))) return tagFor(answer);
+    if (!/\p{L}/u.test(said)) return '';
+    // Hers, when most of the line is in the script her answer language is written in (Bengali, Tamil… as well as Latin).
+    if (answer && writtenIn(said, tagFor(answer))) return tagFor(answer);
     if (latinTag(ui)) return '';
-    if (!latin) return NO_LANGUAGE;
+    if (!writtenIn(said, 'en')) return NO_LANGUAGE;
     const listed = s.spoken.filter((l) => latinTag(tagFor(l)));
     if (listed.length === 1) return tagFor(listed[0]);
     const guess = languageOf(said, 2);

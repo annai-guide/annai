@@ -7,14 +7,15 @@ const root = new URL('../../', import.meta.url);
 
 /**
  * annai's database as the service worker reads it: these files of sys:settings (path to JSON text), or no database at all.
- * @param {Record<string, string> | null} settings
+ * @param {Record<string, string> | null} settings @param {boolean} [hang]
  */
-function fakeIndexedDB(settings) {
+function fakeIndexedDB(settings, hang = false) {
   const later = (/** @type {() => void} */ f) => setTimeout(f, 0);
   return {
     open: () => {
       /** @type {any} */
       const r = {};
+      if (hang) return r; // an open queued behind a blocked upgrade or delete never answers
       later(() => {
         if (!settings) {
           r.transaction = { abort: () => {} };
@@ -58,11 +59,13 @@ function fakeIndexedDB(settings) {
  * The service worker in a context of its own, listing these languages, with the phone's languages, the app settings and a network.
  * network: the catalogs by tag (a missing one is a 404); caches start with these names (a waiting version's too).
  */
-async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false } = {}) {
-  // Whatever languages sw.js lists today (strings.mjs writes the line), the test's own.
-  const shipped = await readFile(new URL('sw.js', root), 'utf8');
-  assert.match(shipped, /^const LANGS = \[[^\]\n]*\];$/m, 'sw.js has its LANGS line');
-  const source = shipped.replace(/^const LANGS = \[[^\]\n]*\];$/m, `const LANGS = ${JSON.stringify(langs)};`);
+async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide', hang = false } = {}) {
+  // Whatever languages sw.js lists today (strings.mjs writes the lines), the test's own.
+  const line = (/** @type {string} */ name) => new RegExp(`^const ${name} = \\[[^\\]\\n]*\\];$`, 'm');
+  const text = await readFile(new URL('sw.js', root), 'utf8');
+  assert.match(text, line('LANGS'), 'sw.js has its LANGS line');
+  assert.match(text, line('SHIPPED_LANGS'), 'and its SHIPPED_LANGS line');
+  const source = text.replace(line('LANGS'), `const LANGS = ${JSON.stringify(langs)};`).replace(line('SHIPPED_LANGS'), `const SHIPPED_LANGS = ${JSON.stringify(shipped)};`);
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
   /** @type {Map<string, Map<string, string>>} */
@@ -82,16 +85,22 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
         if (bad) throw new TypeError(`${bad.url} 404`);
         for (const r of reqs) /** @type {Map<string, string>} */ (stores.get(name)).set(new URL(r.url).pathname, 'x');
       },
+      match: async (/** @type {Request | string} */ req) => {
+        const text = /** @type {Map<string, string>} */ (stores.get(name)).get(new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname);
+        return text === undefined ? undefined : new Response(text);
+      },
       put: async (/** @type {string} */ key, /** @type {Response} */ res) => { /** @type {Map<string, string>} */ (stores.get(name)).set(new URL(key, 'https://annai.guide').pathname, await res.text()); },
     };
   };
   const caches = { open: async (/** @type {string} */ n) => cache(n), keys: async () => [...stores.keys()] };
   const self = {
-    location: new URL('https://annai.guide/sw.js'),
+    location: new URL(`https://${host}/sw.js`),
     navigator: { languages: phone },
     addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; },
   };
+  let down = false;
   const fetchStub = async (/** @type {Request} */ req) => {
+    if (down) throw new TypeError('Failed to fetch');
     const m = /^\/l10n\/(.+)\.json$/.exec(new URL(req.url).pathname);
     fetched.push(new URL(req.url).pathname);
     return m && m[1] in network ? new Response(network[m[1]], { headers: { 'Content-Type': 'application/json' } }) : new Response('not found', { status: 404 });
@@ -100,7 +109,7 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
   class SwRequest extends Request {
     constructor(/** @type {string | Request} */ u, /** @type {RequestInit} */ init) { super(typeof u === 'string' ? new URL(u, self.location.href) : u, init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings), TextDecoder, DOMException, fetch: fetchStub });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings, hang), TextDecoder, DOMException, fetch: fetchStub, setTimeout: (/** @type {() => void} */ f) => setTimeout(f, hang ? 5 : 60_000).unref() });
   /** @type {(type: string, ev?: any) => Promise<unknown>} */
   const fire = async (type, ev = {}) => {
     /** @type {Promise<unknown> | undefined} */
@@ -115,7 +124,14 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
     await fire('message', { data: { type: 'cache-words', tag }, ports: [{ postMessage: (/** @type {any} */ m) => said.push({ ...m }) }] });
     return said;
   };
-  return { fire, ask, stores, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
+  /** A page asking for a file, as the worker answers it: the text, or null when it has nothing. @param {string} path */
+  const get = async (path) => {
+    /** @type {Promise<Response> | undefined} */
+    let answer;
+    handlers.fetch({ request: new SwRequest(path, {}), respondWith: (/** @type {Promise<Response>} */ p) => { answer = p; } });
+    return answer?.then((r) => (r.ok ? r.text() : null), () => null);
+  };
+  return { fire, ask, get, offline: () => { down = true; }, stores, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
 }
 
 const app = (/** @type {Record<string, unknown>} */ languages) => ({ '/app.json': JSON.stringify({ languages }) });
@@ -168,4 +184,38 @@ test('asked for words it cannot keep, it says no', async () => {
   assert.deepEqual(await k.ask(undefined), [{ ok: false }]);
   assert.deepEqual(await (await swKit({ network: {} })).ask('ja'), [{ ok: false }], 'not there (offline or missing)');
   assert.ok([...(await swKit()).stores.values()].every((s) => s.size === 0));
+});
+
+test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
+  for (const host of ['annai.guide', 'localhost']) {
+    const k = await swKit({ host, cacheNames: [] });
+    assert.equal(await k.get('/l10n/ja.json'), '{"a":"b"}', `online (${host})`);
+    k.offline();
+    assert.equal(await k.get('/l10n/ja.json'), '{"a":"b"}', `and then offline (${host})`);
+  }
+});
+
+test('only a catalog annai lists, and fetched whole, is kept from the network', async () => {
+  const k = await swKit({ cacheNames: [], network: { ja: '{"a":"b"}', ko: '{"a":"k"}' } });
+  await k.get('/l10n/ko.json');
+  await k.get('/l10n/ja.json?x=1');
+  await k.get('/l10n/nope.json');
+  await k.get('/src/app/main.js');
+  k.offline();
+  assert.equal(await k.get('/l10n/ko.json'), null, 'a language not in LANGS');
+  assert.equal(await k.get('/l10n/nope.json'), null, 'a missing catalog is no catalog');
+});
+
+test('an IndexedDB that never answers does not hold up an install: the phone\'s languages decide', async () => {
+  const k = await swKit({ hang: true, phone: ['zh-CN'] });
+  assert.deepEqual(await k.install(), ['/l10n/zh-Hans.json']);
+  assert.deepEqual(await (await swKit({ hang: true, phone: ['en-GB'] })).install(), []);
+});
+
+test('a phone is matched only against the shipped languages: a draft is never downloaded for it, but a user who chose it has it', async () => {
+  const draft = { shipped: ['zh-Hans'] };
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP'] })).install(), [], 'a Japanese phone, Japanese still a draft');
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP', 'zh-CN'] })).install(), ['/l10n/zh-Hans.json']);
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP'], settings: app({ ui: 'ja' }) })).install(), ['/l10n/ja.json'], 'chosen: kept');
+  assert.deepEqual(await (await swKit({ ...draft, phone: [] })).ask('ja'), [{ ok: true }], 'and asked for: kept');
 });

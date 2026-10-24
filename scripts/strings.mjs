@@ -295,15 +295,16 @@ async function languages(root) {
 }
 /** What src/core/l10n-list.js says. @param {Language[]} list */
 export const listFile = (list) => {
-  const of = (/** @type {string[]} */ tags) => JSON.stringify(tags).replace(/"/g, "'").replace(/,/g, ', ');
-  return `// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships (English first) and the unfinished ones, offered only while Experimental's switch is on. Do not edit.\nexport const SHIPPED = Object.freeze(${of(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)])});\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze(${of(list.filter((l) => l.status === 'experimental').map((l) => l.tag))});\n`;
+  return `// Written by scripts/strings.mjs from l10n/languages.json. Do not edit.\nexport const SHIPPED = Object.freeze(${quoted(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)])});\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze(${quoted(list.filter((l) => l.status === 'experimental').map((l) => l.tag))});\n`;
 };
-/** The line of sw.js that names the languages whose catalogs a version caches: every listed language, shipped or not. */
+/** The lines of sw.js that name the languages with a catalog (all listed), and those a phone is matched against (the shipped ones). */
 const LANGS_LINE = /^const LANGS = \[[^\]]*\];$/m;
-/** @param {Language[]} list */
-export const langsLine = (list) => `const LANGS = ${JSON.stringify(list.map((l) => l.tag)).replace(/"/g, "'").replace(/,/g, ', ')};`;
-/** sw.js with its LANGS line made from the list, or null when there is no such line to make. @param {string} sw @param {Language[]} list */
-export const swWithLangs = (sw, list) => (LANGS_LINE.test(sw) ? sw.replace(LANGS_LINE, langsLine(list)) : null);
+const SHIPPED_LANGS_LINE = /^const SHIPPED_LANGS = \[[^\]]*\];$/m;
+const quoted = (/** @type {string[]} */ tags) => JSON.stringify(tags).replace(/"/g, "'").replace(/,/g, ', ');
+/** sw.js with those lines made from the list, or null when it lacks one. @param {string} sw @param {Language[]} list */
+export const swWithLangs = (sw, list) => (LANGS_LINE.test(sw) && SHIPPED_LANGS_LINE.test(sw)
+  ? sw.replace(LANGS_LINE, `const LANGS = ${quoted(list.map((l) => l.tag))};`).replace(SHIPPED_LANGS_LINE, `const SHIPPED_LANGS = ${quoted(list.filter((l) => l.status === 'shipped').map((l) => l.tag))};`)
+  : null);
 
 /** The tags that have a translator's file. @param {string} root */
 async function tsvTags(root) {
@@ -366,15 +367,25 @@ export function readGlossary(text) {
   return out;
 }
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-/** Whether a message names a term in English, whole-word, the first letter in either case, with an s or es after it; the rest of the message after the term's words are taken out. */
+/**
+ * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
+ * is a name only where a name stands, not as the first word of a sentence ("Plan your day", "Ask Shiori"); a lowercase one (a thing)
+ * is also met with a capital. The longest terms go first, and their words are not read again as a shorter term's.
+ */
 function naming(/** @type {string} */ english, /** @type {string[]} */ ens) {
   let rest = english;
   /** @type {string[]} */
   const found = [];
   for (const en of [...ens].sort((a, b) => b.length - a.length)) {
     const first = en[0];
-    const re = new RegExp(`(?<![\\p{L}\\p{N}])[${escapeRe(first.toLowerCase())}${escapeRe(first.toUpperCase())}]${escapeRe(en.slice(1))}(?:e?s)?(?![\\p{L}\\p{N}])`, 'u');
-    if (re.test(rest)) { found.push(en); rest = rest.replace(re, ' '); }
+    const lower = first === first.toLowerCase() && first !== first.toUpperCase();
+    const head = lower ? `[${escapeRe(first)}${escapeRe(first.toUpperCase())}]` : escapeRe(first);
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])${head}${escapeRe(en.slice(1))}(?:e?s)?(?![\\p{L}\\p{N}])`, 'u');
+    const m = re.exec(rest);
+    if (!m) continue;
+    const opens = m.index === 0 && rest.slice(m[0].length).replace(/[\s.!?…:]+$/u, '') !== '';
+    if (lower || !opens) found.push(en);
+    rest = rest.replace(re, ' ');
   }
   return found;
 }
@@ -520,7 +531,7 @@ export async function check(root, files = EXTRACTED) {
   if (existsSync(`${root}/sw.js`)) {
     const sw = await readFile(`${root}/sw.js`, 'utf8');
     const made = swWithLangs(sw, list);
-    if (made === null) problems.push({ file: 'sw.js', line: 1, message: "has no `const LANGS = [...];` line for the languages it caches" });
+    if (made === null) problems.push({ file: 'sw.js', line: 1, message: "has no `const LANGS = [...];` and `const SHIPPED_LANGS = [...];` lines for the languages it caches" });
     else if (made !== sw) problems.push({ file: 'sw.js', line: sw.slice(0, sw.search(LANGS_LINE)).split('\n').length, message: "LANGS isn't what l10n/languages.json makes: run npm run strings" });
   }
   for (const file of files) {

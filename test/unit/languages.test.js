@@ -282,12 +282,18 @@ test('tagOf under Japanese screens: lines in a script annai has no table row for
   assert.equal(tagOf('안녕하세요', s, false, 'zh-Hans'), 'ko');
 });
 
-test('tagOf: an answer language written in a script annai has no table row for (Bengali, Tamil) is unknown, not Latin', () => {
+test('tagOf: Shiori\'s line in a script annai has no table row for (Bengali, Tamil) is her answer language, by the script; an English line is not', () => {
   const answers = (/** @type {string} */ id) => languageSettings({ languages: { spoken: ['en', id], answer: id } }, 'en-US');
   for (const id of ['bn', 'ta']) {
     assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers(id), true), '', `an English line is not ${id}`);
     assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers(id), true, 'ja'), 'en', `under Japanese screens it is the one Latin language listed (${id})`);
   }
   assert.equal(tagOf('Hola', answers('es'), true, 'ja'), 'es', 'a Latin answer language still tells a Latin line');
-  assert.equal(tagOf('আমি যাচ্ছি', answers('bn'), true, 'ja'), NO_LANGUAGE);
+  for (const ui of ['en', 'ja']) {
+    assert.equal(tagOf('আমি কিয়োটো যাচ্ছি', answers('bn'), true, ui), 'bn', `her Bengali line is Bengali (${ui} screens)`);
+    assert.equal(tagOf('நான் கியோட்டோ போகிறேன்', answers('ta'), true, ui), 'ta');
+    assert.equal(tagOf('আমি Kyoto যাচ্ছি', answers('bn'), true, ui), 'bn', 'mostly Bengali');
+  }
+  assert.equal(tagOf('நான் கியோட்டோ போகிறேன்', answers('bn'), true, 'en'), '', 'Tamil is not the Bengali she answers in');
+  assert.equal(tagOf('আমি যাচ্ছি', answers('bn'), false, 'ja'), NO_LANGUAGE, 'the answer language is only hers');
 });

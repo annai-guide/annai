@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { screensCards, ownName, keepUiChoice, keepUiFrom, keepWords } from '../../src/ui/languages.js';
+import { screensCards, screensAtStart, chosenUi, ownName, keepUiChoice, keepUiFrom, keepWords } from '../../src/ui/languages.js';
 
 const offered = ['en', 'ja', 'zh-Hans'];
 const restart = () => {};
@@ -97,4 +97,34 @@ test('keepWords asks the worker and waits for its answer; with no answer, or no 
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test('chosenUi reads the choice from the app settings: a tag, or nothing as the phone is set', () => {
+  assert.equal(chosenUi({ languages: { ui: 'ja' } }), 'ja');
+  assert.equal(chosenUi({ languages: { ui: 7 } }), '');
+  assert.equal(chosenUi({ languages: {} }), '');
+  assert.equal(chosenUi({}), '');
+});
+
+/** The page, the device and the cards at the start. @param {{ failed?: string, kept?: string, app?: unknown }} o */
+async function atStart({ failed, kept, app }) {
+  const held = fakeStorage(kept === undefined ? {} : { 'annai.ui': kept });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: { documentElement: { dataset: failed ? { l10nFailed: failed } : {} } } });
+  /** @type {any[]} */
+  const cards = [];
+  await screensAtStart({ ws: /** @type {any} */ ({ readJSON: async () => { if (app === undefined) throw new Error('storage'); return app; } }), notices: { card: (/** @type {any} */ c) => cards.push(c) }, restart: () => {} });
+  return { held, cards };
+}
+
+test('the start writes the device\'s copy from the settings, or takes it away', async () => {
+  assert.equal((await atStart({ app: { languages: { ui: 'ja' } }, kept: '' })).held.get('annai.ui'), 'ja');
+  assert.deepEqual((await atStart({ app: {}, kept: 'ja' })).held.has('annai.ui'), false);
+});
+
+test('words that failed to load get their card even when the settings cannot be read', async () => {
+  const got = await atStart({ failed: 'ja', kept: 'ja' });
+  assert.equal(got.cards.length, 1);
+  assert.equal(got.cards[0].title, '日本語 couldn\'t be loaded');
+  assert.equal(got.held.get('annai.ui'), 'ja', 'and the copy is left as it is');
+  assert.equal((await atStart({ kept: 'ja', app: {} })).cards.length, 0);
 });

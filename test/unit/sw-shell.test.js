@@ -57,7 +57,7 @@ test('installing fetches the shell past the HTTP cache, so an update never store
   class SwRequest extends Request {
     constructor(/** @type {string} */ u, /** @type {RequestInit} */ init) { super(new URL(u, self.location.href), init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, setTimeout: () => 0 });
   /** @type {Promise<unknown> | undefined} */
   let done;
   handlers.install({ waitUntil: (/** @type {Promise<unknown>} */ p) => { done = p; } });
