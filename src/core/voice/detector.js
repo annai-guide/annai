@@ -10,8 +10,13 @@ import { biquad } from './pcm.js';
  * a second (an engine, a fan, a window opened) it becomes the new floor: speech rises and falls with
  * every syllable, steady noise doesn't. A segment keeps a little before the speech and after it; one
  * with too little speech in it (a click, a door) is thrown away. A frame of near digital silence (under
- * SILENT_DB, or a quarter of it zeros: a microphone just opened, an iPhone's echo canceller) neither sets
- * nor moves the floor, and in speech it is quiet (the iPhone trace, 2026-10-22: a turn ran on for 29 s).
+ * SILENT_DB, or a quarter of it zeros: a microphone just opened, an iPhone's echo canceller) doesn't move a
+ * learned floor, and in speech it is quiet (the iPhone trace, 2026-10-22: a turn ran on for 29 s). Before
+ * any floor, or under a young one (maybe a word's), it makes the floor a guess, FLOOR_MIN_DB, so a word said
+ * as a new microphone's zeros end is speech. Sound over a guess is held (speechMs 0) until the room is heard
+ * (a frame near it, or outside speech one too quiet to start speech: the floor), the run ends, or a second
+ * has passed: the floor is then its quietest frame (or steady sound's level), the run judged again. reset()
+ * drops a guess.
  * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number, cut: 'pause' | 'cap' | 'end', peakDb: number } | { type: 'discard' }} DetectorEvent
  *   cut: what ended it: its pause, maxMs, or end(); peakDb: its loudest frame
  * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number, peak: number }} Run  speech going on: its frames, their loudness, and counts
@@ -55,6 +60,8 @@ export class Detector {
   #dips = 0;
   /** Frames with sound since the floor was set from one: a young floor (a first frame that was speech) falls freely. */
   #learned = 0;
+  /** The floor is digital silence's guess (FLOOR_MIN_DB): no sound has said where the room is. */
+  #guess = false;
   /** Quiet frames (nothing keepDb over the floor) in a row now, and the most in a row since reset(). */
   #still = 0;
   #gap = 0;
@@ -98,9 +105,9 @@ export class Detector {
     return this.#seg !== null;
   }
 
-  /** How much of the speech going on was loud enough to be speech, in ms: under minSpeechMs, it may yet be a click. */
+  /** How much of the speech going on was loud enough to be speech, in ms: under minSpeechMs, it may yet be a click; 0 over a guess. */
   get speechMs() {
-    return (this.#seg?.speech ?? 0) * FRAME_MS;
+    return this.#guess ? 0 : (this.#seg?.speech ?? 0) * FRAME_MS;
   }
 
   /** How long the speech going on has been quiet, in ms: 0 while it is loud. */
@@ -108,7 +115,7 @@ export class Detector {
     return (this.#seg?.quiet ?? 0) * FRAME_MS;
   }
 
-  /** The floor now, in dB; null before a frame with sound in it. */
+  /** The floor now, in dB; null before the first frame. */
   get floorDb() {
     return this.#floor;
   }
@@ -152,6 +159,8 @@ export class Detector {
   /** Forgets any speech going on and the frames before it; floor: the floor to go on from. @param {{ floor?: number | null }} [o] */
   reset({ floor } = {}) {
     if (floor !== undefined) this.#floor = floor;
+    else if (this.#guess) this.#floor = null;
+    this.#guess = false;
     this.#seg = null;
     this.#before = [];
     this.#recent = [];
@@ -201,6 +210,11 @@ export class Detector {
     this.#gap = Math.max(this.#gap, this.#still);
     if (db < SILENT_DB) {
       this.level = 0;
+      if (this.#floor === null || (this.#learned < LEARN_FRAMES && this.#floor > FLOOR_MIN_DB)) {
+        this.#floor = FLOOR_MIN_DB;
+        this.#learned = 0;
+        this.#guess = true;
+      }
       const s = this.#seg;
       if (!s) return;
       s.frames.push(raw);
@@ -213,7 +227,12 @@ export class Detector {
       this.#learned = 0;
     }
     this.#learned++;
-    const over = db - this.#floor;
+    let over = db - this.#floor;
+    if (this.#guess && (over <= this.keepDb || (!this.#seg && over <= this.startDb))) {
+      if (over > 0 && !this.#seg) this.#floor = db;
+      this.#guess = false;
+      over = db - this.#floor;
+    }
     this.level = Math.max(0, Math.min(1, over / 30));
     const s = this.#seg;
     if (!s) {
@@ -237,6 +256,20 @@ export class Detector {
     s.peak = Math.max(s.peak, db);
     if (s.dbs.length >= STEADY_FRAMES) {
       const last = spread(s.dbs.slice(-STEADY_FRAMES));
+      if (this.#guess) {
+        this.#floor = Math.min(...s.dbs);
+        this.#learned = LEARN_FRAMES;
+        this.#guess = false;
+        const floor = /** @type {number} */ (this.#floor);
+        s.speech = s.dbs.filter((x) => x - floor > this.keepDb).length;
+        // Nowhere 3 of 4 frames startDb over it (her faint echo in duplex): never speech at all.
+        const loud = s.dbs.map((x) => x - floor > this.startDb);
+        if (!loud.some((_, i) => i >= 3 && loud.slice(i - 3, i + 1).filter(Boolean).length >= 3)) {
+          this.#seg = null;
+          events.push({ type: 'discard' });
+          return;
+        }
+      }
       if (last.std < STEADY_DB) {
         // Steady sound: the new floor. With no rise and fall in the whole segment, it was never speech.
         this.#floor = last.mean - 1;

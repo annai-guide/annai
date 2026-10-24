@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, room, hum, RATE } from './voice-kit.js';
+import { clip, quiet, cat, mix, burst, room, hum, brown, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -323,6 +323,123 @@ test('a click or a door slam leaves nothing: no activity and no audio, so no bil
   assert.equal(r.sent.at(-1), 'end');
   assert.ok(msOf(r.sent) > (lunch.length / RATE) * 1000, 'the whole sentence, not from where it was sure');
   r.input.stop();
+});
+
+test('a microphone that opens with zeros: a short word said at once is sent whole as one turn, and a car or a loud room there sends nothing (detector-floor)', async () => {
+  const zeros = new Float32Array(RATE);
+  for (const word of [(await clip('where-eat')).subarray(0, Math.round(0.3 * RATE)), await clip('thanks')]) {
+    const r = rig();
+    await r.input.start();
+    r.feed(up3(cat(zeros, word, room(4, new Float32Array(0)))));
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+    assert.ok(msOf(r.sent) > (word.length / RATE) * 1000, `${msOf(r.sent)} ms sent for ${(word.length / RATE) * 1000} ms of a word: all of it`);
+    r.input.stop();
+  }
+  for (const noise of [brown(6, 0.5), room(8, new Float32Array(0), undefined, 0.016)]) {
+    const r = rig();
+    await r.input.start();
+    r.feed(up3(cat(zeros, noise)));
+    assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], 'nothing left the phone');
+    r.input.stop();
+  }
+});
+
+test('Koe speaks first as a microphone that opened with zeros hears a car: the car, held as unsure speech, is not the user cutting her (detector-floor review 1)', async () => {
+  for (const at of [0.1, 0.3, 0.6]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    const car = brown(6, 0.5);
+    r.feed(up3(cat(new Float32Array(RATE / 2), car.subarray(0, Math.round(at * RATE)))));
+    playing = true;
+    r.feed(up3(mix(car.subarray(Math.round(at * RATE), Math.round((at + 2) * RATE)), lunch.map((x) => x * 0.3))));
+    playing = false;
+    r.feed(up3(car.subarray(Math.round((at + 2) * RATE))));
+    assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], `her voice ${at} s into the car: nothing left the phone`);
+    r.input.stop();
+  }
+});
+
+/** The loudest stretch of a clip, as a short word. @param {Float32Array} pcm @param {number} seconds */
+function loudest(pcm, seconds) {
+  const n = Math.round(seconds * RATE);
+  let best = 0;
+  let most = -1;
+  for (let i = 0; i + n <= pcm.length; i += 160) {
+    let e = 0;
+    for (let j = i; j < i + n; j++) e += pcm[j] * pcm[j];
+    if (e > most) [most, best] = [e, i];
+  }
+  return pcm.slice(best, best + n);
+}
+/** A 1 kHz tone at about db in the speech band, its loudness swinging by swingDb at 4 Hz (a word's syllables). @param {number} db @param {number} seconds @param {number} [swingDb] */
+const tone = (db, seconds, swingDb = 0) => Float32Array.from({ length: Math.round(seconds * RATE) }, (_, i) =>
+  Math.sqrt(2 * 10 ** (db / 10)) * 10 ** ((swingDb * Math.sin((2 * Math.PI * 4 * i) / RATE)) / 20) * Math.sin((2 * Math.PI * 1000 * i) / RATE));
+/** A room of about -49 dBFS (amp 0.006) or another, for any length. @param {number} seconds @param {number} [amp] */
+const roomFor = (seconds, amp = 0.006) => room(seconds + 3.1, new Float32Array(0), undefined, amp).subarray(0, Math.round(seconds * RATE));
+
+test('a microphone that opened with zeros in a room of -49 dB, Koe speaking first: a quick "yes" 100 ms after her is sent, as on main (detector-floor review 2)', async () => {
+  const yes = loudest(gas, 0.45);
+  for (const before of [0, 0.5]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    // In batches of 683 samples, as a 16 kHz capture can give them: where a turn starts depends on it.
+    const feed = (/** @type {Float32Array} */ pcm) => { for (let i = 0; i < pcm.length; i += 683) r.feed(pcm.subarray(i, i + 683), RATE); };
+    feed(cat(new Float32Array(RATE / 2), roomFor(before)));
+    playing = true;
+    feed(mix(roomFor(2), lunch.map((x) => x * 0.3)));
+    playing = false;
+    feed(cat(roomFor(0.1), yes, roomFor(2)));
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end'], `${before} s of the room before her voice`);
+    r.input.stop();
+  }
+});
+
+test('a tap or a knock as a microphone opens with zeros, then a steady room of -45 dB: nothing is sent (detector-floor review 2, S3b)', async () => {
+  const r = rig();
+  await r.input.start();
+  r.feed(up3(cat(new Float32Array(RATE / 5), burst(0.08, 0.8), roomFor(3, 0.016))));
+  assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], 'nothing left the phone');
+  r.input.stop();
+});
+
+test('Koe speaking first after the zeros, then her echo, a short quiet and the user\'s word: the word is sent, as on main (detector-floor review 2, S5)', async () => {
+  let playing = false;
+  const r = rig({ speaking: () => playing });
+  await r.input.start();
+  r.feed(new Float32Array(RATE / 10), RATE);
+  playing = true;
+  r.feed(tone(-30, 1), RATE);
+  playing = false;
+  for (const gap of [0.1, 0.5]) r.feed(cat(tone(-40, 0.15), tone(-50, gap), tone(-25, 0.4, 10), tone(-58, 2)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end', 'start', 'end'], 'each word after a quiet of 0.1 and 0.5 s');
+  r.input.stop();
+});
+
+test('full duplex (the car, headphones) after zeros in a room of about -47 dB: her own faint echo, held over the guess, never starts a turn while she plays (detector-floor re-check 1)', async () => {
+  const her = cat(lunch, gas, lunch);
+  for (const gain of [0.07, 0.1]) {
+    let playing = false;
+    /** @type {string[]} */
+    const during = [];
+    const r = rig({ speaking: () => playing, duplex: () => true });
+    await r.input.start();
+    const noise = roomFor(8, 0.012);
+    const at = Math.round(0.4 * RATE);
+    const echo = new Float32Array(noise.length);
+    echo.set(her.map((x) => x * gain), at);
+    const pcm = cat(new Float32Array(RATE / 2), mix(noise, echo));
+    const from = RATE / 2 + at;
+    for (let i = 0; i < pcm.length; i += 683) {
+      playing = i >= from && i < from + her.length;
+      const before = r.sent.length;
+      r.feed(pcm.subarray(i, i + 683), RATE);
+      if (playing) during.push(...r.sent.slice(before).filter((x) => typeof x === 'string').map(String));
+    }
+    assert.deepEqual(during, [], `her echo at x${gain}: no turn while she plays`);
+    r.input.stop();
+  }
 });
 
 test("given the session to send to, it sends at the session's rate: 8 kHz for one that takes G.711 (K6)", async () => {
