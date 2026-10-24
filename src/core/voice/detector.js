@@ -260,7 +260,15 @@ export class Detector {
         this.#floor = Math.min(...s.dbs);
         this.#learned = LEARN_FRAMES;
         this.#guess = false;
-        s.speech = s.dbs.filter((x) => x - /** @type {number} */ (this.#floor) > this.keepDb).length;
+        const floor = /** @type {number} */ (this.#floor);
+        s.speech = s.dbs.filter((x) => x - floor > this.keepDb).length;
+        // Nowhere 3 of 4 frames startDb over it (her faint echo in duplex): never speech at all.
+        const loud = s.dbs.map((x) => x - floor > this.startDb);
+        if (!loud.some((_, i) => i >= 3 && loud.slice(i - 3, i + 1).filter(Boolean).length >= 3)) {
+          this.#seg = null;
+          events.push({ type: 'discard' });
+          return;
+        }
       }
       if (last.std < STEADY_DB) {
         // Steady sound: the new floor. With no rise and fall in the whole segment, it was never speech.
