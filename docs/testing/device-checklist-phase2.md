@@ -69,11 +69,12 @@ Shiori searches the web out of the box through three free services, Exa, Paralle
 
 The localization design (`docs/superpowers/specs/2026-10-23-localization-design.md`, "Fonts and CJK") and its step L3 changed how annai draws Chinese and Japanese. The font list no longer names a Japanese font, so a browser picks the font for a Han character by the line's language; and every line in the Conversation, the bubble over the dock, Shiori's cards and the recap now says its language (`lang`: kana is `ja`, Han characters alone are `zh-Hans`, or `ja` when Japanese is the only one of the two in Settings → Shiori → Languages). A phone set to Traditional Chinese gets `zh-Hant`. Latin text is never tagged. This check confirms what the iPhone does with it.
 
-Type these two messages to Shiori, so both lines are in the same conversation (say the Japanese one in the same way, whatever she answers):
+Type these three messages to Shiori, so all the lines are in the same conversation (whatever she answers):
 - Chinese: `直角三角形的骨架，这是我们说的。`
 - Japanese: `直角三角形の骨組みです。`
+- Mixed: `TeamLab Planets は豊洲にあります。` (a line mostly in Japanese with English words is Japanese; a mostly English line with a Japanese word in it, such as `Meet at 渋谷駅 at noon`, is left to the screens' language)
 
-Compare 直, 骨 and 角 in your two bubbles. Each character is drawn differently in Japanese and in simplified Chinese:
+Compare 直, 骨 and 角 in your first two bubbles. Each character is drawn differently in Japanese and in simplified Chinese:
 
 | | Japanese shape | Simplified Chinese shape |
 |---|---|---|
@@ -81,7 +82,7 @@ Compare 直, 骨 and 角 in your two bubbles. Each character is drawn differentl
 | 骨 | In the top part, the small inner box sits in the right half | The small inner box sits in the left half |
 | 角 | The middle stroke of the lower part stops at the lowest crossbar | The middle stroke runs right through to the bottom |
 
-- [ ] **F1. Which shapes each line has.** The Chinese line shows the Chinese shapes (the right column) and the Japanese line the Japanese ones (the left), in both your own bubble and Shiori's. Write down what each line shows. If the Chinese line still shows Japanese shapes, the phone's font does not follow `lang`: say so, and the fix is a `:lang(zh)` rule that names PingFang SC.
+- [ ] **F1. Which shapes each line has.** The Chinese line shows the Chinese shapes (the right column) and the Japanese line the Japanese ones (the left), in both your own bubble and Shiori's. Write down what each line shows; in the mixed line, 豊洲 has the Japanese shapes. If the Chinese line still shows Japanese shapes, the phone's font does not follow `lang`: say so, and the fix is a `:lang(zh)` rule that names PingFang SC.
 - [ ] **F2. No odd characters.** In the Chinese line, look at 这, 们 and 说 (simplified characters a Japanese font lacks). They match the characters beside them in weight, size and style; none looks borrowed from another font. Write down any that does.
 - [ ] **F3. The font in use (optional, at the Mac).** Web Inspector → Elements → select the Chinese line's text → the Font panel: "PingFang SC" expected for the Chinese line, "Hiragino Sans" for the Japanese one. Also select the line's `<p>`: it has `lang="zh-Hans"` (or `ja`), and the "SHIORI" label above it has none.
 - [ ] **F4. The bubble.** With voice on, ask Shiori for a short answer in Japanese. While she speaks, her words in the bubble are upright, not slanted (English there is slanted); then they stay in the Conversation with Japanese shapes.

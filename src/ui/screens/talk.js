@@ -231,7 +231,7 @@ export async function renderTalk(ctx) {
       const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
       return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }
-    if (e.type === 'grounded') return groundedCard(d, texts, hers);
+    if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
       const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
       const node = h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons));

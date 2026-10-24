@@ -179,3 +179,28 @@ test('Shiori\'s cards, the card on Now and the recap carry the language of their
   await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible();
   await expect(page.locator('.recap-text .md')).toHaveAttribute('lang', 'ja');
 });
+
+test('the language Shiori answers in does not override what her words are: a Japanese line is ja though she answers in English, an English one is en; Google\'s snippets are told by their script alone', async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto Spring');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { updateAppSettings } = await import(at('/src/core/settings.js'));
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'ja'], answer: 'en' } });
+    store.close();
+  });
+  await writeEvent(page, trip, { type: 'out.speak', data: { text: 'Kiyomizu-dera opens at 6.' } });
+  await writeEvent(page, trip, { type: 'out.speak', data: { text: '清水寺は朝6時に開きます。' } });
+  await writeEvent(page, trip, { type: 'out.show', data: { card: { title: 'Kiyomizu-dera', place: { name: 'Kiyomizu-dera', address: '1 Chome-294 Kiyomizu' }, links: [{ label: 'https://example.com/kiyomizu', url: 'https://example.com/kiyomizu' }] } } });
+  await writeEvent(page, trip, { type: 'grounded', data: { source: 'Google Search', text: 'Le temple ouvre à six heures.' } });
+  await page.goto('/#/talk');
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  const lines = page.locator('.convo li.shiori > p');
+  await expect(lines).toHaveCount(3);
+  expect(await lines.evaluateAll((els) => els.map((el) => el.getAttribute('lang')))).toEqual(['en', 'ja', null]);
+  await expect(page.locator('.convo .card-place span')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('.convo .card .acts a')).not.toHaveAttribute('lang', /./);
+});

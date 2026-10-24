@@ -211,14 +211,46 @@ test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is l
   assert.equal(tagOf('Kyoto 京都 station', en), '', 'a place name in an English line is no Chinese');
 });
 
-test('tagOf: Shiori\'s own lines take the language she is set to answer in, else the text\'s', () => {
-  const answers = (/** @type {string} */ id) => languageSettings({ languages: { spoken: ['en', 'zh', 'ja'], answer: id } }, 'en-US');
-  assert.equal(tagOf('Hello', answers('ja'), true), 'ja');
+test('tagOf: Shiori\'s own lines take the answer language only where the text agrees with it', () => {
+  const answers = (/** @type {string} */ id, /** @type {string[]} */ spoken = ['en', 'zh', 'ja']) => languageSettings({ languages: { spoken, answer: id } }, 'en-US');
   assert.equal(tagOf('骨架', answers('ja'), true), 'ja', 'Han alone, with Japanese fixed, is Japanese though Chinese is listed too');
   assert.equal(tagOf('骨架', answers('zh'), true), 'zh-Hans');
+  assert.equal(tagOf('ありがとう', answers('ja'), true), 'ja');
+  assert.equal(tagOf('ありがとう', answers('follow'), true), 'ja');
+  assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers('en'), true), 'en', 'Latin text, with a Latin answer language, is in it');
   assert.equal(tagOf('Hola', answers('es'), true), 'es');
   assert.equal(tagOf('Hello', languageSettings({ languages: { spoken: ['en', 'no'], answer: 'no' } }, 'en-US'), true), 'nb');
+  assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers('ja'), true), '', 'a Latin line is not Japanese because she answers in Japanese');
   assert.equal(tagOf('Hello', answers('follow'), true), '', 'following the user, her line is whatever it looks like');
-  assert.equal(tagOf('ありがとう', answers('follow'), true), 'ja');
-  assert.equal(tagOf('Hello', answers('ja'), false), '', 'the answer language is only hers');
+  assert.equal(tagOf('Hello', answers('en'), false), '', 'the answer language is only hers');
+  assert.equal(tagOf('ありがとう', answers('en'), true), 'ja', 'a Japanese line is Japanese though she answers in English');
+  assert.equal(tagOf('这是我们说的', answers('en'), true), 'zh-Hans');
+  assert.equal(tagOf('https://example.com/kiyomizu', answers('en'), true), '', 'an address has no language');
+  assert.equal(tagOf('42 · 7:30', answers('en'), true), '');
+  assert.equal(tagOf('清水寺 https://example.com/kiyomizu', answers('ja', ['en', 'ja']), true), 'ja', 'the address is not counted');
+});
+
+test('tagOf: a line that is mostly Chinese, Japanese or Korean is, whatever Latin words it has; one with a loan word is not', () => {
+  const en = languageSettings({}, 'en-US');
+  assert.equal(tagOf('TeamLab Planets は豊洲にあります。', en), 'ja');
+  assert.equal(tagOf('Shibuya Sky のチケットは 2,000円です', en), 'ja');
+  assert.equal(tagOf('iPhone 15 Pro 多少钱？', en), 'zh-Hans');
+  assert.equal(tagOf('Meet at 渋谷駅 at noon', en), '');
+  assert.equal(tagOf('Kyoto 京都 station', en), '');
+  assert.equal(tagOf('Take the 駅 train', en), '');
+});
+
+test('tagOf: Simplified or Traditional Chinese is told by the characters, the phone and the list only settling a tie', () => {
+  const only = (/** @type {string[]} */ ids, /** @type {string} */ locale = 'en-US') => languageSettings({ languages: { spoken: ids } }, locale);
+  assert.equal(tagOf('我們明天去故宮吧', only(['en', 'zh'])), 'zh-Hant');
+  assert.equal(tagOf('我们明天去故宫吧', only(['en', 'zh'])), 'zh-Hans');
+  assert.equal(tagOf('我們明天去故宮吧', languageSettings({}, 'zh-CN')), 'zh-Hant', 'a Simplified phone, a Traditional line');
+  assert.equal(tagOf('我们明天去故宫吧', languageSettings({}, 'zh-TW')), 'zh-Hans', 'a Traditional phone, a Simplified line');
+  assert.equal(tagOf('故宮', languageSettings({}, 'zh-TW')), 'zh-Hant', 'no telling characters: the phone decides');
+  assert.equal(tagOf('故宮', only(['en', 'zh'])), 'zh-Hans');
+  assert.equal(tagOf('我们明天去故宫吧', only(['yue', 'zh'])), 'zh-Hans', 'Simplified is Mandarin, though Cantonese is listed first');
+  assert.equal(tagOf('我們明天去故宮吧', only(['yue', 'zh'])), 'yue-Hant');
+  assert.equal(tagOf('这是我们说的', only(['en', 'ja'])), 'zh-Hans', 'characters Japanese does not use are Chinese though only Japanese is listed');
+  assert.equal(tagOf('中国', only(['en', 'ja'])), 'ja', 'characters Japanese shares are not');
+  assert.equal(tagOf('我們明天去故宮吧', { ...only(['en']), answer: /** @type {any} */ (languageSettings({ languages: { spoken: ['zh'] } }, 'en-US').spoken[0]) }, true), 'zh-Hant', 'Shiori answering in Chinese: the line\'s own characters');
 });

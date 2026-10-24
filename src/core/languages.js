@@ -182,18 +182,54 @@ export const tagFor = (l) => (l.id === 'zh' ? (/Hant|-(?:TW|HK|MO)\b/i.test(l.lo
 /** What a script says when no listed language is its own (Han alone, with neither Chinese nor Japanese listed, is Chinese). */
 const SCRIPT_TAGS = /** @type {Record<string, string>} */ ({ Chinese: 'zh-Hans', Japanese: 'ja', Korean: 'ko', Thai: 'th', Arabic: 'ar', Hebrew: 'he', Greek: 'el', Hindi: 'hi', Russian: 'ru', Ukrainian: 'uk' });
 
+/** Characters only Simplified Chinese uses, all but the last 3 of them unused in Japanese too; and their Traditional forms. */
+const HANS = '这们个说时门东车马鸟书见长问间对开关现过还点发实经动样乐国会来';
+const HANT = '這們個說時門東車馬鳥書見長問間對開關現過還點發實經動樣樂國會來';
+/** How many of a text's characters are in a set. @param {string} text @param {string} set */
+const count = (text, set) => [...text].filter((c) => set.includes(c)).length;
+
+/**
+ * The writing system a text is mostly in, by the name languageOf gives it, or '': Chinese, Japanese and Korean when their characters outnumber
+ * the Latin words (a place name or a loan word in an English line is no Chinese); another script when it makes up most of the letters.
+ * @param {string} text
+ */
+function scriptOf(text) {
+  const n = (/** @type {RegExp} */ re) => text.match(re)?.length ?? 0;
+  const kana = n(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu);
+  const hangul = n(/\p{Script=Hangul}/gu);
+  const han = n(/\p{Script=Han}/gu);
+  if (han + kana + hangul > (text.replace(CJK, ' ').match(/\p{L}+/gu)?.length ?? 0)) return hangul > han + kana ? 'Korean' : kana ? 'Japanese' : 'Chinese';
+  const other = han + kana + hangul ? '' : languageOf(text);
+  return SCRIPT_TAGS[other] ? other : '';
+}
+
+/**
+ * The tag of Han characters with no kana: Japanese when that is the language and the characters are ones Chinese does not use; else
+ * Chinese, Simplified or Traditional by the characters, and by the language (the phone's, or the list's) when they do not tell.
+ * @param {string} text @param {Language | null} l the language they are taken to be
+ */
+function hanTag(text, l) {
+  const [hans, hant] = [count(text, HANS), count(text, HANT)];
+  if (l?.id === 'ja' && !count(text, HANS.slice(0, -3))) return 'ja';
+  if (hans > hant) return 'zh-Hans';
+  if (l?.id === 'yue') return 'yue-Hant';
+  return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
+}
+
 /**
  * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads them by it (localization L3). From the
- * writing system (languageOf) and the listed languages (listedFor). Latin text is never guessed (a wrong tag gives it a wrong voice): it
- * and any unsure text get '' and inherit the screens'. byShiori: her lines take the language she is set to answer in.
+ * writing system (scriptOf) and the listed languages (listedFor); an address is no language. Latin text is never guessed (a wrong tag gives
+ * it a wrong voice): it and any unsure text get '' and inherit the screens'. byShiori: the language she is set to answer in, where the
+ * text agrees with it (its script, or Latin when hers is written in Latin); Han alone is taken for hers, if she answers in Japanese.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori]
  */
 export function tagOf(text, s, byShiori = false) {
-  if (byShiori && s.answer) return tagFor(s.answer);
-  const guess = languageOf(text);
-  if (!SCRIPT_TAGS[guess]) return '';
-  const listed = listedFor(guess, s.spoken);
-  return listed ? tagFor(listed) : SCRIPT_TAGS[guess];
+  const said = text.replace(/\b(?:https?:\/\/|www\.)\S+/gi, ' ');
+  const kind = scriptOf(said);
+  const answer = byShiori ? s.answer : null;
+  if (!kind) return answer && /\p{L}/u.test(said) && !Object.keys(SCRIPT_TAGS).some((k) => listedFor(k, [answer])) ? tagFor(answer) : '';
+  const l = (answer && listedFor(kind, [answer])) || listedFor(kind, s.spoken);
+  return kind === 'Chinese' ? hanTag(said, l) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }
 
 /**
