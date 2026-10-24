@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Detector } from '../../src/core/voice/detector.js';
+import { biquad } from '../../src/core/voice/pcm.js';
 import { clip, quiet, brown, burst, hum, cat, mix, detect, segments, room, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
@@ -138,18 +139,31 @@ test('a quiet room heard after the zeros ends the guess: a sentence later is sur
 
 test('speech said the instant the zeros end, with no quiet in it, is held as unsure for a second; then the floor is its quietest frame, and it goes on to its pause', () => {
   const d = new Detector({ sampleRate: RATE });
-  const pcm = cat(new Float32Array(RATE / 2), hum(2), quiet(1.2, 0));
+  const voice = hum(2);
+  const pcm = cat(new Float32Array(RATE / 2), voice, quiet(1.2, 0));
   /** @type {number[]} */
   const speech = [];
   const events = [];
+  /** @type {number | null} */
+  let given = null;
   for (let i = 0; i < pcm.length; i += 320) {
     events.push(...d.push(pcm.subarray(i, i + 320)));
     if (d.speaking) speech.push(d.speechMs);
+    if (given === null && d.speechMs > 0) given = d.floorDb;
   }
   assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
   assert.equal(speech[40], 0, 'unsure while the floor is the guess');
   assert.ok((speech.at(-1) ?? 0) >= 250, `sure by its end: ${speech.at(-1)} ms`);
-  assert.ok(d.floorDb !== null && d.floorDb > -50, `the floor is the speech's quietest frame, not the guess: ${d.floorDb}`);
+  // The quietest of the run's first 52 frames, measured as the detector does (its band, 20 ms frames).
+  const hp = biquad('highpass', 300, RATE);
+  const lp = biquad('lowpass', 3400, RATE);
+  let quietest = Infinity;
+  for (let f = 0; f < 52; f++) {
+    let e = 0;
+    for (let i = f * 320; i < (f + 1) * 320; i++) e += lp(hp(voice[i])) ** 2;
+    quietest = Math.min(quietest, 10 * Math.log10(e / 320 + 1e-12));
+  }
+  assert.ok(given !== null && Math.abs(given - quietest) < 1, `the floor as the guess gave way, ${given} dB, is the run's quietest frame, ${quietest.toFixed(1)} dB`);
 });
 
 test('the level rises while someone speaks; end() keeps speech that was still going', () => {
