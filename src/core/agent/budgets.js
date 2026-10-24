@@ -5,7 +5,7 @@
  * @typedef {import('./loop.js').Budgets} Budgets
  */
 import { t } from '../l10n.js';
-import { money } from '../../ui/format.js';
+import { money } from '../intl.js';
 
 /** Whether an entry carries a call's cost: a role call's model.turn, or a speech request or a live session's turn (their costs aren't in any model.turn). @param {any} e */
 const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && /^(speech-|realtime$)/.test(String(e.data?.kind ?? '')));
