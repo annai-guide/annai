@@ -54,6 +54,26 @@ bgn4sv	draft	Shiori answers in the language you speak to her	Shiori は話しか
 k4u05v	draft	The language you speak to her	話しかけた言語	src/core/languages.js:328	
 au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未選択：annai はブラウザの言語を使います。よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:329	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
+m93xm3	draft	On this phone only: the browser recognizes your speech on the device.	この端末上だけ：ブラウザが端末上で音声を認識します。	src/core/voice/where.js:16	
+1m5zm0a	draft	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
+1vi25zs	draft	Send audio to the model	音声をモデルに送る	src/core/voice/where.js:18	
+742sn5	draft	Browser voice	ブラウザの声	src/core/voice/where.js:18	
+2pflf	draft	{0} ({1})	{0}（{1}）	src/core/voice/where.js:37	{0} = provider.name; {1} = host; Note: A stack of cards of one kind: its title and how many.
+jyk16a	draft	As sound, to the model that hears it: {0}.	音声のまま、それを聞くモデルへ：{0}。	src/core/voice/where.js:55	{0} = list(places, 'or')
+l00mfq	draft	Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.	音声を受け取れるモデルにだけ送られますが、いまあなたの声を聞くモデルはどれも音声を受け取りません。この経路では何も送られません。	src/core/voice/where.js:55	
+ppm2mg	draft	This browser has no dictation: it is skipped.	このブラウザには音声入力がないため、使われません。	src/core/voice/where.js:58	
+1ed9jam	draft	This model is gone: it is skipped.	このモデルはもうないため、使われません。	src/core/voice/where.js:60	
+1y3s50o	draft	As sound, to {0}, to be written down.	音声のまま{0}に送られ、文字にされます。	src/core/voice/where.js:60	{0} = placeOf(cfg, id)
+2o1a5s	draft	This browser has no voice of its own: it is skipped.	このブラウザには自前の声がないため、使われません。	src/core/voice/where.js:73	
+1pvxdq0	draft	The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.	ブラウザが選ぶ声です。この端末上で話すのか、サービスに言葉を送るのか、annai にはわかりません。	src/core/voice/where.js:74	
+11mo7a8	draft	Spoken on this phone ({0}): her words stay on it.	この端末上で話します（{0}）。言葉は端末から出ません。	src/core/voice/where.js:75	{0} = voice.name
+ihf6hd	draft	Her words go to the service behind {0} (Google's), to be spoken; they aren't spoken on this phone.	言葉は {0} の背後にあるサービス（Google）に送られて読み上げられます。この端末上では話しません。	src/core/voice/where.js:76	{0} = voice.name
+1tsyo5q	draft	Her words go to the service behind {0} (Microsoft's), to be spoken; they aren't spoken on this phone.	言葉は {0} の背後にあるサービス（Microsoft）に送られて読み上げられます。この端末上では話しません。	src/core/voice/where.js:77	{0} = voice.name
+14jkvn5	draft	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	言葉は {0} の背後にあるサービスに送られて読み上げられます。この端末上では話しません。	src/core/voice/where.js:78	{0} = voice.name
+i7rrx1	draft	This voice is gone: it is skipped.	この声はもうないため、使われません。	src/core/voice/where.js:80	
+mf44l1	draft	Her words go to {0}, which sends back the sound.	言葉は{0}に送られ、音声になって返ってきます。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
+ew9em3	draft	Cancel	キャンセル	src/ui/ask.js:21	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	draft	Open in Maps	マップで開く	src/ui/cards.js:68	
@@ -114,18 +134,79 @@ dc30do	draft	annai shows English until it is online.	オンラインになるま
 8rqn0k	draft	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:242	{0} = name
 150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:243	{0} = name
 1of7r8x	draft	Restart annai	annai を再起動	src/ui/languages.js:244	
+15kmah9	draft	Simulation · moving fast	シミュレーション · 高速で移動中	src/ui/live-chip.js:22	
+17gqu8c	draft	Simulation · stopped	シミュレーション · 停止中	src/ui/live-chip.js:22	
+he6p5i	draft	Simulation · walking	シミュレーション · 歩行中	src/ui/live-chip.js:22	
+1u02s33	draft	GPS on · moving fast	GPS オン · 高速で移動中	src/ui/live-chip.js:23	
+1z0woag	draft	GPS on · walking	GPS オン · 歩行中	src/ui/live-chip.js:23	
+im61se	draft	GPS on · stopped	GPS オン · 停止中	src/ui/live-chip.js:23	
+1kas4ei	draft	Simulation · on	シミュレーション · オン	src/ui/live-chip.js:24	
+zemwn2	draft	GPS off	GPS オフ	src/ui/live-chip.js:25	
+10g5ucm	draft	GPS on · no signal	GPS オン · 電波なし	src/ui/live-chip.js:26	
+1a0v739	draft	GPS on · no location	GPS オン · 位置情報なし	src/ui/live-chip.js:26	
+thd4ot	draft	GPS on · finding you	GPS オン · 現在地を確認中	src/ui/live-chip.js:26	
+j7yqys	draft	GPS on	GPS オン	src/ui/live-chip.js:27	
+2usjiv	draft	The screen goes off as usual while driving or riding.	運転中や乗車中も、画面はいつもどおり消えます。	src/ui/live-chip.js:35	
+5v8q2v	draft	The screen stays on while driving or riding.	運転中や乗車中は、画面がついたままになります。	src/ui/live-chip.js:35	
+m2s0ya	draft	Keep the screen on while driving or riding	運転中・乗車中は画面をオンのままにする	src/ui/live-chip.js:35	
+1jceci4	draft	Keep the screen on while walking	歩行中は画面をオンのままにする	src/ui/live-chip.js:36	
+2jdkql	draft	The screen goes off as usual while walking.	歩行中も、画面はいつもどおり消えます。	src/ui/live-chip.js:36	
+vkuqa5	draft	The screen stays on while walking.	歩行中は、画面がついたままになります。	src/ui/live-chip.js:36	
+1b0r7t3	draft	The screen goes off as usual while stopped.	止まっているときも、画面はいつもどおり消えます。	src/ui/live-chip.js:37	
+1uq8tvb	draft	The screen stays on while stopped.	止まっているときは、画面がついたままになります。	src/ui/live-chip.js:37	
+il754y	draft	Keep the screen on while stopped	止まっているときは画面をオンのままにする	src/ui/live-chip.js:37	
+1aspuv3	draft	The screen goes off as usual while GPS is on.	GPS がオンのときも、画面はいつもどおり消えます。	src/ui/live-chip.js:38	
+1r528n6	draft	Keep the screen on while GPS is on	GPS がオンのときは画面をオンのままにする	src/ui/live-chip.js:38	
+m1jg5r	draft	The screen stays on while GPS is on.	GPS がオンのときは、画面がついたままになります。	src/ui/live-chip.js:38	
+1r67kxj	draft	while driving or riding	運転中・乗車中	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
+1yp7plh	draft	while walking	歩行中	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
+qis7kn	draft	while GPS is on	GPS がオンのとき	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
+rhvo7b	draft	while stopped	止まっているとき	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
+13ebf61	draft	Pause the simulation	シミュレーションを一時停止	src/ui/live-chip.js:83	
+1ui2yvw	draft	Resume the simulation	シミュレーションを再開	src/ui/live-chip.js:83	
+5zs6ip	draft	Stop the simulation	シミュレーションを終了	src/ui/live-chip.js:84	
+1yuht27	draft	Simulate a trip	旅のシミュレーション	src/ui/live-chip.js:85	
+100a56n	draft	Turn GPS off	GPS をオフにする	src/ui/live-chip.js:94	
+ah9gez	draft	Turn GPS on	GPS をオンにする	src/ui/live-chip.js:94	
+1cm49b4	draft	The plan has no places to choose from yet.	予定にはまだ選べる場所がありません。	src/ui/live-chip.js:109	
+1sedy1m	draft	Where are you?	いまどこにいますか？	src/ui/live-chip.js:109	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	draft	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/live-chip.js:116	{0} = p.name
+12nwa0c	draft	A plan place	予定の場所	src/ui/live-chip.js:153	
 19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	位置情報サービスをオンにしてください：設定 → プライバシーとセキュリティ → 位置情報サービス。	src/ui/live-help.js:14	
 6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	iPhone では：設定 → プライバシーとセキュリティ → 位置情報サービス → SafariのWebサイト → このアプリの使用中、および 設定 → アプリ → Safari → 位置情報 → 許可。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; SafariのWebサイト and このアプリの使用中 are to be checked on a phone (glossary).
 m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	iPhone では：アドレスバーのページメニューボタンをタップし、Webサイトの設定 → 位置情報 → 許可（または 設定 → アプリ → Safari → 位置情報 → 許可）。	src/ui/live-help.js:17	Note: ページメニューボタン as Apple's ja-jp guide names it; Webサイトの設定 is to be checked on a phone (glossary).
 687eo2	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	Android では：アドレスの左のアイコンをタップし（インストールしたアプリでは、annai のアイコンを長押しして アプリ情報 → 権限）、位置情報を許可します。	src/ui/live-help.js:21	
 1ell92d	draft	Allow location for this site in your browser's site settings.	ブラウザのサイトの設定で、このサイトに位置情報を許可してください。	src/ui/live-help.js:22	
 37e0kb	draft	Location isn't allowed, so GPS has only its time reminders.	位置情報が許可されていないため、GPS は時刻のリマインダーだけになります。	src/ui/live-help.js:23	
-ozmn9a	draft	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	そのあと GPS をオフにして、もう一度オンにしてください。または、annai に現在地を伝えてください：GPS ボタン → いまどこ？	src/ui/live-help.js:24	Note: "Where are you?" is the GPS chip's own item (live-chip.js): its draft must say the same when that file is translated.
+ozmn9a	draft	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	そのあと GPS をオフにして、もう一度オンにしてください。または、annai に現在地を伝えてください：GPS ボタン → いまどこにいますか？	src/ui/live-help.js:24	Note: "Where are you?" is the GPS chip's own item (live-chip.js): it says what that row says.
 141ivnq	draft	annai can't see where you are	annai には現在地がわかりません	src/ui/live-help.js:25	
+1m81j1n	draft	images	画像	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
+1ue1hlo	draft	tools	ツール	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
+27aenj	draft	live	ライブ	src/ui/model-check.js:6	Note: what a model's test checked: a live voice session.
+gqww9o	draft	upload	アップロード	src/ui/model-check.js:6	Note: what a model's test checked: uploading a file.
+svodbg	draft	key	キー	src/ui/model-check.js:6	Note: what a model's test checked: the key works.
+1bicsne	draft	off	オフ	src/ui/model-check.js:8	Note: a reasoning level.
+1ntxi55	draft	max	最大	src/ui/model-check.js:8	Note: a reasoning level.
+ew9h86	draft	medium	中	src/ui/model-check.js:8	Note: a reasoning level.
+h5yol9	draft	high	高	src/ui/model-check.js:8	Note: a reasoning level.
+m0aa9t	draft	low	低	src/ui/model-check.js:8	Note: a reasoning level.
+dbbxmt	draft	Test	テスト	src/ui/model-check.js:15	
+1l9uojt	draft	Last tested {0}: {1}.	最終テスト{0}：{1}。	src/ui/model-check.js:18	{0} = relTime(verified.at); {1} = list(Object.keys(CHECKS).filter((k) => k in verified).map((k) => `${CHECKS[k]} ${verified[k] ? '✓' : '✗'}`), 'plain'); Note: {1} is a list such as "key ✓, tools ✗".
+6w9tb5	draft	Not tested yet.	まだテストしていません。	src/ui/model-check.js:19	
+17f0nyo	draft	Testing: a tiny request, then one with a tool and a small picture…	テスト中：小さなリクエスト、次にツールと小さな画像付きのリクエスト…	src/ui/model-check.js:28	
+rgisri	draft	Opening a live session…	ライブセッションを開いています…	src/ui/model-check.js:28	
+1btb3mc	draft	It works, with one note:	動作しますが、注意点が1つあります：	src/ui/model-check.js:38	
+1dccge4	draft	Everything works.	すべて動作します。	src/ui/model-check.js:38	
+gfu8p2	draft	Something needs attention:	確認が必要な点があります：	src/ui/model-check.js:38	
+q21uv	draft	Trying each reasoning level…	推論レベルを1つずつ試しています…	src/ui/model-check.js:53	
+19m8h68	draft	Reasoning levels:	推論レベル：	src/ui/model-check.js:56	
+la23qc	draft	This model has no reasoning levels to try.	このモデルには試せる推論レベルがありません。	src/ui/model-check.js:56	
+18nnh3z	draft	{0}: works	{0}：動作します	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
+sp1muy	draft	{0}: {1}	{0}：{1}	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level; {1} = outcomeText(outcome)
+edkut8	draft	Test reasoning levels	推論レベルをテスト	src/ui/model-check.js:64	
 1qfy6dp	draft	Hide	隠す	src/ui/notices.js:64	
 bi2jq4	draft	Show	表示	src/ui/notices.js:64	
 icn7kg	draft	Dismiss all	すべて閉じる	src/ui/notices.js:69	
-2pflf	draft	{0} ({1})	{0}（{1}）	src/ui/notices.js:80	{0} = title; {1} = num(n); Note: A stack of cards of one kind: its title and how many.
 14jq62w#other	draft	{0}, # cards	{0}、#件のカード	src/ui/notices.js:81	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
 1w0wlmk#other	draft	Show the # cards: {0}	#件のカードを表示：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
 1wucd5m#other	draft	Hide the # cards: {0}	#件のカードを隠す：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
@@ -285,11 +366,6 @@ dlgvv3	draft	Refresh tools	ツールを更新	src/ui/screens/mcp.js:95
 171izid	draft	Tap again to remove	もう一度タップすると削除します	src/ui/screens/mcp.js:96	
 109w3ya	draft	{0} Try again.	{0}もう一度試してください。	src/ui/screens/mcp.js:100	{0} = message(e); Note: {0} is an error message, a sentence of its own.
 j4kt4t	draft	{0} wasn't removed	{0}を削除できませんでした	src/ui/screens/mcp.js:100	{0} = s.name
-1bicsne	draft	off	オフ	src/ui/screens/model.js:11	Note: a reasoning level.
-1ntxi55	draft	max	最大	src/ui/screens/model.js:11	Note: a reasoning level.
-ew9h86	draft	medium	中	src/ui/screens/model.js:11	Note: a reasoning level.
-h5yol9	draft	high	高	src/ui/screens/model.js:11	Note: a reasoning level.
-m0aa9t	draft	low	低	src/ui/screens/model.js:11	Note: a reasoning level.
 1gcnxbm	draft	This model no longer exists.	このモデルはもうありません。	src/ui/screens/model.js:43	
 3kaxmm	draft	Provider model id	プロバイダーのモデル ID	src/ui/screens/model.js:78	
 4iiule	draft	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/ui/screens/model.js:79	
@@ -325,7 +401,6 @@ nf3vcm	draft	Style	スタイル	src/ui/screens/model.js:195
 18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	料金（100万トークンあたりの USD、JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
 1wo5fes	draft	Prices, USD (JSON: perMillionChars)	料金（USD、JSON：perMillionChars）	src/ui/screens/model.js:197	
 heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	料金（USD、JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
-dbbxmt	draft	Test	テスト	src/ui/screens/model.js:200	
 1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · リアルタイム：1つのストリームで聞いて話す	src/ui/screens/models.js:15	
 k0393o	draft	Main: talks with you	メイン：あなたと話す	src/ui/screens/models.js:15	
 mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · クラシック：チャットモデルに聞き取りと読み上げを組み合わせる	src/ui/screens/models.js:15	
@@ -342,9 +417,6 @@ a363wx	draft	speech-in	聞き取り	src/ui/screens/models.js:21	Note: the role's
 a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:21	
 12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	音声がオンで、音声ボタンでリアルタイムを選んでいる間、Koe はこれを使います。ここに答えられるものがなければ、クラシックが答えます。	src/ui/screens/models.js:27	
 1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	クラシックを選んでいるとき、音声がオフのとき、リアルタイムが答えられないとき、Koe はこれを使います。聞き取りがあなたの声を聞き、読み上げが話します。	src/ui/screens/models.js:28	
-1m5zm0a	draft	Phone dictation	端末の音声入力	src/ui/screens/models.js:32	
-1vi25zs	draft	Send audio to the model	音声をモデルに送る	src/ui/screens/models.js:32	
-742sn5	draft	Browser voice	ブラウザの声	src/ui/screens/models.js:32	
 1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:34	
 1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインで動く声もあります	src/ui/screens/models.js:34	Note: オンラインで動く: some voices run online (not "come online").
 ce8br5	draft	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:34	
@@ -484,6 +556,119 @@ vam64u	draft	Use the recommended models	おすすめのモデルを使う	src/ui
 1szeqxt	draft	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:548	
 1egvjs1	draft	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:549	{0} = f.name; {1} = messageOf(f.error)
 wlh055	draft	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:555	{0} = which
+1bu98qy	draft	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:18	
+1m5wnho	draft	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:18	
+1mlnwtl	draft	Shiori, asleep	Shiori、おやすみ中	src/ui/screens/shiori.js:18	
+89yydm	draft	Listening	聞いています	src/ui/screens/shiori.js:18	Note: one of Shiori's states, as the dock shows her.
+bhzo0f	draft	Asleep	おやすみ中	src/ui/screens/shiori.js:18	Note: one of Shiori's states, as the dock shows her.
+yydchc	draft	Hearing you	聞き取り中	src/ui/screens/shiori.js:18	Note: one of Shiori's states: she hears you speaking.
+1c5j3ex	draft	Talking	話しています	src/ui/screens/shiori.js:19	
+1pyssg8	draft	Working	作業中	src/ui/screens/shiori.js:19	
+1v3zmky	draft	Shiori, working	Shiori、作業中	src/ui/screens/shiori.js:19	
+95xxof	draft	Shiori, talking	Shiori、話しています	src/ui/screens/shiori.js:19	
+ba34ez	draft	Shiori, thinking	Shiori、考え中	src/ui/screens/shiori.js:19	
+jkajtp	draft	Thinking	考え中	src/ui/screens/shiori.js:19	
+ki7u7j	draft	Shiori, your turn	Shiori、あなたの番	src/ui/screens/shiori.js:19	
+vjxaph	draft	Your turn	あなたの番	src/ui/screens/shiori.js:19	
+1iimwg8	draft	Offline	オフライン	src/ui/screens/shiori.js:20	
+jcy1qy	draft	Shiori, offline	Shiori、オフライン	src/ui/screens/shiori.js:20	
+9chhxd	draft	"{0}"	「{0}」	src/ui/screens/shiori.js:43	{0} = name; Note: a personality's name, quoted, as the editor's label.
+veugk0	draft	Reset to original	原版に戻す	src/ui/screens/shiori.js:45	Note: puts a personality back to annai's original text.
+1vcli95	draft	Ask me before Shiori changes her personality	Shiori が性格を変える前に確認する	src/ui/screens/shiori.js:57	
+1i1lcq9	draft	Edit	編集	src/ui/screens/shiori.js:60	
+1atbaso	draft	Show what the halves tell each other	半身どうしのやりとりを表示	src/ui/screens/shiori.js:61	
+1csnvhb	draft	Quiet until	終了時刻	src/ui/screens/shiori.js:69	Note: quiet hours' end.
+1p3ttz9	draft	Quiet from	開始時刻	src/ui/screens/shiori.js:69	Note: quiet hours' start.
+1ite7lp	draft	Set the other time too.	もう一方の時刻も設定してください。	src/ui/screens/shiori.js:74	
+11mcr74	draft	Quiet hours need both times. Clear both for none.	静かな時間帯には両方の時刻が必要です。なしにするには両方を消してください。	src/ui/screens/shiori.js:95	
+1qa55ez	draft	How she looks	見た目	src/ui/screens/shiori.js:102	
+15cdrhf	draft	Each state, as the dock shows her, with the words under her.	ドックでの表示と、その下の言葉を状態ごとに並べています。	src/ui/screens/shiori.js:103	
+jq414z	draft	Personality	性格	src/ui/screens/shiori.js:105	
+efcvdh	draft	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori のふるまいです。Shiori は確認済みの変更で自分で調整でき、あなたはいつでも元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:106	
+1amzdg4	draft	The new original of "{0}"	「{0}」の新しい原版	src/ui/screens/shiori.js:113	{0} = compare
+pmpsfk	draft	Use the new original	新しい原版を使う	src/ui/screens/shiori.js:116	
+eh67ee	draft	Saved. It applies at her next wake.	保存しました。次の起動から反映されます。	src/ui/screens/shiori.js:125	
+3wot4g	draft	A name is lowercase letters, digits and dashes, like my-shiori.	名前は小文字、数字、ハイフンだけで、my-shiori のように付けます。	src/ui/screens/shiori.js:133	
+8vtmkf	draft	There is already a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:133	{0} = name
+codbeh	draft	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:138	
+10pf3h4	draft	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:139	
+185xhpb	draft	Her two halves	Shiori の2つの半身	src/ui/screens/shiori.js:142	
+1vyft97	draft	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe はあなたと話して、すぐに答えます。Kokoro はじっくり考えて作業をします。2人は短いメモを渡し合います。オン：メモが会話に控えめな行として表示されます。オフ：記録にだけ残ります。	src/ui/screens/shiori.js:143	
+is7afy	draft	How often she acts on her own	Shiori が自分から動く頻度	src/ui/screens/shiori.js:147	
+1mzkqw7	draft	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	Shiori を起動するのはあなただけでなく、プラグイン、リマインダー、GPS もです。どれも設定しない限り制限はありません。1時間の上限を超えた起動は飛ばされ、静かな時間帯は終わるまで待ち（リマインダーは届きます）、1回の起動のステップ数を超えるとカードを出して止まります。	src/ui/screens/shiori.js:148	
+6a0cdc	draft	Wakes per hour is a whole number from 1; leave it empty for no limit.	1時間あたりの起動回数は1以上の整数です。上限なしにするには空欄にしてください。	src/ui/screens/shiori.js:149	
+pd5jqf	draft	Wakes per hour, not counting yours	1時間あたりの起動回数（あなたからの分を除く）	src/ui/screens/shiori.js:149	
+av9dc1	draft	Steps per wake	1回の起動のステップ数	src/ui/screens/shiori.js:151	
+ro3vrl	draft	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	1回の起動のステップ数は1以上の整数です。空欄にすると、あなたの依頼には上限がなくなります。Shiori が自分から行う作業は50ステップで止まります。	src/ui/screens/shiori.js:151	
+199v6bp	draft	From plugins	プラグインから	src/ui/screens/shiori.js:163	
+1mrunng	draft	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:165	{0} = p.name
+1px053l	draft	{0} (from {1})	{0}（{1} から）	src/ui/screens/shiori.js:165	{0} = p.name; {1} = p.plugin
+9xxzlu	draft	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:170	{0} = p.name
+fnme9h	draft	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:174	{0} = p.name
+1szxw8q	draft	a card	カード	src/ui/screens/talk.js:43	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
+r4z2l4	draft	a photo	写真	src/ui/screens/talk.js:43	Note: read by a screen reader for a card that is only a photo: "Shiori: a photo".
+xekru5	draft	Choices: {0}.	選択肢：{0}。	src/ui/screens/talk.js:44	{0} = listed(choices, 'plain'); Note: read by a screen reader after a card or a question.
+1kr7agr	draft	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:45	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
+d6m2fp	draft	Shiori asks: {0}	Shiori の質問：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is her question.
+ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is what she said or showed.
+hadl9d	draft	Shiori woke to look at the files you added.	追加されたファイルを見るため、Shiori が起動しました。	src/ui/screens/talk.js:90	
+15n0e2d	draft	Shiori woke to pick up where she left off.	中断したところから続けるため、Shiori が起動しました。	src/ui/screens/talk.js:91	
+1xhnipt	draft	Shiori woke to merge a new version of her personality.	性格の新しいバージョンを取り込むため、Shiori が起動しました。	src/ui/screens/talk.js:92	
+1ul7xke	draft	Shiori woke for a reminder, or something she watches for.	リマインダーか、見守っていた何かのため、Shiori が起動しました。	src/ui/screens/talk.js:93	
+o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sight.	annai が見えていない間のできごとを確認するため、Shiori が起動しました。	src/ui/screens/talk.js:94	
+1xllewb	draft	Shiori woke because you turned GPS on.	GPS がオンになったので、Shiori が起動しました。	src/ui/screens/talk.js:95	
+susy7u	draft	Shiori woke to tell you the recap.	振り返りを話すため、Shiori が起動しました。	src/ui/screens/talk.js:96	
+18rv8j7	draft	Shiori woke.	Shiori が起動しました。	src/ui/screens/talk.js:98	
+gofzl2	draft	Shiori woke for the plugin {0}.	プラグイン {0} により Shiori が起動しました。	src/ui/screens/talk.js:98	{0} = nameOf(String(r.plugin ?? ''))
+1oe5z73	draft	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:108	{0} = WORDS; Note: {0} is the reminder's words.
+7ew4gb	draft	Shiori's answer: {0}	Shiori の答え：{0}	src/ui/screens/talk.js:108	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:108	{0} = WORDS; Note: {0} is the reminder's words.
+y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori の答え（読み上げ）：{0}	src/ui/screens/talk.js:108	{0} = WORDS; Note: {0} is her answer, shown by annai.
+6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:124	
+1ussy6i	draft	Trip	旅	src/ui/screens/talk.js:181	
+137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:195	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:195	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:201	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:201	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:228	
+1m183es	draft	Open the photo full size	写真を原寸で開く	src/ui/screens/talk.js:229	
+u35e3n	draft	said aloud	読み上げ	src/ui/screens/talk.js:243	Note: the mark on a line of hers that was said aloud.
+16ocoht	draft	Show what she said	Shiori の言葉を表示	src/ui/screens/talk.js:250	
+1yj7glf	draft	Said aloud	読み上げ	src/ui/screens/talk.js:253	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:294	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:294	Note: a note from Koe to Kokoro; its words follow.
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/ui/screens/talk.js:302	
+e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:304	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:305	
+1mjdfzn	draft	Shiori can't reach her model	Shiori がモデルにつながりません	src/ui/screens/talk.js:312	
+1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:312	
+1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:312	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:326	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:380	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+17o4v1i	draft	Conversation	会話	src/ui/screens/talk.js:397	
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:399	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:429	
+bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:430	
+7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:444	
+12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:446	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:446	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:446	
+va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:446	
+mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:449	
+10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:454	
+va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:461	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:462	
+czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:463	
+1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:473	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:476	
+3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:476	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:476	
+p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:476	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:496	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:497	
+159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:512	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:519	
+vmlwpb	draft	Undo	元に戻す	src/ui/screens/talk.js:526	
 11gkctr	draft	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -529,7 +714,119 @@ fc4c10	draft	Starts	開始日	src/ui/screens/trips.js:71
 1baslgi	draft	Start trip	旅を始める	src/ui/screens/trips.js:73	Note: The same words as the form's heading, "Start a trip".
 vr6m26	draft	Give the trip a name.	旅の名前を入力してください。	src/ui/screens/trips.js:79	
 152lnj5	draft	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:80	
-1plbhzy	draft	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
+1rehz51	draft	Speech leaves this phone in the smallest format each service takes. Made here: {0} (recorded: {1}). Played here: {2}.	音声は、各サービスが受け付けるいちばん小さい形式で端末から送られます。ここで作れる形式：{0}（録音：{1}）。ここで再生できる形式：{2}。	src/ui/screens/voice.js:36	{0} = made; {1} = list(records, 'plain'); {2} = played
+1jptowo	draft	Speech leaves this phone in the smallest format each service takes. Made here: {0}. Played here: {1}.	音声は、各サービスが受け付けるいちばん小さい形式で端末から送られます。ここで作れる形式：{0}。ここで再生できる形式：{1}。	src/ui/screens/voice.js:37	{0} = made; {1} = played
+8wro44	draft	Voice is off.	音声はオフです。	src/ui/screens/voice.js:47	
+sns8o2	draft	Voice is on.	音声はオンです。	src/ui/screens/voice.js:47	
+540b06	draft	Auto	自動	src/ui/screens/voice.js:48	
+fceyoz	draft	Voice	音声	src/ui/screens/voice.js:48	context: voice mode; Note: voice on, off or auto (the glossary's Voice on, Voice off).
+qvtz3k	draft	On	オン	src/ui/screens/voice.js:48	
+12k3pw4	draft	Show what she says	Shiori の言葉を表示	src/ui/screens/voice.js:56	
+3gprw9	draft	Keep voice clips	音声クリップを残す	src/ui/screens/voice.js:57	
+o7g54g	draft	Cut her off by speaking	話しかけて Shiori をさえぎる	src/ui/screens/voice.js:62	
+1maeag1	draft	Speaking…	話しています…	src/ui/screens/voice.js:70	
+1rasxdf	draft	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、annai はまだ音を出せません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:74	
+39tqta	draft	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も話せませんでした。各声の応答は記録にあります。設定 → モデルで確認してください。	src/ui/screens/voice.js:75	
+m6lqjc	draft	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:77	{0} = voiceName(f.name); {1} = speechProblem(f.error)
+1v88hol	draft	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	draft	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(voiceName).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	draft	Test the voice	声をテスト	src/ui/screens/voice.js:85	
+1bbvn6f	draft	Automatic: one on this phone when there is one	自動：この端末にある声があればそれ	src/ui/screens/voice.js:92	
+1swzhj6	draft	{0} ({1}, online)	{0}（{1}、オンライン）	src/ui/screens/voice.js:93	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	draft	How loud the microphone hears you	マイクが拾う音の大きさ	src/ui/screens/voice.js:103	
+1v58i1s	draft	Say something…	何か話してください…	src/ui/screens/voice.js:109	
+bjwya4	draft	Hearing you…	聞き取っています…	src/ui/screens/voice.js:113	
+1hsov55	draft	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15秒間、何も聞こえませんでした。マイクがオンで、ほかのアプリが使っていないことを確認してから、もう一度お試しください。	src/ui/screens/voice.js:115	
+1plbhzy	draft	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:118	{0} = seconds(seg.ms, 'long')
+u495xc	draft	Writing it down…	文字にしています…	src/ui/screens/voice.js:121	
+1fnqjaw	draft	{0} heard: "{1}"	{0}が聞き取った言葉：「{1}」	src/ui/screens/voice.js:125	{0} = name; {1} = text
+1rgfjj8	draft	{0} heard speech but wrote nothing down.	{0}は音声を聞き取りましたが、何も書き出しませんでした。	src/ui/screens/voice.js:125	{0} = name
+1rec7os	draft	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、設定 → モデルで文字起こしモデルを追加してください。	src/ui/screens/voice.js:127	
+5uf1sa	draft	Test the microphone	マイクをテスト	src/ui/screens/voice.js:138	
+1du6nik	draft	Settings → Models	設定 → モデル	src/ui/screens/voice.js:140	
+1kkulsa	draft	Voice	音声	src/ui/screens/voice.js:143	context: screen
+1tl20ub	draft	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori の話し方と、あなたの声の聞き方です。どの声とどの文字起こしモデルを、どの順で使うかは、設定 → モデルにあります。	src/ui/screens/voice.js:144	
+1nt5zac	draft	On or off	オンとオフ	src/ui/screens/voice.js:145	
+hsuie9	draft	Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. The chip on the dock changes it too.	自動：車内、ヘッドホン、高速で移動中はオン。端末のスピーカーではオフ。annai が判断できないときは前回の選択に従います。オン：Shiori が声に出して話し、あなたの返事を聞きます。オフ：Shiori は文字で書き、あなたは入力します。ドックのボタンでも切り替えられます。	src/ui/screens/voice.js:146	
+1hwskdv	draft	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:149	
+qyfmia	draft	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:149	
+1f9vvmr	draft	Wait for her first words (seconds)	Shiori の最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:150	
+1sz04rq	draft	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:150	
+17b2a79	draft	On the screen	画面での表示	src/ui/screens/voice.js:151	
+4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出したことの言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「Shiori の言葉を表示」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	draft	Shiori's voice	Shiori の声	src/ui/screens/voice.js:154	
+1879vb9	draft	Voices, tried in order: none.	試す順の声：なし。	src/ui/screens/voice.js:155	
+1su08w7	draft	Voices, tried in order: {0}.	試す順の声：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')
+1oc2cqc	draft	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザ自身の声です。端末上で話す声もあります。オンラインと書かれた声は、言葉をそのサービスに送ります。	src/ui/screens/voice.js:158	
+t9jotl	draft	This browser has no voice of its own.	このブラウザには自前の声がありません。	src/ui/screens/voice.js:158	
+154la7x	draft	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:161	
+1r7xlh3	draft	Speed (0.5 to 2)	速さ（0.5〜2）	src/ui/screens/voice.js:161	
+1hnhxk8	draft	Listening	聞き取り	src/ui/screens/voice.js:162	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	draft	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	あなたが間を置くと、annai は文が終わったと判断します。長めにすると文の途中で考えられ、短めにすると早く答えます。	src/ui/screens/voice.js:163	
+11q2yij	draft	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:164	
+mfkrny	draft	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。通常は700です。	src/ui/screens/voice.js:164	
+d3o3oq	draft	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字にするために送られ、その後は残りません。オン：クリップはそれぞれ会話とともに保存され、バックアップにも含まれます。	src/ui/screens/voice.js:167	
+6fykc6	draft	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.	ライブセッションが聞いている間、あなたの言葉は音声のまま {0} に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:171	{0} = list(live, 'or')
+eptz99	draft	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.	ライブセッションが聞いている間、あなたの言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:172	
+1yvcgvq	draft	Close after 10 to 300 seconds of quiet.	無音10〜300秒で閉じるようにしてください。	src/ui/screens/voice.js:173	
+tc460l	draft	Close a live session after (seconds of quiet)	ライブセッションを閉じるまでの無音（秒）	src/ui/screens/voice.js:173	
+w195po	draft	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンか車のオーディオのときだけです。端末のスピーカーではマイクが Shiori の声を拾うので、タップでしかさえぎれません。オフ：どこでもタップだけ。スピーカーが Shiori の声を返してしまう車向けです。	src/ui/screens/voice.js:175	
+ph6h35	draft	Where your voice goes	あなたの声の行き先	src/ui/screens/voice.js:176	
+rfzxba	draft	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	あなたの言葉は、聞き取れる最初のものに送られます。Shiori の言葉は、動作する最初の声に送られます。順番を変えるには、{0}へ。	src/ui/screens/voice.js:177	{0} = models
+283rev	draft	What you say	あなたの言葉	src/ui/screens/voice.js:178	
+127uny	draft	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の中だけにとどめるには、キーボードのマイクキーで入力してください。iPhone と多くの Android のキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:180	
+bewa4v	draft	What she says	Shiori の言葉	src/ui/screens/voice.js:181	
+12fg67m	draft	Searching the web	Web 検索	src/ui/screens/welcome.js:20	
+13sqoog	draft	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:20	
+1hlvu92	draft	Your keys and your data	あなたのキーとデータ	src/ui/screens/welcome.js:20	
+1okgje1	draft	What annai can do	annai でできること	src/ui/screens/welcome.js:20	
+1sfqzn2	draft	Get started	はじめる	src/ui/screens/welcome.js:20	
+9dx265	draft	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:20	
+xrjfmj	draft	The fine print	注意事項	src/ui/screens/welcome.js:20	
+1r8f7ib	draft	annai is a free, open-source travel guide that lives on your phone.	annai は、スマホの中にある無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:42	
+119pjng	draft	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:43	
+1re677m	draft	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:44	
+1kzszxn	draft	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）は、日本語で「案内すること、人を連れて回ること」という意味です。	src/ui/screens/welcome.js:45	
+u671cl	draft	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:51	
+5swud	draft	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:53	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
+qhkarb	draft	talks with you and answers at once.	はあなたと話し、すぐに答えます。	src/ui/screens/welcome.js:53	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
+ov7jwy	draft	Kokoro ({0}, heart and mind)	Kokoro（{0}）	src/ui/screens/welcome.js:54	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
+vd6kvu	draft	thinks things through and does the work: planning, searching, reading your bookings.	はじっくり考えて作業をします。計画、検索、予約の読み取りなどです。	src/ui/screens/welcome.js:54	Note: follows Kokoro's name in bold.
+1709cs4	draft	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	話しかけるのは Shiori だけです。Kokoro が作業している間、Koe があなたの相手をし、Kokoro が答えを見つけたら伝えます。2人のやりとりは会話に表示されます。設定 → Shiori で隠せます。	src/ui/screens/welcome.js:55	
+1px4lo	draft	Plans and bookings.	予定と予約。	src/ui/screens/welcome.js:60	
+syq6fy	draft	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	Shiori といっしょに1日ずつ旅を計画し、予約確認を追加できます。PDF、ウォレットのパス、スクリーンショットなどです。予約するのはあなたで、annai が代わりに予約することはありません。	src/ui/screens/welcome.js:60	
+1oxs9av	draft	GPS.	GPS。	src/ui/screens/welcome.js:61	
+pcgaa8	draft	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	GPS をオンにすると、annai は現在地をたどり、出発するとき、着いたとき、遅れそうなときなど、ちょうどいい時間と場所でリマインドします。	src/ui/screens/welcome.js:61	
+1q5h6fn	draft	Talk with Shiori hands-free, in the car or on a trail.	車の中でもトレイルでも、手を使わずに Shiori と話せます。	src/ui/screens/welcome.js:62	
+sb3fh1	draft	Voice.	音声。	src/ui/screens/welcome.js:62	
+1f1esb6	draft	Offline places.	オフラインの場所。	src/ui/screens/welcome.js:63	
+q7rfrz	draft	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	予定に沿った OpenStreetMap の場所、Wikipedia の要約、Wikivoyage のガイド。電波がないときのために。	src/ui/screens/welcome.js:63	
+1nibb44	draft	Show Shiori what you see, and ask about it.	見ているものを Shiori に見せて、質問できます。	src/ui/screens/welcome.js:64	
+8buk0q	draft	Photos.	写真。	src/ui/screens/welcome.js:64	
+oet5z2	draft	Backups.	バックアップ。	src/ui/screens/welcome.js:65	
+wyjtal	draft	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	ファイルをエクスポートするか、GitHub、Forgejo や Gitea のサーバー、S3 バケット、WebDAV フォルダーに自動でバックアップできます。	src/ui/screens/welcome.js:65	
+1gocoxs	draft	Plugins and MCP servers.	プラグインとMCPサーバー。	src/ui/screens/welcome.js:66	
+rokix6	draft	Skills, tools and screens that others make.	ほかの人が作ったスキル、ツール、画面。	src/ui/screens/welcome.js:66	
+1ab3kpy	draft	Recap and replay.	振り返りとリプレイ。	src/ui/screens/welcome.js:67	
+1kbrdr7	draft	Afterwards, a recap of the trip, and its route played back.	旅のあとに、旅の振り返りと、たどったルートの再生。	src/ui/screens/welcome.js:67	
+lls8s7	draft	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai は、あなたのキーとデータがあなたのものであり続けるように作られています。その仕組みと、その限界をここで正確に説明します。	src/ui/screens/welcome.js:69	
+13hsfba	draft	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori は、無料のサービスを使って、始めてすぐに Web を検索できます。キーも設定も不要です。	src/ui/screens/welcome.js:73	
+1yy7iex	draft	These are on. Untick any you would rather not use.	これらはオンになっています。使いたくないものはチェックを外してください。	src/ui/screens/welcome.js:74	
+10sp6fm	draft	A model set up here, in Safari, stays in Safari.	ここ Safari で設定したモデルは、Safari の中だけで使えます。	src/ui/screens/welcome.js:95	
+1dr4k8j	draft	Connect a model, so Shiori can think.	Shiori が考えられるように、モデルをつなぎましょう。	src/ui/screens/welcome.js:95	
+uy1icp	draft	Connect a model there, so Shiori can think.	Shiori が考えられるように、そこでモデルをつなぎましょう。	src/ui/screens/welcome.js:95	
+f7oh8p	draft	You can also install annai as an app from your browser's menu.	ブラウザのメニューから、annai をアプリとしてインストールすることもできます。	src/ui/screens/welcome.js:105	
+u8au6d	draft	First, install annai	まず、annai をインストール	src/ui/screens/welcome.js:109	
+fcgzkm	draft	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari は、7日間アクセスがないと annai のデータを消すことがあります。また、ホーム画面のアプリは別にデータを持ちます。annai をホーム画面に追加し、そこでモデルを設定してください。	src/ui/screens/welcome.js:112	
+1jemfd1	draft	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空き容量が少なくなると、ブラウザが annai のデータを消すことがあります。旅を守るために annai をインストールしてください。	src/ui/screens/welcome.js:113	
+hophvo	draft	Then, in the Home Screen app	次に、ホーム画面のアプリで	src/ui/screens/welcome.js:118	
+s3y93q	draft	Then	次に	src/ui/screens/welcome.js:118	
+1padbm0	draft	Next	次へ	src/ui/screens/welcome.js:132	
+1hzmxtu	draft	Back	戻る	src/ui/screens/welcome.js:133	
+1hpqu3m	draft	Skip	スキップ	src/ui/screens/welcome.js:134	
+186hb75	draft	Look around first	まず見てみる	src/ui/screens/welcome.js:139	
+zzldle	draft	Set up a model	モデルを設定	src/ui/screens/welcome.js:140	
+dndycx	draft	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:146	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
 1jrfsn4	draft	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	無料検索は、検索を Exa、Parallel、Firecrawl に送ります。送るのは検索した言葉だけで、ファイルや居場所は送りません。Exa はほかでは読めないページも読むので、そのページのアドレスも送ります。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索内容をモデルの学習に使うことがあるので、検索に名前や住所を入れないでください。その後ろには常に有効な最後の手段があり、同じ言葉を Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは「検索の方法：オフ」だけです。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	draft	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	チェックしたものには、彼女が検索する言葉だけが送られ、Exa には彼女のために読むページのアドレスも送られます。ファイルや居場所は送りません。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索をモデルの学習に使うことがあるので、名前や住所は入れないでください。その後ろでは、最後の手段として常に Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは設定 → ツール → 検索の方法：オフだけです。これらはすべてそこで変更できます。	src/ui/search-panel.js:15	
 1fn0bdg	draft	Use	使う	src/ui/search-panel.js:31	
@@ -539,22 +836,38 @@ a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia �
 sbfb3o	draft	ready	準備完了	src/ui/search-panel.js:51	
 qx2onv	draft	couldn't check	確認できませんでした	src/ui/search-panel.js:54	
 1lhwd5p	draft	not ready	準備ができていません	src/ui/search-panel.js:57	
-qvtz3k	draft	On	オン	src/ui/search-panel.js:85	
 1j0itop	draft	Search	検索	src/ui/search-panel.js:86	
 hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search はこれらを上から試し、最初に答えたものを使います。失敗したものはしばらく休んでから、また試されます。使うのをやめるには、チェックを外してください。	src/ui/search-panel.js:88	
 1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	ほかの検索プロバイダーはプラグインです。カタログから追加でき（Tavily、Serper、自分の SearXNG）、キーはそれぞれのページで設定します。	src/ui/search-panel.js:91	
 f2eaqi	draft	Find a search plugin	検索プラグインを探す	src/ui/search-panel.js:92	
-17o4v1i	draft	Conversation	会話	src/ui/shell.js:59	
 ata72m	draft	Trace	記録	src/ui/shell.js:59	
 1skw031	draft	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:257	
 1pm5i13	draft	Back to Trips	「旅」に戻る	src/ui/shell.js:259	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
 1z00dfe	draft	An update is ready	アップデートの準備ができました	src/ui/shell.js:349	
 gt0nrj	draft	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:349	
 nb21do	draft	Restart now	今すぐ再起動	src/ui/shell.js:349	
+sntfon	draft	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:9	Note: spoken by the voice being tested, so it is heard in the screens' language.
+n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:15	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+1a27ynt	draft	Last tested {0}: it worked.	最終テスト{0}：動作しました。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
+lrzlka	draft	Last tested {0}: it didn't work.	最終テスト{0}：動作しませんでした。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
+11k50g8	draft	Playing a sample…	サンプルを再生しています…	src/ui/speech-check.js:35	
+10nc9qe	draft	The sample stopped early.	サンプルが途中で止まりました。	src/ui/speech-check.js:37	
+f41br8	draft	It works: that was this voice.	動作します。今のがこの声です。	src/ui/speech-check.js:37	
+en3jzv	draft	Say something, such as "Where should we stop for lunch?"	「お昼はどこで休憩しようか？」のように、何か話してください。	src/ui/speech-check.js:41	
+sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12秒間、何も聞こえませんでした。マイクがオンになっているか確認して、もう一度お試しください。	src/ui/speech-check.js:46	
+16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	音声は聞こえましたが、何も書き出されませんでした。端末にもう少し近づいて、もう一度お試しください。	src/ui/speech-check.js:51	
+a2r8f0	draft	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:51	{0} = text
+1alwf78	draft	Say something	何か話す	src/ui/speech-check.js:64	
+1qerct6	draft	Play a sample	サンプルを再生	src/ui/speech-check.js:64	
 edrwuk	draft	annai's storage is full	annai のストレージがいっぱいです	src/ui/storage-full.js:12	
 dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	保存しかけのものはありません。空きを作るには、使わなくなった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/ui/storage-full.js:14	
 1yr1lra	draft	Export a backup	バックアップをエクスポート	src/ui/storage-full.js:16	
 7quqpk	draft	Go to Trips	「旅」へ	src/ui/storage-full.js:17	
+8a7h7a#other	draft	# tokens · {0}	#トークン · {0}	src/ui/talk-panel.js:14	plural; # = n; {0} = formatCost(result.cost); English: "# token · {0}" (one), "# tokens · {0}" (other)
+q69pp5	draft	{0} didn't answer: {1}. No other model was asked.	{0}は答えませんでした：{1}。ほかのモデルには聞いていません。	src/ui/talk-panel.js:21	{0} = name; {1} = why
+1cam7ic	draft	Message	メッセージ	src/ui/talk-panel.js:72	
+vy4apn	draft	Try this model	このモデルを試す	src/ui/talk-panel.js:73	
+1k3coi2	draft	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。記録以外には何も残りません。	src/ui/talk-panel.js:75	
 1sva5r0	draft	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。接続を確かめて、もう一度お試しください。	src/ui/updates.js:122	
 14d6ut8	draft	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai のオフラインサービスがまだ起動していないため、annai 自体は確認していません。少ししてから、もう一度お試しください。	src/ui/updates.js:140	
 16l98jx	draft	annai couldn't check for a new version of itself. Check the connection and try again.	annai は自分の新しいバージョンを確認できませんでした。接続を確かめて、もう一度お試しください。	src/ui/updates.js:141	
@@ -562,3 +875,6 @@ rtcus4	draft	The download of the new version didn't finish. annai tries again th
 32o7q3	draft	annai restarts once Shiori has finished	Shiori が終わったら annai を再起動します	src/ui/updates.js:184	
 3ur3tf	draft	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shiori は作業の途中です。アップデートは Shiori の番の途中には行いません。今すぐ止めるには、Shiori をタップしてください。	src/ui/updates.js:184	Note: "She" and "her" are written as Shiori: 彼女 reads distant in Japanese.
 4naie6	draft	Don't restart	再起動しない	src/ui/updates.js:185	
+1r1k76k	draft	Realtime	リアルタイム	src/ui/voice-chip.js:5	
+y7erjn	draft	Classic	クラシック	src/ui/voice-chip.js:5	
+4u8ij0	draft	Listening live	ライブで聞いています	src/ui/voice-chip.js:79	

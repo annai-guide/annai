@@ -1,4 +1,6 @@
-import { modelOf, providerOf, STAND_INS, SPEECH_DEFAULTS } from '../llm/config.js';
+import { modelOf, providerOf, SPEECH_DEFAULTS } from '../llm/config.js';
+import { t } from '../l10n.js';
+import { list } from '../intl.js';
 
 /**
  * Where your voice goes (spec §11.7): for each speech-in entry, where what you say is sent; for
@@ -9,8 +11,11 @@ import { modelOf, providerOf, STAND_INS, SPEECH_DEFAULTS } from '../llm/config.j
  * @typedef {{ id: string, name: string, where: string }} Where
  */
 
-export const DICTATION_AWAY = "Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.";
-export const DICTATION_HERE = 'On this phone only: the browser recognizes your speech on the device.';
+// Settings → Voice's words, for the user (never a model's).
+export const DICTATION_AWAY = t`Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.`;
+export const DICTATION_HERE = t`On this phone only: the browser recognizes your speech on the device.`;
+/** The stand-in entries' names, as Settings → Models names them. @type {Record<string, string>} */
+const STAND_IN_NAMES = { 'send-audio': t`Send audio to the model`, dictation: t`Phone dictation`, 'browser-voice': t`Browser voice` };
 
 /** @param {string} url */
 function hostOf(url) {
@@ -21,18 +26,19 @@ function hostOf(url) {
   }
 }
 
-/** Where a model is called, in words: its provider's name, and the host of its ability's address. @param {ModelConfig} cfg @param {string} modelId */
+/** Whether a model is there to call: it, and its provider. @param {ModelConfig} cfg @param {string} modelId */
+const callable = (cfg, modelId) => Boolean(cfg.models[modelId] && cfg.providers[cfg.models[modelId].provider]);
+
+/** Where a callable model is called, in words: its provider's name, and the host of its ability's address. @param {ModelConfig} cfg @param {string} modelId */
 function placeOf(cfg, modelId) {
   const rec = cfg.models[modelId];
-  const p = rec ? cfg.providers[rec.provider] : undefined;
-  if (!rec || !p) return 'its provider';
-  const provider = providerOf(p);
+  const provider = providerOf(cfg.providers[rec.provider]);
   const host = hostOf(provider.abilities[rec.ability]?.baseUrl ?? provider.baseUrl);
-  return host && host !== provider.name ? `${provider.name} (${host})` : provider.name;
+  return host && host !== provider.name ? t`${provider.name} (${host})` : provider.name;
 }
 
 /** The model's name, for an entry. @param {ModelConfig} cfg @param {string} id */
-const nameOf = (cfg, id) => STAND_INS[id]?.name ?? (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
+const nameOf = (cfg, id) => STAND_IN_NAMES[id] ?? (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
 
 /**
  * Where what you say goes, for each speech-in entry in order. "Send audio to the model" goes to
@@ -44,15 +50,14 @@ export function whereHeard(cfg, { dictation }) {
   return (cfg.roles?.['speech-in']?.models ?? SPEECH_DEFAULTS['speech-in']).map((id) => {
     const name = nameOf(cfg, id);
     if (id === 'send-audio') {
-      const hearers = ['main', 'decide'].flatMap((r) => cfg.roles?.[r]?.models ?? []).filter((m) => cfg.models[m] && modelOf(cfg.models[m]).input.includes('audio'));
+      const hearers = ['main', 'decide'].flatMap((r) => cfg.roles?.[r]?.models ?? []).filter((m) => callable(cfg, m) && modelOf(cfg.models[m]).input.includes('audio'));
       const places = [...new Set(hearers.map((m) => placeOf(cfg, m)))];
-      return { id, name, where: places.length ? `As sound, to the model that hears it: ${places.join(', or ')}.` : 'Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.' };
+      return { id, name, where: places.length ? t`As sound, to the model that hears it: ${list(places, 'or')}.` : t`Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.` };
     }
     if (id === 'dictation') {
-      return { id, name, where: !dictation.available ? 'This browser has no dictation: it is skipped.' : dictation.local ? DICTATION_HERE : DICTATION_AWAY };
+      return { id, name, where: !dictation.available ? t`This browser has no dictation: it is skipped.` : dictation.local ? DICTATION_HERE : DICTATION_AWAY };
     }
-    const rec = cfg.models[id];
-    return { id, name, where: rec ? `As sound, to ${placeOf(cfg, id)}, to be written down.` : 'This model is gone: it is skipped.' };
+    return { id, name, where: callable(cfg, id) ? t`As sound, to ${placeOf(cfg, id)}, to be written down.` : t`This model is gone: it is skipped.` };
   });
 }
 
@@ -65,14 +70,14 @@ export function whereSaid(cfg, { browser, voice }) {
   return (cfg.roles?.['speech-out']?.models ?? SPEECH_DEFAULTS['speech-out']).map((id) => {
     const name = nameOf(cfg, id);
     if (id === 'browser-voice') {
-      if (!browser) return { id, name, where: 'This browser has no voice of its own: it is skipped.' };
-      if (!voice) return { id, name, where: "The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service." };
-      if (voice.local) return { id, name, where: `Spoken on this phone (${voice.name}): her words stay on it.` };
-      const whose = /google/i.test(voice.name) ? " (Google's)" : /microsoft/i.test(voice.name) ? " (Microsoft's)" : '';
-      return { id, name, where: `Her words go to the service behind ${voice.name}${whose}, to be spoken; they aren't spoken on this phone.` };
+      if (!browser) return { id, name, where: t`This browser has no voice of its own: it is skipped.` };
+      if (!voice) return { id, name, where: t`The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.` };
+      if (voice.local) return { id, name, where: t`Spoken on this phone (${voice.name}): her words stay on it.` };
+      if (/google/i.test(voice.name)) return { id, name, where: t`Her words go to the service behind ${voice.name} (Google's), to be spoken; they aren't spoken on this phone.` };
+      if (/microsoft/i.test(voice.name)) return { id, name, where: t`Her words go to the service behind ${voice.name} (Microsoft's), to be spoken; they aren't spoken on this phone.` };
+      return { id, name, where: t`Her words go to the service behind ${voice.name}, to be spoken; they aren't spoken on this phone.` };
     }
-    const rec = cfg.models[id];
-    return { id, name, where: rec ? `Her words go to ${placeOf(cfg, id)}, which sends back the sound.` : 'This voice is gone: it is skipped.' };
+    return { id, name, where: callable(cfg, id) ? t`Her words go to ${placeOf(cfg, id)}, which sends back the sound.` : t`This voice is gone: it is skipped.` };
   });
 }
 
