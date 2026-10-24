@@ -1,13 +1,13 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'f374d366f939';
+const BUILD = '19d444bee159';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
-// The languages cached with a version (written by strings.mjs); their catalogs are outside SHELL, which stamp.mjs hashes too.
+// The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
 const LANGS = [];
 const SHELL = [
   '/',
@@ -289,8 +289,7 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  // The shell and the interface language's words, as one: a version whose words can't be fetched is not installed, and is tried
-  // again later, as when a shell file can't be fetched. Past the HTTP cache: a new version must never store a stale copy of one.
+  // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache.
   event.waitUntil((async () => {
     const words = await wordsToCache();
     const cache = await caches.open(CACHE);
@@ -311,11 +310,7 @@ function sameLanguage(a, b) {
   }
 }
 
-/**
- * The language whose catalog a version caches: the choice in the app settings (sys:settings /app.json, languages.ui), as handled()
- * reads /push.json; with none, or one annai no longer has, the first of the worker's own languages that LANGS has. Null: English.
- * @returns {Promise<string | null>}
- */
+/** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against LANGS. Null: English. @returns {Promise<string | null>} */
 async function wordsToCache() {
   /** @type {IDBDatabase | undefined} */
   let db;
@@ -326,7 +321,6 @@ async function wordsToCache() {
     const file = (await readFiles(db, 'sys:settings', ['/app.json'])).get('/app.json');
     ui = file ? JSON.parse(new TextDecoder().decode(file.data))?.languages?.ui : undefined;
   } catch {
-    // no settings yet: as the phone is set
   } finally {
     db?.close();
   }
@@ -339,10 +333,7 @@ async function wordsToCache() {
   return null;
 }
 
-/**
- * Picking a language asks for its words to be kept before annai restarts: fetched once, into this version's cache and into that of a
- * version that waits (the restart may land in it), then answered on the port.
- * @param {unknown} tag @param {MessagePort | undefined} port
+/** Keeps a language's words in every shell cache (a waiting version's too), and answers on the port. @param {unknown} tag @param {MessagePort | undefined} port
  */
 async function cacheWords(tag, port) {
   let ok = false;
@@ -353,9 +344,7 @@ async function cacheWords(tag, port) {
     if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
     for (const name of await caches.keys()) if (name.startsWith('annai-shell-')) await (await caches.open(name)).put(wordsPath(tag), res.clone());
     ok = true;
-  } catch {
-    // answered below
-  }
+  } catch { /* said no below */ }
   port?.postMessage({ ok });
 }
 

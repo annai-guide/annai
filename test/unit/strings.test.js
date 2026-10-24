@@ -82,7 +82,7 @@ test('update adds a new row, drops the stale one, and ships only keys and texts'
       [key('Saved to {0} for {1}')]: '{0}に保存',
       [key('# stamp\0# stamps')]: { other: 'スタンプ#個' },
     });
-    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships (English first) and the unfinished ones, offered only while Experimental's switch is on. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze([]);\n");
+    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze([]);\n");
     assert.deepEqual(await update(dir), [], 'a second run has nothing to write');
   });
 });

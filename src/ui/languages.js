@@ -9,7 +9,7 @@ export function ownName(tag) {
   try { return new Intl.DisplayNames([tag], { type: 'language' }).of(tag) ?? tag; } catch { return tag; }
 }
 
-/** The copy of the screens' language kept on this device for the start, before anything else loads (design, section 2); none: as the phone is set. @param {string | null | undefined} tag */
+/** The device's copy of the screens' language (`annai.ui`), read at the start; none: as the phone is set. @param {string | null | undefined} tag */
 export function keepUiChoice(tag) {
   try {
     if (tag) localStorage.setItem('annai.ui', tag);
@@ -23,11 +23,7 @@ export async function keepUiFrom(ws) {
   keepUiChoice(typeof ui === 'string' ? ui : '');
 }
 
-/**
- * Asks the service worker to keep a language's words before annai restarts into it, and says whether it did. With no worker taking this
- * page, they are fetched here instead, to be sure they can be had; the start fetches them itself then.
- * @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o]
- */
+/** Asks the worker to keep a language's words; with no worker, checks they can be fetched. @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o] */
 export async function keepWords(tag, { worker = navigator.serviceWorker?.controller, limitMs = 30_000 } = {}) {
   if (!worker) {
     try { return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
@@ -174,12 +170,7 @@ export function languagesSection(ctx, app) {
       note, error, hint));
 }
 
-/**
- * "annai's screens in" (the design, section 2): As this phone is set, then each language annai has by its own name. Unfinished
- * languages are offered only while Settings → Experimental's "Unfinished translations" is on (the one chosen already always shows).
- * Choosing asks the worker to keep the words, then saves `languages.ui` (so backups carry it) and its copy on this device, and
- * restarts the way Settings → Updates does; the screen shows English until then. @param {any} ctx @param {Record<string, any>} app
- */
+/** "annai's screens in": the phone's, then each language by its own name; unfinished ones only while Experimental allows (a chosen one always shows). @param {any} ctx @param {Record<string, any>} app */
 function screensRow(ctx, app) {
   const phone = navigator.languages ?? [];
   const chosen = typeof app.languages?.ui === 'string' ? app.languages.ui : '';
@@ -189,7 +180,6 @@ function screensRow(ctx, app) {
     h('option', { value: '', text: t`As this phone is set (${ownName(chooseTag(null, phone, SHIPPED).tag)})` }),
     ...offered.map((tag) => h('option', { value: tag, lang: tag, text: ownName(tag) })));
   select.value = offered.includes(chosen) ? chosen : '';
-  // Live regions of their own: the section's status is the spoken languages'.
   const note = h('span', { class: 'saved', 'aria-live': 'polite' });
   const error = h('p', { class: 'error', 'aria-live': 'assertive', hidden: true });
   let shown = select.value;
@@ -211,29 +201,25 @@ function screensRow(ctx, app) {
     }
     keepUiChoice(pick);
     shown = pick;
-    // Already in it (the phone's English, chosen as English): nothing to restart into.
+    // Already in it: nothing to restart into.
     if (document.documentElement.lang === (next.region ? `${next.tag}-${next.region}` : next.tag)) {
       select.disabled = false;
       note.textContent = t`Saved`;
       return;
     }
     note.textContent = t`Saved. Restarting…`;
-    // Waits for Shiori's turn to end, and goes into a new version that waits, as Settings → Updates does.
     ctx.updates?.restart() ?? location.reload();
   });
   return h('div', { class: 'saving' }, field(t`annai's screens in`, select), note, error);
 }
 
 /**
- * What the start says about the screens' language (design, sections 2 and 3). settings: `languages.ui` in the app settings ('' as the
- * phone is set); kept: the copy on this device (`annai.ui`); running: the tag the page started in; failed: the tag whose words could
- * not be loaded. When the two disagree (the copy was cleared, or came with a restore), the copy is to be written, and a card offers
- * the restart if that would change the language shown; when the words failed, a card says why annai shows English.
+ * The start's cards: the words that failed to load, and a setting the device's copy disagrees with (the copy is then to be written, and
+ * a restart offered if it would change the language shown). running: the page's tag; failed: the tag whose words couldn't load.
  * @param {{ settings: string, kept: string, running: string, failed?: string, phone?: readonly string[], offered?: readonly string[], shipped?: readonly string[], restart: () => unknown }} o
- * @returns {{ copy: string | null, cards: { title: string, body: string, primary?: boolean, actions: { label: string, primary?: boolean, run: () => unknown }[] }[] }}
  */
 export function screensCards({ settings, kept, running, failed, phone = navigator.languages ?? [], offered = [...SHIPPED, ...EXPERIMENTAL], shipped = SHIPPED, restart }) {
-  /** @type {ReturnType<typeof screensCards>['cards']} */
+  /** @type {{ title: string, body: string, actions: { label: string, primary?: boolean, run: () => unknown }[] }[]} */
   const cards = [];
   if (failed) {
     const name = ownName(failed);
