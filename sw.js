@@ -9,6 +9,8 @@ const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 // The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
 const LANGS = [];
+// The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
+const SHIPPED_LANGS = [];
 const SHELL = [
   '/',
   '/index.html',
@@ -310,7 +312,7 @@ function sameLanguage(a, b) {
   }
 }
 
-/** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against LANGS. Null: English. @returns {Promise<string | null>} */
+/** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against the shipped ones. Null: English. @returns {Promise<string | null>} */
 async function wordsToCache() {
   // An open queued behind a blocked upgrade or delete never answers, and no update may wait for it: after 3 s the phone decides.
   const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(resolve, 3000, null))]);
@@ -318,7 +320,7 @@ async function wordsToCache() {
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = LANGS.find((tag) => sameLanguage(wanted, tag));
+    const found = SHIPPED_LANGS.find((tag) => sameLanguage(wanted, tag));
     if (found) return found;
   }
   return null;

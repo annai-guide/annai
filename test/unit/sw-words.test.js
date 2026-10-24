@@ -59,8 +59,8 @@ function fakeIndexedDB(settings, hang = false) {
  * The service worker in a context of its own, listing these languages, with the phone's languages, the app settings and a network.
  * network: the catalogs by tag (a missing one is a 404); caches start with these names (a waiting version's too).
  */
-async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide', hang = false } = {}) {
-  const source = (await readFile(new URL('sw.js', root), 'utf8')).replace('const LANGS = [];', `const LANGS = ${JSON.stringify(langs)};`);
+async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide', hang = false } = {}) {
+  const source = (await readFile(new URL('sw.js', root), 'utf8')).replace('const LANGS = [];', `const LANGS = ${JSON.stringify(langs)};`).replace('const SHIPPED_LANGS = [];', `const SHIPPED_LANGS = ${JSON.stringify(shipped)};`);
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
   /** @type {Map<string, Map<string, string>>} */
@@ -205,4 +205,12 @@ test('an IndexedDB that never answers does not hold up an install: the phone\'s 
   const k = await swKit({ hang: true, phone: ['zh-CN'] });
   assert.deepEqual(await k.install(), ['/l10n/zh-Hans.json']);
   assert.deepEqual(await (await swKit({ hang: true, phone: ['en-GB'] })).install(), []);
+});
+
+test('a phone is matched only against the shipped languages: a draft is never downloaded for it, but a user who chose it has it', async () => {
+  const draft = { shipped: ['zh-Hans'] };
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP'] })).install(), [], 'a Japanese phone, Japanese still a draft');
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP', 'zh-CN'] })).install(), ['/l10n/zh-Hans.json']);
+  assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP'], settings: app({ ui: 'ja' }) })).install(), ['/l10n/ja.json'], 'chosen: kept');
+  assert.deepEqual(await (await swKit({ ...draft, phone: [] })).ask('ja'), [{ ok: true }], 'and asked for: kept');
 });
