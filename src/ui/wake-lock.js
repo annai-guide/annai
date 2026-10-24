@@ -35,7 +35,7 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
       try {
         fn();
       } catch (e) {
-        console.warn('a wake lock listener failed', e);
+        console.warn(/* en */ 'a wake lock listener failed', e);
       }
     }
   };

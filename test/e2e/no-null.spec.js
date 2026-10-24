@@ -40,7 +40,7 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     // Ollama's page, with its abilities.
     await pickProvider(page, 'Ollama');
     expect(await nulls(page)).toEqual([]);
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
 
     // Google Gemini's page, with Live voice switched on (its plugin installs).
     await pickProvider(page, 'Google Gemini');
@@ -49,7 +49,7 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     await expect(savedBy(live)).toHaveText('Saved', { timeout: 30_000 });
     await drawn(page);
     expect(await nulls(page)).toEqual([]);
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
 
     // Custom provider's look at a site that refuses web apps: nothing to add.
     await tapAdd(page, 'Custom provider');

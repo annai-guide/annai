@@ -51,7 +51,7 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   expect(await page.content()).not.toContain('sk-test-openai-123456');
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
   // Main has its model; its voice is behind the browser's, never ahead of it.
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
   await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
   await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
@@ -80,7 +80,7 @@ test('two OpenAI providers keep a key each; removing one keeps the other and the
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
   }
   // The second one's models have names of their own.
   await page.getByRole('link', { name: /^OpenAI \(home\)/ }).click();
@@ -134,7 +134,7 @@ test('the Plugins page names the providers made from a provider plugin, and its 
     await page.getByLabel('Name', { exact: true }).fill(name);
     await page.getByLabel('Name', { exact: true }).blur();
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
   }
   await page.goto('/#/plugins');
   // A provider plugin is under Model providers; protocol plugins are under Developer.

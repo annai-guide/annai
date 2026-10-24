@@ -1,6 +1,6 @@
 // The start (localization design, section 3): language and words are set before the app is imported, so words made at a module's
 // top level are right. What can't be had leaves English.
-import { setWords, dir, chooseTag } from '../core/l10n.js';
+import { setWords, dir, chooseTag, t } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 
 const html = document.documentElement;
@@ -28,4 +28,6 @@ if (pseudo === 'en-XA' || pseudo === 'ar-XB') {
 }
 html.lang = region ? `${tag}-${region}` : tag;
 html.dir = dir();
+// Shiori's mark while annai opens (index.html) says so in the screens' words.
+document.querySelector('.booting')?.setAttribute('alt', t`Opening annai…`);
 await import('./main.js');

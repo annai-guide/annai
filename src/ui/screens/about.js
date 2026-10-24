@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, crumb, t } from '../dom.js';
 import { SOURCES, FONTS, ART } from '../credits.js';
 import { keysAndData, finePrint, REPO } from '../privacy.js';
 
@@ -73,7 +73,7 @@ export async function renderAbout(ctx, route) {
     return licenceText('Font licences', `${FONTS.map((f) => f.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}, under the SIL Open Font License 1.1, as annai ships them.`, '/assets/fonts/OFL.txt', `${REPO}/blob/main/assets/fonts/OFL.txt`);
   }
   return h('div', { class: 'screen about' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'About annai' }),
     versionLine(ctx.version),
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/updates' }, 'Check for updates')),
@@ -116,7 +116,7 @@ async function licenceText(title, note, path, online) {
     // not here yet (offline before the first install): the address online instead
   }
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/about' }, '← About annai')),
+    h('p', { class: 'crumbs' }, crumb('#/about', t`About annai`)),
     h('h1', { class: 'title', text: title }),
     h('p', { class: 'sub', text: note }),
     text === null

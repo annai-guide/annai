@@ -1,4 +1,4 @@
-import { h, t } from '../dom.js';
+import { h, crumb, t } from '../dom.js';
 import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
@@ -94,5 +94,5 @@ export async function renderDrive(ctx) {
   return h('div', { class: 'screen drive' },
     h('h1', { class: 'title', text: 'Driving' }),
     strip, maps, ask, latest, awake,
-    h('p', {}, h('a', { href: '#/now' }, '← Now')));
+    h('p', {}, crumb('#/now', t`Now`)));
 }

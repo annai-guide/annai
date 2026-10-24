@@ -74,7 +74,7 @@ test('Import says how far the files are, and a manifest swapped between the prev
     expect(said.filter((/** @type {string} */ s) => /^Getting files: \d+ of \d+$/.test(s)).length).toBeGreaterThan(0);
 
     // Another phone: the preview shows the backup as it was, then the server hands over another manifest with the files.
-    await page.getByRole('link', { name: 'Trips', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
     await page.getByRole('link', { name: /Big Sur/ }).first().click();
     await page.getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('link', { name: 'Automatic backups' }).click();
@@ -111,7 +111,7 @@ for (const way of ['Cancel', 'the crumb']) {
       await expect.poll(() => fj.waiting()).toBeGreaterThan(0);
       const before = fileReads(fj);
       if (way === 'Cancel') await page.getByRole('link', { name: 'Cancel' }).click();
-      else await page.getByRole('link', { name: /^← / }).click();
+      else await page.locator('.crumbs a').click(); // the back link
       await expect(page.getByRole('heading', { name: 'Forgejo / Gitea', exact: true })).toBeVisible();
       const inFlight = fj.waiting();
       expect(inFlight).toBeLessThanOrEqual(6);
@@ -119,7 +119,7 @@ for (const way of ['Cancel', 'the crumb']) {
       // Nothing carries on in the background: the files already asked for arrive, no more are asked for, and no trip appears.
       await page.waitForTimeout(1500);
       expect(fileReads(fj) - before).toBe(inFlight);
-      await page.getByRole('link', { name: 'Trips', exact: true }).click();
+      await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
       await expect(page.getByText('No trips yet.')).toBeVisible();
     } finally {
       await fj.stop();

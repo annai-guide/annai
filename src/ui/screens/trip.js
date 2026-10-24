@@ -1,4 +1,4 @@
-import { h, field, twoStep } from '../dom.js';
+import { h, crumb, t, field, twoStep } from '../dom.js';
 import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
@@ -33,7 +33,7 @@ export async function renderTrip(ctx, route) {
   const stamps = await tripStamps(ctx, id);
   const extra = h('div', {}); // the export panel opens here
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/trips' }, '← Trips')),
+    h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
     h('h1', { class: 'title', dir: 'auto', text: scope.title }),
     h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),

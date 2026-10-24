@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, crumb, t, field } from '../dom.js';
 import { platform } from '../platform.js';
 
 /** @param {string} title @param {...any} children */
@@ -140,7 +140,7 @@ export async function renderNotifications(ctx) {
     acts.push(trial);
   }
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Notifications' }),
     h('p', { class: 'sub', text: "Shiori's reminders for a time, and the plan's \"coming up\" and \"leave soon\", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up." }),
     status, alert, help,

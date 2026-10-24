@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
 import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
@@ -26,8 +26,8 @@ function icon(d, extra = '') {
   return svg;
 }
 /** A camera, and a keyboard: what the side buttons do, at a glance (the user, 2026-10-18). */
-const cameraIcon = () => icon('M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z', 'M12 9.8a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8z');
-const keyboardIcon = () => icon('M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16V8A1.5 1.5 0 0 1 4 6.5z', 'M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 13.8h5');
+const cameraIcon = () => icon(/* en */ 'M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z', /* en */ 'M12 9.8a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8z');
+const keyboardIcon = () => icon(/* en */ 'M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16V8A1.5 1.5 0 0 1 4 6.5z', /* en */ 'M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 13.8h5');
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
@@ -40,7 +40,7 @@ export function createDock(ctx) {
   const label = h('span', { class: 'talk-label', text: ctx.agent.state.label });
   // A smart text box (the user, 2026-10-23): there only while it is needed. The keyboard button opens it and, tapped again, closes it;
   // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
-  const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': 'Message to Shiori', enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
+  const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': t`Message to Shiori`, enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
   // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text. Chrome and Firefox
   // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229. Some Android keyboards send
   // every Enter as 229: one with no composition just ended sends. A composition the box loses (blur, closed) holds nothing back after.
@@ -55,7 +55,7 @@ export function createDock(ctx) {
   input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     if (e.key === 'Enter' && (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100))) e.preventDefault();
   });
-  const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': 'Send', title: 'Send' }, icon('M12 19V6M6.5 11.5L12 6l5.5 5.5'));
+  const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': t`Send`, title: t`Send` }, icon(/* en */ 'M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
@@ -70,11 +70,11 @@ export function createDock(ctx) {
       if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
     },
   }, h('div', { class: 'type-box' }, input, sendArrow));
-  const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': 'Type', 'aria-expanded': 'false', title: 'Type', onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
+  const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': t`Type`, 'aria-expanded': 'false', title: t`Type`, onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
   /** A tap elsewhere on the page (onTap: never at its press): an empty box closes; one with a draft stays. @param {EventTarget | null} at */
   const elsewhere = (at) => {
-    const t = /** @type {Node} */ (at);
-    if (!input.value.trim() && !sheet.contains(t) && !typeButton.contains(t)) closeTyping();
+    const node = /** @type {Node} */ (at);
+    if (!input.value.trim() && !sheet.contains(node) && !typeButton.contains(node)) closeTyping();
   };
   /** @type {(() => void) | undefined} */
   let offTap;
@@ -106,7 +106,7 @@ export function createDock(ctx) {
     camera.value = '';
     if (!files.length) return;
     if (!ctx.agent.target) {
-      ctx.notices.card({ tone: 'warn', title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' });
+      ctx.notices.card({ tone: 'warn', title: t`Open a trip first`, body: t`Photos are kept in a trip. Open one from Trips, then take the photo again.` });
       return;
     }
     ctx.agent.photoComing?.(true); // words said while the photo is made wait for it (spec §6.8)
@@ -117,13 +117,13 @@ export function createDock(ctx) {
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
       ctx.go('#/talk');
     } catch (e) {
-      ctx.notices.card({ tone: 'warn', title: "The photo wasn't added", body: String(/** @type {any} */ (e)?.message ?? e) });
+      ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: String(/** @type {any} */ (e)?.message ?? e) });
     } finally {
       ctx.agent.photoComing?.(false);
     }
   });
   const talk = h('button', {
-    class: 'talk', type: 'button', 'aria-label': 'Shiori',
+    class: 'talk', type: 'button', 'aria-label': t`Shiori`,
     onclick: () => {
       // While she speaks, a tap stops her and listens; asleep with voice on, it listens; with voice off, typing opens (spec §10.4).
       if (ctx.agent.tap() === 'typing') openTyping();
@@ -206,8 +206,8 @@ export function createDock(ctx) {
   }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
   const halves = h('span', { class: 'halves-sign', hidden: true },
-    h('span', { class: 'chip', role: 'status', text: 'Kokoro is working' }),
-    h('button', { class: 'btn', type: 'button', 'aria-label': 'Stop Kokoro', onclick: () => ctx.agent.stopKokoro() }, 'Stop'));
+    h('span', { class: 'chip', role: 'status', text: t`Kokoro is working` }),
+    h('button', { class: 'btn', type: 'button', 'aria-label': t`Stop Kokoro`, onclick: () => ctx.agent.stopKokoro() }, t`Stop`));
   if ('kokoroWorking' in ctx.agent) {
     halves.hidden = !ctx.agent.kokoroWorking;
     offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.hidden = !x.kokoroWorking; }));
@@ -216,11 +216,11 @@ export function createDock(ctx) {
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
   // The buttons used most sit above; the states line, used less, at the very bottom, which is harder to reach (the user, 2026-10-18).
-  const el = h('nav', { class: 'dock', 'aria-label': 'Shiori' },
+  const el = h('nav', { class: 'dock', 'aria-label': t`Shiori` },
     sheet,
     caption, // under the text panel, right above Shiori: its tail points at her
     h('div', { class: 'dock-row' },
-      h('label', { class: 'ib', for: 'dock-camera', 'aria-label': 'Camera', title: 'Camera' }, cameraIcon()), camera,
+      h('label', { class: 'ib', for: 'dock-camera', 'aria-label': t`Camera`, title: t`Camera` }, cameraIcon()), camera,
       talk,
       h('span', { class: 'dock-end' },
         typeButton,
@@ -230,7 +230,7 @@ export function createDock(ctx) {
     cleanUp('dock');
     pluginChips.replaceChildren(...slotEntries(ctx, 'ui:status-chip').map((e) => {
       const c = h('span', { class: 'chip plugin-chip' });
-      mount(ctx, e, c, (ui) => e.item.render(c, ui), { group: 'dock', what: `status chip ${e.item.id}` });
+      mount(ctx, e, c, (ui) => e.item.render(c, ui), { group: 'dock', what: /* en */ `status chip ${e.item.id}` });
       return c;
     }));
     pluginActions.replaceChildren(...slotEntries(ctx, 'ui:dock-action').map((e) => h('button', {
@@ -274,7 +274,7 @@ export function createDock(ctx) {
 function dockAvatar(ctx) {
   const c = component(ctx, 'avatar');
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
-    a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : 'its avatar create() must return el, setState and setLevel');
+    a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : /* en */ 'its avatar create() must return el, setState and setLevel');
   if (!a) return createAvatar({ size: 'dock' });
   /** @type {any} annai's own, once theirs threw three times in a row */
   let own = null;

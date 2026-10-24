@@ -122,7 +122,7 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
  * @param {any} ctx @param {Entry} entry
  */
 export function runAction(ctx, entry) {
-  const fail = (/** @type {unknown} */ e) => ctx.registry?.fail(entry.pluginId, `dock action ${entry.item.id}`, e);
+  const fail = (/** @type {unknown} */ e) => ctx.registry?.fail(entry.pluginId, /* en */ `dock action ${entry.item.id}`, e);
   try {
     const worked = () => ctx.registry?.succeeded(entry.pluginId);
     const r = entry.item.run(pluginUi(ctx, entry.pluginId));

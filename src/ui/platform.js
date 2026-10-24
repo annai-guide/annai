@@ -1,6 +1,6 @@
 /** Running from the Home Screen (installed), not in a browser tab. */
 export function isStandalone() {
-  return matchMedia('(display-mode: standalone)').matches || /** @type {any} */ (navigator).standalone === true;
+  return matchMedia(/* en */ '(display-mode: standalone)').matches || /** @type {any} */ (navigator).standalone === true;
 }
 
 /** @returns {'ios' | 'android' | 'desktop'} */
@@ -86,12 +86,13 @@ export function connectionOf(nav) {
 }
 
 /**
- * What this device is called in the backups it makes ("iPhone"), and what the user calls it ("phone").
+ * What this device is called in the backups it makes ("iPhone"), and what the user calls it ("phone"): data, in English, as the
+ * label leaves the device in backups' names; the screens make their words from the noun.
  * @param {string} [ua] @param {number} [touch] @returns {{ label: string, noun: string }}
  */
 export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchPoints) {
-  if (/iPad/.test(ua) || (ua.includes('Macintosh') && touch > 1)) return { label: 'iPad', noun: 'iPad' };
-  if (/iPhone|iPod/.test(ua)) return { label: 'iPhone', noun: 'phone' };
-  if (/Android/.test(ua)) return { label: 'Android phone', noun: 'phone' };
-  return { label: 'computer', noun: 'computer' };
+  if (/iPad/.test(ua) || (ua.includes('Macintosh') && touch > 1)) return /* en */ { label: 'iPad', noun: 'iPad' };
+  if (/iPhone|iPod/.test(ua)) return /* en */ { label: 'iPhone', noun: 'phone' };
+  if (/Android/.test(ua)) return /* en */ { label: 'Android phone', noun: 'phone' };
+  return /* en */ { label: 'computer', noun: 'computer' };
 }

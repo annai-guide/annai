@@ -1,4 +1,4 @@
-import { h, field, savedField, savedRadios, numberIn, queueSave } from '../dom.js';
+import { h, crumb, t, field, savedField, savedRadios, numberIn, queueSave } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { wantedTtl } from '../../core/agent/warmth.js';
 import { providerOf, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
@@ -40,7 +40,7 @@ export async function renderModels(ctx, route) {
   await ctx.llm.ready;
   const [cfg, app] = await Promise.all([ctx.llm.config(), readAppSettings(ctx.ws)]);
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Models' }),
     h('p', { class: 'sub', text: 'Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.' }),
     // The one-tap start, while there is no provider (spec §9.8): the catalog's featured provider's own sign-in.

@@ -1,4 +1,4 @@
-import { h, messageOf as message } from '../dom.js';
+import { h, crumb, t, messageOf as message } from '../dom.js';
 import { list } from '../format.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -191,7 +191,7 @@ export async function renderPluginInstall(ctx) {
   const p = pendingPackage();
   // Back to the Add screen it was picked on, where installing from a file or an address starts.
   const to = p?.back ?? '#/add';
-  const back = h('p', { class: 'crumbs' }, h('a', { href: to }, '← Add'));
+  const back = h('p', { class: 'crumbs' }, crumb(to, t`Add`));
   if (!p) {
     return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'Nothing to install' }),
       h('p', {}, "There's nothing to install. ", h('a', { href: to }, 'Go back to Add.')));

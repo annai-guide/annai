@@ -1,4 +1,4 @@
-import { h, field, checkbox, radios } from '../dom.js';
+import { h, crumb, t, field, checkbox, radios } from '../dom.js';
 import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
@@ -31,7 +31,7 @@ export async function renderImport(ctx, route) {
   const from = pending?.from;
   const place = from ? await ctx.backups?.get(from.target).catch(() => null) : null;
   const screen = h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: leave(from) }, `← ${from ? place?.name ?? 'Backups' : 'Trips'}`)),
+    h('p', { class: 'crumbs' }, crumb(leave(from), from ? place?.name ?? t`Backups` : t`Trips`)),
     h('h1', { class: 'title', text: 'Open a trip' }), body);
   // A backup a git place told by its manifest alone shows at once; its files come when the user imports.
   if (pending?.peeked && from) {

@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 import { platform } from './platform.js';
 import { bookingHref } from './format.js';
@@ -39,10 +39,10 @@ const typeOf = (ctx, card) => (typeof card?.type === 'string' ? (ctx?.registry?.
 /** The name of a plugin's kind of card, as its plugin gave it, or '' for annai's own cards. @param {any} ctx @param {any} card */
 export const cardKind = (ctx, card) => String(typeOf(ctx, card)?.item.name ?? '');
 
-/** The label over a card: SHIORI, or SHIORI · <KIND> for a plugin's kind of card (spec §16.4). @param {any} ctx @param {any} card */
+/** The label over a card: Shiori, or Shiori · <kind> for a plugin's kind of card (spec §16.4), in capitals by CSS. @param {any} ctx @param {any} card */
 export function cardWho(ctx, card) {
-  const t = typeOf(ctx, card);
-  return t ? `SHIORI · ${String(t.item.name).toUpperCase()}` : 'SHIORI';
+  const typed = typeOf(ctx, card);
+  return typed ? t`Shiori · ${String(typed.item.name)}` : t`Shiori`;
 }
 
 /**
@@ -54,7 +54,7 @@ export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
   const typed = typeOf(ctx, card);
   if (typed) {
     const body = h('div', { class: 'card-body' });
-    mount(ctx, typed, body, (ui) => typed.item.render(card.data && typeof card.data === 'object' ? card.data : {}, body, ui), { what: `card type ${card.type}` });
+    mount(ctx, typed, body, (ui) => typed.item.render(card.data && typeof card.data === 'object' ? card.data : {}, body, ui), { what: /* en */ `card type ${card.type}` });
     return h('div', { class: 'card card-typed' }, card.title ? h('strong', { ...say(String(card.title)), class: 'card-title', text: String(card.title) }) : null, body);
   }
   const parts = [];
@@ -65,15 +65,15 @@ export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
     const where = p.address ? `${p.name}, ${p.address}` : p.name;
     parts.push(h('div', { class: 'card-place' },
       h('span', { ...say(String(where)), text: where }),
-      h('a', { class: 'btn', href: mapsUrl(p, platform()), target: '_blank', rel: 'noopener noreferrer' }, 'Open in Maps')));
+      h('a', { class: 'btn', href: mapsUrl(p, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`)));
   }
   const links = (Array.isArray(card.links) ? card.links : []).map((/** @type {any} */ l) => ({ label: String(l?.label ?? l?.url ?? ''), url: httpUrl(String(l?.url ?? '')) })).filter((/** @type {any} */ l) => l.url);
   if (links.length) parts.push(h('div', { class: 'acts' }, ...links.map((/** @type {any} */ l) => h('a', { ...say(l.label), class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))));
   const booking = card.booking ? tripPath(card.booking) : null;
-  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path) }, 'Open the booking'));
+  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path) }, t`Open the booking`));
   const image = card.image ? tripPath(card.image) : null;
   if (image) {
-    const img = h('img', { class: 'card-image', alt: card.title ? String(card.title) : 'A photo Shiori showed' });
+    const img = h('img', { class: 'card-image', alt: card.title ? String(card.title) : t`A photo Shiori showed` });
     const scope = image.root === 'trip' ? ctx.agent?.trip : 'me';
     if (scope) {
       ctx.ws.read(scope, image.path).then((/** @type {any} */ got) => {
@@ -85,6 +85,6 @@ export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
   if (Array.isArray(card.choice) && card.choice.length) {
     parts.push(h('div', { class: 'acts' }, ...card.choice.slice(0, 6).map((/** @type {any} */ c) => h('button', { ...say(String(c)), class: 'btn', type: 'button', onclick: () => onChoice?.(String(c)) }, String(c)))));
   }
-  if (typeof card.type === 'string') parts.push(h('p', { class: 'sub', text: `This card's kind (${card.type}) comes from a plugin that isn't on.` }));
+  if (typeof card.type === 'string') parts.push(h('p', { class: 'sub', text: t`This card's kind (${card.type}) comes from a plugin that isn't on.` }));
   return h('div', { class: 'card' }, ...parts);
 }

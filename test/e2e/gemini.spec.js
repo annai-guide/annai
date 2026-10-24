@@ -62,7 +62,7 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
       expect(r.url.includes(KEY) || JSON.stringify(r.body).includes(KEY), r.url).toBe(false);
     }
     // The free-tier switch: this provider's calls cost nothing.
-    await page.getByRole('link', { name: '← Google Gemini' }).click();
+    await page.getByRole('link', { name: 'Google Gemini', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await free.check();
     await expect(savedBy(free)).toHaveText('Saved');

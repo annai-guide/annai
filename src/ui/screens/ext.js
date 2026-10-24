@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, crumb, t } from '../dom.js';
 import { mount, slotEntries } from '../slots.js';
 
 /**
@@ -8,7 +8,7 @@ import { mount, slotEntries } from '../slots.js';
  */
 
 /** @param {string} href @param {string} label */
-const crumbs = (href, label) => h('p', { class: 'crumbs' }, h('a', { href }, label));
+const crumbs = (href, label) => h('p', { class: 'crumbs' }, crumb(href, label));
 
 /**
  * A page that isn't there: its plugin is off, or is on and has no page by that name (minors 11).
@@ -39,18 +39,18 @@ function page(ctx, kind, pluginId, id, back, backLabel, more = []) {
 
 /** A whole screen a plugin adds (choice 5). @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderExt(ctx, route) {
-  return page(ctx, 'ui:screen', route.parts[1], route.parts[2], '#/now', '← Now');
+  return page(ctx, 'ui:screen', route.parts[1], route.parts[2], '#/now', t`Now`);
 }
 
 /** A settings page a plugin adds. @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderPluginPage(ctx, route) {
-  return page(ctx, 'ui:settings-page', route.parts[1], route.parts[2], '#/settings', '← Settings');
+  return page(ctx, 'ui:settings-page', route.parts[1], route.parts[2], '#/settings', t`Settings`);
 }
 
 /** A trip tab a plugin adds; its drawing gets the trip's id as a third argument. @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderTripTab(ctx, route) {
   const trip = route.parts[1];
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(trip)).catch(() => null);
-  const label = scope ? `← ${scope.title}` : '← Trips';
+  const label = scope ? scope.title : t`Trips`;
   return page(ctx, 'ui:trip-tab', route.parts[3], route.parts[4], scope ? `#/trip/${encodeURIComponent(trip)}` : '#/trips', label, [{ trip }]);
 }

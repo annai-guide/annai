@@ -1,4 +1,4 @@
-import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
+import { h, crumb, t, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
 import { placeStatus, placeHref, newerText, withArticle, relTime, when, size, numField, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
@@ -38,7 +38,7 @@ export async function renderBackups(ctx, route) {
     },
   }, 'Add');
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Backups' }),
     h('p', { class: 'sub', text: 'annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.' }),
     places.length
@@ -53,16 +53,16 @@ export async function renderBackups(ctx, route) {
 
 /** One place: where it is, when annai backs up to it, and what is there. @param {any} ctx @param {string} id */
 async function renderPlace(ctx, id) {
-  const t = await ctx.backups.get(id);
-  if (!t) return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'This backup place was removed' }), h('p', {}, h('a', { href: '#/backups' }, 'Back to Backups')));
-  const type = ctx.backups.typeOf(t.type);
+  const target = await ctx.backups.get(id);
+  if (!target) return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'This backup place was removed' }), h('p', {}, h('a', { href: '#/backups' }, 'Back to Backups')));
+  const type = ctx.backups.typeOf(target.type);
   const noun = ctx.backups.noun;
   const status = h('p', { class: 'sub', role: 'status', text: notes.get(id) ?? '' });
   notes.delete(id);
   const say = (/** @type {string} */ s) => { status.textContent = s; };
   // A backup opened from here stops if the user leaves this screen before it has opened (the import screen takes over from there).
   const leaving = leaveSignal();
-  const live = h('p', { class: 'sub', text: placeStatus(t, ctx.backups.progress(id)) });
+  const live = h('p', { class: 'sub', text: placeStatus(target, ctx.backups.progress(id)) });
   const stop = h('button', { class: 'btn', type: 'button', hidden: !ctx.backups.progress(id), onclick: () => ctx.backups.stop(id) }, 'Stop');
   const off = ctx.backups.on(async () => {
     if (!live.isConnected) {
@@ -74,9 +74,9 @@ async function renderPlace(ctx, id) {
     stop.hidden = !ctx.backups.progress(id);
   });
   const top = [
-    h('p', { class: 'crumbs' }, h('a', { href: '#/backups' }, '← Backups')),
-    h('h1', { class: 'title', text: t.name }),
-    h('p', { class: 'sub', text: whereOf(ctx, t) }),
+    h('p', { class: 'crumbs' }, crumb('#/backups', t`Backups`)),
+    h('h1', { class: 'title', text: target.name }),
+    h('p', { class: 'sub', text: whereOf(ctx, target) }),
     live,
   ];
   if (!type) {
@@ -93,7 +93,7 @@ async function renderPlace(ctx, id) {
       },
     }, 'Turn it on');
     return h('div', { class: 'screen' }, ...top,
-      h('section', { class: 'panel', 'aria-label': 'Plugin' }, h('p', { text: `The plugin for ${t.name} isn't running, so annai can't back up here.` }), h('div', { class: 'acts' }, on), status),
+      h('section', { class: 'panel', 'aria-label': 'Plugin' }, h('p', { text: `The plugin for ${target.name} isn't running, so annai can't back up here.` }), h('div', { class: 'acts' }, on), status),
       removeSection(ctx, id));
   }
   /** A backup the user asked for; its result shows when the screen opens again. @param {{ over?: boolean }} o */
@@ -108,15 +108,15 @@ async function renderPlace(ctx, id) {
     if (live.isConnected) ctx.render();
   };
   const saved = new Set(await ctx.backups.savedSecrets(id));
-  const inputs = type.fields.map((/** @type {any} */ f) => ({ f, el: h('input', { id: `place-${f.key}`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', value: t.config[f.key] ?? '', placeholder: f.placeholder ?? '' }) }));
+  const inputs = type.fields.map((/** @type {any} */ f) => ({ f, el: h('input', { id: `place-${f.key}`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', value: target.config[f.key] ?? '', placeholder: f.placeholder ?? '' }) }));
   const secrets = type.secret.map((/** @type {any} */ f) => ({ f, el: h('input', { id: `place-secret-${f.key}`, type: 'password', autocomplete: 'off', placeholder: saved.has(f.key) ? 'saved (type a new one to replace it)' : 'not set' }) }));
   // A place that keeps whole files may encrypt them (spec §12.2), and keeps this device's last few.
   const file = type.stores === 'file';
-  const encrypt = checkbox('Encrypt backups with a passphrase', Boolean(t.encrypt));
+  const encrypt = checkbox('Encrypt backups with a passphrase', Boolean(target.encrypt));
   const pass1 = h('input', { id: 'place-passphrase', type: 'password', autocomplete: 'new-password', placeholder: saved.has('passphrase') ? 'saved (type a new one to replace it)' : 'not set' });
   const pass2 = h('input', { id: 'place-passphrase2', type: 'password', autocomplete: 'new-password' });
-  const keys = checkbox('Include API keys (only in encrypted backups)', Boolean(t.keys));
-  const keep = h('input', { id: 'place-keep', inputmode: 'numeric', value: numField(t.keep ?? 3) });
+  const keys = checkbox('Include API keys (only in encrypted backups)', Boolean(target.keys));
+  const keep = h('input', { id: 'place-keep', inputmode: 'numeric', value: numField(target.keep ?? 3) });
   /** What the place offers for fields left empty (several repositories): a tap fills them in and tests again. */
   const picks = h('div', { class: 'acts', hidden: true });
   /** @param {any} e */
@@ -157,13 +157,13 @@ async function renderPlace(ctx, id) {
       }
     },
   }, 'Save and test');
-  const hold = t.hold;
+  const hold = target.hold;
   const holdPanel = hold?.kind === 'newer'
     ? h('section', { class: 'panel', 'aria-label': 'A newer backup' },
-      h('h2', { class: 'section', text: t.last ? 'A newer backup is here' : 'A backup is already here' }),
-      h('p', { text: newerText(t, { where: whereOf(ctx, t), noun, tree: type.stores === 'tree' }) }),
+      h('h2', { class: 'section', text: target.last ? 'A newer backup is here' : 'A backup is already here' }),
+      h('p', { text: newerText(target, { where: whereOf(ctx, target), noun, tree: type.stores === 'tree' }) }),
       h('div', { class: 'acts' },
-        h('button', { class: 'btn pri', type: 'button', onclick: () => restoreFrom(ctx, t, hold.remote, say, { signal: leaving.signal }) }, 'Import it as a copy'),
+        h('button', { class: 'btn pri', type: 'button', onclick: () => restoreFrom(ctx, target, hold.remote, say, { signal: leaving.signal }) }, 'Import it as a copy'),
         h('button', { class: 'btn', type: 'button', onclick: () => backUpNow({ over: true }) }, `Back up this ${noun} over it`)))
     : hold?.kind === 'large'
       ? h('section', { class: 'panel', 'aria-label': 'A large backup' },
@@ -174,11 +174,11 @@ async function renderPlace(ctx, id) {
     ['changes', type.stores === 'tree' ? 'After changes, within the hour' : 'After changes, at most every 6 hours'],
     ['daily', 'Once a day'],
     ['off', 'Off'],
-  ], t.auto, (v) => ctx.backups.update(id, { auto: /** @type {any} */ (v) }));
-  const mobile = savedCheck('Also over mobile data', t.mobileData, (on) => ctx.backups.update(id, { mobileData: on }));
+  ], target.auto, (v) => ctx.backups.update(id, { auto: /** @type {any} */ (v) }));
+  const mobile = savedCheck('Also over mobile data', target.mobileData, (on) => ctx.backups.update(id, { mobileData: on }));
   // Where the browser can't say whether it is on Wi-Fi (Safari on iPhone), how much goes without asking: the user's choice.
-  const limit = h('input', { id: 'place-ask-above', inputmode: 'decimal', placeholder: 'No limit', value: limitField(t.askAbove) });
-  const limitNote = h('p', { class: 'sub', text: limitNoteText(t.askAbove, connectionOf(navigator)) });
+  const limit = h('input', { id: 'place-ask-above', inputmode: 'decimal', placeholder: 'No limit', value: limitField(target.askAbove) });
+  const limitNote = h('p', { class: 'sub', text: limitNoteText(target.askAbove, connectionOf(navigator)) });
   const readLimit = () => {
     const value = limit.validity?.badInput ? undefined : limitFromField(limit.value);
     if (value === undefined) throw new Error('Type a number of megabytes, or leave it empty for no limit.');
@@ -196,7 +196,7 @@ async function renderPlace(ctx, id) {
         list.replaceChildren(...all.slice(0, 10).map((/** @type {any} */ r) => h('li', { class: 'card' },
           h('span', { class: 'name', text: when(r.at) }),
           h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, r.encrypted ? 'encrypted' : null, relTime(r.at)].filter(Boolean).join(' · ') }),
-          h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say, { signal: leaving.signal }) }, 'Open')))));
+          h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, target, r, say, { signal: leaving.signal }) }, 'Open')))));
       } catch (e) {
         say(messageOf(e));
       }

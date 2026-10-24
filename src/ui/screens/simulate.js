@@ -1,4 +1,4 @@
-import { h, field } from '../dom.js';
+import { h, crumb, t, field } from '../dom.js';
 import { SPEEDS } from '../../core/live/sim-run.js';
 import { listTrips } from '../../core/scopes.js';
 import { answerJSON } from '../../core/answer.js';
@@ -17,7 +17,7 @@ const SPEED_WORDS = { 10: '10 times real time: an hour takes 6 minutes', 60: '60
 export async function renderSimulate(ctx) {
   const sim = ctx.sim;
   const screen = h('div', { class: 'screen simulate' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Simulate a trip' }));
   if (!sim) return screen;
   const body = h('div', { class: 'screen' });

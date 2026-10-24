@@ -42,7 +42,7 @@ a { color: var(--ai); }
 .crumbs a { text-decoration: none; font-weight: 500; }
 /* A back link's tap area is 44 px tall like the buttons', with the words and the screen where they were (the second emulator re-check: 23 px). */
 .crumbs a { display: inline-block; padding: 11px 12px 11px 0; margin: -11px -12px -11px 0; }
-.booting { padding: 32px 16px; color: var(--ink-2); }
+.booting { display: block; margin: 32px 16px; border-radius: 50%; }
 
 /* buttons */
 .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

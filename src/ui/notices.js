@@ -1,4 +1,5 @@
-import { h } from './dom.js';
+import { h, t, plural } from './dom.js';
+import { num } from './format.js';
 
 /** @typedef {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement>, said: HTMLElement, show: HTMLElement, all: HTMLElement }} Stack */
 
@@ -60,12 +61,12 @@ let lone = 0;
     const show = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, onclick: () => {
       const open = list.hidden;
       list.hidden = !open;
-      show.textContent = open ? 'Hide' : 'Show';
+      show.textContent = open ? t`Hide` : t`Show`;
       show.setAttribute('aria-expanded', String(open));
       recount(stack);
       if (open) for (const m of stack.members) fitters.get(m)?.();
-    } }, 'Show');
-    const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, 'Dismiss all');
+    } }, t`Show`);
+    const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, t`Dismiss all`);
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
     /** @type {Stack} */
     const stack = { el, list, count, members: new Set(), said, show, all };
@@ -76,10 +77,10 @@ let lone = 0;
   const recount = (st) => {
     const title = st.count.dataset.title;
     const n = st.members.size;
-    st.count.textContent = `${title} (${n})`;
-    st.el.setAttribute('aria-label', `${title}, ${n} cards`);
-    st.show.setAttribute('aria-label', `${st.list.hidden ? 'Show' : 'Hide'} the ${n} cards: ${title}`);
-    st.all.setAttribute('aria-label', `Dismiss all ${n} cards: ${title}`);
+    st.count.textContent = t`${title} (${num(n)})`;
+    st.el.setAttribute('aria-label', plural(n, '{0}, # card', '{0}, # cards', title));
+    st.show.setAttribute('aria-label', st.list.hidden ? plural(n, 'Show the # card: {0}', 'Show the # cards: {0}', title) : plural(n, 'Hide the # card: {0}', 'Hide the # cards: {0}', title));
+    st.all.setAttribute('aria-label', plural(n, 'Dismiss the # card: {0}', 'Dismiss all # cards: {0}', title));
   };
   /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
   function place(kind, title, node) {
@@ -142,17 +143,17 @@ let lone = 0;
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const more = h('button', { class: 'btn ghost more', type: 'button', hidden: true, 'aria-expanded': 'false', onclick: () => keep(() => {
       const open = node.classList.toggle('open');
-      more.textContent = open ? 'Less' : 'More';
+      more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
       el.classList.toggle('opened', Boolean(el.querySelector('.notice.open')));
-    }) }, 'More');
+    }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title }),
       body ? h('p', { text: body }) : null,
       body ? more : null,
       h('div', { class: 'acts' },
-        ...actions.map((a) => h('button', { class: a.primary ? 'btn pri' : 'btn', type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),
-        h('button', { class: 'btn ghost', type: 'button', onclick: () => dismiss() }, 'Dismiss')));
+        ...actions.map((a) => h('button', { class: ['btn', a.primary && 'pri'], type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => dismiss() }, t`Dismiss`)));
     fitters.set(node, fit(node, more));
     const dismiss = () => { if (node.isConnected) keep(() => { leave(kind, node); el.classList.toggle('opened', Boolean(el.querySelector('.notice.open'))); }); };
     keep(() => place(kind, title, node));
@@ -161,9 +162,9 @@ let lone = 0;
   }
   /** @param {string} text */
   function toast(text) {
-    const t = h('div', { class: 'toast', text });
-    toasts.append(t);
-    setTimeout(() => t.remove(), 3500);
+    const shown = h('div', { class: 'toast', text });
+    toasts.append(shown);
+    setTimeout(() => shown.remove(), 3500);
   }
   return { el, toasts, card, toast };
 }

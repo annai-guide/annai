@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, crumb } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_SENDS } from '../../core/after/recap.js';
 import { loadPack } from '../../core/pack/read.js';
@@ -66,7 +66,7 @@ export async function renderRecap(ctx, route) {
     },
   }, 'Hear Shiori tell it') : null;
   return h('div', { class: 'screen recap' },
-    h('p', { class: 'crumbs' }, h('a', { href: trip }, '← ', h('span', { dir: 'auto', text: scope.title }))),
+    h('p', { class: 'crumbs' }, crumb(trip, h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: 'Recap' }),
     stampMarks(stamps, { max: 24, big: true }),
     recap

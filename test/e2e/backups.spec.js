@@ -55,7 +55,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await openApp(page);
     await startTrip(page, 'Big Sur');
     await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
-    await page.getByRole('link', { name: '← Back to trip' }).click();
+    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
     await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
     await addGitHub(page, gh);
@@ -69,7 +69,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     expect(files.has('annai-archive.json')).toBe(true);
     expect([...files.keys()].some((p) => /^trips\/[^/]+\/files\/gate\.(webp|jpg)$/.test(p))).toBe(true);
     expect(gh.count('POST', '/git/blobs')).toBe(1);
-    await page.getByRole('link', { name: 'Trips', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
     await expect(page.getByText(/backed up (just now|\d+ seconds? ago)/)).toBeVisible();
 
     // A change goes up by itself too, and the photo isn't sent again.
@@ -111,7 +111,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
     await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
-    await page.getByRole('link', { name: '← Back to trip' }).click();
+    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
     await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
@@ -151,7 +151,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
 
     // The first phone's next backup meets it: a card, and nothing is overwritten.
     const commits = gh.commits(REPO).length;
-    await page.getByRole('link', { name: 'Trips', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
     await page.getByRole('link', { name: /Kyoto/ }).click();
     await writeNote(page, '/notes/kiyomizu.md', 'Kiyomizu-dera');
     await expect(page.getByText('A newer backup is on GitHub')).toBeVisible({ timeout: 30_000 });

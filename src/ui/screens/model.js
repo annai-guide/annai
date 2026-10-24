@@ -1,4 +1,4 @@
-import { h, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
+import { h, crumb, savedField, savedCheck, autosave, twoStep, jsonField, numberIn } from '../dom.js';
 import { modelOf, modelBase, providerOf, endpointOf, updateModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
@@ -116,7 +116,7 @@ export async function renderModel(ctx, id) {
   };
   const tokens = (/** @type {HTMLInputElement} */ i, /** @type {string} */ what) => numberIn(i, 1, 1e9, `${what} is a whole number of tokens; leave it empty when you don't know it.`, { whole: true });
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
+    h('p', { class: 'crumbs' }, crumb(back, ep.name)),
     title,
     of,
     h('section', { class: 'panel', 'aria-label': 'Model' },
@@ -179,7 +179,7 @@ function renderSpeechModel(ctx, rec, kind, ep, back, of) {
   };
   const saveFields = () => save('tunables', (/** @type {any} */ now) => withFields(now.tunables));
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: back }, `← ${ep.name}`)),
+    h('p', { class: 'crumbs' }, crumb(back, ep.name)),
     title,
     of,
     h('p', { class: 'sub', text: { in: 'A transcription model: it turns what you say into text.', out: 'A voice: Shiori speaks with it.', live: 'A live voice: it hears and speaks in one stream, as Koe.' }[kind] }),
