@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cp, mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { check, update, extract, readMessages, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
+import { check, update, extract, readMessages, readGlossary, glossaryWarnings, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
 import { key } from '../../src/core/l10n.js';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/strings', import.meta.url));
@@ -82,7 +82,7 @@ test('update adds a new row, drops the stale one, and ships only keys and texts'
       [key('Saved to {0} for {1}')]: '{0}に保存',
       [key('# stamp\0# stamps')]: { other: 'スタンプ#個' },
     });
-    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships, English first. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n");
+    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships (English first) and the unfinished ones, offered only while Experimental's switch is on. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze([]);\n");
     assert.deepEqual(await update(dir), [], 'a second run has nothing to write');
   });
 });
@@ -229,5 +229,96 @@ test('a plural\'s note names its first argument, and a carried draft\'s note doe
     await update(dir);
     const carried = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8')).find((r) => r.en === 'Not yet now');
     assert.equal(carried?.note, 'English was: Not yet');
+  });
+});
+
+// ---- localization L4: experimental languages, the languages sw.js caches, the glossary ----
+
+test('an unfinished (experimental) language fails the check for a new row, as a shipped one does', async () => {
+  await inCopy(async (dir) => {
+    await writeFile(`${dir}/l10n/languages.json`, JSON.stringify([{ tag: 'ja', status: 'experimental' }]));
+    const { problems, warnings } = await check(dir, []);
+    assert.ok(has(problems, 'l10n/ja.tsv', 7, /no text yet for "Not yet"/), 'a new row fails while experimental');
+    assert.ok(has(problems, 'src/a.mjs', 9, /no row for "Brand new"/));
+    assert.ok(!warnings.some((w) => w.file === 'l10n/ja.tsv'), 'and is not just a warning');
+    // Not listed at all, the same rows are only warnings.
+    await writeFile(`${dir}/l10n/languages.json`, '[]');
+    const unlisted = await check(dir, []);
+    assert.ok(!unlisted.problems.some((p) => p.file === 'l10n/ja.tsv'));
+    assert.ok(unlisted.warnings.some((w) => w.file === 'l10n/ja.tsv' && /no text yet for "Not yet"/.test(w.message)));
+  });
+});
+
+test('the list names the unfinished languages apart from the shipped, and sw.js caches every listed one', () => {
+  const list = /** @type {const} */ ([{ tag: 'ja', status: 'experimental' }, { tag: 'zh-Hans', status: 'shipped' }]);
+  const text = listFile([...list]);
+  assert.match(text, /export const SHIPPED = Object\.freeze\(\['en', 'zh-Hans'\]\);\n\/\*\* @type \{readonly string\[\]\} \*\/\nexport const EXPERIMENTAL = Object\.freeze\(\['ja'\]\);\n$/);
+  assert.equal(swWithLangs("const A = 1;\nconst LANGS = [];\nconst SHELL = [];\n", [...list]), "const A = 1;\nconst LANGS = ['ja', 'zh-Hans'];\nconst SHELL = [];\n");
+  assert.equal(swWithLangs("const LANGS = ['ja'];\n", []), 'const LANGS = [];\n');
+  assert.equal(swWithLangs('const SHELL = [];\n', [...list]), null, 'no LANGS line, nothing to write');
+});
+
+test('update writes sw.js\'s LANGS, and the check says when it is out of date', async () => {
+  await inCopy(async (dir) => {
+    await writeFile(`${dir}/sw.js`, "// worker\nconst LANGS = [];\nconst SHELL = [];\n");
+    const stale = await check(dir, []);
+    assert.ok(has(stale.problems, 'sw.js', 2, /LANGS isn't what l10n\/languages\.json makes/));
+    const written = await update(dir);
+    assert.ok(written.includes('sw.js'));
+    assert.equal(await readFile(`${dir}/sw.js`, 'utf8'), "// worker\nconst LANGS = ['ja'];\nconst SHELL = [];\n");
+    assert.ok(!(await check(dir, [])).problems.some((p) => p.file === 'sw.js'));
+    await writeFile(`${dir}/sw.js`, 'const SHELL = [];\n');
+    assert.ok(has((await check(dir, [])).problems, 'sw.js', 1, /no `const LANGS/));
+  });
+});
+
+const GLOSSARY = ['en\tkind\tja\tzh-Hans\twhere\tnote', 'Trips\tscreen\t旅\t行程\tsrc/a.mjs:1\t', 'trip\tthing\t旅\t行程\tsrc/a.mjs:1\t', 'Shiori\tnever\t\t\tsrc/a.mjs:1\tstays Latin',
+  'Add to Home Screen\tplatform\tホーム画面に追加\t添加到主屏幕\tsrc/a.mjs:1\t', 'Home Screen\tplatform\tホーム画面\t主屏幕\tsrc/a.mjs:1\t', 'Koe\tmode\tKoe\t\tsrc/a.mjs:1\t'].join('\n');
+
+test('readGlossary reads the columns by their names', () => {
+  const g = readGlossary(`${GLOSSARY}\n`);
+  assert.equal(g.length, 6);
+  assert.deepEqual(g[0], { en: 'Trips', kind: 'screen', terms: { ja: '旅', 'zh-Hans': '行程' }, where: 'src/a.mjs:1', note: '' });
+  assert.equal(g[2].terms.ja, '');
+});
+
+test('a message that names a glossary term in English, whose translation does not use the language\'s word, is a warning', () => {
+  const g = readGlossary(GLOSSARY);
+  const row = (/** @type {string} */ en, /** @type {string} */ text, line = 2, state = 'draft') => ({ key: 'k', state, en, text, where: '', note: '', line });
+  const w = (/** @type {string} */ tag, /** @type {ReturnType<typeof row>[]} */ rows) => glossaryWarnings(g, tag, rows);
+  assert.deepEqual(w('ja', [row('Start a trip', '旅を始める'), row('{0} trips', '{0}件の旅')]), [], 'the term is used');
+  const bad = w('ja', [row('Start a trip', '出発を始める', 5)]);
+  assert.equal(bad.length, 1);
+  assert.deepEqual([bad[0].file, bad[0].line], ['l10n/ja.tsv', 5]);
+  assert.match(bad[0].message, /"Start a trip" names the glossary's "trip", which is "旅" in ja, and the text doesn't use it/);
+  assert.equal(w('zh-Hans', [row('Go to Trips', '去行程')]).length, 0);
+  assert.equal(w('zh-Hans', [row('Go to Trips', '去旅行')]).length, 1, 'each language has its own word');
+  assert.equal(w('ja', [row('Open Shiori', '開く')]).length, 1, 'a never term must stay as written');
+  assert.equal(w('ja', [row('Open Shiori', 'Shioriを開く')]).length, 0);
+  assert.equal(w('zh-Hans', [row('Koe is a voice', '声音')]).length, 0, 'a term with no word for the language is not checked');
+  assert.equal(w('ja', [row('Tripwire', 'x'), row('Tripping', 'x')]).length, 0, 'whole words only');
+  assert.equal(w('ja', [row('Brand new', '', 2, 'new'), row('Start a trip', '', 3, 'draft')]).length, 0, 'a row with no text yet is the check\'s own business');
+  // The longest term first: "Add to Home Screen" is one term, and its words are not "Home Screen" again.
+  assert.equal(w('ja', [row('Add to Home Screen', 'ホーム画面に追加')]).length, 0);
+  assert.equal(w('ja', [row('Add to Home Screen', 'ホーム画面へ')]).length, 1);
+});
+
+test('the check warns, and does not fail, for the glossary', async () => {
+  await inCopy(async (dir) => {
+    await writeFile(`${dir}/src/g.mjs`, "import { t } from './dom.js';\nexport const x = () => t`Start a trip`;\n");
+    await update(dir);
+    const rows = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8'));
+    const at = rows.find((r) => r.en === 'Start a trip');
+    assert.ok(at);
+    at.state = 'draft';
+    at.text = '出発を始める';
+    await writeFile(`${dir}/l10n/ja.tsv`, writeTsv(rows.map(({ line, ...r }) => r)));
+    await writeFile(`${dir}/l10n/glossary.tsv`, `${GLOSSARY}\n`);
+    const { warnings, problems } = await check(dir, []);
+    assert.ok(warnings.some((x) => x.file === 'l10n/ja.tsv' && /"Start a trip" names the glossary's "trip"/.test(x.message)));
+    assert.ok(!problems.some((x) => /glossary/.test(x.message)), 'a warning is not a failure');
+    // Without the glossary there is nothing to warn of.
+    await rm(`${dir}/l10n/glossary.tsv`);
+    assert.ok(!(await check(dir, [])).warnings.some((x) => /glossary/.test(x.message)));
   });
 });

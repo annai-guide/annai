@@ -1,6 +1,6 @@
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { t, tc, plural, setWords, key, lang, dir, holes } from '../../src/core/l10n.js';
+import { t, tc, plural, setWords, key, lang, dir, holes, chooseTag } from '../../src/core/l10n.js';
 
 beforeEach(() => setWords('en', null));
 after(() => setWords('en', null));
@@ -122,4 +122,38 @@ test('plural without a translation is English in English\'s way, whatever the in
   assert.equal(plural(1, '# stamp', '# stamps'), '1 stamp', 'a category the words lack falls to other, then to English');
   setWords('ru', {});
   assert.equal(plural(21, '# stamp', '# stamps'), '21 stamps');
+});
+
+// ---- localization L4: which language the screens start in ----
+
+test('the phone\'s languages are matched by language and script: zh-TW is not zh-Hans, and the first one annai has wins', () => {
+  const both = ['en', 'ja', 'zh-Hans'];
+  assert.deepEqual(chooseTag(null, ['zh-TW', 'ja-JP'], both), { tag: 'ja', region: 'JP' });
+  assert.deepEqual(chooseTag(null, ['zh-CN', 'ja-JP'], both), { tag: 'zh-Hans', region: 'CN' });
+  assert.deepEqual(chooseTag(null, ['zh-Hans-SG'], both), { tag: 'zh-Hans', region: 'SG' });
+  assert.deepEqual(chooseTag(null, ['en-GB'], both), { tag: 'en', region: 'GB' });
+  assert.deepEqual(chooseTag(null, ['fr-FR', 'ja'], both), { tag: 'ja', region: '' }, 'a phone language with no region has none');
+  assert.deepEqual(chooseTag(null, ['fr-FR'], both), { tag: 'en', region: '' }, 'nothing annai has is English');
+  assert.deepEqual(chooseTag(null, [], both), { tag: 'en', region: '' });
+  assert.deepEqual(chooseTag(null, ['not a tag', 'ja-JP'], both), { tag: 'ja', region: 'JP' }, 'a tag that is none is passed over');
+});
+
+test('an unfinished language is never picked for the user, only by them', () => {
+  assert.deepEqual(chooseTag(null, ['ja-JP', 'en-US'], ['en', 'ja'], ['en']), { tag: 'en', region: 'US' });
+  assert.deepEqual(chooseTag('ja', ['ja-JP', 'en-US'], ['en', 'ja'], ['en']), { tag: 'ja', region: 'JP' });
+});
+
+test('a choice keeps the phone\'s region when it is the phone\'s language, and has none otherwise', () => {
+  const offered = ['en', 'ja', 'zh-Hans'];
+  assert.deepEqual(chooseTag('ja', ['ja-JP'], offered), { tag: 'ja', region: 'JP' });
+  assert.deepEqual(chooseTag('ja', ['en-US', 'ja-JP'], offered), { tag: 'ja', region: 'JP' }, 'the region of the phone\'s Japanese, not its first language');
+  assert.deepEqual(chooseTag('ja', ['en-US'], offered), { tag: 'ja', region: '' }, 'a phone in English has no Japanese region to give');
+  assert.deepEqual(chooseTag('en', ['ja-JP', 'en-GB'], offered), { tag: 'en', region: 'GB' });
+  assert.deepEqual(chooseTag('zh-Hans', ['zh-TW'], offered), { tag: 'zh-Hans', region: '' }, 'Traditional Chinese is not the Simplified a choice asks for');
+});
+
+test('a choice no longer offered falls back to the phone\'s languages, not straight to English', () => {
+  assert.deepEqual(chooseTag('ko', ['ko-KR', 'ja-JP'], ['en', 'ja', 'zh-Hans']), { tag: 'ja', region: 'JP' });
+  assert.deepEqual(chooseTag('ko', ['fr-FR'], ['en', 'ja']), { tag: 'en', region: '' });
+  assert.deepEqual(chooseTag('', ['ja-JP'], ['en', 'ja']), { tag: 'ja', region: 'JP' }, 'an empty choice is none');
 });
