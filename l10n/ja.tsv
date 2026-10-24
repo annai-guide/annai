@@ -1,7 +1,7 @@
 key	state	en	text	where	note
 1e9ja08#other	draft	# stamps	スタンプ#個	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other)
 1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今日のモデルの利用額は{0}で、設定した1日{1}に達しました。Shiori は明日続けられます。設定 → モデル → 1日の利用額で上げることもできます。	src/core/agent/budgets.js:103	{0} = money(spent); {1} = money(budgets.spendPerDay); Note: "She" is written as Shiori: 彼女 reads distant in Japanese.
-1acz027	draft	just now	たった今	src/core/intl.js:113	Note: Glossary warning, a false match (the check matches "now" to the Now tab regardless of case): this is relTime's "just now"; たった今 is the phrase.
+1acz027	draft	just now	たった今	src/core/intl.js:113	
 3fqfy0	draft	Languages	言語	src/core/languages.js:299	
 1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:300	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	draft	Languages you speak	話す言語	src/core/languages.js:301	
@@ -50,7 +50,7 @@ dc30do	draft	annai shows English until it is online.	オンラインになるま
 16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other); Note: Joined with ", " in the code (offline-pack.js holds()), not 、.
 18s5rc#other	draft	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
-1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000); Note: Glossary warning, a false match (the check matches "about" to the About section regardless of case): here it is "roughly", before a drive's time.
+1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
 1py6vf8	draft	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語を読める人がまだ確認していない翻訳です。オンにすると、設定 → Shiori → 言語で選べます。表現が誤っていることがあり、未翻訳の部分は英語のままです。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅	src/ui/screens/trips.js:21	
