@@ -295,7 +295,7 @@ sw.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const words = await wordsToCache();
     const cache = await caches.open(CACHE);
-    await cache.addAll([...SHELL, ...(words ? [wordsPath(words)] : [])].map((u) => new Request(u, { cache: 'reload' })));
+    await cache.addAll([...SHELL, ...words.map(wordsPath)].map((u) => new Request(u, { cache: 'reload' })));
   })());
 });
 
@@ -312,10 +312,28 @@ function sameLanguage(a, b) {
   }
 }
 
-/** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against the shipped ones. Null: English. @returns {Promise<string | null>} */
+/**
+ * The languages whose catalogs a version caches: languages.ui in the app settings, else the worker's own languages against the shipped
+ * ones; none: English. When the settings can't be read in time, also each one an older version holds, so a chosen one isn't lost
+ * when activate drops the old cache. @returns {Promise<string[]>}
+ */
 async function wordsToCache() {
   // An open queued behind a blocked upgrade or delete never answers, and no update may wait for it: after 3 s the phone decides.
-  const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(resolve, 3000, null))]);
+  const late = {};
+  const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(() => resolve(late), 3000))]);
+  const chosen = chosenWords(app === late ? null : app);
+  const tags = chosen ? [chosen] : [];
+  if (app !== late) return tags;
+  for (const name of await caches.keys()) {
+    if (!name.startsWith('annai-shell-') || name === CACHE) continue;
+    const old = await caches.open(name);
+    for (const tag of LANGS) if (!tags.includes(tag) && await old.match(wordsPath(tag))) tags.push(tag);
+  }
+  return tags;
+}
+
+/** The language the settings choose, else the phone's among the shipped ones; null: English. @param {any} app */
+function chosenWords(app) {
   const ui = app?.languages?.ui;
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;

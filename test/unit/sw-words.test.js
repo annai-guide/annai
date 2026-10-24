@@ -226,6 +226,19 @@ test('an IndexedDB that never answers does not hold up an install: the phone\'s 
   assert.deepEqual(await (await swKit({ hang: true, phone: ['en-GB'] })).install(), []);
 });
 
+test('an install whose settings read times out keeps every language an older version holds, fetched fresh, so a chosen one survives activate', async () => {
+  const k = await swKit({ hang: true, phone: ['en-US'] });
+  k.stores.get('annai-shell-0.1.0-old')?.set('/l10n/ja.json', 'old words');
+  assert.deepEqual(await k.install(), ['/l10n/ja.json'], 'the user chose 日本語 once: the new version has it too');
+  const both = await swKit({ hang: true, phone: ['zh-CN'], cacheNames: ['annai-shell-0.1.0-old', 'annai-inbox'] });
+  both.stores.get('annai-shell-0.1.0-old')?.set('/l10n/ja.json', 'old words');
+  both.stores.get('annai-shell-0.1.0-old')?.set('/l10n/ko.json', 'not a language annai lists');
+  assert.deepEqual(await both.install(), ['/l10n/zh-Hans.json', '/l10n/ja.json'], "the phone's, then the older version's; only what annai lists");
+  const read = await swKit({ settings: app({ ui: 'en' }), phone: ['en-US'] });
+  read.stores.get('annai-shell-0.1.0-old')?.set('/l10n/ja.json', 'old words');
+  assert.deepEqual(await read.install(), [], 'a read that answers decides alone: English now');
+});
+
 test('a phone is matched only against the shipped languages: a draft is never downloaded for it, but a user who chose it has it', async () => {
   const draft = { shipped: ['zh-Hans'] };
   assert.deepEqual(await (await swKit({ ...draft, phone: ['ja-JP'] })).install(), [], 'a Japanese phone, Japanese still a draft');
