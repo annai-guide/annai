@@ -1,4 +1,5 @@
-import { h, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
+import { h, t, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
+import { seconds, numField } from '../format.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
@@ -42,15 +43,15 @@ export async function renderVoice(ctx) {
     await voice.choose(m);
     modeStatus.textContent = voice.on ? 'Voice is on.' : 'Voice is off.';
   });
-  const silence = h('input', { id: 'voice-silence', type: 'number', min: '2', max: '60', step: '1', value: String(s.silenceSeconds) });
-  const firstWords = h('input', { id: 'voice-first-words', type: 'number', min: '5', max: '120', step: '1', value: String(s.firstWordsSeconds) });
+  const silence = h('input', { id: 'voice-silence', inputmode: 'numeric', value: numField(s.silenceSeconds) });
+  const firstWords = h('input', { id: 'voice-first-words', inputmode: 'numeric', value: numField(s.firstWordsSeconds) });
   // What she says shows on the screen unless switched off here (the user, 2026-10-23); it lives with the Shiori settings.
   const showWords = savedCheck('Show what she says', shownSettings(app).showWords, (on) => updateAppSettings(ctx.ws, { shiori: { showWords: on } }));
   const clips = savedCheck('Keep voice clips', s.keepClips, (on) => save({ keepClips: on }));
   // Koe live (K5): where a live session's audio goes, said plainly; its quiet spell, and whether speaking cuts her off.
   const live = [...new Set((cfg.roles[KOE_REALTIME]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
     .map((/** @type {string} */ id) => providerOf(cfg.providers[cfg.models[id].provider]).name))];
-  const closeAfter = h('input', { id: 'voice-close-after', type: 'number', min: '10', max: '300', step: '1', value: String(s.closeAfterSeconds) });
+  const closeAfter = h('input', { id: 'voice-close-after', inputmode: 'numeric', value: numField(s.closeAfterSeconds) });
   const bargeIn = savedCheck('Cut her off by speaking', s.bargeIn, (on) => save({ bargeIn: on }));
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
@@ -89,8 +90,8 @@ export async function renderVoice(ctx) {
   pick.addEventListener('change', drawSaid);
   // The browser loads its voices a moment after the page opens.
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
-  const rate = h('input', { id: 'voice-rate', type: 'number', min: '0.5', max: '2', step: '0.1', value: String(s.rate) });
-  const pause = h('input', { id: 'voice-pause', type: 'number', min: '300', max: '3000', step: '50', value: String(s.pauseMs) });
+  const rate = h('input', { id: 'voice-rate', inputmode: 'decimal', value: numField(s.rate) });
+  const pause = h('input', { id: 'voice-pause', inputmode: 'numeric', value: numField(s.pauseMs) });
   const meter = h('meter', { min: '0', max: '1', value: '0', 'aria-label': 'How loud the microphone hears you' });
   const micStatus = h('p', { class: 'sub', role: 'status' });
   const micButton = h('button', {
@@ -106,7 +107,7 @@ export async function renderVoice(ctx) {
           micStatus.textContent = 'Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.';
           return;
         }
-        const lines = [`Heard ${(seg.ms / 1000).toFixed(1)} seconds of speech.`];
+        const lines = [t`Heard ${seconds(seg.ms, 'long')} of speech.`];
         const [first] = await voice.transcribers();
         if (first) {
           micStatus.textContent = `${lines[0]} Writing it down…`;

@@ -38,7 +38,7 @@ test('Models → Add a provider opens the catalog on model providers; "unsloth" 
   await expect(row.locator('.name')).toHaveText('llama.cpp');
   await expect(row).toContainText('Also for: Unsloth');
   await expect(row).toContainText('Local');
-  await expect(row).toContainText(/Official · Has code · \d+(\.\d)? KB/); // it reads the context a server serves (decision 22)
+  await expect(row).toContainText(/Official · Has code · \d+(\.\d)? kB/); // it reads the context a server serves (decision 22)
   // Typing never draws the screen again: the box keeps what is typed and its focus.
   await expect(page.getByLabel('Search the catalog')).toBeFocused();
   await row.getByRole('button', { name: 'Add llama.cpp' }).click();

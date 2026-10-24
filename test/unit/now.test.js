@@ -10,7 +10,7 @@ const ROWS = planRows([
   { path: '/plan/nepenthe.json', item: { id: 'nepenthe', title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } } },
   { path: '/plan/day.json', item: { id: 'day', title: 'Park day', kind: 'all-day', fixed: false, start: { at: iso('00:00', '2026-11-28'), tz: LA } } },
   { path: '/plan/skate.json', item: { id: 'skate', title: 'Ice skating', fixed: false } },
-], [], { fallbackTz: LA, locale: 'en-US' });
+], [], { fallbackTz: LA });
 /** @param {import('../../src/core/plan.js').PlanRow[]} rows */
 const ids = (rows) => rows.map((r) => r.item.id);
 

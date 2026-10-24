@@ -1,8 +1,8 @@
-import { h } from '../dom.js';
+import { h, t } from '../dom.js';
 import { routeStrip } from '../../core/now.js';
-import { distanceText } from '../../core/plan.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
+import { distance, duration } from '../format.js';
 import { whileText, knownFix } from '../live-chip.js';
 import { latestCard, eventCard, nowOf } from './now.js';
 
@@ -13,6 +13,9 @@ const QUICK = /** @type {const} */ ([
   ['Fuel', 'Where is the next fuel station or charger?'],
   ['Restroom', 'Where is the nearest restroom?'],
 ]);
+
+/** How far and how long to a stop, for the road ahead: "≈ 26 mi · about 1 hr, 12 min"; a minute at least, even standing at it. @param {{ km: number | null, minutes: number | null }} s */
+export const roadText = (s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration(Math.max(1, s.minutes ?? 0) * 60_000)}`}`);
 
 /**
  * Driving (spec §16.2): the route strip, a maps card, big quick-ask buttons, and the big dock
@@ -29,7 +32,6 @@ export async function renderDrive(ctx) {
   }
   const { rows } = await tripRows(ctx, id);
   const live = ctx.live;
-  const locale = navigator.language || 'en-US';
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
   const strip = h('ol', { class: 'route-strip', 'aria-label': 'The road ahead' });
   const maps = h('div', { class: 'maps-card' });
@@ -43,7 +45,7 @@ export async function renderDrive(ctx) {
       h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (GPS off)'),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
-        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', s.km !== null ? `${distanceText(s.km, locale)} · about ${s.minutes} min` : ''].filter(Boolean).join(' · ') }))),
+        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', roadText(s)].filter(Boolean).join(' · ') }))),
       ...(stops.length ? [] : [h('li', { class: 'empty', text: 'Nothing more is planned with a place.' })]));
     const next = stops[0];
     maps.replaceChildren(...(!next ? [] : links ? [

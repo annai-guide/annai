@@ -106,7 +106,7 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     const closed = page.getByText(/live session closed · Gemini 3\.8 Live/).first();
     await expect(closed).toBeVisible({ timeout: 15_000 });
     await expect(closed).toContainText('voice off');
-    await expect(closed).toContainText(/\d+ KB in, \d+ KB out · \$0\.\d+/);
+    await expect(closed).toContainText(/\d+ kB in, \d+ kB out · \$0\.\d+/);
     expect(await page.content()).not.toContain(KEY);
   } finally {
     await s.stop();

@@ -4,6 +4,8 @@
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('./loop.js').Budgets} Budgets
  */
+import { t } from '../l10n.js';
+import { money } from '../intl.js';
 
 /** Whether an entry carries a call's cost: a role call's model.turn, or a speech request or a live session's turn (their costs aren't in any model.turn). @param {any} e */
 const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && /^(speech-|realtime$)/.test(String(e.data?.kind ?? '')));
@@ -98,7 +100,7 @@ export function budgetStop({ budgets, steps, spent, watched = true }) {
     return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took ${UNWATCHED_STEPS} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` };
   }
   if (budgets.spendPerDay && spent >= budgets.spendPerDay) {
-    return { which: 'spend', title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${spent.toFixed(2)} of the $${budgets.spendPerDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    return { which: 'spend', title: "Shiori stopped: today's budget is spent", body: t`Today's model calls cost ${money(spent)} of the ${money(budgets.spendPerDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
   }
   return null;
 }

@@ -4,7 +4,7 @@ import { photoSettings } from '../../core/photos.js';
 import { canEncode } from '../photo-codec.js';
 import { eraseDatabase } from '../../core/store-idb.js';
 import { SYS } from '../../core/scopes.js';
-import { relTime, bytes } from '../format.js';
+import { relTime, size, numField } from '../format.js';
 import { storageStatus, requestPersist, platform, isStandalone } from '../platform.js';
 import { exportPanel } from '../export-panel.js';
 import { openFileButton } from '../open-file.js';
@@ -65,7 +65,7 @@ export async function renderSettings(ctx) {
     plugins: async () => [section('Plugins', ...goTo('Skills and code plugins: install, update, switch off or remove.', '#/plugins', 'Manage plugins')), await pluginPages(ctx)],
     storage: () => section('Storage',
       h('p', { text: st.persisted ? 'Protected from automatic clearing: yes.' : 'Protected from automatic clearing: no.' }),
-      st.quota ? h('p', { class: 'sub', text: `Using ${bytes(st.usage)} of about ${bytes(st.quota)}.` }) : null,
+      st.quota ? h('p', { class: 'sub', text: `Using ${size(st.usage)} of about ${size(st.quota)}.` }) : null,
       st.persisted ? null : h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
         onclick: async () => {
@@ -105,16 +105,16 @@ async function photoControls(ctx, app) {
     return x;
   };
   const number = (/** @type {string} */ id, /** @type {Record<string, string>} */ more, /** @type {number | null} */ value) =>
-    h('input', { id, type: 'number', placeholder: 'No limit', ...more, value: value === null ? '' : String(value) });
+    h('input', { id, inputmode: 'decimal', placeholder: 'No limit', ...more, value: numField(value) });
   const format = formatPick('photo-format', s.ingest.formats);
-  const quality = number('photo-quality', { min: '0.5', max: '1', step: '0.05', placeholder: '' }, s.ingest.quality);
-  const edge = number('photo-edge', { min: '256', step: '1' }, s.ingest.maxEdge);
-  const size = number('photo-size', { min: '0.1', step: '0.1' }, s.ingest.maxBytes === null ? null : s.ingest.maxBytes / 1_000_000);
-  const asMB = (/** @type {number | null} */ b) => (b === null ? '' : String(Math.round(b / 10_000) / 100));
-  const sentEdge = number('photo-sent-edge', { min: '256', step: '1' }, s.request.maxEdge);
-  const sentSize = h('input', { id: 'photo-sent-size', type: 'number', min: '0.1', step: '0.01', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
+  const quality = number('photo-quality', { placeholder: '' }, s.ingest.quality);
+  const edge = number('photo-edge', { inputmode: 'numeric' }, s.ingest.maxEdge);
+  const size = number('photo-size', {}, s.ingest.maxBytes === null ? null : s.ingest.maxBytes / 1_000_000);
+  const asMB = (/** @type {number | null} */ b) => (b === null ? '' : numField(Math.round(b / 10_000) / 100));
+  const sentEdge = number('photo-sent-edge', { inputmode: 'numeric' }, s.request.maxEdge);
+  const sentSize = h('input', { id: 'photo-sent-size', inputmode: 'decimal', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
   const sentFormat = formatPick('photo-sent-format', s.request.formats);
-  const sentQuality = number('photo-sent-quality', { min: '0.5', max: '1', step: '0.05', placeholder: '' }, s.request.quality);
+  const sentQuality = number('photo-sent-quality', { placeholder: '' }, s.request.quality);
   const QUALITY = 'Quality goes from 0.5 to 1.';
   const EDGE = 'The longest side is a whole number of pixels, at least 256. Leave it empty for no limit.';
   // No limit is saved as 0 (photoSettings).

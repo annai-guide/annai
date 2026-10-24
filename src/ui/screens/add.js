@@ -1,5 +1,5 @@
 import { h, messageOf as message } from '../dom.js';
-import { bytes } from '../format.js';
+import { size } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
 import { NO_SERVICE } from './plugin-install.js';
@@ -173,7 +173,7 @@ function rowItem(ctx, r, why, update) {
     why ? h('span', { class: 'sub', text: `Also for: ${why}` }) : null,
     badges.length ? h('span', { class: 'chips' }, ...badges.map((b) => h('span', { class: b === 'Free' ? 'chip ok' : 'chip', text: b }))) : null,
     f.description ? h('p', { class: 'sub', text: f.description }) : null,
-    h('span', { class: 'sub', text: [r.from, f.version ? (f.code ? 'Has code' : 'Data only') : null, f.size ? bytes(f.size) : null].filter(Boolean).join(' · ') }),
+    h('span', { class: 'sub', text: [r.from, f.version ? (f.code ? 'Has code' : 'Data only') : null, f.size ? size(f.size) : null].filter(Boolean).join(' · ') }),
     r.note ? h('p', { class: 'sub warn', text: r.note }) : null,
     h('div', { class: 'acts' }, ...actions(ctx, r, update)));
 }

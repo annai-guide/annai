@@ -1,5 +1,5 @@
 import { h, twoStep, messageOf as message } from '../dom.js';
-import { andList } from '../format.js';
+import { list } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { officialUpdates } from '../../core/llm/official.js';
 import { providerOf } from '../../core/llm/config.js';
@@ -63,8 +63,8 @@ export async function removalWords(ctx, rows) {
     const needs = rows.filter((o) => o.id !== r.id && (o.requires ?? []).some((/** @type {any} */ q) => q.id === r.id)).map((o) => o.name);
     const lines = [];
     if (r.provider) lines.push(providers.length ? `Providers: ${providers.map((p) => p.name).join(', ')}.` : 'No provider is set up from it yet.');
-    if (r.provider && providers.length) lines.push(`Removing it removes ${andList(providers.map((p) => p.name))}, with ${providers.length > 1 ? 'their keys' : 'its key'} and models.`);
-    if (needs.length) lines.push(`Needed by ${andList(needs)}.`);
+    if (r.provider && providers.length) lines.push(`Removing it removes ${list(providers.map((p) => p.name))}, with ${providers.length > 1 ? 'their keys' : 'its key'} and models.`);
+    if (needs.length) lines.push(`Needed by ${list(needs)}.`);
     out.set(r.id, { providers, lines });
   }
   return out;

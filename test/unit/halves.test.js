@@ -6,6 +6,7 @@ import { prefixFingerprint } from '../../src/core/agent/context.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { KOKORO_PART } from '../../src/core/koe/instructions.js';
 import { useClock } from './clock.js';
+import { setWords } from '../../src/core/l10n.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** A reply that calls tools, then sleeps. @param {...[string, any]} calls */
@@ -571,6 +572,19 @@ test("Fix pass 10: when Kokoro's model has used up its day, Koe hears it plainly
   const [failed] = (await k.events(['note'])).filter((e) => e.data.why === 'kokoro-failed');
   assert.match(failed.data.text, /^Kokoro couldn't check: model-0: its daily limit is used up; it rests until .+\. Tell the user you couldn't check, and offer to try again\.$/);
   assert.doesNotMatch(failed.data.text, /billing/);
+});
+
+test("Fix pass 10, in another language: Koe still hears that Kokoro's model has used up its day, in plain English, whatever words the screens use", async (t) => {
+  useClock(t);
+  setWords('en', null, (english) => `⟦${english}⟧`);
+  t.after(() => setWords('en', null));
+  const k = await agentKit([[{ error: 'rate', retryAfter: 18 * 3_600_000, message: 'You exceeded your current quota, please check your plan and billing details.' }]], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }], ['tell_kokoro', { text: 'Open now?' }]) },
+  ] } } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [failed] = (await k.events(['note'])).filter((e) => e.data.why === 'kokoro-failed');
+  assert.match(failed.data.text, /^Kokoro couldn't check: model-0: its daily limit is used up; it rests until [^⟦⟧]+\. Tell the user/);
 });
 
 test("Fix pass 12: Kokoro's errors are set aside from the conversation only while Koe talks; while Koe is down, they are Shiori's", async (t) => {

@@ -5,7 +5,7 @@ import { explainStorageFull } from './storage-full.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { photoSettings, MAX_CANVAS_PIXELS } from '../core/photos.js';
 import { codec } from './photo-codec.js';
-import { bytes } from './format.js';
+import { size } from './format.js';
 import { saveFile } from './save.js';
 
 let n = 0;
@@ -75,7 +75,7 @@ export function exportPanel(ctx, what) {
         const left = result.skipped.length
           ? ` Left out, because this browser can't remove where they were taken: ${result.skipped.join(', ')}.`
           : '';
-        status.textContent = `Ready: ${result.filename} (${bytes(result.blob.size)}). Tap Save file.${left}`;
+        status.textContent = `Ready: ${result.filename} (${size(result.blob.size)}). Tap Save file.${left}`;
         saveBtn.hidden = false;
         saveBtn.focus();
       } catch (e) {

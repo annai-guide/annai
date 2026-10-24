@@ -1,14 +1,13 @@
 import { h } from '../dom.js';
 import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
-import { distanceText } from '../../core/plan.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
-import { fileHref, wording } from '../format.js';
+import { fileHref, distance, wording } from '../format.js';
 import { packLine } from '../offline-pack.js';
 import { component, mount, slotEntries } from '../slots.js';
 
@@ -30,13 +29,12 @@ export async function renderNow(ctx) {
   }
   const { scope, tz, rows } = await tripRows(ctx, id);
   const live = ctx.live;
-  const locale = navigator.language || 'en-US';
   const place = h('p', { class: 'now-place' });
   const chips = h('div', { class: 'chips' });
   const start = h('div', { class: 'acts' });
   const draw = () => {
     const now = nowOf(live);
-    place.textContent = whereWords(live, locale);
+    place.textContent = whereWords(live);
     const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
     chips.replaceChildren(...words.filter(Boolean).map((t) => h('span', { class: 'chip', text: String(t) })));
@@ -65,7 +63,7 @@ export async function renderNow(ctx) {
   if (card) {
     const words = [live ? liveText(live) : null, live && !live.online ? 'Offline · reminders still work' : null].filter(Boolean);
     // When the plugin's Now card fails, annai's own is drawn (fix pass 8b-3).
-    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live, locale), chips: words, liveOn: Boolean(live?.on) }), {
+    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live), chips: words, liveOn: Boolean(live?.on) }), {
       what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
     });
   } else {
@@ -123,8 +121,8 @@ export function planRowOf(ctx, trip, r, when, own) {
   return instead ?? li;
 }
 
-/** Where the user is, in words for them (Shiori's are in the now block). @param {any} live @param {string} locale */
-export function whereWords(live, locale) {
+/** Where the user is, in words for them (Shiori's are in the now block). @param {any} live */
+export function whereWords(live) {
   if (!live || !live.on) return "GPS is off, so annai isn't following where you are.";
   const f = knownFix(live);
   if (!f) {
@@ -132,7 +130,7 @@ export function whereWords(live, locale) {
     return live.gps === 'unavailable' ? 'No GPS signal right now. Tap GPS below to say where you are.' : 'Finding where you are…';
   }
   const near = live.near(f);
-  if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ${distanceText(near.m / 1000, locale)}`;
+  if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
   return `${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}`;
 }
 

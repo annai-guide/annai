@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, distanceText, dayLabel, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos } from '../../src/core/plan.js';
+import { setWords } from '../../src/core/l10n.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
@@ -25,7 +26,7 @@ const bookings = [
   { path: '/bookings/flight.json', booking: { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass' } },
   { path: '/bookings/hotel.json', booking: { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf' } },
 ];
-const rows = () => planRows(items, bookings, { fallbackTz: NY, locale: 'en-US' });
+const rows = () => planRows(items, bookings, { fallbackTz: NY });
 
 test('bookingRef: with or without /trip, only a booking record', () => {
   assert.equal(bookingRef('/trip/bookings/a.json'), '/bookings/a.json');
@@ -51,7 +52,7 @@ test('planRows: a booking in any state but confirmed needs checking, as the Book
   const item = (/** @type {string} */ id) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, booking: `/bookings/${id}.json` } });
   const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf' } });
   const got = planRows([item('odd'), item('none'), item('ok'), { path: '/plan/free.json', item: { id: 'free', title: 'free', fixed: false } }],
-    [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY, locale: 'en-US' });
+    [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY });
   assert.deepEqual(got.map((r) => [r.item.id, r.check]), [['odd', true], ['none', true], ['ok', false], ['free', false]]);
 });
 
@@ -67,18 +68,23 @@ test('planRows: an end on a later day says how many days later, and an end in an
     at('back', '2026-11-29T00:30:00+09:00', 'Asia/Tokyo', '2026-11-28T13:00:00-10:00', 'Pacific/Honolulu', 'flight'), // across the date line: a day earlier
     at('museum', '2026-11-27T00:00:00-05:00', NY, '2026-11-28T00:00:00-05:00', NY, 'all-day'),
   ];
-  const by = Object.fromEntries(planRows(list, [], { fallbackTz: NY, locale: 'en-US' }).map((r) => [r.item.id, [r.time, r.end, r.endDays, r.endZone]]));
-  assert.deepEqual(by.redeye, ['22:00', '06:30', 1, 'EST']);
-  assert.deepEqual(by.day, ['08:00', '16:30', 0, 'EST']);
+  const by = Object.fromEntries(planRows(list, [], { fallbackTz: NY }).map((r) => [r.item.id, [r.time, r.end, r.endDays, r.endZone]]));
+  assert.deepEqual(by.redeye, ['22:00', '06:30', 1, 'ET']);
+  assert.deepEqual(by.day, ['08:00', '16:30', 0, 'ET']);
   assert.deepEqual(by.party, ['21:00', '01:00', 1, '']);
   assert.deepEqual(by.dinner, ['17:00', '20:00', 0, '']);
   assert.deepEqual(by.toronto, ['09:00', '10:30', 0, '']);
   assert.deepEqual(by.back, ['00:30', '13:00', -1, 'HST']);
   assert.deepEqual(by.museum, ['', '', 0, '']);
-  // The zone is named the way the locale names it.
-  assert.equal(planRows(list, [], { fallbackTz: NY, locale: 'de-DE' })[0].endZone, 'GMT-5');
+  // The zone is named in the screens' language.
+  setWords('de', null);
+  try {
+    assert.equal(planRows(list, [], { fallbackTz: NY })[0].endZone, 'New York (Ortszeit)');
+  } finally {
+    setWords('en', null);
+  }
   // No end, or one that isn't a time: nothing to say about it.
-  const plain = planRows([{ path: '/plan/x.json', item: { id: 'x', title: 'x', fixed: false, start: { at: '2026-11-26T10:00:00-05:00', tz: NY }, end: { at: 'soon', tz: LA } } }], [], { fallbackTz: NY, locale: 'en-US' })[0];
+  const plain = planRows([{ path: '/plan/x.json', item: { id: 'x', title: 'x', fixed: false, start: { at: '2026-11-26T10:00:00-05:00', tz: NY }, end: { at: 'soon', tz: LA } } }], [], { fallbackTz: NY })[0];
   assert.deepEqual([plain.end, plain.endDays, plain.endZone], ['', 0, '']);
 });
 
@@ -100,16 +106,6 @@ test('legKm: straight-line distance between stops with places, never across a fl
   assert.ok(near !== null && near > 0.5 && near < 0.7, String(near));
   assert.equal(legKm(by.flight, by.hotel), null); // over 1,000 km: a flight, not a leg
   assert.equal(legKm(by.hotel, by.late), null); // no place
-});
-
-test('distanceText and dayLabel speak the locale', () => {
-  assert.equal(distanceText(0.581, 'en-US'), '≈ 0.4 mi');
-  assert.equal(distanceText(42.3, 'en-US'), '≈ 26 mi');
-  assert.equal(distanceText(42.3, 'de-DE'), '≈ 42 km');
-  assert.equal(distanceText(4.26, 'fr-FR'), '≈ 4,3 km');
-  assert.equal(distanceText(10, 'en-GB'), '≈ 6.2 mi');
-  assert.equal(distanceText(10, 'not a locale!'), '≈ 6.2 mi');
-  assert.equal(dayLabel('2026-11-25', 'en-US'), 'Wed, Nov 25');
 });
 
 test('PLAN_FILE and BOOKING_FILE: records sit directly in their folder, as the format check and the booking rule see them', () => {

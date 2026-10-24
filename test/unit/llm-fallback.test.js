@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { setWords, key } from '../../src/core/l10n.js';
+import { timeIn, deviceZone } from '../../src/core/time.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
@@ -7,7 +9,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText } from '../../src/core/llm/fallback.js';
+import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, restText } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -421,7 +423,8 @@ test("Koe fix pass 10: a rest past 10 minutes (a provider's day limit) is said p
   const r = await call(t);
   const until = new Date(1_000_000 + 18 * 3_600_000);
   assert.match(String(r.attempts[0].error), /^its daily limit is used up; it rests until .+/);
-  assert.ok(String(r.attempts[0].error).includes(until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+  assert.ok(String(r.attempts[0].error).includes(timeIn(until.getTime(), deviceZone()) ?? '?'), 'a 24-hour clock, as the models read times');
+  assert.equal(r.attempts[0].restsUntil, until.getTime(), 'the attempt says when it rests until, for code to read');
   assert.doesNotMatch(String(r.attempts[0].error), /billing/);
   const again = await call(t);
   assert.deepEqual(again.attempts.map((a) => [a.outcome, a.error]), [['benched', r.attempts[0].error], ['ok', undefined]]);
@@ -454,4 +457,32 @@ test("scripted rules: the request after the model's own tool results is a follow
   assert.equal(await words([results, said], 'woke for: the weather changed\nconnection: online\n'), 'Rain.', 'a wake that joined the turn, and a rule for it');
   // Without results it is a new request, matched by what woke her: no rule here, so she sleeps.
   assert.equal(await words([said], 'woke for: a bell rang\n'), '');
+});
+
+test('a day limit\'s sentence is for models and code, so no language changes it; the card\'s sentence for the user is made when it is shown', async () => {
+  const t = setup([[{ error: 'rate', retryAfter: 18 * 3_600_000, message: 'You exceeded your current quota.' }], [{ text: 'B.' }]]);
+  const plain = restText(1_000_000 + 18 * 3_600_000, 1_000_000);
+  setWords('en', null, (english) => `⟦${english}⟧`);
+  try {
+    const r = await call(t);
+    assert.equal(r.attempts[0].error, plain, 'not made through t');
+    assert.match(plain, /^its daily limit is used up; it rests until (\w+ )?\d\d:\d\d$/);
+    const [rested] = (await call(t)).attempts;
+    assert.equal(rested.outcome, 'benched');
+    assert.equal(rested.restsUntil, r.attempts[0].restsUntil, 'a later turn, skipping the resting model, still says when');
+    // The card says it in the screens\' words, whole, without changing any case.
+    assert.match(failedText([rested], { now: 1_000_000, plain: true }), /^.+: Its daily limit is used up; it rests until [^⟦⟧]+\.$/, 'a model that reads it (a photo\'s stand-in) gets the English');
+    assert.match(failedText([rested], { now: 1_000_000 }), /^.+: ⟦Its daily limit is used up; it rests until .+\.⟧$/);
+  } finally {
+    setWords('en', null);
+  }
+  const at = new Date(1_000_000 + 18 * 3_600_000);
+  const shown = failedText([{ model: 'm', name: 'Gemini', outcome: 'benched', ms: 0, error: plain, restsUntil: at.getTime() }], { now: 1_000_000 });
+  assert.match(shown, /^Gemini: Its daily limit is used up; it rests until .+\.$/);
+  setWords('ja', { [key('Its daily limit is used up; it rests until {0}.')]: '1日の上限に達しました。{0}まで休みます。' });
+  try {
+    assert.match(failedText([{ model: 'm', name: 'Gemini', outcome: 'benched', ms: 0, error: plain, restsUntil: at.getTime() }], { now: 1_000_000 }), /^Gemini: 1日の上限に達しました。.+まで休みます。$/);
+  } finally {
+    setWords('en', null);
+  }
 });

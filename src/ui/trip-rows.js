@@ -23,5 +23,5 @@ export async function tripRows(ctx, id) {
   };
   const items = (await read('/plan/', PLAN_FILE)).map((x) => ({ path: x.path, item: x.value }));
   const bookings = (await read('/bookings/', BOOKING_FILE)).map((x) => ({ path: x.path, booking: x.value }));
-  return { scope, trip, tz, rows: planRows(items, bookings, { fallbackTz: tz, locale: navigator.language || 'en-US' }) };
+  return { scope, trip, tz, rows: planRows(items, bookings, { fallbackTz: tz }) };
 }

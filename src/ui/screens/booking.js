@@ -46,7 +46,7 @@ export async function renderBooking(ctx, route) {
   return h('div', { class: 'screen' }, crumbs,
     h('h1', { class: 'title', text: String(booking.title || booking.id || 'Booking') }),
     h('p', {}, confirmed ? h('span', { class: 'chip ok', text: 'Confirmed' }) : h('span', { class: 'chip check', text: 'Check this against the original, then confirm it.' })),
-    h('dl', { class: 'facts' }, ...bookingLines(booking, navigator.language || 'en-US').flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+    h('dl', { class: 'facts' }, ...bookingLines(booking).flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
     booking.place?.name ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: mapsUrl(booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, 'Open in Maps')) : null,
     await original(ctx, id, booking.source),
     h('div', { class: 'acts' }, confirm, h('a', { class: 'btn', href: fileHref(id, path) }, 'Change it')),

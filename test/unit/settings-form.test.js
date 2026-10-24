@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formFields, readForm } from '../../src/ui/settings-form.js';
+import { formFields, readForm, keypad } from '../../src/ui/settings-form.js';
 
 const SCHEMA = {
   type: 'object',
@@ -44,4 +44,15 @@ test('8b-5: a writeOnly field is a secret only when it is a string; any other wr
   assert.deepEqual(formFields(schema).map((f) => [f.key, f.kind]), [['pin', 'unsupported'], ['hush', 'unsupported'], ['code', 'secret'], ['note', 'text']]);
   assert.deepEqual(readForm(schema, { pin: '1234', hush: true, code: 'a', note: 'hi' }),
     { values: { note: 'hi' }, secrets: { code: 'a' }, errors: [] });
+});
+
+test('a number field asks for a digit keypad only when its minimum is zero or more: the iPhone\'s has no minus', () => {
+  assert.equal(keypad({ kind: 'integer', min: 1 }), 'numeric');
+  assert.equal(keypad({ kind: 'integer', min: 0 }), 'numeric');
+  assert.equal(keypad({ kind: 'number', min: 0 }), 'decimal');
+  assert.equal(keypad({ kind: 'number', min: 0.5, max: 2 }), 'decimal');
+  assert.equal(keypad({ kind: 'number', min: -90, max: 90 }), undefined, 'a latitude can be negative');
+  assert.equal(keypad({ kind: 'number' }), undefined, 'no minimum, so a minus may be wanted');
+  assert.equal(keypad({ kind: 'integer', max: 10 }), undefined);
+  assert.equal(keypad({ kind: 'text' }), undefined);
 });

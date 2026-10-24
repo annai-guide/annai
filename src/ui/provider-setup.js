@@ -7,7 +7,7 @@ import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
 import { officialPlugins, makesProvider } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
-import { andList } from './format.js';
+import { list } from './format.js';
 
 /**
  * Coming back to annai's address (decision 16): the plugin that sent the browser away expects the next load with a query, within 15 minutes, once.
@@ -236,8 +236,8 @@ export function filledWords(name, filled, costs = {}, freeTier = false) {
   const paid = chat.filter((r) => costs[r]);
   const free = chat.filter((r) => !costs[r]);
   return [
-    free.length ? `${andList(free.map((r) => ROLE_SHORT[r] ?? r))} now ${free.length === 1 ? 'uses' : 'use'} ${name}'s free models.` : '',
-    paid.length ? `${andList(paid.map((r) => `${ROLE_SHORT[r] ?? r} ${costs[r]}`))} ${paid.length === 1 ? 'costs' : 'cost'} money: ${name} has no free model to start with, and Shiori needs one to answer.${freeTier ? ' If your key is on the free tier, switch that on, on this page: its models then cost nothing.' : ''}` : '',
+    free.length ? `${list(free.map((r) => ROLE_SHORT[r] ?? r))} now ${free.length === 1 ? 'uses' : 'use'} ${name}'s free models.` : '',
+    paid.length ? `${list(paid.map((r) => `${ROLE_SHORT[r] ?? r} ${costs[r]}`))} ${paid.length === 1 ? 'costs' : 'cost'} money: ${name} has no free model to start with, and Shiori needs one to answer.${freeTier ? ' If your key is on the free tier, switch that on, on this page: its models then cost nothing.' : ''}` : '',
     speech.length ? `Its ${speech.map((r) => ROLE_SHORT[r].toLowerCase()).join(' and ')} models went behind the free entries.` : '',
   ].filter(Boolean).join(' ');
 }
