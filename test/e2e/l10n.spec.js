@@ -676,6 +676,32 @@ test('under Japanese screens a trip card\'s name carries its own language, not t
   await expect(names.first()).toHaveAttribute('dir', 'auto');
 });
 
+test('a language already on the device is chosen again offline: 日本語, then English, then 日本語 with no connection', async ({ page }, testInfo) => {
+  needJapanese();
+  const server = await startServer(8841 + testInfo.parallelIndex);
+  try {
+    await page.goto(`${server.origin}/#/shiori`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+    await waitForServiceWorker(page);
+    await allowUnfinished(page);
+    for (const [pick, lang] of /** @type {const} */ ([['ja', /^ja$/], ['en', /^en/]])) {
+      await page.evaluate(() => { location.hash = '#/shiori'; });
+      const restarted = page.waitForEvent('load');
+      await page.locator('#language-ui').selectOption(pick);
+      await restarted;
+      await expect(page.locator('html')).toHaveAttribute('lang', lang);
+    }
+    await server.stop();
+    await page.evaluate(() => { location.hash = '#/shiori'; });
+    const restarted = page.waitForEvent('load');
+    await page.locator('#language-ui').selectOption('ja');
+    await restarted;
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  } finally {
+    await server.stop();
+  }
+});
+
 test('Don\'t restart, on the card that waits for Shiori, gives the row back and says the change waits', async ({ page }) => {
   needJapanese();
   const reply = { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Low tide is at 5:40.' } }, { name: 'sleep', input: {} }]), delayMs: 6000 };
