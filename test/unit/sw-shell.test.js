@@ -24,6 +24,8 @@ test('the service worker caches exactly the files the app ships', async () => {
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   const block = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '';
   const shell = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+  // A path listed twice would be copied twice at an update, and the second copy fails it: no update would ever install.
+  assert.deepEqual(shell.filter((p, i) => shell[i - 1] === p), [], 'no path is listed twice');
   // LICENSE too, so Settings → About → Read the licence works offline.
   const expected = ['/', '/index.html', '/manifest.webmanifest', '/LICENSE', ...(await walk('src')).filter((p) => p !== PSEUDO), ...(await walk('assets')), ...(await walk('skills'))].sort();
   assert.deepEqual(shell, expected);
@@ -52,12 +54,16 @@ test('installing fetches the shell past the HTTP cache, so an update never store
   /** @type {any[]} */
   let added = [];
   const self = { location: new URL('https://annai.guide/sw.js'), addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; } };
-  const caches = { open: async () => ({ addAll: async (/** @type {any[]} */ reqs) => { added = reqs; } }) };
+  const caches = {
+    keys: async () => [],
+    match: async () => new Response('{}'),
+    open: async () => ({ addAll: async (/** @type {any[]} */ reqs) => { added = reqs; }, match: async () => new Response('a file'), put: async () => {}, delete: async () => false }),
+  };
   // In a service worker, relative URLs resolve against its own location.
   class SwRequest extends Request {
     constructor(/** @type {string} */ u, /** @type {RequestInit} */ init) { super(new URL(u, self.location.href), init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, setTimeout: () => 0 });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, crypto, setTimeout: () => 0 });
   /** @type {Promise<unknown> | undefined} */
   let done;
   handlers.install({ waitUntil: (/** @type {Promise<unknown>} */ p) => { done = p; } });

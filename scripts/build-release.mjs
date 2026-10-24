@@ -12,12 +12,13 @@ import { brotliCompressSync, constants } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 /** What counts as text: the kinds of file annai ships that aren't compressed already (fonts and pictures are). */
-const TEXT = /\.(?:html|js|mjs|css|json|webmanifest|svg|txt|md)$|(?:^|\/)LICENSE$/;
+export const TEXT = /\.(?:html|js|mjs|css|json|webmanifest|svg|txt|md)$|(?:^|\/)LICENSE$/;
 /** The folders annai fetches from on demand, outside sw.js's SHELL: languages, the catalog, the official plugins. */
 const ON_DEMAND = ['l10n', 'catalog', 'plugins-official'];
 
 /**
- * The text files annai fetches, relative to dir: sw.js, the files in its SHELL, and the on-demand folders.
+ * The text files annai fetches, relative to dir: sw.js, its manifest shell.json (in a release from after it came), the files in its
+ * SHELL, and the on-demand folders.
  * @param {string} dir @returns {Promise<string[]>}
  */
 export async function shippedText(dir) {
@@ -25,6 +26,7 @@ export async function shippedText(dir) {
   const list = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1];
   if (list === undefined) throw new Error(`${dir}/sw.js has no SHELL list`);
   const names = new Set(['sw.js']);
+  if (await stat(join(dir, 'shell.json')).then((s) => s.isFile(), () => false)) names.add('shell.json');
   for (const [, path] of list.matchAll(/'(\/[^']*)'/g)) names.add(path.endsWith('/') ? `${path.slice(1)}index.html` : path.slice(1));
   for (const folder of ON_DEMAND) {
     for (const name of await readdir(join(dir, folder), { recursive: true }).catch(() => /** @type {string[]} */ ([]))) {
