@@ -130,7 +130,7 @@ test('a release sends x.br when the browser takes brotli, and the file itself ot
   assert.equal((await get(`${server.origin}/missing.js`, { headers: { 'Accept-Encoding': 'br' } })).status, 404);
 });
 
-test("a file the browser already holds is answered 304 to its ETag: Chromium's service-worker update check asks so", async (t) => {
+test("a file the browser already holds is answered 304 to its ETag: the service worker's update check asks so", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'annai-serve-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'scripts'));
