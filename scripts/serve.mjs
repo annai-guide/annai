@@ -81,8 +81,8 @@ const server = http.createServer(async (req, res) => {
     const head = req.method === 'HEAD';
     const brotli = packed !== null && accepts(req.headers['accept-encoding'], 'br');
     if (brotli) res.setHeader('Content-Encoding', 'br');
-    // A browser that holds the file asks again with its tag, and is told it still has it. Chromium's check for a new sw.js does
-    // (it is fetched on every check); WebKit's, in the tests, doesn't. The tag is the sent file's size and time, as most servers make it.
+    // A browser that holds the file asks again with its tag, and is told it still has it: Chromium's and WebKit's checks for a new
+    // sw.js do, on every check. The tag is the sent file's size and time, as most servers make it.
     const sent = brotli ? /** @type {import('node:fs').Stats} */ (b) : s;
     const tag = `"${sent.size.toString(36)}-${Math.floor(sent.mtimeMs).toString(36)}${brotli ? '-br' : ''}"`;
     res.setHeader('ETag', tag);
