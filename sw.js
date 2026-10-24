@@ -353,10 +353,9 @@ async function cacheWords(tag, port) {
   try {
     if (typeof tag !== 'string' || !LANGS.includes(tag)) throw new Error('not a language annai has');
     let res = await fetch(new Request(wordsPath(tag), { cache: 'reload' })).catch(() => null);
-    const device = !res?.ok;
+    const device = !(await isCatalog(res));
     if (device) res = (await (await caches.open(CACHE)).match(wordsPath(tag))) ?? null;
-    const words = res?.ok ? await res.clone().json() : null;
-    if (!res || !words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
+    if (!res || !(await isCatalog(res))) throw new Error('not a catalog');
     for (const name of await caches.keys()) {
       if (!name.startsWith('annai-shell-')) continue;
       const cache = await caches.open(name);
@@ -366,6 +365,16 @@ async function cacheWords(tag, port) {
     ok = true;
   } catch { /* said no below */ }
   port?.postMessage({ ok });
+}
+
+/** Whether a response is a catalog: a JSON object (a captive portal answers 200 with its own page). @param {Response | null | undefined} res */
+async function isCatalog(res) {
+  try {
+    const words = res?.ok ? await res.clone().json() : null;
+    return Boolean(words) && typeof words === 'object' && !Array.isArray(words);
+  } catch {
+    return false;
+  }
 }
 
 sw.addEventListener('activate', (event) => {
@@ -408,7 +417,10 @@ async function respond(req, fallback) {
   const fetched = async () => {
     const res = await fetch(req);
     const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
-    if (tag && res.ok) await cache.put(wordsPath(tag), res.clone()).catch(() => {});
+    if (!tag) return res;
+    // Words are kept only when they are a catalog; else the words kept here answer, if there are any.
+    if (!(await isCatalog(res))) return (await cached()) ?? res;
+    await cache.put(wordsPath(tag), res.clone()).catch(() => {});
     return res;
   };
   if (DEV) {

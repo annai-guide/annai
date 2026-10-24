@@ -109,6 +109,7 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
     if (down) throw new TypeError('Failed to fetch');
     const m = /^\/l10n\/(.+)\.json$/.exec(new URL(req.url).pathname);
     fetched.push(new URL(req.url).pathname);
+    if (m && m[1] in network && network[m[1]].startsWith('<')) return new Response(network[m[1]], { headers: { 'Content-Type': 'text/html' } }); // a captive portal's page
     return m && m[1] in network ? new Response(network[m[1]], { headers: { 'Content-Type': 'application/json' } }) : new Response('not found', { status: 404 });
   };
   // In a service worker, relative URLs resolve against its own location.
@@ -221,6 +222,23 @@ test('offline, the device\'s words go only where a catalog is missing: a waiting
   k.offline();
   assert.deepEqual(await k.ask('ja'), [{ ok: true }]);
   assert.equal(k.stores.get('annai-shell-0.1.0-waiting')?.get('/l10n/ja.json'), '{"a":"new"}');
+});
+
+test('a captive portal\'s page (200, HTML) is no catalog: the device\'s words answer, and nothing is kept from it', async () => {
+  const now = await running();
+  const portal = { ja: '<html>Sign in to the hotel Wi-Fi</html>', 'zh-Hans': '<html>Sign in</html>' };
+  const k = await swKit({ cacheNames: [now], network: portal });
+  k.stores.get(now)?.set('/l10n/ja.json', '{"a":"b"}');
+  assert.deepEqual(await k.ask('ja'), [{ ok: true }], 'chosen again behind the portal');
+  assert.deepEqual(await k.ask('zh-Hans'), [{ ok: false }], 'not on the device: no');
+  assert.equal(k.stores.get(now)?.get('/l10n/ja.json'), '{"a":"b"}');
+  for (const host of ['annai.guide', 'localhost']) {
+    const r = await swKit({ host, cacheNames: [now], network: portal });
+    r.stores.get(now)?.set('/l10n/ja.json', '{"a":"b"}');
+    assert.equal(await r.get('/l10n/ja.json'), '{"a":"b"}', `the kept words are served (${host})`);
+    await r.get('/l10n/zh-Hans.json');
+    assert.equal(r.stores.get(now)?.get('/l10n/zh-Hans.json'), undefined, `and the portal's page is not kept as words (${host})`);
+  }
 });
 
 test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
