@@ -729,6 +729,7 @@ test('a wake in the conversation says why from its kinds, never the words the mo
   assert.deepEqual(reminderLine({}), ['Reminder: ', '']);
   assert.deepEqual(reminderLine({ aloud: true }), ['Reminder, said aloud: ', '']);
   assert.deepEqual(reminderLine({ title: "Shiori's answer", aloud: false }), ["Shiori's answer: ", '']);
+  assert.deepEqual(reminderLine({ title: 'Reminder', aloud: true }), ['Reminder, said aloud: ', ''], 'any other title is a reminder');
 });
 
 test("the price line says a change that is coming: from its date, the price then", () => {
