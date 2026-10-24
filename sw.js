@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '71a4066616d9';
+const BUILD = '830874695a2c';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -288,9 +288,75 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  // Past the HTTP cache: a new version must never store a stale copy of one of its files.
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))));
+  // The shell and the interface language's words, as one: a version whose words can't be fetched is not installed, and is tried
+  // again later, as when a shell file can't be fetched. Past the HTTP cache: a new version must never store a stale copy of one.
+  event.waitUntil((async () => {
+    const words = await wordsToCache();
+    const cache = await caches.open(CACHE);
+    await cache.addAll([...SHELL, ...(words ? [wordsPath(words)] : [])].map((u) => new Request(u, { cache: 'reload' })));
+  })());
 });
+
+/** @param {string} tag */
+const wordsPath = (tag) => `/l10n/${tag}.json`;
+
+/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
+function sameLanguage(a, b) {
+  try {
+    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
+    return x.language === y.language && x.script === y.script;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The language whose catalog a version caches: the choice in the app settings (sys:settings /app.json, languages.ui), as handled()
+ * reads /push.json; with none, or one annai no longer has, the first of the worker's own languages that LANGS has. Null: English.
+ * @returns {Promise<string | null>}
+ */
+async function wordsToCache() {
+  /** @type {IDBDatabase | undefined} */
+  let db;
+  /** @type {unknown} */
+  let ui;
+  try {
+    db = await openExisting();
+    const file = (await readFiles(db, 'sys:settings', ['/app.json'])).get('/app.json');
+    ui = file ? JSON.parse(new TextDecoder().decode(file.data))?.languages?.ui : undefined;
+  } catch {
+    // no settings yet: as the phone is set
+  } finally {
+    db?.close();
+  }
+  if (ui === 'en') return null;
+  if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
+  for (const wanted of sw.navigator?.languages ?? []) {
+    const found = LANGS.find((tag) => sameLanguage(wanted, tag));
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Picking a language asks for its words to be kept before annai restarts: fetched once, into this version's cache and into that of a
+ * version that waits (the restart may land in it), then answered on the port.
+ * @param {unknown} tag @param {MessagePort | undefined} port
+ */
+async function cacheWords(tag, port) {
+  let ok = false;
+  try {
+    if (typeof tag !== 'string' || !LANGS.includes(tag)) throw new Error('not a language annai has');
+    const res = await fetch(new Request(wordsPath(tag), { cache: 'reload' }));
+    const words = res.ok ? await res.clone().json() : null;
+    if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
+    for (const name of await caches.keys()) if (name.startsWith('annai-shell-')) await (await caches.open(name)).put(wordsPath(tag), res.clone());
+    ok = true;
+  } catch {
+    // answered below
+  }
+  port?.postMessage({ ok });
+}
 
 sw.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -305,6 +371,7 @@ sw.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') sw.skipWaiting();
   else if (event.data === 'build') event.ports?.[0]?.postMessage({ version: VERSION, build: BUILD });
   else if (event.data === 'claim') event.waitUntil(sw.clients.claim().catch(() => {}));
+  else if (event.data?.type === 'cache-words') event.waitUntil(cacheWords(event.data.tag, event.ports?.[0]));
 });
 
 sw.addEventListener('fetch', (event) => {

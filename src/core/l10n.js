@@ -24,6 +24,34 @@ export function key(source, context) {
   for (const b of new TextEncoder().encode(context ? `${context}\u0001${source}` : source)) n = Math.imul(n ^ b, 0x01000193);
   return (n >>> 0).toString(36);
 }
+/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
+function sameLanguage(a, b) {
+  try {
+    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
+    return x.language === y.language && x.script === y.script;
+  } catch { return false; /* not a language tag */ }
+}
+/**
+ * The screens' language at the start and the region its formats take. own: the choice kept on the device (`annai.ui`); offered: what
+ * it may be; shipped: what the phone's languages are matched against (a draft is only ever chosen). A choice no longer offered is
+ * as none: the first of the phone's languages annai has, not straight English. The region is the phone's, from its first language
+ * that is the chosen one (ja chosen on a ja-JP phone gives ja-JP).
+ * @param {string | null | undefined} own @param {readonly string[]} phone @param {readonly string[]} offered @param {readonly string[]} [shipped]
+ * @returns {{ tag: string, region: string }}
+ */
+export function chooseTag(own, phone, offered, shipped = offered) {
+  const regionOf = (/** @type {string} */ tag) => {
+    for (const wanted of phone) if (sameLanguage(wanted, tag)) { try { return new Intl.Locale(wanted).region ?? ''; } catch { return ''; } }
+    return '';
+  };
+  if (own && offered.includes(own)) return { tag: own, region: regionOf(own) };
+  for (const wanted of phone) {
+    const found = shipped.find((s) => sameLanguage(wanted, s));
+    if (found) return { tag: found, region: regionOf(found) };
+  }
+  return { tag: 'en', region: '' };
+}
+
 /** A text's placeholders, once each: "{1} {0}" → "{0}{1}". @param {string} s */
 export const holes = (s) => [...new Set(s.match(/\{\d+\}/g))].sort().join('');
 
