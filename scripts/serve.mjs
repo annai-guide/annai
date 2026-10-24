@@ -39,21 +39,6 @@ function accepts(header, coding) {
   return star;
 }
 
-/**
- * The one byte range a Range header asks for, as [first, last]; null when the file has none of those bytes;
- * undefined for a header this server doesn't serve (several ranges, other units), which gets the whole file.
- * @param {string} header @param {number} size
- * @returns {[number, number] | null | undefined}
- */
-function byteRange(header, size) {
-  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
-  if (!m || (m[1] === '' && m[2] === '')) return undefined;
-  if (m[1] === '') return Number(m[2]) === 0 || size === 0 ? null : [Math.max(0, size - Number(m[2])), size - 1];
-  const first = Number(m[1]);
-  if (m[2] !== '' && Number(m[2]) < first) return undefined;
-  return first >= size ? null : [first, Math.min(m[2] === '' ? size - 1 : Number(m[2]), size - 1)];
-}
-
 const rules = parseHeaders(await readFile(join(root, '_headers'), 'utf8'));
 
 const server = http.createServer(async (req, res) => {
@@ -86,24 +71,11 @@ const server = http.createServer(async (req, res) => {
     for (const [coding, suffix] of ENCODINGS) if ((await stat(file + suffix).catch(() => null))?.isFile()) stored.push([coding, file + suffix]);
     if (stored.length) res.setHeader('Vary', 'Accept-Encoding');
     const head = req.method === 'HEAD';
-    // A Range request gets the file itself: its ranges count the file's own bytes.
-    const range = req.headers.range;
-    const pick = range === undefined ? stored.find(([coding]) => accepts(req.headers['accept-encoding'], coding)) : undefined;
-    if (pick) {
-      const body = await readFile(pick[1]);
-      res.writeHead(200, { 'Content-Encoding': pick[0], 'Content-Length': body.length }).end(head ? undefined : body);
-      return;
-    }
-    const body = await readFile(file);
-    res.setHeader('Accept-Ranges', 'bytes');
-    const span = range === undefined ? undefined : byteRange(range, body.length);
-    if (span === null) {
-      res.writeHead(416, { 'Content-Range': `bytes */${body.length}` }).end();
-      return;
-    }
-    const part = span ? body.subarray(span[0], span[1] + 1) : body;
-    if (span) res.setHeader('Content-Range', `bytes ${span[0]}-${span[1]}/${body.length}`);
-    res.writeHead(span ? 206 : 200, { 'Content-Length': part.length }).end(head ? undefined : part);
+    const pick = stored.find(([coding]) => accepts(req.headers['accept-encoding'], coding));
+    const body = await readFile(pick ? pick[1] : file);
+    if (pick) res.setHeader('Content-Encoding', pick[0]);
+    // Range is ignored, as HTTP allows: nothing annai serves is asked for in parts.
+    res.writeHead(200, { 'Content-Length': body.length }).end(head ? undefined : body);
   } catch {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('not found');
   }
