@@ -1,5 +1,6 @@
 import { fromBase64Url, ownBuffer } from '../core/bytes.js';
 import { platform, isStandalone } from './platform.js';
+import { t } from './dom.js';
 
 /**
  * The phone's side of notifications (spec §11.6): its push subscription and permission, what the
@@ -15,10 +16,10 @@ const FAKE = 'annai.pushSubscription';
 
 /** The service worker's registration, or a plain error after 10 s. @returns {Promise<ServiceWorkerRegistration>} */
 function registration() {
-  if (!('serviceWorker' in navigator)) return Promise.reject(new Error("This browser can't run annai's offline service, which shows notifications."));
+  if (!('serviceWorker' in navigator)) return Promise.reject(new Error(t`This browser can't run annai's offline service, which shows notifications.`));
   return Promise.race([
     navigator.serviceWorker.ready,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("annai's offline service isn't running yet. Try again in a moment.")), 10_000)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error(t`annai's offline service isn't running yet. Try again in a moment.`)), 10_000)),
   ]);
 }
 
@@ -26,7 +27,7 @@ function registration() {
 function subOf(s) {
   const p256dh = s.getKey('p256dh');
   const auth = s.getKey('auth');
-  if (!p256dh || !auth) throw new Error("The phone's push subscription has no keys. Turn notifications off and on again.");
+  if (!p256dh || !auth) throw new Error(t`The phone's push subscription has no keys. Turn notifications off and on again.`);
   return { endpoint: s.endpoint, p256dh: new Uint8Array(p256dh), auth: new Uint8Array(auth) };
 }
 
@@ -74,7 +75,7 @@ export function browserSource() {
         return stand;
       }
       const raw = fromBase64Url(key);
-      if (!raw) throw new Error("The relay's key isn't one annai can use.");
+      if (!raw) throw new Error(t`The relay's key isn't one annai can use.`);
       return subOf(await (await registration()).pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: ownBuffer(raw) }));
     },
     async unsubscribe() {

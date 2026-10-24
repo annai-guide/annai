@@ -1,5 +1,5 @@
-import { h, crumb, t, twoStep, messageOf as message } from '../dom.js';
-import { list } from '../format.js';
+import { h, crumb, t, twoStep, plural, messageOf as message } from '../dom.js';
+import { list, sentences } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { officialUpdates } from '../../core/llm/official.js';
 import { providerOf } from '../../core/llm/config.js';
@@ -27,9 +27,9 @@ export async function renderPlugins(ctx, route) {
   const entries = rows.map((/** @type {any} */ r) => ({ ...r, official: r.builtin || r.source === 'official' }));
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
-    h('h1', { class: 'title', text: 'Plugins' }),
-    h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, 'Add')),
-    finder({ label: 'Search your plugins', entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
+    h('h1', { class: 'title', text: t`Plugins` }),
+    h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, t`Add`)),
+    finder({ label: t`Search your plugins`, entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
 }
 
 /** The update offered for a plugin now, if any. @param {any} ctx @param {string} id */
@@ -40,44 +40,46 @@ export async function updateFor(ctx, id) {
 
 /** @param {any} r */
 export function stateOf(r) {
-  if (r.builtin) return 'Built in';
-  if (r.restart) return 'Restart annai to run the new version';
-  if (r.problem) return `Can't start: ${r.problem}`;
-  if (r.failing) return 'Turned off after repeated errors';
-  if (!r.enabled) return 'Off';
-  return r.active ? 'On' : "On, but it didn't start";
+  if (r.builtin) return t`Built in`;
+  if (r.restart) return t`Restart annai to run the new version`;
+  if (r.problem) return t`Can't start: ${r.problem}`;
+  if (r.failing) return t`Turned off after repeated errors`;
+  if (!r.enabled) return t`Off`;
+  return r.active ? t`On` : t`On, but it didn't start`;
 }
 
 
 /**
  * What Plugins says of each installed plugin besides its state (milestone 1): a provider plugin's
- * providers, what removing it takes with it, and the plugins that need one.
- * @param {any} ctx @param {any[]} rows @returns {Promise<Map<string, { providers: { id: string, name: string }[], lines: string[] }>>}
+ * providers (named: a plugin's page lists them instead), what removing it takes with it, and the plugins that need one.
+ * @param {any} ctx @param {any[]} rows @returns {Promise<Map<string, { providers: { id: string, name: string }[], named: string | null, lines: string[] }>>}
  */
 export async function removalWords(ctx, rows) {
   const cfg = await ctx.llm?.config().catch(() => null);
-  /** @type {Map<string, { providers: { id: string, name: string }[], lines: string[] }>} */
+  /** @type {Map<string, { providers: { id: string, name: string }[], named: string | null, lines: string[] }>} */
   const out = new Map();
   for (const r of rows) {
     const providers = Object.values(cfg?.providers ?? {}).filter((p) => p.plugin === r.id).map((p) => ({ id: p.id, name: providerOf(p).name }));
     const needs = rows.filter((o) => o.id !== r.id && (o.requires ?? []).some((/** @type {any} */ q) => q.id === r.id)).map((o) => o.name);
+    const names = providers.map((p) => p.name);
+    const named = r.provider && providers.length ? t`Providers: ${list(names, 'plain')}.` : null;
     const lines = [];
-    if (r.provider) lines.push(providers.length ? `Providers: ${providers.map((p) => p.name).join(', ')}.` : 'No provider is set up from it yet.');
-    if (r.provider && providers.length) lines.push(`Removing it removes ${list(providers.map((p) => p.name))}, with ${providers.length > 1 ? 'their keys' : 'its key'} and models.`);
-    if (needs.length) lines.push(`Needed by ${list(needs)}.`);
-    out.set(r.id, { providers, lines });
+    if (r.provider && !providers.length) lines.push(t`No provider is set up from it yet.`);
+    if (named) lines.push(plural(providers.length, 'Removing it removes {0}, with its key and models.', 'Removing it removes {0}, with their keys and models.', list(names)));
+    if (needs.length) lines.push(t`Needed by ${list(needs)}.`);
+    out.set(r.id, { providers, named, lines });
   }
   return out;
 }
 
-/** @param {any} ctx @param {any} r @param {any} [update] @param {{ lines: string[] }} [told] */
+/** @param {any} ctx @param {any} r @param {any} [update] @param {{ named: string | null, lines: string[] }} [told] */
 function row(ctx, r, update, told) {
   return h('li', { class: 'card' },
     h('a', { class: 'name', href: `#/plugins/${encodeURIComponent(r.id)}`, text: [r.name, r.shownVersion].filter(Boolean).join(' ') }),
     h('span', { class: 'sub', text: stateOf(r) }),
-    r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? 'Skill' : r.provider ? 'Model provider' : null, sourceLine(r)].filter(Boolean).join(' · ') }),
+    r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? t`Skill` : r.provider ? t`Model provider` : null, sourceLine(r)].filter(Boolean).join(' · ') }),
     r.description ? h('p', { class: 'sub', text: r.description }) : null,
-    ...(told?.lines ?? []).map((t) => h('p', { class: 'sub', text: t })),
+    ...[told?.named, ...(told?.lines ?? [])].filter(Boolean).map((line) => h('p', { class: 'sub', text: line })),
     r.builtin ? null : pluginActions(ctx, r, update));
 }
 
@@ -90,10 +92,10 @@ export function updateButton(ctx, update) {
     class: 'btn pri', type: 'button',
     onclick: async (/** @type {Event} */ e) => {
       /** @type {HTMLButtonElement} */ (e.currentTarget).disabled = true;
-      await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: 'plugin updates' }), reload: () => restartAnnai(ctx) });
+      await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: /* en */ 'plugin updates' }), reload: () => restartAnnai(ctx) });
       ctx.render();
     },
-  }, `Update to ${update.available}`);
+  }, t`Update to ${update.available}`);
 }
 
 /** Update, Restart, Turn off or on, and Remove, for an installed plugin. @param {any} ctx @param {any} r @param {any} [update] */
@@ -103,25 +105,25 @@ export function pluginActions(ctx, r, update) {
   const kept = h('p', { class: 'sub' });
   return h('div', { class: 'acts' },
       update ? updateButton(ctx, update) : null,
-      r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => restartAnnai(ctx) }, 'Restart annai') : null,
+      r.restart ? h('button', { class: 'btn pri', type: 'button', onclick: () => restartAnnai(ctx) }, t`Restart annai`) : null,
       h('button', {
         class: 'btn', type: 'button',
         onclick: async () => {
           try {
             await ctx.plugins.setEnabled(r.id, !on);
           } catch (e) {
-            if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name} didn't start`, body: message(e) });
+            if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} didn't start`, body: message(e) });
           }
           ctx.render();
         },
-      }, on ? 'Turn off' : 'Turn on'),
-      twoStep('Remove', 'Tap again to remove', async () => {
+      }, on ? t`Turn off` : t`Turn on`),
+      twoStep(t`Remove`, t`Tap again to remove`, async () => {
         try {
           // A provider plugin takes the providers made from it, and the protocols nothing needs any more (spec §4.9).
           if (r.provider && ctx.llm) await ctx.llm.removeProviderPlugin(r.id);
           else await ctx.plugins.uninstall(r.id);
         } catch (e) {
-          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${r.name} wasn't removed`, body: `${message(e)} Try again.` });
+          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} wasn't removed`, body: sentences(message(e), t`Try again.`) });
         }
         ctx.go('#/plugins');
       }, () => { if (r.provider) warnKept(ctx, kept, { plugin: r.id }); }),

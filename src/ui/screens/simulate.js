@@ -2,11 +2,14 @@ import { h, crumb, t, field } from '../dom.js';
 import { SPEEDS } from '../../core/live/sim-run.js';
 import { listTrips } from '../../core/scopes.js';
 import { answerJSON } from '../../core/answer.js';
-import { dayClock } from '../format.js';
+import { dayClock, sentences } from '../format.js';
 
 const SAMPLE = '/assets/simulations/big-sur.json';
 /** @type {Record<string, string>} */
-const SPEED_WORDS = { 10: '10 times real time: an hour takes 6 minutes', 60: '60 times: an hour takes a minute', 600: '600 times: an hour takes 6 seconds', fast: 'As fast as it can go: Shiori still answers each wake, so the sample takes about a minute and a long recorded track several' };
+const SPEED_WORDS = {
+  10: t`10 times real time: an hour takes 6 minutes`, 60: t`60 times: an hour takes a minute`, 600: t`600 times: an hour takes 6 seconds`,
+  fast: t`As fast as it can go: Shiori still answers each wake, so the sample takes about a minute and a long recorded track several`,
+};
 
 /**
  * Settings → Developer → Simulate a trip (spec §13): a sample drive, an itinerary file or a trip's
@@ -18,7 +21,7 @@ export async function renderSimulate(ctx) {
   const sim = ctx.sim;
   const screen = h('div', { class: 'screen simulate' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
-    h('h1', { class: 'title', text: 'Simulate a trip' }));
+    h('h1', { class: 'title', text: t`Simulate a trip` }));
   if (!sim) return screen;
   const body = h('div', { class: 'screen' });
   screen.append(body);
@@ -66,7 +69,7 @@ function running(ctx) {
   const sim = ctx.sim;
   const s = sim.state;
   const speed = typeof s.speed === 'number'
-    ? field('Speed', (() => {
+    ? field(t`Speed`, (() => {
       const sel = h('select', { id: 'sim-speed' }, ...SPEEDS.map((v) => h('option', { value: String(v), text: SPEED_WORDS[v] })));
       sel.value = String(s.speed);
       sel.addEventListener('change', () => sim.setSpeed(Number(sel.value)));
@@ -77,13 +80,13 @@ function running(ctx) {
   return [
     h('h2', { class: 'section', text: s.title }),
     h('p', { class: 'sim-time now-place' }),
-    h('label', { class: 'field' }, h('span', { class: 'field-label', text: 'How far it has got' }), h('progress', { max: String(Math.max(1, s.to - s.from)), value: '0' })),
+    h('label', { class: 'field' }, h('span', { class: 'field-label', text: t`How far it has got` }), h('progress', { max: String(Math.max(1, s.to - s.from)), value: '0' })),
     speed,
     h('div', { class: 'acts' },
-      h('button', { class: 'btn', type: 'button', onclick: () => (s.paused ? sim.resume() : sim.pause()) }, s.paused ? 'Resume' : 'Pause'),
-      h('button', { class: 'btn danger', type: 'button', onclick: () => sim.stop() }, 'Stop')),
-    h('p', { class: 'sub', text: 'Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.' }),
-    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/now' }, 'Now'), h('a', { class: 'btn', href: '#/drive' }, 'Driving'), h('a', { class: 'btn', href: '#/talk' }, 'Conversation'), h('a', { class: 'btn', href: trip }, 'The trip')),
+      h('button', { class: 'btn', type: 'button', onclick: () => (s.paused ? sim.resume() : sim.pause()) }, s.paused ? t`Resume` : t`Pause`),
+      h('button', { class: 'btn danger', type: 'button', onclick: () => sim.stop() }, t`Stop`)),
+    h('p', { class: 'sub', text: t`Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.` }),
+    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/now' }, t`Now`), h('a', { class: 'btn', href: '#/drive' }, t`Driving`), h('a', { class: 'btn', href: '#/talk' }, t`Conversation`), h('a', { class: 'btn', href: trip }, t`The trip`)),
   ];
 }
 
@@ -92,14 +95,14 @@ function ended(ctx) {
   const s = ctx.sim.state;
   if (!s) return [];
   const trip = `#/trip/${encodeURIComponent(s.trip)}`;
-  const how = s.error ? `The simulation stopped: ${s.error}` : s.stopped ? 'You stopped the simulation.' : 'The simulation has ended.';
-  return [h('section', { class: 'panel', 'aria-label': 'The last simulation' },
+  const how = s.error ? t`The simulation stopped: ${s.error}` : s.stopped ? t`You stopped the simulation.` : t`The simulation has ended.`;
+  return [h('section', { class: 'panel', 'aria-label': t`The last simulation` },
     h('h2', { class: 'section', text: s.title }),
-    h('p', { role: 'status', text: `${how} What it did is in its own trip.` }),
+    h('p', { role: 'status', text: sentences(how, t`What it did is in its own trip.`) }),
     h('div', { class: 'acts' },
-      h('a', { class: 'btn pri', href: `${trip}/replay` }, 'Replay it'),
-      h('a', { class: 'btn', href: `${trip}/recap` }, 'Recap it'),
-      h('a', { class: 'btn', href: trip }, 'Open the trip')))];
+      h('a', { class: 'btn pri', href: `${trip}/replay` }, t`Replay it`),
+      h('a', { class: 'btn', href: `${trip}/recap` }, t`Recap it`),
+      h('a', { class: 'btn', href: trip }, t`Open the trip`)))];
 }
 
 /** Choosing a track and a speed (7a choices 12 and 13). @param {any} ctx */
@@ -107,9 +110,9 @@ async function form(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   /** @type {{ id: string, title: string }[]} */
   const recorded = [];
-  for (const t of [...active, ...archived]) {
-    const two = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(t.id, { types: ['location'], limit: 2 }));
-    if (two.length >= 2) recorded.push({ id: t.id, title: t.title });
+  for (const trip of [...active, ...archived]) {
+    const two = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(trip.id, { types: ['location'], limit: 2 }));
+    if (two.length >= 2) recorded.push({ id: trip.id, title: trip.title });
   }
   const name = `sim-${Math.random().toString(36).slice(2)}`;
   const radio = (/** @type {string} */ value, /** @type {string} */ label, checked = false) => {
@@ -117,15 +120,15 @@ async function form(ctx) {
     input.checked = checked;
     return { input, el: h('label', { class: 'check' }, input, h('span', { text: label })) };
   };
-  const sample = radio('sample', 'Big Sur on Highway 1: a sample drive, about ten hours, with a plan and bookings', true);
-  const fromTrip = radio('trip', 'The recorded track of a trip on this device');
-  const fromFile = radio('file', 'An itinerary file');
-  const trips = h('select', { id: 'sim-trip', disabled: !recorded.length }, ...(recorded.length ? recorded.map((t) => h('option', { value: t.id, text: t.title })) : [h('option', { value: '', text: 'No trip has a recorded track yet' })]));
+  const sample = radio('sample', t`Big Sur on Highway 1: a sample drive, about ten hours, with a plan and bookings`, true);
+  const fromTrip = radio('trip', t`The recorded track of a trip on this device`);
+  const fromFile = radio('file', t`An itinerary file`);
+  const trips = h('select', { id: 'sim-trip', disabled: !recorded.length }, ...(recorded.length ? recorded.map((r) => h('option', { value: r.id, text: r.title })) : [h('option', { value: '', text: t`No trip has a recorded track yet` })]));
   const file = h('input', { id: 'sim-file', type: 'file', accept: '.json,application/json' });
   const speed = h('select', { id: 'sim-speed-start' }, ...[...SPEEDS.map(String), 'fast'].map((v) => h('option', { value: v, text: SPEED_WORDS[v] })));
   speed.value = '10';
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
-  const start = h('button', { class: 'btn pri', type: 'button' }, 'Start the simulation');
+  const start = h('button', { class: 'btn pri', type: 'button' }, t`Start the simulation`);
   start.addEventListener('click', async () => {
     error.hidden = true;
     start.disabled = true;
@@ -133,11 +136,11 @@ async function form(ctx) {
       /** @type {any} */
       let source;
       if (fromTrip.input.checked) {
-        if (!trips.value) throw new Error('No trip on this device has a recorded track yet: GPS records one while it is on.');
+        if (!trips.value) throw new Error(t`No trip on this device has a recorded track yet: GPS records one while it is on.`);
         source = { kind: 'trip', trip: trips.value };
       } else if (fromFile.input.checked) {
         const f = file.files?.[0];
-        if (!f) throw new Error('Choose an itinerary file first.');
+        if (!f) throw new Error(t`Choose an itinerary file first.`);
         source = { kind: 'itinerary', itinerary: readItinerary(await f.text()) };
       } else {
         source = { kind: 'itinerary', itinerary: await answerJSON(await fetch(SAMPLE), 'annai') };
@@ -150,13 +153,13 @@ async function form(ctx) {
     }
   });
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
-  return h('section', { class: 'panel', 'aria-label': 'A new simulation' },
-    h('p', { class: 'sub', text: 'A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.' }),
+  return h('section', { class: 'panel', 'aria-label': t`A new simulation` },
+    h('p', { class: 'sub', text: t`A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.` }),
     h('p', { class: 'sub', text: main.length
-      ? 'Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.'
-      : "No model is set up, so Shiori can't answer: annai shows the reminders itself." }),
-    h('fieldset', { class: 'radios' }, h('legend', { text: 'The track' }), sample.el, fromTrip.el, field('Trip', trips), fromFile.el, field('Itinerary file', file)),
-    field('Speed', speed),
+      ? t`Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.`
+      : t`No model is set up, so Shiori can't answer: annai shows the reminders itself.` }),
+    h('fieldset', { class: 'radios' }, h('legend', { text: t`The track` }), sample.el, fromTrip.el, field(t`Trip`, trips), fromFile.el, field(t`Itinerary file`, file)),
+    field(t`Speed`, speed),
     error,
     h('div', { class: 'acts' }, start));
 }
@@ -169,5 +172,5 @@ function readItinerary(text) {
   } catch {
     // said below
   }
-  throw new Error("That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).");
+  throw new Error(t`That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).`);
 }

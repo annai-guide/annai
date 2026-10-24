@@ -54,6 +54,26 @@ bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她
 k4u05v	draft	The language you speak to her	你对她说的语言	src/core/languages.js:328	
 au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+7fxcga	draft	Back up this phone over it	用这部手机的备份覆盖它	src/ui/auto-backup.js:64	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
+qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这部手机是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:64	
+13aymis	draft	Back up this iPad over it	用这台 iPad 的备份覆盖它	src/ui/auto-backup.js:65	
+17c0bbv	draft	annai can't tell whether this iPad is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台 iPad 是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:65	
+1900dh1	draft	Back up this computer over it	用这台电脑的备份覆盖它	src/ui/auto-backup.js:66	
+iubvos	draft	annai can't tell whether this computer is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台电脑是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:66	
+1jhhbi	draft	Open Backups	打开备份	src/ui/auto-backup.js:75	
+8dbjq	draft	A newer backup is on {0}	{0}上有更新的备份	src/ui/auto-backup.js:81	{0} = target.name
+1g7wii9	draft	Import it as a copy	作为副本导入	src/ui/auto-backup.js:84	
+1ndbdgm	draft	A large backup is waiting	有一个大的备份在等待	src/ui/auto-backup.js:90	
+1nj869p	draft	This backup uploads {0} to {1}.	此备份会向{1}上传 {0}。	src/ui/auto-backup.js:91	{0} = size(h.bytes); {1} = target.name
+1lm8hbn	draft	Back up now	立即备份	src/ui/auto-backup.js:92	
+1m6y9c0	draft	Backups to {0} ({1}) stopped	到{0}（{1}）的备份已停止	src/ui/auto-backup.js:96	{0} = target.name; {1} = where
+54wd1u	draft	Backups to {0} stopped	到{0}的备份已停止	src/ui/auto-backup.js:96	{0} = target.name
+arudmh	draft	Open Backups to fix it.	请打开备份进行修复。	src/ui/auto-backup.js:97	
+y3yg69	draft	Backing up…	正在备份…	src/ui/auto-backup.js:103	
+zsz4na	draft	Backed up.	已备份。	src/ui/auto-backup.js:105	
+183eg6b	draft	The backup didn't finish	备份没有完成	src/ui/auto-backup.js:107	
+rs50uy	draft	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:124	
+12sejli	draft	Waiting for the backup that's running to finish…	正在等待进行中的备份完成…	src/ui/auto-backup.js:143	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	draft	Open in Maps	在地图中打开	src/ui/cards.js:68	
@@ -85,11 +105,40 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 1a791in	draft	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:146	{0} = label; Note: {0} is a field's label.
 1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:230	
 12ek4is	draft	Saved	已保存	src/ui/dom.js:277	
+fj0t7x	draft	History (every version and the log)	历史（每个版本和日志）	src/ui/export-panel.js:21	
+oopaku	draft	Memory	记忆	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
+1l4mw9c	draft	Photos	照片	src/ui/export-panel.js:23	
+fz72ei	draft	Include API keys (needs a passphrase)	包含 API 密钥（需要密码短语）	src/ui/export-panel.js:24	
+1k1mi4l	draft	Include where photos were taken	包含照片的拍摄地点	src/ui/export-panel.js:25	
+1ahfa0	draft	Share: plan, bookings, files and notes	分享：行程、预订、文件和笔记	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
+40d3tk	draft	What to include	包含的内容	src/ui/export-panel.js:29	
+e1v954	draft	Backup: everything	备份：全部	src/ui/export-panel.js:29	
+1pgegxa	draft	Shared.	已分享。	src/ui/export-panel.js:49	
+li1zvd	draft	Saved to your downloads.	已保存到下载。	src/ui/export-panel.js:49	
+1rtc92m	draft	Save file	保存文件	src/ui/export-panel.js:58	
+e8bmvg	draft	The passphrases don't match.	密码短语不一致。	src/ui/export-panel.js:62	
+10xxtpg	draft	API keys can only be exported with a passphrase.	API 密钥只能在设置密码短语时导出。	src/ui/export-panel.js:63	
+1vdabwr	draft	Building…	正在生成…	src/ui/export-panel.js:66	
+ix6wsj	draft	Building and encrypting. This takes a few seconds…	正在生成并加密。这需要几秒钟…	src/ui/export-panel.js:66	
+9powzm	draft	Left out, because this browser can't remove where they were taken: {0}.	以下内容未包含，因为此浏览器无法去掉拍摄地点：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
+mf5yva	draft	Ready: {0} ({1}). Tap Save file.	已准备好：{0}（{1}）。请轻点“保存文件”。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	draft	Build file	生成文件	src/ui/export-panel.js:85	
+1sh99lf	draft	Export	导出	src/ui/export-panel.js:86	
+laav31	draft	Export {0}	导出{0}	src/ui/export-panel.js:87	{0} = what.title
+xyot5w	draft	Export everything	导出全部	src/ui/export-panel.js:87	
+sxjkia	draft	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:90	
+xyveyo	draft	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:90	
+kpa27s	draft	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:91	
 la9701	draft	not backed up	未备份	src/ui/format.js:26	
 1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:27	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
 1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
 7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:32	
 16name3	draft	free	免费	src/ui/format.js:33	
+1y3qo2k#other	draft	# trips	# 个旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
+12lprg	draft	Imported {0} from {1}.	已从{1}导入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
+1hzaym7	draft	Imported {0}.	已导入{0}。	src/ui/import-state.js:48	{0} = what
+kotjbl	draft	Imported.	已导入。	src/ui/import-state.js:48	
+oefcrt	draft	Imported from {0}.	已从{0}导入。	src/ui/import-state.js:48	{0} = place
 12gy0yc	draft	Open annai from your Home Screen.	从主屏幕打开 annai。	src/ui/install.js:17	
 82ba67	draft	Tap the Share button in Safari.	轻点 Safari 浏览器中的“共享”按钮。	src/ui/install.js:17	Note: Apple's zh-CN guides say 轻点 for tap.
 ejxnor	draft	Choose "Add to Home Screen".	选择“添加到主屏幕”。	src/ui/install.js:17	
@@ -136,6 +185,39 @@ an1pf7	draft	Dismiss	关闭	src/ui/notices.js:156
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+u3xlwb	draft	The plugin "{0}" was turned off	插件“{0}”已关闭	src/ui/plugin-cards.js:12	{0} = name
+14cse4m	draft	You can turn it back on in Settings → Plugins.	可以在设置 → 插件中重新开启。	src/ui/plugin-cards.js:14	
+alpox6	draft	The last error: {0}	最后一次错误：{0}	src/ui/plugin-cards.js:14	{0} = message
+yg39kc	draft	It {0}.	原因：{0}。	src/ui/plugin-cards.js:14	{0} = reason; Note: {0} is the reason in English for now ("failed 3 times in a row"), from core; written as "label: value".
+1rls2oy	draft	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/ui/plugin-cards.js:19	
+4egg99	draft	annai needs a reload	annai 需要重新加载	src/ui/plugin-cards.js:24	
+6kkhkz#other	draft	It opened without its offline service, so these plugins can't start: {0}.	它在没有离线服务的情况下打开，所以这些插件无法启动：{0}。	src/ui/plugin-cards.js:25	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
+53p50e	draft	It opened without its offline service, so plugins can't start or be installed.	它在没有离线服务的情况下打开，所以插件无法启动，也无法安装。	src/ui/plugin-cards.js:26	
+fzpt3w	draft	Reload now	立即重新加载	src/ui/plugin-cards.js:27	
+1vgaaah	draft	It didn't start the last few times annai opened: {0}	最近几次打开 annai 时，它都没有启动：{0}	src/ui/plugin-cards.js:42	{0} = why
+11arkb9	draft	You can turn it off in Settings → Plugins.	可以在设置 → 插件中关闭它。	src/ui/plugin-cards.js:43	
+1jz4o49	draft	The plugin "{0}" didn't start	插件“{0}”没有启动	src/ui/plugin-cards.js:43	{0} = it
+44nn0b	draft	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（带来新内容：会先询问你）	src/ui/plugin-updates.js:68	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	draft	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（带来新内容：会先询问你）	src/ui/plugin-updates.js:68	{0} = u.name
+1kyfel6	draft	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:69	{0} = u.name
+i8x2zk	draft	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:69	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	draft	Plugin updates are ready	插件更新已就绪	src/ui/plugin-updates.js:75	
+1qhkyk	draft	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什么都不会改变。正在运行的插件更新后，会在 annai 重启前保持关闭。	src/ui/plugin-updates.js:76	
+1x9jer0	draft	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:76	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	draft	Update	更新	src/ui/plugin-updates.js:77	
+sp1muy	draft	{0}: {1}	{0}：{1}	src/ui/plugin-updates.js:106	{0} = u.name; {1} = (e)?.message ?? e
+1agymuw	draft	Some plugins weren't updated	有些插件没有更新	src/ui/plugin-updates.js:109	
+1vsv4vh	draft	Restart annai to use the new versions	重启 annai 以使用新版本	src/ui/plugin-updates.js:113	
+1k0lt4v	draft	Until then, {0} can't be used.	在此之前，{0}无法使用。	src/ui/plugin-updates.js:114	{0} = list(waiting)
+2jfvhf	draft	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:114	
+nb21do	draft	Restart now	立即重启	src/ui/plugin-updates.js:115	
+1do1igm	draft	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:118	
+eaf3fx	draft	{0} {1} brings something new	{0} {1} 带来新内容	src/ui/plugin-updates.js:134	{0} = u.name; {1} = u.available
+127j3cm	draft	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:135	{0} = semicolons(whatItBrings(added))
+zymqne	draft	Only update if you trust where it came from.	只有在你信任它的来源时才更新。	src/ui/plugin-updates.js:135	
+1dfe53s	draft	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:136	
+15ziixp	draft	Update anyway	仍然更新	src/ui/plugin-updates.js:138	
+c9wfke	draft	Not now	暂不	src/ui/plugin-updates.js:139	
 1cjjnaq	draft	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:21	
 14xwlem	draft	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:22	
@@ -186,8 +268,38 @@ eudybe#other	draft	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费�
 jvtji4	draft	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:246	
 1r0x31s	draft	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
 1llun41	draft	The provider	提供商	src/ui/provider-setup.js:253	Note: "The provider" stands where a provider's name is unknown.
-ktdb8o	draft	Settings	设置	src/ui/screens/about.js:57	
-spfq0z	draft	About annai	关于 annai	src/ui/screens/about.js:100	
+1c4feqt	draft	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
+z45u0n	draft	annai's offline service isn't running yet. Try again in a moment.	annai 的离线服务还没有运行。请稍后再试。	src/ui/push.js:22	
+1vug986	draft	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
+17sbtk9	draft	The relay's key isn't one annai can use.	中继的密钥不是 annai 能用的。	src/ui/push.js:78	
+xp81tw	draft	annai {0}	annai {0}	src/ui/screens/about.js:40	{0} = v
+cx3u06	draft	annai {0} · build not known yet: annai's offline service is still starting	annai {0} · 构建版本暂时未知：annai 的离线服务仍在启动	src/ui/screens/about.js:42	{0} = v
+kgnamw	draft	annai {0} · build {1}	annai {0} · 构建 {1}	src/ui/screens/about.js:42	{0} = v; {1} = build
+4x11wz	draft	annai's licence, version 3, as annai ships it.	annai 的许可证，第 3 版，与 annai 一同提供。	src/ui/screens/about.js:55	
+gy5xww	draft	{0}, under the SIL Open Font License 1.1, as annai ships them.	{0}，依据 SIL Open Font License 1.1，随 annai 一同提供。	src/ui/screens/about.js:58	{0} = list(FONTS.map((f) => f.name))
+n8r900	draft	Font licences	字体许可证	src/ui/screens/about.js:58	
+ktdb8o	draft	Settings	设置	src/ui/screens/about.js:63	
+spfq0z	draft	About annai	关于 annai	src/ui/screens/about.js:64	
+v9i6me	draft	Check for updates	检查更新	src/ui/screens/about.js:66	
+101s9ks	draft	annai (案内) is Japanese for "guidance; showing someone around". It is a free, open-source travel guide, and its guide is Shiori.	annai（案内）在日语中意为“引导；带人四处参观”。它是一个免费、开源的旅行向导，向导就是 Shiori。	src/ui/screens/about.js:67	
+1wpc982	draft	Licence and source	许可证和源代码	src/ui/screens/about.js:68	
+z9r361	draft	annai is free software under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use it, study it, share it and change it. Anyone who runs a changed copy for others must offer them its source too.	annai 是依据 GNU Affero General Public License 第 3 版（AGPL-3.0）发布的自由软件。你可以使用、研究、分享和修改它。为他人运行修改版的人，也必须向他们提供源代码。	src/ui/screens/about.js:69	
+pla60h	draft	Read the licence	阅读许可证	src/ui/screens/about.js:70	
+wj6hbn	draft	The source: {0}.	源代码：{0}。	src/ui/screens/about.js:71	{0} = source
+y5il7r	draft	Report a problem	报告问题	src/ui/screens/about.js:72	
+1gmaz9x	draft	Tell us on GitHub, at {0}.	请在 GitHub 上告诉我们：{0}。	src/ui/screens/about.js:73	{0} = issues
+m1kx49	draft	Settings → Diagnostics copies a report of recent errors and system events, without your files or keys, to paste there.	设置 → 诊断会复制一份最近的错误和系统事件报告（不含你的文件或密钥），可以贴在那里。	src/ui/screens/about.js:74	
+1hlvu92	draft	Your keys and your data	你的密钥和数据	src/ui/screens/about.js:75	
+xrjfmj	draft	The fine print	细则	src/ui/screens/about.js:76	
+1szwub4	draft	The welcome	欢迎页	src/ui/screens/about.js:77	
+fosxc6	draft	The few screens annai showed when it first opened here.	annai 第一次在这里打开时显示的几个页面。	src/ui/screens/about.js:78	
+zpfv8b	draft	Show the welcome again	再次显示欢迎页	src/ui/screens/about.js:79	
+4bvg51	draft	Credits	致谢	src/ui/screens/about.js:80	
+18mdmjs	draft	Where Shiori looks things up, and the credit each source asks for.	Shiori 查询信息的来源，以及每个来源要求的署名。	src/ui/screens/about.js:81	
+t16z95	draft	Fonts	字体	src/ui/screens/about.js:88	
+s4bdkr	draft	{0}: each under the SIL Open Font License 1.1.	{0}：均依据 SIL Open Font License 1.1 提供。	src/ui/screens/about.js:90	{0} = fontCredits
+1pnzb3h	draft	Read the font licences	阅读字体许可证	src/ui/screens/about.js:91	
+1x3xmmq	draft	The text couldn't be loaded here. It is also at {0}.	无法在这里加载正文。也可以在 {0} 查看。	src/ui/screens/about.js:112	{0} = online.replace(/^https:\\/\\//, '')
 17r42id	draft	Backup places	备份位置	src/ui/screens/add.js:26	
 1q6sl6	draft	Skills and personalities	技能和性格	src/ui/screens/add.js:26	
 1w8nsi3	draft	Voices and transcription	声音和语音转文字	src/ui/screens/add.js:26	
@@ -247,14 +359,144 @@ ksdme7	draft	Install from an address or a file	从地址或文件安装	src/ui/s
 hn1sl5	draft	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/ui/screens/add.js:265	{0} = message(e)
 ai5f3u	draft	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	请先粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/ui/screens/add.js:293	
 1huuh2k	draft	Getting it…	正在获取…	src/ui/screens/add.js:298	
-c65xlw	draft	Backups	备份	src/ui/screens/backups.js:77	
+16r9x4z	draft	From an Android phone	来自一部 Android 手机	src/ui/screens/backups.js:12	
+1yzbug	draft	From an iPad	来自一台 iPad	src/ui/screens/backups.js:12	
+e0z2ub	draft	From a computer	来自一台电脑	src/ui/screens/backups.js:12	
+e7ctat	draft	From an iPhone	来自一部 iPhone	src/ui/screens/backups.js:12	
+71oguk	draft	From another device	来自另一台设备	src/ui/screens/backups.js:14	
+3k42nl	draft	Getting it ready…	正在准备…	src/ui/screens/backups.js:36	
+c65xlw	draft	Backups	备份	src/ui/screens/backups.js:47	
+cn5225	draft	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.	annai 会把此设备上的一切备份到你在这里添加的位置：在有改动后或每天一次，通过 Wi-Fi，在 annai 打开期间进行。你的 API 密钥留在此设备上。	src/ui/screens/backups.js:48	
+n9d7fo	draft	No backup places yet.	还没有备份位置。	src/ui/screens/backups.js:53	
+gqqie4	draft	Add a place	添加位置	src/ui/screens/backups.js:55	
+t3jn1u	draft	Add a place to back up to	添加一个备份位置	src/ui/screens/backups.js:55	
+a3z2xh	draft	annai couldn't load the kinds of backup places. Check the connection, then open this screen again.	annai 无法加载备份位置的类型。请检查网络连接，然后重新打开此页面。	src/ui/screens/backups.js:56	
+112uufk	draft	Back to Backups	返回备份	src/ui/screens/backups.js:62	
+1kdmc2z	draft	This backup place was removed	此备份位置已被移除	src/ui/screens/backups.js:62	
+1k7hmqc	draft	Turning it on…	正在开启…	src/ui/screens/backups.js:92	
+14tfw5g	draft	Turn it on	开启	src/ui/screens/backups.js:100	
+m8ft8e	draft	The plugin for {0} isn't running, so annai can't back up here.	{0}的插件没有运行，所以 annai 无法备份到这里。	src/ui/screens/backups.js:102	{0} = target.name
+zkviy	draft	Plugin	插件	src/ui/screens/backups.js:102	
+1yxhxra	draft	not set	未设置	src/ui/screens/backups.js:118	
+8rf2wi	draft	saved (type a new one to replace it)	已保存（输入新的以替换）	src/ui/screens/backups.js:118	
+raudcs	draft	Encrypt backups with a passphrase	用密码短语加密备份	src/ui/screens/backups.js:121	
+13qje2w	draft	Include API keys (only in encrypted backups)	包含 API 密钥（仅限加密备份）	src/ui/screens/backups.js:124	
+75wjfp	draft	Testing…	正在测试…	src/ui/screens/backups.js:145	
+ebg9wq	draft	Keep 1 to 30 backups.	可保留 1 到 30 个备份。	src/ui/screens/backups.js:155	
+1gcdel3	draft	Save and test	保存并测试	src/ui/screens/backups.js:165	
+wcqrhx	draft	A newer backup	更新的备份	src/ui/screens/backups.js:168	
+1eedj8v	draft	A newer backup is here	这里有更新的备份	src/ui/screens/backups.js:169	
+xvbztk	draft	A backup is already here	这里已经有一个备份	src/ui/screens/backups.js:169	
+1n4xwcb	draft	A large backup	大的备份	src/ui/screens/backups.js:175	
+7hmq4d	draft	This backup uploads {0}.	此备份会上传 {0}。	src/ui/screens/backups.js:176	{0} = size(hold.bytes)
+111408e	draft	Back up automatically	自动备份	src/ui/screens/backups.js:179	
+15ywqaa	draft	After changes, within the hour	有改动后，一小时内	src/ui/screens/backups.js:180	
+tp830y	draft	After changes, at most every 6 hours	有改动后，最多每 6 小时一次	src/ui/screens/backups.js:180	
+1u04fpp	draft	Once a day	每天一次	src/ui/screens/backups.js:181	
+3tlu3u	draft	Off	关闭	src/ui/screens/backups.js:182	
+1tdau7e	draft	Also over mobile data	也使用移动数据	src/ui/screens/backups.js:184	
+uhtk71	draft	No limit	不限	src/ui/screens/backups.js:186	
+lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/ui/screens/backups.js:190	
+b69cje	draft	Looking…	正在查找…	src/ui/screens/backups.js:198	
+fdmwqv	draft	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:201	
+hcu7jn	draft	encrypted	已加密	src/ui/screens/backups.js:204	
+17hpvne	draft	Show the backups here	显示这里的备份	src/ui/screens/backups.js:211	
+lqkwe8	draft	How to set it up	如何设置	src/ui/screens/backups.js:214	
+14gwhko	draft	Where	位置	src/ui/screens/backups.js:218	
+6yqmdh	draft	Passphrase	密码短语	src/ui/screens/backups.js:225	
+bdzmld	draft	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	请把密码短语保存在安全的地方：没有它，这些备份就无法打开。annai 会把它保存在此设备上，以便自动备份。	src/ui/screens/backups.js:226	
+1l5dtm7	draft	Keep this many of this device's backups here	在这里保留此设备的备份数量	src/ui/screens/backups.js:228	
+552cet	draft	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	每次备份后，此设备在这里留下的较早备份会被删除。其他设备的备份永远不会被删除。	src/ui/screens/backups.js:229	
+l5nax	draft	When	时间	src/ui/screens/backups.js:234	
+xxa9v2	draft	Upload without asking up to, MB	无需询问即可上传的上限（MB）	src/ui/screens/backups.js:236	
+4fiyr5	draft	Restore	恢复	src/ui/screens/backups.js:242	
+12kqj5m	draft	Open a backup from here on the import screen, where you choose what comes in.	在导入页面打开这里的备份，由你选择导入哪些内容。	src/ui/screens/backups.js:244	
+yzcijn	draft	Browser access	浏览器访问	src/ui/screens/backups.js:266	
+13bzcw5	draft	Copied	已复制	src/ui/screens/backups.js:275	
+cdidgs	draft	Copying didn't work here: it is selected, so copy it yourself.	这里无法复制：内容已选中，请自己复制。	src/ui/screens/backups.js:278	
+s6g5lw	draft	Copy	复制	src/ui/screens/backups.js:281	
+15ef6mt	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:291	
+9nqmyo	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:292	
+w51f7d	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:295	{0} = most
+1rx8b6y	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:296	{0} = most
+9patw8	draft	annai stops backing up here. The backups already there stay.	annai 会停止备份到这里。已经在那里的备份会保留。	src/ui/screens/backups.js:302	
+1hx8faa	draft	Tap again to remove it	再点一次以移除	src/ui/screens/backups.js:303	
+78xlh8	draft	Remove this place	移除此位置	src/ui/screens/backups.js:303	
 8icj76	draft	Plan	行程	src/ui/screens/booking.js:17	
 1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
 12mubvb	draft	Now	此刻	src/ui/screens/drive.js:97	
+amdsnu	draft	Swipe sideways to move between tabs	横向滑动切换标签页	src/ui/screens/experimental.js:14	
 1py6vf8	draft	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
+13a0vz9	draft	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在试验中的功能。它们可能有错误，修复也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
+1wwmv7i	draft	Swiping between tabs	在标签页之间滑动	src/ui/screens/experimental.js:26	
+16e9lp9	draft	Swipe a screen left or right to go to the next or the previous tab of the top bar, back to the screen you last had open there. Off, a sideways swipe does what the browser does.	左右滑动页面，可切换到顶部栏的下一个或上一个标签页，回到你上次在那里打开的页面。关闭时，横向滑动按浏览器的方式处理。	src/ui/screens/experimental.js:28	
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	尚未经懂该语言的人检查的翻译。开启后，可在设置 → Shiori → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:31	
-xb1ny3	draft	Trips	旅行	src/ui/screens/ext.js:54	
+cwo6nv	draft	Remote trace (for developers)	远程记录（开发者）	src/ui/screens/experimental.js:34	Note: Trace is 記録 / 记录 (glossary); Developer is 開発者向け / 开发者.
+1o37pki	draft	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	把 annai 的记录发送到你运行的服务器，实时查看 annai 在这部手机上做什么。设置之前保持关闭；发送时底栏会显示一个按钮。	src/ui/screens/experimental.js:36	Note: "chip" is ボタン / 按钮 (glossary).
+m3chyg	draft	Open Remote trace	打开远程记录	src/ui/screens/experimental.js:38	
+v16nvk	draft	Get it from annai's catalog	从 annai 的目录获取	src/ui/screens/experimental.js:39	
+161ctfm	draft	Settings → Plugins	设置 → 插件	src/ui/screens/ext.js:19	
+govuvp	draft	This page isn't here	此页面不存在	src/ui/screens/ext.js:21	
+1fks4l6	draft	{0} is on, but it has no page called {1}.	{0}已开启，但没有名为 {1} 的页面。	src/ui/screens/ext.js:23	{0} = on.manifest?.name ?? pluginId; {1} = id
+t9ug66	draft	This page belongs to a plugin that isn't on. Turn it on in {0}.	此页面属于一个未开启的插件。请在{0}中开启它。	src/ui/screens/ext.js:24	{0} = plugins
+ata72m	draft	Trace	记录	src/ui/screens/ext.js:36	
+1y7aybz	draft	This page couldn't be drawn; the plugin's error is in {0}.	无法绘制此页面；插件的错误在{0}中。	src/ui/screens/ext.js:37	{0} = trace
+xb1ny3	draft	Trips	旅行	src/ui/screens/ext.js:56	
 1jpjwmm	draft	Back to trip	返回旅行	src/ui/screens/file.js:23	
+f0ig49	draft	Open a trip	打开旅行	src/ui/screens/import.js:35	
+1azyvjt	draft	Choose a file instead	改为选择文件	src/ui/screens/import.js:38	
+18kfutv	draft	Choose an annai file (.annai.zip or .annai) to open it.	选择一个 annai 文件（.annai.zip 或 .annai）即可打开。	src/ui/screens/import.js:51	
+s6np2n	draft	Choose a file	选择文件	src/ui/screens/import.js:51	
+9pczbj	draft	Choose another file	选择其他文件	src/ui/screens/import.js:55	
+vpnx22	draft	annai couldn't download that file. The site may not allow other web apps to download it.	annai 无法下载该文件。该网站可能不允许其他网页应用下载它。	src/ui/screens/import.js:75	
+9ekzd	draft	The download failed ({0} {1}).	下载失败（{0} {1}）。	src/ui/screens/import.js:78	{0} = res.status; {1} = res.statusText
+v8ip62	draft	trip	旅行	src/ui/screens/import.js:79	Note: A file's name when its address has none.
+1i00iqj	draft	Reading {0}…	正在读取{0}…	src/ui/screens/import.js:87	{0} = source.name
+1fn8tif	draft	This backup changed on the server while annai was getting it. Open it again from the backups.	在 annai 获取期间，此备份在服务器上发生了变化。请从备份重新打开它。	src/ui/screens/import.js:134	
+t5o4f	draft	{0} is encrypted.	{0}已加密。	src/ui/screens/import.js:146	{0} = source.name
+17ezgqd	draft	Unlock	解锁	src/ui/screens/import.js:149	
+mp7avp	draft	with history	含历史	src/ui/screens/import.js:166	
+wa8d8i#other	draft	# files	# 个文件	src/ui/screens/import.js:166	plural; # = trip.files; English: "# file" (one), "# files" (other)
+1z02pm0	draft	You already have "{0}"	你已经有“{0}”	src/ui/screens/import.js:168	{0} = trip.existingTitle
+s27n78	draft	Add as a new trip	作为新旅行添加	src/ui/screens/import.js:168	
+wr63q8	draft	Replace mine (yours moves to archived trips)	替换我的（你的会移到已归档的旅行）	src/ui/screens/import.js:168	
+1og8gcf	draft	Replace my profile and memory with the ones in this file	用此文件中的资料和记忆替换我的	src/ui/screens/import.js:171	
+rfnd00	draft	Replace my settings	替换我的设置	src/ui/screens/import.js:172	
+1ai6503	draft	Replace my plugins	替换我的插件	src/ui/screens/import.js:173	
+z9765v	draft	Restore API keys (keys already on this device are kept)	恢复 API 密钥（此设备上已有的密钥会保留）	src/ui/screens/import.js:174	
+tlkozp	draft	Reading…	正在读取…	src/ui/screens/import.js:183	
+jbong3	draft	Reading {0} of {1}…	正在读取 {0}/{1}…	src/ui/screens/import.js:196	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	draft	Installing the plugins your providers use…	正在安装你的提供商使用的插件…	src/ui/screens/import.js:204	
+1fnonn8	draft	Open trip	打开旅行	src/ui/screens/import.js:214	
+m9iea3#other	draft	# older copies moved to archived trips.	已将 # 个较早的副本移到已归档的旅行。	src/ui/screens/import.js:215	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+j0c8lo	draft	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	导入的插件处于关闭状态。请在插件中开启你信任的那些。	src/ui/screens/import.js:218	
+3qem9k	draft	annai's next backup to that place builds on this one.	annai 下次备份到那个位置时，会以此为基础。	src/ui/screens/import.js:220	
+o7fto4	draft	Import	导入	src/ui/screens/import.js:228	
+18d2xm5	draft	A backup of everything exported {0} from annai {1}.	全部内容的备份，{0}从 annai {1} 导出。	src/ui/screens/import.js:231	{0} = ago; {1} = app
+6fr2dj	draft	A backup of everything exported {0} from annai {1}, encrypted.	全部内容的备份，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:231	{0} = ago; {1} = app
+1uhzqqs	draft	A trip exported {0} from annai {1}, encrypted.	一个旅行，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:232	{0} = ago; {1} = app
+1ut7u54	draft	A trip exported {0} from annai {1}.	一个旅行，{0}从 annai {1} 导出。	src/ui/screens/import.js:232	{0} = ago; {1} = app
+7ns57f	draft	There are no trips in this file.	此文件中没有旅行。	src/ui/screens/import.js:235	
+ew9em3	draft	Cancel	取消	src/ui/screens/import.js:237	
+1y35b48	draft	Restarting…	正在重启…	src/ui/screens/import.js:251	
+5wjjb4	draft	Restart annai to use the imported settings and plugins.	重启 annai 以使用导入的设置和插件。	src/ui/screens/import.js:256	
+1p9jpyr	draft	Installed what your providers use: {0}.	已安装你的提供商使用的内容：{0}。	src/ui/screens/import.js:266	{0} = list(g.installed, 'plain')
+c0u62t#other	draft	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 密钥；文件中的未被使用。	src/ui/screens/import.js:275	plural; # = ids.length; {0} = list(ids, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+zul4ei	draft	shared file	共享的文件	src/ui/screens/import.js:286	
+151rypw#other	draft	# photos	# 张照片	src/ui/screens/import.js:304	plural; # = n; English: "# photo" (one), "# photos" (other)
+8w8k36	draft	a file	一个文件	src/ui/screens/import.js:304	
+ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/import.js:307	{0} = trip.title
+odevmc	draft	Adding {0} of {1}…	正在添加 {0}/{1}…	src/ui/screens/import.js:313	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+rcp6ga	draft	A photo was kept as it is	照片已按原样保存	src/ui/screens/import.js:319	
+36fatd	draft	A calendar file couldn't be read	无法读取日历文件	src/ui/screens/import.js:320	
+liuhl8#other	draft	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 个行程项目	src/ui/screens/import.js:321	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other)
+7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/import.js:337	
+f30m7u#other	draft	and # more photos	还有 # 张照片	src/ui/screens/import.js:341	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	draft	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:344	
+17udxx8	draft	Start a trip first, then share it again.	请先开始一个旅行，再重新分享它。	src/ui/screens/import.js:347	
+19xnnmt	draft	Start a trip first, then share them again.	请先开始一个旅行，再重新分享它们。	src/ui/screens/import.js:347	
+sc64d2	draft	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:350	{0} = a.file.name
+3wbwnq	draft	Open it	打开	src/ui/screens/import.js:351	
 1xtp0n4	draft	Headers, kept on this device	请求头，保存在此设备上	src/ui/screens/mcp.js:5	
 e9m35h	draft	No key	无密钥	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer 令牌，保存在此设备上	src/ui/screens/mcp.js:5	
@@ -314,7 +556,6 @@ dnuqbz	draft	Reasoning levels (JSON)	推理级别（JSON）	src/ui/screens/model
 181p6me	draft	Tunables (JSON)	可调参数（JSON）	src/ui/screens/model.js:138	
 12ylk5m	draft	Extra request fields (JSON)	额外请求字段（JSON）	src/ui/screens/model.js:139	
 1b0m2g4	draft	Remove model	移除模型	src/ui/screens/model.js:142	
-1hx8faa	draft	Tap again to remove it	再点一次以移除	src/ui/screens/model.js:142	
 15qwlpp	draft	This voice can't take a style: it is kept, not sent.	这个声音不支持风格：会保存，但不发送。	src/ui/screens/model.js:168	
 a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	她该怎样说话，用几个词描述，比如平静、温暖、友好。	src/ui/screens/model.js:168	
 1gq0a8x	draft	A transcription model: it turns what you say into text.	语音转文字模型：把你说的话变成文字。	src/ui/screens/model.js:188	
@@ -349,7 +590,6 @@ a5cd15	draft	Koe · Classic	Koe · 经典	src/ui/screens/models.js:21
 1w4m41d	draft	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:34	
 ce8br5	draft	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:34	
 jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 思考的地方：annai 调用的提供商、它们的模型、每个角色依次尝试的模型，以及她的请求可以花多少钱。	src/ui/screens/models.js:51	
-uhtk71	draft	No limit	不限	src/ui/screens/models.js:69	
 exnl8y	draft	Spend per day	每日花费	src/ui/screens/models.js:74	
 1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 的模型调用在所有旅行中一天可花的金额。用完后，她的这一轮会以一张卡片结束，第二天继续。留空：不限。	src/ui/screens/models.js:75	
 3bernd	draft	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:76	
@@ -386,7 +626,6 @@ el9rbx	draft	Uses the main list.	使用主要列表。	src/ui/screens/models.js:
 q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	不能看照片或读 PDF 的模型，读到的每张照片或每个 PDF 会由这里能做到的模型描述，否则由主要模型描述。	src/ui/screens/models.js:179	
 14w2ppx	draft	Add a provider for {0}	为{0}添加提供商	src/ui/screens/models.js:181	{0} = called
 17olz31	draft	Add a model to {0}	向{0}添加模型	src/ui/screens/models.js:183	{0} = called
-ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:190	{0} = called
 58mvoq	draft	Reasoning for {0}	{0}的推理	src/ui/screens/models.js:191	{0} = called
 1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间为 1 到 600 秒；留空表示默认。	src/ui/screens/models.js:192	
 8nhvom	draft	Reorder {0}, {1} of {2}	重新排序{0}，第 {1} 个，共 {2} 个	src/ui/screens/models.js:207	{0} = name; {1} = num(i + 1); {2} = num(n)
@@ -395,6 +634,170 @@ ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:190	{0} = called
 1ln5v12	draft	Move {0}	移动{0}	src/ui/screens/models.js:225	{0} = name
 1rvkqip	draft	Move up	上移	src/ui/screens/models.js:226	
 c2tjmw	draft	Move down	下移	src/ui/screens/models.js:227	
+1yveacd	draft	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	这部 iPhone 关闭了 annai 的通知。请在设置 → 通知 → annai 中开启，然后回到这里。	src/ui/screens/notifications.js:9	
+x5n8yx	draft	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annai 的通知被阻止了。请长按 annai 的图标，然后在应用信息 → 通知中允许，再回到这里。	src/ui/screens/notifications.js:10	
+3e712g	draft	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	此网站的通知被阻止了。请在浏览器的网站设置（地址旁边的图标）中允许，然后回到这里。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
+8kqp6a#other	draft	On · # reminders waiting at the relay.	开启 · 中继有 # 条提醒在等待。	src/ui/screens/notifications.js:29	plural; # = st.waiting; English: "On · # reminder waiting at the relay." (one), "On · # reminders waiting at the relay." (other)
+1i0bhgb	draft	Off: reminders show only while annai is open, and none reaches you while it is closed.	关闭：提醒只在 annai 打开时显示，关闭期间不会送达。	src/ui/screens/notifications.js:30	
+d0zb7s	draft	Save address	保存地址	src/ui/screens/notifications.js:63	
+1xxer91	draft	On iPhone, notifications work only in the Home Screen app. In Safari, tap Share, then Add to Home Screen, and open annai from your Home Screen.	在 iPhone 上，通知只能在主屏幕上的 App 中使用。请在 Safari 浏览器中轻点“共享”，然后选择“添加到主屏幕”，再从主屏幕打开 annai。	src/ui/screens/notifications.js:70	
+14jrhvb	draft	This browser can't show annai's notifications. On iPhone they need iOS 16.4 or later, in the Home Screen app.	此浏览器无法显示 annai 的通知。在 iPhone 上，需要 iOS 16.4 或更高版本，并使用主屏幕上的 App。	src/ui/screens/notifications.js:72	
+1xb9uri	draft	Asking…	正在请求…	src/ui/screens/notifications.js:82	
+1d3e9jv	draft	Turning them on…	正在开启…	src/ui/screens/notifications.js:90	
+16i4fmu	draft	Notifications are on. A first one comes now.	通知已开启。第一条马上就到。	src/ui/screens/notifications.js:93	
+17uhxrj	draft	Turn on notifications	开启通知	src/ui/screens/notifications.js:105	
+140kueu	draft	Notifications are off.	通知已关闭。	src/ui/screens/notifications.js:116	
+1kvu7gr	draft	Turn off	关闭	src/ui/screens/notifications.js:123	
+2d36ml	draft	A test notification comes in about 15 seconds. Lock the phone to see it arrive.	测试通知大约 15 秒后到达。锁定手机即可看到它送达。	src/ui/screens/notifications.js:133	
+1ldta1j	draft	Send a test notification	发送测试通知	src/ui/screens/notifications.js:140	
+np8gm3	draft	Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.	Shiori 的定时提醒，以及行程的“即将开始”和“该出发了”，会在 annai 关闭时以通知送达。轻点一条通知会打开 annai，Shiori 会跟上进度。	src/ui/screens/notifications.js:146	
+1gz01uq	draft	Relay	中继	src/ui/screens/notifications.js:149	
+rdqlke	draft	Relay address	中继地址	src/ui/screens/notifications.js:149	
+12r4tgf	draft	Reminders go through annai's relay, {0}, unless you run your own: its code is in annai's source, under {1}.	提醒会经过 annai 的中继 {0}，除非你自己运行一个：它的代码在 annai 的源代码中，位于 {1}。	src/ui/screens/notifications.js:150	{0} = 'push.annai.guide'; {1} = 'relay/'
+mkq4y8	draft	What the relay learns	中继会知道什么	src/ui/screens/notifications.js:151	
+u3pgdz	draft	annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.	annai 会在这部手机上加密每条提醒，并让每条大小相同：中继无法读取，也分不出长短。	src/ui/screens/notifications.js:152	
+1jsdzhi	draft	It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.	它会知道这部手机的推送地址（在负责送达的 Apple、Google 或 Mozilla 那里）、每条提醒的时间，以及有多少条在等待。和任何服务器一样，它能看到手机连接时的网络地址。	src/ui/screens/notifications.js:153	
+1gvv717	draft	Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn't.	关于地点的提醒（到达、离开、附近）从不离开手机。“该出发了”提醒的时间是根据 annai 上次查看时你所在的位置算出的，所以对同样知道你行程的人来说，它能大致看出你当时离得多远；中继看不出来。	src/ui/screens/notifications.js:154	
+1cg5akv	draft	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每条提醒在发送后，或在你取消它、关闭通知、移除其旅行时，会从中继删除。	src/ui/screens/notifications.js:155	
+1iz3xsa	draft	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在屏幕上打开时，会自己说出提醒，中继那份会被取消：你永远不会收到两次。	src/ui/screens/notifications.js:156	
+qkddms	draft	Every request to the relay is in Trace, under System · This device.	发往中继的每个请求都在记录中的“系统 · 此设备”下。	src/ui/screens/notifications.js:157	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
+1a9dl1b	draft	This plugin gets full access to your trips and API keys.	此插件可以完全访问你的旅行和 API 密钥。	src/ui/screens/plugin-install.js:15	
+h65i2c	draft	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能读取 annai 中保存的每个密钥，并发送到任何地方：目前有你的 {0} 密钥。	src/ui/screens/plugin-install.js:40	{0} = list(names)
+7jgsq6	draft	It can read every key saved in annai and send it anywhere.	它能读取 annai 中保存的每个密钥，并发送到任何地方。	src/ui/screens/plugin-install.js:41	
+g9t5es	draft	Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.	插件通过 annai 的离线服务加载，但它还没有运行。请重新加载 annai 后再试。	src/ui/screens/plugin-install.js:44	
+w5due	draft	{0}; {1}	{0}；{1}	src/ui/screens/plugin-install.js:47	context: semicolons; {0} = a; {1} = b; Note: Items side by side, each of which may hold commas (in English a semicolon).
+u9eus5	draft	Code that runs in annai	在 annai 中运行的代码	src/ui/screens/plugin-install.js:56	
+17rzkwp	draft	Skill "{0}": {1}	技能“{0}”：{1}	src/ui/screens/plugin-install.js:57	{0} = s.name; {1} = s.description
+2kbcmd	draft	Personality "{0}"	性格“{0}”	src/ui/screens/plugin-install.js:58	{0} = p.name
+vq8vn6	draft	A model provider: {0}	模型提供商：{0}	src/ui/screens/plugin-install.js:59	{0} = abilityWords(pkg.provider)
+1f7spnt	draft	A search provider for web_search	web_search 的搜索提供商	src/ui/screens/plugin-install.js:60	
+hezgd5	draft	Its provider now sends keys you give it to {0}	它的提供商现在会把你给它的密钥发送到 {0}	src/ui/screens/plugin-install.js:63	{0} = list(keys, 'plain')
+18fhlh2	draft	Its searches now go to {0}	它的搜索现在会发送到 {0}	src/ui/screens/plugin-install.js:64	{0} = list(searches, 'plain')
+yqw4or	draft	Nothing annai uses yet	暂时没有 annai 会用到的内容	src/ui/screens/plugin-install.js:65	
+1jxklq1	draft	Keys you give this provider are sent to {0}.	你给此提供商的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:79	{0} = list(origins)
+nfrhzr	draft	Keys you give this provider are sent only to the address you give it.	你给此提供商的密钥只会发送到你给它的地址。	src/ui/screens/plugin-install.js:79	
+ee5xfy	draft	Your search words are sent only to the address you give it.	你搜索的词只会发送到你给它的地址。	src/ui/screens/plugin-install.js:83	
+162zx16	draft	Your search words and the key you give it are sent to {0}.	你搜索的词和你给它的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:84	{0} = list(o)
+1e5wf2u	draft	Your search words are sent to {0}.	你搜索的词会发送到 {0}。	src/ui/screens/plugin-install.js:84	{0} = list(o)
+1hlyxa4	draft	{0} (installed)	{0}（已安装）	src/ui/screens/plugin-install.js:107	{0} = state[r.id]?.name ?? r.id
+j7a5ne	draft	{0} (from annai, installed with it)	{0}（来自 annai，一并安装）	src/ui/screens/plugin-install.js:107	{0} = plan.find((e) => e.id === r.id)?.name
+140c8vb	draft	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:108	{0} = semicolons(each)
+1bay0n3	draft	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	无法加载 annai 的目录来查找它需要的内容。请连接互联网后再试。	src/ui/screens/plugin-install.js:110	
+1914xwr	draft	chat	聊天	src/ui/screens/plugin-install.js:115	
+1srbarg	draft	realtime	实时	src/ui/screens/plugin-install.js:115	
+j73cn3	draft	transcription	语音转文字	src/ui/screens/plugin-install.js:115	
+zen9ix	draft	voice	声音	src/ui/screens/plugin-install.js:115	Note: A provider's ability to speak: the glossary's voice (声 / 声音), not the Voice screen.
+w2ndgc	draft	nothing yet	暂时没有	src/ui/screens/plugin-install.js:119	
+1vmhfh0	draft	From a file: {0}	来自文件：{0}	src/ui/screens/plugin-install.js:156	{0} = value
+62wi84	draft	From annai	来自 annai	src/ui/screens/plugin-install.js:157	
+17ahsv6	draft	Version {0} is installed now. Installing replaces it.	当前已安装版本 {0}。安装会替换它。	src/ui/screens/plugin-install.js:169	{0} = v
+rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:171	{0} = v; {1} = value
+1bkjwhh	draft	Version {0} is installed now, from an address, not where this one comes from.	当前已安装版本 {0}，来自某个地址，与这个的来源不同。	src/ui/screens/plugin-install.js:172	{0} = v
+1viyd44	draft	Version {0} is installed now, from a file: {1}, not where this one comes from.	当前已安装版本 {0}，来自文件：{1}，与这个的来源不同。	src/ui/screens/plugin-install.js:173	{0} = v; {1} = value
+kbu55t	draft	Version {0} is installed now, from a file, not where this one comes from.	当前已安装版本 {0}，来自文件，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v
+rmnxkd	draft	Version {0} is installed now, from annai, not where this one comes from.	当前已安装版本 {0}，来自 annai，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v
+a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:175	
+10xvqd6	draft	The protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:194	{0} = n
+cdbbto	draft	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:194	{0} = n
+dfauv0	draft	The tool {0}	工具 {0}	src/ui/screens/plugin-install.js:194	{0} = n; Note: As it starts a sentence; the same words without the English capital.
+o0687u	draft	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:194	{0} = n
+18mpnpm	draft	The kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:195	{0} = n
+19apr1m	draft	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:195	{0} = n
+1tdxuf	draft	the skill {0}	技能 {0}	src/ui/screens/plugin-install.js:195	{0} = n
+1vkxp9z	draft	The skill {0}	技能 {0}	src/ui/screens/plugin-install.js:195	{0} = n
+1iyj662	draft	The personality {0}	性格 {0}	src/ui/screens/plugin-install.js:196	{0} = n
+1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:196	{0} = n
+jsf5jg	draft	The card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:196	{0} = n
+snr298	draft	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:196	{0} = n
+1uviaaj	draft	The search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:197	{0} = n
+540qyj	draft	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:197	{0} = n
+15itc3x	draft	How Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:201	
+18lyuvn	draft	the dock	底栏	src/ui/screens/plugin-install.js:201	
+18ybxd9	draft	how Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:201	
+1j66h9v	draft	The dock	底栏	src/ui/screens/plugin-install.js:201	
+1tyty7f	draft	how the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:201	
+irliwq	draft	The Now card	此刻卡片	src/ui/screens/plugin-install.js:201	
+lfbn6i	draft	the Now card	此刻卡片	src/ui/screens/plugin-install.js:201	
+zi6sgb	draft	How the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:201	
+1xqw6of	draft	the part {0}	部件 {0}	src/ui/screens/plugin-install.js:206	{0} = name
+6sh97z	draft	The part {0}	部件 {0}	src/ui/screens/plugin-install.js:206	{0} = name
+1twwnld	draft	The browser keeps the old code until annai starts again.	在 annai 重新启动之前，浏览器会一直使用旧代码。	src/ui/screens/plugin-install.js:224	
+5nx73t	draft	Restart annai to run the new version of {0}.	重启 annai 以运行{0}的新版本。	src/ui/screens/plugin-install.js:224	{0} = name
+19ojpuq	draft	A model provider · has code	模型提供商 · 含代码	src/ui/screens/plugin-install.js:234	
+c2ihd5	draft	A skill	一个技能	src/ui/screens/plugin-install.js:234	
+i0bxaj	draft	A model provider · data only	模型提供商 · 仅数据	src/ui/screens/plugin-install.js:234	
+39jdhh	draft	A package without code	不含代码的包	src/ui/screens/plugin-install.js:235	
+5cnrzb	draft	A plugin	一个插件	src/ui/screens/plugin-install.js:235	
+kfpex	draft	version {0}	版本 {0}	src/ui/screens/plugin-install.js:236	{0} = p.shownVersion
+km7fp2	draft	by {0}	作者：{0}	src/ui/screens/plugin-install.js:236	{0} = p.author
+mska2u	draft	Go back to Add.	返回添加。	src/ui/screens/plugin-install.js:250	
+8sh8rg	draft	Nothing to install	没有要安装的内容	src/ui/screens/plugin-install.js:251	
+1irgo0m	draft	There's nothing to install.	没有要安装的内容。	src/ui/screens/plugin-install.js:252	
+15gtrui	draft	Install anyway, keep its settings and keys	仍然安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:270	
+6o0r6s	draft	Install fresh	全新安装	src/ui/screens/plugin-install.js:270	
+r9by73	draft	Install, keep its settings and keys	安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:270	
+vxrnjh	draft	Install fresh anyway	仍然全新安装	src/ui/screens/plugin-install.js:270	
+3lj040	draft	Install anyway and use it	仍然安装并使用	src/ui/screens/plugin-install.js:271	
+pq5i3n	draft	Install and use it	安装并使用	src/ui/screens/plugin-install.js:271	
+4it78t	draft	Install anyway, keep what's used now	仍然安装，保留当前使用的	src/ui/screens/plugin-install.js:272	
+c455yu	draft	Install, keep annai's	安装，保留 annai 的	src/ui/screens/plugin-install.js:272	
+s0ybug	draft	Install, keep what's used now	安装，保留当前使用的	src/ui/screens/plugin-install.js:272	
+wjgdl3	draft	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:272	
+1eg7xgh	draft	Install anyway	仍然安装	src/ui/screens/plugin-install.js:273	
+3i7of3	draft	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:277	{0} = pkg.name
+1kg68qt	draft	What it brings	它带来的内容	src/ui/screens/plugin-install.js:283	
+owkvwp	draft	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:287	
+170p2zc	draft	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:289	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	draft	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:291	
+1kfm2oy	draft	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:294	
+i2z0ve	draft	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:295	
+1q0ylpv	draft	Get a key	获取密钥	src/ui/screens/plugin-install.js:297	
+syby9s	draft	New in this version	此版本新增	src/ui/screens/plugin-install.js:300	
+6kb5j4	draft	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:344	{0} = pkg.name
+7gzgtw	draft	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:352	{0} = pkg.name
+qn6t6j	draft	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:352	
+16v75nb	draft	Cleared its settings ({0}) and its secrets ({1}).	已清除它的设置（{0}）和机密（{1}）。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
+1qjjp11	draft	Cleared its settings and its secrets ({0}).	已清除它的设置和机密（{0}）。	src/ui/screens/plugin.js:31	{0} = secrets
+166l823	draft	Cleared its settings ({0}).	已清除它的设置（{0}）。	src/ui/screens/plugin.js:32	{0} = keys
+1fn7r18	draft	Cleared its settings.	已清除它的设置。	src/ui/screens/plugin.js:32	
+9igrvz	draft	Nothing was saved, so nothing changed.	没有保存任何内容，所以什么都没变。	src/ui/screens/plugin.js:33	
+hln9jd	draft	Cleared its secrets ({0}).	已清除它的机密（{0}）。	src/ui/screens/plugin.js:33	{0} = secrets
+14779x5	draft	{0}'s settings weren't reset	{0}的设置没有重置	src/ui/screens/plugin.js:41	{0} = r.name
+bigbss	draft	Try again.	请再试一次。	src/ui/screens/plugin.js:41	
+14zac1b	draft	Reset forgets the settings and keys this plugin keeps, with their history. The plugin stays, and so do its tool switches and what it wrote into trips.	重置会清除此插件保存的设置和密钥，连同它们的历史。插件本身会保留，它的工具开关以及它写入旅行的内容也会保留。	src/ui/screens/plugin.js:49	
+1ff8trs	draft	Tap again to reset	再点一次以重置	src/ui/screens/plugin.js:50	
+2i2r8t	draft	Reset settings	重置设置	src/ui/screens/plugin.js:50	
+w01rfz	draft	Names	名称	src/ui/screens/plugin.js:61	
+1fuyi3p	draft	annai keeps it for Shiori's own use.	annai 将它留给 Shiori 自己使用。	src/ui/screens/plugin.js:65	
+vi0gxl	draft	It is handed the keys you give it, so it isn't switched: remove {0} to use this one.	它会拿到你给它的密钥，所以不能切换：要使用这个，请移除{0}。	src/ui/screens/plugin.js:65	{0} = by
+8fqam3	draft	{0}: this one is used (your choice).	{0}：正在使用这个（你的选择）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true)
+bv9qvd	draft	{0}: the one from {1} is used (your choice).	{0}：正在使用来自{1}的那个（你的选择）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true); {1} = by
+yejxr6	draft	Not used: {0} is already provided by {1}.	未使用：{0}已由{1}提供。	src/ui/screens/plugin.js:67	{0} = thing; {1} = by
+1vq6yyu	draft	Use this one instead	改用这个	src/ui/screens/plugin.js:68	
+vmlwpb	draft	Undo	撤销	src/ui/screens/plugin.js:68	
+1teqta3	draft	There's no plugin called {0} on this device.	此设备上没有名为 {0} 的插件。	src/ui/screens/plugin.js:82	{0} = id
+1xnuq33	draft	Back to Plugins	返回插件	src/ui/screens/plugin.js:82	
+xkwhlc	draft	Not here	不在这里	src/ui/screens/plugin.js:82	
+1qzaah1	draft	Settings → Tools	设置 → 工具	src/ui/screens/plugin.js:93	
+1bk7xrz	draft	Skills	技能	src/ui/screens/plugin.js:105	
+1w1mhg4	draft	Each can be switched off in {0}.	每一个都可以在{0}中关闭。	src/ui/screens/plugin.js:107	{0} = toolsLink
+v2w06x	draft	Its pages	它的页面	src/ui/screens/plugin.js:112	
+1flt3rs	draft	Search your plugins	搜索你的插件	src/ui/screens/plugins.js:32	
+3l91ca	draft	Built in	内置	src/ui/screens/plugins.js:43	
+18ydira	draft	Restart annai to run the new version	重启 annai 以运行新版本	src/ui/screens/plugins.js:44	
+a6th2y	draft	Can't start: {0}	无法启动：{0}	src/ui/screens/plugins.js:45	{0} = r.problem
+1rattxx	draft	Turned off after repeated errors	因反复出错已关闭	src/ui/screens/plugins.js:46	
+1tukfau	draft	On, but it didn't start	已开启，但没有启动	src/ui/screens/plugins.js:48	
+qvtz3k	draft	On	开启	src/ui/screens/plugins.js:48	
+1vtomjj	draft	Providers: {0}.	提供商：{0}。	src/ui/screens/plugins.js:65	{0} = list(names, 'plain')
+j3sbh5	draft	No provider is set up from it yet.	还没有用它设置的提供商。	src/ui/screens/plugins.js:67	
+e1enek#other	draft	Removing it removes {0}, with their keys and models.	移除它会一并移除{0}，以及其密钥和模型。	src/ui/screens/plugins.js:68	plural; # = providers.length; {0} = list(names); English: "Removing it removes {0}, with its key and models." (one), "Removing it removes {0}, with their keys and models." (other)
+fj8j97	draft	Needed by {0}.	{0}需要它。	src/ui/screens/plugins.js:69	{0} = list(needs)
+dbgp9n	draft	Model provider	模型提供商	src/ui/screens/plugins.js:80	
+v0wv6e	draft	Skill	技能	src/ui/screens/plugins.js:80	
+97t8e3	draft	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:98	{0} = update.available
+jgr98x	draft	{0} didn't start	{0}没有启动	src/ui/screens/plugins.js:115	{0} = r.name
+s74tk7	draft	Turn on	开启	src/ui/screens/plugins.js:119	
 ura2r7	draft	{0} a minute of speech	语音每分钟 {0}	src/ui/screens/provider.js:30	{0} = price(p.perMinute)
 1b0vcka	draft	{0} per million characters	每百万字符 {0}	src/ui/screens/provider.js:31	{0} = price(p.perMillionChars)
 1xducp7	draft	{0} in, {1} out	输入 {0}，输出 {1}	src/ui/screens/provider.js:33	{0} = price(p.input); {1} = price(p.output)
@@ -406,84 +809,179 @@ k02514#other	draft	First, annai asks {0} to delete the # turns of your conversat
 lcyovi#other	draft	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	离线时更换密钥或地址，或点“移除密钥”，{0}保留的 # 轮对话会一直留到过期为止，最长 {1}。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	draft	{0} keeps # turns until they expire, up to {1}.	{0}会保留 # 轮对话到过期为止，最长 {1}。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	draft	This provider no longer exists	该提供商已不存在	src/ui/screens/provider.js:80	
-1yxhxra	draft	not set	未设置	src/ui/screens/provider.js:102	
-8rf2wi	draft	saved (type a new one to replace it)	已保存（输入新的以替换）	src/ui/screens/provider.js:102	
 17c1dhc	draft	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:103	
 lewgh4	draft	Save	保存	src/ui/screens/provider.js:134	
 1r2b41m	draft	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:141	{0} = plugin; {1} = list(protocols)
 5f7g8f	draft	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:142	{0} = plugin
 mcx63c	draft	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:143	{0} = list(protocols)
 1ue57qi	draft	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:144	
-1rtug95	draft	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:145	{0} = sourceLine(installed).replace(/^From /, '')
-nfdm8v	draft	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:146	
-u40nrw	draft	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:146	{0} = installed.file
-1tqi1rr	draft	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:157	{0} = list(k.who)
-evz7q4	draft	Provider	提供商	src/ui/screens/provider.js:174	
-2r1h4p	draft	Connection	连接	src/ui/screens/provider.js:176	
-1swq770	draft	API key	API 密钥	src/ui/screens/provider.js:179	
-1q0ylpv	draft	Get a key	获取密钥	src/ui/screens/provider.js:181	
-1o4hxda	draft	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:188	
-12td532	draft	Remove key	移除密钥	src/ui/screens/provider.js:191	
-1qapi39	draft	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:191	
-5bt3jk	draft	Key removed	已移除密钥	src/ui/screens/provider.js:194	
-1r04n6e	draft	Remove provider	移除提供商	src/ui/screens/provider.js:203	
-11faf7g	draft	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:224	{0} = src.name
-ih6plk	draft	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请从添加中添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:224	
-u91wwi	draft	Add by hand	手动添加	src/ui/screens/provider.js:242	
-1nqeyot	draft	By hand	手动	src/ui/screens/provider.js:247	
-cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:248	{0} = src.name
-1lckuuy	draft	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:266	
-10m9pho	draft	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:267	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	draft	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:271	
-6k2646	draft	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:272	
-1e1obo4	draft	Installing…	正在安装…	src/ui/screens/provider.js:279	
-9djdxp	draft	Install it	安装	src/ui/screens/provider.js:288	
-17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:289	{0} = entry.name
-mf1onk	draft	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:302	
-r4y7q	draft	Use {0}	使用{0}	src/ui/screens/provider.js:327	{0} = a.name
-1o304we	draft	New in the last update	上次更新新增	src/ui/screens/provider.js:334	
-1k5huc5	draft	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:354	{0} = providerOf(rec).baseUrl
-1ppqeqd	draft	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:354	
-12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:361	
-1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:366	{0} = who
-l91m05	draft	Its own address	自己的地址	src/ui/screens/provider.js:385	
-9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:391	
-1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:395	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
-1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:396	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
-1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:398	
-1iorloe	draft	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:398	
-1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:399	
-72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:400	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:401	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	draft	Test {0}	测试{0}	src/ui/screens/provider.js:412	{0} = first.name
-1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:429	{0} = who
-1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:430	{0} = who
-1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:430	{0} = who; {1} = tool.name
-11x4tx3	draft	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:436	{0} = name
-4nyk49	draft	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:436	
-15hdhx3	draft	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:458	
-1oz4euh	draft	Add model	添加模型	src/ui/screens/provider.js:471	
-tbmsa5	draft	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:476	
-1yko1my#other	draft	# models.	# 个模型。	src/ui/screens/provider.js:479	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	draft	Fetch model list	获取模型列表	src/ui/screens/provider.js:487	
-1scr2ml	draft	{0}K context	{0}K 上下文	src/ui/screens/provider.js:490	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	draft	Its models	它的模型	src/ui/screens/provider.js:492	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	draft	No models yet.	还没有模型。	src/ui/screens/provider.js:493	
-pnxisg	draft	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:494	
-1mod47e	draft	for example: haiku	例如：haiku	src/ui/screens/provider.js:508	
-uizt0x	draft	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:518	{0} = named
-1w6mxym	draft	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:519	{0} = on
-l7fn8k	draft	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:519	
-19ai2z0	draft	Filter the list	筛选列表	src/ui/screens/provider.js:530	
-11pl9jr	draft	Use the free models	使用免费模型	src/ui/screens/provider.js:538	
-vam64u	draft	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:538	
-1b2yx8m	draft	Suggested models	推荐的模型	src/ui/screens/provider.js:539	
-1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:540	{0} = src.name
-1x5hwmk	draft	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:541	{0} = src.name
-1iffu2j	draft	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:548	{0} = n
-1szeqxt	draft	Roles updated.	已更新角色。	src/ui/screens/provider.js:548	
-1egvjs1	draft	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:549	{0} = f.name; {1} = messageOf(f.error)
-wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:555	{0} = which
+1rtug95	draft	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:146	{0} = host
+nfdm8v	draft	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:147	
+u40nrw	draft	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:147	{0} = installed.file
+1tqi1rr	draft	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:158	{0} = list(k.who)
+evz7q4	draft	Provider	提供商	src/ui/screens/provider.js:175	
+2r1h4p	draft	Connection	连接	src/ui/screens/provider.js:177	
+1swq770	draft	API key	API 密钥	src/ui/screens/provider.js:180	
+1o4hxda	draft	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:189	
+12td532	draft	Remove key	移除密钥	src/ui/screens/provider.js:192	
+1qapi39	draft	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:192	
+5bt3jk	draft	Key removed	已移除密钥	src/ui/screens/provider.js:195	
+1r04n6e	draft	Remove provider	移除提供商	src/ui/screens/provider.js:204	
+11faf7g	draft	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:225	{0} = src.name
+ih6plk	draft	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请从添加中添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:225	
+u91wwi	draft	Add by hand	手动添加	src/ui/screens/provider.js:243	
+1nqeyot	draft	By hand	手动	src/ui/screens/provider.js:248	
+cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:249	{0} = src.name
+1lckuuy	draft	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:267	
+10m9pho	draft	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:268	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	draft	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:272	
+6k2646	draft	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:273	
+1e1obo4	draft	Installing…	正在安装…	src/ui/screens/provider.js:280	
+9djdxp	draft	Install it	安装	src/ui/screens/provider.js:289	
+17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:290	{0} = entry.name
+mf1onk	draft	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:303	
+r4y7q	draft	Use {0}	使用{0}	src/ui/screens/provider.js:328	{0} = a.name
+1o304we	draft	New in the last update	上次更新新增	src/ui/screens/provider.js:335	
+1k5huc5	draft	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:355	{0} = providerOf(rec).baseUrl
+1ppqeqd	draft	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:355	
+12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:362	
+1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:367	{0} = who
+l91m05	draft	Its own address	自己的地址	src/ui/screens/provider.js:386	
+9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:392	
+1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:396	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
+1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:397	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
+1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:399	
+1iorloe	draft	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:399	
+1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:400	
+72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:401	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:402	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	draft	Test {0}	测试{0}	src/ui/screens/provider.js:413	{0} = first.name
+1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:430	{0} = who
+1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:431	{0} = who
+1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:431	{0} = who; {1} = tool.name
+11x4tx3	draft	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:437	{0} = name
+4nyk49	draft	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:437	
+15hdhx3	draft	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:459	
+1oz4euh	draft	Add model	添加模型	src/ui/screens/provider.js:472	
+tbmsa5	draft	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:477	
+1yko1my#other	draft	# models.	# 个模型。	src/ui/screens/provider.js:480	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	draft	Fetch model list	获取模型列表	src/ui/screens/provider.js:488	
+1scr2ml	draft	{0}K context	{0}K 上下文	src/ui/screens/provider.js:491	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	draft	Its models	它的模型	src/ui/screens/provider.js:493	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	draft	No models yet.	还没有模型。	src/ui/screens/provider.js:494	
+pnxisg	draft	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:495	
+1mod47e	draft	for example: haiku	例如：haiku	src/ui/screens/provider.js:509	
+uizt0x	draft	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:519	{0} = named
+1w6mxym	draft	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:520	{0} = on
+l7fn8k	draft	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:520	
+19ai2z0	draft	Filter the list	筛选列表	src/ui/screens/provider.js:531	
+11pl9jr	draft	Use the free models	使用免费模型	src/ui/screens/provider.js:539	
+vam64u	draft	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:539	
+1b2yx8m	draft	Suggested models	推荐的模型	src/ui/screens/provider.js:540	
+1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:541	{0} = src.name
+1x5hwmk	draft	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:542	{0} = src.name
+1iffu2j	draft	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:549	{0} = n
+1szeqxt	draft	Roles updated.	已更新角色。	src/ui/screens/provider.js:549	
+1egvjs1	draft	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:550	{0} = f.name; {1} = messageOf(f.error)
+wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:556	{0} = which
+17z59l7	draft	Plugin updates are ready: {0}.	插件更新已就绪：{0}。	src/ui/screens/settings.js:29	{0} = list(plugins.map((u) => u.name), 'plain')
+1ltn2ct	draft	A new version of annai is ready.	annai 的新版本已就绪。	src/ui/screens/settings.js:29	
+k12u1x	draft	Updates	更新	src/ui/screens/settings.js:45	
+1gxx7pi	draft	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 会在启动时和你回来时，查找自身及其插件的新版本。可以立即检查，或查看正在运行的构建。	src/ui/screens/settings.js:46	
+1m8wo5h	draft	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、每个角色尝试它们的顺序、她每天可花费的金额、缓存，以及何时总结。	src/ui/screens/settings.js:48	
+qhwigq	draft	How Shiori speaks and hears you, with a test for each.	Shiori 如何说话和听你说话，各有一个测试。	src/ui/screens/settings.js:49	
+1mys0wo	draft	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭期间的提醒，通过推送中继送达，以及中继会知道什么。	src/ui/screens/settings.js:50	
+1vex33	draft	Backup	备份	src/ui/screens/settings.js:51	
+1fpvmy8	draft	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:52	
+rpzgfn	draft	Last export {0}.	上次导出：{0}	src/ui/screens/settings.js:52	{0} = relTime(app.lastExportAt)
+2i7wwt	draft	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:53	
+zi2agh	draft	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:53	{0} = list(automatic, 'plain')
+1gfyasg	draft	everything	全部	src/ui/screens/settings.js:56	
+1tpqgk3	draft	Automatic backups	自动备份	src/ui/screens/settings.js:57	
+706cmq	draft	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:59	
+8f98y9	draft	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:60	
+m7t7a8	draft	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:61	
+11bjuh3	draft	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和读取，以及 Jina 密钥。	src/ui/screens/settings.js:63	
+hflnof	draft	Skills and code plugins: install, update, switch off or remove.	技能和代码插件：安装、更新、关闭或移除。	src/ui/screens/settings.js:64	
+ysihre	draft	Manage plugins	管理插件	src/ui/screens/settings.js:64	
+eop0jq	draft	Storage	存储空间	src/ui/screens/settings.js:65	
+1p1ce3s	draft	Protected from automatic clearing: no.	防止自动清除：否。	src/ui/screens/settings.js:66	
+1q6azye	draft	Protected from automatic clearing: yes.	防止自动清除：是。	src/ui/screens/settings.js:66	
+q3dcqq	draft	Using {0} of about {1}.	已使用约 {1} 中的 {0}。	src/ui/screens/settings.js:67	{0} = size(st.usage); {1} = size(st.quota)
+12kaphy	draft	Your data is now protected.	你的数据现已受到保护。	src/ui/screens/settings.js:72	
+16iv67d	draft	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	浏览器没有同意。把 annai 安装到主屏幕通常可以解决。	src/ui/screens/settings.js:72	
+o8v2vm	draft	Protect my data	保护我的数据	src/ui/screens/settings.js:75	
+1201gyc	draft	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：许可证、源代码、致谢，以及你的密钥和数据如何保存。	src/ui/screens/settings.js:76	{0} = ctx.version
+onrqou	draft	About	关于	src/ui/screens/settings.js:76	
+1stxhg7	draft	Diagnostics	诊断	src/ui/screens/settings.js:77	
+ynqcma	draft	A report of recent errors and system events, without your files or keys, to paste into a bug report.	一份最近的错误和系统事件报告，不含你的文件或密钥，可贴到问题报告中。	src/ui/screens/settings.js:78	
+2yd0qo	draft	Copy diagnostics	复制诊断信息	src/ui/screens/settings.js:79	
+1yuht27	draft	Simulate a trip	模拟旅行	src/ui/screens/settings.js:80	
+5gnef9	draft	Try GPS, the replay and the recap with a simulated trip.	用模拟的旅行试试 GPS、回放和回顾。	src/ui/screens/settings.js:80	
+xgedcv	draft	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在试验中的功能，例如在标签页之间滑动。每项在你开启前都是关闭的。	src/ui/screens/settings.js:81	
+3y74hh	draft	Erase	清除	src/ui/screens/settings.js:82	
+5d0bx7	draft	Keep originals: store photos exactly as taken	保留原图：完全按拍摄时的样子保存照片	src/ui/screens/settings.js:99	
+uq55l7	draft	WebP, or JPEG where this browser can't write WebP	WebP，浏览器无法写入 WebP 时用 JPEG	src/ui/screens/settings.js:102	
+8dymvi	draft	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:117	{0} = num(0.5); {1} = num(1)
+14tyrj6	draft	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边为整数像素，至少 {0}。留空则不限。	src/ui/screens/settings.js:118	{0} = num(256)
+1izj97p	draft	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送的照片最大至少 {0} MB。留空则不限。	src/ui/screens/settings.js:125	{0} = num(0.1)
+1ftv62v	draft	This browser writes WebP.	此浏览器可以写入 WebP。	src/ui/screens/settings.js:127	
+t33cgw	draft	The originals stay in your phone's photo library.	原图保留在你手机的照片图库中。	src/ui/screens/settings.js:127	
+xbsoea	draft	Each photo you add is stored once.	你添加的每张照片只保存一次。	src/ui/screens/settings.js:127	
+xn9rs1	draft	This browser can't write WebP, so photos are saved as JPEG.	此浏览器无法写入 WebP，所以照片保存为 JPEG。	src/ui/screens/settings.js:127	
+10avjxv	draft	Save photos as	照片保存格式	src/ui/screens/settings.js:130	
+ayixjd	draft	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:131	{0} = num(0.5); {1} = num(1)
+jddrbd	draft	Longest side, pixels	最长边，像素	src/ui/screens/settings.js:133	
+ehvdao	draft	Largest file, MB	最大文件，MB	src/ui/screens/settings.js:134	
+o47vu9	draft	The largest file is at least {0} MB. Leave it empty for no limit.	最大文件至少 {0} MB。留空则不限。	src/ui/screens/settings.js:134	{0} = num(0.1)
+1kdcc9b	draft	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:135	
+awxg9v	draft	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只制作一次，并与对话一起保存。仔细查看时总会发送更多细节，所以较小的设置也够用。	src/ui/screens/settings.js:136	
+1223a8b	draft	Longest side sent, pixels	发送的最长边，像素	src/ui/screens/settings.js:138	
+1iw8fgg	draft	Largest photo sent, MB	发送照片的最大值，MB	src/ui/screens/settings.js:139	
+10wwcx4	draft	Send photos as	照片发送格式	src/ui/screens/settings.js:141	
+1kotxez	draft	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:142	{0} = num(0.5); {1} = num(1)
+8ruaox	draft	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:157	
+jdwnfb	draft	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:159	
+ltgiri	draft	Erasing…	正在清除…	src/ui/screens/settings.js:178	
+u9zvd	draft	Erase now	立即清除	src/ui/screens/settings.js:199	
+tgdxsp	draft	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:205	
+1x8t4tk	draft	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:207	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	draft	From plugins	来自插件	src/ui/screens/settings.js:217	
+aqber3	draft	600 times: an hour takes 6 seconds	600 倍：一小时只需 6 秒	src/ui/screens/simulate.js:10	
+u8l013	draft	10 times real time: an hour takes 6 minutes	实际时间的 10 倍：一小时只需 6 分钟	src/ui/screens/simulate.js:10	
+zby7kj	draft	60 times: an hour takes a minute	60 倍：一小时只需一分钟	src/ui/screens/simulate.js:10	
+1hzof4s	draft	As fast as it can go: Shiori still answers each wake, so the sample takes about a minute and a long recorded track several	尽可能快：Shiori 仍会回应每次唤醒，所以示例大约需要一分钟，长的记录轨迹需要几分钟	src/ui/screens/simulate.js:11	
+2w2xwg	draft	Speed	速度	src/ui/screens/simulate.js:72	
+194x2x3	draft	How far it has got	进度	src/ui/screens/simulate.js:83	
+j4z771	draft	Pause	暂停	src/ui/screens/simulate.js:86	
+j88ayy	draft	Resume	继续	src/ui/screens/simulate.js:86	
+dy7n3b	draft	Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.	可以在此刻、驾驶中和对话中观看；Shiori 会像开着 GPS 时一样唤醒。打开另一个旅行会停止它。	src/ui/screens/simulate.js:88	
+17o4v1i	draft	Conversation	对话	src/ui/screens/simulate.js:89	
+1ifawmf	draft	The trip	这个旅行	src/ui/screens/simulate.js:89	
+1q5u96o	draft	Driving	驾驶中	src/ui/screens/simulate.js:89	
+1djwe5m	draft	The simulation stopped: {0}	模拟已停止：{0}	src/ui/screens/simulate.js:98	{0} = s.error
+1pc6r71	draft	You stopped the simulation.	你停止了模拟。	src/ui/screens/simulate.js:98	
+z3dkmv	draft	The simulation has ended.	模拟已结束。	src/ui/screens/simulate.js:98	
+1h20ypn	draft	The last simulation	上一次模拟	src/ui/screens/simulate.js:99	
+1gave4b	draft	What it did is in its own trip.	它做过的事都在它自己的旅行里。	src/ui/screens/simulate.js:101	
+yl7p0b	draft	Replay it	回放	src/ui/screens/simulate.js:103	
+1r39apx	draft	Recap it	回顾	src/ui/screens/simulate.js:104	
+1kvz0w9	draft	Open the trip	打开旅行	src/ui/screens/simulate.js:105	
+1ccaw7n	draft	Big Sur on Highway 1: a sample drive, about ten hours, with a plan and bookings	1 号公路上的大苏尔：一段示例驾驶，约十小时，含行程和预订	src/ui/screens/simulate.js:123	
+1ho5w11	draft	The recorded track of a trip on this device	此设备上某个旅行记录的轨迹	src/ui/screens/simulate.js:124	
+19stkaz	draft	An itinerary file	行程文件	src/ui/screens/simulate.js:125	
+gk6a6b	draft	No trip has a recorded track yet	还没有旅行记录过轨迹	src/ui/screens/simulate.js:126	
+17o2ciz	draft	Start the simulation	开始模拟	src/ui/screens/simulate.js:131	
+1huol2f	draft	No trip on this device has a recorded track yet: GPS records one while it is on.	此设备上还没有记录过轨迹的旅行：GPS 开启时会记录。	src/ui/screens/simulate.js:139	
+2l6w88	draft	Choose an itinerary file first.	请先选择一个行程文件。	src/ui/screens/simulate.js:143	
+frbimx	draft	A new simulation	新的模拟	src/ui/screens/simulate.js:156	
+1i1dlpq	draft	A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.	把一条记录的或编出的 GPS 轨迹及其时钟，像真实旅行一样交给 GPS 和 Shiori 运行，在一个专门的新旅行中进行：之后可以回放和回顾。	src/ui/screens/simulate.js:157	
+g9ytfz	draft	Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.	Shiori 会像开着 GPS 时一样用你自己的模型唤醒：示例大约会唤醒她 24 次。用脚本模型（设置 → 模型）则免费。	src/ui/screens/simulate.js:159	
+1ucm1rb	draft	No model is set up, so Shiori can't answer: annai shows the reminders itself.	还没有设置模型，所以 Shiori 无法回答：annai 会自己显示提醒。	src/ui/screens/simulate.js:160	
+1ussy6i	draft	Trip	旅行	src/ui/screens/simulate.js:161	
+amwn2j	draft	The track	轨迹	src/ui/screens/simulate.js:161	
+ckmlfc	draft	Itinerary file	行程文件	src/ui/screens/simulate.js:161	
+nicd80	draft	That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).	该文件不是 annai 能读取的行程：它需要是像大苏尔示例那样的 JSON（起点、地点路线和时间）。	src/ui/screens/simulate.js:175	
 11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -502,7 +1000,6 @@ wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:555	{
 vqmn1t	draft	Web	网页	src/ui/screens/tools.js:72	
 17jz3e3	draft	Your model's own search	模型自带的搜索	src/ui/screens/tools.js:74	
 1jhespe	draft	annai's providers (below)	annai 的提供商（见下方）	src/ui/screens/tools.js:74	
-3tlu3u	draft	Off	关闭	src/ui/screens/tools.js:74	
 7f3la6	draft	Your model's own search when it has one, else annai's providers (below)	模型有自带搜索就用它，否则用 annai 的提供商（见下方）	src/ui/screens/tools.js:74	
 oh3ukx	draft	Search via	搜索方式	src/ui/screens/tools.js:74	
 190j9od	draft	Your model's own fetch	模型自带的抓取	src/ui/screens/tools.js:75	
@@ -515,10 +1012,103 @@ s81kp3	draft	Save key	保存密钥	src/ui/screens/tools.js:87
 r654x7	draft	Servers that give Shiori tools of their own, with a token or headers kept on this device.	为 Shiori 提供专属工具的服务器，令牌或请求头保存在此设备上。	src/ui/screens/tools.js:93	
 vayo7x	draft	Tool switches	工具开关	src/ui/screens/tools.js:95	
 a2pqv8	draft	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori 拥有的所有工具，包括插件的工具。关闭的工具不会出现在她的下一个请求中。	src/ui/screens/tools.js:97	
+1unt64g	draft	Everything	全部	src/ui/screens/trace.js:31	
+6qsrkg	draft	Halves	分身	src/ui/screens/trace.js:31	Note: Shiori's two halves (glossary: halves).
+1swmtuu	draft	Errors	错误	src/ui/screens/trace.js:32	
+pghiva	draft	Location	位置	src/ui/screens/trace.js:32	
+1ocm8xt	draft	System · {0}	系统 · {0}	src/ui/screens/trace.js:47	{0} = s.title
+1jije2k	draft	Nothing here yet.	这里还没有内容。	src/ui/screens/trace.js:75	
+zixzwp	draft	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:86	
+vv1pu6	draft	Type contains	类型包含	src/ui/screens/trace.js:87	
+g9esrd	draft	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:111	
+obwhc7	draft	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:111	
+oh532o	draft	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:111	
+1ds6m85	draft	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:112	
+9chhxd	draft	"{0}"	“{0}”	src/ui/screens/trace.js:127	{0} = cut(s)
+1r6qy12	draft	the user wrote	用户写了	src/ui/screens/trace.js:133	
+yyq6of	draft	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:133	
+1eo2nlm	draft	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:137	
+l7yvjm	draft	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:137	
+omff16	draft	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:138	
+1larmkq	draft	phone dictation	手机听写	src/ui/screens/trace.js:141	
+piy3vo	draft	{0} from the microphone	来自麦克风 {0}	src/ui/screens/trace.js:141	{0} = duration(d.ms ?? 0)
+1sfeb1g	draft	an answer	一个回答	src/ui/screens/trace.js:142	
+1x13vat	draft	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:142	
+k9shc3	draft	while she was thinking	在她思考时	src/ui/screens/trace.js:142	
+an9lly	draft	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:143	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	draft	clip kept	已保留片段	src/ui/screens/trace.js:143	
+1gqj9yn	draft	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:145	{0} = d.by
+o1nqez	draft	from {0}	来自 {0}	src/ui/screens/trace.js:148	{0} = d.source
+v0l7oi#other	draft	# links	# 个链接	src/ui/screens/trace.js:148	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	draft	error	错误	src/ui/screens/trace.js:150	
+scvxkf	draft	ok	成功	src/ui/screens/trace.js:150	
+gqww9o	draft	upload	上传	src/ui/screens/trace.js:152	
+1qafm6e	draft	kept turn not deleted yet	保留的回合尚未删除	src/ui/screens/trace.js:154	
+7lsal4	draft	no answer	无应答	src/ui/screens/trace.js:154	
+udpknx	draft	kept turn deleted	保留的回合已删除	src/ui/screens/trace.js:154	
+hnu5xn	draft	kept turn looked up	已查询保留的回合	src/ui/screens/trace.js:155	
+1t1zawl	draft	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:156	{0} = d.mediaType
+12y45gf	draft	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:160	{0} = app
+13f9wx2	draft	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:160	{0} = app
+fgylb4#other	draft	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:161	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	draft	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:164	
+1vkhbgw	draft	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:164	
+17ybebf	draft	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:165	
+130nh2w	draft	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:166	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	draft	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:166	{0} = d.to
+1nulaw8	draft	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:168	{0} = d.late
+1vzfabu	draft	no connection	无网络连接	src/ui/screens/trace.js:168	
+1l7ac5y	draft	shown	已显示	src/ui/screens/trace.js:169	
+u35e3n	draft	said aloud	已朗读	src/ui/screens/trace.js:169	
+1yfde5	draft	no name	无名称	src/ui/screens/trace.js:171	
+1nk1wxu	draft	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:172	{0} = d.route
+1yo1hz0	draft	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:172	{0} = d.using || unnamed
+bt7zey	draft	from the devices present	来自现有的设备	src/ui/screens/trace.js:172	
+3gdj21	draft	no devices	无设备	src/ui/screens/trace.js:173	
+j7yqys	draft	GPS on	GPS 开启	src/ui/screens/trace.js:177	
+zemwn2	draft	GPS off	GPS 关闭	src/ui/screens/trace.js:177	
+1ijsnzq	draft	voice on	语音开启	src/ui/screens/trace.js:179	
+z2w914	draft	voice off	语音关闭	src/ui/screens/trace.js:179	
+1g1k3by	draft	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:182	{0} = d.waiting ?? 0
+xy6oxk	draft	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:182	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	draft	notification shown	通知已显示	src/ui/screens/trace.js:183	
+cjmncb	draft	notification opened	通知已打开	src/ui/screens/trace.js:184	
+3m7wpo#other	draft	# attempts	尝试 # 次	src/ui/screens/trace.js:194	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	draft	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:198	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	draft	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:199	{0} = Math.round(d.outputLatency * 1000)
+a1oech	draft	live session {0}	实时会话 {0}	src/ui/screens/trace.js:200	{0} = d.state
+beya44	draft	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:202	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	draft	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:207	{0} = duration(d.ms ?? 0)
+1wcl60z	draft	cut	已中断	src/ui/screens/trace.js:207	
+njy1uz	draft	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:207	
+9atabi	draft	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:208	{0} = d.waitMs
+j43x3k	draft	stalled	卡住	src/ui/screens/trace.js:208	
+1qyanji#other	draft	# holes, {0} ms	# 处中断，{0} ms	src/ui/screens/trace.js:209	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other)
+gw0cwm#other	draft	# holes	# 处中断	src/ui/screens/trace.js:209	plural; # = 0; English: "# hole" (one), "# holes" (other)
+1bx4bl6	draft	on {0}	在 {0} 上	src/ui/screens/trace.js:210	{0} = d.player
+1kg51bl	draft	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:213	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	draft	audio: {0}	音频：{0}	src/ui/screens/trace.js:216	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	draft	{0} sent	已发送 {0}	src/ui/screens/trace.js:218	{0} = size(d.bytes)
+l04i5	draft	{0} sent, after a kept turn	已发送 {0}，在保留的回合之后	src/ui/screens/trace.js:218	{0} = size(d.bytes)
+15hqi4k#other	draft	# guides	# 份指南	src/ui/screens/trace.js:222	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	draft	{0} failed	{0} 个失败	src/ui/screens/trace.js:222	{0} = d.failed
+1waoe51	draft	at its limit	已达上限	src/ui/screens/trace.js:223	
+66h5i6	draft	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:223	
+urm4i6	draft	stopped	已停止	src/ui/screens/trace.js:223	
+rfe2ef	draft	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:225	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	draft	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:226	
+uvybu3	draft	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:228	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	draft	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:228	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	draft	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:229	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	draft	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:230	{0} = d.backup
+57gz9u#other	draft	# secrets	# 个机密	src/ui/screens/trace.js:232	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	draft	# settings	# 项设置	src/ui/screens/trace.js:232	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+tqj8t3	draft	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:266	
+mp7j1w#other	draft	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:268	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+1kfziuy	draft	Show what was stored	显示保存的内容	src/ui/screens/trace.js:276	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:23	
 33pqd9	draft	Last backup {0}, to {1}.	上次备份：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:27	
-rpzgfn	draft	Last export {0}.	上次导出：{0}	src/ui/screens/trips.js:27	{0} = relTime(settings.lastExportAt)
 sjnfyu	draft	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:29	{0} = archived.length
 ru2yru	draft	updated {0}	{0}更新	src/ui/screens/trips.js:43	{0} = relTime(s.updated)
 1ceddv5	draft	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:49	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
@@ -529,6 +1119,19 @@ fc4c10	draft	Starts	开始日期	src/ui/screens/trips.js:71
 1baslgi	draft	Start trip	开始旅行	src/ui/screens/trips.js:73	Note: The same words as the form's heading, "Start a trip".
 vr6m26	draft	Give the trip a name.	请为旅行命名。	src/ui/screens/trips.js:79	
 152lnj5	draft	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:80	
+ric74d	draft	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
+1mk4lgq	draft	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
+cmuwtk	draft	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
+1xnmiet	draft	annai is offline, so it couldn't check. It checks again when you come back to it with a connection.	annai 处于离线状态，所以无法检查。你在有网络时回来，它会再次检查。	src/ui/screens/updates.js:20	
+qctftg	draft	Not everything could be checked:	有些内容无法检查：	src/ui/screens/updates.js:21	
+owcel8	draft	Everything is up to date.	全部都是最新的。	src/ui/screens/updates.js:22	
+lxnmgn	draft	Check now	立即检查	src/ui/screens/updates.js:43	
+b0fwq0	draft	Checking for updates	检查更新	src/ui/screens/updates.js:52	
+1lxhz3f	draft	annai checks by itself when it starts and when you come back to it, at most every 15 minutes. Plugins installed from an address are checked there at most once a day, so their sites aren't asked every time; Check now asks them too. Nothing changes until you tap Restart or Update.	annai 会在启动时和你回来时自动检查，最多每 15 分钟一次。从地址安装的插件最多每天在那里检查一次，以免每次都询问它们的网站；“立即检查”也会询问它们。在你轻点“重启”或“更新”之前什么都不会改变。	src/ui/screens/updates.js:56	
+cdoxxa	draft	A new version of annai	annai 的新版本	src/ui/screens/updates.js:57	
+1ng2wty	draft	It is ready, and annai uses it the next time it starts. Restart now to use it at once: if Shiori is in the middle of something, annai restarts once she has finished.	它已就绪，annai 下次启动时会使用。立即重启即可马上使用：如果 Shiori 正在做什么，annai 会等她完成后再重启。	src/ui/screens/updates.js:59	
+1wl12tq	draft	It is downloading. Restart now shows here once it is ready.	正在下载。就绪后这里会显示“立即重启”。	src/ui/screens/updates.js:61	
+1t0nu5g	draft	Plugins installed from a file have nowhere to check for updates: {0}.	从文件安装的插件没有可以检查更新的地方：{0}。	src/ui/screens/updates.js:67	{0} = fromFile
 1plbhzy	draft	Heard {0} of speech.	听到了{0}的语音。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
 1jrfsn4	draft	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免费搜索会把你的搜索发送给 Exa、Parallel 或 Firecrawl：只发送搜索的词，不发送你的文件或位置。Exa 还会读取其他方式读不了的网页，因此也会收到该网页的地址。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索内容训练模型，所以请不要在搜索中写名字和地址。在它们之后，还有一个始终开启的最后手段，会用同样的词询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有“搜索方式：关闭”能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	draft	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜索的词会发送给你保留勾选的服务，Exa 还会收到它为她读取的网页地址：不发送你的文件或位置。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索训练模型，所以请不要在搜索中写名字和地址。在它们之后，作为最后手段，始终会询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有设置 → 工具 → 搜索方式：关闭能停止它。这些都可以在那里更改。	src/ui/search-panel.js:15	
@@ -539,22 +1142,22 @@ a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia �
 sbfb3o	draft	ready	就绪	src/ui/search-panel.js:51	
 qx2onv	draft	couldn't check	无法检查	src/ui/search-panel.js:54	
 1lhwd5p	draft	not ready	未就绪	src/ui/search-panel.js:57	
-qvtz3k	draft	On	开启	src/ui/search-panel.js:85	
 1j0itop	draft	Search	搜索	src/ui/search-panel.js:86	
 hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 从上往下尝试这些，第一个回答的胜出。失败的会休息一阵，之后再试。取消勾选即可停用。	src/ui/search-panel.js:88	
 1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜索提供商是插件：从目录中添加一个（Tavily、Serper、你自己的 SearXNG），它的密钥在它自己的页面上设置。	src/ui/search-panel.js:91	
 f2eaqi	draft	Find a search plugin	查找搜索插件	src/ui/search-panel.js:92	
-17o4v1i	draft	Conversation	对话	src/ui/shell.js:59	
-ata72m	draft	Trace	记录	src/ui/shell.js:59	
+1le6ymq	draft	{0} is a whole number.	{0}须为整数。	src/ui/settings-form.js:75	{0} = f.label
+1ulakkp	draft	{0} is a number.	{0}须为数字。	src/ui/settings-form.js:75	{0} = f.label
+do1m5o	draft	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:106	{0} = f.label
+1qrgqx0	draft	saved	已保存	src/ui/settings-form.js:111	
+phutrz	draft	{0} wasn't saved: {1}	{0}未保存：{1}	src/ui/settings-form.js:120	{0} = f.label; {1} = messageOf(e)
 1skw031	draft	This screen couldn't open	无法打开此页面	src/ui/shell.js:257	
 1pm5i13	draft	Back to Trips	返回“旅行”	src/ui/shell.js:259	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
 1z00dfe	draft	An update is ready	更新已就绪	src/ui/shell.js:349	
 gt0nrj	draft	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:349	
-nb21do	draft	Restart now	立即重启	src/ui/shell.js:349	
 edrwuk	draft	annai's storage is full	annai 的存储空间已满	src/ui/storage-full.js:12	
 dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	没有保存了一半的内容。要腾出空间，请删除不再需要的旅行（请先备份），或释放此设备上的空间。	src/ui/storage-full.js:14	
 1yr1lra	draft	Export a backup	导出备份	src/ui/storage-full.js:16	
-7quqpk	draft	Go to Trips	前往“旅行”	src/ui/storage-full.js:17	
 1sva5r0	draft	The check took too long. Check the connection, and try again.	检查用时过长。请检查网络连接，然后重试。	src/ui/updates.js:122	
 14d6ut8	draft	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:140	
 16l98jx	draft	annai couldn't check for a new version of itself. Check the connection and try again.	annai 无法检查自身的新版本。请检查网络连接，然后重试。	src/ui/updates.js:141	
