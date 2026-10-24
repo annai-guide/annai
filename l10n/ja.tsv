@@ -346,7 +346,7 @@ a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:21
 1vi25zs	draft	Send audio to the model	音声をモデルに送る	src/ui/screens/models.js:32	
 742sn5	draft	Browser voice	ブラウザの声	src/ui/screens/models.js:32	
 1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:34	
-1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインになる声もあります	src/ui/screens/models.js:34	
+1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインで動く声もあります	src/ui/screens/models.js:34	Note: オンラインで動く: some voices run online (not "come online").
 ce8br5	draft	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:34	
 jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori が考える場所：annai が呼び出すプロバイダー、そのモデル、各役割が順に試すモデル、そしてリクエストにかけられる費用。	src/ui/screens/models.js:51	
 uhtk71	draft	No limit	上限なし	src/ui/screens/models.js:69	
@@ -376,7 +376,7 @@ hbz43i	draft	Roles	役割	src/ui/screens/models.js:133
 1erapbm	draft	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:162	{0} = nameOf(id); {1} = called
 1w3dq5v	draft	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:168	
 pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空です：Koe にはリアルタイムの声がないので、クラシックが答えます。ライブ音声のあるプロバイダーから、Gemini Live などを追加してください。	src/ui/screens/models.js:169	
-1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空です：クラシックでは、Shiori はメインのモデルの半身1つだけです。ここに速いモデルを追加すると、手前で素早く話す声になります。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary.
+1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空です：クラシックでは、Shiori は半身1つ（メインのモデル）だけです。ここに速いモデルを追加すると、手前で素早く話す声になります。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary. The main model in brackets: it is her one half, not half of the main model.
 wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	何もないので、annai はあなたの声を聞けません。項目を追加してください。	src/ui/screens/models.js:171	
 1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	何もないので、Shiori は声に出して話せません。声を追加してください。	src/ui/screens/models.js:172	
 el9rbx	draft	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:173	
