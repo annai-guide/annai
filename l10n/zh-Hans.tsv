@@ -47,7 +47,7 @@ dc30do	draft	annai shows English until it is online.	联网之前，annai 显示
 8rqn0k	draft	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:240	{0} = name
 150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:241	{0} = name
 1of7r8x	draft	Restart annai	重启 annai	src/ui/languages.js:242	
-16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other); Note: Joined with ", " in the code (offline-pack.js holds()), not 、.
+16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
 1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)

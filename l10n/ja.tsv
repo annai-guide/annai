@@ -47,7 +47,7 @@ dc30do	draft	annai shows English until it is online.	オンラインになるま
 8rqn0k	draft	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:240	{0} = name
 150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:241	{0} = name
 1of7r8x	draft	Restart annai	annai を再起動	src/ui/languages.js:242	
-16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other); Note: Joined with ", " in the code (offline-pack.js holds()), not 、.
+16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
 1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)

@@ -134,8 +134,8 @@ export const dayClock = (at, tz) => when(at, tz, { weekday: 'short', day: 'numer
 /** A zone by a name people use at an instant: "PT", "Japan Time", never "America/Los_Angeles". @param {number} at @param {string} tz */
 export const zone = (at, tz) => make(Intl.DateTimeFormat, { timeZone: tz, timeZoneName: 'shortGeneric' }).formatToParts(at).find((p) => p.type === 'timeZoneName')?.value ?? tz;
 
-/** "a, b and c" (or "a, b, or c"). @param {string[]} items @param {'and' | 'or'} [kind] */
-export const list = (items, kind = 'and') => make(Intl.ListFormat, { type: kind === 'or' ? 'disjunction' : 'conjunction' }).format(items);
+/** "a, b and c", "a, b, or c", or plain "a, b, c" (Japanese "a、b、c"). @param {string[]} items @param {'and' | 'or' | 'plain'} [kind] */
+export const list = (items, kind = 'and') => make(Intl.ListFormat, kind === 'plain' ? { type: 'conjunction', style: 'narrow' } : { type: kind === 'or' ? 'disjunction' : 'conjunction' }).format(items);
 
 /** A language's name in the interface language ("Japanese", "日本語"), annai's English name where the browser has none. @param {string} id */
 export function languageName(id) {
