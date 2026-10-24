@@ -64,7 +64,10 @@ const server = http.createServer(async (req, res) => {
     if (!s.isFile()) throw new Error('not a file');
     res.setHeader('Content-Type', TYPES[extname(file)] ?? 'application/octet-stream');
     if (!res.hasHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-cache');
-    const packed = (await stat(`${file}.br`).catch(() => null))?.isFile() ? `${file}.br` : null;
+    // A .br older than its file is stale (the file was edited after build-release ran on it) and is not sent. In a
+    // release, git archive gives both the commit's time.
+    const b = await stat(`${file}.br`).catch(() => null);
+    const packed = b?.isFile() && b.mtimeMs >= s.mtimeMs ? `${file}.br` : null;
     if (packed) res.setHeader('Vary', 'Accept-Encoding');
     const head = req.method === 'HEAD';
     const brotli = packed !== null && accepts(req.headers['accept-encoding'], 'br');
