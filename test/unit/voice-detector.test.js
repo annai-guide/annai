@@ -184,6 +184,26 @@ test('a car whose microphone gates to zeros every half second from the open: the
   assert.ok(sure !== null && sure < 0.5, `sure ${sure} s after the sentence began`);
 });
 
+test('short words with only zeros between them (a microphone that gates every quiet): each is a segment at its pause; the guess holds until the room is heard or a run has a second of sound, then a sentence is sure as it goes (detector-floor review 5)', () => {
+  const short = eat.subarray(0, Math.round(0.3 * RATE));
+  const z = (/** @type {number} */ s) => new Float32Array(Math.round(s * RATE));
+  for (const [then, room58] of /** @type {const} */ ([['a sentence', false], ['the room, then a sentence', true]])) {
+    const d = new Detector({ sampleRate: RATE });
+    const pcm = cat(z(0.2), short, z(0.8), short, z(0.8), short, z(0.8), room58 ? quiet(0.3, 0.0034) : z(0), hum(2), z(1.2));
+    const from = pcm.length - Math.round(3.2 * RATE); // where the sentence begins
+    /** @type {string[]} */
+    const types = [];
+    /** @type {number | null} */
+    let sure = null;
+    for (let i = 0; i < pcm.length; i += 320) {
+      types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+      if (sure === null && i >= from && d.speechMs >= 250) sure = (i - from) / RATE;
+    }
+    assert.deepEqual(types, ['speech', 'segment', 'speech', 'segment', 'speech', 'segment', 'speech', 'segment'], then);
+    assert.ok(sure !== null && sure < (room58 ? 0.4 : 1.1), `${then}: the sentence sure ${sure} s in`);
+  }
+});
+
 test('the level rises while someone speaks; end() keeps speech that was still going', () => {
   const d = new Detector({ sampleRate: RATE });
   d.push(quiet(0.5));
