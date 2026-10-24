@@ -312,18 +312,9 @@ function sameLanguage(a, b) {
 
 /** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against LANGS. Null: English. @returns {Promise<string | null>} */
 async function wordsToCache() {
-  /** @type {IDBDatabase | undefined} */
-  let db;
-  /** @type {unknown} */
-  let ui;
-  try {
-    db = await openExisting();
-    const file = (await readFiles(db, 'sys:settings', ['/app.json'])).get('/app.json');
-    ui = file ? JSON.parse(new TextDecoder().decode(file.data))?.languages?.ui : undefined;
-  } catch {
-  } finally {
-    db?.close();
-  }
+  // An open queued behind a blocked upgrade or delete never answers, and no update may wait for it: after 3 s the phone decides.
+  const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(resolve, 3000, null))]);
+  const ui = app?.languages?.ui;
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
@@ -549,20 +540,25 @@ async function showReminder(data) {
   await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
 }
 
-/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
-async function handled(key) {
+/** One JSON file of the app's database, or null when it can't be had. @param {string} scope @param {string} path @returns {Promise<any>} */
+async function readJson(scope, path) {
   /** @type {IDBDatabase | undefined} */
   let db;
   try {
     db = await openExisting();
-    const file = (await readFiles(db, 'sys:device', ['/push.json'])).get('/push.json');
-    const given = file ? JSON.parse(new TextDecoder().decode(file.data))?.given : null;
-    return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
+    const file = (await readFiles(db, scope, [path])).get(path);
+    return file ? JSON.parse(new TextDecoder().decode(file.data)) : null;
   } catch {
-    return false;
+    return null;
   } finally {
     db?.close();
   }
+}
+
+/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
+async function handled(key) {
+  const given = (await readJson('sys:device', '/push.json'))?.given;
+  return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
 }
 
 // Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is

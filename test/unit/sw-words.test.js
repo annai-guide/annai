@@ -7,14 +7,15 @@ const root = new URL('../../', import.meta.url);
 
 /**
  * annai's database as the service worker reads it: these files of sys:settings (path to JSON text), or no database at all.
- * @param {Record<string, string> | null} settings
+ * @param {Record<string, string> | null} settings @param {boolean} [hang]
  */
-function fakeIndexedDB(settings) {
+function fakeIndexedDB(settings, hang = false) {
   const later = (/** @type {() => void} */ f) => setTimeout(f, 0);
   return {
     open: () => {
       /** @type {any} */
       const r = {};
+      if (hang) return r; // an open queued behind a blocked upgrade or delete never answers
       later(() => {
         if (!settings) {
           r.transaction = { abort: () => {} };
@@ -58,7 +59,7 @@ function fakeIndexedDB(settings) {
  * The service worker in a context of its own, listing these languages, with the phone's languages, the app settings and a network.
  * network: the catalogs by tag (a missing one is a 404); caches start with these names (a waiting version's too).
  */
-async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide' } = {}) {
+async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide', hang = false } = {}) {
   const source = (await readFile(new URL('sw.js', root), 'utf8')).replace('const LANGS = [];', `const LANGS = ${JSON.stringify(langs)};`);
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
@@ -103,7 +104,7 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
   class SwRequest extends Request {
     constructor(/** @type {string | Request} */ u, /** @type {RequestInit} */ init) { super(typeof u === 'string' ? new URL(u, self.location.href) : u, init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings), TextDecoder, DOMException, fetch: fetchStub });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings, hang), TextDecoder, DOMException, fetch: fetchStub, setTimeout: (/** @type {() => void} */ f) => setTimeout(f, hang ? 5 : 60_000).unref() });
   /** @type {(type: string, ev?: any) => Promise<unknown>} */
   const fire = async (type, ev = {}) => {
     /** @type {Promise<unknown> | undefined} */
@@ -198,4 +199,10 @@ test('only a catalog annai lists, and fetched whole, is kept from the network', 
   k.offline();
   assert.equal(await k.get('/l10n/ko.json'), null, 'a language not in LANGS');
   assert.equal(await k.get('/l10n/nope.json'), null, 'a missing catalog is no catalog');
+});
+
+test('an IndexedDB that never answers does not hold up an install: the phone\'s languages decide', async () => {
+  const k = await swKit({ hang: true, phone: ['zh-CN'] });
+  assert.deepEqual(await k.install(), ['/l10n/zh-Hans.json']);
+  assert.deepEqual(await (await swKit({ hang: true, phone: ['en-GB'] })).install(), []);
 });
