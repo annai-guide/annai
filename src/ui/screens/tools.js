@@ -1,4 +1,4 @@
-import { h, crumb, t, field, autosave, savedRadios, savingNote, tc } from '../dom.js';
+import { h, crumb, linkIn, t, field, autosave, savedRadios, savingNote, tc } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
@@ -54,8 +54,8 @@ export async function toolSwitchList(ctx) {
 /** Where to get a Jina key; the link is a value of the message. */
 function jinaNote() {
   const get = t`Get a free key from Jina`;
-  const [before, after] = t`Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. ${get}. On that page the key is in the API key box: copy it and paste it above.`.split(get);
-  return h('p', { class: 'sub' }, before, h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: get }), after);
+  return h('p', { class: 'sub' }, ...linkIn(t`Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. ${get}. On that page the key is in the API key box: copy it and paste it above.`,
+    h('a', { href: JINA_KEYS, target: '_blank', rel: 'noopener noreferrer', text: get })));
 }
 
 /** Settings → Tools. @param {any} ctx */

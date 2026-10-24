@@ -1,4 +1,4 @@
-import { h, crumb, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
+import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -264,8 +264,7 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
   if (installed) {
     // The link is a value of the message, so every translation has it.
     const look = t`Look at it in Settings → Plugins`;
-    const [before, after] = t`Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. ${look}.`.split(look);
-    return h('p', { class: 'risk-note' }, before, h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, look), after);
+    return h('p', { class: 'risk-note' }, ...linkIn(t`Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. ${look}.`, h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, look)));
   }
   const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin && isProviderEntry(p));
   if (!entry) {
