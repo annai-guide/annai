@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Detector } from '../../src/core/voice/detector.js';
-import { clip, quiet, brown, burst, cat, mix, detect, segments, room, RATE } from './voice-kit.js';
+import { biquad } from '../../src/core/voice/pcm.js';
+import { clip, quiet, brown, burst, hum, cat, mix, detect, segments, room, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -62,8 +63,8 @@ function detectAt(pcm, rate) {
   return events;
 }
 
-// The iPhone opens a microphone with digital silence (zeros), then gives sound (the iPhone trace, 2026-10-22). The detector learns its floor
-// from the first frame with sound in it and ignores zeros, so speech that starts the instant the zeros end must still be cut as a segment.
+// The iPhone opens a microphone with digital silence (zeros), then gives sound (the iPhone trace, 2026-10-22). The zeros say nothing of the
+// room, so the floor starts as a guess, and speech that starts the instant the zeros end must still be cut as a segment.
 for (const rate of [16_000, 48_000]) {
   test(`a microphone just opened: digital silence, then a sentence that starts the instant the zeros end, is a segment (${rate / 1000} kHz)`, async () => {
     for (const name of ['where-lunch', 'where-eat', 'gas-station', 'first-one']) {
@@ -81,14 +82,158 @@ test('the same sentence after zeros and after a faint hiss: a hiss is what the f
   assert.equal(segments(detectAt(cat(quiet(0.4), words, quiet(1.2, 0)), 16_000)).length, 1);
 });
 
-// KNOWN GAP, not yet decided (the young-floor change waits for a phone test; src/core/voice/detector.js is not changed here): an utterance of
-// under about half a second ("Yes", "Thanks") that starts the instant the zeros end gives no segment today, because the floor is learned
-// from its first frame with sound, and it is not 10 dB over itself for the 250 ms that speech needs. After a hiss it is a segment. A todo
-// test: it reports, and does not fail the run, until the detector is changed (then it passes, and its todo goes).
-test('a short utterance (0.3 s) that starts the instant the zeros end is a segment', { todo: 'the floor is learned from the first frame with sound; a phone test decides the change' }, async () => {
-  const short = (await clip('where-eat')).subarray(0, Math.round(0.3 * RATE));
-  assert.equal(segments(detectAt(cat(quiet(0.4), short, quiet(1.2, 0)), 16_000)).length, 1, 'after a hiss it is (the same words)');
-  assert.equal(segments(detectAt(cat(new Float32Array(RATE), short, quiet(1.2, 0)), 16_000)).length, 1, 'after zeros: no segment today (the gap)');
+// An utterance of under about half a second ("Yes", "Thanks") that starts the instant the zeros end: a floor learned from its first frame
+// was the word's own level, and the word was never 10 dB over itself for the 250 ms speech needs (the flake-sweep review's gap). The zeros
+// now make the floor a guess at FLOOR_MIN_DB, so the word is speech against it. "Thanks" (flite) starts at its loudest: no rise at all.
+for (const rate of [16_000, 48_000]) {
+  test(`a short word said the instant a just-opened microphone's zeros end is a segment: "Yes" (0.3 s) and "Thanks" (${rate / 1000} kHz)`, async () => {
+    const short = (await clip('where-eat')).subarray(0, Math.round(0.3 * RATE));
+    const thanks = await clip('thanks');
+    assert.equal(segments(detectAt(cat(quiet(0.4), short, quiet(1.2, 0)), rate)).length, 1, 'after a hiss (the same words)');
+    for (const [name, word] of /** @type {const} */ ([['yes', short], ['thanks', thanks]])) {
+      for (const zeros of [0.1, 1]) {
+        assert.equal(segments(detectAt(cat(new Float32Array(Math.round(zeros * RATE)), word, quiet(1.2, 0)), rate)).length, 1, `${name} after ${zeros} s of zeros, then zeros`);
+        assert.equal(segments(detectAt(cat(new Float32Array(Math.round(zeros * RATE)), word, room(4, new Float32Array(0))), rate)).length, 1, `${name} after ${zeros} s of zeros, then a room`);
+      }
+    }
+  });
+}
+
+test('a microphone that opens on a word, then gates to zeros: the zeros make the young floor a guess again, so the short word after is a segment (Opus\'s proposal)', async () => {
+  const loud = eat.subarray(Math.round(eat.length * 0.3), Math.round(eat.length * 0.3) + 320); // 20 ms of a word: the floor's first frame
+  const thanks = await clip('thanks');
+  for (const word of [eat.subarray(0, Math.round(0.3 * RATE)), thanks]) {
+    assert.deepEqual(detect(cat(loud, new Float32Array(RATE * 0.3), word, quiet(1.2, 0))).map((e) => e.type), ['speech', 'segment']);
+  }
+});
+
+test('noise that starts as a just-opened microphone\'s zeros end (a car, an engine, a fan or a loud room, a click) is no segment, and never sure speech while the floor is a guess', () => {
+  const zeros = new Float32Array(RATE / 2);
+  for (const [name, noise] of /** @type {const} */ ([['car', brown(6, 0.5)], ['loud car', brown(6, 1.5)], ['engine', brown(6, 0.4, 9)],
+    ['fan', room(8, new Float32Array(0), undefined, 0.016)], ['click', cat(burst(0.12, 0.8), quiet(1.5))], ['click, then zeros', cat(burst(0.12, 0.8), quiet(1.5, 0))]])) {
+    const d = new Detector({ sampleRate: RATE });
+    const pcm = cat(zeros, noise);
+    let sure = 0;
+    /** @type {string[]} */
+    const types = [];
+    for (let i = 0; i < pcm.length; i += 2048) {
+      types.push(...d.push(pcm.subarray(i, i + 2048)).map((e) => e.type));
+      sure = Math.max(sure, d.speechMs);
+    }
+    assert.equal(types.filter((t) => t === 'segment').length, 0, name);
+    assert.ok(sure < 250, `${name}: ${sure} ms of sure speech (a live turn starts at 250)`);
+  }
+});
+
+test('a quiet room heard after the zeros ends the guess: a sentence later is sure speech as it goes, and the floor stays the room\'s', () => {
+  const d = new Detector({ sampleRate: RATE });
+  const pcm = cat(new Float32Array(RATE / 2), quiet(1), hum(2), quiet(1.2));
+  let sure = 0;
+  for (let i = 0; i < pcm.length; i += 320) {
+    d.push(pcm.subarray(i, i + 320));
+    if (i === RATE * 2) sure = d.speechMs; // half a second into the speech
+  }
+  assert.ok(sure >= 250, `${sure} ms of sure speech half a second in (a live turn starts at 250)`);
+  assert.ok(d.floorDb !== null && d.floorDb < -70, `the room's floor: ${d.floorDb}`);
+});
+
+test('a steady room of about -52 dB after the zeros, over the guess\'s keep margin but too quiet to start speech against it, is the floor at once: a sentence in it is sure as it goes (detector-floor review 2)', () => {
+  const d = new Detector({ sampleRate: RATE });
+  const pcm = cat(new Float32Array(RATE / 2), quiet(0.4, 0.0071), hum(2), quiet(1.2, 0));
+  const from = Math.round(0.9 * RATE);
+  /** @type {number | null} */
+  let floor = null;
+  let sure = 0;
+  for (let i = 0; i < pcm.length; i += 320) {
+    if (i === from) floor = d.floorDb;
+    d.push(pcm.subarray(i, i + 320));
+    if (i === from + RATE / 2) sure = d.speechMs;
+  }
+  assert.ok(floor !== null && floor > -56, `the room is the floor as the sentence begins: ${floor} dB`);
+  assert.ok(sure >= 250, `${sure} ms of sure speech half a second in`);
+});
+
+test('a short word after the zeros, then a quiet room near the guess: the room\'s first frames in its pause end the guess, so the word is sure at once, not only at its pause\'s end (detector-floor re-check 2)', async () => {
+  const thanks = await clip('thanks');
+  const d = new Detector({ sampleRate: RATE });
+  const pcm = cat(new Float32Array(Math.round(0.3 * RATE)), thanks, quiet(1.5, 0.004));
+  const end = Math.round(0.3 * RATE) + thanks.length;
+  /** @type {number | null} */
+  let sure = null;
+  const types = [];
+  for (let i = 0; i < pcm.length; i += 320) {
+    types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+    if (sure === null && d.speaking && d.speechMs >= 250) sure = (i + 320 - end) / RATE;
+  }
+  assert.deepEqual(types, ['speech', 'segment']);
+  assert.ok(sure !== null && sure < 0.2, `sure ${sure} s after the word, with 0.7 s of pause to come`);
+});
+
+test('speech said the instant the zeros end, with no quiet in it, is held as unsure for a second; then the floor is its quietest frame, and it goes on to its pause', () => {
+  const d = new Detector({ sampleRate: RATE });
+  const voice = hum(2);
+  const pcm = cat(new Float32Array(RATE / 2), voice, quiet(1.2, 0));
+  /** @type {number[]} */
+  const speech = [];
+  const events = [];
+  /** @type {number | null} */
+  let given = null;
+  for (let i = 0; i < pcm.length; i += 320) {
+    events.push(...d.push(pcm.subarray(i, i + 320)));
+    if (d.speaking) speech.push(d.speechMs);
+    if (given === null && d.speechMs > 0) given = d.floorDb;
+  }
+  assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
+  assert.equal(speech[40], 0, 'unsure while the floor is the guess');
+  assert.ok((speech.at(-1) ?? 0) >= 250, `sure by its end: ${speech.at(-1)} ms`);
+  // The quietest of the run's first 52 frames, measured as the detector does (its band, 20 ms frames).
+  const hp = biquad('highpass', 300, RATE);
+  const lp = biquad('lowpass', 3400, RATE);
+  let quietest = Infinity;
+  for (let f = 0; f < 52; f++) {
+    let e = 0;
+    for (let i = f * 320; i < (f + 1) * 320; i++) e += lp(hp(voice[i])) ** 2;
+    quietest = Math.min(quietest, 10 * Math.log10(e / 320 + 1e-12));
+  }
+  assert.ok(given !== null && Math.abs(given - quietest) < 1, `the floor as the guess gave way, ${given} dB, is the run's quietest frame, ${quietest.toFixed(1)} dB`);
+});
+
+test('a car whose microphone gates to zeros every half second from the open: the floor learned from the first second stays learned, so the gates don\'t make it a guess again (a sentence later is sure in 0.5 s)', () => {
+  const pcm = brown(8, 0.5);
+  pcm.set(lunch.map((x, j) => x + pcm[3 * RATE + j]), 3 * RATE);
+  for (let i = 0; i < pcm.length; i++) if ((i / RATE) % 0.5 < 0.06) pcm[i] = 0;
+  const d = new Detector({ sampleRate: RATE });
+  /** @type {string[]} */
+  const types = [];
+  /** @type {number | null} */
+  let sure = null;
+  for (let i = 0; i < pcm.length; i += 320) {
+    types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+    if (sure === null && i >= 3 * RATE && d.speechMs >= 250) sure = i / RATE - 3;
+  }
+  assert.equal(types.filter((t) => t === 'segment').length, 1, 'the sentence');
+  assert.ok(types.filter((t) => t === 'discard').length <= 1, `the car is thrown away once at most: ${types.join(', ')}`);
+  assert.ok(sure !== null && sure < 0.5, `sure ${sure} s after the sentence began`);
+});
+
+test('short words with only zeros between them (a microphone that gates every quiet): each is a segment at its pause; the guess holds until the room is heard or a run has a second of sound, then a sentence is sure as it goes (detector-floor review 5)', () => {
+  const short = eat.subarray(0, Math.round(0.3 * RATE));
+  const z = (/** @type {number} */ s) => new Float32Array(Math.round(s * RATE));
+  for (const [then, room58] of /** @type {const} */ ([['a sentence', false], ['the room, then a sentence', true]])) {
+    const d = new Detector({ sampleRate: RATE });
+    const pcm = cat(z(0.2), short, z(0.8), short, z(0.8), short, z(0.8), room58 ? quiet(0.3, 0.0034) : z(0), hum(2), z(1.2));
+    const from = pcm.length - Math.round(3.2 * RATE); // where the sentence begins
+    /** @type {string[]} */
+    const types = [];
+    /** @type {number | null} */
+    let sure = null;
+    for (let i = 0; i < pcm.length; i += 320) {
+      types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+      if (sure === null && i >= from && d.speechMs >= 250) sure = (i - from) / RATE;
+    }
+    assert.deepEqual(types, ['speech', 'segment', 'speech', 'segment', 'speech', 'segment', 'speech', 'segment'], then);
+    assert.ok(sure !== null && sure < (room58 ? 0.4 : 1.1), `${then}: the sentence sure ${sure} s in`);
+  }
 });
 
 test('the level rises while someone speaks; end() keeps speech that was still going', () => {
@@ -141,7 +286,7 @@ test('near-silent frames (60 ms of zeros every half second, as an iPhone gives) 
   assert.ok(once.end < 3, `${once.end.toFixed(1)} s`);
 });
 
-test('a microphone that opens with 100 ms of digital silence: the floor starts from the first real frames, so the room is not speech', () => {
+test('a microphone that opens with 100 ms of digital silence: the floor\'s guess gives way to the room\'s first frames, so the room is not speech', () => {
   const r = runEnds(room(10, lunch, (t) => t < 0.1));
   assert.ok(r.start !== null && r.start > 2.9, `speech found at ${r.start} s, not in the room before it`);
   assert.equal(r.type, 'segment');
