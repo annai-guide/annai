@@ -132,7 +132,6 @@ export function whereWords(live) {
   }
   const near = live.near(f);
   if (near) return near.m < 100 ? t`At ${near.name}` : t`Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
-  // Coordinates as maps write them: a dot, whatever the language.
   return `${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}`;
 }
 

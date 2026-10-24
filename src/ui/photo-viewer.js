@@ -44,7 +44,7 @@ export function openPhotoViewer(src, label, opts = {}) {
     const limitY = (stage.clientHeight * (scale - 1)) / 2;
     x = Math.min(limitX, Math.max(-limitX, x));
     y = Math.min(limitY, Math.max(-limitY, y));
-    img.style.setProperty('transform', /* en */ `translate(${x}px, ${y}px) scale(${scale})`);
+    img.style.setProperty('transform', `translate(${x}px, ${y}px) scale(${scale})`);
     root.dataset.zoom = String(Math.round(scale * 100) / 100);
   };
   /** Zooms to s, keeping the point (px, py), measured from the stage's centre, where it is. @param {number} s @param {number} px @param {number} py */

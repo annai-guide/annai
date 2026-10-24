@@ -470,7 +470,7 @@ export function createAvatar({ size = 'md', label } = {}) {
       if (still()) return;
       const clamp = (/** @type {number} */ v) => Math.max(-3, Math.min(3, Number(v) || 0)) * GLANCE;
       clearTimeout(glancing);
-      for (const e of [look.el, aside.el]) e.style.transform = /* en */ `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
+      for (const e of [look.el, aside.el]) e.style.transform = `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
       glancing = setTimeout(() => { for (const e of [look.el, aside.el]) e.style.transform = ''; }, 1100);
     },
     blink,

@@ -110,7 +110,7 @@ export async function packPanel(ctx, id) {
   return box;
 }
 
-/** The sources' credits, their licence's and contributors' names as they write them. */
+/** The sources' credits. */
 function credits() {
   const osm = h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, /* en */ 'OpenStreetMap contributors');
   const cc = h('a', { href: 'https://creativecommons.org/licenses/by-sa/4.0/', target: '_blank', rel: 'noopener' }, /* en */ 'CC BY-SA');
@@ -125,5 +125,5 @@ export async function packLine(ctx, id) {
   const text = !s.manifest ? t`No offline pack for this trip yet.`
     : s.why === 'plan' ? t`The offline pack is from before the plan changed.`
       : when ? t`Offline pack: downloaded ${when}.` : t`Offline pack: downloaded.`;
-  return h('p', { class: 'sub pack-line' }, text, sentenceGap(), h('a', { href: /* en */ `#/trip/${encodeURIComponent(id)}` }, t`Offline pack`));
+  return h('p', { class: 'sub pack-line' }, text, sentenceGap(), h('a', { href: `#/trip/${encodeURIComponent(id)}` }, t`Offline pack`));
 }

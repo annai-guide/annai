@@ -108,87 +108,87 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 la9701	draft	not backed up	未バックアップ	src/ui/format.js:26	
 1h47npq	draft	backed up {0}	バックアップ：{0}	src/ui/format.js:27	{0} = relTime(at, now); Note: Label and value: relTime's たった今 or 昨日 can't take に, so "{0}にバックアップ" would break.
 1sjuc50	draft	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:27	{0} = relTime(at, now); Note: As "backed up {0}".
-meb4bg	draft	you	あなた	src/ui/format.js:32	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	draft	cost unknown	費用不明	src/ui/format.js:39	
-16name3	draft	free	無料	src/ui/format.js:40	
-1bm6q72	draft	key rejected	キーが拒否された	src/ui/format.js:45	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	draft	too many requests	リクエストが多すぎる	src/ui/format.js:45	
-4icrku	draft	answered	応答あり	src/ui/format.js:45	
-jk3r0m	draft	overloaded	混雑中	src/ui/format.js:45	
-k1s3xh	draft	out of credit	クレジット切れ	src/ui/format.js:45	
-1ci3mtm	draft	doesn't allow web apps	Web アプリを許可していない	src/ui/format.js:46	
-1lj1ww1	draft	photo upload expired	写真のアップロードが期限切れ	src/ui/format.js:46	
-1x40ny1	draft	didn't take the photo	写真を受け付けなかった	src/ui/format.js:46	
-f82spn	draft	too long for it	長すぎる	src/ui/format.js:46	
-11n2a71	draft	couldn't connect	接続できなかった	src/ui/format.js:47	
-a3596h	draft	refused the request	リクエストを拒否	src/ui/format.js:47	
-n3huvh	draft	unknown model or address	不明なモデルまたはアドレス	src/ui/format.js:47	
-rhcw9u	draft	provider error	プロバイダーのエラー	src/ui/format.js:47	
-13effb	draft	connection dropped	接続が切れた	src/ui/format.js:48	
-1quwfm7	draft	plugin failed	プラグインが失敗	src/ui/format.js:48	
-1s4r037	draft	too slow to start	開始が遅すぎる	src/ui/format.js:48	
-hqyrx7	draft	removed	削除済み	src/ui/format.js:48	
-urm4i6	draft	stopped	停止	src/ui/format.js:48	
-184j4co	draft	resting after an error	エラー後の休止中	src/ui/format.js:49	
-1mrun4s	draft	redirected elsewhere	別の場所へ転送された	src/ui/format.js:49	
-1q01jst	draft	doesn't take photos	写真に非対応	src/ui/format.js:49	
-365ivi	draft	can't use tools	ツールを使えない	src/ui/format.js:49	
-4k8rwn	draft	its ability is switched off	その機能がオフ	src/ui/format.js:49	
-l7u7vc	draft	its plugin is missing	プラグインがない	src/ui/format.js:49	
-1y8iwje	draft	has no web tool of that kind	その種類の Web ツールがない	src/ui/format.js:50	
-6gto9k	draft	couldn't hear the speech	音声を聞き取れなかった	src/ui/format.js:50	
-710q7y	draft	conversation too long for it	会話が長すぎる	src/ui/format.js:50	
-7jim5c	draft	isn't a chat model	チャットモデルではない	src/ui/format.js:50	
-w70v2a	draft	doesn't take audio	音声に非対応	src/ui/format.js:50	
-1009iza	draft	Restaurant	レストラン	src/ui/format.js:64	
-1lrcegv	draft	Event	イベント	src/ui/format.js:64	
-8cdq15	draft	Train	列車	src/ui/format.js:64	
-d57q3n	draft	Flight	フライト	src/ui/format.js:64	
-jj8u9s	draft	Stay	宿泊	src/ui/format.js:64	Note: A kind of booking: a hotel or other lodging.
-sksosh	draft	Car	レンタカー	src/ui/format.js:64	Note: A kind of booking: a car, nearly always a rental.
-ukzedx	draft	Other	その他	src/ui/format.js:64	
-hqumoz	draft	Kind	種類	src/ui/format.js:79	
-j6u2ti	draft	Starts	開始	src/ui/format.js:82	context: booking; Note: A booking's start, its day and time shown beside it.
-1pcvk9l	draft	Ends	終了	src/ui/format.js:84	context: booking
-16ygujg	draft	Place	場所	src/ui/format.js:85	
-1kq44x8	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:85	{0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	draft	Confirmation	予約番号	src/ui/format.js:86	Note: A booking's confirmation code.
-t05i6w	draft	Cost	料金	src/ui/format.js:87	
-1vdspge	draft	Getting files: {0} of {1}	ファイルを取得しています：{0}/{1}	src/ui/format.js:109	{0} = num(p.done); {1} = num(p.total)
-zo1gq	draft	Getting the backup…	バックアップを取得しています…	src/ui/format.js:109	
-fuj1qb	draft	Getting the backup ready…	バックアップを準備しています…	src/ui/format.js:113	
-1a0lh7c	draft	Comparing files {0} of {1}…	ファイルを比較しています（{0}/{1}）…	src/ui/format.js:114	{0} = num(p.done); {1} = num(p.total)
-1ofggks	draft	Comparing files…	ファイルを比較しています…	src/ui/format.js:114	
-1jbhw8o	draft	Uploading…	アップロードしています…	src/ui/format.js:115	
-sg0mn0	draft	Uploading {0} of {1}…	アップロードしています（{0}/{1}）…	src/ui/format.js:115	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	draft	Paused: there is a newer backup from an iPad	一時停止中：iPad からの新しいバックアップがあります	src/ui/format.js:123	
-1815ss7	draft	Paused: there is a newer backup from an iPhone	一時停止中：iPhone からの新しいバックアップがあります	src/ui/format.js:123	
-1kc2l15	draft	Paused: there is a newer backup from a computer	一時停止中：パソコンからの新しいバックアップがあります	src/ui/format.js:124	
-1ytn3n1	draft	Paused: there is a newer backup from an Android phone	一時停止中：Android スマートフォンからの新しいバックアップがあります	src/ui/format.js:124	
-14m1y56	draft	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:125	
-12hcbva	draft	An iPhone backed up to {0} {1}.	{1}、iPhone が{0}にバックアップしました。	src/ui/format.js:129	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	draft	An iPad backed up to {0} {1}.	{1}、iPad が{0}にバックアップしました。	src/ui/format.js:129	{0} = where; {1} = ago
-1hmrpdo	draft	A computer backed up to {0} {1}.	{1}、パソコンが{0}にバックアップしました。	src/ui/format.js:130	{0} = where; {1} = ago
-dc7u48	draft	An Android phone backed up to {0} {1}.	{1}、Android スマートフォンが{0}にバックアップしました。	src/ui/format.js:130	{0} = where; {1} = ago
-19kyaez	draft	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:131	{0} = where; {1} = ago
-mbc651	draft	That was after this phone's last backup.	このスマートフォンの前回のバックアップより後です。	src/ui/format.js:135	
-vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとしてインポートしてその旅をここに入れるか、このスマートフォンのバックアップで上書きしてください。	src/ui/format.js:135	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	draft	That was after this iPad's last backup.	この iPad の前回のバックアップより後です。	src/ui/format.js:136	
-nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとしてインポートしてその旅をここに入れるか、この iPad のバックアップで上書きしてください。	src/ui/format.js:136	
-hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとしてインポートしてその旅をここに入れるか、このパソコンのバックアップで上書きしてください。	src/ui/format.js:137	
-wn3ejs	draft	That was after this computer's last backup.	このパソコンの前回のバックアップより後です。	src/ui/format.js:137	
-1n6qjpw	draft	Working…	処理しています…	src/ui/format.js:149	
-1sw982j	draft	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:154	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	draft	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:154	
-10ouos4	draft	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:155	{0} = size(h.bytes)
-osg3je	draft	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:156	{0} = h.message
-1qmdzit	draft	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」を押してください	src/ui/format.js:157	Note: "Save and test" is the backup place's button.
-1e2pygg	draft	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:158	
-173tgfr	draft	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:159	{0} = at
-1uajbr3	draft	Not backed up yet	まだバックアップしていません	src/ui/format.js:159	
-1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	どちらの端末も相手を上書きしないよう、そこへの自動バックアップは一時停止しています。	src/ui/format.js:172	
-hmr3pn	draft	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:172	
-8091b1	draft	no limit	上限なし	src/ui/format.js:197	
+meb4bg	draft	you	あなた	src/ui/format.js:31	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	draft	cost unknown	費用不明	src/ui/format.js:35	
+16name3	draft	free	無料	src/ui/format.js:36	
+1bm6q72	draft	key rejected	キーが拒否された	src/ui/format.js:41	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	draft	too many requests	リクエストが多すぎる	src/ui/format.js:41	
+4icrku	draft	answered	応答あり	src/ui/format.js:41	
+jk3r0m	draft	overloaded	混雑中	src/ui/format.js:41	
+k1s3xh	draft	out of credit	クレジット切れ	src/ui/format.js:41	
+1ci3mtm	draft	doesn't allow web apps	Web アプリを許可していない	src/ui/format.js:42	
+1lj1ww1	draft	photo upload expired	写真のアップロードが期限切れ	src/ui/format.js:42	
+1x40ny1	draft	didn't take the photo	写真を受け付けなかった	src/ui/format.js:42	
+f82spn	draft	too long for it	長すぎる	src/ui/format.js:42	
+11n2a71	draft	couldn't connect	接続できなかった	src/ui/format.js:43	
+a3596h	draft	refused the request	リクエストを拒否	src/ui/format.js:43	
+n3huvh	draft	unknown model or address	不明なモデルまたはアドレス	src/ui/format.js:43	
+rhcw9u	draft	provider error	プロバイダーのエラー	src/ui/format.js:43	
+13effb	draft	connection dropped	接続が切れた	src/ui/format.js:44	
+1quwfm7	draft	plugin failed	プラグインが失敗	src/ui/format.js:44	
+1s4r037	draft	too slow to start	開始が遅すぎる	src/ui/format.js:44	
+hqyrx7	draft	removed	削除済み	src/ui/format.js:44	
+urm4i6	draft	stopped	停止	src/ui/format.js:44	
+184j4co	draft	resting after an error	エラー後の休止中	src/ui/format.js:45	
+1mrun4s	draft	redirected elsewhere	別の場所へ転送された	src/ui/format.js:45	
+1q01jst	draft	doesn't take photos	写真に非対応	src/ui/format.js:45	
+365ivi	draft	can't use tools	ツールを使えない	src/ui/format.js:45	
+4k8rwn	draft	its ability is switched off	その機能がオフ	src/ui/format.js:45	
+l7u7vc	draft	its plugin is missing	プラグインがない	src/ui/format.js:45	
+1y8iwje	draft	has no web tool of that kind	その種類の Web ツールがない	src/ui/format.js:46	
+6gto9k	draft	couldn't hear the speech	音声を聞き取れなかった	src/ui/format.js:46	
+710q7y	draft	conversation too long for it	会話が長すぎる	src/ui/format.js:46	
+7jim5c	draft	isn't a chat model	チャットモデルではない	src/ui/format.js:46	
+w70v2a	draft	doesn't take audio	音声に非対応	src/ui/format.js:46	
+1009iza	draft	Restaurant	レストラン	src/ui/format.js:60	
+1lrcegv	draft	Event	イベント	src/ui/format.js:60	
+8cdq15	draft	Train	列車	src/ui/format.js:60	
+d57q3n	draft	Flight	フライト	src/ui/format.js:60	
+jj8u9s	draft	Stay	宿泊	src/ui/format.js:60	Note: A kind of booking: a hotel or other lodging.
+sksosh	draft	Car	レンタカー	src/ui/format.js:60	Note: A kind of booking: a car, nearly always a rental.
+ukzedx	draft	Other	その他	src/ui/format.js:60	
+hqumoz	draft	Kind	種類	src/ui/format.js:75	
+j6u2ti	draft	Starts	開始	src/ui/format.js:77	context: booking; Note: A booking's start, its day and time shown beside it.
+1pcvk9l	draft	Ends	終了	src/ui/format.js:79	context: booking
+16ygujg	draft	Place	場所	src/ui/format.js:80	
+lypvx6	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:80	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	draft	Confirmation	予約番号	src/ui/format.js:81	Note: A booking's confirmation code.
+t05i6w	draft	Cost	料金	src/ui/format.js:82	
+1vdspge	draft	Getting files: {0} of {1}	ファイルを取得しています：{0}/{1}	src/ui/format.js:104	{0} = num(p.done); {1} = num(p.total)
+zo1gq	draft	Getting the backup…	バックアップを取得しています…	src/ui/format.js:104	
+fuj1qb	draft	Getting the backup ready…	バックアップを準備しています…	src/ui/format.js:108	
+1a0lh7c	draft	Comparing files {0} of {1}…	ファイルを比較しています（{0}/{1}）…	src/ui/format.js:109	{0} = num(p.done); {1} = num(p.total)
+1ofggks	draft	Comparing files…	ファイルを比較しています…	src/ui/format.js:109	
+1jbhw8o	draft	Uploading…	アップロードしています…	src/ui/format.js:110	
+sg0mn0	draft	Uploading {0} of {1}…	アップロードしています（{0}/{1}）…	src/ui/format.js:110	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	draft	Paused: there is a newer backup from an iPad	一時停止中：iPad からの新しいバックアップがあります	src/ui/format.js:115	
+1815ss7	draft	Paused: there is a newer backup from an iPhone	一時停止中：iPhone からの新しいバックアップがあります	src/ui/format.js:115	
+1kc2l15	draft	Paused: there is a newer backup from a computer	一時停止中：パソコンからの新しいバックアップがあります	src/ui/format.js:116	
+1ytn3n1	draft	Paused: there is a newer backup from an Android phone	一時停止中：Android スマートフォンからの新しいバックアップがあります	src/ui/format.js:116	
+14m1y56	draft	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:117	
+12hcbva	draft	An iPhone backed up to {0} {1}.	{1}、iPhone が {0} にバックアップしました。	src/ui/format.js:121	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	draft	An iPad backed up to {0} {1}.	{1}、iPad が {0} にバックアップしました。	src/ui/format.js:121	{0} = where; {1} = ago
+1hmrpdo	draft	A computer backed up to {0} {1}.	{1}、パソコンが {0} にバックアップしました。	src/ui/format.js:122	{0} = where; {1} = ago
+dc7u48	draft	An Android phone backed up to {0} {1}.	{1}、Android スマートフォンが {0} にバックアップしました。	src/ui/format.js:122	{0} = where; {1} = ago
+19kyaez	draft	Another device backed up to {0} {1}.	{1}、別の端末が {0} にバックアップしました。	src/ui/format.js:123	{0} = where; {1} = ago
+mbc651	draft	That was after this phone's last backup.	このスマートフォンの前回のバックアップより後です。	src/ui/format.js:127	
+vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとしてインポートしてその旅をここに入れるか、このスマートフォンのバックアップで上書きしてください。	src/ui/format.js:127	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	draft	That was after this iPad's last backup.	この iPad の前回のバックアップより後です。	src/ui/format.js:128	
+nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとしてインポートしてその旅をここに入れるか、この iPad のバックアップで上書きしてください。	src/ui/format.js:128	
+hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとしてインポートしてその旅をここに入れるか、このパソコンのバックアップで上書きしてください。	src/ui/format.js:129	
+wn3ejs	draft	That was after this computer's last backup.	このパソコンの前回のバックアップより後です。	src/ui/format.js:129	
+1n6qjpw	draft	Working…	処理しています…	src/ui/format.js:141	
+1sw982j	draft	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:146	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	draft	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:146	
+10ouos4	draft	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:147	{0} = size(h.bytes)
+osg3je	draft	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:148	{0} = h.message
+1qmdzit	draft	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」を押してください	src/ui/format.js:149	Note: "Save and test" is the backup place's button.
+1e2pygg	draft	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:150	
+173tgfr	draft	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:151	{0} = at
+1uajbr3	draft	Not backed up yet	まだバックアップしていません	src/ui/format.js:151	
+1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	どちらの端末も相手を上書きしないよう、そこへの自動バックアップは一時停止しています。	src/ui/format.js:163	
+hmr3pn	draft	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:163	
+8091b1	draft	no limit	上限なし	src/ui/format.js:188	
 12gy0yc	draft	Open annai from your Home Screen.	ホーム画面から annai を開きます。	src/ui/install.js:17	
 82ba67	draft	Tap the Share button in Safari.	Safari で共有ボタンをタップします。	src/ui/install.js:17	
 ejxnor	draft	Choose "Add to Home Screen".	「ホーム画面に追加」を選びます。	src/ui/install.js:17	
@@ -321,7 +321,7 @@ qtuxek	draft	Places © {0}; summaries from Wikipedia and guides from Wikivoyage,
 qdh58i	draft	No offline pack for this trip yet.	この旅のオフラインパックはまだありません。	src/ui/offline-pack.js:125	
 1l61m6n	draft	The offline pack is from before the plan changed.	オフラインパックは予定が変わる前のものです。	src/ui/offline-pack.js:126	
 ksuwxs	draft	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:127	
-r91312	draft	Offline pack: downloaded {0}.	オフラインパック：{0}にダウンロード。	src/ui/offline-pack.js:127	{0} = when; Note: {0} is a relative time ("2 hours ago").
+r91312	draft	Offline pack: downloaded {0}.	オフラインパック：ダウンロード（{0}）。	src/ui/offline-pack.js:127	{0} = when; Note: {0} is a relative time ("2 hours ago").
 dbm7fe	draft	Open a trip someone sent you	送られてきた旅を開く	src/ui/open-file.js:6	
 1l0xxoj	draft	Close	閉じる	src/ui/photo-viewer.js:32	
 1s1o4yb	draft	Show Shiori this part	この部分を Shiori に見せる	src/ui/photo-viewer.js:33	
@@ -441,16 +441,16 @@ c65xlw	draft	Backups	バックアップ	src/ui/screens/backups.js:77
 nq6gpo	draft	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:21	
 19h3yfj	draft	It may have been deleted or renamed. The plan lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は予定に一覧があります。	src/ui/screens/booking.js:22	
 fl5bce	draft	Confirmed	確認済み	src/ui/screens/booking.js:35	
-bigbss	draft	Try again.	もう一度お試しください。	src/ui/screens/booking.js:39	
-dqldb5	draft	It wasn't confirmed: {0}	確認できませんでした：{0}	src/ui/screens/booking.js:39	{0} = String(/** @type {any} */ (e)?.message ?? e)
-19dss4d	draft	Looks right	合っています	src/ui/screens/booking.js:45	Note: The button that confirms a booking.
-56ee40	draft	Booking	予約	src/ui/screens/booking.js:47	
-1rnayr2	draft	Check this against the original, then confirm it.	元の資料と照らし合わせてから確認してください。	src/ui/screens/booking.js:48	
-bamrei	draft	Change it	変更する	src/ui/screens/booking.js:52	
-d0tqtj	draft	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:66	{0} = path
-yp5voz	draft	This booking doesn't say which file it came from.	この予約には、どのファイルから読み取ったかが書かれていません。	src/ui/screens/booking.js:66	
-98drsx	draft	Open the original	元の資料を開く	src/ui/screens/booking.js:67	
-c4110z	draft	The original, {0}	元の資料（{0}）	src/ui/screens/booking.js:69	{0} = entry.path
+bigbss	draft	Try again.	もう一度お試しください。	src/ui/screens/booking.js:42	
+dqldb5	draft	It wasn't confirmed: {0}	確認できませんでした：{0}	src/ui/screens/booking.js:42	{0} = why.textContent
+19dss4d	draft	Looks right	合っています	src/ui/screens/booking.js:48	Note: The button that confirms a booking.
+56ee40	draft	Booking	予約	src/ui/screens/booking.js:50	
+1rnayr2	draft	Check this against the original, then confirm it.	元の資料と照らし合わせてから確認してください。	src/ui/screens/booking.js:51	
+bamrei	draft	Change it	変更する	src/ui/screens/booking.js:55	
+d0tqtj	draft	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:69	{0} = path
+yp5voz	draft	This booking doesn't say which file it came from.	この予約には、どのファイルから読み取ったかが書かれていません。	src/ui/screens/booking.js:69	
+98drsx	draft	Open the original	元の資料を開く	src/ui/screens/booking.js:70	
+c4110z	draft	The original, {0}	元の資料（{0}）	src/ui/screens/booking.js:72	{0} = entry.path
 19jra30	draft	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	draft	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:12	
 1gkqhnt	draft	Food	食事	src/ui/screens/drive.js:13	
@@ -501,18 +501,12 @@ q1nl48	draft	Not kept in this copy	このコピーには含まれていません
 twulcv	draft	Version restored	バージョンを戻しました	src/ui/screens/file.js:121	
 16qw3bf	draft	Restore this version	このバージョンに戻す	src/ui/screens/file.js:122	
 1dw4k8q	draft	Current	現在	src/ui/screens/file.js:123	
-3g3rkl	draft	changed by you {0}	{0}にあなたが変更	src/ui/screens/file.js:129	{0} = ago; Note: {0} is a relative time ("5 min ago").
-zi841o	draft	changed by Shiori {0}	{0}に Shiori が変更	src/ui/screens/file.js:130	{0} = ago
-8zkwit	draft	changed by {0} {1}	{1}に{0}が変更	src/ui/screens/file.js:131	{0} = authorName(entry.author); {1} = ago; Note: {0} is a plugin's id.
-qroxqz	draft	changed by annai {0}	{0}に annai が変更	src/ui/screens/file.js:131	{0} = ago
-1k32hzi	draft	Deleted by you {0}	{0}にあなたが削除	src/ui/screens/file.js:138	{0} = ago
-1q601xl	draft	Deleted by Shiori {0}	{0}に Shiori が削除	src/ui/screens/file.js:139	{0} = ago
-okgj5g	draft	Deleted by annai {0}	{0}に annai が削除	src/ui/screens/file.js:140	{0} = ago
-w8mx56	draft	Deleted by {0} {1}	{1}に{0}が削除	src/ui/screens/file.js:140	{0} = authorName(v.actor); {1} = ago
-1cdkli8	draft	Saved by you {0}	{0}にあなたが保存	src/ui/screens/file.js:142	{0} = ago
-1fc2xqf	draft	Saved by Shiori {0}	{0}に Shiori が保存	src/ui/screens/file.js:143	{0} = ago
-1ccml4i	draft	Saved by annai {0}	{0}に annai が保存	src/ui/screens/file.js:144	{0} = ago
-1xtgqpw	draft	Saved by {0} {1}	{1}に{0}が保存	src/ui/screens/file.js:144	{0} = authorName(v.actor); {1} = ago
+3g3rkl	draft	changed by you {0}	あなたが変更（{0}）	src/ui/screens/file.js:129	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	draft	changed by {0} {1}	{0} が変更（{1}）	src/ui/screens/file.js:129	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	draft	Deleted by you {0}	あなたが削除（{0}）	src/ui/screens/file.js:135	{0} = ago
+w8mx56	draft	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:135	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+1cdkli8	draft	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:136	{0} = ago
+1xtgqpw	draft	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:136	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 1xtp0n4	draft	Headers, kept on this device	ヘッダー（この端末に保存）	src/ui/screens/mcp.js:5	
 e9m35h	draft	No key	キーなし	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer トークン（この端末に保存）	src/ui/screens/mcp.js:5	
@@ -656,11 +650,11 @@ izy3tv	draft	Offline · reminders still work	オフライン · リマインダ�
 1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	いま GPS の信号がありません。下の GPS をタップして、現在地を伝えてください。	src/ui/screens/now.js:131	
 17826bm	draft	At {0}	{0}にいます	src/ui/screens/now.js:134	{0} = near.name
 ue501f	draft	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:146	Note: Read aloud before a plan item that keeps its time.
-tdmj58	draft	Flexible:	調整可：	src/ui/screens/now.js:146	Note: Read aloud before a plan item whose time can move.
-u35e3n	draft	said aloud	読み上げ	src/ui/screens/now.js:168	Note: the mark on a line of hers that was said aloud.
-16ocoht	draft	Show what she said	Shiori の言葉を表示	src/ui/screens/now.js:170	
-1yj7glf	draft	Said aloud	読み上げ	src/ui/screens/now.js:171	
+1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
+tdmj58	draft	Flexible:	調整可：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
+u35e3n	draft	said aloud	読み上げ	src/ui/screens/now.js:167	Note: the mark on a line of hers that was said aloud.
+16ocoht	draft	Show what she said	話した言葉を見る	src/ui/screens/now.js:169	
+1yj7glf	draft	Said aloud	読み上げ	src/ui/screens/now.js:170	
 ls5hgo	draft	Open a trip to see its plan.	旅を開くと、その予定が表示されます。	src/ui/screens/plan.js:24	
 ow5t4g	draft	No time yet ({0})	時刻未定（{0}）	src/ui/screens/plan.js:36	{0} = num(untimed.length)
 u71m40	draft	Nothing planned this day.	この日の予定はありません。	src/ui/screens/plan.js:46	
@@ -676,7 +670,7 @@ sdcje2	draft	{0} couldn't be read. Open the trip's files to fix it.	{0}を読み
 1r3c8qh	draft	Bookings	予約	src/ui/screens/plan.js:69	
 1gmgpvl	draft	Check this	要確認	src/ui/screens/plan.js:74	
 dqozwm	draft	All day	終日	src/ui/screens/plan.js:117	
-1ropcog	draft	Booking missing	予約がありません	src/ui/screens/plan.js:128	
+1ropcog	draft	Booking missing	予約が見つかりません	src/ui/screens/plan.js:128	
 1ud2u1e	draft	Shiori added this to the plan. Remove it?	Shiori がこれを予定に追加しました。削除しますか？	src/ui/screens/plan.js:145	
 11b6pmv	draft	Undone: {0} is off the plan.	元に戻しました：{0}を予定から外しました。	src/ui/screens/plan.js:147	{0} = title
 19uog97	draft	Added by Shiori · Undo	Shiori が追加 · 元に戻す	src/ui/screens/plan.js:150	
@@ -781,8 +775,8 @@ mm3zdg	draft	The recap wasn't written	振り返りを書けませんでした	sr
 3hcj41	draft	Hear Shiori tell it	Shiori に話してもらう	src/ui/screens/recap.js:67	
 1r8pi2g	draft	Recap	振り返り	src/ui/screens/recap.js:70	
 1mnn3h5	draft	No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	まだ振り返りはありません。annai の補助モデルが旅をもとに書きます：泊まった所と行った所、スタンプ、あなたと Shiori の会話、メモ、そして写真の一部です。	src/ui/screens/recap.js:74	
-1v25lb0	draft	Written {0}.	{0}に作成。	src/ui/screens/recap.js:75	{0} = relTime(got.entry.modified)
-nsh8oa	draft	Written {0}, then edited by you.	{0}に作成し、その後あなたが編集。	src/ui/screens/recap.js:75	{0} = relTime(got.entry.modified)
+1v25lb0	draft	Written {0}.	作成：{0}。	src/ui/screens/recap.js:75	{0} = relTime(got.entry.modified)
+nsh8oa	draft	Written {0}, then edited by you.	作成：{0}。その後あなたが編集。	src/ui/screens/recap.js:75	{0} = relTime(got.entry.modified)
 1i1lcq9	draft	Edit	編集	src/ui/screens/recap.js:77	
 1ywsgdu	draft	Replay	リプレイ	src/ui/screens/recap.js:78	
 1xmt4f6	draft	What goes to {0}	{0}に送られるもの	src/ui/screens/recap.js:82	{0} = model.name
@@ -790,20 +784,21 @@ nsh8oa	draft	Written {0}, then edited by you.	{0}に作成し、その後あな�
 1izysa3	draft	No model is set up to write it yet.	これを書くモデルがまだ設定されていません。	src/ui/screens/recap.js:84	
 1ryjzrz	draft	Whole trip	旅全体	src/ui/screens/replay.js:46	
 2m5fua	draft	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	まだリプレイするものはありません。GPS がオンの間、annai は行った場所を記録します。Shiori のカード、あなたのメッセージや写真もここに表示されます。	src/ui/screens/replay.js:50	
-1rgnrl8	draft	A stop	立ち寄り先	src/ui/screens/replay.js:72	
-wl73p3	draft	The route: {0}	ルート：{0}	src/ui/screens/replay.js:77	{0} = r.words
-15c7htt	draft	You said	あなたの発言	src/ui/screens/replay.js:103	
-10ftdrc	draft	Photo {0}, {1}	写真 {0}、{1}	src/ui/screens/replay.js:105	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
-1el9a17	draft	Open full size	大きく表示	src/ui/screens/replay.js:106	
-bk85tv	draft	Play	再生	src/ui/screens/replay.js:120	
-1ixl81m#other	draft	# stamps so far	ここまでスタンプ#個	src/ui/screens/replay.js:158	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
-1bjla9w	draft	The timeline below lists each place in order.	下のタイムラインに、場所が順に並んでいます。	src/ui/screens/replay.js:170	
-z5puy8	draft	At this moment	この時点	src/ui/screens/replay.js:171	
-hg5a8z	draft	Time in the trip	旅の時刻	src/ui/screens/replay.js:174	
-2w2xwg	draft	Speed	速度	src/ui/screens/replay.js:175	
-7xq6tu	draft	The trip in order	旅の流れ	src/ui/screens/replay.js:176	
-djv8ja	draft	Timeline	タイムライン	src/ui/screens/replay.js:176	
-j4z771	draft	Pause	一時停止	src/ui/screens/replay.js:177	
+1rgnrl8	draft	A stop	立ち寄り先	src/ui/screens/replay.js:71	
+wl73p3	draft	The route: {0}	ルート：{0}	src/ui/screens/replay.js:76	{0} = r.words
+15c7htt	draft	You said	あなたの発言	src/ui/screens/replay.js:102	
+10ftdrc	draft	Photo {0}, {1}	写真 {0}、{1}	src/ui/screens/replay.js:104	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
+1el9a17	draft	Open full size	大きく表示	src/ui/screens/replay.js:105	
+bk85tv	draft	Play	再生	src/ui/screens/replay.js:119	
+1kq44x8	draft	{0}, {1}	{0}、{1}	src/ui/screens/replay.js:151	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
+1ixl81m#other	draft	# stamps so far	ここまでスタンプ#個	src/ui/screens/replay.js:157	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
+1bjla9w	draft	The timeline below lists each place in order.	下のタイムラインに、場所が順に並んでいます。	src/ui/screens/replay.js:169	
+z5puy8	draft	At this moment	この時点	src/ui/screens/replay.js:170	
+hg5a8z	draft	Time in the trip	旅の時刻	src/ui/screens/replay.js:173	
+2w2xwg	draft	Speed	速度	src/ui/screens/replay.js:174	
+7xq6tu	draft	The trip in order	旅の流れ	src/ui/screens/replay.js:175	
+djv8ja	draft	Timeline	タイムライン	src/ui/screens/replay.js:175	
+j4z771	draft	Pause	一時停止	src/ui/screens/replay.js:176	
 1bu98qy	draft	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:18	
 1m5wnho	draft	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:18	
 1mlnwtl	draft	Shiori, asleep	Shiori、おやすみ中	src/ui/screens/shiori.js:18	
@@ -967,14 +962,14 @@ deqm9f	draft	No files yet.	まだファイルはありません。	src/ui/screen
 odevmc	draft	Adding {0} of {1}…	追加しています（{0}/{1}）…	src/ui/screens/trip.js:172	{0} = num(done + 1); {1} = num(total)
 rcp6ga	draft	A photo was kept as it is	写真をそのまま保存しました	src/ui/screens/trip.js:175	
 36fatd	draft	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/screens/trip.js:176	
-liuhl8#other	draft	Added {0}, and # plan items from the calendar	{0}と、カレンダーから予定#件を追加しました	src/ui/screens/trip.js:179	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
-q61zku#other	draft	Added # files	ファイル#件を追加しました	src/ui/screens/trip.js:180	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-1y79g95	draft	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:197	{0} = p
-ecy82r	draft	Add a file	ファイルを追加	src/ui/screens/trip.js:205	
-1bmm5eq	draft	File path	ファイルのパス	src/ui/screens/trip.js:206	
-16gte2l	draft	Create	作成	src/ui/screens/trip.js:209	
-knyqwh	draft	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:210	
-12n59th	draft	Take a photo	写真を撮る	src/ui/screens/trip.js:211	
+liuhl8#other	draft	Added {0}, and # plan items from the calendar	{0}と、カレンダーから予定#件を追加しました	src/ui/screens/trip.js:178	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
+q61zku#other	draft	Added # files	ファイル#件を追加しました	src/ui/screens/trip.js:179	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+1y79g95	draft	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:196	{0} = p
+ecy82r	draft	Add a file	ファイルを追加	src/ui/screens/trip.js:204	
+1bmm5eq	draft	File path	ファイルのパス	src/ui/screens/trip.js:205	
+16gte2l	draft	Create	作成	src/ui/screens/trip.js:208	
+knyqwh	draft	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:209	
+12n59th	draft	Take a photo	写真を撮る	src/ui/screens/trip.js:210	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	まだ旅はありません。下で始めることも、送られてきた旅を開くこともできます。	src/ui/screens/trips.js:23	Note: Keeps the glossary's 送られてきた旅を開く, the button's own words below it.
 33pqd9	draft	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:27	

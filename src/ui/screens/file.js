@@ -123,23 +123,15 @@ function historyView(ctx, id, path, history, current) {
           : v.new === current ? h('span', { class: 'sub', text: t`Current` }) : null))));
 }
 
-/** Who changed a file, and when: a message for each who, as the words around a name change with it. @param {any} entry */
+/** Who changed a file, and when: "you" has its own message, as the words around it change with it. @param {any} entry */
 function changedText(entry) {
   const ago = relTime(entry.modified);
-  if (entry.author === 'user') return t`changed by you ${ago}`;
-  if (entry.author === 'shiori') return t`changed by Shiori ${ago}`;
-  return entry.author === 'system' ? t`changed by annai ${ago}` : t`changed by ${authorName(entry.author)} ${ago}`;
+  return entry.author === 'user' ? t`changed by you ${ago}` : t`changed by ${authorName(entry.author)} ${ago}`;
 }
 
 /** A version in a file's history: saved or deleted, by whom, when. @param {any} v */
 function versionText(v) {
-  const ago = relTime(v.ts);
-  if (v.type === 'file.delete') {
-    if (v.actor === 'user') return t`Deleted by you ${ago}`;
-    if (v.actor === 'shiori') return t`Deleted by Shiori ${ago}`;
-    return v.actor === 'system' ? t`Deleted by annai ${ago}` : t`Deleted by ${authorName(v.actor)} ${ago}`;
-  }
-  if (v.actor === 'user') return t`Saved by you ${ago}`;
-  if (v.actor === 'shiori') return t`Saved by Shiori ${ago}`;
-  return v.actor === 'system' ? t`Saved by annai ${ago}` : t`Saved by ${authorName(v.actor)} ${ago}`;
+  const [mine, who, ago] = [v.actor === 'user', authorName(v.actor), relTime(v.ts)];
+  if (v.type === 'file.delete') return mine ? t`Deleted by you ${ago}` : t`Deleted by ${who} ${ago}`;
+  return mine ? t`Saved by you ${ago}` : t`Saved by ${who} ${ago}`;
 }
