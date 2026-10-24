@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, reminderLine } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -726,6 +726,15 @@ test('the announcer reads her lines as "Shiori: …": a spoken line, a card (a p
   assert.equal(announcement('reminder', '', 'Reminder: Leave at 5.'), 'Reminder: Leave at 5.');
   assert.equal(announcement('msg.user', '', 'Hello'), '');
   assert.equal(announcement('note', '', 'Koe to Kokoro: …'), '');
+});
+
+test('a wake in the conversation says why from its kinds, never the words the model was given; a reminder line says what it is', () => {
+  assert.equal(wokeText([{ kind: 'trigger', text: 'Your watch w1 (at 17:00) fired: it is 17:00.' }]), 'Shiori woke for a reminder, or something she watches for.');
+  assert.equal(wokeText([{ kind: 'recap', text: 'x' }, { kind: 'plugin', plugin: 'trail', text: 'y' }], (id) => `${id}!`), 'Shiori woke to tell you the recap. Shiori woke for the plugin trail!.');
+  assert.deepEqual(reminderLine({}), ['Reminder: ', '']);
+  assert.deepEqual(reminderLine({ aloud: true }), ['Reminder, said aloud: ', '']);
+  assert.deepEqual(reminderLine({ title: "Shiori's answer", aloud: false }), ["Shiori's answer: ", '']);
+  assert.deepEqual(reminderLine({ title: 'Reminder', aloud: true }), ['Reminder, said aloud: ', ''], 'any other title is a reminder');
 });
 
 test("the price line says a change that is coming: from its date, the price then", () => {
