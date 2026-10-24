@@ -167,6 +167,15 @@ export function messageOf(e) {
 }
 
 /**
+ * Shows what went wrong (messageOf) in el. A schema's refusal is its English (src/core/schema.js), a developer's words (decision
+ * 11), so it goes in a span marked lang="en", which the next words shown there replace with it. @param {HTMLElement} el @param {unknown} e
+ */
+export function showError(el, e) {
+  const text = messageOf(e);
+  el.replaceChildren(Array.isArray(/** @type {any} */ (e)?.errors) ? h('span', { lang: 'en', text }) : text);
+}
+
+/**
  * A field's number for autosave's read(): null when empty (unless needed), else lo to hi, whole when asked; anything else throws words.
  * @param {HTMLInputElement} input @param {number} lo @param {number} hi @param {string} words @param {{ whole?: boolean, need?: boolean }} [o]
  */
@@ -222,11 +231,8 @@ export function autosave(control, read, save) {
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
-  const say = (/** @type {any} */ e) => {
-    error.textContent = messageOf(e);
-    // A schema's refusal is its English (src/core/schema.js), a developer's words; the rest are the screen's.
-    if (Array.isArray(e?.errors)) error.lang = 'en';
-    else error.removeAttribute('lang');
+  const say = (/** @type {unknown} */ e) => {
+    showError(error, e);
     error.hidden = false;
   };
   /** @type {any[]} */

@@ -1,4 +1,4 @@
-import { h, crumb, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
+import { h, crumb, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -122,7 +122,7 @@ export async function renderProvider(ctx, id) {
           else await write();
           return true;
         } catch (err) {
-          status.textContent = messageOf(err);
+          showError(status, err);
           return false;
         }
       }, async (saved) => {
@@ -205,7 +205,7 @@ export async function renderProvider(ctx, id) {
           await asking(removing, () => ctx.llm.removeProvider(id));
           ctx.go('#/models');
         } catch (e) {
-          status.textContent = messageOf(e);
+          showError(status, e);
         }
       }, () => warnKept(ctx, removeWarn, { provider: id }))),
       removeWarn, // under the button, so arming it doesn't move it
@@ -235,7 +235,7 @@ export async function renderNewProvider(ctx, pluginId) {
         open(added);
         sayFilled(ctx, pluginId, filled, costs);
       } catch (e) {
-        status.textContent = messageOf(e);
+        showError(status, e);
         byHand.disabled = false;
       }
     },
@@ -282,7 +282,7 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
         await installMissing(ctx, entry);
         ctx.render();
       } catch (e) {
-        status.textContent = messageOf(e);
+        showError(status, e);
         install.disabled = false;
       }
     },
@@ -444,7 +444,7 @@ function installPanel(ctx, typeId, name, done) {
         await ctx.llm.ensureType(typeId);
         done();
       } catch (e) {
-        status.textContent = messageOf(e);
+        showError(status, e);
         btn.disabled = false;
       }
     },
@@ -466,7 +466,7 @@ function modelsPart(ctx, id, abilityId, models) {
         await addModelById(ctx, id, abilityId, value);
         ctx.render();
       } catch (e) {
-        status.textContent = messageOf(e);
+        showError(status, e);
       }
     },
   }, t`Add model`);
@@ -480,7 +480,7 @@ function modelsPart(ctx, id, abilityId, models) {
         status.textContent = plural(listed.length, '# model.', '# models.');
         listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
       } catch (e) {
-        status.textContent = messageOf(e);
+        showError(status, e);
       } finally {
         fetchList.disabled = false;
       }
