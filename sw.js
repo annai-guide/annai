@@ -311,6 +311,8 @@ sw.addEventListener('install', (event) => {
       if (hash) files[path] = hash;
     }
     await cache.put(RECORD, new Response(JSON.stringify({ files })));
+    // A waiting version brought in meanwhile (Restart now) deletes this cache as it activates: this version would start on none.
+    if (!(await caches.match(RECORD, { cacheName: CACHE }))) throw new Error("this version's cache was deleted while it installed");
   })());
 });
 

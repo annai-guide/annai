@@ -31,7 +31,8 @@ const packed = new Map();
  * path and the bytes sent for it are logged.
  */
 async function startSite() {
-  const state = { up: true, rules: parseHeaders(HEADERS) };
+  /** slow: paths answered 5 s late; asked: each path as its request arrives. */
+  const state = { up: true, rules: parseHeaders(HEADERS), slow: new Set(), asked: /** @type {string[]} */ ([]) };
   /** @type {Map<string, string | Buffer>} */
   const changed = new Map([['/sw.js', SW]]);
   /** @type {{ path: string, bytes: number }[]} */
@@ -43,6 +44,8 @@ async function startSite() {
     }
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
     const file = path.endsWith('/') ? `${path}index.html` : path;
+    state.asked.push(path);
+    if (state.slow.has(path)) await new Promise((resolve) => setTimeout(resolve, 5000));
     for (const [k, v] of headersFor(state.rules, path)) res.setHeader(k, v);
     try {
       const own = changed.get(file) ?? await readFile(new URL(`.${file}`, root));
@@ -83,11 +86,7 @@ const shellRequests = (log) => log.filter((r) => SHELL.has(r.path) || r.path ===
  * @param {import('@playwright/test').Page} page @param {Site} site @param {string} build @param {string} line
  */
 async function update(page, site, build, line, { manifest = true } = {}) {
-  const sun = `${await readFile(new URL('src/core/sun.js', root), 'utf8')}\n${line}\n`;
-  site.changed.set('/src/core/sun.js', sun);
-  if (manifest) site.changed.set('/shell.json', JSON.stringify({ build, files: { ...MANIFEST.files, '/src/core/sun.js': createHash('sha256').update(sun).digest('hex').slice(0, 12) } }));
-  else site.changed.set('/shell.json', '<html>not found</html>');
-  site.changed.set('/sw.js', SW.replace(/^const BUILD = '[^']*';$/m, `const BUILD = '${build}';`));
+  await ship(site, build, line, { manifest });
   site.log.length = 0;
   await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
   await expect.poll(() => page.evaluate(async (b) => {
@@ -95,6 +94,15 @@ async function update(page, site, build, line, { manifest = true } = {}) {
     return reg?.waiting?.state === 'installed' && !reg.installing && (await /** @type {any} */ (window).buildOf(reg.waiting)) === b;
   }, build), { timeout: 60_000 }).toBe(true);
   return { shell: shellRequests(site.log), sw: site.log.filter((r) => r.path === '/sw.js') };
+}
+
+/** The site serves a version whose sun.js ends with this line. @param {Site} site @param {string} build @param {string} line */
+async function ship(site, build, line, { manifest = true } = {}) {
+  const sun = `${await readFile(new URL('src/core/sun.js', root), 'utf8')}\n${line}\n`;
+  site.changed.set('/src/core/sun.js', sun);
+  if (manifest) site.changed.set('/shell.json', JSON.stringify({ build, files: { ...MANIFEST.files, '/src/core/sun.js': createHash('sha256').update(sun).digest('hex').slice(0, 12) } }));
+  else site.changed.set('/shell.json', '<html>not found</html>');
+  site.changed.set('/sw.js', SW.replace(/^const BUILD = '[^']*';$/m, `const BUILD = '${build}';`));
 }
 
 /** The waiting version takes over, as Restart now has it. @param {import('@playwright/test').Page} page */
@@ -180,6 +188,40 @@ test("a release that changes the site's policy with one file runs under the new 
       return { pages: pages.map((c) => c.includes(' wss: ')), wss };
     });
     expect(policy).toEqual({ pages: [true, true], wss: 'allowed' });
+  } finally {
+    await site.stop();
+  }
+});
+
+test('Restart now into a waiting version while a newer one installs: the newer install fails, and annai still opens offline', async ({ page }) => {
+  // The waiting version's activate deletes every other shell cache, the installing one's too: that install must not go on to run.
+  const site = await startSite();
+  await askable(page);
+  try {
+    await page.goto(`${site.origin}/#/trips`);
+    await waitForServiceWorker(page);
+    await update(page, site, 'b0b0b0b0b0b0', '// e2e: version B');
+    await ship(site, 'c0c0c0c0c0c0', '// e2e: version C');
+    site.state.slow.add('/src/core/sun.js');
+    site.state.asked.length = 0;
+    page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); }).catch(() => {});
+    await expect.poll(() => site.state.asked.includes('/src/core/sun.js'), { timeout: 30_000 }).toBe(true);
+    await takeOver(page); // B
+    await expect.poll(() => page.evaluate(async () => !(await navigator.serviceWorker.getRegistration())?.installing), { timeout: 30_000 }).toBe(true);
+    const after = await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      /** @type {Record<string, number>} */
+      const sizes = {};
+      for (const n of await caches.keys()) if (n.startsWith('annai-shell-')) sizes[n] = (await (await caches.open(n)).keys()).length;
+      return { waiting: Boolean(reg?.waiting), active: await /** @type {any} */ (window).buildOf(reg?.active), sizes };
+    });
+    expect(after.waiting).toBe(false);
+    expect(after.active).toBe('b0b0b0b0b0b0');
+    expect(Object.keys(after.sizes)).toEqual(['annai-shell-0.1.0-b0b0b0b0b0b0']);
+    expect(after.sizes['annai-shell-0.1.0-b0b0b0b0b0b0']).toBeGreaterThan(SHELL.size);
+    site.state.up = false;
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   } finally {
     await site.stop();
   }

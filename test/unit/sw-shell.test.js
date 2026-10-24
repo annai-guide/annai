@@ -56,6 +56,7 @@ test('installing fetches the shell past the HTTP cache, so an update never store
   const self = { location: new URL('https://annai.guide/sw.js'), addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; } };
   const caches = {
     keys: async () => [],
+    match: async () => new Response('{}'),
     open: async () => ({ addAll: async (/** @type {any[]} */ reqs) => { added = reqs; }, match: async () => new Response('a file'), put: async () => {}, delete: async () => false }),
   };
   // In a service worker, relative URLs resolve against its own location.
