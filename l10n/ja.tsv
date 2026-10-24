@@ -1,0 +1,71 @@
+key	state	en	text	where	note
+1e9ja08#other	draft	# stamps	スタンプ#個	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other)
+1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今日のモデルの利用額は{0}で、設定した1日{1}に達しました。Shiori は明日続けられます。設定 → モデル → 1日の利用額で上げることもできます。	src/core/agent/budgets.js:103	{0} = money(spent); {1} = money(budgets.spendPerDay); Note: "She" is written as Shiori: 彼女 reads distant in Japanese.
+1acz027	draft	just now	たった今	src/core/intl.js:113	Note: Glossary warning (Now): this is relTime's "just now", not the Now tab; たった今 is the phrase.
+3fqfy0	draft	Languages	言語	src/core/languages.js:294	
+1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:295	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	draft	Languages you speak	話す言語	src/core/languages.js:296	
+krvxy3	draft	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:297	Note: Phone dictation is the keyboard's 音声入力 (glossary, Speech in's note), not her 聞き取り.
+5h4ntn	draft	Add a language	言語を追加	src/core/languages.js:298	
+17rv3f8	draft	Add	追加	src/core/languages.js:299	
+9c35st	draft	Remove	削除	src/core/languages.js:300	
+oogs2r	draft	Remove {0}	{0}を削除	src/core/languages.js:303	{0} = name
+1u9ac5b	draft	Move {0} up	{0}を上へ移動	src/core/languages.js:304	{0} = name
+9v00pm	draft	Move {0} down	{0}を下へ移動	src/core/languages.js:305	{0} = name
+h355qb	draft	{0} · {1}	{0} · {1}	src/core/languages.js:307	{0} = name; {1} = own
+18uuegb	draft	Added {0}	{0}を追加しました	src/core/languages.js:308	{0} = name
+zu7130	draft	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:308	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	draft	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:309	{0} = name; {1} = place
+ehoetc	draft	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:309	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	draft	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:310	{0} = name
+p2yont	draft	{0} removed	{0}を削除しました	src/core/languages.js:310	{0} = name
+1i1xhz6	draft	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:312	{0} = name
+wbdbo7	draft	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:313	{0} = name
+53lnxp	draft	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:315	{0} = name
+fhhm2e	draft	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:315	{0} = name
+1c7ft9k	draft	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:316	
+bgn4sv	draft	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:316	
+1qt7a9v	draft	Shiori answers in	Shiori が答える言語	src/core/languages.js:317	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	draft	The language you speak to her	話しかけた言語	src/core/languages.js:318	
+au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未選択：annai はブラウザの言語を使います。よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:319	
+13y0hea	draft	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+la9701	draft	not backed up	未バックアップ	src/ui/format.js:26	
+1h47npq	draft	backed up {0}	バックアップ：{0}	src/ui/format.js:27	{0} = relTime(at, now); Note: Label and value: relTime's たった今 or 昨日 can't take に, so "{0}にバックアップ" would break.
+1sjuc50	draft	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:27	{0} = relTime(at, now); Note: As "backed up {0}".
+7fdkjm	draft	cost unknown	費用不明	src/ui/format.js:32	
+16name3	draft	free	無料	src/ui/format.js:33	
+n3y7d4	draft	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:189	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
+967kb3	draft	Getting {0}…	{0}を取得しています…	src/ui/languages.js:204	{0} = name
+ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:205	{0} = name
+12ek4is	draft	Saved	保存しました	src/ui/languages.js:217	
+1t9l1f1	draft	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:220	
+v4uyh0	draft	annai's screens in	annai の表示言語	src/ui/languages.js:224	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
+15go2in	draft	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:240	{0} = name
+982hh6	draft	Try again	再試行	src/ui/languages.js:240	
+dc30do	draft	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:240	
+8rqn0k	draft	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:247	{0} = name
+150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:248	{0} = name
+1of7r8x	draft	Restart annai	annai を再起動	src/ui/languages.js:249	
+16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other); Note: Joined with ", " in the code (offline-pack.js holds()), not 、.
+18s5rc#other	draft	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
+1bid1z0#other	draft	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000); Note: Glossary warning (About): "about" here is "roughly", before a drive's time, not the About section.
+1py6vf8	draft	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
+aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語を読める人がまだ確認していない翻訳です。オンにすると、設定 → Shiori → 言語で選べます。表現が誤っていることがあり、未翻訳の部分は英語のままです。	src/ui/screens/experimental.js:31	
+xb1ny3	draft	Trips	旅	src/ui/screens/trips.js:21	
+yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	まだ旅はありません。下で始めることも、送られてきた旅を開くこともできます。	src/ui/screens/trips.js:22	Note: Keeps the glossary's 送られてきた旅を開く, the button's own words below it.
+33pqd9	draft	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:25	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
+in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:26	
+rpzgfn	draft	Last export {0}.	前回のエクスポート：{0}	src/ui/screens/trips.js:26	{0} = relTime(settings.lastExportAt)
+sjnfyu	draft	Archived trips ({0})	アーカイブした旅（{0}）	src/ui/screens/trips.js:28	{0} = archived.length
+ru2yru	draft	updated {0}	更新：{0}	src/ui/screens/trips.js:41	{0} = relTime(s.updated); Note: Label and value, as "backed up {0}".
+1ceddv5	draft	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:47	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
+axugy7	draft	Start a trip	旅を始める	src/ui/screens/trips.js:67	
+ero67x	draft	Trip name	旅の名前	src/ui/screens/trips.js:68	
+1yii6kb	draft	Ends	終了日	src/ui/screens/trips.js:69	Note: A date field, so 日 / 日期 say what goes in it.
+fc4c10	draft	Starts	開始日	src/ui/screens/trips.js:69	
+1baslgi	draft	Start trip	旅を始める	src/ui/screens/trips.js:71	Note: The same words as the form's heading, "Start a trip".
+vr6m26	draft	Give the trip a name.	旅の名前を入力してください。	src/ui/screens/trips.js:77	
+152lnj5	draft	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:78	
+1plbhzy	draft	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
+1uowdjd	draft	resting after a failure, tries again {0}	失敗後の休止中、{0}に再試行	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1 分後".

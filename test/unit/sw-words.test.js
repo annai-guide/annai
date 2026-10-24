@@ -59,7 +59,10 @@ function fakeIndexedDB(settings) {
  * network: the catalogs by tag (a missing one is a 404); caches start with these names (a waiting version's too).
  */
 async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false } = {}) {
-  const source = (await readFile(new URL('sw.js', root), 'utf8')).replace('const LANGS = [];', `const LANGS = ${JSON.stringify(langs)};`);
+  // Whatever languages sw.js lists today (strings.mjs writes the line), the test's own.
+  const shipped = await readFile(new URL('sw.js', root), 'utf8');
+  assert.match(shipped, /^const LANGS = \[[^\]\n]*\];$/m, 'sw.js has its LANGS line');
+  const source = shipped.replace(/^const LANGS = \[[^\]\n]*\];$/m, `const LANGS = ${JSON.stringify(langs)};`);
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
   /** @type {Map<string, Map<string, string>>} */

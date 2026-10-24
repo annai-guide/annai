@@ -1,14 +1,14 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'f374d366f939';
+const BUILD = 'c5b4162a343b';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 // The languages cached with a version (written by strings.mjs); their catalogs are outside SHELL, which stamp.mjs hashes too.
-const LANGS = [];
+const LANGS = ['ja', 'zh-Hans'];
 const SHELL = [
   '/',
   '/index.html',
