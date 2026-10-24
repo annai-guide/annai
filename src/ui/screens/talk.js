@@ -101,12 +101,12 @@ export function wokeText(reasons, nameOf = (id) => id) {
 }
 
 /**
- * A reminder annai showed by itself, from its data: the words before and after its text. Its one title is "Shiori's answer" (her
- * note shown for her, halves.js); else it is a reminder. Said aloud, it says so. @param {{ title?: string, aloud?: boolean }} d
+ * A reminder annai showed by itself, from its data: the words before and after its text. The one title annai gives one is
+ * "Shiori's answer" (her note shown for her, halves.js); anything else is a reminder. Said aloud, it says so. @param {{ title?: string, aloud?: boolean }} d
  * @returns {[string, string]}
  */
 export function reminderLine(d) {
-  const message = d.title ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
+  const message = d.title === /* en */ "Shiori's answer" ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
   const [before, , after] = around(message, '');
   return [before, after];
 }
