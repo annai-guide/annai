@@ -1,6 +1,6 @@
 // How annai formats for people (localization design, section 4): one set of Intl helpers, each formatter made once per locale.
 // The locale is the screens' language with the phone's region (l10n.js): English screens on a German phone format as en-DE.
-import { t, locale } from './l10n.js';
+import { t, locale, lang } from './l10n.js';
 import { LANGUAGES } from './languages.js';
 
 export { locale };
@@ -137,13 +137,18 @@ export const zone = (at, tz) => make(Intl.DateTimeFormat, { timeZone: tz, timeZo
 /** "a, b and c", "a, b, or c", or plain "a, b, c" (Japanese "a、b、c"). @param {string[]} items @param {'and' | 'or' | 'plain'} [kind] */
 export const list = (items, kind = 'and') => make(Intl.ListFormat, kind === 'plain' ? { type: 'conjunction', style: 'narrow' } : { type: kind === 'or' ? 'disjunction' : 'conjunction' }).format(items);
 
-/** A language's name in the interface language ("Japanese", "日本語"), annai's English name where the browser has none. @param {string} id */
+/**
+ * A language's name in the interface language ("Japanese", "日本語"). English screens keep annai's own English names ("Chinese
+ * (Mandarin)", not the browser's "Chinese"), and so does any language the browser can't name. @param {string} id
+ */
 export function languageName(id) {
+  const ours = LANGUAGES.find((l) => l.id === id)?.name;
+  if (ours && lang().split('-')[0] === 'en') return ours;
   let name;
   try {
     name = make(Intl.DisplayNames, { type: 'language' }).of(id);
   } catch { /* not a code Intl knows */ }
-  return name && name !== id ? name : LANGUAGES.find((l) => l.id === id)?.name ?? id;
+  return name && name !== id ? name : ours ?? id;
 }
 
 /** For sorting words in this language's order. @param {string} a @param {string} b */

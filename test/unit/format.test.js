@@ -267,6 +267,15 @@ test('languageName: the language\'s name in the screens\' language, annai\'s Eng
   assert.equal(languageName('ja'), '日语');
 });
 
+test('languageName: English screens keep annai\'s own English names, where the browser\'s differ', () => {
+  as('en', 'en-US');
+  assert.equal(languageName('zh'), 'Chinese (Mandarin)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('bn'), 'Bengali', 'not "Bangla"');
+  as('ja', 'ja-JP');
+  assert.equal(languageName('zh'), '中国語');
+  assert.equal(languageName('bn'), 'ベンガル語');
+});
+
 test('sortWords follows the language\'s order', () => {
   as('en', 'en-US');
   assert.deepEqual(['b', 'Z', 'a', 'é'].sort(sortWords), ['a', 'b', 'é', 'Z']);

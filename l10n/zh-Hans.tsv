@@ -9,20 +9,20 @@ krvxy3	draft	In order of use. Phone dictation listens in the first one only; mod
 5h4ntn	draft	Add a language	添加语言	src/core/languages.js:303	
 17rv3f8	draft	Add	添加	src/core/languages.js:304	
 9c35st	draft	Remove	移除	src/core/languages.js:305	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	draft	Remove {0}	移除 {0}	src/core/languages.js:308	{0} = name; Note: {0} is the language's English name here, so it has a space either side.
-1u9ac5b	draft	Move {0} up	上移 {0}	src/core/languages.js:309	{0} = name
-9v00pm	draft	Move {0} down	下移 {0}	src/core/languages.js:310	{0} = name
+oogs2r	draft	Remove {0}	移除{0}	src/core/languages.js:308	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+1u9ac5b	draft	Move {0} up	上移{0}	src/core/languages.js:309	{0} = name
+9v00pm	draft	Move {0} down	下移{0}	src/core/languages.js:310	{0} = name
 h355qb	draft	{0} · {1}	{0} · {1}	src/core/languages.js:312	{0} = name; {1} = own
-18uuegb	draft	Added {0}	已添加 {0}	src/core/languages.js:313	{0} = name
-zu7130	draft	Added {0}. Saved	已添加 {0}，已保存	src/core/languages.js:313	{0} = name
-14va31	draft	{0} moved to {1}. Saved	{0} 已移到第 {1} 位，已保存	src/core/languages.js:314	{0} = name; {1} = place
-ehoetc	draft	{0} moved to {1}	{0} 已移到第 {1} 位	src/core/languages.js:314	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	draft	{0} removed. Saved	已移除 {0}，已保存	src/core/languages.js:315	{0} = name
-p2yont	draft	{0} removed	已移除 {0}	src/core/languages.js:315	{0} = name
-1i1xhz6	draft	{0} removed; Shiori answers in the language you speak to her again	已移除 {0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:317	{0} = name
-wbdbo7	draft	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除 {0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:318	{0} = name
-53lnxp	draft	Shiori answers in {0}	Shiori 用 {0} 回答	src/core/languages.js:320	{0} = name
-fhhm2e	draft	Shiori answers in {0}. Saved	Shiori 用 {0} 回答。已保存	src/core/languages.js:320	{0} = name
+18uuegb	draft	Added {0}	已添加{0}	src/core/languages.js:313	{0} = name
+zu7130	draft	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:313	{0} = name
+14va31	draft	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:314	{0} = name; {1} = place
+ehoetc	draft	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:314	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	draft	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:315	{0} = name
+p2yont	draft	{0} removed	已移除{0}	src/core/languages.js:315	{0} = name
+1i1xhz6	draft	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:317	{0} = name
+wbdbo7	draft	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:318	{0} = name
+53lnxp	draft	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:320	{0} = name
+fhhm2e	draft	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:320	{0} = name
 1c7ft9k	draft	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:321	
 bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:321	
 1qt7a9v	draft	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:322	Note: A label, so a noun: "the language Shiori answers in".
@@ -34,19 +34,19 @@ la9701	draft	not backed up	未备份	src/ui/format.js:26
 1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
 7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:32	
 16name3	draft	free	免费	src/ui/format.js:33	
-n3y7d4	draft	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:182	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	draft	Getting {0}…	正在获取{0}…	src/ui/languages.js:196	{0} = name
-ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:197	{0} = name
-12ek4is	draft	Saved	已保存	src/ui/languages.js:209	
-1t9l1f1	draft	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:212	
-1lycsu9	draft	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:217	
-v4uyh0	draft	annai's screens in	annai 界面语言	src/ui/languages.js:220	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
-15go2in	draft	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:233	{0} = name
-982hh6	draft	Try again	重试	src/ui/languages.js:233	
-dc30do	draft	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:233	
-8rqn0k	draft	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:240	{0} = name
-150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:241	{0} = name
-1of7r8x	draft	Restart annai	重启 annai	src/ui/languages.js:242	
+n3y7d4	draft	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	draft	Getting {0}…	正在获取{0}…	src/ui/languages.js:198	{0} = name
+ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:199	{0} = name
+12ek4is	draft	Saved	已保存	src/ui/languages.js:211	
+1t9l1f1	draft	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:214	
+1lycsu9	draft	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:219	
+v4uyh0	draft	annai's screens in	annai 界面语言	src/ui/languages.js:222	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
+15go2in	draft	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:235	{0} = name
+982hh6	draft	Try again	重试	src/ui/languages.js:235	
+dc30do	draft	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:235	
+8rqn0k	draft	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:242	{0} = name
+150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:243	{0} = name
+1of7r8x	draft	Restart annai	重启 annai	src/ui/languages.js:244	
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)

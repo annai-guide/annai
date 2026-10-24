@@ -3,6 +3,7 @@ import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { chooseTag, lang as screensLang } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor } from '../core/languages.js';
+import { languageName } from '../core/intl.js';
 
 /** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
 export function ownName(tag) {
@@ -41,8 +42,8 @@ export async function keepWords(tag, { worker = navigator.serviceWorker?.control
 
 /** A language of ours by its id. @param {string} id */
 const language = (id) => LANGUAGES.find((l) => l.id === id);
-/** A language as a picker shows it: its name, then its own. @param {import('../core/languages.js').Language} l */
-const optionText = (l) => W.option(l.name, nativeName(l));
+/** A language as a picker shows it: its name in the screens' language, then its own. @param {import('../core/languages.js').Language} l */
+const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
 /**
  * Settings → Shiori → Languages (phase 2): the languages you speak, in order, and the one Shiori answers in. Each change is saved at
@@ -110,13 +111,14 @@ export function languagesSection(ctx, app) {
     list.replaceChildren(...ids.map((id, i) => {
       const l = /** @type {import('../core/languages.js').Language} */ (language(id));
       const own = nativeName(l);
+      const name = languageName(id);
       const button = (/** @type {string} */ act, /** @type {string} */ label, /** @type {string} */ text, /** @type {() => unknown} */ run, disabled = false) =>
         h('button', { class: 'btn', type: 'button', 'aria-label': label, dataset: { lang: id, act }, disabled, onclick: run }, text);
       return h('li', { tabindex: '-1', dataset: { lang: id } },
-        h('span', { class: 'lang-name' }, l.name, own !== l.name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
-        i ? button('up', W.moveUpLabel(l.name), W.moveUpText, () => change(swap(i - 1), W.moved(l.name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
-        i < ids.length - 1 ? button('down', W.moveDownLabel(l.name), W.moveDownText, () => change(swap(i), W.moved(l.name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
-        button('remove', W.removeLabel(l.name), W.remove, () => remove(id), ids.length < 2));
+        h('span', { class: 'lang-name' }, name, own !== name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
+        i ? button('up', W.moveUpLabel(name), W.moveUpText, () => change(swap(i - 1), W.moved(name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
+        i < ids.length - 1 ? button('down', W.moveDownLabel(name), W.moveDownText, () => change(swap(i), W.moved(name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
+        button('remove', W.removeLabel(name), W.remove, () => remove(id), ids.length < 2));
     }));
     hint.textContent = chosen ? W.spokenHint : W.emptyHint;
     add.replaceChildren(h('option', { value: '', text: W.add }), ...LANGUAGES.filter((l) => !ids.includes(l.id)).map((l) => h('option', { value: l.id, text: optionText(l) })));
@@ -142,7 +144,7 @@ export function languagesSection(ctx, app) {
   const remove = (id) => {
     const at = ids.indexOf(id);
     const next = ids.filter((x) => x !== id);
-    const name = /** @type {any} */ (language(id)).name;
+    const name = languageName(id);
     const resets = answerId === id;
     const near = next[Math.min(at, next.length - 1)];
     return change(next, resets ? W.removedAnswer(name) : W.removed(name), near ? { id: near, act: 'remove' } : 'add', resets ? 'follow' : answerId);
@@ -151,13 +153,13 @@ export function languagesSection(ctx, app) {
   /** Adds the language picked, once Add is pressed: arrow keys in the list only choose. */
   const pick = () => {
     const l = language(add.value);
-    if (l && !ids.includes(l.id)) change([...ids, l.id], W.added(l.name));
+    if (l && !ids.includes(l.id)) change([...ids, l.id], W.added(languageName(l.id)));
   };
 
   add.addEventListener('change', () => { addButton.disabled = !add.value; });
   answer.addEventListener('change', () => {
     answerId = answer.value;
-    save(answerId === 'follow' ? W.answeredFollow() : W.answered(/** @type {any} */ (language(answerId)).name));
+    save(answerId === 'follow' ? W.answeredFollow() : W.answered(languageName(answerId)));
   });
   draw();
 

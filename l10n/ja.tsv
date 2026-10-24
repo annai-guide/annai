@@ -34,19 +34,19 @@ la9701	draft	not backed up	未バックアップ	src/ui/format.js:26
 1sjuc50	draft	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:27	{0} = relTime(at, now); Note: As "backed up {0}".
 7fdkjm	draft	cost unknown	費用不明	src/ui/format.js:32	
 16name3	draft	free	無料	src/ui/format.js:33	
-n3y7d4	draft	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:182	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
-967kb3	draft	Getting {0}…	{0}を取得しています…	src/ui/languages.js:196	{0} = name
-ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:197	{0} = name
-12ek4is	draft	Saved	保存しました	src/ui/languages.js:209	
-1t9l1f1	draft	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:212	
-1lycsu9	draft	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:217	
-v4uyh0	draft	annai's screens in	annai の表示言語	src/ui/languages.js:220	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
-15go2in	draft	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:233	{0} = name
-982hh6	draft	Try again	再試行	src/ui/languages.js:233	
-dc30do	draft	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:233	
-8rqn0k	draft	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:240	{0} = name
-150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:241	{0} = name
-1of7r8x	draft	Restart annai	annai を再起動	src/ui/languages.js:242	
+n3y7d4	draft	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
+967kb3	draft	Getting {0}…	{0}を取得しています…	src/ui/languages.js:198	{0} = name
+ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:199	{0} = name
+12ek4is	draft	Saved	保存しました	src/ui/languages.js:211	
+1t9l1f1	draft	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:214	
+1lycsu9	draft	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:219	
+v4uyh0	draft	annai's screens in	annai の表示言語	src/ui/languages.js:222	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
+15go2in	draft	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:235	{0} = name
+982hh6	draft	Try again	再試行	src/ui/languages.js:235	
+dc30do	draft	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:235	
+8rqn0k	draft	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:242	{0} = name
+150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:243	{0} = name
+1of7r8x	draft	Restart annai	annai を再起動	src/ui/languages.js:244	
 16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
