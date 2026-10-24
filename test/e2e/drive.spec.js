@@ -34,7 +34,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     const strip = page.getByRole('list', { name: 'The road ahead' });
     await expect(strip.locator('li').first()).toHaveText('You');
     await expect(strip).toContainText('Nepenthe');
-    await expect(strip).toContainText(/≈ \d+ (mi|km) · about \d+ min/);
+    await expect(strip).toContainText(/≈ \d+ (mi|km) · about (\d+ hr, )?\d+ min/);
     await expect(page.getByRole('link', { name: 'Apple Maps' })).toHaveAttribute('href', /^https:\/\/maps\.apple\.com\/\?daddr=36\.2213%2C-121\.7567&dirflg=d&saddr=/);
     await expect(page.getByRole('link', { name: 'Google Maps' })).toHaveAttribute('href', /^https:\/\/www\.google\.com\/maps\/dir\//);
     await page.getByRole('button', { name: 'Fuel' }).click();

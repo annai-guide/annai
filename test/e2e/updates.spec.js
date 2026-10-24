@@ -62,7 +62,7 @@ test('a new build is found when annai comes back to the screen, without a reload
     await waitForServiceWorker(page);
     await expect(page.getByText(`annai 0.1.0 · build ${BUILD}`)).toBeVisible();
     // The check at start (annai's plugins; the browser checks annai itself as it opens the page).
-    await expect(page.getByText('Last checked just now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Last checked now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
     // Coming back is checked at most every 15 minutes: the phone was set aside for 16.
     await page.clock.setSystemTime(Date.now() + 16 * 60_000);
     await go(page, '#/models');
@@ -115,9 +115,9 @@ test('Settings → Updates shows the build running and says when everything is u
   await page.getByRole('link', { name: 'Check for updates' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Updates' })).toBeVisible();
   await expect(page.getByText(`annai 0.1.0 · build ${BUILD}`)).toBeVisible();
-  await expect(page.getByText('Last checked just now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Last checked now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Check now' }).click();
-  await expect(page.getByText('Last checked just now. Everything is up to date.')).toBeVisible();
+  await expect(page.getByText('Last checked now. Everything is up to date.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Check now' })).toBeEnabled();
   await page.setViewportSize({ width: 320, height: 640 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
@@ -145,7 +145,7 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     await page.getByRole('button', { name: 'Check now' }).click();
     const plugins = page.getByRole('region', { name: 'Plugins' });
     await expect(plugins.locator('.card', { hasText: `Remote trace (for developers) ${now} → ${bumped}` })).toBeVisible();
-    await expect(page.getByText('Last checked just now.', { exact: true })).toBeVisible();
+    await expect(page.getByText('Last checked now.', { exact: true })).toBeVisible();
     await go(page, '#/settings');
     await expect.poll(() => sections(page).then((s) => s[0])).toBe('Updates');
     await expect(page.getByRole('region', { name: 'Updates' })).toContainText('Plugin updates are ready: Remote trace (for developers).');
@@ -160,7 +160,7 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     const reloaded = page.waitForEvent('load');
     await page.getByRole('status').locator('.notice', { hasText: 'Restart annai to use the new versions' }).getByRole('button', { name: 'Restart now' }).click();
     await reloaded;
-    await expect(page.getByText('Last checked just now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Last checked now. Everything is up to date.')).toBeVisible({ timeout: 30_000 });
     await go(page, '#/plugins');
     await expect(page.locator('.card', { hasText: `Remote trace (for developers) ${bumped}` }).getByText('On', { exact: true })).toBeVisible({ timeout: 30_000 });
   } finally {

@@ -62,7 +62,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   const day = page.getByRole('tabpanel');
   await expect(day.locator('.plan-row')).toHaveCount(2);
-  await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30 EST'); // it lands in another zone
+  await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30 ET'); // it lands in another zone
   await expect(day.locator('.plan-row').first()).toContainText('●');
   await expect(day.getByRole('link', { name: 'Check this' })).toHaveCount(1);
   await expect(day.locator('.leg')).toHaveCount(0); // SFO to Hoboken is a flight, not a leg
@@ -72,7 +72,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.leg').getByRole('link', { name: 'Directions' })).toHaveAttribute('href', /^https:\/\/(maps\.apple\.com|www\.google\.com\/maps)/);
   await expect(day.getByText('Booking missing')).toBeVisible();
   await tabs.nth(3).click();
-  await expect(day.locator('.plan-row')).toContainText('21:00–00:30 +1 PST'); // it lands the next day, in another zone
+  await expect(day.locator('.plan-row')).toContainText('21:00–00:30 +1 PT'); // it lands the next day, in another zone
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
   await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
@@ -110,7 +110,9 @@ test('Booking confirmation: what it says, beside its original; Looks right confi
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
   await expect(page.getByText('Check this against the original, then confirm it.')).toBeVisible();
   await expect(page.locator('dl.facts')).toContainText('ABC123');
-  await expect(page.locator('dl.facts')).toContainText('(America/Los_Angeles)');
+  // The booking's zone is named the way people say it, never by its id.
+  await expect(page.locator('dl.facts')).toContainText('(PT)');
+  await expect(page.locator('dl.facts')).not.toContainText('America/Los_Angeles');
   await expect(page.getByText("The original, /files/flight.pkpass, isn't in the trip.")).toBeVisible();
   await page.getByRole('button', { name: 'Looks right' }).click();
   await expect(page.locator('.chip.ok')).toHaveText('Confirmed');

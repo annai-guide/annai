@@ -1,5 +1,5 @@
 import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf } from '../dom.js';
-import { placeStatus, placeHref, newerText, withArticle, relTime, bytes, limitFromField, limitField, limitText } from '../format.js';
+import { placeStatus, placeHref, newerText, withArticle, relTime, when, size, numField, parseNum, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf } from '../auto-backup.js';
@@ -116,7 +116,7 @@ async function renderPlace(ctx, id) {
   const pass1 = h('input', { id: 'place-passphrase', type: 'password', autocomplete: 'new-password', placeholder: saved.has('passphrase') ? 'saved (type a new one to replace it)' : 'not set' });
   const pass2 = h('input', { id: 'place-passphrase2', type: 'password', autocomplete: 'new-password' });
   const keys = checkbox('Include API keys (only in encrypted backups)', Boolean(t.keys));
-  const keep = h('input', { id: 'place-keep', type: 'number', min: '1', max: '30', step: '1', value: String(t.keep ?? 3) });
+  const keep = h('input', { id: 'place-keep', inputmode: 'numeric', value: numField(t.keep ?? 3) });
   /** What the place offers for fields left empty (several repositories): a tap fills them in and tests again. */
   const picks = h('div', { class: 'acts', hidden: true });
   /** @param {any} e */
@@ -146,7 +146,7 @@ async function renderPlace(ctx, id) {
         await ctx.backups.update(id, {
           config: Object.fromEntries(inputs.map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
           secret: Object.fromEntries(secrets.filter((/** @type {any} */ i) => i.el.value.trim()).map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
-          ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: Number(keep.value) || 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
+          ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: parseNum(keep.value) || 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
         });
         notes.set(id, (await ctx.backups.check(id)).note);
         ctx.render();
@@ -167,7 +167,7 @@ async function renderPlace(ctx, id) {
         h('button', { class: 'btn', type: 'button', onclick: () => backUpNow({ over: true }) }, `Back up this ${noun} over it`)))
     : hold?.kind === 'large'
       ? h('section', { class: 'panel', 'aria-label': 'A large backup' },
-        h('p', { text: `This backup uploads ${bytes(hold.bytes)}. annai can't tell whether this ${noun} is on Wi-Fi, so larger backups wait for your OK.` }),
+        h('p', { text: `This backup uploads ${size(hold.bytes)}. annai can't tell whether this ${noun} is on Wi-Fi, so larger backups wait for your OK.` }),
         h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => backUpNow({}) }, 'Back up now')))
       : null;
   const auto = savedRadios('Back up automatically', [
@@ -177,7 +177,7 @@ async function renderPlace(ctx, id) {
   ], t.auto, (v) => ctx.backups.update(id, { auto: /** @type {any} */ (v) }));
   const mobile = savedCheck('Also over mobile data', t.mobileData, (on) => ctx.backups.update(id, { mobileData: on }));
   // Where the browser can't say whether it is on Wi-Fi (Safari on iPhone), how much goes without asking: the user's choice.
-  const limit = h('input', { id: 'place-ask-above', type: 'number', min: '0', step: 'any', inputmode: 'decimal', placeholder: 'No limit', value: limitField(t.askAbove) });
+  const limit = h('input', { id: 'place-ask-above', inputmode: 'decimal', placeholder: 'No limit', value: limitField(t.askAbove) });
   const limitNote = h('p', { class: 'sub', text: limitNoteText(t.askAbove, connectionOf(navigator)) });
   const readLimit = () => {
     const value = limit.validity?.badInput ? undefined : limitFromField(limit.value);
@@ -194,7 +194,7 @@ async function renderPlace(ctx, id) {
         const all = await ctx.backups.remote(id);
         say(all.length ? '' : 'There are no backups here yet.');
         list.replaceChildren(...all.slice(0, 10).map((/** @type {any} */ r) => h('li', { class: 'card' },
-          h('span', { class: 'name', text: new Date(r.at).toLocaleString() }),
+          h('span', { class: 'name', text: when(r.at) }),
           h('span', { class: 'sub', text: [r.label ? `From ${withArticle(r.label)}` : null, r.encrypted ? 'encrypted' : null, relTime(r.at)].filter(Boolean).join(' · ') }),
           h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, t, r, say, { signal: leaving.signal }) }, 'Open')))));
       } catch (e) {

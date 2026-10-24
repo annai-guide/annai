@@ -33,7 +33,7 @@ test('a provider\'s state: a ready() that never answers is "couldn\'t check", a 
     assert.equal(await stateOf(FREE_PROVIDERS[0]), 'free, no key');
     assert.match(await stateOf(KNOWLEDGE), /Wikimedia and OpenStreetMap; always on, the last resort/);
     cooldowns.rest('wiki');
-    assert.match(await stateOf(KNOWLEDGE), /^resting after a failure, tries again in 1 min$/);
+    assert.match(await stateOf(KNOWLEDGE), /^resting after a failure, tries again in 1 minute$/);
   } finally {
     READY_MS.ms = was;
     cooldowns.clear('wiki');

@@ -8,6 +8,7 @@ import { timeIn } from '../../core/time.js';
 import { renderCard } from '../cards.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { stampMarks } from '../stamps.js';
+import { day as dayText, dayClock } from '../format.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -32,13 +33,12 @@ export async function renderReplay(ctx, route) {
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
   }
-  const locale = navigator.language || 'en-US';
   const pack = await loadPack(ctx.ws, id).catch(() => null);
   const j = await readJourney({ store: ctx.store, ws: ctx.ws, trip: id, namer: (p) => pack?.name(p) ?? null });
   const day = j.days.includes(route.params.day ?? '') ? route.params.day : null;
   const r = replayOf(j, day);
   const base = `#/trip/${encodeURIComponent(id)}/replay`;
-  const dayName = (/** @type {string} */ d) => new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(Date.parse(`${d}T12:00:00Z`));
+  const dayName = (/** @type {string} */ d) => dayText(d, true);
   const tab = (/** @type {string | null} */ d, /** @type {string} */ label) => h('a', { class: 'tab', href: d ? `${base}?day=${d}` : base, 'aria-current': d === day ? 'page' : null }, label);
   const head = [
     h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, `← ${scope.title}`)),
@@ -50,7 +50,7 @@ export async function renderReplay(ctx, route) {
       h('p', { class: 'empty', text: "Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too." }));
   }
   const clock = new PlayClock(r.from, { speed: 600, playing: false });
-  const clockText = (/** @type {number} */ t) => new Intl.DateTimeFormat(locale, { timeZone: r.tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t);
+  const clockText = (/** @type {number} */ t) => dayClock(t, r.tz);
 
   // The map: the drawn route grey, what is behind vermilion, jumps dashed, stays and stamps as rings, you as a dot (choice 8).
   const { width, height, xy } = r.map;

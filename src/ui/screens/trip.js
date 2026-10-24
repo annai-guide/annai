@@ -4,7 +4,7 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, bytes, dateRange, fileHref } from '../format.js';
+import { relTime, size, dateRange, fileHref } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -103,7 +103,7 @@ async function askAndRemove(ctx, id, scope) {
     // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
     await ctx.live?.forget(id);
     ctx.agent?.voice?.memory.forget(id);
-    ctx.notices.toast(`Removed ${scope.title}. ${bytes(freed)} freed.`);
+    ctx.notices.toast(`Removed ${scope.title}. ${size(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {
     if (e instanceof NotFoundError) {
@@ -132,7 +132,7 @@ function fileList(id, files) {
       h('h2', { class: 'section', text: folder ? `${folder}/` : 'Trip' }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },
         h('span', { class: 'path', text: f.path }),
-        h('span', { class: 'sub', text: `${bytes(f.size)} · ${f.author} · ${relTime(f.modified)}` }))))))));
+        h('span', { class: 'sub', text: `${size(f.size)} · ${f.author} · ${relTime(f.modified)}` }))))))));
 }
 
 /** Starting content for a new file, valid for the core schemas. @param {string} path */

@@ -3,7 +3,7 @@ import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } fro
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
-import { relTime, bytes, placeHref, gettingFiles } from '../format.js';
+import { relTime, size, placeHref, gettingFiles } from '../format.js';
 import { listTrips } from '../../core/scopes.js';
 import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
@@ -161,7 +161,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     trips[t.scope] = 'new';
     return h('li', { class: 'card' },
       h('span', { class: 'name', text: t.title }),
-      h('span', { class: 'sub', text: `${t.files} files · ${bytes(t.bytes)}${t.history ? ' · with history' : ''}` }),
+      h('span', { class: 'sub', text: `${t.files} files · ${size(t.bytes)}${t.history ? ' · with history' : ''}` }),
       t.existing
         ? radios(`You already have "${t.existingTitle}"`, [['new', 'Add as a new trip'], ['replace', 'Replace mine (yours moves to archived trips)']], 'new', (v) => { trips[t.scope] = /** @type {any} */ (v); })
         : null);
@@ -331,7 +331,7 @@ function fileInbox(ctx, items, trips, archives) {
     h('h1', { class: 'title', text: `Add ${what}` }),
     shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
     photos.length > shown.length ? h('p', { class: 'sub', text: `and ${photos.length - shown.length} more photos` }) : null,
-    others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${bytes(i.file.size)}` }), sharedText(i.file)))) : null,
+    others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${size(i.file.size)}` }), sharedText(i.file)))) : null,
     // Any site can post to the share target (spec §12.3), so the user is asked to add only their own share.
     items.some((i) => i.key) ? h('p', { class: 'sub', text: 'Add only what you just shared yourself.' }) : null,
     trips.length

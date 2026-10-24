@@ -1,4 +1,6 @@
 import { callOnce, enabledProviderTools } from './call.js';
+import { t } from '../l10n.js';
+import { when } from '../../ui/format.js';
 import { ProviderError, portable, explain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
@@ -62,9 +64,9 @@ export const LONG_REST_MS = 10 * 60_000;
 
 /** A long rest in plain words, with the local time it ends. @param {number} until @param {number} now */
 export function restText(until, now) {
-  const end = new Date(until);
-  const time = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `its daily limit is used up; it rests until ${end.toDateString() === new Date(now).toDateString() ? time : `${end.toLocaleDateString([], { weekday: 'long' })} ${time}`}`;
+  const clock = when(until, undefined, { hour: '2-digit', minute: '2-digit' });
+  const same = new Date(until).toDateString() === new Date(now).toDateString();
+  return t`its daily limit is used up; it rests until ${same ? clock : `${when(until, undefined, { weekday: 'long' })} ${clock}`}`;
 }
 
 /** Every model of a role failed. attempts says how; said is any text a reply had already given. */
