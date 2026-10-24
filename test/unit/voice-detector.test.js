@@ -153,6 +153,22 @@ test('a steady room of about -52 dB after the zeros, over the guess\'s keep marg
   assert.ok(sure >= 250, `${sure} ms of sure speech half a second in`);
 });
 
+test('a short word after the zeros, then a quiet room near the guess: the room\'s first frames in its pause end the guess, so the word is sure at once, not only at its pause\'s end (detector-floor re-check 2)', async () => {
+  const thanks = await clip('thanks');
+  const d = new Detector({ sampleRate: RATE });
+  const pcm = cat(new Float32Array(Math.round(0.3 * RATE)), thanks, quiet(1.5, 0.004));
+  const end = Math.round(0.3 * RATE) + thanks.length;
+  /** @type {number | null} */
+  let sure = null;
+  const types = [];
+  for (let i = 0; i < pcm.length; i += 320) {
+    types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+    if (sure === null && d.speaking && d.speechMs >= 250) sure = (i + 320 - end) / RATE;
+  }
+  assert.deepEqual(types, ['speech', 'segment']);
+  assert.ok(sure !== null && sure < 0.2, `sure ${sure} s after the word, with 0.7 s of pause to come`);
+});
+
 test('speech said the instant the zeros end, with no quiet in it, is held as unsure for a second; then the floor is its quietest frame, and it goes on to its pause', () => {
   const d = new Detector({ sampleRate: RATE });
   const voice = hum(2);
