@@ -249,24 +249,28 @@ test('an unfinished (experimental) language fails the check for a new row, as a 
   });
 });
 
-test('the list names the unfinished languages apart from the shipped, and sw.js caches every listed one', () => {
+test('the list names the unfinished languages apart from the shipped, and sw.js lists every language and the shipped ones apart', () => {
   const list = /** @type {const} */ ([{ tag: 'ja', status: 'experimental' }, { tag: 'zh-Hans', status: 'shipped' }]);
   const text = listFile([...list]);
   assert.match(text, /export const SHIPPED = Object\.freeze\(\['en', 'zh-Hans'\]\);\n\/\*\* @type \{readonly string\[\]\} \*\/\nexport const EXPERIMENTAL = Object\.freeze\(\['ja'\]\);\n$/);
-  assert.equal(swWithLangs("const A = 1;\nconst LANGS = [];\nconst SHELL = [];\n", [...list]), "const A = 1;\nconst LANGS = ['ja', 'zh-Hans'];\nconst SHELL = [];\n");
-  assert.equal(swWithLangs("const LANGS = ['ja'];\n", []), 'const LANGS = [];\n');
+  assert.equal(swWithLangs("const A = 1;\nconst LANGS = [];\nconst SHIPPED_LANGS = [];\nconst SHELL = [];\n", [...list]), "const A = 1;\nconst LANGS = ['ja', 'zh-Hans'];\nconst SHIPPED_LANGS = ['zh-Hans'];\nconst SHELL = [];\n");
+  assert.equal(swWithLangs("const LANGS = ['ja'];\nconst SHIPPED_LANGS = ['ja'];\n", []), 'const LANGS = [];\nconst SHIPPED_LANGS = [];\n');
   assert.equal(swWithLangs('const SHELL = [];\n', [...list]), null, 'no LANGS line, nothing to write');
+  assert.equal(swWithLangs('const LANGS = [];\n', [...list]), null, 'and no SHIPPED_LANGS line either');
 });
 
-test('update writes sw.js\'s LANGS, and the check says when it is out of date', async () => {
+test('update writes sw.js\'s LANGS and SHIPPED_LANGS, and the check says when they are out of date', async () => {
   await inCopy(async (dir) => {
-    await writeFile(`${dir}/sw.js`, "// worker\nconst LANGS = [];\nconst SHELL = [];\n");
+    await writeFile(`${dir}/sw.js`, "// worker\nconst LANGS = [];\nconst SHIPPED_LANGS = [];\nconst SHELL = [];\n");
     const stale = await check(dir, []);
     assert.ok(has(stale.problems, 'sw.js', 2, /LANGS isn't what l10n\/languages\.json makes/));
     const written = await update(dir);
     assert.ok(written.includes('sw.js'));
-    assert.equal(await readFile(`${dir}/sw.js`, 'utf8'), "// worker\nconst LANGS = ['ja'];\nconst SHELL = [];\n");
+    assert.equal(await readFile(`${dir}/sw.js`, 'utf8'), "// worker\nconst LANGS = ['ja'];\nconst SHIPPED_LANGS = ['ja'];\nconst SHELL = [];\n");
     assert.ok(!(await check(dir, [])).problems.some((p) => p.file === 'sw.js'));
+    await writeFile(`${dir}/l10n/languages.json`, JSON.stringify([{ tag: 'ja', status: 'experimental' }]));
+    await update(dir);
+    assert.match(await readFile(`${dir}/sw.js`, 'utf8'), /const LANGS = \['ja'\];\nconst SHIPPED_LANGS = \[\];/);
     await writeFile(`${dir}/sw.js`, 'const SHELL = [];\n');
     assert.ok(has((await check(dir, [])).problems, 'sw.js', 1, /no `const LANGS/));
   });
