@@ -12,8 +12,8 @@ test("Shiori's art is one file the service worker keeps, holding every part her 
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   assert.ok((/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').includes(`'${art}'`), 'in SHELL, so she shows offline');
   const svg = await readFile(new URL(art.slice(1), root), 'utf8');
-  // part('id'), or group('class', 'id'): every part the avatar draws, back to front.
-  const ids = [...avatar.matchAll(/(?:part\(|group\('[^']+', )'([^']+)'\)/g)].map((m) => m[1]).sort();
+  // part('id'), or group('class', 'id') (a class of two words marked /* en */, as code): every part the avatar draws, back to front.
+  const ids = [...avatar.matchAll(/(?:part\(|group\((?:\/\* en \*\/ )?'[^']+', )'([^']+)'\)/g)].map((m) => m[1]).sort();
   assert.deepEqual(ids, ['body', 'caps', 'ear-flat-left', 'ear-flat-right', 'ear-left', 'ear-out-left', 'ear-right', 'grass', 'head', 'head-asleep',
     'head-turned', 'knot', 'loop', 'marker', 'marker-knot', 'paws', 'pin', 'tail-asleep', 'tail-tip', 'tape']);
   for (const id of ids) assert.match(svg, new RegExp(`<g id="${id}"[ >]`), id);

@@ -54,6 +54,22 @@ export const EXTRACTED = [
   'src/ui/screens/mcp.js',
   'src/ui/credits.js',
   'src/ui/privacy.js',
+  // l10n-L5c: conversation, voice and Shiori.
+  'src/ui/screens/talk.js',
+  'src/ui/talk-panel.js',
+  'src/ui/voice-chip.js',
+  'src/ui/live-chip.js',
+  'src/ui/speech-check.js',
+  'src/ui/model-check.js',
+  'src/ui/screens/voice.js',
+  'src/core/voice/where.js',
+  'src/ui/screens/shiori.js',
+  'src/ui/avatar.js',
+  'src/ui/welcome.js',
+  'src/ui/screens/welcome.js',
+  'src/ui/ask.js',
+  'src/ui/markdown.js',
+  'src/ui/grounding.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
