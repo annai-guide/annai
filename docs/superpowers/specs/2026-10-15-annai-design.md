@@ -1160,6 +1160,7 @@ Reference: mockups draft 6.
   - vermilion accent
   - cool, plain paper neutrals
   - Zen Maru Gothic for display text, Zen Kaku Gothic New for body text, IBM Plex Mono for data
+  - the Zen faces are Latin; Chinese, Japanese and Korean are drawn in the phone's own fonts, which a browser chooses by each line's language (`lang`), so a Chinese line has Chinese shapes and a Japanese one Japanese shapes; under Japanese screens the display type keeps the rounded Hiragino Maru Gothic
   - timetable rows like a trip booklet's schedule page
   - the 枝折戸 diamond-lattice pattern as a quiet texture
   - station-stamp marks for visited places
@@ -1223,6 +1224,7 @@ Reference: mockups draft 6.
 - large targets
 - visible focus
 - the reduced-motion preference respected
+- every line of the conversation, the bubble over the dock, Shiori's cards and the recap says its language (`lang`, from its writing system, or the language she is set to answer in), so the font and a screen reader's voice fit it; what the user wrote (trip names, file names, lines) says its direction (`dir="auto"`)
 
 Eyes-free voice mode also serves users with low vision.
 

@@ -1,6 +1,7 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { t } from '../core/l10n.js';
+import { languageSettings, tagOf } from '../core/languages.js';
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
@@ -198,4 +199,14 @@ export function limitField(limit) {
 /** The limit in words. @param {number | null | undefined} limit */
 export function limitText(limit) {
   return limit === null ? 'no limit' : bytes(limit ?? TIMINGS.askAbove);
+}
+
+/**
+ * The attributes of someone's own words (the user's, or Shiori's) among annai's: their language (`lang`, from the text; none when unsure) and
+ * `dir="auto"`. Used as `h('p', { ...say(text), text })`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
+ * @returns {(text: string) => { lang: string | undefined, dir: 'auto' }}
+ */
+export function wording(app, byShiori = false) {
+  const settings = languageSettings(app, navigator.language);
+  return (text) => ({ lang: tagOf(text, settings, byShiori) || undefined, dir: 'auto' });
 }

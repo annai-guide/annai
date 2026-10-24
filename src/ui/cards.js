@@ -45,26 +45,30 @@ export function cardWho(ctx, card) {
   return t ? `SHIORI · ${String(t.item.name).toUpperCase()}` : 'SHIORI';
 }
 
-/** @param {any} card @param {{ ctx: any, onChoice?: (option: string) => void }} o */
-export function renderCard(card, { ctx, onChoice }) {
+/**
+ * @param {any} card @param {{ ctx: any, onChoice?: (option: string) => void, say?: (text: string) => Record<string, any> }} o
+ *   say: the attributes that mark someone's words (their language, their direction), for every piece of the card that is the model's words
+ */
+export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
   // A plugin's kind of card is drawn by its plugin (full trust, its own UI); annai draws the title as text.
   const typed = typeOf(ctx, card);
   if (typed) {
     const body = h('div', { class: 'card-body' });
     mount(ctx, typed, body, (ui) => typed.item.render(card.data && typeof card.data === 'object' ? card.data : {}, body, ui), { what: `card type ${card.type}` });
-    return h('div', { class: 'card card-typed' }, card.title ? h('strong', { class: 'card-title', text: String(card.title) }) : null, body);
+    return h('div', { class: 'card card-typed' }, card.title ? h('strong', { ...say(String(card.title)), class: 'card-title', text: String(card.title) }) : null, body);
   }
   const parts = [];
-  if (card.title) parts.push(h('strong', { class: 'card-title', text: String(card.title) }));
-  if (card.text) parts.push(renderMarkdown(String(card.text)));
+  if (card.title) parts.push(h('strong', { ...say(String(card.title)), class: 'card-title', text: String(card.title) }));
+  if (card.text) parts.push(renderMarkdown(String(card.text), say(String(card.text))));
   if (card.place?.name) {
     const p = card.place;
+    const where = p.address ? `${p.name}, ${p.address}` : p.name;
     parts.push(h('div', { class: 'card-place' },
-      h('span', { text: p.address ? `${p.name}, ${p.address}` : p.name }),
+      h('span', { ...say(String(where)), text: where }),
       h('a', { class: 'btn', href: mapsUrl(p, platform()), target: '_blank', rel: 'noopener noreferrer' }, 'Open in Maps')));
   }
   const links = (Array.isArray(card.links) ? card.links : []).map((/** @type {any} */ l) => ({ label: String(l?.label ?? l?.url ?? ''), url: httpUrl(String(l?.url ?? '')) })).filter((/** @type {any} */ l) => l.url);
-  if (links.length) parts.push(h('div', { class: 'acts' }, ...links.map((/** @type {any} */ l) => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))));
+  if (links.length) parts.push(h('div', { class: 'acts' }, ...links.map((/** @type {any} */ l) => h('a', { ...say(l.label), class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))));
   const booking = card.booking ? tripPath(card.booking) : null;
   if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path) }, 'Open the booking'));
   const image = card.image ? tripPath(card.image) : null;
@@ -79,7 +83,7 @@ export function renderCard(card, { ctx, onChoice }) {
     }
   }
   if (Array.isArray(card.choice) && card.choice.length) {
-    parts.push(h('div', { class: 'acts' }, ...card.choice.slice(0, 6).map((/** @type {any} */ c) => h('button', { class: 'btn', type: 'button', onclick: () => onChoice?.(String(c)) }, String(c)))));
+    parts.push(h('div', { class: 'acts' }, ...card.choice.slice(0, 6).map((/** @type {any} */ c) => h('button', { ...say(String(c)), class: 'btn', type: 'button', onclick: () => onChoice?.(String(c)) }, String(c)))));
   }
   if (typeof card.type === 'string') parts.push(h('p', { class: 'sub', text: `This card's kind (${card.type}) comes from a plugin that isn't on.` }));
   return h('div', { class: 'card' }, ...parts);

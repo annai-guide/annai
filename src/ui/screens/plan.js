@@ -62,7 +62,7 @@ export async function renderPlan(ctx, route) {
   const unread = /** @type {[number, string][]} */ ([[plan.broken, 'plan file'], [bookings.broken, 'booking file']])
     .filter(([n]) => n).map(([n, what]) => `${n} ${what}${n === 1 ? '' : 's'}`).join(' and ');
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, `← ${scope.title}`)),
+    h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, '← ', h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: 'Plan' }),
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
     rows.length ? [h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Days' }, ...buttons), panel]

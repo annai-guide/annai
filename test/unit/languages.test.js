@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf } from '../../src/core/languages.js';
+import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf } from '../../src/core/languages.js';
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
 
@@ -182,4 +182,43 @@ test('languageOf names the language of a text by its script or its commonest wor
   assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
   assert.equal(languageOf('Is the Café Пушкин open on Sundays?'), 'English');
   assert.equal(languageOf('hmm'), '');
+});
+
+// Localization L3: a line's language as a BCP 47 tag, for `lang` (the font and the screen reader's voice follow it).
+
+test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is listed), Hangul ko, Latin and the unsure nothing', () => {
+  const only = (/** @type {string[]} */ ids, /** @type {string} */ locale = 'en-US', /** @type {any} */ app = { languages: { spoken: ids } }) => languageSettings(ids.length ? app : {}, locale);
+  const en = only(['en']);
+  assert.equal(tagOf('直角三角形の骨組みです。', en), 'ja');
+  assert.equal(tagOf('ありがとう', en), 'ja');
+  assert.equal(tagOf('カレー', en), 'ja');
+  assert.equal(tagOf('直角三角形的骨架，这是我们说的。', en), 'zh-Hans', 'Han alone is Chinese when neither is listed');
+  assert.equal(tagOf('直角三角形的骨架', only(['en', 'zh'])), 'zh-Hans');
+  assert.equal(tagOf('直角三角形的骨架', only(['yue'])), 'yue-Hant');
+  assert.equal(tagOf('骨格', only(['en', 'ja'])), 'ja', 'Han alone is Japanese when only Japanese is listed');
+  assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'zh-Hans', 'and Chinese when both are');
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-TW')), 'zh-Hant', "a Traditional Chinese phone's Chinese is Traditional");
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-Hant-HK')), 'zh-Hant');
+  assert.equal(tagOf('骨架', languageSettings({}, 'ja-JP')), 'ja', 'with nothing chosen, the phone is what is listed');
+  assert.equal(tagOf('안녕하세요', en), 'ko');
+  assert.equal(tagOf('สวัสดีครับ', en), 'th');
+  assert.equal(tagOf('Привіт, як справи', only(['en', 'uk'])), 'uk');
+  assert.equal(tagOf('Привет', en), 'ru');
+  assert.equal(tagOf('Where is the station, please?', en), '', 'Latin text is not guessed: a wrong tag would give it the wrong voice');
+  assert.equal(tagOf('Gracias, ¿dónde está?', en), '');
+  assert.equal(tagOf('', en), '');
+  assert.equal(tagOf('42 · 7:30', en), '');
+  assert.equal(tagOf('Kyoto 京都 station', en), '', 'a place name in an English line is no Chinese');
+});
+
+test('tagOf: Shiori\'s own lines take the language she is set to answer in, else the text\'s', () => {
+  const answers = (/** @type {string} */ id) => languageSettings({ languages: { spoken: ['en', 'zh', 'ja'], answer: id } }, 'en-US');
+  assert.equal(tagOf('Hello', answers('ja'), true), 'ja');
+  assert.equal(tagOf('骨架', answers('ja'), true), 'ja', 'Han alone, with Japanese fixed, is Japanese though Chinese is listed too');
+  assert.equal(tagOf('骨架', answers('zh'), true), 'zh-Hans');
+  assert.equal(tagOf('Hola', answers('es'), true), 'es');
+  assert.equal(tagOf('Hello', languageSettings({ languages: { spoken: ['en', 'no'], answer: 'no' } }, 'en-US'), true), 'nb');
+  assert.equal(tagOf('Hello', answers('follow'), true), '', 'following the user, her line is whatever it looks like');
+  assert.equal(tagOf('ありがとう', answers('follow'), true), 'ja');
+  assert.equal(tagOf('Hello', answers('ja'), false), '', 'the answer language is only hers');
 });
