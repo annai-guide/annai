@@ -22,6 +22,27 @@ export const EXTRACTED = [
   'src/ui/screens/trips.js',
   'src/ui/languages.js',
   'src/core/languages.js',
+  // L5a: the shell
+  'src/ui/shell.js',
+  'src/ui/router.js',
+  'src/ui/dock.js',
+  'src/ui/notices.js',
+  'src/ui/cards.js',
+  'src/ui/dom.js',
+  'src/ui/install.js',
+  'src/ui/platform.js',
+  'src/ui/updates.js',
+  'src/app/claim.js',
+  'src/app/main.js',
+  'src/ui/storage-full.js',
+  'src/ui/unlock.js',
+  'src/ui/mic-help.js',
+  'src/ui/live-help.js',
+  'src/ui/wake-lock.js',
+  'src/ui/slots.js',
+  'src/ui/media-keys.js',
+  'src/ui/tap-keeps-keyboard.js',
+  'src/ui/dock-hides.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];

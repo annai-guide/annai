@@ -1,4 +1,5 @@
 import { checkPlugins, knownUpdates, offerCard } from './plugin-updates.js';
+import { t } from './dom.js';
 
 /**
  * Updates (spec §5.3, §17 rule 5), annai's and its plugins'. An iPhone Home Screen app that comes back from
@@ -88,11 +89,11 @@ export class Updates {
 
   /** Coming back, or a day on: whatever is due. @returns {Promise<Result | null>} */
   async auto() {
-    const t = this.now();
-    const soon = t - this.#at >= SOON;
-    const address = t - this.#addressAt >= DAILY;
+    const now = this.now();
+    const soon = now - this.#at >= SOON;
+    const address = now - this.#addressAt >= DAILY;
     if (!this.#started || this.#running || (!soon && !address)) return null;
-    return this.#check({ app: soon, official: soon, address }, t);
+    return this.#check({ app: soon, official: soon, address }, now);
   }
 
   /** Check now: annai and every plugin, address ones too. */
@@ -102,15 +103,15 @@ export class Updates {
     return this.#check({ app: true, official: true, address: true, manual: true }, this.now());
   }
 
-  /** @param {Kinds} what @param {number} t */
-  #check(what, t) {
+  /** @param {Kinds} what @param {number} at */
+  #check(what, at) {
     if (!this.online()) {
       this.last = { offline: true, failed: [], found: [] };
       this.changed(false);
       return Promise.resolve(this.last);
     }
-    if (what.app || what.official) this.#at = t;
-    if (what.address) this.#addressAt = t;
+    if (what.app || what.official) this.#at = at;
+    if (what.address) this.#addressAt = at;
     const gen = ++this.#gen;
     /** @type {any} */
     let timer;
@@ -118,7 +119,7 @@ export class Updates {
     const slow = new Promise((r) => {
       timer = setTimeout(() => {
         this.#gen++;
-        r((this.last = { failed: ['The check took too long. Check the connection, and try again.'], found: this.last?.found ?? [] }));
+        r((this.last = { failed: [t`The check took too long. Check the connection, and try again.`], found: this.last?.found ?? [] }));
       }, this.limitMs);
     });
     const run = Promise.race([this.#run(what, gen), slow]).finally(() => {
@@ -136,8 +137,8 @@ export class Updates {
     /** @type {string[]} */
     const failed = [];
     if (what.app) {
-      if (!this.app) failed.push("annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.");
-      else await this.app.check().catch(() => failed.push("annai couldn't check for a new version of itself. Check the connection and try again."));
+      if (!this.app) failed.push(t`annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.`);
+      else await this.app.check().catch(() => failed.push(t`annai couldn't check for a new version of itself. Check the connection and try again.`));
     }
     const current = () => gen === this.#gen;
     const plugins = await checkPlugins(this.host, this.env, what, current);
@@ -163,7 +164,7 @@ export class Updates {
 
   /** The new version found didn't finish downloading: said, and "It is downloading" goes. */
   downloadFailed() {
-    this.last = { failed: ["The download of the new version didn't finish. annai tries again the next time it checks."], found: this.last?.found ?? [] };
+    this.last = { failed: [t`The download of the new version didn't finish. annai tries again the next time it checks.`], found: this.last?.found ?? [] };
     this.changed(false);
   }
 
@@ -180,8 +181,8 @@ export class Updates {
     try {
       if (this.agent?.busy) {
         this.notices?.card({
-          title: 'annai restarts once Shiori has finished', body: 'She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.',
-          actions: [{ label: "Don't restart", run: () => { this.#asked = this.#restarting = null; this.changed(false); } }],
+          title: t`annai restarts once Shiori has finished`, body: t`She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.`,
+          actions: [{ label: t`Don't restart`, run: () => { this.#asked = this.#restarting = null; this.changed(false); } }],
         });
         while (this.agent.busy && !off()) await this.agent.idle();
       }

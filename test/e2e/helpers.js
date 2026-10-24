@@ -287,7 +287,7 @@ export async function addProvider(page, provider, { ability = 'Chat', name, url,
   await panel.getByLabel('Add a model by id').fill(model);
   await panel.getByRole('button', { name: 'Add model' }).click();
   await expect(page.getByRole('link', { name: new RegExp(`^${model}`) })).toBeVisible();
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
 }
 
 /**

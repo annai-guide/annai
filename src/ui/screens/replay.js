@@ -1,4 +1,4 @@
-import { h, field, whenGone } from '../dom.js';
+import { h, crumb, field, whenGone } from '../dom.js';
 import { readJourney } from '../../core/after/journey.js';
 import { replayOf, momentAt, entryLine, PLAY_SPEEDS } from '../../core/after/replay.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -41,7 +41,7 @@ export async function renderReplay(ctx, route) {
   const dayName = (/** @type {string} */ d) => dayText(d, true);
   const tab = (/** @type {string | null} */ d, /** @type {string} */ label) => h('a', { class: 'tab', href: d ? `${base}?day=${d}` : base, 'aria-current': d === day ? 'page' : null }, label);
   const head = [
-    h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}` }, '← ', h('span', { dir: 'auto', text: scope.title }))),
+    h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: 'Replay' }),
     j.days.length > 1 ? h('nav', { class: 'tabs', 'aria-label': 'Days' }, tab(null, 'Whole trip'), ...j.days.map((d) => tab(d, dayName(d)))) : null,
   ];

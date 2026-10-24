@@ -1,4 +1,4 @@
-import { h, savedCheck, t } from '../dom.js';
+import { h, crumb, savedCheck, t } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { EXPERIMENTAL } from '../../core/l10n-list.js';
 import { ownName } from '../languages.js';
@@ -20,7 +20,7 @@ export async function renderExperimental(ctx) {
     await updateAppSettings(ctx.ws, { experimental: { unfinishedTranslations: on } });
   });
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Experimental' }),
     h('p', { class: 'sub', text: 'Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.' }),
     h('section', { class: 'panel', 'aria-label': 'Swiping between tabs' },

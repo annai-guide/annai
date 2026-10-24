@@ -1,4 +1,4 @@
-import { h, field, autosave, savedRadios, savingNote } from '../dom.js';
+import { h, crumb, t, field, autosave, savedRadios, savingNote } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
@@ -56,7 +56,7 @@ export async function renderTools(ctx) {
   const saving = h('span', { class: 'sub', role: 'status' });
   const saveWeb = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { web: c });
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Tools' }),
     h('section', { class: 'panel', 'aria-label': 'Web' },
       h('h2', { class: 'section', text: 'Web' }),

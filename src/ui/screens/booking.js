@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, crumb, t } from '../dom.js';
 import { bookingLines, fileHref } from '../format.js';
 import { isBookingPath } from '../../core/bookings.js';
 import { normPath } from '../../core/paths.js';
@@ -14,7 +14,7 @@ import { explainStorageFull } from '../storage-full.js';
 export async function renderBooking(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  const crumbs = h('p', { class: 'crumbs' }, h('a', { href: `#/trip/${encodeURIComponent(id)}/plan` }, '← Plan'));
+  const crumbs = h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}/plan`, t`Plan`));
   const booking = isBookingPath(id, path) ? await ctx.ws.readJSON(id, path).catch(() => undefined) : undefined;
   if (!booking || typeof booking !== 'object' || Array.isArray(booking)) {
     return h('div', { class: 'screen' }, crumbs,

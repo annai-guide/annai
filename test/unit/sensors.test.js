@@ -97,7 +97,7 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   assert.equal(gpsProblem('ios').title, "annai can't see where you are");
   assert.match(gpsProblem('ios').body, /Location Services must be on: Settings → Privacy & Security → Location Services\. Then turn GPS off and on again\./);
   // In a Safari tab, "Don't Allow" is Safari's setting for this site (B4).
-  assert.match(gpsProblem('ios', false).body, /On iPhone: tap aA in the address bar, then Website Settings → Location → Allow \(or Settings → Apps → Safari → Location → Allow\)\./);
+  assert.match(gpsProblem('ios', false).body, /On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow \(or Settings → Apps → Safari → Location → Allow\)\./);
   assert.doesNotMatch(gpsProblem('ios', false).body, /Safari Websites/);
   // Installed to the Home Screen, annai uses Safari's location setting for websites.
   assert.match(gpsProblem('ios', true).body, /On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow\./);

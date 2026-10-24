@@ -40,7 +40,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await page.getByRole('button', { name: 'Fuel' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('Where is the next fuel station or charger?');
-    await page.getByRole('link', { name: '← Now' }).click();
+    await page.getByRole('main').getByRole('link', { name: 'Now', exact: true }).click();
     await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/); // voice is still on: the dock stays big for it
     // Back on Now while still moving fast: the next fixes keep Now on screen (B2).
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();

@@ -137,7 +137,7 @@ test("OpenRouter added from Add a provider with a key: one provider whose chat, 
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
     await expect(page.getByLabel('Address', { exact: true })).toHaveValue(`${server.origin}/api/v1`);
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
     await expect(roleItems(page, IN)).toHaveText(PHONE_IN);
     await expect(roleItems(page, OUT)).toHaveText(PHONE_OUT);
     expect(await secretIds(page)).toHaveLength(1);

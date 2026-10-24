@@ -18,7 +18,7 @@ test('a router that never streams, with a key: the list, Chat Completions and Re
     await waitForServiceWorker(page);
     await tapAdd(page, 'Custom provider');
     await expect(page.getByRole('heading', { level: 1, name: 'Custom provider' })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole('link', { name: '← Add' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Add', exact: true })).toBeVisible();
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByLabel('API key (optional)').fill(KEY);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
@@ -104,7 +104,7 @@ test("a provider plugin's own Add flow, by hand: OpenRouter's Add shows its sign
   await expect(page.getByLabel('Use Chat', { exact: true })).toBeChecked();
   // Adding put OpenRouter's free models in the empty chat roles, and said so; never the recommended Claude models, which cost money
   // (the second emulator re-check: a summary was paid for that nobody had chosen).
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
   const roles = page.getByRole('region', { name: 'Roles' });
   await expect(roles.locator('.role').first().getByText(/^1\. Google: Gemma 4 31B/)).toBeVisible();
   await expect(roles.locator('.role-item > span').filter({ hasText: /Claude/ })).toHaveCount(0);
@@ -126,7 +126,7 @@ test("leaving Custom provider's Add flow without adding takes its plugin away ag
   await tapAdd(page, 'Custom provider');
   await expect(page.getByRole('button', { name: 'Look for what it offers' })).toBeVisible({ timeout: 30_000 });
   expect(await installedIds(page)).toContain('provider-another-address');
-  await page.getByRole('link', { name: '← Add' }).click();
+  await page.getByRole('link', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
   await expect.poll(() => installedIds(page)).not.toContain('provider-another-address');
   // OpenAI's plugin is data only: its Add flow, asked for by address, has nothing of its own, and Add by hand still adds.
@@ -173,7 +173,7 @@ test('a fetched list marks a model another provider already has, as adding it by
         await expect(chat.getByText('"utils" is already used by another model')).toBeVisible();
         await expect(page.getByRole('link', { name: /utils \(2\)/ })).toHaveCount(0);
       }
-      await page.getByRole('link', { name: '← Models' }).click();
+      await page.getByRole('link', { name: 'Models', exact: true }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
     }
   } finally {

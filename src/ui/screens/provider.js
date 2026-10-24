@@ -1,4 +1,4 @@
-import { h, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t } from '../dom.js';
+import { h, crumb, field, twoStep, jsonField, messageOf, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t } from '../dom.js';
 import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
@@ -154,7 +154,7 @@ export async function renderProvider(ctx, id) {
   url.addEventListener('input', paintNote);
   paintNote();
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/models' }, '← Models')),
+    h('p', { class: 'crumbs' }, crumb('#/models', t`Models`)),
     title,
     h('p', { class: 'sub', text: [pluginName && pluginName !== p.name ? pluginName : null, installed?.source === 'official' ? null : installed ? sourceLine(installed) : null].filter(Boolean).join(' · ') }),
     src ? null : await missingPlugin(ctx, rec.plugin, installed, catalog),
@@ -228,7 +228,7 @@ export async function renderNewProvider(ctx, pluginId) {
     },
   }, 'Add by hand');
   const screen = h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/add?kind=providers&from=models' }, '← Add')),
+    h('p', { class: 'crumbs' }, crumb('#/add?kind=providers&from=models', t`Add`)),
     h('h1', { class: 'title', text: src?.name ?? 'Add a provider' }),
     panel ? h('section', { class: 'panel', 'aria-label': src.name }, panel) : null,
     h('section', { class: 'panel', 'aria-label': 'By hand' },

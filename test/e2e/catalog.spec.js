@@ -46,7 +46,7 @@ test('Models → Add a provider opens the catalog on model providers; "unsloth" 
   expect(await installedIds(page)).toEqual(['chat-completions', 'provider-llamacpp']);
 
   // A name match comes before a keyword match, and one set up already says so.
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await page.getByLabel('Search the catalog').fill('lmstudio');
   await expect(cards(page).nth(0).locator('.name')).toHaveText('LM Studio');
@@ -65,7 +65,7 @@ test("a speech role's Add opens on providers with transcription; Plugins → Add
   for (const name of ['OpenAI', 'Groq', 'Local speech server']) await expect(page.getByRole('button', { name: `Add ${name}`, exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Anthropic', exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Voices and transcription' })).toBeVisible();
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
   await page.getByRole('link', { name: 'Add a provider for speech-out' }).click();
   await expect(chip(page, 'Voice')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Add OpenAI', exact: true })).toBeVisible();
@@ -74,7 +74,10 @@ test("a speech role's Add opens on providers with transcription; Plugins → Add
   await page.goto('/#/plugins');
   await page.getByRole('link', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
-  await expect(page.getByRole('link', { name: '← Plugins' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Plugins', exact: true })).toBeVisible();
+  // The back link reads "← Plugins", but a screen reader hears only its label: the arrow is hidden from it.
+  await expect(page.locator('.crumbs a')).toHaveText('← Plugins');
+  await expect(page.locator('.crumbs a [aria-hidden="true"]')).toHaveText('←');
   for (const kind of ['Model providers', 'Voices and transcription', 'Backup places', 'Tools and MCP', 'Developer']) {
     await expect(page.getByRole('region', { name: kind })).toBeVisible();
     await expect(chip(page, kind)).toHaveAttribute('aria-pressed', 'false');
@@ -120,7 +123,7 @@ test('installing from an address is on the Add screen and goes to the install sc
     await expect(page.getByRole('heading', { name: 'Install tide-pools?' })).toBeVisible();
     expect(await installedIds(page), 'nothing is stored before Install').toEqual([]);
     // Its crumb and Cancel go back to the Add screen it came from, not to Plugins.
-    await expect(page.getByRole('link', { name: '← Add' })).toHaveAttribute('href', '#/add');
+    await expect(page.getByRole('link', { name: 'Add', exact: true })).toHaveAttribute('href', '#/add');
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Add' })).toBeVisible();
     await elsewhere.getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/tide-pools/SKILL.md`);
@@ -147,19 +150,19 @@ test("Add's crumb goes back where it was opened from: Models, Plugins, or Experi
   await page.getByRole('link', { name: "Get it from annai's catalog" }).click();
   await expect(chip(page, 'Developer')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Install Remote trace (for developers)' })).toBeVisible();
-  await page.getByRole('link', { name: '← Experimental' }).click();
+  await page.getByRole('link', { name: 'Experimental', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Experimental' })).toBeVisible();
   await page.goto('/#/models');
   await startSettled(page);
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
-  await page.getByRole('link', { name: '← Models' }).click();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
   // The crumb follows where it came from, not its filters: a chip off still goes back to Models.
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
   await chip(page, 'Model providers').click();
-  await expect(page.getByRole('link', { name: '← Models' })).toHaveAttribute('href', '#/models');
+  await expect(page.getByRole('link', { name: 'Models', exact: true })).toHaveAttribute('href', '#/models');
   await page.goto('/#/plugins');
   await page.getByRole('link', { name: 'Add', exact: true }).click();
-  await page.getByRole('link', { name: '← Plugins' }).click();
+  await page.getByRole('link', { name: 'Plugins', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Plugins' })).toBeVisible();
 });

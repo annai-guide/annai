@@ -60,7 +60,7 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await page.getByText('Archived trips (1)').click();
   await page.getByRole('link', { name: /Old trip/ }).click();
   await page.getByRole('button', { name: 'Unarchive' }).click();
-  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('link', { name: /Old trip/ })).toBeVisible();
 });
 
@@ -98,19 +98,19 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await openApp(page);
   await startTrip(page, 'Big Sur');
   const card = page.getByRole('link', { name: /Big Sur/ });
-  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(card).toContainText('not backed up');
   await card.click();
   await page.getByRole('button', { name: 'Export trip' }).click();
   await buildAndSave(page);
-  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(card).toContainText('backed up just now');
   await expect(card).not.toContainText('changed since');
   await card.click();
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(card).toContainText('changed since');
 });
 

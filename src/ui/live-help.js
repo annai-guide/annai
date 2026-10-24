@@ -1,4 +1,5 @@
 import { platform, isStandalone } from './platform.js';
+import { t, tc } from './dom.js';
 
 /**
  * A refused location, in plain words, with steps for this phone (spec §17 rule 3). Live mode keeps
@@ -9,18 +10,18 @@ import { platform, isStandalone } from './platform.js';
  * @returns {{ title: string, body: string }}
  */
 export function gpsProblem(where, installed = false) {
-  const services = 'Location Services must be on: Settings → Privacy & Security → Location Services.';
+  const services = t`Location Services must be on: Settings → Privacy & Security → Location Services.`;
+  const iphone = installed
+    ? t`On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.`
+    : t`On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).`;
   const steps = where === 'ios'
-    ? installed
-      ? `On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow. ${services}`
-      : `On iPhone: tap aA in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow). ${services}`
+    ? tc('sentences')`${iphone} ${services}`
     : where === 'android'
-      ? 'On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.'
-      : "Allow location for this site in your browser's site settings.";
-  return {
-    title: "annai can't see where you are",
-    body: `Location isn't allowed, so GPS has only its time reminders. ${steps} Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?`,
-  };
+      ? t`On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.`
+      : t`Allow location for this site in your browser's site settings.`;
+  const refused = t`Location isn't allowed, so GPS has only its time reminders.`;
+  const again = t`Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?`;
+  return { title: t`annai can't see where you are`, body: tc('sentences')`${refused} ${steps} ${again}` };
 }
 
 /** Whether the card was shown, kept in this browser across starts (where storage is blocked, until the page closes). */

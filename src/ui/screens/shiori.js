@@ -1,4 +1,4 @@
-import { h, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
+import { h, crumb, t, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { ME } from '../../core/scopes.js';
@@ -91,7 +91,7 @@ export async function renderShiori(ctx, route) {
     for (const i of [quietFrom, quietTo]) if (!i.value) i.setAttribute('aria-invalid', 'true');
   });
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Shiori' }),
     section('How she looks',
       h('p', { class: 'sub', text: 'Each state, as the dock shows her, with the words under her.' }),

@@ -36,7 +36,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     // The list said it reads images: it takes photos.
     await page.getByRole('link', { name: /^qwen3\.8-flash/ }).click();
     await expect(page.getByLabel('Takes photos')).toBeChecked();
-    await page.getByRole('link', { name: '← llama.cpp' }).click();
+    await page.getByRole('link', { name: 'llama.cpp', exact: true }).click();
     // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
     await expect(page.getByRole('heading', { level: 1, name: 'llama.cpp', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Test', exact: true }).click();
@@ -73,7 +73,7 @@ test("a router that never streams, through Custom provider's Chat Completions: T
     await startSettled(page);
     await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add llama.cpp', exact: true })).toHaveCount(1);
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Router', url: `${s.origin}/v1`, key: 'sk-test-router-0123', model: 'router-model' });
     await page.getByRole('link', { name: /Router/ }).click();
     await expect(page.getByText(/never streams.*Wait for the first words/)).toBeVisible();

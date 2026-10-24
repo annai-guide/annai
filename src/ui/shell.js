@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
 import { parseHash } from './router.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
@@ -56,12 +56,12 @@ const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settin
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const builtIn = [['#/now', 'Now'], ['#/trips', 'Trips'], ['#/plan', 'Plan'], ['#/talk', 'Conversation'], ['#/trace', 'Trace'], ['#/settings', 'Settings']].map(([href, label]) => h('a', { href }, label));
+  const builtIn = [['#/now', t`Now`], ['#/trips', t`Trips`], ['#/plan', t`Plan`], ['#/talk', t`Conversation`], ['#/trace', t`Trace`], ['#/settings', t`Settings`]].map(([href, label]) => h('a', { href }, label));
   /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab (choice 5 of milestone 8b) */
   let links = builtIn;
-  const nav = h('nav', { class: 'topnav', 'aria-label': 'Main' }, ...links);
+  const nav = h('nav', { class: 'topnav', 'aria-label': t`Main` }, ...links);
   const header = h('header', { class: 'topbar' },
-    h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
+    /* en */ h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
     nav);
   const drawTabs = () => {
     const tabs = slotEntries({ registry: core.registry }, 'ui:screen').filter((e) => e.item?.tab)
@@ -254,9 +254,9 @@ export function startShell(root, core) {
     } catch (e) {
       if (my !== seq) return superseded(my);
       main.replaceChildren(h('div', { class: 'screen' },
-        h('h1', { class: 'title', text: "This screen couldn't open" }),
+        h('h1', { class: 'title', text: t`This screen couldn't open` }),
         h('p', { text: String(/** @type {any} */ (e)?.message ?? e) }),
-        h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips'))));
+        h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`))));
       land(my);
       dispatchEvent(new ErrorEvent('error', { error: e, message: String(e) }));
     }
@@ -346,7 +346,7 @@ export function startShell(root, core) {
     /** A new version of annai waits (Settings → Updates says so too): one card, the newest. @param {() => void} apply */
     setUpdateReady(apply) {
       readyCard();
-      readyCard = notices.card({ title: 'An update is ready', body: 'It will be used the next time annai starts.', actions: [{ label: 'Restart now', primary: true, run: apply }] });
+      readyCard = notices.card({ title: t`An update is ready`, body: t`It will be used the next time annai starts.`, actions: [{ label: t`Restart now`, primary: true, run: apply }] });
     },
   };
 }

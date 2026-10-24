@@ -1,4 +1,4 @@
-import { h, t, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
+import { h, crumb, t, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
 import { seconds, numField } from '../format.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
@@ -130,7 +130,7 @@ export async function renderVoice(ctx) {
   }, 'Test the microphone');
 
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Voice' }),
     h('p', { class: 'sub', text: 'How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.' }),
     section('On or off',

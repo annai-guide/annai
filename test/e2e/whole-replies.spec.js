@@ -42,7 +42,7 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
       await page.getByRole('link', { name: /^router-model/ }).click();
       await page.getByLabel('Takes photos').check();
       await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
-      await page.getByRole('link', { name: '← Router' }).click();
+      await page.getByRole('link', { name: 'Router', exact: true }).click();
       // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
       await expect(page.getByRole('heading', { level: 1, name: 'Router', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Test', exact: true }).click();
@@ -51,7 +51,7 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
       await expect(page.getByText('✓ Photos work: it saw the red square.')).toBeVisible();
       expect(llm.bodies(path).every((/** @type {any} */ b) => b.stream === true), 'a stream is still asked for').toBe(true);
       // A conversation with one tool call.
-      await page.getByRole('link', { name: '← Models' }).click();
+      await page.getByRole('link', { name: 'Models', exact: true }).click();
       await page.getByLabel('Add a model to main').selectOption({ label: 'router-model' });
       await page.getByRole('button', { name: 'Add to main' }).click();
       await expect(page.getByText('1. router-model')).toBeVisible();

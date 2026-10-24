@@ -1,4 +1,5 @@
 export { t, tc, plural } from '../core/l10n.js';
+import { t } from '../core/l10n.js';
 import { parseNum } from '../core/intl.js';
 
 /**
@@ -28,6 +29,12 @@ export function h(tag, attrs = {}, ...children) {
   }
   return el;
 }
+
+/**
+ * A back link ("← Settings"): its arrow a span of its own, hidden from screen readers (VoiceOver read "leftwards arrow"), and its
+ * label a message, or a name (a trip's, a provider's) as text or an element. @param {string} href @param {string | Node} label
+ */
+export const crumb = (href, label) => h('a', { href }, h('span', { 'aria-hidden': 'true' }, '← '), label);
 
 /**
  * Runs fn once node has left the page, such as a screen another replaced: its place is watched once it has
@@ -134,9 +141,9 @@ export function jsonField(label, id, value) {
       try {
         v = JSON.parse(text);
       } catch {
-        throw new Error(`${label} isn't valid JSON.`);
+        throw new Error(t`${label} isn't valid JSON.`);
       }
-      if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`${label} has to be an object: { … }.`);
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(t`${label} has to be an object: { … }.`);
       return v;
     },
   };
@@ -164,10 +171,10 @@ export function messageOf(e) {
  * @param {HTMLInputElement} input @param {number} lo @param {number} hi @param {string} words @param {{ whole?: boolean, need?: boolean }} [o]
  */
 export function numberIn(input, lo, hi, words, { whole = false, need = false } = {}) {
-  const t = input.value.trim();
-  if (!t && !need && !input.validity?.badInput) return null;
-  const n = parseNum(t);
-  if (!t || !(n >= lo && n <= hi) || (whole && !Number.isInteger(n))) throw new Error(words);
+  const text = input.value.trim();
+  if (!text && !need && !input.validity?.badInput) return null;
+  const n = parseNum(text);
+  if (!text || !(n >= lo && n <= hi) || (whole && !Number.isInteger(n))) throw new Error(words);
   return n;
 }
 
@@ -191,11 +198,12 @@ export function queueSave(fn) {
  * @template T @param {HTMLElement} note @param {() => Promise<T>} work @param {(result: T) => unknown} [shown] @returns {Promise<T>}
  */
 export function savingNote(note, work, shown) {
-  note.textContent = 'Saving…';
+  const saving = t`Saving…`;
+  note.textContent = saving;
   return queueSave(work).then(async (r) => {
     await shown?.(r);
     return r;
-  }).finally(() => { if (note.textContent === 'Saving…') note.textContent = ''; });
+  }).finally(() => { if (note.textContent === saving) note.textContent = ''; });
 }
 
 /** Resolves once the saves queued so far have landed: an action that reads settings (a Test) waits for what a field's change started, so it never runs on the old value. */
@@ -214,7 +222,13 @@ export function autosave(control, read, save) {
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
-  const say = (/** @type {unknown} */ e) => { error.textContent = messageOf(e); error.hidden = false; };
+  const say = (/** @type {any} */ e) => {
+    error.textContent = messageOf(e);
+    // A schema's refusal is its English (src/core/schema.js), a developer's words; the rest are the screen's.
+    if (Array.isArray(e?.errors)) error.lang = 'en';
+    else error.removeAttribute('lang');
+    error.hidden = false;
+  };
   /** @type {any[]} */
   const inputs = control.matches('input, select, textarea') ? [control] : [...control.querySelectorAll('input, select, textarea')];
   const ticks = (/** @type {any} */ x) => x.type === 'checkbox' || x.type === 'radio';
@@ -234,7 +248,7 @@ export function autosave(control, read, save) {
       await save(value);
       error.hidden = true;
       stored = shown();
-      note.textContent = 'Saved';
+      note.textContent = t`Saved`;
       timer = setTimeout(() => { note.textContent = ''; }, 4000);
     } catch (e) {
       inputs.forEach((x, i) => { if (ticks(x)) x.checked = stored[i]; else x.value = stored[i]; });

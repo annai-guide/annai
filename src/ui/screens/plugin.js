@@ -1,4 +1,4 @@
-import { h, twoStep, messageOf } from '../dom.js';
+import { h, crumb, t, twoStep, messageOf } from '../dom.js';
 import { settingsForm, formFields } from '../settings-form.js';
 import { sourceLine, FULL_ACCESS, thingWords, ownerName } from './plugin-install.js';
 import { KEYED } from '../../core/registry.js';
@@ -72,7 +72,7 @@ function namesPart(ctx, id, rows) {
  * @param {any} ctx @param {string} id
  */
 export async function renderPlugin(ctx, id) {
-  const back = h('p', { class: 'crumbs' }, h('a', { href: '#/plugins' }, '← Plugins'));
+  const back = h('p', { class: 'crumbs' }, crumb('#/plugins', t`Plugins`));
   const rows = await ctx.plugins.describe();
   const r = rows.find((/** @type {any} */ x) => x.id === id);
   if (!r) return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'Not here' }), h('p', { text: `There's no plugin called ${id} on this device.` }), h('p', {}, h('a', { href: '#/plugins' }, 'Back to Plugins')));

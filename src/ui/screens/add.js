@@ -1,4 +1,4 @@
-import { h, messageOf as message } from '../dom.js';
+import { h, crumb, t, messageOf as message } from '../dom.js';
 import { size } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
@@ -27,7 +27,7 @@ const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcrip
 /** @type {Record<string, string>} */
 const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' };
 /** Where Add was opened from (?from=), for its crumb; Plugins otherwise. @type {Record<string, [string, string]>} */
-const FROM = { models: ['#/models', '← Models'], experimental: ['#/experimental', '← Experimental'] };
+const FROM = { models: ['#/models', t`Models`], experimental: ['#/experimental', t`Experimental`] };
 const NOT_INSTALLABLE = "That file isn't something annai can install";
 
 /** An MCP server, added on its own screen: a fixed row whose id no manifest can have. @type {Row} */
@@ -131,7 +131,7 @@ export function byKind(found, typed, item) {
 /** Settings → Add: ?kind= and ?ability= open it filtered (spec §16.2). @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderAdd(ctx, route) {
   const { kind, ability, from } = route.params;
-  const [back, backText] = Object.hasOwn(FROM, from) ? FROM[from] : ['#/plugins', '← Plugins'];
+  const [back, backText] = Object.hasOwn(FROM, from) ? FROM[from] : ['#/plugins', t`Plugins`];
   const [catalog, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
   /** @type {Record<string, number>} */
   const configured = {};
@@ -156,7 +156,7 @@ export async function renderAdd(ctx, route) {
     },
   });
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: back }, backText)),
+    h('p', { class: 'crumbs' }, crumb(back, backText)),
     h('h1', { class: 'title', text: 'Add' }),
     h('p', { class: 'sub', text: "Model providers, voices, backup places, tools and skills: annai's own, and what you have installed." }),
     catalog === null ? h('p', { class: 'sub warn', text: "annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows." }) : null,

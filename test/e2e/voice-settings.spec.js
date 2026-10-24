@@ -67,7 +67,7 @@ test("a Gemini voice's page: Sulafat and the default style (young, cheerful and 
     expect(JSON.parse(await page.getByLabel('Tunables (JSON)').inputValue())).toEqual({});
     // The provider page's Tunables name a style for the whole ability. The model's own, emptied, is none: it must beat the ability's
     // (a deleted key would let the ability's through), and the request stays as small as before there was one.
-    await page.getByRole('link', { name: '← Google Gemini' }).click();
+    await page.getByRole('link', { name: 'Google Gemini', exact: true }).click();
     const abilityJson = page.getByRole('region', { name: 'Voice', exact: true }).getByLabel('Tunables (JSON)');
     await abilityJson.fill(JSON.stringify({ ...JSON.parse(await abilityJson.inputValue()), style: 'ability style' }));
     await leaveSaved(abilityJson);

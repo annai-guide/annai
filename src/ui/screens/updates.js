@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, crumb, t } from '../dom.js';
 import { relTime } from '../format.js';
 import { offerWords } from '../plugin-updates.js';
 import { versionLine } from './about.js';
@@ -46,7 +46,7 @@ export async function renderUpdates(ctx) {
     return b;
   };
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Updates' }),
     versionLine(ctx.version),
     h('section', { class: 'panel', 'aria-label': 'Checking for updates' },

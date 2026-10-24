@@ -48,7 +48,7 @@ test('a model is edited on its own page', async ({ page }) => {
   await page.getByLabel('Takes PDFs').check();
   await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');
   await expect(page.getByRole('heading', { name: 'Fast one', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: '← Endpoint A' }).click();
+  await page.getByRole('link', { name: 'Endpoint A', exact: true }).click();
   await expect(page.getByRole('link', { name: /^Fast one/ })).toContainText('32K context');
 });
 
@@ -260,7 +260,7 @@ test('a model keeps its photo limits on its page, to see and change (spec §9.2)
   // Added by id to an Anthropic Messages ability, it takes both cache lifetimes, so it gets the hour (review, 2026-10-18).
   await expect(page.getByLabel('Cache lifetimes (5m, 1h)')).toHaveValue('5m, 1h');
   // A save that fails puts the field back to what is stored, and says why.
-  await page.getByRole('link', { name: '← Stand-in' }).click();
+  await page.getByRole('link', { name: 'Stand-in', exact: true }).click();
   await page.getByLabel('Add a model by id').fill('c-model');
   await page.getByRole('button', { name: 'Add model' }).click();
   await page.getByRole('link', { name: /^c-model/ }).click();
@@ -308,7 +308,7 @@ test('Custom provider with OpenAI Responses switched on: its model list, the Tes
     await page.getByRole('link', { name: /^gpt-6-luna/ }).click();
     await page.getByLabel('Takes photos').check();
     await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
-    await page.getByRole('link', { name: '← Responses stand-in' }).click();
+    await page.getByRole('link', { name: 'Responses stand-in', exact: true }).click();
     // The model's page has a Test button too: its provider's page first (CI, 2026-10-19).
     await expect(page.getByRole('heading', { level: 1, name: 'Responses stand-in', exact: true })).toBeVisible();
     // The Test button: access and the key, then the tool with the photo, then an upload.
@@ -321,7 +321,7 @@ test('Custom provider with OpenAI Responses switched on: its model list, the Tes
     const photo = llm.bodies('/v1/responses')[1].input[0].content;
     expect(photo.find((/** @type {any} */ c) => c.type === 'input_image').image_url).toMatch(/^data:image\/png;base64,/);
     // A conversation: Shiori shows a card, then says she has.
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
     await page.getByLabel('Add a model to main').selectOption({ label: 'gpt-6-luna' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByText('1. gpt-6-luna')).toBeVisible();

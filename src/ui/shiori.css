@@ -186,7 +186,7 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .convo .you img { max-width: 100%; border-radius: 10px; display: block; }
 .convo .you p, .convo .shiori p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .who-row { display: flex; align-items: baseline; gap: 8px; }
-.who { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--ai); }
+.who { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ai); } /* capitals by CSS, so CJK is left alone */
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }
 /* What the halves tell each other: a dashed note of its own, not one of her reminders' quiet lines. */
 .convo .halves-note { align-self: center; max-width: 92%; padding: 4px 10px; border: 1px dashed var(--line); border-radius: 10px; font-size: 12px; color: var(--ink-2); }

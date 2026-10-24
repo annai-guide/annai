@@ -1,4 +1,4 @@
-import { h, field, twoStep, messageOf as message } from '../dom.js';
+import { h, crumb, t, field, twoStep, messageOf as message } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
 
 const AUTH = /** @type {Record<string, string>} */ ({ none: 'No key', token: 'A bearer token, kept on this device', headers: 'Headers, kept on this device' });
@@ -11,7 +11,7 @@ const AUTH = /** @type {Record<string, string>} */ ({ none: 'No key', token: 'A 
 export async function renderMcp(ctx) {
   /** @type {any} */
   const service = ctx.registry.list('mcp-servers')[0];
-  const back = h('p', { class: 'crumbs' }, h('a', { href: '#/tools' }, '← Tools'));
+  const back = h('p', { class: 'crumbs' }, crumb('#/tools', t`Tools`));
   if (!service) {
     return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'MCP servers' }),
       h('p', { text: "annai's MCP client isn't running. Reload annai and try again." }));

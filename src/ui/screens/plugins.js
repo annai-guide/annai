@@ -1,4 +1,4 @@
-import { h, twoStep, messageOf as message } from '../dom.js';
+import { h, crumb, t, twoStep, messageOf as message } from '../dom.js';
 import { list } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { officialUpdates } from '../../core/llm/official.js';
@@ -26,7 +26,7 @@ export async function renderPlugins(ctx, route) {
   // Built in, or from annai's catalog, is official; from a file or an address, third-party.
   const entries = rows.map((/** @type {any} */ r) => ({ ...r, official: r.builtin || r.source === 'official' }));
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, h('a', { href: '#/settings' }, '← Settings')),
+    h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: 'Plugins' }),
     h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, 'Add')),
     finder({ label: 'Search your plugins', entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);

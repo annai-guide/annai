@@ -115,7 +115,7 @@ test("Shiori shows a plugin's kind of card: the plugin draws it, and its label n
     await page.getByLabel('Message to Shiori').fill('Show me the falls');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.locator('.convo .trail-card')).toHaveText(['Trail: Pfeiffer Falls', 'Trail: Hidden Beach']);
-    await expect(page.locator('.convo .who').last()).toHaveText('SHIORI · TRAIL');
+    await expect(page.locator('.convo .who').last()).toHaveText('Shiori · Trail'); // in capitals by CSS
     // The announcer names her, as it does for a spoken line, rather than running the label into the card's words.
     expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual(['Shiori (Trail): Trail: Pfeiffer Falls', 'Shiori (Trail): Trail: Hidden Beach']);
   } finally {

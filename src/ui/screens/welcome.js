@@ -100,8 +100,7 @@ function start(ctx) {
   if (isStandalone() || p === 'desktop') {
     return [...model, ...(p === 'desktop' && !isStandalone() ? [h('p', { class: 'sub', text: 'You can also install annai as an app from your browser\'s menu.' })] : [])];
   }
-  // The step about trips already kept in Safari is for later: a fresh device has none.
-  const steps = INSTALL_STEPS[p].filter((s) => !s.startsWith('Trips you already have'));
+  const steps = INSTALL_STEPS[p];
   return [
     h('h2', { class: 'section', text: 'First, install annai' }),
     h('p', {

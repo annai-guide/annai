@@ -571,7 +571,7 @@ test('a restore writes the device\'s copy of the screens\' language before its r
       await updateAppSettings(new Workspace(store), { languages: { ui: 'ja' } });
       store.close();
     });
-    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
     await page.getByRole('button', { name: 'Export everything' }).click();
     const file = await buildAndSave(page);
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');

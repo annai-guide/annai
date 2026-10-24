@@ -9,7 +9,8 @@ import { watchAppends, deliverHooks } from '../core/hooks.js';
 import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
-import { h } from '../ui/dom.js';
+import { h, t } from '../ui/dom.js';
+import { list } from '../ui/format.js';
 import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
@@ -57,16 +58,16 @@ let running = null;
 async function boot() {
   const held = await acquireInstanceLock({
     onHeldElsewhere: () => showBlocking(root, {
-      title: 'annai is open in another tab',
-      body: 'Only one copy of annai runs at a time, so your trips stay consistent.',
-      action: 'Use it here',
+      title: t`annai is open in another tab`,
+      body: t`Only one copy of annai runs at a time, so your trips stay consistent.`,
+      action: t`Use it here`,
     }),
     onStolen: () => {
       running?.store.close();
       showBlocking(root, {
-        title: 'annai was opened in another tab',
-        body: 'This tab has stopped, so your trips stay consistent.',
-        action: 'Use it here instead',
+        title: t`annai was opened in another tab`,
+        body: t`This tab has stopped, so your trips stay consistent.`,
+        action: t`Use it here instead`,
         onAction: () => location.reload(),
       });
     },
@@ -85,9 +86,9 @@ async function boot() {
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).
   await removeLeftovers(store).catch(() => {});
   // Endpoints from before providers go, with their keys, before Models is first drawn; a card says so once the shell is up.
-  const moved = await moveOver(ws, store).catch((e) => { console.warn("the old endpoints couldn't be moved over", e); return null; });
+  const moved = await moveOver(ws, store).catch((e) => { console.warn(/* en */ "the old endpoints couldn't be moved over", e); return null; });
   // Koe's one list from before Realtime and Classic is written split, once (spec §9.6).
-  await splitOldKoe(ws).catch((e) => console.warn("Koe's old list couldn't be split", e));
+  await splitOldKoe(ws).catch((e) => console.warn(/* en */ "Koe's old list couldn't be split", e));
   syncTripTitles(ws);
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
@@ -161,12 +162,12 @@ async function boot() {
   // A simulation the page went away in the middle of is over: the trip open before it comes back (spec §13).
   await recoverSimulation({ store, ws }).catch(() => {});
   const active = (await readAppSettings(ws)).activeTrip;
-  const exists = active ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(active)) : null;
-  agent.open(exists ? active : null).catch((e) => console.warn('Shiori could not open the conversation', e));
+  const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
+  agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
   live.start().then(
-    () => push?.start().catch((e) => console.warn('Notifications could not start', e)),
-    (e) => console.warn('Live mode could not start', e),
+    () => push?.start().catch((e) => console.warn(/* en */ 'Notifications could not start', e)),
+    (e) => console.warn(/* en */ 'Live mode could not start', e),
   );
   // Backups to the places this device backs up to (spec §12.4). Choosing a kind of place installs its
   // plugin (§5.3), whose files load through the service worker.
@@ -188,7 +189,7 @@ async function boot() {
   }
   // Updates (spec §5.3, §17 rule 5): annai's own and its plugins', checked at start, on coming back to the screen,
   // once a day, and on Check now. Packages installed from an address are checked there, each request in the trace.
-  const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: 'plugin updates' }) } });
+  const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }) } });
   updates.agent = agent;
   updates.voice = voice;
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
@@ -198,12 +199,12 @@ async function boot() {
     shell.notices.card(reloadCard(names, () => location.reload()));
   };
   updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
-  pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: 'Notifications', run: () => { location.hash = '#/notifications'; } }] });
+  pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: t`Notifications`, run: () => { location.hash = '#/notifications'; } }] });
   if (moved) {
     shell.notices.card({
-      title: 'Settings → Models changed',
-      body: `annai now sets up providers: one address and one key for all a provider offers. Your endpoints (${moved.names.join(', ')}) and their keys were removed. Add them again in Settings → Models.`,
-      actions: [{ label: 'Open Models', primary: true, run: () => { location.hash = '#/models'; } }],
+      title: t`Settings → Models changed`,
+      body: t`annai now sets up providers: one address and one key for all a provider offers. Your endpoints (${list(moved.names, 'plain')}) and their keys were removed. Add them again in Settings → Models.`,
+      actions: [{ label: t`Open Models`, primary: true, run: () => { location.hash = '#/models'; } }],
     });
   }
   for (const n of early.splice(0)) pushCard(n);
@@ -214,7 +215,7 @@ async function boot() {
     const row = (await plugins.describe().catch(() => [])).find((/** @type {any} */ r) => r.id === d.pluginId);
     shell.notices.card({
       ...disabledCard({ name: row?.name ?? d.pluginId, reason: d.reason, message: await withoutSecrets(store, d.message) }),
-      actions: [{ label: 'Plugins', run: () => { location.hash = '#/plugins'; } }],
+      actions: [{ label: t`Plugins`, run: () => { location.hash = '#/plugins'; } }],
     });
   });
   // Open and on screen: the service worker's news now (a notification annai already said is closed).
@@ -286,7 +287,7 @@ async function loadPresets() {
   const out = {};
   for (const n of PRESETS) {
     try {
-      const res = await fetch(`/assets/personalities/${n}.md`);
+      const res = await fetch(/* en */ `/assets/personalities/${n}.md`);
       if (res.ok) out[n] = await res.text();
     } catch {
       // offline before the first install: the personalities come on a later start
@@ -303,12 +304,12 @@ async function loadPresets() {
 async function offerPersonalityUpdates({ ws, agent, presets, notices }) {
   for (const o of await syncPersonalities({ ws, presets }).catch(() => [])) {
     notices.card({
-      title: `A new version of the ${o.name} personality`,
-      body: 'Yours has your own edits, so it was kept as it is.',
+      title: t`A new version of the ${o.name} personality`,
+      body: t`Yours has your own edits, so it was kept as it is.`,
       actions: [
-        { label: 'Compare', run: () => { location.hash = `#/shiori?compare=${o.name}`; } },
-        { label: 'Keep mine', run: () => { keepMine(ws, o.name, o.text); } },
-        { label: 'Let Shiori merge', primary: true, run: () => agent.wake({ kind: 'personality', text: `A new version of annai's "${o.name}" personality is out. Merge it into the current one with tune_personality, keeping the user's edits. The new original:\n\n${o.text}` }) },
+        { label: t`Compare`, run: () => { location.hash = `#/shiori?compare=${o.name}`; } },
+        { label: t`Keep mine`, run: () => { keepMine(ws, o.name, o.text); } },
+        { label: t`Let Shiori merge`, primary: true, run: () => agent.wake({ kind: 'personality', text: /* en */ `A new version of annai's "${o.name}" personality is out. Merge it into the current one with tune_personality, keeping the user's edits. The new original:\n\n${o.text}` }) },
       ],
     });
   }
@@ -346,7 +347,7 @@ async function registerServiceWorker(store, shell, updates) {
       shell.setUpdateReady(() => { updates.restart(); });
     }, () => updates.downloadFailed());
   } catch (e) {
-    logEvent(store, SYS, { type: 'error', data: { message: `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
+    logEvent(store, SYS, { type: 'error', data: { message: /* en */ `The offline service didn't start: ${/** @type {any} */ (e)?.message ?? e}` } }).catch(() => {});
   }
 }
 
@@ -360,9 +361,9 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
     }
     // The card says the details are in Trace only once they are: what failed may be the writing itself (live mode's log).
     logEvent(store, SYS, { type: 'error', data: { message: String(err?.message ?? err), stack: String(err?.stack ?? '').slice(0, 2000) } }).then(() => true, () => false).then((noted) => shell.notices.card({
-      tone: 'warn', title: 'Something went wrong',
-      body: noted ? 'annai kept running. The details are in Trace.' : "annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.",
-      actions: noted ? [{ label: 'Open Trace', run: () => { location.hash = '#/trace'; } }] : [],
+      tone: 'warn', title: t`Something went wrong`,
+      body: noted ? t`annai kept running. The details are in Trace.` : t`annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.`,
+      actions: noted ? [{ label: t`Open Trace`, run: () => { location.hash = '#/trace'; } }] : [],
     }));
   };
   addEventListener('error', (e) => report(e.error ?? e.message));
@@ -373,8 +374,8 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
 boot().catch((e) => {
   console.error(e);
   root.replaceChildren(h('div', { class: 'blocking' },
-    h('h1', { class: 'title', text: "annai couldn't start" }),
+    h('h1', { class: 'title', text: t`annai couldn't start` }),
     h('p', { text: String(e?.message ?? e) }),
-    h('p', { text: 'If this keeps happening, your browser may be blocking storage (for example, in a private window).' }),
-    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, 'Try again'))));
+    h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
+    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, t`Try again`))));
 });

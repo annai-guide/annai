@@ -117,7 +117,7 @@ test('Booking confirmation: what it says, beside its original; Looks right confi
   await page.getByRole('button', { name: 'Looks right' }).click();
   await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
   await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
-  await page.getByRole('link', { name: '← Plan' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
 });
@@ -189,7 +189,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
 
     // The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
-    await page.getByRole('link', { name: '← Plan' }).click();
+    await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
     await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
