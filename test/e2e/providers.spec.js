@@ -310,3 +310,17 @@ test('review M1: a restored provider record naming a plugin of annai\'s that mak
   expect(installed).not.toContain('remote-trace');
   expect(sent).toEqual([]);
 });
+
+test("a schema's refusal of a provider's fields is shown in its English, marked so (decision 11): a screen reader reads it as English under any screens", async ({ page }) => {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  await page.getByLabel('Extra headers (JSON)').fill('{"X-A": 5}');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const refusal = page.locator('main p[role="status"] [lang="en"]');
+  await expect(refusal).toHaveText(/\S/);
+  // Words of the screen's own shown there next wipe the mark with the refusal.
+  await page.getByLabel('Extra headers (JSON)').fill('{"X-A": "5"}');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(refusal).toHaveCount(0);
+});

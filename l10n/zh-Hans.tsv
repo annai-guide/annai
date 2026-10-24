@@ -83,8 +83,8 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 1s6dmy6	draft	Camera	相机	src/ui/dock.js:223	
 1rm0t76	draft	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:144	{0} = label; Note: {0} is a field's label.
 1a791in	draft	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:146	{0} = label; Note: {0} is a field's label.
-1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:201	
-12ek4is	draft	Saved	已保存	src/ui/dom.js:251	
+1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:210	
+12ek4is	draft	Saved	已保存	src/ui/dom.js:257	
 la9701	draft	not backed up	未备份	src/ui/format.js:26	
 1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:27	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
 1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)

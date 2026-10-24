@@ -83,8 +83,8 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 1s6dmy6	draft	Camera	カメラ	src/ui/dock.js:223	
 1rm0t76	draft	{0} isn't valid JSON.	{0}が正しい JSON ではありません。	src/ui/dom.js:144	{0} = label; Note: {0} is a field's label.
 1a791in	draft	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）にしてください。	src/ui/dom.js:146	{0} = label; Note: {0} is a field's label.
-1gkm7i5	draft	Saving…	保存しています…	src/ui/dom.js:201	
-12ek4is	draft	Saved	保存しました	src/ui/dom.js:251	
+1gkm7i5	draft	Saving…	保存しています…	src/ui/dom.js:210	
+12ek4is	draft	Saved	保存しました	src/ui/dom.js:257	
 la9701	draft	not backed up	未バックアップ	src/ui/format.js:26	
 1h47npq	draft	backed up {0}	バックアップ：{0}	src/ui/format.js:27	{0} = relTime(at, now); Note: Label and value: relTime's たった今 or 昨日 can't take に, so "{0}にバックアップ" would break.
 1sjuc50	draft	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:27	{0} = relTime(at, now); Note: As "backed up {0}".

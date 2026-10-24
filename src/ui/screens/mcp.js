@@ -1,4 +1,4 @@
-import { h, crumb, t, field, twoStep, messageOf as message, plural } from '../dom.js';
+import { h, crumb, t, field, twoStep, messageOf as message, showError, plural } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
 import { num } from '../format.js';
 
@@ -48,7 +48,7 @@ export async function renderMcp(ctx) {
         ctx.render();
       } catch (e) {
         if (explainStorageFull(ctx, e)) return;
-        error.textContent = message(e);
+        showError(error, e);
         error.hidden = false;
       } finally {
         add.disabled = false;

@@ -1,5 +1,5 @@
 {
-  "build": "4d624017a239",
+  "build": "f44df452e146",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -193,7 +193,7 @@
     "/src/ui/cards.js": "e4e210b027b0",
     "/src/ui/credits.js": "6a90a3274f4d",
     "/src/ui/dock.js": "3997f56fe3e9",
-    "/src/ui/dom.js": "08f3c5a7b0e1",
+    "/src/ui/dom.js": "a0ecf9bccc38",
     "/src/ui/add-files.js": "9aa460e42e98",
     "/src/ui/auto-backup.js": "ccaa9229647c",
     "/src/ui/ask.js": "8e5df46eff2c",
@@ -237,7 +237,7 @@
     "/src/ui/screens/ext.js": "fa61eb7cf29c",
     "/src/ui/screens/file.js": "a27d6c2032e9",
     "/src/ui/screens/import.js": "4f0482c44cf2",
-    "/src/ui/screens/mcp.js": "9d5928bb1b4a",
+    "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "740b1d1c78ef",
     "/src/ui/screens/models.js": "73930af15819",
     "/src/ui/screens/notifications.js": "fdcf956e2784",
@@ -246,7 +246,7 @@
     "/src/ui/screens/plugin-install.js": "c89f0b5fbc3a",
     "/src/ui/screens/plugin.js": "038cfea5629a",
     "/src/ui/screens/plugins.js": "91cf0ba289cc",
-    "/src/ui/screens/provider.js": "7fa4c43d91f1",
+    "/src/ui/screens/provider.js": "75be0f9af6c4",
     "/src/ui/screens/recap.js": "d49abcacccdc",
     "/src/ui/screens/replay.js": "b3eb97b268e1",
     "/src/ui/screens/settings.js": "0a7174a49d97",
