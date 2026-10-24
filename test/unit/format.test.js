@@ -245,6 +245,15 @@ test('list: "and" and "or" in the language', () => {
   assert.equal(list(['英语', '日语', '法语']), '英语、日语和法语');
 });
 
+test('list: a plain list has no "and", only the language\'s separator', () => {
+  as('en', 'en-US');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a, b, c');
+  as('ja', 'ja-JP');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a、b、c');
+  as('zh-Hans', 'zh-CN');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a、b、c');
+});
+
 test('languageName: the language\'s name in the screens\' language, annai\'s English where the browser has none', () => {
   as('en', 'en-US');
   assert.equal(languageName('ja'), 'Japanese');
