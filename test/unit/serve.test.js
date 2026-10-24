@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import http from 'node:http';
@@ -57,6 +57,15 @@ test('a release sends x.br when the browser takes brotli, and the file itself ot
   await writeFile(join(dir, 'no-br.css'), js);
   await writeFile(join(dir, 'no-br.css.gz'), 'not sent');
   await writeFile(join(dir, 'plain.json'), '{"a":1}');
+  // A file edited after its .br was written (build-release run on a checkout): the .br is stale. A release's
+  // files and their .br share one time (git archive stamps the commit's), and that is not stale.
+  const when = new Date('2026-10-23T12:00:00Z');
+  await writeFile(join(dir, 'edited.js'), js);
+  await writeFile(join(dir, 'edited.js.br'), brotliCompressSync(Buffer.from('the old code')));
+  await utimes(join(dir, 'edited.js.br'), when, when);
+  await utimes(join(dir, 'edited.js'), new Date(when.getTime() + 1000), new Date(when.getTime() + 1000));
+  await utimes(join(dir, 'app.js'), when, when);
+  await utimes(join(dir, 'app.js.br'), when, when);
   const server = await start(join(dir, 'scripts/serve.mjs'));
   t.after(() => server.stop());
   const url = `${server.origin}/app.js`;
@@ -91,6 +100,11 @@ test('a release sends x.br when the browser takes brotli, and the file itself ot
   assert.equal(noBr.headers['content-type'], 'text/css; charset=utf-8');
   assert.equal(noBr.headers.vary, undefined);
   assert.deepEqual(noBr.body, js);
+  // A stale .br: the file itself, as if there were none.
+  const edited = await get(`${server.origin}/edited.js`, { headers: { 'Accept-Encoding': 'gzip, deflate, br' } });
+  assert.equal(edited.headers['content-encoding'], undefined);
+  assert.equal(edited.headers.vary, undefined);
+  assert.deepEqual(edited.body, js);
   const none = await get(`${server.origin}/plain.json`, { headers: { 'Accept-Encoding': 'gzip, deflate, br' } });
   assert.equal(none.headers['content-encoding'], undefined);
   assert.equal(none.headers.vary, undefined);
