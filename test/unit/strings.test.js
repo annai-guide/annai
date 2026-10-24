@@ -356,3 +356,10 @@ test('the glossary is matched as it is written: a Capitalised name only where a 
   assert.equal(w('Trip name'), 1, 'and at the start of a sentence');
   assert.equal(w('Your trips'), 1);
 });
+
+test('a name kept as written is held to it at the start of a message too: "Shiori answers in…" must keep Shiori', () => {
+  const g = readGlossary(GLOSSARY);
+  const w = (/** @type {string} */ en, /** @type {string} */ text) => glossaryWarnings(g, 'ja', [{ key: 'k', state: 'draft', en, text, where: '', note: '', line: 2 }]).length;
+  assert.equal(w('Shiori answers in {0}', 'しおりは{0}で答えます'), 1, 'her name written in kana');
+  assert.equal(w('Shiori answers in {0}', 'Shiori は{0}で答えます'), 0);
+});
