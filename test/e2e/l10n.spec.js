@@ -777,7 +777,9 @@ for (const [spoken, sent] of /** @type {const} */ ([['en', 'Where can we eat alo
         store.close();
         localStorage.setItem('annai.ui', 'ja');
       }, spoken);
+      // A new hash alone doesn't restart annai: the reload does, in Japanese.
       await page.goto('/#/drive');
+      await page.reload();
       await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
       await page.locator('.quick-ask button').nth(1).click();
       await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 20_000 }).toBeGreaterThan(0);
