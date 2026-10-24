@@ -1,9 +1,10 @@
-import { h, crumb, t, field, twoStep } from '../dom.js';
+import { h, crumb, t, asUser, field, twoStep } from '../dom.js';
 import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, num, takenText, pathParts, authorName } from '../format.js';
+import { readAppSettings } from '../../core/settings.js';
+import { relTime, size, num, takenText, pathParts, authorName, speaksScreens } from '../format.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 
@@ -65,10 +66,9 @@ function editor(ctx, id, entry, content) {
         class: 'photo', type: 'button', 'aria-label': t`Open the photo full size`,
         // In the trip Shiori is in, the viewer can show her the part on screen (spec §16.2).
         onclick: () => openPhotoViewer(url, entry.path, ctx.agent?.target === id ? {
-          onShowPart: (/** @type {number[]} */ region) => {
-            // The user's words to her, so in their language, as what they type is.
+          onShowPart: async (/** @type {number[]} */ region) => {
             const shown = `/trip${entry.path}`;
-            ctx.agent.send(t`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
+            ctx.agent.send(asUser(speaksScreens(await readAppSettings(ctx.ws)))`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
             ctx.go('#/talk');
           },
         } : {}),

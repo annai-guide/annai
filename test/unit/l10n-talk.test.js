@@ -12,7 +12,8 @@ after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
 const { wokeText, reminderLine, announced } = await import('../../src/ui/screens/talk.js');
 const { SYSTEM } = await import('../../src/ui/talk-panel.js');
-const { SAMPLE } = await import('../../src/ui/speech-check.js');
+const { sample } = await import('../../src/ui/speech-check.js');
+const { speaksScreens } = await import('../../src/ui/format.js');
 const { Transcript } = await import('../../src/core/agent/transcript.js');
 
 /** The text of the transcript's last line once an event is applied. @param {any} e */
@@ -47,7 +48,14 @@ test("the announcer's labels are the screens' words, and her words are left as s
   assert.deepEqual(announced('out.show', '', '', [], { image: 'x' }), ['Shiori：', '写真', '']);
 });
 
-test("Try this model's instructions stay English for the model; the voice sample is said in the screens' language", () => {
+test("Try this model's instructions stay English for the model; the voice sample is in the screens' language when the user speaks it, else English", () => {
   assert.match(SYSTEM, /^You are a helpful travel assistant inside the annai app\./);
-  assert.equal(SAMPLE, 'こんにちは。あなたと話すときは、こんな声です。');
+  assert.equal(sample(true), 'こんにちは。あなたと話すときは、こんな声です。');
+  assert.equal(sample(false), 'Hello! This is how I sound when I talk to you.');
+});
+
+test('words sent as the user\'s are in the screens\' language only when the user speaks it: their Languages, else the phone\'s (the user, 2026-10-24)', () => {
+  assert.equal(speaksScreens({ languages: { spoken: ['en', 'ja'] } }), true);
+  assert.equal(speaksScreens({ languages: { spoken: ['en'] } }), false);
+  assert.equal(speaksScreens({}), /^ja\b/.test(navigator.language));
 });

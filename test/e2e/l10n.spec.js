@@ -751,3 +751,39 @@ test('Don\'t restart, on the card that waits for Shiori, gives the row back and 
     await llm.stop();
   }
 });
+
+// The user, 2026-10-24: words annai sends as theirs go "in the screens' language when it's one you speak (your Languages list, or
+// the phone's language if none); otherwise in English."
+for (const [spoken, sent] of /** @type {const} */ ([['en', 'Where can we eat along the way?'], ['ja', JA[key('Where can we eat along the way?')]]])) {
+  test(`under Japanese screens a quick ask goes to Shiori in ${spoken === 'ja' ? 'Japanese, which the user speaks' : "English, as the user doesn't speak Japanese"}`, async ({ page }) => {
+    needJapanese();
+    const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
+    const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }]))] });
+    try {
+      await openApp(page, '#/models');
+      await waitForServiceWorker(page);
+      await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+      await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+      await page.goto('/#/trips');
+      await startTrip(page, 'Big Sur');
+      await page.evaluate(async (s) => {
+        const at = (/** @type {string} */ p) => p;
+        const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+        const { Workspace } = await import(at('/src/core/workspace.js'));
+        const { updateAppSettings } = await import(at('/src/core/settings.js'));
+        const store = await createIdbStore();
+        await updateAppSettings(new Workspace(store), { languages: { spoken: [s], ui: 'ja' } });
+        store.close();
+        localStorage.setItem('annai.ui', 'ja');
+      }, spoken);
+      await page.goto('/#/drive');
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+      await page.locator('.quick-ask button').nth(1).click();
+      await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 20_000 }).toBeGreaterThan(0);
+      expect(JSON.stringify(llm.bodies('/b/v1/messages').at(-1).messages.at(-1))).toContain(sent);
+    } finally {
+      await llm.stop();
+    }
+  });
+}

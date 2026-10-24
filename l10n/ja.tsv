@@ -237,20 +237,16 @@ il754y	draft	Keep the screen on while stopped	止まっている間、画面を�
 1aspuv3	draft	The screen goes off as usual while GPS is on.	GPS がオンのときも、画面はいつもどおり消えます。	src/ui/live-chip.js:38	
 1r528n6	draft	Keep the screen on while GPS is on	GPS がオンの間、画面をオンのままにする	src/ui/live-chip.js:38	
 m1jg5r	draft	The screen stays on while GPS is on.	GPS がオンのときは、画面がついたままになります。	src/ui/live-chip.js:38	
-1r67kxj	draft	while driving or riding	運転中・乗車中	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-1yp7plh	draft	while walking	歩行中	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-qis7kn	draft	while GPS is on	GPS がオンのとき	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-rhvo7b	draft	while stopped	止まっているとき	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-13ebf61	draft	Pause the simulation	シミュレーションを一時停止	src/ui/live-chip.js:83	
-1ui2yvw	draft	Resume the simulation	シミュレーションを再開	src/ui/live-chip.js:83	
-5zs6ip	draft	Stop the simulation	シミュレーションを終了	src/ui/live-chip.js:84	
-1yuht27	draft	Simulate a trip	旅のシミュレーション	src/ui/live-chip.js:85	
-100a56n	draft	Turn GPS off	GPS をオフにする	src/ui/live-chip.js:94	
-ah9gez	draft	Turn GPS on	GPS をオンにする	src/ui/live-chip.js:94	
-1cm49b4	draft	The plan has no places to choose from yet.	予定にはまだ選べる場所がありません。	src/ui/live-chip.js:109	
-1sedy1m	draft	Where are you?	いまどこにいますか？	src/ui/live-chip.js:109	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	draft	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/live-chip.js:116	{0} = p.name
-12nwa0c	draft	A plan place	予定の場所	src/ui/live-chip.js:153	
+13ebf61	draft	Pause the simulation	シミュレーションを一時停止	src/ui/live-chip.js:78	
+1ui2yvw	draft	Resume the simulation	シミュレーションを再開	src/ui/live-chip.js:78	
+5zs6ip	draft	Stop the simulation	シミュレーションを終了	src/ui/live-chip.js:79	
+1yuht27	draft	Simulate a trip	旅のシミュレーション	src/ui/live-chip.js:80	
+100a56n	draft	Turn GPS off	GPS をオフにする	src/ui/live-chip.js:89	
+ah9gez	draft	Turn GPS on	GPS をオンにする	src/ui/live-chip.js:89	
+1cm49b4	draft	The plan has no places to choose from yet.	予定にはまだ選べる場所がありません。	src/ui/live-chip.js:104	
+1sedy1m	draft	Where are you?	いまどこにいますか？	src/ui/live-chip.js:104	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	draft	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/live-chip.js:111	{0} = p.name
+12nwa0c	draft	A plan place	予定の場所	src/ui/live-chip.js:148	
 19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	位置情報サービスをオンにしてください：設定 → プライバシーとセキュリティ → 位置情報サービス。	src/ui/live-help.js:14	
 6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	iPhone では：設定 → プライバシーとセキュリティ → 位置情報サービス → SafariのWebサイト → このアプリの使用中、および 設定 → アプリ → Safari → 位置情報 → 許可。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; SafariのWebサイト and このアプリの使用中 are to be checked on a phone (glossary).
 m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	iPhone では：アドレスバーのページメニューボタンをタップし、Webサイトの設定 → 位置情報 → 許可（または 設定 → アプリ → Safari → 位置情報 → 許可）。	src/ui/live-help.js:17	Note: ページメニューボタン as Apple's ja-jp guide names it; Webサイトの設定 is to be checked on a phone (glossary).
@@ -455,43 +451,43 @@ d0tqtj	draft	The original, {0}, isn't in the trip.	元の資料（{0}）は旅�
 yp5voz	draft	This booking doesn't say which file it came from.	この予約には、どのファイルから読み取ったかが書かれていません。	src/ui/screens/booking.js:66	
 98drsx	draft	Open the original	元の資料を開く	src/ui/screens/booking.js:67	
 c4110z	draft	The original, {0}	元の資料（{0}）	src/ui/screens/booking.js:69	{0} = entry.path
-19jra30	draft	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:11	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	draft	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:11	
-1gkqhnt	draft	Food	食事	src/ui/screens/drive.js:12	
-1hv457u	draft	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:12	
-112axt9	draft	Fuel	給油	src/ui/screens/drive.js:13	
-1c79d90	draft	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:13	
-1d8ka8b	draft	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:14	
-iw9ebk	draft	Restroom	トイレ	src/ui/screens/drive.js:14	
-1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-1q5u96o	draft	Driving	運転中	src/ui/screens/drive.js:34	
-7quqpk	draft	Go to Trips	「旅」へ	src/ui/screens/drive.js:35	
-ov2ou9	draft	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:35	
-sxc7mr	draft	The road ahead	この先の道	src/ui/screens/drive.js:40	
-1b4mdx5	draft	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:49	
-1efd4xo	draft	You	あなた	src/ui/screens/drive.js:49	
-591tvw	draft	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:49	
-ugf9pe	draft	at {0}	{0}予定	src/ui/screens/drive.js:52	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	draft	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:53	
-l329ve	draft	Directions to {0}	{0}への経路	src/ui/screens/drive.js:56	{0} = next.name
-kb2apf	draft	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインにする必要があります。	src/ui/screens/drive.js:59	
-14k2tsa	draft	How long?	あとどのくらい？	src/ui/screens/drive.js:60	
-18wvy25	draft	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:60	
-1r191hj	draft	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:60	{0} = next.name
-1tuqp1	draft	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:65	{0} = text
-12mubvb	draft	Now	いま	src/ui/screens/drive.js:101	
+19jra30	draft	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	draft	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:12	
+1gkqhnt	draft	Food	食事	src/ui/screens/drive.js:13	
+1hv457u	draft	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:13	
+112axt9	draft	Fuel	給油	src/ui/screens/drive.js:14	
+1c79d90	draft	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:14	
+1d8ka8b	draft	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:15	
+iw9ebk	draft	Restroom	トイレ	src/ui/screens/drive.js:15	
+14k2tsa	draft	How long?	あとどのくらい？	src/ui/screens/drive.js:16	
+18wvy25	draft	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:16	
+1r191hj	draft	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:16	{0} = next.name
+1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:20	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+1q5u96o	draft	Driving	運転中	src/ui/screens/drive.js:32	
+7quqpk	draft	Go to Trips	「旅」へ	src/ui/screens/drive.js:33	
+ov2ou9	draft	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:33	
+sxc7mr	draft	The road ahead	この先の道	src/ui/screens/drive.js:39	
+1b4mdx5	draft	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:48	
+1efd4xo	draft	You	あなた	src/ui/screens/drive.js:48	
+591tvw	draft	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:48	
+ugf9pe	draft	at {0}	{0}予定	src/ui/screens/drive.js:51	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	draft	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:52	
+l329ve	draft	Directions to {0}	{0}への経路	src/ui/screens/drive.js:55	{0} = next.name
+kb2apf	draft	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインにする必要があります。	src/ui/screens/drive.js:58	
+1tuqp1	draft	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:63	{0} = text
+12mubvb	draft	Now	いま	src/ui/screens/drive.js:99	
 1py6vf8	draft	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語を読める人がまだ確認していない翻訳です。オンにすると、設定 → Shiori → 言語で選べます。表現が誤っていることがあり、未翻訳の部分は英語のままです。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅	src/ui/screens/ext.js:54	
-10rafvo	draft	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:21	
-1pm5i13	draft	Back to Trips	「旅」に戻る	src/ui/screens/file.js:21	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-1jpjwmm	draft	Back to trip	旅に戻る	src/ui/screens/file.js:23	
-krcze5	draft	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:26	
-1jlj988	draft	Delete file	ファイルを削除	src/ui/screens/file.js:32	
-1ygxf36	draft	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:32	
-1hnv6ua	draft	Content	内容	src/ui/screens/file.js:57	
-lewgh4	draft	Save	保存	src/ui/screens/file.js:57	
-1m183es	draft	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:65	
+10rafvo	draft	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:22	
+1pm5i13	draft	Back to Trips	「旅」に戻る	src/ui/screens/file.js:22	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+1jpjwmm	draft	Back to trip	旅に戻る	src/ui/screens/file.js:24	
+krcze5	draft	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:27	
+1jlj988	draft	Delete file	ファイルを削除	src/ui/screens/file.js:33	
+1ygxf36	draft	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:33	
+1hnv6ua	draft	Content	内容	src/ui/screens/file.js:58	
+lewgh4	draft	Save	保存	src/ui/screens/file.js:58	
+1m183es	draft	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:66	
 wbyn1d	draft	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:71	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
 129ed1b	draft	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:78	
 t8quxl	draft	Download	ダウンロード	src/ui/screens/file.js:85	
@@ -648,26 +644,23 @@ ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/models.js:190	{0} = called
 1ln5v12	draft	Move {0}	{0}を移動	src/ui/screens/models.js:225	{0} = name
 1rvkqip	draft	Move up	上へ移動	src/ui/screens/models.js:226	
 c2tjmw	draft	Move down	下へ移動	src/ui/screens/models.js:227	
-1tbrgfp	draft	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:28	
-izy3tv	draft	Offline · reminders still work	オフライン · リマインダーは使えます	src/ui/screens/now.js:39	
-15h0umr	draft	Next	次の予定	src/ui/screens/now.js:80	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	draft	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:82	
-17yr96a	draft	The whole plan	予定全体	src/ui/screens/now.js:83	
-11lm89y	draft	Latest	最新	src/ui/screens/now.js:85	
-1tzspvr	draft	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/screens/now.js:126	
-69apv3	draft	Location isn't allowed for annai. Tap GPS below to say where you are.	annai に位置情報が許可されていません。下の GPS をタップして、現在地を伝えてください。	src/ui/screens/now.js:129	
-1770v5g	draft	Finding where you are…	現在地を確認しています…	src/ui/screens/now.js:130	
-1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	いま GPS の信号がありません。下の GPS をタップして、現在地を伝えてください。	src/ui/screens/now.js:130	
-17826bm	draft	At {0}	{0}にいます	src/ui/screens/now.js:133	{0} = near.name
-ue501f	draft	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/screens/now.js:133	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
-tdmj58	draft	Flexible:	調整可：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
-u35e3n	draft	said aloud	読み上げ	src/ui/screens/now.js:170	Note: the mark on a line of hers that was said aloud.
-16ocoht	draft	Show what she said	Shiori の言葉を表示	src/ui/screens/now.js:172	
-1yj7glf	draft	Said aloud	読み上げ	src/ui/screens/now.js:173	
-1iq3mns	draft	{0}, said aloud: {1}	{0}（読み上げ）：{1}	src/ui/screens/now.js:178	{0} = String(d.title); {1} = words; Note: A reminder annai said aloud: its plan item's title, then its words.
-1oe5z73	draft	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/now.js:179	{0} = words; Note: {0} is the reminder's words.
-n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/now.js:179	{0} = words; Note: {0} is the reminder's words.
+1tbrgfp	draft	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:29	
+izy3tv	draft	Offline · reminders still work	オフライン · リマインダーは使えます	src/ui/screens/now.js:40	
+15h0umr	draft	Next	次の予定	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	draft	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:83	
+17yr96a	draft	The whole plan	予定全体	src/ui/screens/now.js:84	
+11lm89y	draft	Latest	最新	src/ui/screens/now.js:86	
+1tzspvr	draft	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/screens/now.js:127	
+69apv3	draft	Location isn't allowed for annai. Tap GPS below to say where you are.	annai に位置情報が許可されていません。下の GPS をタップして、現在地を伝えてください。	src/ui/screens/now.js:130	
+1770v5g	draft	Finding where you are…	現在地を確認しています…	src/ui/screens/now.js:131	
+1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	いま GPS の信号がありません。下の GPS をタップして、現在地を伝えてください。	src/ui/screens/now.js:131	
+17826bm	draft	At {0}	{0}にいます	src/ui/screens/now.js:134	{0} = near.name
+ue501f	draft	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
+1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:146	Note: Read aloud before a plan item that keeps its time.
+tdmj58	draft	Flexible:	調整可：	src/ui/screens/now.js:146	Note: Read aloud before a plan item whose time can move.
+u35e3n	draft	said aloud	読み上げ	src/ui/screens/now.js:168	Note: the mark on a line of hers that was said aloud.
+16ocoht	draft	Show what she said	Shiori の言葉を表示	src/ui/screens/now.js:170	
+1yj7glf	draft	Said aloud	読み上げ	src/ui/screens/now.js:171	
 ls5hgo	draft	Open a trip to see its plan.	旅を開くと、その予定が表示されます。	src/ui/screens/plan.js:24	
 ow5t4g	draft	No time yet ({0})	時刻未定（{0}）	src/ui/screens/plan.js:36	{0} = num(untimed.length)
 u71m40	draft	Nothing planned this day.	この日の予定はありません。	src/ui/screens/plan.js:46	
@@ -874,49 +867,51 @@ o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sig
 susy7u	draft	Shiori woke to tell you the recap.	振り返りを話すため、Shiori が起動しました。	src/ui/screens/talk.js:97	
 18rv8j7	draft	Shiori woke.	Shiori が起動しました。	src/ui/screens/talk.js:99	
 gofzl2	draft	Shiori woke for the plugin {0}.	プラグイン {0} により Shiori が起動しました。	src/ui/screens/talk.js:99	{0} = nameOf(String(r.plugin ?? ''))
+1oe5z73	draft	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is the reminder's words.
 7ew4gb	draft	Shiori's answer: {0}	Shiori の答え：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is the reminder's words.
 y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori の答え（読み上げ）：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is her answer, shown by annai.
-6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:125	
-1ussy6i	draft	Trip	旅	src/ui/screens/talk.js:182	Note: The heading over a trip's files that are in no folder.
-137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:196	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:196	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:202	{0} = formatCost(c.total)
-glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:202	{0} = formatCost(c.total)
-td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:229	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:295	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:295	Note: a note from Koe to Kokoro; its words follow.
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/ui/screens/talk.js:303	
-e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:305	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:306	
-1mjdfzn	draft	Shiori can't reach her model	Shiori がモデルにつながりません	src/ui/screens/talk.js:313	
-1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:313	
-1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:313	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:327	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:381	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-17o4v1i	draft	Conversation	会話	src/ui/screens/talk.js:398	
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:400	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:430	
-bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:431	
-7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:445	
-12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:447	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:447	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:447	
-va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:447	
-mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:450	
-10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:455	
-va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:462	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:463	
-czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:464	
-1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:474	{0} = String(/** @type {any} */ (e)?.message ?? e)
-1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:477	
-3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:477	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:477	
-p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:477	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:497	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:498	
-159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:513	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:520	
-vmlwpb	draft	Undo	元に戻す	src/ui/screens/talk.js:527	
+6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:135	
+1ussy6i	draft	Trip	旅	src/ui/screens/talk.js:192	Note: The heading over a trip's files that are in no folder.
+137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:206	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:206	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:212	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:212	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:239	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:302	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:302	Note: a note from Koe to Kokoro; its words follow.
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/ui/screens/talk.js:310	
+e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:312	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:313	
+1mjdfzn	draft	Shiori can't reach her model	Shiori がモデルにつながりません	src/ui/screens/talk.js:320	
+1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:320	
+1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:320	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:334	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:388	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+17o4v1i	draft	Conversation	会話	src/ui/screens/talk.js:405	
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:407	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:437	
+bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:438	
+7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:452	
+12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:454	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:454	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:454	
+va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:454	
+mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:457	
+10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:462	
+va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:469	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:470	
+czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:471	
+1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:481	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:484	
+3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:484	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:484	
+p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:484	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:504	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:505	
+159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:520	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:527	
+vmlwpb	draft	Undo	元に戻す	src/ui/screens/talk.js:534	
 11gkctr	draft	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -1125,19 +1120,19 @@ ata72m	draft	Trace	記録	src/ui/shell.js:59
 1z00dfe	draft	An update is ready	アップデートの準備ができました	src/ui/shell.js:349	
 gt0nrj	draft	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:349	
 nb21do	draft	Restart now	今すぐ再起動	src/ui/shell.js:349	
-sntfon	draft	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:9	Note: spoken by the voice being tested, so it is heard in the screens' language.
-n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:15	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
-1a27ynt	draft	Last tested {0}: it worked.	最終テスト{0}：動作しました。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
-lrzlka	draft	Last tested {0}: it didn't work.	最終テスト{0}：動作しませんでした。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
-11k50g8	draft	Playing a sample…	サンプルを再生しています…	src/ui/speech-check.js:35	
-10nc9qe	draft	The sample stopped early.	サンプルが途中で止まりました。	src/ui/speech-check.js:37	
-f41br8	draft	It works: that was this voice.	動作します。今のがこの声です。	src/ui/speech-check.js:37	
-en3jzv	draft	Say something, such as "Where should we stop for lunch?"	「お昼はどこで休憩しようか？」のように、何か話してください。	src/ui/speech-check.js:41	
-sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12秒間、何も聞こえませんでした。マイクがオンになっているか確認して、もう一度お試しください。	src/ui/speech-check.js:46	
-16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	音声は聞こえましたが、何も書き出されませんでした。端末にもう少し近づいて、もう一度お試しください。	src/ui/speech-check.js:51	
-a2r8f0	draft	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:51	{0} = text
-1alwf78	draft	Say something	何か話す	src/ui/speech-check.js:64	
-1qerct6	draft	Play a sample	サンプルを再生	src/ui/speech-check.js:64	
+sntfon	draft	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
+n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+1a27ynt	draft	Last tested {0}: it worked.	最終テスト{0}：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+lrzlka	draft	Last tested {0}: it didn't work.	最終テスト{0}：動作しませんでした。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+11k50g8	draft	Playing a sample…	サンプルを再生しています…	src/ui/speech-check.js:36	
+10nc9qe	draft	The sample stopped early.	サンプルが途中で止まりました。	src/ui/speech-check.js:38	
+f41br8	draft	It works: that was this voice.	動作します。今のがこの声です。	src/ui/speech-check.js:38	
+en3jzv	draft	Say something, such as "Where should we stop for lunch?"	「お昼はどこで休憩しようか？」のように、何か話してください。	src/ui/speech-check.js:42	
+sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12秒間、何も聞こえませんでした。マイクがオンになっているか確認して、もう一度お試しください。	src/ui/speech-check.js:47	
+16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	音声は聞こえましたが、何も書き出されませんでした。端末にもう少し近づいて、もう一度お試しください。	src/ui/speech-check.js:52	
+a2r8f0	draft	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:52	{0} = text
+1alwf78	draft	Say something	何か話す	src/ui/speech-check.js:65	
+1qerct6	draft	Play a sample	サンプルを再生	src/ui/speech-check.js:65	
 edrwuk	draft	annai's storage is full	annai のストレージがいっぱいです	src/ui/storage-full.js:12	
 dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	保存しかけのものはありません。空きを作るには、使わなくなった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/ui/storage-full.js:14	
 1yr1lra	draft	Export a backup	バックアップをエクスポート	src/ui/storage-full.js:16	

@@ -111,6 +111,16 @@ export function reminderLine(d) {
   return [before, after];
 }
 
+/**
+ * A reminder's line, for the Conversation and Now: its label from its data, then its words, marked. A plan watch's words are annai's
+ * English as stored; anyone else's carry their own language. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine
+ */
+export function reminderParts(d, mine) {
+  const words = String(d.text ?? '');
+  const [before, after] = reminderLine(d);
+  return [before, h('span', { ...(String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words)), text: words }), after];
+}
+
 /** Whose search grounded a reply: the name it gave, Google Search's by default. @param {any} d */
 const sourceOf = (d) => String(d?.source || /* en */ 'Google Search');
 
@@ -286,10 +296,7 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') {
-      // Its words are a watch's: Shiori's, or for the plan's own watches annai's English, as stored.
-      const words = String(d.text ?? '');
-      const [before, after] = reminderLine(d);
-      return h('li', { class: 'system-line' }, before, h('span', { ...(String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words)), text: words }), after);
+      return h('li', { class: 'system-line' }, ...reminderParts(d, mine));
     }
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
     if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: d.from === 'koe' ? t`Koe to Kokoro:` : t`Kokoro to Koe:` }), sentenceGap(), h('span', { ...hers(String(texts.text ?? '')), text: String(texts.text ?? '') })) : null;
