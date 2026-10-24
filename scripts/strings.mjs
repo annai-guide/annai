@@ -370,9 +370,10 @@ const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '
 /**
  * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
  * is a name only where a name stands, not as the first word of a sentence ("Plan your day", "Ask Shiori"); a lowercase one (a thing)
- * is also met with a capital. The longest terms go first, and their words are not read again as a shorter term's.
+ * is also met with a capital. A name kept as written (Shiori, Koe) is a name wherever it stands. The longest terms go first, and their
+ * words are not read again as a shorter term's. @param {Set<string>} [never] the terms kept as written
  */
-function naming(/** @type {string} */ english, /** @type {string[]} */ ens) {
+function naming(/** @type {string} */ english, /** @type {string[]} */ ens, never = new Set()) {
   let rest = english;
   /** @type {string[]} */
   const found = [];
@@ -384,7 +385,7 @@ function naming(/** @type {string} */ english, /** @type {string[]} */ ens) {
     const m = re.exec(rest);
     if (!m) continue;
     const opens = m.index === 0 && rest.slice(m[0].length).replace(/[\s.!?…:]+$/u, '') !== '';
-    if (lower || !opens) found.push(en);
+    if (lower || !opens || never.has(en)) found.push(en);
     rest = rest.replace(re, ' ');
   }
   return found;
@@ -401,7 +402,7 @@ export function glossaryWarnings(glossary, tag, rows) {
   const out = [];
   for (const r of rows) {
     if (!r.text || r.state === 'new') continue;
-    for (const en of naming(r.en, usable.map((g) => g.en))) {
+    for (const en of naming(r.en, usable.map((g) => g.en), new Set(usable.filter((g) => g.kind === 'never').map((g) => g.en)))) {
       const g = /** @type {Term} */ (usable.find((x) => x.en === en));
       const term = termOf(g);
       if (!r.text.includes(term)) out.push({ file: `l10n/${tag}.tsv`, line: r.line ?? 0, message: `"${r.en}" names ${g.kind === 'never' ? '' : 'the glossary\'s '}"${g.en}", which is "${term}" in ${tag}, and the text doesn't use it` });
