@@ -629,6 +629,30 @@ test('under Japanese screens an English line is English, a script annai cannot t
   expect(fonts.ko).not.toContain('Hiragino');
 });
 
+test('under Japanese screens the languages you speak are named in Japanese, each with its own name beside it', async ({ page }) => {
+  needJapanese();
+  await openApp(page, '#/shiori');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { updateAppSettings } = await import(at('/src/core/settings.js'));
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { languages: { spoken: ['ja', 'en'], answer: 'en', ui: 'ja' } });
+    store.close();
+    localStorage.setItem('annai.ui', 'ja');
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  const panel = page.getByRole('region', { name: JA[key('Languages')], exact: true });
+  await expect(panel.locator('li[data-lang="en"] .lang-name')).toHaveText('英語 English');
+  await expect(panel.locator('li[data-lang="ja"] .lang-name')).toHaveText('日本語');
+  await expect(panel.getByRole('button', { name: JA[key('Remove {0}')].replace('{0}', '英語') })).toBeVisible();
+  await expect(page.locator('#language-answer option[value="en"]')).toHaveText(JA[key('{0} · {1}')].replace('{0}', '英語').replace('{1}', 'English'));
+  await panel.getByRole('button', { name: JA[key('Remove {0}')].replace('{0}', '英語') }).click();
+  await expect(panel.getByRole('status')).toHaveText(JA[key('{0} removed; Shiori answers in the language you speak to her again. Saved')].replace('{0}', '英語'));
+});
+
 test('Don\'t restart, on the card that waits for Shiori, gives the row back and says the change waits', async ({ page }) => {
   needJapanese();
   const reply = { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Low tide is at 5:40.' } }, { name: 'sleep', input: {} }]), delayMs: 6000 };
