@@ -978,7 +978,7 @@ export class Halves {
   #kokoroFailed(why, e) {
     if (!this.#works()) return false;
     const attempts = e instanceof AllFailedError ? e.attempts : [];
-    const rest = attempts.find((a) => a.error?.startsWith('its daily limit'));
+    const rest = attempts.find((a) => a.restsUntil);
     const kind = attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok');
     // Only resting models: why they rest is the failure before.
     if (rest || kind || !attempts.length) this.#why = rest ? `${rest.name}: ${rest.error}.` : kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : why;

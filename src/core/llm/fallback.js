@@ -1,6 +1,7 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { t } from '../l10n.js';
 import { when } from '../intl.js';
+import { dayIn, timeIn, deviceZone } from '../time.js';
 import { ProviderError, portable, explain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
@@ -62,11 +63,15 @@ const refusesRequired = (message) => /tool_?choice/i.test(message) || (/\brequir
 /** A rest longer than this is a provider's day limit, said plainly (not in its billing words). */
 export const LONG_REST_MS = 10 * 60_000;
 
-/** A long rest in plain words, with the local time it ends. @param {number} until @param {number} now */
+/**
+ * A long rest in plain English, with the time it ends on a 24-hour clock ("17:00", "Friday 17:00"): models read it (Koe's note, a photo's
+ * stand-in) and code finds the attempt by its restsUntil, so no language changes it. The user's sentence is made in failedText.
+ * @param {number} until @param {number} now
+ */
 export function restText(until, now) {
-  const clock = when(until, undefined, { hour: '2-digit', minute: '2-digit' });
-  const same = new Date(until).toDateString() === new Date(now).toDateString();
-  return t`its daily limit is used up; it rests until ${same ? clock : `${when(until, undefined, { weekday: 'long' })} ${clock}`}`;
+  const tz = deviceZone();
+  const day = dayIn(until, tz) === dayIn(now, tz) ? '' : `${new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(until)} `;
+  return `its daily limit is used up; it rests until ${day}${timeIn(until, tz)}`;
 }
 
 /** Every model of a role failed. attempts says how; said is any text a reply had already given. */
@@ -90,17 +95,24 @@ const PASSED = Object.freeze({
 /**
  * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
- * @param {Attempt[]} attempts @param {{ offline?: boolean }} [o]
+ * @param {Attempt[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
  */
-export function failedText(attempts, { offline = false } = {}) {
+export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
   for (const a of attempts) {
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
     const said = a.outcome === 'unreachable' ? '' : a.error ?? '';
     let why = said || /** @type {Record<string, string>} */ (PASSED)[a.outcome] || explain(new ProviderError(/** @type {any} */ (a.outcome), a.outcome));
-    if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1); // a sentence, though annai's name stays lower case
-    if (!/[.!?]$/.test(why)) why += '.';
+    if (a.restsUntil && !plain) {
+      // A day limit: the user's sentence is a whole message, with the time as their phone writes it.
+      const clock = when(a.restsUntil, undefined, { hour: '2-digit', minute: '2-digit' });
+      const at = dayIn(a.restsUntil, deviceZone()) === dayIn(now, deviceZone()) ? clock : `${when(a.restsUntil, undefined, { weekday: 'long' })} ${clock}`;
+      why = t`Its daily limit is used up; it rests until ${at}.`;
+    } else {
+      if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1); // a sentence, though annai's name stays lower case
+      if (!/[.!?]$/.test(why)) why += '.';
+    }
     if (!lines.has(a.name)) lines.set(a.name, new Set());
     lines.get(a.name)?.add(why);
   }
@@ -337,7 +349,7 @@ export async function callRole(c) {
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
-      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}) });
+      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}), ...(why && skip === 'benched' ? { restsUntil: bench.until(id) } : {}) });
       continue;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
@@ -437,7 +449,7 @@ export async function callRole(c) {
         }
         if (step.bench !== undefined) {
           const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
-          if (long) attempts[attempts.length - 1].error = long;
+          if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
           bench.bench(id, step.bench, now(), long);
         }
         break;
