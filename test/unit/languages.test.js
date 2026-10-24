@@ -4,6 +4,22 @@ import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages,
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
 
+test('a language the browser has no name of its own for (Chromium\'s ICU and Cantonese) gets annai\'s: 粵語, never "Cantonese · Cantonese"', () => {
+  const real = Intl.DisplayNames;
+  const of = (/** @type {string} */ id) => /** @type {import('../../src/core/languages.js').Language} */ (LANGUAGES.find((l) => l.id === id));
+  try {
+    for (const lacking of [(/** @type {string} */ code) => (code === 'yue' ? 'Cantonese' : undefined), (/** @type {string} */ code) => code]) {
+      // As Chromium answers: the English name, or the code back, for yue; the rest as the browser has them.
+      /** @type {any} */ (Intl).DisplayNames = (class extends real { of(/** @type {string} */ code) { return code === 'yue' ? lacking(code) : super.of(code); } });
+      assert.equal(nativeName(of('yue')), '粵語');
+      assert.equal(nativeName(of('ja')), '日本語', 'one the browser has stays the browser\'s');
+      assert.equal(nativeName(of('fil')), 'Filipino', 'and one whose own name is its English one stays so');
+    }
+  } finally {
+    /** @type {any} */ (Intl).DisplayNames = real;
+  }
+});
+
 test('every language has a name and the codes each model takes, and the browser knows its name for itself; ids are unique', () => {
   const ids = new Set(LANGUAGES.map((l) => l.id));
   assert.equal(ids.size, LANGUAGES.length);
