@@ -164,7 +164,7 @@ export function limitText(limit) {
 
 /**
  * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure, so it takes the
- * screens'; empty when the screens' would be wrong for it, under a Chinese, Japanese or Korean interface) and `dir="auto"`.
+ * screens'; empty when theirs would be wrong for it) and `dir="auto"`.
  * Used as `h('p', { ...say(text), text })`, or `mark(el, say(text))`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
  * @returns {(text: string) => { lang: string | undefined, dir: 'auto' }}
  */

@@ -6,8 +6,7 @@ import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 const html = document.documentElement;
 let own;
 try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
-// The choice kept on this device (a language annai has, finished or not); else, or when it is no longer offered, the first of the
-// phone's languages annai has, by language and script: zh-TW is Traditional, not Simplified.
+// The device's choice, else the first of the phone's languages annai has (zh-TW is Traditional, not Simplified).
 let { tag, region } = chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED);
 const pseudo = ['localhost', '127.0.0.1'].includes(location.hostname) ? new URLSearchParams(location.search).get('l10n') : null;
 if (pseudo === 'en-XA' || pseudo === 'ar-XB') {
