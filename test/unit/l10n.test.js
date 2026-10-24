@@ -113,3 +113,13 @@ test('holes lists the placeholders, once each, in order', () => {
   assert.equal(holes('{1} and {0} and {1}'), '{0}{1}');
   assert.equal(holes('none'), '');
 });
+
+test('plural without a translation is English in English\'s way, whatever the interface language counts like', () => {
+  setWords('ja', {});
+  assert.equal(plural(1, '# stamp', '# stamps'), '1 stamp');
+  assert.equal(plural(2, '# stamp', '# stamps'), '2 stamps');
+  setWords('ar', { [key('# stamp\0# stamps')]: { zero: 'Z #' } });
+  assert.equal(plural(1, '# stamp', '# stamps'), '1 stamp', 'a category the words lack falls to other, then to English');
+  setWords('ru', {});
+  assert.equal(plural(21, '# stamp', '# stamps'), '21 stamps');
+});

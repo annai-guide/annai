@@ -80,7 +80,7 @@ export function languagesSection(ctx, app) {
         i < ids.length - 1 ? button('down', W.moveDownLabel(l.name), W.moveDownText, () => change(swap(i), W.moved(l.name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
         button('remove', W.removeLabel(l.name), W.remove, () => remove(id), ids.length < 2));
     }));
-    hint.textContent = chosen ? W.spokenHint : `${W.empty} ${W.spokenHint}`;
+    hint.textContent = chosen ? W.spokenHint : W.emptyHint;
     add.replaceChildren(h('option', { value: '', text: W.add }), ...LANGUAGES.filter((l) => !ids.includes(l.id)).map((l) => h('option', { value: l.id, text: optionText(l) })));
     addButton.disabled = true;
     // Shiori answers in one of those listed, or follows you.

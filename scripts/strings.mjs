@@ -32,7 +32,12 @@ const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
 /** Properties that hold a code, not words: a class, an id, a type, a link. */
 const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value']);
-const SHOWN_CALLS = new Set(['field', 'checkbox', 'toast', 'card', 'twoStep']);
+/** The calls that show words, and which of their arguments (dom.js's labelled controls too); `pairs`: the second is [value, label][]. */
+const SHOWN_CALLS = new Map([
+  ['field', [0]], ['checkbox', [0]], ['toast', [0]], ['card', [0]], ['twoStep', [0, 1]], ['jsonField', [0]], ['savedField', [0]], ['savedCheck', [0]],
+  ['radios', [0]], ['savedRadios', [0]],
+]);
+const PAIRS = new Set(['radios', 'savedRadios']);
 
 /**
  * @typedef {{ key: string, kind: 't' | 'plural', context: string, source: string, forms?: { one: string, other: string }, file: string, line: number, values: string[] }} Message
@@ -49,16 +54,39 @@ const lineOf = (sf, node) => sf.getLineAndCharacterOfPosition(node.getStart(sf))
 /** @param {ts.Node} n @returns {n is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral} */
 const isText = (n) => ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n);
 
-/** Which of t, tc and plural a file imports, by the name it gives them. @param {ts.SourceFile} sf */
-function importedNames(sf) {
+/** The module a specifier names, when it is where t, tc and plural come from. @param {ts.Expression | undefined} spec */
+const wordsModule = (spec) => !!spec && ts.isStringLiteral(spec) && /\/(l10n|dom)\.js$/.test(spec.text);
+
+/**
+ * How a file gets t, tc and plural: by name (`import { t as tr }`) or through a namespace (`import * as L`), and the import shapes of
+ * the words it can't follow: a default import, and a re-export (dom.js alone re-exports them, for the screens).
+ * @param {ts.SourceFile} sf @param {string} file
+ */
+function importedNames(sf, file) {
+  /** @type {Map<string, string>} */
   const names = new Map();
+  /** @type {Set<string>} */
+  const spaces = new Set();
+  /** @type {{ node: ts.Node, message: string }[]} */
+  const refused = [];
   for (const st of sf.statements) {
-    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier)) continue;
-    if (!/\/(l10n|dom)\.js$/.test(st.moduleSpecifier.text)) continue;
-    const named = st.importClause?.namedBindings;
-    if (named && ts.isNamedImports(named)) for (const e of named.elements) names.set(e.name.text, (e.propertyName ?? e.name).text);
+    if (ts.isImportDeclaration(st) && wordsModule(st.moduleSpecifier)) {
+      const clause = st.importClause;
+      const named = clause?.namedBindings;
+      if (clause?.name) refused.push({ node: st, message: "a default import of the words: annai can't follow it, import { t, tc, plural } by name" });
+      if (named && ts.isNamedImports(named)) for (const e of named.elements) names.set(e.name.text, (e.propertyName ?? e.name).text);
+      else if (named && ts.isNamespaceImport(named)) spaces.add(named.name.text);
+    } else if (ts.isExportDeclaration(st) && wordsModule(st.moduleSpecifier) && file !== 'src/ui/dom.js') {
+      refused.push({ node: st, message: "a re-export of the words outside src/ui/dom.js: annai can't follow it, import them where they are used" });
+    }
   }
-  return names;
+  return { names, spaces, refused };
+}
+/** Which of t, tc and plural an expression names: an imported name, or a member of a namespace import. @param {ReturnType<typeof importedNames>} imports @param {ts.Node} n */
+function markerOf(imports, n) {
+  if (ts.isIdentifier(n)) return imports.names.get(n.text) ?? null;
+  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && imports.spaces.has(n.expression.text) && ['t', 'tc', 'plural'].includes(n.name.text)) return n.name.text;
+  return null;
 }
 
 /**
@@ -68,13 +96,14 @@ function importedNames(sf) {
  */
 export function readMessages(file, text) {
   const sf = parse(file, text);
-  const names = importedNames(sf);
+  const imports = importedNames(sf, file);
   /** @type {Message[]} */
   const messages = [];
   /** @type {Problem[]} */
   const errors = [];
   const bad = (/** @type {ts.Node} */ n, /** @type {string} */ message) => errors.push({ file, line: lineOf(sf, n), message });
-  const is = (/** @type {ts.Node} */ n, /** @type {string} */ what) => ts.isIdentifier(n) && names.get(n.text) === what;
+  const is = (/** @type {ts.Node} */ n, /** @type {string} */ what) => markerOf(imports, n) === what;
+  for (const r of imports.refused) bad(r.node, r.message);
   /** @param {ts.TemplateLiteral} tpl */
   const sourceOf = (tpl) => (ts.isNoSubstitutionTemplateLiteral(tpl) ? tpl.text : tpl.templateSpans.reduce((s, sp, i) => `${s}{${i}}${sp.literal.text}`, tpl.head.text));
   const visit = (/** @type {ts.Node} */ n) => {
@@ -98,7 +127,7 @@ export function readMessages(file, text) {
       else if (is(n.expression, 'plural')) {
         const [, one, other, ...rest] = n.arguments;
         if (!one || !other || !isText(one) || !isText(other)) bad(n, 'plural needs its two forms as plain strings');
-        else messages.push({ key: key(`${one.text}\0${other.text}`), kind: 'plural', context: '', source: `${one.text}\0${other.text}`, forms: { one: one.text, other: other.text }, file, line: lineOf(sf, n), values: ['n', ...rest.map((v) => v.getText(sf))] });
+        else messages.push({ key: key(`${one.text}\0${other.text}`), kind: 'plural', context: '', source: `${one.text}\0${other.text}`, forms: { one: one.text, other: other.text }, file, line: lineOf(sf, n), values: [n.arguments[0].getText(sf), ...rest.map((v) => v.getText(sf))] });
       }
     }
     ts.forEachChild(n, visit);
@@ -159,7 +188,8 @@ const unescape = (s) => s.replace(/\\(\\|t|n)/g, (m, c) => (c === 't' ? '\t' : c
 export function readTsv(text) {
   /** @type {Row[]} */
   const rows = [];
-  text.split('\n').forEach((line, i) => {
+  text.split('\n').forEach((raw, i) => {
+    const line = raw.replace(/\r$/, '');
     if (i === 0 || !line.trim()) return;
     const [k = '', state = '', en = '', body = '', where = '', note = ''] = line.split('\t').map(unescape);
     rows.push({ key: k, state, en, text: body, where, note, line: i + 1 });
@@ -223,7 +253,7 @@ export function updateRows(old, messages, tag) {
     const [o] = orphans.splice(i, 1);
     r.state = 'draft';
     r.text = o.text;
-    r.note = `${r.note}; ${WAS}${o.en}`;
+    r.note = [r.note, `${WAS}${o.en}`].filter(Boolean).join('; ');
   }
   const at = (/** @type {{ where: string }} */ r) => /** @type {[string, number]} */ ([fileOf(r.where), Number(r.where.split(':').pop())]);
   return rows.sort((a, b) => {
@@ -288,9 +318,16 @@ export async function update(root) {
 
 // ---- the check ----
 
-/** Whether a node, or what holds it, is marked as English on purpose. @param {ts.SourceFile} sf @param {ts.Node} node */
+/** A function or a class, or a statement that makes one: a mark above it is no mark on what is inside. @param {ts.Node} n */
+const holdsCode = (n) => ts.isFunctionDeclaration(n) || ts.isClassDeclaration(n)
+  || (ts.isVariableStatement(n) && n.declarationList.declarations.some((d) => d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer) || ts.isClassExpression(d.initializer))));
+/**
+ * Whether a node, or what holds it, is marked as English on purpose: a /* en *\/ before it or before a statement or expression that
+ * holds it. A mark above a function or class covers the line it is on, not the body: mark the statement inside.
+ * @param {ts.SourceFile} sf @param {ts.Node} node
+ */
 function markedEnglish(sf, node) {
-  for (let n = /** @type {ts.Node | undefined} */ (node); n && n !== sf; n = n.parent) if (/\/\*\s*en\b/.test(sf.text.slice(n.getFullStart(), n.getStart(sf)))) return true;
+  for (let n = /** @type {ts.Node | undefined} */ (node); n && n !== sf; n = n.parent) if (!holdsCode(n) && /\/\*\s*en\b/.test(sf.text.slice(n.getFullStart(), n.getStart(sf)))) return true;
   return false;
 }
 /** A name written as an identifier or a string. @param {ts.PropertyName} n */
@@ -304,11 +341,12 @@ function staticText(n) {
 
 /**
  * The bare English in the places a screen surely shows it: a child of h(); text, title, aria-label, placeholder, label, alt or
- * body in an object; the first argument of field, checkbox, toast, card or twoStep. `/* en *\/` marks English on purpose.
+ * body in an object; the first argument of field, checkbox, toast, card or twoStep. A value joined on with + counts, and the values inside a message. `/* en *\/` marks English on purpose.
  * @param {string} file @param {string} text @returns {{ line: number, text: string }[]}
  */
 export function bareEnglish(file, text) {
   const sf = parse(file, text);
+  const imports = importedNames(sf, file);
   /** @type {{ line: number, text: string }[]} */
   const out = [];
   /** Looks through the ways a shown value is chosen. @param {ts.Node} n */
@@ -317,6 +355,8 @@ export function bareEnglish(file, text) {
     else if (ts.isConditionalExpression(n)) { shown(n.whenTrue); shown(n.whenFalse); }
     else if (ts.isBinaryExpression(n) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(n.operatorToken.kind)) { shown(n.left); shown(n.right); }
     else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) shown(n.right);
+    else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusToken) { shown(n.left); shown(n.right); }
+    else if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'String' && n.arguments[0]) shown(n.arguments[0]);
     else if (ts.isArrayLiteralExpression(n)) n.elements.forEach(shown);
     else {
       const s = staticText(n);
@@ -327,7 +367,15 @@ export function bareEnglish(file, text) {
     if (ts.isCallExpression(n)) {
       const callee = ts.isIdentifier(n.expression) ? n.expression.text : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : '';
       if (ts.isIdentifier(n.expression) && callee === 'h') n.arguments.slice(2).forEach(shown);
-      else if (SHOWN_CALLS.has(callee) && n.arguments[0]) shown(n.arguments[0]);
+      else if (SHOWN_CALLS.has(callee)) {
+        for (const i of SHOWN_CALLS.get(callee) ?? []) if (n.arguments[i]) shown(n.arguments[i]);
+        const options = n.arguments[1];
+        if (PAIRS.has(callee) && options && ts.isArrayLiteralExpression(options)) for (const o of options.elements) if (ts.isArrayLiteralExpression(o) && o.elements[1]) shown(o.elements[1]);
+      }
+      // The values of a message are code, but English in them is shown (t`Saved ${ok ? 'Kept' : 'Lost'}`).
+      if (markerOf(imports, n.expression) === 'plural') n.arguments.slice(3).forEach(shown);
+    } else if (ts.isTaggedTemplateExpression(n) && ts.isTemplateExpression(n.template) && (markerOf(imports, n.tag) === 't' || (ts.isCallExpression(n.tag) && markerOf(imports, n.tag.expression) === 'tc'))) {
+      for (const span of n.template.templateSpans) shown(span.expression);
     } else if (ts.isPropertyAssignment(n) && SHOWN_PROPS.has(nameOf(n.name))) shown(n.initializer);
     ts.forEachChild(n, visit);
   };
@@ -412,8 +460,12 @@ export function findWords(file, text) {
   const visit = (/** @type {ts.Node} */ n) => {
     const s = staticText(n);
     if (s !== null && readsAsWords(s) && !skipped(sf, n) && !markedEnglish(sf, n)) out.push({ line: lineOf(sf, n), text: s.trim() });
-    if (!ts.isTaggedTemplateExpression(n) || !(ts.isIdentifier(n.tag) || ts.isCallExpression(n.tag))) ts.forEachChild(n, visit);
-    else ts.forEachChild(n.tag, visit);
+    // A tagged template's words are its tag's business (t marks them); the code in its ${} is looked at all the same.
+    if (!ts.isTaggedTemplateExpression(n)) ts.forEachChild(n, visit);
+    else {
+      visit(n.tag);
+      if (ts.isTemplateExpression(n.template)) for (const span of n.template.templateSpans) visit(span.expression);
+    }
   };
   visit(sf);
   return out;

@@ -70,15 +70,12 @@ export function languageSettings(app, locale) {
   return { explicit: false, spoken: [browserLanguage(locale)], answer };
 }
 
-/* en */
 /** "English", "English and Japanese", "English, Chinese (Mandarin) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
 export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n, i, a) => (i ? `${s}${i === a.length - 1 ? ` ${and} ` : ', '}${n}` : n), '');
 
-/* en */
 /** What a model that writes speech down is told (phase 2), after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
-export const speakerLine = (s) => (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
+export const speakerLine = (s) => /* en */ (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
 
-/* en */
 /**
  * What every model that hears or speaks is told (the user, 2026-10-23), once, in the same words: Shiori's and Kokoro's system text,
  * Koe's, and a live session's. OpenAI's own prompting guide warns against "reply in the user's language" (the model takes an
@@ -87,10 +84,14 @@ export const speakerLine = (s) => (!s.explicit ? '' : `The speaker uses ${named(
  */
 export function languagesText(s) {
   const list = named(s.spoken);
+  /* en */
   const rest = "Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.";
   // Until the user picks, all annai knows is what the phone is set to: not that they speak it, and not that they speak nothing else.
+  /* en */
   if (!s.explicit) return `The user's phone is set to ${list}${s.answer ? `. Always answer in ${s.answer.name}, whatever language they use` : ', and they may speak other languages. Answer in the language they used'}. ${rest}`;
+  /* en */
   if (s.answer) return `The user speaks ${list}. Always answer in ${s.answer.name}, whatever language they use. ${rest}`;
+  /* en */
   return `The user speaks ${list}${s.spoken.length > 1 ? '; they may switch between these' : ''}. Answer in the language they used. ${rest}`;
 }
 
@@ -132,7 +133,6 @@ const COMMON = Object.entries({
 /** A mark only one of them has counts as a word: ¿ ¡ ñ (Spanish), ß (German), ã õ (Portuguese). */
 const MARKS = /** @type {Record<string, RegExp>} */ ({ Spanish: /[¿¡ñ]/u, German: /ß/u, Portuguese: /[ãõ]/u });
 
-/* en */
 /**
  * The language a text is written in, by name, or '' when it can't be told. min: how many words of one language's list (a mark counts as
  * one) a Latin text needs, alone at the top: 1 for a long text (a summary's language); 2 for a word or two, where one hit is a name or a
@@ -142,7 +142,9 @@ export function languageOf(text, min = 1) {
   const letters = (text.match(/\p{L}/gu) ?? []).length;
   for (const [re, name] of SCRIPTS) {
     if ((text.match(re) ?? []).length * 2 <= letters) continue;
+    /* en */
     if (name === 'Chinese') return /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text) ? 'Japanese' : name;
+    /* en */
     return name === 'Russian' && /[іїєґ]/i.test(text) ? 'Ukrainian' : name;
   }
   const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
@@ -156,12 +158,12 @@ const SHARED_MARKS = /[âêôđ]/iu;
 /** Listed languages that use â ê ô or đ themselves: with one listed, those marks alone say nothing of Vietnamese. */
 const USES_SHARED = ['fr', 'pt', 'ro', 'tr', 'sk', 'hr'];
 
-/* en */
 /**
  * 'Vietnamese' when a text has its marks. spoken: the listed languages, which keep â ê ô đ from meaning Vietnamese when one of them uses
  * those letters. @param {string} text @param {Language[]} [spoken]
  */
 export function vietnameseMarks(text, spoken = []) {
+  /* en */
   return VIETNAMESE.test(text) || (SHARED_MARKS.test(text) && !spoken.some((l) => USES_SHARED.includes(l.id))) ? 'Vietnamese' : '';
 }
 
@@ -258,9 +260,8 @@ export function strayLanguage(text, s) {
   return guess && !listedFor(guess, s.spoken) ? guess : '';
 }
 
-/* en */
 /** What the model that reads a flagged heard line is told beside it (review: Kokoro should know a line may be a mishearing). @param {string} language */
-export const strayNote = (language) => ` (heard; may be misheard as ${language})`;
+export const strayNote = (language) => /* en */ ` (heard; may be misheard as ${language})`;
 
 /**
  * The setting's own words, in one place: each a message (localization L1), so the screen draws them in the language of the day. A
@@ -293,5 +294,5 @@ export const LANGUAGE_WORDS = {
   answeredFollow: () => [t`Shiori answers in the language you speak to her`, t`Shiori answers in the language you speak to her. Saved`],
   answerLabel: t`Shiori answers in`,
   follow: t`The language you speak to her`,
-  empty: t`None picked: annai uses the browser’s language.`,
+  emptyHint: t`None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.`,
 };
