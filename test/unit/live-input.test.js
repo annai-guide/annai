@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, room, hum, brown, RATE } from './voice-kit.js';
+import { clip, quiet, cat, mix, burst, room, hum, brown, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -340,6 +340,22 @@ test('a microphone that opens with zeros: a short word said at once is sent whol
     await r.input.start();
     r.feed(up3(cat(zeros, noise)));
     assert.deepEqual(r.sent, [], 'nothing left the phone');
+    r.input.stop();
+  }
+});
+
+test('Koe speaks first as a microphone that opened with zeros hears a car: the car, held as unsure speech, is not the user cutting her (detector-floor review 1)', async () => {
+  for (const at of [0.1, 0.3, 0.6]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    const car = brown(6, 0.5);
+    r.feed(up3(cat(new Float32Array(RATE / 2), car.subarray(0, Math.round(at * RATE)))));
+    playing = true;
+    r.feed(up3(mix(car.subarray(Math.round(at * RATE), Math.round((at + 2) * RATE)), lunch.map((x) => x * 0.3))));
+    playing = false;
+    r.feed(up3(car.subarray(Math.round((at + 2) * RATE))));
+    assert.deepEqual(r.sent, [], `her voice ${at} s into the car: nothing left the phone`);
     r.input.stop();
   }
 });
