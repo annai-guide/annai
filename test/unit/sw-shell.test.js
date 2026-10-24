@@ -24,6 +24,8 @@ test('the service worker caches exactly the files the app ships', async () => {
   const sw = await readFile(new URL('sw.js', root), 'utf8');
   const block = /const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '';
   const shell = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+  // A path listed twice would be copied twice at an update, and the second copy fails it: no update would ever install.
+  assert.deepEqual(shell.filter((p, i) => shell[i - 1] === p), [], 'no path is listed twice');
   // LICENSE too, so Settings → About → Read the licence works offline.
   const expected = ['/', '/index.html', '/manifest.webmanifest', '/LICENSE', ...(await walk('src')).filter((p) => p !== PSEUDO), ...(await walk('assets')), ...(await walk('skills'))].sort();
   assert.deepEqual(shell, expected);

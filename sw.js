@@ -316,10 +316,7 @@ sw.addEventListener('install', (event) => {
 
 /** Where a shell cache records the hash of each shell file it holds: { files: { path: hash } }. */
 const RECORD = '/shell-record.json';
-/** A hash, as stamp.mjs writes them in shell.json ({ build, files: { path: hash } }): 12 hex digits of the file's SHA-256. */
-const HASH = /^[0-9a-f]{12}$/;
-
-/** @param {Response} res */
+/** A file's hash, as stamp.mjs writes them in shell.json ({ build, files: { path: hash } }): 12 hex digits of its SHA-256. @param {Response} res */
 async function hashOf(res) {
   const sum = new Uint8Array(await crypto.subtle.digest('SHA-256', await res.arrayBuffer()));
   return [...sum].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
@@ -327,7 +324,8 @@ async function hashOf(res) {
 
 /**
  * The shell files the newest shell cache with a readable record holds under this build's hash (res: null when that cache is this
- * build's own). None when there is no such cache (a first install), or this build's manifest can't be had.
+ * build's own). None when there is no such cache (a first install), or this build's manifest can't be had. Never a page: its
+ * headers carry the site's policy (CSP, Permissions-Policy), and a release may change that alone.
  * @returns {Promise<Map<string, { res: Response | null, hash: string }>>}
  */
 async function unchanged() {
@@ -340,9 +338,9 @@ async function unchanged() {
     const res = await fetch(new Request('/shell.json', { cache: 'reload' })).catch(() => null);
     const manifest = res?.ok ? await res.json().catch(() => null) : null;
     const want = manifest?.build === BUILD ? filesOf(manifest) : null;
-    for (const path of want ? SHELL : []) {
+    for (const path of want ? SHELL.filter((p) => !/(?:\/|\.html)$/.test(p)) : []) {
       const hash = want?.[path];
-      const kept = typeof hash === 'string' && HASH.test(hash) && had[path] === hash ? await old.match(path) : null;
+      const kept = typeof hash === 'string' && had[path] === hash ? await old.match(path) : null;
       if (kept) copies.set(path, { res: name === CACHE ? null : kept, hash });
     }
     break;
