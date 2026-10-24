@@ -1,6 +1,6 @@
 // How annai formats for people (localization design, section 4): one set of Intl helpers, each formatter made once per locale.
 // The locale is the screens' language with the phone's region (l10n.js): English screens on a German phone format as en-DE.
-import { t, locale, lang } from './l10n.js';
+import { t, tc, locale, lang } from './l10n.js';
 import { LANGUAGES } from './languages.js';
 
 export { locale };
@@ -15,6 +15,14 @@ function make(Ctor, options = {}) {
   if (!f) made.set(id, f = new Ctor(locale(), options));
   return f;
 }
+
+/** Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. @param {...string} parts */
+export function sentences(...parts) {
+  const some = parts.filter(Boolean);
+  return some.length ? some.reduce((a, b) => tc('sentences')`${a} ${b}`) : '';
+}
+/** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
+export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');
 
 /** A number the way this language writes it. @param {number} n @param {Intl.NumberFormatOptions} [options] */
 export const num = (n, options) => make(Intl.NumberFormat, options).format(n);

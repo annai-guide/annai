@@ -25,7 +25,8 @@ gt9ssw	draft	annai couldn't start	annai 无法启动	src/app/main.js:377
 982hh6	draft	Try again	重试	src/app/main.js:380	
 1e9ja08#other	draft	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
 1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:103	{0} = money(spent); {1} = money(budgets.spendPerDay)
-1acz027	draft	just now	刚刚	src/core/intl.js:113	
+1tw617t	draft	{0} {1}	{0}{1}	src/core/intl.js:22	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
+1acz027	draft	just now	刚刚	src/core/intl.js:121	
 3fqfy0	draft	Languages	语言	src/core/languages.js:304	
 1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:305	
 1giusr1	draft	Languages you speak	你说的语言	src/core/languages.js:306	
@@ -89,19 +90,19 @@ la9701	draft	not backed up	未备份	src/ui/format.js:26
 1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
 7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:32	
 16name3	draft	free	免费	src/ui/format.js:33	
-12gy0yc	draft	Open annai from your Home Screen.	从主屏幕打开 annai。	src/ui/install.js:16	
-82ba67	draft	Tap the Share button in Safari.	轻点 Safari 浏览器中的“共享”按钮。	src/ui/install.js:16	Note: Apple's zh-CN guides say 轻点 for tap.
-ejxnor	draft	Choose "Add to Home Screen".	选择“添加到主屏幕”。	src/ui/install.js:16	
-1yjkliw	draft	Choose "Install and create shortcut", then "Install".	选择“安装并创建快捷方式”，然后选择“安装”。	src/ui/install.js:17	Note: Chrome's own words (Google's "Use web apps" help, zh-Hans), per the glossary's Install app row.
-tf6np0	draft	Open annai from your Home screen.	从主屏幕打开 annai。	src/ui/install.js:17	
-uqmge3	draft	Open the browser menu (⋮).	打开浏览器菜单（⋮）。	src/ui/install.js:17	
-1q8vwe5	draft	Use your browser menu to install annai as an app.	通过浏览器菜单将 annai 安装为应用。	src/ui/install.js:18	
-1gxw0ly	draft	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	这里已有的旅行：先在设置中导出全部内容，再在主屏幕上的 App 中用“打开别人发来的旅行”打开该文件。	src/ui/install.js:21	
-10jxrv9	draft	Install annai	安装 annai	src/ui/install.js:34	
-1ob0g1z	draft	annai isn't installed yet.	annai 尚未安装。	src/ui/install.js:48	
-1gizuqd	draft	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 浏览器可能会在 7 天未访问后清除你的旅行，而且主屏幕上的 App 会另外保存旅行：在这里开始的旅行不会出现在那里。请将 annai 添加到主屏幕，并在那里开始旅行。	src/ui/install.js:50	
-o22iaq	draft	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空间不足时，浏览器可能会清除你的旅行。请安装 annai，让旅行安全保存。	src/ui/install.js:51	
-hz0ihc	draft	Show me how	查看步骤	src/ui/install.js:52	
+12gy0yc	draft	Open annai from your Home Screen.	从主屏幕打开 annai。	src/ui/install.js:17	
+82ba67	draft	Tap the Share button in Safari.	轻点 Safari 浏览器中的“共享”按钮。	src/ui/install.js:17	Note: Apple's zh-CN guides say 轻点 for tap.
+ejxnor	draft	Choose "Add to Home Screen".	选择“添加到主屏幕”。	src/ui/install.js:17	
+1yjkliw	draft	Choose "Install and create shortcut", then "Install".	选择“安装并创建快捷方式”，然后选择“安装”。	src/ui/install.js:18	Note: Chrome's own words (Google's "Use web apps" help, zh-Hans), per the glossary's Install app row.
+tf6np0	draft	Open annai from your Home screen.	从主屏幕打开 annai。	src/ui/install.js:18	
+uqmge3	draft	Open the browser menu (⋮).	打开浏览器菜单（⋮）。	src/ui/install.js:18	
+1q8vwe5	draft	Use your browser menu to install annai as an app.	通过浏览器菜单将 annai 安装为应用。	src/ui/install.js:19	
+1gxw0ly	draft	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	这里已有的旅行：先在设置中导出全部内容，再在主屏幕上的 App 中用“打开别人发来的旅行”打开该文件。	src/ui/install.js:22	
+10jxrv9	draft	Install annai	安装 annai	src/ui/install.js:35	
+1ob0g1z	draft	annai isn't installed yet.	annai 尚未安装。	src/ui/install.js:49	
+1gizuqd	draft	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 浏览器可能会在 7 天未访问后清除你的旅行，而且主屏幕上的 App 会另外保存旅行：在这里开始的旅行不会出现在那里。请将 annai 添加到主屏幕，并在那里开始旅行。	src/ui/install.js:51	
+o22iaq	draft	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空间不足时，浏览器可能会清除你的旅行。请安装 annai，让旅行安全保存。	src/ui/install.js:52	
+hz0ihc	draft	Show me how	查看步骤	src/ui/install.js:53	
 n3y7d4	draft	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
 967kb3	draft	Getting {0}…	正在获取{0}…	src/ui/languages.js:198	{0} = name
 ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:199	{0} = name
@@ -113,16 +114,14 @@ dc30do	draft	annai shows English until it is online.	联网之前，annai 显示
 8rqn0k	draft	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:242	{0} = name
 150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:243	{0} = name
 1of7r8x	draft	Restart annai	重启 annai	src/ui/languages.js:244	
-19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	必须开启定位服务：设置 → 隐私与安全 → 定位服务。	src/ui/live-help.js:13	
-6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：设置 → 隐私与安全 → 定位服务 → Safari 浏览器网站 → 使用 App 期间，以及设置 → App → Safari 浏览器 → 位置 → 允许。	src/ui/live-help.js:15	Note: The rows' names as the glossary gives them; Safari 浏览器网站, 使用 App 期间 and Safari's 位置 are to be checked on a phone (glossary).
-m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：轻点地址栏中的“页面菜单”按钮，然后选择网站设置 → 位置 → 允许（或设置 → App → Safari 浏览器 → 位置 → 允许）。	src/ui/live-help.js:16	Note: “页面菜单”按钮 as Apple's zh-cn guide names it; 网站设置 is to be checked on a phone (glossary).
-1tw617t	draft	{0} {1}	{0}{1}	src/ui/live-help.js:18	context: sentences; {0} = iphone; {1} = services; Note: Two sentences side by side: no space between them in Chinese.
-687eo2	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	在 Android 上：轻点地址左侧的图标（在已安装的应用中：长按 annai 图标，然后选择应用信息 → 权限），并允许位置信息。	src/ui/live-help.js:20	Note: Android's 位置信息, as the glossary's Location row says for Android.
-1ell92d	draft	Allow location for this site in your browser's site settings.	请在浏览器的网站设置中允许此网站使用位置信息。	src/ui/live-help.js:21	
-37e0kb	draft	Location isn't allowed, so GPS has only its time reminders.	位置信息未获允许，因此 GPS 只有按时间的提醒。	src/ui/live-help.js:22	
-ozmn9a	draft	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	然后关闭 GPS 再重新开启。或者告诉 annai 你在哪里：轻点 GPS 按钮 → 你在哪里？	src/ui/live-help.js:23	Note: "Where are you?" is the GPS chip's own item (live-chip.js): its draft must say the same when that file is translated.
-141ivnq	draft	annai can't see where you are	annai 无法获取你的位置	src/ui/live-help.js:24	
-1hevj0h	draft	{0} {1} {2}	{0}{1}{2}	src/ui/live-help.js:24	context: sentences; {0} = refused; {1} = steps; {2} = again; Note: Three sentences side by side: no spaces between them in Chinese.
+19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	必须开启定位服务：设置 → 隐私与安全 → 定位服务。	src/ui/live-help.js:14	
+6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：设置 → 隐私与安全 → 定位服务 → Safari 浏览器网站 → 使用 App 期间，以及设置 → App → Safari 浏览器 → 位置 → 允许。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; Safari 浏览器网站, 使用 App 期间 and Safari's 位置 are to be checked on a phone (glossary).
+m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：轻点地址栏中的“页面菜单”按钮，然后选择网站设置 → 位置 → 允许（或设置 → App → Safari 浏览器 → 位置 → 允许）。	src/ui/live-help.js:17	Note: “页面菜单”按钮 as Apple's zh-cn guide names it; 网站设置 is to be checked on a phone (glossary).
+687eo2	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	在 Android 上：轻点地址左侧的图标（在已安装的应用中：长按 annai 图标，然后选择应用信息 → 权限），并允许位置信息。	src/ui/live-help.js:21	Note: Android's 位置信息, as the glossary's Location row says for Android.
+1ell92d	draft	Allow location for this site in your browser's site settings.	请在浏览器的网站设置中允许此网站使用位置信息。	src/ui/live-help.js:22	
+37e0kb	draft	Location isn't allowed, so GPS has only its time reminders.	位置信息未获允许，因此 GPS 只有按时间的提醒。	src/ui/live-help.js:23	
+ozmn9a	draft	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	然后关闭 GPS 再重新开启。或者告诉 annai 你在哪里：轻点 GPS 按钮 → 你在哪里？	src/ui/live-help.js:24	Note: "Where are you?" is the GPS chip's own item (live-chip.js): its draft must say the same when that file is translated.
+141ivnq	draft	annai can't see where you are	annai 无法获取你的位置	src/ui/live-help.js:25	
 1qfy6dp	draft	Hide	隐藏	src/ui/notices.js:64	
 bi2jq4	draft	Show	显示	src/ui/notices.js:64	
 icn7kg	draft	Dismiss all	全部关闭	src/ui/notices.js:69	
@@ -137,56 +136,56 @@ an1pf7	draft	Dismiss	关闭	src/ui/notices.js:156
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
-1cjjnaq	draft	Kept on this device.	保存在此设备上。	src/ui/privacy.js:25	
-tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:25	
-14xwlem	draft	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:26	
-5ycw8s	draft	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	你问 Shiori 的内容，连同她从旅行中需要的信息，会发送给你连接的模型提供商；你说的话会发送到设置 → 语音中显示的地方。她查询的地点会发送给设置 → 关于中列出的来源。记录会显示 annai 为 Shiori 发出的每个请求：她的模型调用、工具和离线包。	src/ui/privacy.js:26	Note: "her" kept where it reads natural; the Trace is 記録/记录 per the glossary.
-1g2tvlf	draft	Your keys stay yours.	密钥归你所有。	src/ui/privacy.js:27	
-1jo7026	draft	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	每个模型密钥都保存在此设备的存储中，只发送给它所属的提供商。密钥从不放进 Shiori 的模型读取的内容，在记录中会被遮盖，也不会包含在导出中，除非你选择把它们放进加密备份。	src/ui/privacy.js:27	
-12t6czb	draft	No tracking.	不追踪。	src/ui/privacy.js:28	
-5d5p39	draft	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai 没有统计分析，也没有广告。它不从其他网站加载脚本：内容安全策略只允许运行来自 annai 自己地址的脚本，你安装的代码插件除外，它们由 annai 自己存储和提供。	src/ui/privacy.js:28	
-1e9jheb	draft	Reminders stay sealed.	提醒始终加密。	src/ui/privacy.js:29	
-1ves2ac	draft	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	开启通知后，推送中继保存的每条定时提醒都在此设备上加密，它只保留手机的推送地址、每条提醒的时间、等待的数量，以及很少的其他信息：每条的取消码，以及这部手机已收到提醒的标记。关于地点的提醒从不离开手机。	src/ui/privacy.js:29	
-13wlc44	draft	Open code.	开放源代码。	src/ui/privacy.js:30	
-1qhqdx	draft	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai 的代码以 AGPL-3.0 开源，任何人都可以在 {0} 阅读。	src/ui/privacy.js:30	{0} = REPO.replace('https://', '')
-1q2zxy5	draft	Where this stops	局限	src/ui/privacy.js:31	Note: "Where this stops" as one noun heading.
-1bk8ve3	draft	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	你安装的代码插件拥有完全信任：它能读取你的旅行和密钥，它的请求也可以绕过记录。只安装你信任的插件。	src/ui/privacy.js:33	
-19jox8f	draft	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	使用模型自带的搜索或抓取（设置 → 工具）时，搜索和网页在提供商的服务器上运行，记录只显示模型的这一轮。	src/ui/privacy.js:34	
-426n3h	draft	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	密钥的安全取决于这台设备：任何能在它上面使用这个浏览器的人都能接触到它们。请锁好设备。	src/ui/privacy.js:35	
-ldqm5c	draft	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	在 iPhone 上，Safari 浏览器和主屏幕上的 App 各自保存数据：在其中一个添加的密钥和旅行不会出现在另一个里。	src/ui/privacy.js:36	
-mj3oi4	draft	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai 是自由软件，在法律允许的范围内按原样提供，不附带任何担保，依据 {0}（AGPL-3.0）授权。	src/ui/privacy.js:43	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
-19ow2h0	draft	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能会出错。预订、价格、营业时间、路线和安全信息请自己核实。	src/ui/privacy.js:44	
-5aqdvy	draft	When you drive, use her hands-free, and follow the road and the local rules.	开车时请免提使用她，并遵守路况和当地规定。	src/ui/privacy.js:45	
-hirfin	draft	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你连接的模型提供商收取的费用由你支付。你导入、抓取或连接的内容由你负责。	src/ui/privacy.js:46	
-1wdrhx6	draft	{0} {1}	{0}{1}	src/ui/provider-setup.js:21	{0} = a; {1} = b; Note: two sentences side by side; no space between them in Chinese and Japanese.
-1qelf30	draft	{0} can't add a provider at {1}: it sends keys only to none.	{0}无法在 {1} 添加提供商：它不向任何地方发送密钥。	src/ui/provider-setup.js:82	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
-rq1jha	draft	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}无法在 {1} 添加提供商：它只向 {2} 发送密钥。	src/ui/provider-setup.js:82	{0} = who; {1} = at; {2} = list(where, 'plain')
-1st0ijv	draft	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:93	
-1lwfyvo	draft	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:95	{0} = mine
-13upi6b	draft	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:123	{0} = entry.name
-17q3a6l	draft	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:123	
-1p012cf	draft	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:153	
-14m6i84	draft	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:162	{0} = finishing
-yyxfov	draft	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:167	{0} = f.name
-15aq08d	draft	The quickest start	最快的开始方式	src/ui/provider-setup.js:169	
-w9nig3	draft	Sign in	登录	src/ui/provider-setup.js:169	
-edml6o	draft	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:173	
-1rk1a1z	draft	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:203	
-sv1qqk	draft	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:203	
-gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:217	{0} = name
-1fbojq2	draft	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:223	{0} = name
-16s9khr	draft	Utility	辅助	src/ui/provider-setup.js:231	
-1fm7mjz	draft	Speech out	朗读	src/ui/provider-setup.js:231	
-mlh3jc	draft	Main	主要	src/ui/provider-setup.js:231	
-v20s4a	draft	Quick decision	快速判断	src/ui/provider-setup.js:231	
-w8niry	draft	Speech in	语音识别	src/ui/provider-setup.js:231	
-eudybe#other	draft	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:247	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	draft	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:248	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1c8it09	draft	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥是免费额度，请在此页面打开它：其模型就不再收费。	src/ui/provider-setup.js:250	
-1dsri4f	draft	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:251	
-jvtji4	draft	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:251	
-1r0x31s	draft	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:252	
-1llun41	draft	The provider	提供商	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
+1cjjnaq	draft	Kept on this device.	保存在此设备上。	src/ui/privacy.js:26	
+tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:26	
+14xwlem	draft	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:27	
+5ycw8s	draft	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	你问 Shiori 的内容，连同她从旅行中需要的信息，会发送给你连接的模型提供商；你说的话会发送到设置 → 语音中显示的地方。她查询的地点会发送给设置 → 关于中列出的来源。记录会显示 annai 为 Shiori 发出的每个请求：她的模型调用、工具和离线包。	src/ui/privacy.js:27	Note: "her" kept where it reads natural; the Trace is 記録/记录 per the glossary.
+1g2tvlf	draft	Your keys stay yours.	密钥归你所有。	src/ui/privacy.js:28	
+1jo7026	draft	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	每个模型密钥都保存在此设备的存储中，只发送给它所属的提供商。密钥从不放进 Shiori 的模型读取的内容，在记录中会被遮盖，也不会包含在导出中，除非你选择把它们放进加密备份。	src/ui/privacy.js:28	
+12t6czb	draft	No tracking.	不追踪。	src/ui/privacy.js:29	
+5d5p39	draft	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai 没有统计分析，也没有广告。它不从其他网站加载脚本：内容安全策略只允许运行来自 annai 自己地址的脚本，你安装的代码插件除外，它们由 annai 自己存储和提供。	src/ui/privacy.js:29	
+1e9jheb	draft	Reminders stay sealed.	提醒始终加密。	src/ui/privacy.js:30	
+1ves2ac	draft	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	开启通知后，推送中继保存的每条定时提醒都在此设备上加密，它只保留手机的推送地址、每条提醒的时间、等待的数量，以及很少的其他信息：每条的取消码，以及这部手机已收到提醒的标记。关于地点的提醒从不离开手机。	src/ui/privacy.js:30	
+13wlc44	draft	Open code.	开放源代码。	src/ui/privacy.js:31	
+1qhqdx	draft	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai 的代码以 AGPL-3.0 开源，任何人都可以在 {0} 阅读。	src/ui/privacy.js:31	{0} = REPO.replace('https://', '')
+1q2zxy5	draft	Where this stops	局限	src/ui/privacy.js:32	Note: "Where this stops" as one noun heading.
+1bk8ve3	draft	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	你安装的代码插件拥有完全信任：它能读取你的旅行和密钥，它的请求也可以绕过记录。只安装你信任的插件。	src/ui/privacy.js:34	
+19jox8f	draft	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	使用模型自带的搜索或抓取（设置 → 工具）时，搜索和网页在提供商的服务器上运行，记录只显示模型的这一轮。	src/ui/privacy.js:35	
+426n3h	draft	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	密钥的安全取决于这台设备：任何能在它上面使用这个浏览器的人都能接触到它们。请锁好设备。	src/ui/privacy.js:36	
+ldqm5c	draft	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	在 iPhone 上，Safari 浏览器和主屏幕上的 App 各自保存数据：在其中一个添加的密钥和旅行不会出现在另一个里。	src/ui/privacy.js:37	
+mj3oi4	draft	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai 是自由软件，在法律允许的范围内按原样提供，不附带任何担保，依据 {0}（AGPL-3.0）授权。	src/ui/privacy.js:44	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
+19ow2h0	draft	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能会出错。预订、价格、营业时间、路线和安全信息请自己核实。	src/ui/privacy.js:45	
+5aqdvy	draft	When you drive, use her hands-free, and follow the road and the local rules.	开车时请免提使用她，并遵守路况和当地规定。	src/ui/privacy.js:46	
+hirfin	draft	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你连接的模型提供商收取的费用由你支付。你导入、抓取或连接的内容由你负责。	src/ui/privacy.js:47	
+1qelf30	draft	{0} can't add a provider at {1}: it sends keys only to none.	{0}无法在 {1} 添加提供商：它不向任何地方发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
+rq1jha	draft	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}无法在 {1} 添加提供商：它只向 {2} 发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
+1st0ijv	draft	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:88	
+1lwfyvo	draft	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:90	{0} = mine
+13upi6b	draft	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:118	{0} = entry.name
+17q3a6l	draft	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:118	
+1p012cf	draft	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:148	
+14m6i84	draft	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:157	{0} = finishing
+yyxfov	draft	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:162	{0} = f.name
+15aq08d	draft	The quickest start	最快的开始方式	src/ui/provider-setup.js:164	
+w9nig3	draft	Sign in	登录	src/ui/provider-setup.js:164	
+edml6o	draft	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:168	
+1rk1a1z	draft	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:198	
+sv1qqk	draft	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:198	
+gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:212	{0} = name
+1fbojq2	draft	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:218	{0} = name
+16s9khr	draft	Utility	辅助	src/ui/provider-setup.js:226	
+1fm7mjz	draft	Speech out	朗读	src/ui/provider-setup.js:226	
+mlh3jc	draft	Main	主要	src/ui/provider-setup.js:226	
+v20s4a	draft	Quick decision	快速判断	src/ui/provider-setup.js:226	
+w8niry	draft	Speech in	语音识别	src/ui/provider-setup.js:226	
+eudybe#other	draft	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	draft	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	draft	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	draft	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥是免费额度，请在此页面打开它：其模型就不再收费。	src/ui/provider-setup.js:245	
+1dsri4f	draft	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:246	
+jvtji4	draft	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:246	
+1r0x31s	draft	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
+1llun41	draft	The provider	提供商	src/ui/provider-setup.js:253	Note: "The provider" stands where a provider's name is unknown.
 ktdb8o	draft	Settings	设置	src/ui/screens/about.js:76	
 spfq0z	draft	About annai	关于 annai	src/ui/screens/about.js:119	
 17r42id	draft	Backup places	备份位置	src/ui/screens/add.js:26	

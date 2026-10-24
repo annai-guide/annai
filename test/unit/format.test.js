@@ -1,8 +1,8 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { setWords, plural } from '../../src/core/l10n.js';
+import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, num, numField, parseNum, money, size, distance, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
+  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -291,4 +291,14 @@ test('plural\'s # is written the way the other numbers are: the screens\' langua
   as('en', 'de-DE');
   assert.equal(plural(1200, '# place', '# places'), '1.200 places');
   assert.equal(plural(1, '# place', '# places'), '1 place');
+});
+
+test('sentences side by side: a space in English, as the language joins them in Japanese, the empty left out; the gap alone for a sentence drawn apart', () => {
+  assert.equal(sentences('annai isn\'t installed yet.', '', 'Install annai.'), "annai isn't installed yet. Install annai.");
+  assert.equal(sentences('', ''), '');
+  assert.equal(sentences('Only one.'), 'Only one.');
+  assert.equal(sentenceGap(), ' ');
+  setWords('ja', { [key('{0} {1}', 'sentences')]: '{0}{1}' });
+  assert.equal(sentences('まだです。', '入れてください。', '以上です。'), 'まだです。入れてください。以上です。');
+  assert.equal(sentenceGap(), '');
 });
