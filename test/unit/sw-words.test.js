@@ -58,7 +58,7 @@ function fakeIndexedDB(settings) {
  * The service worker in a context of its own, listing these languages, with the phone's languages, the app settings and a network.
  * network: the catalogs by tag (a missing one is a 404); caches start with these names (a waiting version's too).
  */
-async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false } = {}) {
+async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} */ ([]), settings = /** @type {Record<string, string> | null} */ (null), network = /** @type {Record<string, string>} */ ({ ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}' }), cacheNames = ['annai-shell-0.1.0-old'], failAll = false, host = 'annai.guide' } = {}) {
   const source = (await readFile(new URL('sw.js', root), 'utf8')).replace('const LANGS = [];', `const LANGS = ${JSON.stringify(langs)};`);
   /** @type {Record<string, (e: any) => void>} */
   const handlers = {};
@@ -79,16 +79,22 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
         if (bad) throw new TypeError(`${bad.url} 404`);
         for (const r of reqs) /** @type {Map<string, string>} */ (stores.get(name)).set(new URL(r.url).pathname, 'x');
       },
+      match: async (/** @type {Request | string} */ req) => {
+        const text = /** @type {Map<string, string>} */ (stores.get(name)).get(new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname);
+        return text === undefined ? undefined : new Response(text);
+      },
       put: async (/** @type {string} */ key, /** @type {Response} */ res) => { /** @type {Map<string, string>} */ (stores.get(name)).set(new URL(key, 'https://annai.guide').pathname, await res.text()); },
     };
   };
   const caches = { open: async (/** @type {string} */ n) => cache(n), keys: async () => [...stores.keys()] };
   const self = {
-    location: new URL('https://annai.guide/sw.js'),
+    location: new URL(`https://${host}/sw.js`),
     navigator: { languages: phone },
     addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; },
   };
+  let down = false;
   const fetchStub = async (/** @type {Request} */ req) => {
+    if (down) throw new TypeError('Failed to fetch');
     const m = /^\/l10n\/(.+)\.json$/.exec(new URL(req.url).pathname);
     fetched.push(new URL(req.url).pathname);
     return m && m[1] in network ? new Response(network[m[1]], { headers: { 'Content-Type': 'application/json' } }) : new Response('not found', { status: 404 });
@@ -112,7 +118,14 @@ async function swKit({ langs = ['ja', 'zh-Hans'], phone = /** @type {string[]} *
     await fire('message', { data: { type: 'cache-words', tag }, ports: [{ postMessage: (/** @type {any} */ m) => said.push({ ...m }) }] });
     return said;
   };
-  return { fire, ask, stores, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
+  /** A page asking for a file, as the worker answers it: the text, or null when it has nothing. @param {string} path */
+  const get = async (path) => {
+    /** @type {Promise<Response> | undefined} */
+    let answer;
+    handlers.fetch({ request: new SwRequest(path, {}), respondWith: (/** @type {Promise<Response>} */ p) => { answer = p; } });
+    return answer?.then((r) => (r.ok ? r.text() : null), () => null);
+  };
+  return { fire, ask, get, offline: () => { down = true; }, stores, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
 }
 
 const app = (/** @type {Record<string, unknown>} */ languages) => ({ '/app.json': JSON.stringify({ languages }) });
@@ -165,4 +178,24 @@ test('asked for words it cannot keep, it says no', async () => {
   assert.deepEqual(await k.ask(undefined), [{ ok: false }]);
   assert.deepEqual(await (await swKit({ network: {} })).ask('ja'), [{ ok: false }], 'not there (offline or missing)');
   assert.ok([...(await swKit()).stores.values()].every((s) => s.size === 0));
+});
+
+test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
+  for (const host of ['annai.guide', 'localhost']) {
+    const k = await swKit({ host, cacheNames: [] });
+    assert.equal(await k.get('/l10n/ja.json'), '{"a":"b"}', `online (${host})`);
+    k.offline();
+    assert.equal(await k.get('/l10n/ja.json'), '{"a":"b"}', `and then offline (${host})`);
+  }
+});
+
+test('only a catalog annai lists, and fetched whole, is kept from the network', async () => {
+  const k = await swKit({ cacheNames: [], network: { ja: '{"a":"b"}', ko: '{"a":"k"}' } });
+  await k.get('/l10n/ko.json');
+  await k.get('/l10n/ja.json?x=1');
+  await k.get('/l10n/nope.json');
+  await k.get('/src/app/main.js');
+  k.offline();
+  assert.equal(await k.get('/l10n/ko.json'), null, 'a language not in LANGS');
+  assert.equal(await k.get('/l10n/nope.json'), null, 'a missing catalog is no catalog');
 });

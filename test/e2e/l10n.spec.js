@@ -510,6 +510,11 @@ test('words that cannot be loaded leave English and a card that says why, and Tr
     await card.getByRole('button', { name: 'Try again' }).click();
     await retried;
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+    // What came from the network is kept: the next start, offline, is Japanese and has no card.
+    await server.stop();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+    await expect(page.locator('html')).not.toHaveAttribute('data-l10n-failed', /./);
   } finally {
     await server.stop();
   }

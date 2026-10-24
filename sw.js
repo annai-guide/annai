@@ -381,18 +381,24 @@ sw.addEventListener('fetch', (event) => {
   event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null));
 });
 
-/** Production: cache first. Development (localhost): network first, so edits show up. @param {Request} req @param {string | null} fallback */
+/** Production: cache first. Development (localhost): network first, so edits show up. A catalog that comes from the network is kept for the next start offline. @param {Request} req @param {string | null} fallback */
 async function respond(req, fallback) {
   const cache = await caches.open(CACHE);
   const cached = () => cache.match(fallback ?? req, { ignoreSearch: true });
+  const fetched = async () => {
+    const res = await fetch(req);
+    const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
+    if (tag && res.ok) await cache.put(wordsPath(tag), res.clone()).catch(() => {});
+    return res;
+  };
   if (DEV) {
     try {
-      return await fetch(req);
+      return await fetched();
     } catch {
       return (await cached()) ?? Response.error();
     }
   }
-  return (await cached()) ?? fetch(req);
+  return (await cached()) ?? fetched();
 }
 
 /** Opens the app's database without ever creating it from here. @returns {Promise<IDBDatabase>} */
