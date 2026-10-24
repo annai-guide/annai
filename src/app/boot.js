@@ -1,5 +1,5 @@
-// The start (localization design, section 3): the language and its words are set before the app is imported, so a message made at
-// a module's top level is in the right language. What can't be had leaves English.
+// The start (localization design, section 3): language and words are set before the app is imported, so words made at a module's
+// top level are right. What can't be had leaves English.
 import { setWords, dir } from '../core/l10n.js';
 import { SHIPPED } from '../core/l10n-list.js';
 
@@ -28,9 +28,11 @@ if (pseudo === 'en-XA' || pseudo === 'ar-XB') {
   try {
     const got = await fetch(`/l10n/${tag}.json`);
     if (!got.ok) throw new Error(String(got.status));
-    setWords(tag, await got.json());
+    const words = await got.json();
+    if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
+    setWords(tag, words);
   } catch {
-    html.dataset.l10nFailed = tag; // main.js says so on a card; the screens are English
+    html.dataset.l10nFailed = tag; // main.js says so on a card
     tag = 'en';
     region = '';
   }
