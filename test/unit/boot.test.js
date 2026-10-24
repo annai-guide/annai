@@ -38,3 +38,9 @@ test('index.html starts annai through boot.js, and names main.js nowhere', async
   assert.match(html, /<script type="module" src="\/src\/app\/boot\.js"><\/script>/);
   assert.ok(!html.includes('main.js'));
 });
+
+test('a catalog that parses but is not an object is no catalog: boot.js falls to English and flags it', async () => {
+  const { src } = await importsOf('src/app/boot.js');
+  assert.match(src, /!words \|\| typeof words !== 'object' \|\| Array\.isArray\(words\)\) throw/);
+  assert.ok(src.indexOf("Array.isArray(words)") < src.indexOf('setWords(tag, words)'), 'checked before the words are set');
+});
