@@ -5,8 +5,15 @@ import { setWords, t, plural, dir } from '../../src/core/l10n.js';
 
 test('en-XA accents the letters, pads by 40% and brackets, and keeps the values', () => {
   assert.equal(accented('Open'), '⟦Óṕéñ ··⟧');
-  assert.equal(accented('Last backup {0}, to {1}.'), `⟦Ļáśţ ƀáçķúṕ {0}, ţó {1}. ${'·'.repeat(Math.ceil(0.4 * 18))}⟧`);
+  assert.equal(accented('Last backup {0}, to {1}.'), '⟦Ļáśţ ƀáçķúṕ {0}, ţó {1}. ······ ··⟧'); // 8 dots: 40% of 18 letters, in runs of six
   assert.equal(accented('# stamps'), '⟦# śţáɱṕś ···⟧');
+});
+
+test("en-XA's padding can break: a long message's dots come in runs of six, so a phone's screen wraps them as it would a language's words", () => {
+  const long = 'Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own.';
+  const pad = /** @type {string} */ (/ ([· ]+)⟧$/.exec(accented(long))?.[1]);
+  assert.equal(pad.replace(/ /g, '').length, Math.ceil(0.4 * long.length));
+  assert.ok(pad.split(' ').every((run) => run.length <= 6 && run.length > 0), pad);
 });
 
 test('ar-XB reverses the letters of every word and keeps the values', () => {
