@@ -249,7 +249,7 @@ test('Restart now waits while Shiori works, then for the sound unlock, then uses
   assert.deepEqual(did, ['swap']);
 
   const plain = new Updates({ host, reload: () => did.push('reload') });
-  await plain.restart();
+  assert.equal(await plain.restart(), true, 'it says it restarted');
   assert.deepEqual(did, ['swap', 'reload']);
 });
 
@@ -313,10 +313,10 @@ test("Don't restart, on the card a restart waiting for Shiori shows, calls it of
   card.actions[0].run();
   assert.deepEqual(changed, [false], 'Settings → Updates is drawn again: no "Restarting…"');
   free();
-  await first;
+  assert.equal(await first, false, 'called off: it says it did not restart');
   await tick();
   assert.deepEqual(did, [], 'called off: nothing restarts when she finishes');
-  await u.restart();
+  assert.equal(await u.restart(), true);
   assert.deepEqual(did, ['swap']);
   assert.equal(notices.cards.length, 1, 'she was free: no card');
 });
