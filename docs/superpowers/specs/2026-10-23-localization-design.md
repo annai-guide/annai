@@ -168,7 +168,7 @@ src/core/l10n-list.js    the languages annai has, shipped and experimental, for 
 (The keys are the real hashes of these messages.)
 
 - **state**: `new` (no text yet), `draft` (a machine's or an unreviewed person's), `ok` (read by a person who reads the language).
-- **where** and **note** are written by the script: the first place the message is used, and what each placeholder is (the expression's own text), so a translator sees `{1} = latest.name` without opening the code. A context shows as "context: verb".
+- **where** and **note** are written by the script: the first place the message is used, and what each placeholder is (the expression's own text), so a translator sees `{1} = latest.name` without opening the code. A context shows as "context: verb". A translator's own note on a row (why the draft says what it says) goes after the script's, as "Note: …"; the script keeps it when it writes the row again, and carries it with a draft whose English changed.
 - A plural message has one row per category the language has (`Intl.PluralRules(tag).resolvedOptions().pluralCategories`: Japanese and Chinese `other` only; Russian `one, few, many, other`; Arabic six).
 - TSV because GitHub draws it as a table the user can read and search in the browser, English beside Japanese, and a diff shows one changed message as one changed line.
 - The shipped JSON has only keys and texts: about half the size, and no English sent to a phone that has it already.
