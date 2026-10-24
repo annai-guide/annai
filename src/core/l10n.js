@@ -13,7 +13,7 @@ let seen = new WeakMap();
 /** @type {Intl.PluralRules | null} */
 let rules = null;
 
-/** Sets the language and its words, at the start and in tests. @param {string} next @param {Record<string, any> | null} words @param {(english: string) => string} [transform] */
+/** Sets the language and words, at the start and in tests. @param {string} next @param {Record<string, any> | null} words @param {(english: string) => string} [transform] */
 export function setWords(next, words, transform) { tag = next; table = words; pseudo = transform ?? null; seen = new WeakMap(); rules = null; }
 export const lang = () => tag;
 export const dir = () => (['ar', 'he', 'fa', 'ur'].includes(tag.split('-')[0]) ? 'rtl' : 'ltr');
@@ -24,11 +24,11 @@ export function key(source, context) {
   for (const b of new TextEncoder().encode(context ? `${context}\u0001${source}` : source)) n = Math.imul(n ^ b, 0x01000193);
   return (n >>> 0).toString(36);
 }
-/** The placeholders of a text, once each: "{1} and {0}" → "{0}{1}". @param {string} s */
+/** A text's placeholders, once each: "{1} {0}" → "{0}{1}". @param {string} s */
 export const holes = (s) => [...new Set(s.match(/\{\d+\}/g))].sort().join('');
 
 /** A value in a message, isolated in a right-to-left language so a Latin name keeps its place. @param {unknown} v */
-const wrap = (v) => (dir() === 'rtl' ? `⁨${v}⁩` : String(v));
+const wrap = (v) => (dir() === 'rtl' ? `\u2068${v}\u2069` : String(v));
 /** @param {TemplateStringsArray} strings @param {unknown[]} values @param {string} [context] */
 function say(strings, values, context) {
   let text = seen.get(strings);
@@ -51,11 +51,11 @@ export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /**
  * @param {number} n @param {string} one @param {string} other @param {...unknown} values
  */
 export function plural(n, one, other, ...values) {
-  rules ??= new Intl.PluralRules(table ? tag : 'en');
-  const category = rules.select(n);
   const forms = table?.[key(`${one}\0${other}`)];
-  const own = forms && typeof forms === 'object' ? forms[category] ?? forms.other : undefined;
-  const text = typeof own === 'string' && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(category === 'one' ? one : other) : category === 'one' ? one : other;
+  const own = forms && typeof forms === 'object' ? forms[(rules ??= new Intl.PluralRules(tag)).select(n)] ?? forms.other : undefined;
+  // English without a translation, counted the English way.
+  const english = Math.abs(n) === 1 ? one : other;
+  const text = typeof own === 'string' && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
   const shown = n.toLocaleString(table ? tag : 'en');
   return text.replace(/#|\{(\d+)\}/g, (m, i) => (i === undefined ? shown : wrap(values[i])));
 }
