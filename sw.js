@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'e699137c5c5f';
+const BUILD = '67974f9b9c53';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -291,13 +291,70 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache.
+  // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache. A shell
+  // file an older version holds unchanged is copied from it instead.
   event.waitUntil((async () => {
     const words = await wordsToCache();
     const cache = await caches.open(CACHE);
-    await cache.addAll([...SHELL, ...words.map(wordsPath)].map((u) => new Request(u, { cache: 'reload' })));
+    const copies = await unchanged();
+    // The record goes first and comes back last, so a cache cut off part-way has none.
+    await cache.delete(RECORD);
+    await cache.addAll([...SHELL.filter((p) => !copies.has(p)), ...words.map(wordsPath)].map((u) => new Request(u, { cache: 'reload' })));
+    /** @type {Record<string, string>} */
+    const files = {};
+    for (const path of SHELL) {
+      const copy = copies.get(path);
+      if (copy?.res) await cache.put(path, copy.res);
+      // A fetched file is recorded as it came: one that changed mid-release is fetched again next time.
+      const res = copy ? null : await cache.match(path);
+      const hash = copy?.hash ?? (res && await hashOf(res));
+      if (hash) files[path] = hash;
+    }
+    await cache.put(RECORD, new Response(JSON.stringify({ files })));
+    // A waiting version brought in meanwhile (Restart now) deletes this cache as it activates: this version would start on none.
+    if (!(await caches.match(RECORD, { cacheName: CACHE }))) throw new Error("this version's cache was deleted while it installed");
   })());
 });
+
+/** Where a shell cache records the hash of each shell file it holds: { files: { path: hash } }. */
+const RECORD = '/shell-record.json';
+/** A file's hash, as stamp.mjs writes them in shell.json ({ build, files: { path: hash } }): 12 hex digits of its SHA-256. @param {Response} res */
+async function hashOf(res) {
+  const sum = new Uint8Array(await crypto.subtle.digest('SHA-256', await res.arrayBuffer()));
+  return [...sum].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+}
+
+/**
+ * The shell files the newest shell cache with a readable record holds under this build's hash (res: null when that cache is this
+ * build's own). None when there is no such cache (a first install), or this build's manifest can't be had. Never a page: its
+ * headers carry the site's policy (CSP, Permissions-Policy), and a release may change that alone.
+ * @returns {Promise<Map<string, { res: Response | null, hash: string }>>}
+ */
+async function unchanged() {
+  const copies = new Map();
+  for (const name of (await caches.keys()).reverse()) {
+    if (!name.startsWith('annai-shell-')) continue;
+    const old = await caches.open(name);
+    const had = filesOf(await (await old.match(RECORD))?.json().catch(() => null));
+    if (!had) continue;
+    const res = await fetch(new Request('/shell.json', { cache: 'reload' })).catch(() => null);
+    const manifest = res?.ok ? await res.json().catch(() => null) : null;
+    const want = manifest?.build === BUILD ? filesOf(manifest) : null;
+    for (const path of want ? SHELL.filter((p) => !/(?:\/|\.html)$/.test(p)) : []) {
+      const hash = want?.[path];
+      const kept = typeof hash === 'string' && had[path] === hash ? await old.match(path) : null;
+      if (kept) copies.set(path, { res: name === CACHE ? null : kept, hash });
+    }
+    break;
+  }
+  return copies;
+}
+
+/** The files of a record or a manifest, or null when it isn't one. @param {any} parsed @returns {Record<string, unknown> | null} */
+function filesOf(parsed) {
+  const files = parsed?.files;
+  return files && typeof files === 'object' && !Array.isArray(files) ? files : null;
+}
 
 /** @param {string} tag */
 const wordsPath = (tag) => `/l10n/${tag}.json`;
