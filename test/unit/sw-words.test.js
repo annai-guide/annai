@@ -241,6 +241,29 @@ test('a captive portal\'s page (200, HTML) is no catalog: the device\'s words an
   }
 });
 
+test('words copied from the device are marked, and the first start online fetches them fresh once, in the background', async () => {
+  const now = await running();
+  const k = await swKit({ cacheNames: [now, 'annai-shell-0.1.0-waiting'] });
+  k.stores.get(now)?.set('/l10n/ja.json', '{"a":"old"}');
+  k.offline();
+  assert.deepEqual(await k.ask('ja'), [{ ok: true }]);
+  assert.equal(k.heads.get('annai-shell-0.1.0-waiting /l10n/ja.json')?.['x-annai-words'], 'device', 'the waiting version knows its words are an older one\'s');
+  // That version running: its cache holds the marked copy.
+  const next = await swKit({ cacheNames: [now], network: { ja: '{"a":"new"}' } });
+  await next.stores.get(now)?.set('/l10n/ja.json', '{"a":"old"}');
+  next.heads.set(`${now} /l10n/ja.json`, { 'x-annai-words': 'device' });
+  assert.equal(await next.get('/l10n/ja.json'), '{"a":"old"}', 'the start is not held up');
+  assert.equal(next.stores.get(now)?.get('/l10n/ja.json'), '{"a":"new"}', 'and its own words replace them');
+  assert.equal(next.heads.get(`${now} /l10n/ja.json`)?.['x-annai-words'], undefined, 'unmarked');
+  assert.equal(await next.get('/l10n/ja.json'), '{"a":"new"}');
+  assert.deepEqual(next.fetched, ['/l10n/ja.json'], 'once: a normal start fetches nothing');
+  const portal = await swKit({ cacheNames: [now], network: { ja: '<html>Sign in</html>' } });
+  portal.stores.get(now)?.set('/l10n/ja.json', '{"a":"old"}');
+  portal.heads.set(`${now} /l10n/ja.json`, { 'x-annai-words': 'device' });
+  await portal.get('/l10n/ja.json');
+  assert.equal(portal.heads.get(`${now} /l10n/ja.json`)?.['x-annai-words'], 'device', 'a portal\'s page replaces nothing, so the next start tries again');
+});
+
 test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
   for (const host of ['annai.guide', 'localhost']) {
     const k = await swKit({ host, cacheNames: [] });
