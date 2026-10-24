@@ -227,6 +227,16 @@ function close(a, b) {
 const fileOf = (/** @type {string} */ where) => where.replace(/:\d+$/, '');
 const catOf = (/** @type {string} */ k) => (k.includes('#') ? k.slice(k.indexOf('#')) : '');
 const WAS = 'English was: ';
+/** A translator's own words on a row, after the script's (why a draft says what it says): kept when the script writes the row again. */
+const NOTE = 'Note: ';
+/** A row's note in its parts: what the English was (a carried draft), and the translator's note, each with its mark. @param {string} note */
+function noteParts(note) {
+  const n = note.search(new RegExp(`(?:^|; )${NOTE}`));
+  const mine = n < 0 ? '' : note.slice(n).replace(/^; /, '');
+  const rest = n < 0 ? note : note.slice(0, n);
+  const w = rest.indexOf(WAS);
+  return { was: w < 0 ? '' : rest.slice(w), mine };
+}
 
 /**
  * A language's rows after the code changed: a row for every message, new ones `new`, rows of vanished messages gone, or, when the
@@ -240,8 +250,9 @@ export function updateRows(old, messages, tag) {
   for (const m of messages.values()) {
     for (const w of wanted(m, tag)) {
       const r = had.get(w.key);
-      const was = r?.state === 'draft' && r.note.includes(WAS) ? ` ${r.note.slice(r.note.indexOf(WAS))}` : '';
-      rows.push({ key: w.key, state: r?.state ?? 'new', en: w.en, text: r?.text ?? '', where: `${m.file}:${m.line}`, note: `${w.note}${was}` });
+      const { was, mine } = noteParts(r?.note ?? '');
+      const note = [w.note, r?.state === 'draft' ? was : '', mine].filter(Boolean).join('; ');
+      rows.push({ key: w.key, state: r?.state ?? 'new', en: w.en, text: r?.text ?? '', where: `${m.file}:${m.line}`, note });
     }
   }
   const now = new Set(rows.map((r) => r.key));
@@ -253,7 +264,7 @@ export function updateRows(old, messages, tag) {
     const [o] = orphans.splice(i, 1);
     r.state = 'draft';
     r.text = o.text;
-    r.note = [r.note, `${WAS}${o.en}`].filter(Boolean).join('; ');
+    r.note = [r.note, `${WAS}${o.en}`, noteParts(o.note).mine].filter(Boolean).join('; ');
   }
   const at = (/** @type {{ where: string }} */ r) => /** @type {[string, number]} */ ([fileOf(r.where), Number(r.where.split(':').pop())]);
   return rows.sort((a, b) => {

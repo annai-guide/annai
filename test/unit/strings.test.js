@@ -232,6 +232,23 @@ test('a plural\'s note names its first argument, and a carried draft\'s note doe
   });
 });
 
+test('a translator\'s note ("Note: …") stays when the script writes the row again, and goes with a carried draft', async () => {
+  await inCopy(async (dir) => {
+    const tsv = `${dir}/l10n/ja.tsv`;
+    await writeFile(tsv, (await readFile(tsv, 'utf8')).replace('{0} = where; {1} = who', '{0} = old; Note: 保存 as the phones say it').replace(/(\tsrc\/a\.mjs:4\t\{0\} = who)$/m, '$1; Note: a greeting'));
+    await update(dir);
+    const by = new Map(readTsv(await readFile(tsv, 'utf8')).map((r) => [r.key, r]));
+    assert.equal(by.get(key('Saved to {0} for {1}'))?.note, '{0} = where; {1} = who; Note: 保存 as the phones say it', "the script's part is written again, the translator's kept");
+    // The English changes a little: the draft carries its note, after what the English was.
+    await writeFile(`${dir}/src/a.mjs`, (await readFile(`${dir}/src/a.mjs`, 'utf8')).replace('Hello ${who}.', 'Hello there ${who}.'));
+    await update(dir);
+    const carried = readTsv(await readFile(tsv, 'utf8')).find((r) => r.en === 'Hello there {0}.');
+    assert.equal(carried?.note, '{0} = who; English was: Hello {0}.; Note: a greeting');
+    await update(dir);
+    assert.equal(readTsv(await readFile(tsv, 'utf8')).find((r) => r.en === 'Hello there {0}.')?.note, '{0} = who; English was: Hello {0}.; Note: a greeting', 'and keeps both on the next run');
+  });
+});
+
 // ---- localization L4: experimental languages, the languages sw.js caches, the glossary ----
 
 test('an unfinished (experimental) language fails the check for a new row, as a shipped one does', async () => {
