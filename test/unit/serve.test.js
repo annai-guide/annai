@@ -129,3 +129,49 @@ test('a release sends x.br when the browser takes brotli, and the file itself ot
 
   assert.equal((await get(`${server.origin}/missing.js`, { headers: { 'Accept-Encoding': 'br' } })).status, 404);
 });
+
+test("a file the browser already holds is answered 304 to its ETag: the service worker's update check asks so", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-serve-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'scripts'));
+  for (const f of ['scripts/serve.mjs', 'scripts/headers.mjs', '_headers']) await copyFile(fileURLToPath(new URL(`../../${f}`, import.meta.url)), join(dir, f));
+  const js = Buffer.from(`// the worker\n${'self.addEventListener("fetch", () => {});\n'.repeat(40)}`);
+  const when = new Date('2026-10-23T12:00:00Z');
+  await writeFile(join(dir, 'sw.js'), js);
+  await writeFile(join(dir, 'sw.js.br'), brotliCompressSync(js));
+  await utimes(join(dir, 'sw.js'), when, when);
+  await utimes(join(dir, 'sw.js.br'), when, when);
+  const server = await start(join(dir, 'scripts/serve.mjs'));
+  t.after(() => server.stop());
+  const url = `${server.origin}/sw.js`;
+  const br = { 'Accept-Encoding': 'gzip, deflate, br' };
+
+  const first = await get(url, { headers: br });
+  const tag = /** @type {string} */ (first.headers.etag);
+  assert.match(tag, /^"[^"]+"$/);
+  const plainTag = (await get(url)).headers.etag;
+  assert.ok(plainTag && plainTag !== tag, 'the brotli form and the file itself are told apart');
+
+  for (const inm of [tag, `W/${tag}`, `"other", ${tag}`, '*']) {
+    const again = await get(url, { headers: { ...br, 'If-None-Match': inm } });
+    assert.equal(again.status, 304, `If-None-Match: ${inm}`);
+    assert.equal(again.body.length, 0);
+    assert.equal(again.headers.etag, tag);
+    assert.equal(again.headers['cache-control'], 'no-cache', 'the _headers rules hold');
+  }
+  assert.equal((await get(url, { method: 'HEAD', headers: { ...br, 'If-None-Match': tag } })).status, 304);
+  assert.equal((await get(url, { headers: { ...br, 'If-None-Match': '"other"' } })).status, 200);
+  assert.equal((await get(url, { headers: { 'If-None-Match': tag } })).status, 200, "the brotli form's tag doesn't stand for the file itself");
+
+  // A new release: the file changes, and so does its tag.
+  const next = Buffer.concat([js, Buffer.from('// next\n')]);
+  await writeFile(join(dir, 'sw.js'), next);
+  await writeFile(join(dir, 'sw.js.br'), brotliCompressSync(next));
+  const later = new Date(when.getTime() + 60_000);
+  await utimes(join(dir, 'sw.js'), later, later);
+  await utimes(join(dir, 'sw.js.br'), later, later);
+  const changed = await get(url, { headers: { ...br, 'If-None-Match': tag } });
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.headers.etag, tag);
+  assert.equal((await get(url, { headers: { ...br, 'If-None-Match': /** @type {string} */ (changed.headers.etag) } })).status, 304);
+});
