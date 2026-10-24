@@ -87,3 +87,19 @@ test("the service worker's cache is named by version and build, so any change to
   assert.match(sw, /^const BUILD = '[0-9a-f]{12}';$/m);
   assert.match(sw, /const CACHE = `annai-shell-\$\{VERSION\}-\$\{BUILD\}`;/);
 });
+
+test("a change to _headers alone makes a new build: the pages carry the site's policy, so phones must fetch them again", async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-stamp-'));
+  try {
+    await writeFile(join(dir, 'sw.js'), "const BUILD = 'dev';\nconst SHELL = [\n  '/',\n];\n");
+    await writeFile(join(dir, 'index.html'), '<p>hi</p>');
+    await writeFile(join(dir, '_headers'), "/*\n  Content-Security-Policy: connect-src 'self'\n");
+    const root = pathToFileURL(dir + '/');
+    const first = (await stamp(root)).build;
+    await writeFile(join(dir, '_headers'), "/*\n  Content-Security-Policy: connect-src 'self' wss:\n");
+    assert.equal((await stamp(root, { check: true })).ok, false);
+    assert.notEqual((await stamp(root)).build, first);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

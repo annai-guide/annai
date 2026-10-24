@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Stamps sw.js with a hash of every file in its SHELL list, so the service worker, and the
 // name of its cache, change whenever anything annai ships changes (spec §17 rule 5). The catalogs of the languages in its
-// LANGS list (l10n/<tag>.json) are hashed after the shell, so a translation fixed alone makes a new build too.
+// LANGS list (l10n/<tag>.json) are hashed after the shell, so a translation fixed alone makes a new build too; then _headers.
 // Beside sw.js it writes shell.json, the build's manifest: { build, files: { path: hash } }, the first 12 hex digits of each
 // shell file's SHA-256. An update fetches only the files whose hash isn't the one the version before holds them under (sw.js install).
 //   node scripts/stamp.mjs          writes the hash and the manifest (the deploy build command)
@@ -33,6 +33,9 @@ export async function stamp(root, { check = false } = {}) {
   }
   const langs = /const LANGS = \[([^\]]*)\];/.exec(sw)?.[1] ?? '';
   for (const [, tag] of langs.matchAll(/'([^']+)'/g)) hash.update(`/l10n/${tag}.json\0`).update(await readFile(new URL(`l10n/${tag}.json`, root))).update('\0');
+  // The site's headers too: the pages carry its policy (CSP, Permissions-Policy), so a change to it alone must reach phones.
+  const headers = await readFile(new URL('_headers', root)).catch(() => null);
+  if (headers) hash.update('/_headers\0').update(headers).update('\0');
   const build = hash.digest('hex').slice(0, 12);
   const next = sw.replace(BUILD_LINE, `const BUILD = '${build}';`);
   const manifestUrl = new URL('shell.json', root);
