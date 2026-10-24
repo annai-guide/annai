@@ -99,7 +99,10 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
       },
     };
   };
-  const caches = { open: async (/** @type {string} */ n) => cache(n), keys: async () => [...stores.keys()] };
+  const caches = {
+    open: async (/** @type {string} */ n) => cache(n), keys: async () => [...stores.keys()],
+    match: async (/** @type {Request | string} */ req, /** @type {{ cacheName: string }} */ { cacheName }) => (stores.has(cacheName) ? cache(cacheName).match(req) : undefined),
+  };
   const self = {
     location: new URL(`https://${host}/sw.js`),
     navigator: { languages: phone },

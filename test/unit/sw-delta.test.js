@@ -31,10 +31,13 @@ function phone() {
   /** @type {string[]} */
   const notReload = [];
   let down = false;
+  /** Runs as the site is asked for a path: what else happens meanwhile. @type {Map<string, () => void>} */
+  const meanwhile = new Map();
   const serve = (/** @type {Request} */ req) => {
     if (down) throw new TypeError('Failed to fetch');
     const path = pathOf(req);
     fetched.push(path);
+    meanwhile.get(path)?.();
     if (req.cache !== 'reload') notReload.push(path);
     const body = site.get(path);
     return body === undefined ? new Response('not found', { status: 404 }) : new Response(body);
@@ -62,7 +65,14 @@ function phone() {
       delete: async (/** @type {string | Request} */ r) => store.delete(pathOf(r)),
     };
   };
-  const caches = { open: async (/** @type {string} */ n) => open(n), keys: async () => [...stores.keys()], delete: async (/** @type {string} */ n) => stores.delete(n) };
+  // A cache deleted while it is open stays usable, but what goes in it is gone with it, as in a browser.
+  const caches = {
+    open: async (/** @type {string} */ n) => open(n), keys: async () => [...stores.keys()], delete: async (/** @type {string} */ n) => stores.delete(n),
+    match: async (/** @type {string | Request} */ r, /** @type {{ cacheName: string }} */ { cacheName }) => {
+      const body = stores.get(cacheName)?.get(pathOf(r));
+      return body === undefined ? undefined : new Response(body);
+    },
+  };
   class SwRequest extends Request {
     constructor(/** @type {string | Request} */ u, /** @type {RequestInit} */ init) { super(typeof u === 'string' ? new URL(u, `${ORIGIN}/sw.js`) : u, init); }
   }
@@ -101,7 +111,7 @@ function phone() {
     const raw = store?.get(RECORD);
     return { store, record: raw === undefined ? undefined : JSON.parse(raw) };
   };
-  return { stores, site, fetched, notReload, ship, install, cacheOf, offline: () => { down = true; }, online: () => { down = false; } };
+  return { stores, site, fetched, notReload, meanwhile, ship, install, cacheOf, offline: () => { down = true; }, online: () => { down = false; } };
 }
 
 /** The record a cache should carry: the hash of each shell file it holds. @param {Map<string, string>} store @param {string[]} [shell] */
@@ -254,4 +264,24 @@ test('a new sw.js with the same build (a change to the worker alone) fetches onl
   const before = new Map(p.cacheOf('aaaaaaaaaaaa').store);
   assert.deepEqual(await p.install('aaaaaaaaaaaa'), only([]));
   assert.deepEqual(p.cacheOf('aaaaaaaaaaaa').store, before);
+});
+
+test("an install whose cache another version's activate deleted meanwhile fails, so it never runs on an empty cache", async () => {
+  // B waits; C installs; Restart now brings B in, and B's activate deletes every other shell cache, C's too, while C fetches.
+  const p = phone();
+  p.ship('aaaaaaaaaaaa');
+  await p.install('aaaaaaaaaaaa');
+  p.site.set('/src/core/sun.js', 'the sun, version B');
+  p.ship('bbbbbbbbbbbb');
+  await p.install('bbbbbbbbbbbb');
+  p.site.set('/src/core/sun.js', 'the sun, version C');
+  p.ship('cccccccccccc');
+  p.meanwhile.set('/src/core/sun.js', () => {
+    for (const name of p.stores.keys()) if (name !== 'annai-shell-0.1.0-bbbbbbbbbbbb') p.stores.delete(name);
+  });
+  await assert.rejects(p.install('cccccccccccc'), /cache/);
+  assert.deepEqual([...p.stores.keys()], ['annai-shell-0.1.0-bbbbbbbbbbbb']);
+  // The next check tries again, and copies from B.
+  p.meanwhile.clear();
+  assert.deepEqual(await p.install('cccccccccccc'), only(['/src/core/sun.js']));
 });
