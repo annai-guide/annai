@@ -285,7 +285,7 @@ async function languages(root) {
 /** What src/core/l10n-list.js says. @param {Language[]} list */
 export const listFile = (list) => {
   const of = (/** @type {string[]} */ tags) => JSON.stringify(tags).replace(/"/g, "'").replace(/,/g, ', ');
-  return `// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships (English first) and the unfinished ones, offered only while Experimental's switch is on. Do not edit.\nexport const SHIPPED = Object.freeze(${of(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)])});\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze(${of(list.filter((l) => l.status === 'experimental').map((l) => l.tag))});\n`;
+  return `// Written by scripts/strings.mjs from l10n/languages.json. Do not edit.\nexport const SHIPPED = Object.freeze(${of(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)])});\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze(${of(list.filter((l) => l.status === 'experimental').map((l) => l.tag))});\n`;
 };
 /** The line of sw.js that names the languages whose catalogs a version caches: every listed language, shipped or not. */
 const LANGS_LINE = /^const LANGS = \[[^\]]*\];$/m;
