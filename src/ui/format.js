@@ -27,12 +27,8 @@ export function backupText({ at, changed }, now = Date.now()) {
   return changed ? t`backed up ${relTime(at, now)}, changed since` : t`backed up ${relTime(at, now)}`;
 }
 
-/** Who wrote a file, as a file's row says it: you, Shiori, annai itself, or a plugin by its id. @param {string} author as stored */
-export function authorName(author) {
-  if (author === 'user') return t`you`;
-  if (author === 'shiori') return t`Shiori`;
-  return author === 'system' ? /* en */ 'annai' : String(author).replace(/^plugin:/, '');
-}
+/** Who wrote a trip's file: you, Shiori or annai (plugins write only to annai's own settings). @param {string} author as stored */
+export const authorName = (author) => (author === 'user' ? t`you` : author === 'shiori' ? /* en */ 'Shiori' : 'annai');
 
 /** A cost in USD for people: "free", "$0.0042", "$1.23", or "cost unknown". @param {number | undefined} usd */
 export function formatCost(usd) {
@@ -56,10 +52,10 @@ export function outcomeText(outcome) {
 }
 
 /** The address of a file in a trip. @param {string} id @param {string} path */
-export const fileHref = (id, path) => /* en */ `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
+export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
 
 /** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
-export const bookingHref = (id, path) => /* en */ `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
+export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
 
 const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
 
@@ -78,11 +74,10 @@ export function bookingLines(b) {
   /** @type {[string, string][]} */
   const lines = [[t`Kind`, BOOKING_KINDS[b.kind] ?? String(b.kind ?? '')]];
   const start = at(b.start);
-  // A booking's times, with the day and the clock: not the date fields of a trip's form, which share the English.
   if (start) lines.push([tc('booking')`Starts`, start]);
   const end = at(b.end);
   if (end) lines.push([tc('booking')`Ends`, end]);
-  if (b.place?.name) lines.push([t`Place`, b.place.address ? t`${b.place.name}, ${b.place.address}` : String(b.place.name)]);
+  if (b.place?.name) lines.push([t`Place`, b.place.address ? tc('booking')`${b.place.name}, ${b.place.address}` : String(b.place.name)]);
   if (b.confirmation) lines.push([t`Confirmation`, String(b.confirmation)]);
   if (b.cost && Number.isFinite(b.cost.amount)) lines.push([t`Cost`, money(b.cost.amount, b.cost.currency)]);
   if (b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields)) {
@@ -115,10 +110,7 @@ const PHASES = {
   uploading: (p) => (p.total ? t`Uploading ${num(p.done)} of ${num(p.total)}…` : t`Uploading…`),
 };
 
-/**
- * The device a newer backup came from, by the label it was made with (platform.js's deviceName; "" for none or one annai doesn't
- * make): one message each, as "a" or "an" and the words around it change with the device.
- */
+/** A newer backup's device, by its label (platform.js's deviceName; "" for any other): a message each. */
 const PAUSED_BY = /** @type {Record<string, string>} */ ({
   iPhone: t`Paused: there is a newer backup from an iPhone`, iPad: t`Paused: there is a newer backup from an iPad`,
   'Android phone': t`Paused: there is a newer backup from an Android phone`, computer: t`Paused: there is a newer backup from a computer`,
@@ -130,7 +122,7 @@ const BACKED_UP_BY = {
   'Android phone': (where, ago) => t`An Android phone backed up to ${where} ${ago}.`, computer: (where, ago) => t`A computer backed up to ${where} ${ago}.`,
   '': (where, ago) => t`Another device backed up to ${where} ${ago}.`,
 };
-/** What this device is called in them, by its noun (platform.js's deviceName, whose last is a computer). */
+/** This device, by its noun (deviceName's). */
 const THIS_ONE = /** @type {Record<string, { after: string, choice: string }>} */ ({
   phone: { after: t`That was after this phone's last backup.`, choice: t`Import it as a copy to bring its trips here, or back up this phone over it.` },
   iPad: { after: t`That was after this iPad's last backup.`, choice: t`Import it as a copy to bring its trips here, or back up this iPad over it.` },
@@ -160,8 +152,7 @@ export function placeStatus(target, progress, now = Date.now()) {
 }
 
 /**
- * What the newer backup at a place is, and the user's two choices (spec §12.4: single writer), in whole sentences for the device it
- * came from and this one.
+ * What the newer backup at a place is, and the user's two choices (spec §12.4: single writer).
  * @param {import('../core/backup-targets.js').Target} target @param {{ where: string, noun: string, tree: boolean }} o @param {number} [now]
  */
 export function newerText(target, { where, noun, tree }, now = Date.now()) {

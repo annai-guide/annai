@@ -31,7 +31,7 @@ export async function renderRecap(ctx, route) {
   const trip = `#/trip/${encodeURIComponent(id)}`;
   const busy = (/** @type {{ name: string }} */ m) => t`Writing it: ${m.name} is reading the trip. This can take a minute.`;
   const status = h('p', { class: 'sub', role: 'status', text: model && writing.has(id) ? busy(model) : '' });
-  const write = h('button', { class: recap ? 'btn' : /* en */ 'btn pri', type: 'button', disabled: !model || writing.has(id) }, recap ? t`Write it again` : t`Write the recap`);
+  const write = h('button', { class: recap ? 'btn' : 'btn pri', type: 'button', disabled: !model || writing.has(id) }, recap ? t`Write it again` : t`Write the recap`);
   const here = () => location.hash.startsWith(`${trip}/recap`);
   write.addEventListener('click', async () => {
     if (!model || writing.has(id)) return;

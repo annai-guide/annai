@@ -1,4 +1,4 @@
-import { h, crumb, t } from '../dom.js';
+import { h, crumb, t, linkIn, showError } from '../dom.js';
 import { bookingLines, fileHref, sentences } from '../format.js';
 import { isBookingPath } from '../../core/bookings.js';
 import { normPath } from '../../core/paths.js';
@@ -14,7 +14,7 @@ import { explainStorageFull } from '../storage-full.js';
 export async function renderBooking(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  const crumbs = h('p', { class: 'crumbs' }, crumb(/* en */ `#/trip/${encodeURIComponent(id)}/plan`, t`Plan`));
+  const crumbs = h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}/plan`, t`Plan`));
   const booking = isBookingPath(id, path) ? await ctx.ws.readJSON(id, path).catch(() => undefined) : undefined;
   if (!booking || typeof booking !== 'object' || Array.isArray(booking)) {
     return h('div', { class: 'screen' }, crumbs,
@@ -36,7 +36,10 @@ export async function renderBooking(ctx, route) {
         await ctx.render();
       } catch (e) {
         if (!explainStorageFull(ctx, e)) {
-          problem.textContent = sentences(t`It wasn't confirmed: ${String(/** @type {any} */ (e)?.message ?? e)}`, t`Try again.`);
+          // A schema's refusal stays its English (showError), inside the sentence.
+          const why = h('span');
+          showError(why, e);
+          problem.replaceChildren(...linkIn(sentences(t`It wasn't confirmed: ${why.textContent}`, t`Try again.`), why));
           problem.hidden = false;
         }
         confirm.disabled = false;

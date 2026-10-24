@@ -108,87 +108,87 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 la9701	draft	not backed up	未备份	src/ui/format.js:26	
 1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:27	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
 1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
-meb4bg	draft	you	你	src/ui/format.js:32	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:39	
-16name3	draft	free	免费	src/ui/format.js:40	
-1bm6q72	draft	key rejected	密钥被拒绝	src/ui/format.js:45	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	draft	too many requests	请求过多	src/ui/format.js:45	
-4icrku	draft	answered	已回答	src/ui/format.js:45	
-jk3r0m	draft	overloaded	过载	src/ui/format.js:45	
-k1s3xh	draft	out of credit	额度用完	src/ui/format.js:45	
-1ci3mtm	draft	doesn't allow web apps	不允许网页应用	src/ui/format.js:46	
-1lj1ww1	draft	photo upload expired	照片上传已过期	src/ui/format.js:46	
-1x40ny1	draft	didn't take the photo	未接受照片	src/ui/format.js:46	
-f82spn	draft	too long for it	内容过长	src/ui/format.js:46	
-11n2a71	draft	couldn't connect	无法连接	src/ui/format.js:47	
-a3596h	draft	refused the request	拒绝了请求	src/ui/format.js:47	
-n3huvh	draft	unknown model or address	未知的模型或地址	src/ui/format.js:47	
-rhcw9u	draft	provider error	提供商出错	src/ui/format.js:47	
-13effb	draft	connection dropped	连接中断	src/ui/format.js:48	
-1quwfm7	draft	plugin failed	插件出错	src/ui/format.js:48	
-1s4r037	draft	too slow to start	启动太慢	src/ui/format.js:48	
-hqyrx7	draft	removed	已移除	src/ui/format.js:48	
-urm4i6	draft	stopped	已停止	src/ui/format.js:48	
-184j4co	draft	resting after an error	出错后暂停中	src/ui/format.js:49	
-1mrun4s	draft	redirected elsewhere	被重定向到别处	src/ui/format.js:49	
-1q01jst	draft	doesn't take photos	不支持照片	src/ui/format.js:49	
-365ivi	draft	can't use tools	无法使用工具	src/ui/format.js:49	
-4k8rwn	draft	its ability is switched off	该功能已关闭	src/ui/format.js:49	
-l7u7vc	draft	its plugin is missing	缺少其插件	src/ui/format.js:49	
-1y8iwje	draft	has no web tool of that kind	没有该类网页工具	src/ui/format.js:50	
-6gto9k	draft	couldn't hear the speech	未能听清语音	src/ui/format.js:50	
-710q7y	draft	conversation too long for it	对话过长	src/ui/format.js:50	
-7jim5c	draft	isn't a chat model	不是聊天模型	src/ui/format.js:50	
-w70v2a	draft	doesn't take audio	不支持音频	src/ui/format.js:50	
-1009iza	draft	Restaurant	餐厅	src/ui/format.js:64	
-1lrcegv	draft	Event	活动	src/ui/format.js:64	
-8cdq15	draft	Train	火车	src/ui/format.js:64	
-d57q3n	draft	Flight	航班	src/ui/format.js:64	
-jj8u9s	draft	Stay	住宿	src/ui/format.js:64	Note: A kind of booking: a hotel or other lodging.
-sksosh	draft	Car	租车	src/ui/format.js:64	Note: A kind of booking: a car, nearly always a rental.
-ukzedx	draft	Other	其他	src/ui/format.js:64	
-hqumoz	draft	Kind	类型	src/ui/format.js:79	
-j6u2ti	draft	Starts	开始	src/ui/format.js:82	context: booking; Note: A booking's start, its day and time shown beside it.
-1pcvk9l	draft	Ends	结束	src/ui/format.js:84	context: booking
-16ygujg	draft	Place	地点	src/ui/format.js:85	
-1kq44x8	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:85	{0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	draft	Confirmation	确认号	src/ui/format.js:86	Note: A booking's confirmation code.
-t05i6w	draft	Cost	费用	src/ui/format.js:87	
-1vdspge	draft	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:109	{0} = num(p.done); {1} = num(p.total)
-zo1gq	draft	Getting the backup…	正在获取备份…	src/ui/format.js:109	
-fuj1qb	draft	Getting the backup ready…	正在准备备份…	src/ui/format.js:113	
-1a0lh7c	draft	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:114	{0} = num(p.done); {1} = num(p.total)
-1ofggks	draft	Comparing files…	正在比较文件…	src/ui/format.js:114	
-1jbhw8o	draft	Uploading…	正在上传…	src/ui/format.js:115	
-sg0mn0	draft	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:115	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	draft	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:123	
-1815ss7	draft	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:123	
-1kc2l15	draft	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:124	
-1ytn3n1	draft	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:124	
-14m1y56	draft	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:125	
-12hcbva	draft	An iPhone backed up to {0} {1}.	iPhone {1}备份到了{0}。	src/ui/format.js:129	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	draft	An iPad backed up to {0} {1}.	iPad {1}备份到了{0}。	src/ui/format.js:129	{0} = where; {1} = ago
-1hmrpdo	draft	A computer backed up to {0} {1}.	一台电脑{1}备份到了{0}。	src/ui/format.js:130	{0} = where; {1} = ago
-dc7u48	draft	An Android phone backed up to {0} {1}.	一部 Android 手机{1}备份到了{0}。	src/ui/format.js:130	{0} = where; {1} = ago
-19kyaez	draft	Another device backed up to {0} {1}.	另一台设备{1}备份到了{0}。	src/ui/format.js:131	{0} = where; {1} = ago
-mbc651	draft	That was after this phone's last backup.	这晚于这部手机上次的备份。	src/ui/format.js:135	
-vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:135	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	draft	That was after this iPad's last backup.	这晚于这台 iPad 上次的备份。	src/ui/format.js:136	
-nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:136	
-hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:137	
-wn3ejs	draft	That was after this computer's last backup.	这晚于这台电脑上次的备份。	src/ui/format.js:137	
-1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:149	
-1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:154	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:154	
-10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:155	{0} = size(h.bytes)
-osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:156	{0} = h.message
-1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:157	Note: "Save and test" is the backup place's button.
-1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:158	
-173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:159	{0} = at
-1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:159	
-1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:172	
-hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:172	
-8091b1	draft	no limit	无限制	src/ui/format.js:197	
+meb4bg	draft	you	你	src/ui/format.js:31	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:35	
+16name3	draft	free	免费	src/ui/format.js:36	
+1bm6q72	draft	key rejected	密钥被拒绝	src/ui/format.js:41	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	draft	too many requests	请求过多	src/ui/format.js:41	
+4icrku	draft	answered	已回答	src/ui/format.js:41	
+jk3r0m	draft	overloaded	过载	src/ui/format.js:41	
+k1s3xh	draft	out of credit	额度用完	src/ui/format.js:41	
+1ci3mtm	draft	doesn't allow web apps	不允许网页应用	src/ui/format.js:42	
+1lj1ww1	draft	photo upload expired	照片上传已过期	src/ui/format.js:42	
+1x40ny1	draft	didn't take the photo	未接受照片	src/ui/format.js:42	
+f82spn	draft	too long for it	内容过长	src/ui/format.js:42	
+11n2a71	draft	couldn't connect	无法连接	src/ui/format.js:43	
+a3596h	draft	refused the request	拒绝了请求	src/ui/format.js:43	
+n3huvh	draft	unknown model or address	未知的模型或地址	src/ui/format.js:43	
+rhcw9u	draft	provider error	提供商出错	src/ui/format.js:43	
+13effb	draft	connection dropped	连接中断	src/ui/format.js:44	
+1quwfm7	draft	plugin failed	插件出错	src/ui/format.js:44	
+1s4r037	draft	too slow to start	启动太慢	src/ui/format.js:44	
+hqyrx7	draft	removed	已移除	src/ui/format.js:44	
+urm4i6	draft	stopped	已停止	src/ui/format.js:44	
+184j4co	draft	resting after an error	出错后暂停中	src/ui/format.js:45	
+1mrun4s	draft	redirected elsewhere	被重定向到别处	src/ui/format.js:45	
+1q01jst	draft	doesn't take photos	不支持照片	src/ui/format.js:45	
+365ivi	draft	can't use tools	无法使用工具	src/ui/format.js:45	
+4k8rwn	draft	its ability is switched off	该功能已关闭	src/ui/format.js:45	
+l7u7vc	draft	its plugin is missing	缺少其插件	src/ui/format.js:45	
+1y8iwje	draft	has no web tool of that kind	没有该类网页工具	src/ui/format.js:46	
+6gto9k	draft	couldn't hear the speech	未能听清语音	src/ui/format.js:46	
+710q7y	draft	conversation too long for it	对话过长	src/ui/format.js:46	
+7jim5c	draft	isn't a chat model	不是聊天模型	src/ui/format.js:46	
+w70v2a	draft	doesn't take audio	不支持音频	src/ui/format.js:46	
+1009iza	draft	Restaurant	餐厅	src/ui/format.js:60	
+1lrcegv	draft	Event	活动	src/ui/format.js:60	
+8cdq15	draft	Train	火车	src/ui/format.js:60	
+d57q3n	draft	Flight	航班	src/ui/format.js:60	
+jj8u9s	draft	Stay	住宿	src/ui/format.js:60	Note: A kind of booking: a hotel or other lodging.
+sksosh	draft	Car	租车	src/ui/format.js:60	Note: A kind of booking: a car, nearly always a rental.
+ukzedx	draft	Other	其他	src/ui/format.js:60	
+hqumoz	draft	Kind	类型	src/ui/format.js:75	
+j6u2ti	draft	Starts	开始	src/ui/format.js:77	context: booking; Note: A booking's start, its day and time shown beside it.
+1pcvk9l	draft	Ends	结束	src/ui/format.js:79	context: booking
+16ygujg	draft	Place	地点	src/ui/format.js:80	
+lypvx6	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:80	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	draft	Confirmation	确认号	src/ui/format.js:81	Note: A booking's confirmation code.
+t05i6w	draft	Cost	费用	src/ui/format.js:82	
+1vdspge	draft	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:104	{0} = num(p.done); {1} = num(p.total)
+zo1gq	draft	Getting the backup…	正在获取备份…	src/ui/format.js:104	
+fuj1qb	draft	Getting the backup ready…	正在准备备份…	src/ui/format.js:108	
+1a0lh7c	draft	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:109	{0} = num(p.done); {1} = num(p.total)
+1ofggks	draft	Comparing files…	正在比较文件…	src/ui/format.js:109	
+1jbhw8o	draft	Uploading…	正在上传…	src/ui/format.js:110	
+sg0mn0	draft	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:110	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	draft	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:115	
+1815ss7	draft	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:115	
+1kc2l15	draft	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:116	
+1ytn3n1	draft	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:116	
+14m1y56	draft	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:117	
+12hcbva	draft	An iPhone backed up to {0} {1}.	iPhone {1}备份到了{0}。	src/ui/format.js:121	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	draft	An iPad backed up to {0} {1}.	iPad {1}备份到了{0}。	src/ui/format.js:121	{0} = where; {1} = ago
+1hmrpdo	draft	A computer backed up to {0} {1}.	一台电脑{1}备份到了{0}。	src/ui/format.js:122	{0} = where; {1} = ago
+dc7u48	draft	An Android phone backed up to {0} {1}.	一部 Android 手机{1}备份到了{0}。	src/ui/format.js:122	{0} = where; {1} = ago
+19kyaez	draft	Another device backed up to {0} {1}.	另一台设备{1}备份到了{0}。	src/ui/format.js:123	{0} = where; {1} = ago
+mbc651	draft	That was after this phone's last backup.	这晚于这部手机上次的备份。	src/ui/format.js:127	
+vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:127	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	draft	That was after this iPad's last backup.	这晚于这台 iPad 上次的备份。	src/ui/format.js:128	
+nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:128	
+hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:129	
+wn3ejs	draft	That was after this computer's last backup.	这晚于这台电脑上次的备份。	src/ui/format.js:129	
+1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:141	
+1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:146	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:146	
+10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:147	{0} = size(h.bytes)
+osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:148	{0} = h.message
+1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:149	Note: "Save and test" is the backup place's button.
+1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:150	
+173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:151	{0} = at
+1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:151	
+1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:163	
+hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:163	
+8091b1	draft	no limit	无限制	src/ui/format.js:188	
 12gy0yc	draft	Open annai from your Home Screen.	从主屏幕打开 annai。	src/ui/install.js:17	
 82ba67	draft	Tap the Share button in Safari.	轻点 Safari 浏览器中的“共享”按钮。	src/ui/install.js:17	Note: Apple's zh-CN guides say 轻点 for tap.
 ejxnor	draft	Choose "Add to Home Screen".	选择“添加到主屏幕”。	src/ui/install.js:17	
@@ -441,16 +441,16 @@ c65xlw	draft	Backups	备份	src/ui/screens/backups.js:77
 nq6gpo	draft	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:21	
 19h3yfj	draft	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被删除或重命名。行程中列出了现有的预订。	src/ui/screens/booking.js:22	
 fl5bce	draft	Confirmed	已确认	src/ui/screens/booking.js:35	
-bigbss	draft	Try again.	请重试。	src/ui/screens/booking.js:39	
-dqldb5	draft	It wasn't confirmed: {0}	未能确认：{0}	src/ui/screens/booking.js:39	{0} = String(/** @type {any} */ (e)?.message ?? e)
-19dss4d	draft	Looks right	没问题	src/ui/screens/booking.js:45	Note: The button that confirms a booking.
-56ee40	draft	Booking	预订	src/ui/screens/booking.js:47	
-1rnayr2	draft	Check this against the original, then confirm it.	请对照原件核对后再确认。	src/ui/screens/booking.js:48	
-bamrei	draft	Change it	修改	src/ui/screens/booking.js:52	
-d0tqtj	draft	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行中。	src/ui/screens/booking.js:66	{0} = path
-yp5voz	draft	This booking doesn't say which file it came from.	这个预订没有说明来自哪个文件。	src/ui/screens/booking.js:66	
-98drsx	draft	Open the original	打开原件	src/ui/screens/booking.js:67	
-c4110z	draft	The original, {0}	原件：{0}	src/ui/screens/booking.js:69	{0} = entry.path
+bigbss	draft	Try again.	请重试。	src/ui/screens/booking.js:42	
+dqldb5	draft	It wasn't confirmed: {0}	未能确认：{0}	src/ui/screens/booking.js:42	{0} = why.textContent
+19dss4d	draft	Looks right	没问题	src/ui/screens/booking.js:48	Note: The button that confirms a booking.
+56ee40	draft	Booking	预订	src/ui/screens/booking.js:50	
+1rnayr2	draft	Check this against the original, then confirm it.	请对照原件核对后再确认。	src/ui/screens/booking.js:51	
+bamrei	draft	Change it	修改	src/ui/screens/booking.js:55	
+d0tqtj	draft	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行中。	src/ui/screens/booking.js:69	{0} = path
+yp5voz	draft	This booking doesn't say which file it came from.	这个预订没有说明来自哪个文件。	src/ui/screens/booking.js:69	
+98drsx	draft	Open the original	打开原件	src/ui/screens/booking.js:70	
+c4110z	draft	The original, {0}	原件：{0}	src/ui/screens/booking.js:72	{0} = entry.path
 19jra30	draft	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	draft	What's around here?	附近有什么？	src/ui/screens/drive.js:12	
 1gkqhnt	draft	Food	吃饭	src/ui/screens/drive.js:13	
@@ -502,17 +502,11 @@ twulcv	draft	Version restored	已恢复版本	src/ui/screens/file.js:121
 16qw3bf	draft	Restore this version	恢复此版本	src/ui/screens/file.js:122	
 1dw4k8q	draft	Current	当前	src/ui/screens/file.js:123	
 3g3rkl	draft	changed by you {0}	你{0}修改	src/ui/screens/file.js:129	{0} = ago; Note: {0} is a relative time ("5 min ago").
-zi841o	draft	changed by Shiori {0}	Shiori {0}修改	src/ui/screens/file.js:130	{0} = ago
-8zkwit	draft	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:131	{0} = authorName(entry.author); {1} = ago; Note: {0} is a plugin's id.
-qroxqz	draft	changed by annai {0}	annai {0}修改	src/ui/screens/file.js:131	{0} = ago
-1k32hzi	draft	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:138	{0} = ago
-1q601xl	draft	Deleted by Shiori {0}	Shiori {0}删除	src/ui/screens/file.js:139	{0} = ago
-okgj5g	draft	Deleted by annai {0}	annai {0}删除	src/ui/screens/file.js:140	{0} = ago
-w8mx56	draft	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:140	{0} = authorName(v.actor); {1} = ago
-1cdkli8	draft	Saved by you {0}	你{0}保存	src/ui/screens/file.js:142	{0} = ago
-1fc2xqf	draft	Saved by Shiori {0}	Shiori {0}保存	src/ui/screens/file.js:143	{0} = ago
-1ccml4i	draft	Saved by annai {0}	annai {0}保存	src/ui/screens/file.js:144	{0} = ago
-1xtgqpw	draft	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:144	{0} = authorName(v.actor); {1} = ago
+8zkwit	draft	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:129	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	draft	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:135	{0} = ago
+w8mx56	draft	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:135	{0} = who; {1} = ago
+1cdkli8	draft	Saved by you {0}	你{0}保存	src/ui/screens/file.js:136	{0} = ago
+1xtgqpw	draft	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:136	{0} = who; {1} = ago
 1xtp0n4	draft	Headers, kept on this device	请求头，保存在此设备上	src/ui/screens/mcp.js:5	
 e9m35h	draft	No key	无密钥	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer 令牌，保存在此设备上	src/ui/screens/mcp.js:5	
@@ -656,11 +650,11 @@ izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/ui
 1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	现在没有 GPS 信号。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:131	
 17826bm	draft	At {0}	在{0}	src/ui/screens/now.js:134	{0} = near.name
 ue501f	draft	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:146	Note: Read aloud before a plan item that keeps its time.
-tdmj58	draft	Flexible:	可调整：	src/ui/screens/now.js:146	Note: Read aloud before a plan item whose time can move.
-u35e3n	draft	said aloud	已朗读	src/ui/screens/now.js:168	Note: the mark on a line of hers that was said aloud.
-16ocoht	draft	Show what she said	显示她说的话	src/ui/screens/now.js:170	
-1yj7glf	draft	Said aloud	已朗读	src/ui/screens/now.js:171	
+1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
+tdmj58	draft	Flexible:	可调整：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
+u35e3n	draft	said aloud	已朗读	src/ui/screens/now.js:167	Note: the mark on a line of hers that was said aloud.
+16ocoht	draft	Show what she said	查看她说的话	src/ui/screens/now.js:169	
+1yj7glf	draft	Said aloud	已朗读	src/ui/screens/now.js:170	
 ls5hgo	draft	Open a trip to see its plan.	打开一个旅行即可查看其行程。	src/ui/screens/plan.js:24	
 ow5t4g	draft	No time yet ({0})	未定时间（{0}）	src/ui/screens/plan.js:36	{0} = num(untimed.length)
 u71m40	draft	Nothing planned this day.	这一天没有安排。	src/ui/screens/plan.js:46	
@@ -790,20 +784,21 @@ nsh8oa	draft	Written {0}, then edited by you.	{0}写成，之后由你编辑过�
 1izysa3	draft	No model is set up to write it yet.	还没有设置用来撰写它的模型。	src/ui/screens/recap.js:84	
 1ryjzrz	draft	Whole trip	整个旅行	src/ui/screens/replay.js:46	
 2m5fua	draft	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	还没有可回放的内容。GPS 开启时，annai 会记录你去过的地方；Shiori 的卡片、你的消息和照片也会显示在这里。	src/ui/screens/replay.js:50	
-1rgnrl8	draft	A stop	一个停留点	src/ui/screens/replay.js:72	
-wl73p3	draft	The route: {0}	路线：{0}	src/ui/screens/replay.js:77	{0} = r.words
-15c7htt	draft	You said	你说	src/ui/screens/replay.js:103	
-10ftdrc	draft	Photo {0}, {1}	照片 {0}，{1}	src/ui/screens/replay.js:105	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
-1el9a17	draft	Open full size	放大查看	src/ui/screens/replay.js:106	
-bk85tv	draft	Play	播放	src/ui/screens/replay.js:120	
-1ixl81m#other	draft	# stamps so far	至今 # 枚纪念章	src/ui/screens/replay.js:158	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
-1bjla9w	draft	The timeline below lists each place in order.	下方时间线按顺序列出了每个地点。	src/ui/screens/replay.js:170	
-z5puy8	draft	At this moment	此时	src/ui/screens/replay.js:171	
-hg5a8z	draft	Time in the trip	旅行中的时间	src/ui/screens/replay.js:174	
-2w2xwg	draft	Speed	速度	src/ui/screens/replay.js:175	
-7xq6tu	draft	The trip in order	按顺序的旅行	src/ui/screens/replay.js:176	
-djv8ja	draft	Timeline	时间线	src/ui/screens/replay.js:176	
-j4z771	draft	Pause	暂停	src/ui/screens/replay.js:177	
+1rgnrl8	draft	A stop	一个停留点	src/ui/screens/replay.js:71	
+wl73p3	draft	The route: {0}	路线：{0}	src/ui/screens/replay.js:76	{0} = r.words
+15c7htt	draft	You said	你说	src/ui/screens/replay.js:102	
+10ftdrc	draft	Photo {0}, {1}	照片 {0}，{1}	src/ui/screens/replay.js:104	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
+1el9a17	draft	Open full size	放大查看	src/ui/screens/replay.js:105	
+bk85tv	draft	Play	播放	src/ui/screens/replay.js:119	
+1kq44x8	draft	{0}, {1}	{0}，{1}	src/ui/screens/replay.js:151	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
+1ixl81m#other	draft	# stamps so far	至今 # 枚纪念章	src/ui/screens/replay.js:157	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
+1bjla9w	draft	The timeline below lists each place in order.	下方时间线按顺序列出了每个地点。	src/ui/screens/replay.js:169	
+z5puy8	draft	At this moment	此时	src/ui/screens/replay.js:170	
+hg5a8z	draft	Time in the trip	旅行中的时间	src/ui/screens/replay.js:173	
+2w2xwg	draft	Speed	速度	src/ui/screens/replay.js:174	
+7xq6tu	draft	The trip in order	旅行经过	src/ui/screens/replay.js:175	Note: A screen reader's name for the timeline's section.
+djv8ja	draft	Timeline	时间线	src/ui/screens/replay.js:175	
+j4z771	draft	Pause	暂停	src/ui/screens/replay.js:176	
 1bu98qy	draft	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:18	
 1m5wnho	draft	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:18	
 1mlnwtl	draft	Shiori, asleep	Shiori，睡着了	src/ui/screens/shiori.js:18	
@@ -967,14 +962,14 @@ deqm9f	draft	No files yet.	还没有文件。	src/ui/screens/trip.js:125
 odevmc	draft	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/trip.js:172	{0} = num(done + 1); {1} = num(total)
 rcp6ga	draft	A photo was kept as it is	照片已按原样保存	src/ui/screens/trip.js:175	
 36fatd	draft	A calendar file couldn't be read	无法读取日历文件	src/ui/screens/trip.js:176	
-liuhl8#other	draft	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/trip.js:179	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
-q61zku#other	draft	Added # files	已添加 # 个文件	src/ui/screens/trip.js:180	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-1y79g95	draft	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:197	{0} = p
-ecy82r	draft	Add a file	添加文件	src/ui/screens/trip.js:205	
-1bmm5eq	draft	File path	文件路径	src/ui/screens/trip.js:206	
-16gte2l	draft	Create	创建	src/ui/screens/trip.js:209	
-knyqwh	draft	Add photos or files	添加照片或文件	src/ui/screens/trip.js:210	
-12n59th	draft	Take a photo	拍照	src/ui/screens/trip.js:211	
+liuhl8#other	draft	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/trip.js:178	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
+q61zku#other	draft	Added # files	已添加 # 个文件	src/ui/screens/trip.js:179	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+1y79g95	draft	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:196	{0} = p
+ecy82r	draft	Add a file	添加文件	src/ui/screens/trip.js:204	
+1bmm5eq	draft	File path	文件路径	src/ui/screens/trip.js:205	
+16gte2l	draft	Create	创建	src/ui/screens/trip.js:208	
+knyqwh	draft	Add photos or files	添加照片或文件	src/ui/screens/trip.js:209	
+12n59th	draft	Take a photo	拍照	src/ui/screens/trip.js:210	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:23	
 33pqd9	draft	Last backup {0}, to {1}.	上次备份：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:27	

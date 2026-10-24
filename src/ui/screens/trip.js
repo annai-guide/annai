@@ -174,7 +174,6 @@ function newFile(ctx, id) {
       await ctx.render();
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      // What was added: the file by its path, or how many.
       const what = paths.length === 1 ? paths[0] : plural(paths.length, '# file', '# files');
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # plan item from the calendar', 'Added {0}, and # plan items from the calendar', what)
         : paths.length === 1 ? t`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));

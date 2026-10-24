@@ -37,7 +37,7 @@ export async function renderReplay(ctx, route) {
   const j = await readJourney({ store: ctx.store, ws: ctx.ws, trip: id, namer: (p) => pack?.name(p) ?? null });
   const day = j.days.includes(route.params.day ?? '') ? route.params.day : null;
   const r = replayOf(j, day);
-  const base = /* en */ `#/trip/${encodeURIComponent(id)}/replay`;
+  const base = `#/trip/${encodeURIComponent(id)}/replay`;
   const dayName = (/** @type {string} */ d) => dayText(d, true);
   const tab = (/** @type {string | null} */ d, /** @type {string} */ label) => h('a', { class: 'tab', href: d ? `${base}?day=${d}` : base, 'aria-current': d === day ? 'page' : null }, label);
   const head = [
@@ -49,7 +49,6 @@ export async function renderReplay(ctx, route) {
     return h('div', { class: 'screen replay' }, ...head,
       h('p', { class: 'empty', text: t`Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.` }));
   }
-  // Her words and the user's carry their language (L3), as in the Conversation.
   const app = await readAppSettings(ctx.ws);
   const hers = wording(app, true);
   const mine = wording(app);
@@ -73,7 +72,7 @@ export async function renderReplay(ctx, route) {
   });
   const here = svg('circle', { class: 'route-here', r: 13, cx: -100, cy: -100 });
   const titleId = `route-${Math.random().toString(36).slice(2)}`;
-  const map = svg('svg', { class: 'route-map', viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-labelledby': titleId, preserveAspectRatio: /* en */ 'xMidYMid meet' },
+  const map = svg('svg', { class: 'route-map', viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-labelledby': titleId, preserveAspectRatio: 'xMidYMid meet' },
     svg('title', { id: titleId }, t`The route: ${r.words}`),
     ...jumps, ...r.segments.map((seg) => svg('polyline', { class: 'route-all', points: line(seg) })), ...done, ...rings, here);
 

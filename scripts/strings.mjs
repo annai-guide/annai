@@ -96,7 +96,7 @@ const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
 /** Properties whose value a screen shows as it is, and calls whose first argument it does (the design's "certain places"). */
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
 /** Properties that hold a code, not words: a class, an id, a type, a link. */
-const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value']);
+const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value', 'preserveAspectRatio', 'viewBox', 'points', 'd', 'transform']);
 /** The calls that show words, and which of their arguments (dom.js's labelled controls too); `pairs`: the second is [value, label][]. */
 const SHOWN_CALLS = new Map([
   ['field', [0]], ['checkbox', [0]], ['toast', [0]], ['card', [0]], ['twoStep', [0, 1]], ['jsonField', [0]], ['savedField', [0]], ['savedCheck', [0]],
@@ -616,6 +616,8 @@ export function readsAsWords(s) {
   if (!/\p{L}/u.test(text)) return false;
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^[./#~@]?[\w.@-]*\/[\w./@{}-]*$/.test(text) || /[{};]\s*$|^[\d.]+(px|em|rem|%|s|ms)\b/.test(text)) return false;
   if (/^[A-Z0-9_]+$/.test(text)) return false;
+  // A hash link made of parts ("#/trip/ /replay"), and a CSS function ("translate( px,  px)").
+  if (/^#\//.test(text) || /^[a-z][\w-]*\(.*\)$/s.test(text)) return false;
   if (!/\s/.test(text)) return /^\p{Lu}\p{Ll}/u.test(text) || /[^\x00-\x7f]/.test(text) && /\p{L}/u.test(text) || /[.…!?]$/.test(text) && /\p{L}{2}/u.test(text);
   return (text.match(/\p{L}+/gu)?.length ?? 0) >= 2 || /\p{Lu}/u.test(text);
 }
@@ -645,7 +647,10 @@ export function findWords(file, text) {
 }
 /** Where a literal is code, not words: an import, a comparison, a property's name, a selector, a pattern. @param {ts.SourceFile} sf @param {ts.Node} n */
 function skipped(sf, n) {
-  const p = n.parent;
+  let p = n.parent;
+  // A value chosen by a condition, or one of a list, belongs to what holds the choice (a class: cond ? 'btn' : 'btn pri').
+  for (let c = n; (ts.isConditionalExpression(p) && p.condition !== c) || ts.isParenthesizedExpression(p) || ts.isArrayLiteralExpression(p)
+    || (ts.isBinaryExpression(p) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(p.operatorToken.kind)); c = p, p = p.parent);
   if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isCaseClause(p) || ts.isElementAccessExpression(p) || ts.isLiteralTypeNode(p) || ts.isExternalModuleReference(p)) return true;
   if (ts.isPropertyAssignment(p) && (p.name === n || CODE_PROPS.has(nameOf(p.name)))) return true;
   if (ts.isBinaryExpression(p) && [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.InKeyword].includes(p.operatorToken.kind)) return true;
