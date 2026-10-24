@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveInput } from '../../src/core/realtime/input.js';
 import { StreamResampler } from '../../src/core/voice/pcm.js';
-import { clip, quiet, cat, burst, room, hum, RATE } from './voice-kit.js';
+import { clip, quiet, cat, burst, room, hum, brown, RATE } from './voice-kit.js';
 
 const lunch = await clip('where-lunch');
 const gas = await clip('gas-station');
@@ -323,6 +323,25 @@ test('a click or a door slam leaves nothing: no activity and no audio, so no bil
   assert.equal(r.sent.at(-1), 'end');
   assert.ok(msOf(r.sent) > (lunch.length / RATE) * 1000, 'the whole sentence, not from where it was sure');
   r.input.stop();
+});
+
+test('a microphone that opens with zeros: a short word said at once is sent whole as one turn, and a car or a loud room there sends nothing (detector-floor)', async () => {
+  const zeros = new Float32Array(RATE);
+  for (const word of [(await clip('where-eat')).subarray(0, Math.round(0.3 * RATE)), await clip('thanks')]) {
+    const r = rig();
+    await r.input.start();
+    r.feed(up3(cat(zeros, word, room(4, new Float32Array(0)))));
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end']);
+    assert.ok(msOf(r.sent) > (word.length / RATE) * 1000, `${msOf(r.sent)} ms sent for ${(word.length / RATE) * 1000} ms of a word: all of it`);
+    r.input.stop();
+  }
+  for (const noise of [brown(6, 0.5), room(8, new Float32Array(0), undefined, 0.016)]) {
+    const r = rig();
+    await r.input.start();
+    r.feed(up3(cat(zeros, noise)));
+    assert.deepEqual(r.sent, [], 'nothing left the phone');
+    r.input.stop();
+  }
 });
 
 test("given the session to send to, it sends at the session's rate: 8 kHz for one that takes G.711 (K6)", async () => {

@@ -16,6 +16,7 @@ const CLIPS = {
   'gas-station': ['Is there a gas station nearby?', 'kal'],
   'where-eat': ['Where should we eat?', 'slt'],
   'first-one': ['Yes, the first one.', 'slt'],
+  thanks: ['Thanks.', 'slt'],
 };
 // Silence off both ends: reversed, so the same filter trims the end.
 const TRIM = 'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse';
