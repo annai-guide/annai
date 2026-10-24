@@ -201,7 +201,7 @@ function actions(ctx, r, update) {
   const install = r.action === 'install';
   const label = install ? t`Install` : r.added ? t`Add another` : t`Add`;
   const b = h('button', {
-    class: install || r.added ? 'btn' : 'btn pri', type: 'button', 'aria-label': install ? t`Install ${name}` : r.added ? t`Add another ${name}` : t`Add ${name}`,
+    class: ['btn', !(install || r.added) && 'pri'], type: 'button', 'aria-label': install ? t`Install ${name}` : r.added ? t`Add another ${name}` : t`Add ${name}`,
     onclick: () => run(ctx, b, install ? t`${name} wasn't installed` : t`${name} wasn't added`, install
       ? async () => {
         if (!navigator.serviceWorker?.controller) throw new Error(NO_SERVICE);

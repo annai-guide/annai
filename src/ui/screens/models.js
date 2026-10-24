@@ -280,7 +280,7 @@ export function reorderable(role, id, i, n, name, page, note, move, list, remove
       else break;
     }
     if (!grip.hasPointerCapture(drag.id)) grip.setPointerCapture(drag.id); // moving the entry in the page let go of it
-    li.style.transform = `translateY(${e.clientY - (drag.y - drag.top) - li.getBoundingClientRect().top}px)`;
+    li.style.transform = /* en */ `translateY(${e.clientY - (drag.y - drag.top) - li.getBoundingClientRect().top}px)`;
     renumber(li.parentElement);
   });
   /** @param {PointerEvent} e @param {boolean} save */

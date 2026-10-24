@@ -60,8 +60,6 @@ const SCAN = ['src'];
 /** The runtime itself and the pseudo-locale mention t and plural without being messages. */
 const SKIP = new Set(['src/core/l10n.js', 'src/core/l10n-pseudo.js', 'src/core/l10n-list.js']);
 const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
-/** A back link ("← Settings") is crumb()'s, which l10n-L5a makes while L5d extracts the same files: not counted until it merges. Remove with that merge. */
-const BACK_LINK = /^← /;
 /** Properties whose value a screen shows as it is, and calls whose first argument it does (the design's "certain places"). */
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
 /** Properties that hold a code, not words: a class, an id, a type, a link. */
@@ -571,7 +569,7 @@ export async function check(root, files = EXTRACTED) {
   }
   for (const file of files) {
     if (!existsSync(`${root}/${file}`)) { problems.push({ file, line: 1, message: 'is listed in EXTRACTED but is not there' }); continue; }
-    for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) if (!BACK_LINK.test(b.text)) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });
+    for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });
   }
   return { problems, warnings, drafts };
 }

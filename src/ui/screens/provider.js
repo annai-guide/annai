@@ -356,8 +356,8 @@ async function abilityBody(view, abilityId) {
   // A new address lets go of what the provider keeps at the old one, so it warns as the provider's own address does (verification).
   const addressWarn = h('p', { class: 'sub' });
   if (type.keeps) address.addEventListener('input', () => warnKept(ctx, addressWarn, { provider: id }, true));
-  const tunables = jsonField(t`Tunables (JSON)`, `ability-${abilityId}-tunables`, a.tunables);
-  const extra = jsonField(t`Extra request fields (JSON)`, `ability-${abilityId}-extra`, a.extraBody);
+  const tunables = jsonField(t`Tunables (JSON)`, /* en */ `ability-${abilityId}-tunables`, a.tunables);
+  const extra = jsonField(t`Extra request fields (JSON)`, /* en */ `ability-${abilityId}-extra`, a.extraBody);
   // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
   const uploads = type.uploadRequest ? savedCheck(t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
