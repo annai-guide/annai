@@ -59,6 +59,17 @@ au82n5	draft	None picked: annai uses the browser’s language. In order of use. 
 io1qx	draft	Open the booking	打开预订	src/ui/cards.js:73	
 1ghy26u	draft	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:76	
 1hvdy8q	draft	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的类型（{0}）来自一个未开启的插件。	src/ui/cards.js:88	{0} = card.type
+1qozjyj	draft	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地点，用于 Shiori 的 nearby 工具和离线包，通过 Overpass（overpass-api.de，繁忙时用 private.coffee 的服务器）查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
+g4c01g	draft	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或说出某个位置的地名，用于 Shiori 的 geocode 和 reverse 工具；作为免费搜索的最后手段，也会查找地点的官网。annai 按其使用政策，每秒最多询问一次。	src/ui/credits.js:26	
+1jfh2kq	draft	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地点的文章，以及离线包中的摘要。Shiori 读到的每篇文章都附有地址。免费搜索始终开启的最后手段会用搜索的词向它查询。	src/ui/credits.js:33	
+1ufrhy7	draft	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，用于 Shiori 的 guide 工具和离线包，也是免费搜索的后备。	src/ui/credits.js:40	
+1g8sy5k	draft	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天气预报，用于 Shiori 的 weather 工具。预报中的日出和日落也来自 Open-Meteo；此刻页面的黄金时刻，以及 Open-Meteo 无响应时的日出日落时间，都在手机上计算。	src/ui/credits.js:47	
+a8awk7	draft	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	为 web_search 提供免费网页搜索，并为 fetch 读取其他方式读不了的网页，仅在设置 → 工具中勾选时使用。只发送搜索的词或网页地址。	src/ui/credits.js:54	
+382qu6	draft	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	为 web_search 提供免费网页搜索，仅在设置 → 工具中勾选时使用。只发送搜索的词。	src/ui/credits.js:61	
+138nh47	draft	Web search for web_search, with your key, once the Tavily Search plugin is installed.	为 web_search 提供网页搜索，安装 Tavily Search 插件后用你的密钥。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).
+1a5kitj	draft	Web search for web_search, with your key, once the Serper Search plugin is installed.	为 web_search 提供网页搜索，安装 Serper Search 插件后用你的密钥。	src/ui/credits.js:82	
+1yvqge7	draft	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并搜索网页，用于 Shiori 的 fetch 和 web_search 工具，按设置 → 工具的选择使用。	src/ui/credits.js:89	
+l5jx6y	draft	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：为 annai 用 AI 图像生成设计，再描摹成矢量图。	src/ui/credits.js:107	
 gb19et	draft	Message to Shiori	给 Shiori 的消息	src/ui/dock.js:43	
 1vatbdb	draft	Send	发送	src/ui/dock.js:58	
 1m2zofh	draft	Type	输入	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
@@ -126,10 +137,117 @@ an1pf7	draft	Dismiss	关闭	src/ui/notices.js:156
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+1cjjnaq	draft	Kept on this device.	保存在此设备上。	src/ui/privacy.js:25	
+tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:25	
+14xwlem	draft	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:26	
+5ycw8s	draft	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	你问 Shiori 的内容，连同她从旅行中需要的信息，会发送给你连接的模型提供商；你说的话会发送到设置 → 语音中显示的地方。她查询的地点会发送给设置 → 关于中列出的来源。记录会显示 annai 为 Shiori 发出的每个请求：她的模型调用、工具和离线包。	src/ui/privacy.js:26	Note: "her" kept where it reads natural; the Trace is 記録/记录 per the glossary.
+1g2tvlf	draft	Your keys stay yours.	密钥归你所有。	src/ui/privacy.js:27	
+1jo7026	draft	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	每个模型密钥都保存在此设备的存储中，只发送给它所属的提供商。密钥从不放进 Shiori 的模型读取的内容，在记录中会被遮盖，也不会包含在导出中，除非你选择把它们放进加密备份。	src/ui/privacy.js:27	
+12t6czb	draft	No tracking.	不追踪。	src/ui/privacy.js:28	
+5d5p39	draft	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai 没有统计分析，也没有广告。它不从其他网站加载脚本：内容安全策略只允许运行来自 annai 自己地址的脚本，你安装的代码插件除外，它们由 annai 自己存储和提供。	src/ui/privacy.js:28	
+1e9jheb	draft	Reminders stay sealed.	提醒始终加密。	src/ui/privacy.js:29	
+1ves2ac	draft	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	开启通知后，推送中继保存的每条定时提醒都在此设备上加密，它只保留手机的推送地址、每条提醒的时间、等待的数量，以及很少的其他信息：每条的取消码，以及这部手机已收到提醒的标记。关于地点的提醒从不离开手机。	src/ui/privacy.js:29	
+13wlc44	draft	Open code.	开放源代码。	src/ui/privacy.js:30	
+1qhqdx	draft	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai 的代码以 AGPL-3.0 开源，任何人都可以在 {0} 阅读。	src/ui/privacy.js:30	{0} = REPO.replace('https://', '')
+1q2zxy5	draft	Where this stops	局限	src/ui/privacy.js:31	Note: "Where this stops" as one noun heading.
+1bk8ve3	draft	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	你安装的代码插件拥有完全信任：它能读取你的旅行和密钥，它的请求也可以绕过记录。只安装你信任的插件。	src/ui/privacy.js:33	
+19jox8f	draft	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	使用模型自带的搜索或抓取（设置 → 工具）时，搜索和网页在提供商的服务器上运行，记录只显示模型的这一轮。	src/ui/privacy.js:34	
+426n3h	draft	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	密钥的安全取决于这台设备：任何能在它上面使用这个浏览器的人都能接触到它们。请锁好设备。	src/ui/privacy.js:35	
+ldqm5c	draft	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	在 iPhone 上，Safari 浏览器和主屏幕上的 App 各自保存数据：在其中一个添加的密钥和旅行不会出现在另一个里。	src/ui/privacy.js:36	
+mj3oi4	draft	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai 是自由软件，在法律允许的范围内按原样提供，不附带任何担保，依据 {0}（AGPL-3.0）授权。	src/ui/privacy.js:43	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
+19ow2h0	draft	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能会出错。预订、价格、营业时间、路线和安全信息请自己核实。	src/ui/privacy.js:44	
+5aqdvy	draft	When you drive, use her hands-free, and follow the road and the local rules.	开车时请免提使用她，并遵守路况和当地规定。	src/ui/privacy.js:45	
+hirfin	draft	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你连接的模型提供商收取的费用由你支付。你导入、抓取或连接的内容由你负责。	src/ui/privacy.js:46	
+1wdrhx6	draft	{0} {1}	{0}{1}	src/ui/provider-setup.js:21	{0} = a; {1} = b; Note: two sentences side by side; no space between them in Chinese and Japanese.
+1qelf30	draft	{0} can't add a provider at {1}: it sends keys only to none.	{0}无法在 {1} 添加提供商：它不向任何地方发送密钥。	src/ui/provider-setup.js:82	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
+rq1jha	draft	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}无法在 {1} 添加提供商：它只向 {2} 发送密钥。	src/ui/provider-setup.js:82	{0} = who; {1} = at; {2} = list(where, 'plain')
+1st0ijv	draft	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:93	
+1lwfyvo	draft	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:95	{0} = mine
+13upi6b	draft	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:123	{0} = entry.name
+17q3a6l	draft	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:123	
+1p012cf	draft	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:153	
+14m6i84	draft	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:162	{0} = finishing
+yyxfov	draft	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:167	{0} = f.name
+15aq08d	draft	The quickest start	最快的开始方式	src/ui/provider-setup.js:169	
+w9nig3	draft	Sign in	登录	src/ui/provider-setup.js:169	
+edml6o	draft	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:173	
+1rk1a1z	draft	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:203	
+sv1qqk	draft	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:203	
+gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:217	{0} = name
+1fbojq2	draft	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:223	{0} = name
+16s9khr	draft	Utility	辅助	src/ui/provider-setup.js:231	
+1fm7mjz	draft	Speech out	朗读	src/ui/provider-setup.js:231	
+mlh3jc	draft	Main	主要	src/ui/provider-setup.js:231	
+v20s4a	draft	Quick decision	快速判断	src/ui/provider-setup.js:231	
+w8niry	draft	Speech in	语音识别	src/ui/provider-setup.js:231	
+eudybe#other	draft	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:247	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	draft	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:248	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1c8it09	draft	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥是免费额度，请在此页面打开它：其模型就不再收费。	src/ui/provider-setup.js:250	
+1dsri4f	draft	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:251	
+jvtji4	draft	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:251	
+1r0x31s	draft	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:252	
+1llun41	draft	The provider	提供商	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
 ktdb8o	draft	Settings	设置	src/ui/screens/about.js:76	
 spfq0z	draft	About annai	关于 annai	src/ui/screens/about.js:119	
+17r42id	draft	Backup places	备份位置	src/ui/screens/add.js:26	
+1q6sl6	draft	Skills and personalities	技能和性格	src/ui/screens/add.js:26	
+1w8nsi3	draft	Voices and transcription	声音和语音转文字	src/ui/screens/add.js:26	
+b5o954	draft	Model providers	模型提供商	src/ui/screens/add.js:26	
+elt1il	draft	Developer	开发者	src/ui/screens/add.js:26	
+lrurod	draft	Tools and MCP	工具和 MCP	src/ui/screens/add.js:26	
+17ifucf	draft	Transcription	语音转文字	src/ui/screens/add.js:28	
+9kdcjv	draft	Chat	聊天	src/ui/screens/add.js:28	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	draft	Voice	声音	src/ui/screens/add.js:28	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	draft	Live voice	实时语音	src/ui/screens/add.js:28	
 1pod8pr	draft	Experimental	实验性功能	src/ui/screens/add.js:30	
 hzmwb	draft	Models	模型	src/ui/screens/add.js:30	
+1n6w7a7	draft	That file isn't something annai can install	该文件不是 annai 能安装的内容	src/ui/screens/add.js:31	
+2jxl7l	draft	Tools from a server that speaks MCP, by its address.	通过地址添加支持 MCP 的服务器提供的工具。	src/ui/screens/add.js:35	
+u7w1bx	draft	An MCP server	MCP 服务器	src/ui/screens/add.js:35	
+15w3tf2	draft	Built into annai	annai 内置	src/ui/screens/add.js:37	
+5eawm0	draft	From a file	来自文件	src/ui/screens/add.js:42	
+1gblst7	draft	From {0}	来自 {0}	src/ui/screens/add.js:44	{0} = new URL(s.url).host
+1ufe6kk	draft	From an address	来自某个地址	src/ui/screens/add.js:46	
+x4eio0	draft	Official	官方	src/ui/screens/add.js:65	
+w28ztz	draft	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	已安装的{0}来自别处，但它的 ID 与 annai 官方的相同，所以 annai 不会使用它。请在设置 → 插件中移除它，再添加 annai 的。	src/ui/screens/add.js:67	{0} = facts.name
+tdrd3b	draft	A name, "voice", "free"…	名称、“voice”、“free”…	src/ui/screens/add.js:94	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	draft	Kind	类型	src/ui/screens/add.js:112	
+345x4c	draft	Filters	筛选	src/ui/screens/add.js:113	
+11ywf17	draft	Third-party	第三方	src/ui/screens/add.js:115	
+7va5tn	draft	Free	免费	src/ui/screens/add.js:115	
+bahzfs	draft	Local	本地	src/ui/screens/add.js:115	
+2rcuyl	draft	Nothing here matches. Try other words, or take a chip off.	没有匹配项。换个词试试，或取消某个按钮。	src/ui/screens/add.js:123	Note: chip is ボタン/按钮 per the glossary.
+18bnex5	draft	Search the catalog	搜索目录	src/ui/screens/add.js:145	
+j0fdnt	draft	Nothing here matches.	没有匹配项。	src/ui/screens/add.js:153	
+rv2u3	draft	Not listed? Add it by its address.	没找到？可以按地址添加。	src/ui/screens/add.js:153	
+npq0yc	draft	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	模型提供商、声音、备份位置、工具和技能：annai 官方的，以及你已安装的。	src/ui/screens/add.js:161	
+1hszhgv	draft	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	无法加载 annai 的目录。请连接互联网后重新打开此页面。已安装的内容仍会显示。	src/ui/screens/add.js:162	
+1dbd7kr	draft	Also for: {0}	也适用于：{0}	src/ui/screens/add.js:173	{0} = why
+b6qm2p	draft	Data only	仅数据	src/ui/screens/add.js:176	
+glpdbk	draft	Has code	含代码	src/ui/screens/add.js:176	
+1fzjiri	draft	Set up {0}	设置{0}	src/ui/screens/add.js:199	{0} = name
+isr2rg	draft	Set up	设置	src/ui/screens/add.js:199	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+n6hn1l	draft	Open	打开	src/ui/screens/add.js:199	
+xf2xmv	draft	Open {0}	打开{0}	src/ui/screens/add.js:199	{0} = name
+1e8gegw	draft	Install	安装	src/ui/screens/add.js:202	
+1sd5lj	draft	Add another	再添加一个	src/ui/screens/add.js:202	
+18374qe	draft	Add {0}	添加{0}	src/ui/screens/add.js:204	{0} = name
+1m87n8p	draft	Add another {0}	再添加一个{0}	src/ui/screens/add.js:204	{0} = name
+4bn9ve	draft	Install {0}	安装{0}	src/ui/screens/add.js:204	{0} = name
+1srp47z	draft	{0} wasn't installed	{0}未能安装	src/ui/screens/add.js:205	{0} = name
+l11acj	draft	{0} wasn't added	{0}未能添加	src/ui/screens/add.js:205	{0} = name
+orcwpv	draft	Installed {0}.	已安装{0}。	src/ui/screens/add.js:209	{0} = name
+8zey4w	draft	Adding…	正在添加…	src/ui/screens/add.js:216	
+1drktj9	draft	Added	已添加	src/ui/screens/add.js:228	
+1ox21wg	draft	Get it	获取	src/ui/screens/add.js:243	
+ksdme7	draft	Install from an address or a file	从地址或文件安装	src/ui/screens/add.js:245	
+1b7aabm	draft	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	含代码的插件可以完全访问你的旅行和 API 密钥。仅数据的插件无法运行任何东西。只安装你信任的插件。	src/ui/screens/add.js:247	
+1e2k1fe	draft	Address of a plugin or skill	插件或技能的地址	src/ui/screens/add.js:248	
+17bnagd	draft	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 文件、annai-plugin.json 或 SKILL.md，放在允许网页应用读取的网站上（GitHub 文件页面可以）。	src/ui/screens/add.js:249	
+7ikogv	draft	Install from a file	从文件安装	src/ui/screens/add.js:251	
+hn1sl5	draft	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/ui/screens/add.js:265	{0} = message(e)
+ai5f3u	draft	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	请先粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/ui/screens/add.js:293	
+1huuh2k	draft	Getting it…	正在获取…	src/ui/screens/add.js:298	
 c65xlw	draft	Backups	备份	src/ui/screens/backups.js:77	
 8icj76	draft	Plan	行程	src/ui/screens/booking.js:17	
 1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
@@ -138,7 +256,266 @@ c65xlw	draft	Backups	备份	src/ui/screens/backups.js:77
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	尚未经懂该语言的人检查的翻译。开启后，可在设置 → Shiori → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅行	src/ui/screens/ext.js:54	
 1jpjwmm	draft	Back to trip	返回旅行	src/ui/screens/file.js:23	
-15cdqf0	draft	Tools	工具	src/ui/screens/mcp.js:14	
+1xtp0n4	draft	Headers, kept on this device	请求头，保存在此设备上	src/ui/screens/mcp.js:5	
+e9m35h	draft	No key	无密钥	src/ui/screens/mcp.js:5	
+il2bb	draft	A bearer token, kept on this device	Bearer 令牌，保存在此设备上	src/ui/screens/mcp.js:5	
+15cdqf0	draft	Tools	工具	src/ui/screens/mcp.js:15	
+195b0jb	draft	MCP servers	MCP 服务器	src/ui/screens/mcp.js:17	Note: The glossary's screen name.
+14uki6b	draft	annai's MCP client isn't running. Reload annai and try again.	annai 的 MCP 客户端没有运行。请重新加载 annai 后再试。	src/ui/screens/mcp.js:18	
+wu0283	draft	trail	trail	src/ui/screens/mcp.js:21	Note: an example server name typed by the user; kept as a short Latin word, as names are typed.
+19kawat	draft	Bearer token	Bearer 令牌	src/ui/screens/mcp.js:24	
+deku7v	draft	None	无	src/ui/screens/mcp.js:24	
+e8ir2h	draft	Headers	请求头	src/ui/screens/mcp.js:24	
+g5fefm	draft	Token	令牌	src/ui/screens/mcp.js:27	
+4loygk	draft	Headers, one "Name: value" a line	请求头，每行一个“Name: value”	src/ui/screens/mcp.js:28	
+11q2z7b	draft	Checking…	正在检查…	src/ui/screens/mcp.js:41	
+lzenvg#other	draft	Added {0}: # tools.	已添加{0}：# 个工具。	src/ui/screens/mcp.js:47	plural; # = tools; {0} = name.value.trim(); English: "Added {0}: # tool." (one), "Added {0}: # tools." (other)
+16t20wv	draft	Add server	添加服务器	src/ui/screens/mcp.js:55	
+z9wl8n	draft	An MCP server gives Shiori tools of its own. Its tools appear in Settings → Tools, where each can be switched off, and every request to it is in the trace. What a server answers is yours to trust, as anything you bring in is.	MCP 服务器为 Shiori 提供它自己的工具。这些工具出现在设置 → 工具中，每个都可以关闭，发往服务器的每个请求都在记录中。服务器回答的内容是否可信由你判断，就像你带进来的其他东西一样。	src/ui/screens/mcp.js:61	
+raifju	draft	No MCP servers yet.	还没有 MCP 服务器。	src/ui/screens/mcp.js:62	
+1df7h82	draft	Add a server	添加服务器	src/ui/screens/mcp.js:63	
+4el6o6	draft	Name	名称	src/ui/screens/mcp.js:65	
+v2y2ur	draft	Address	地址	src/ui/screens/mcp.js:66	
+1kwqdxo	draft	Key	密钥	src/ui/screens/mcp.js:67	
+m74jjg	draft	To change a server's token or headers later, remove it and add it again.	以后要更改服务器的令牌或请求头，请先移除再重新添加。	src/ui/screens/mcp.js:69	
+19zfnyk	draft	The server must let web apps call it (CORS): allow annai's address, the headers Content-Type, Accept, Authorization, Mcp-Session-Id and MCP-Protocol-Version, and expose Mcp-Session-Id.	服务器必须允许网页应用调用它（CORS）：允许 annai 的地址，允许请求头 Content-Type、Accept、Authorization、Mcp-Session-Id 和 MCP-Protocol-Version，并公开 Mcp-Session-Id。	src/ui/screens/mcp.js:70	
+1hnd4d2	draft	and {0} more it has, which annai leaves out	另有 {0} 个，annai 不使用	src/ui/screens/mcp.js:82	{0} = num(s.more)
+1oqf3ew#other	draft	{0}: # tools.	{0}：# 个工具。	src/ui/screens/mcp.js:89	plural; # = tools; {0} = s.name; English: "{0}: # tool." (one), "{0}: # tools." (other)
+1eukdi8	draft	{0}'s tools weren't refreshed	{0}的工具未能刷新	src/ui/screens/mcp.js:91	{0} = s.name
+dlgvv3	draft	Refresh tools	刷新工具	src/ui/screens/mcp.js:95	
+171izid	draft	Tap again to remove	再点一次以移除	src/ui/screens/mcp.js:96	
+109w3ya	draft	{0} Try again.	{0}请重试。	src/ui/screens/mcp.js:100	{0} = message(e); Note: {0} is an error message, a sentence of its own.
+j4kt4t	draft	{0} wasn't removed	{0}未能移除	src/ui/screens/mcp.js:100	{0} = s.name
+1bicsne	draft	off	关闭	src/ui/screens/model.js:11	Note: a reasoning level.
+1ntxi55	draft	max	最高	src/ui/screens/model.js:11	Note: a reasoning level.
+ew9h86	draft	medium	中	src/ui/screens/model.js:11	Note: a reasoning level.
+h5yol9	draft	high	高	src/ui/screens/model.js:11	Note: a reasoning level.
+m0aa9t	draft	low	低	src/ui/screens/model.js:11	Note: a reasoning level.
+1gcnxbm	draft	This model no longer exists.	该模型已不存在。	src/ui/screens/model.js:43	
+3kaxmm	draft	Provider model id	提供商的模型 ID	src/ui/screens/model.js:78	
+4iiule	draft	Give the provider's model id.	请填写提供商的模型 ID。	src/ui/screens/model.js:79	
+h1nzmw	draft	This model no longer exists	该模型已不存在	src/ui/screens/model.js:94	
+u1a0kf	draft	Back to Models	返回模型	src/ui/screens/model.js:94	
+emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（已关闭）	src/ui/screens/model.js:102	{0} = ep.name; {1} = ability.name
+1xvdzwo	draft	Takes photos	接受照片	src/ui/screens/model.js:109	
+1r9uewq	draft	Takes PDFs	接受 PDF	src/ui/screens/model.js:110	
+1kimkqd	draft	Calls tools	调用工具	src/ui/screens/model.js:111	
+vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	缓存时长为 5m、1h，或两者都要。	src/ui/screens/model.js:117	
+107rbay	draft	Model	模型	src/ui/screens/model.js:125	
+iklo8r	draft	Each setting is saved as you change it.	每项设置都会在更改时保存。	src/ui/screens/model.js:126	
+5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	上下文窗口是整数个 token；不知道时请留空。	src/ui/screens/model.js:130	
+tdcgnl	draft	Context window (tokens)	上下文窗口（token）	src/ui/screens/model.js:130	
+13r1phn	draft	Maximum output (tokens)	最大输出（token）	src/ui/screens/model.js:131	
+k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大输出是整数个 token；不知道时请留空。	src/ui/screens/model.js:131	
+1kqdeet	draft	Prices, USD per million tokens (JSON)	价格，每百万 token 的美元（JSON）	src/ui/screens/model.js:132	
+pmkq6x	draft	Cache lifetimes (5m, 1h)	缓存时长（5m、1h）	src/ui/screens/model.js:133	
+1abbjex	draft	Empty: it is asked for five minutes.	留空：按五分钟请求。	src/ui/screens/model.js:134	
+i6hz4y	draft	Photo limits (JSON)	照片限制（JSON）	src/ui/screens/model.js:136	
+dnuqbz	draft	Reasoning levels (JSON)	推理级别（JSON）	src/ui/screens/model.js:137	
+181p6me	draft	Tunables (JSON)	可调参数（JSON）	src/ui/screens/model.js:138	
+12ylk5m	draft	Extra request fields (JSON)	额外请求字段（JSON）	src/ui/screens/model.js:139	
+1b0m2g4	draft	Remove model	移除模型	src/ui/screens/model.js:142	
+1hx8faa	draft	Tap again to remove it	再点一次以移除	src/ui/screens/model.js:142	
+15qwlpp	draft	This voice can't take a style: it is kept, not sent.	这个声音不支持风格：会保存，但不发送。	src/ui/screens/model.js:168	
+a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	她该怎样说话，用几个词描述，比如平静、温暖、友好。	src/ui/screens/model.js:168	
+1gq0a8x	draft	A transcription model: it turns what you say into text.	语音转文字模型：把你说的话变成文字。	src/ui/screens/model.js:188	
+1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	实时语音：作为 Koe，在同一个流中边听边说。	src/ui/screens/model.js:188	
+1r9buge	draft	A voice: Shiori speaks with it.	声音：Shiori 用它说话。	src/ui/screens/model.js:188	
+15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	随每个请求发送。清空后使用模型的默认值（灰色）；如果什么都不想发送，请在额外请求字段中写 "voice": null。	src/ui/screens/model.js:194	
+nf3vcm	draft	Style	风格	src/ui/screens/model.js:195	
+18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	价格，每百万 token 的美元（JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
+1wo5fes	draft	Prices, USD (JSON: perMillionChars)	价格，美元（JSON：perMillionChars）	src/ui/screens/model.js:197	
+heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	价格，美元（JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
+dbbxmt	draft	Test	测试	src/ui/screens/model.js:200	
+1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · 实时：在同一个流中听你说并说话	src/ui/screens/models.js:15	
+k0393o	draft	Main: talks with you	主要：与你交谈	src/ui/screens/models.js:15	
+mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · 经典：聊天模型，配合语音识别和朗读	src/ui/screens/models.js:15	
+187fzjq	draft	Quick decision: yes-or-no checks	快速判断：是或否的检查	src/ui/screens/models.js:16	
+5815dj	draft	Utility: summaries and small jobs	辅助：摘要和小任务	src/ui/screens/models.js:16	
+1hclnju	draft	Speech in: how Shiori hears you	语音识别：Shiori 怎样听你说话	src/ui/screens/models.js:17	
+dadv07	draft	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens/models.js:17	
+1h7ll5r	draft	utility	辅助	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
+1naapyq	draft	speech-out	朗读	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+1t30hzc	draft	main	主要	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
+1u27rxd	draft	decide	快速判断	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+1u7wm22	draft	Koe · Realtime	Koe · 实时	src/ui/screens/models.js:21	
+a363wx	draft	speech-in	语音识别	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+a5cd15	draft	Koe · Classic	Koe · 经典	src/ui/screens/models.js:21	
+12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	语音开启且在语音按钮上选了实时时，Koe 使用它。这里没有能回答的，就由经典回答。	src/ui/screens/models.js:27	
+1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	选了经典、语音关闭，或实时无法回答时，Koe 使用它：语音识别听你说，朗读负责说话。	src/ui/screens/models.js:28	
+1m5zm0a	draft	Phone dictation	手机语音输入	src/ui/screens/models.js:32	
+1vi25zs	draft	Send audio to the model	把音频发给模型	src/ui/screens/models.js:32	
+742sn5	draft	Browser voice	浏览器声音	src/ui/screens/models.js:32	
+1htj30x	draft	the phone's own; usually goes to Google or Apple	手机自带；通常发送到 Google 或 Apple	src/ui/screens/models.js:34	
+1w4m41d	draft	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:34	
+ce8br5	draft	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:34	
+jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 思考的地方：annai 调用的提供商、它们的模型、每个角色依次尝试的模型，以及她的请求可以花多少钱。	src/ui/screens/models.js:51	
+uhtk71	draft	No limit	不限	src/ui/screens/models.js:69	
+exnl8y	draft	Spend per day	每日花费	src/ui/screens/models.js:74	
+1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 的模型调用在所有旅行中一天可花的金额。用完后，她的这一轮会以一张卡片结束，第二天继续。留空：不限。	src/ui/screens/models.js:75	
+3bernd	draft	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:76	
+yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空表示不限。	src/ui/screens/models.js:76	
+1kmogw5	draft	Cache	缓存	src/ui/screens/models.js:77	
+el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话的开头保留一段时间，让她的下一个请求更便宜。保留一小时的写入费用比五分钟高，如果你说话的间隔比几分钟长，就划算。只保留五分钟的模型会按五分钟请求。	src/ui/screens/models.js:78	
+1bz9ywx	draft	5 minutes	5 分钟	src/ui/screens/models.js:79	
+3eima2	draft	1 hour	1 小时	src/ui/screens/models.js:79	
+kl14fu	draft	Keep it for	保留时长	src/ui/screens/models.js:79	
+uw7pcm	draft	Housekeeping	对话整理	src/ui/screens/models.js:80	
+qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	对话变长时，Shiori 会总结较早的部分。达到她的模型上下文的这个比例，或请求会变得这么大时，她就会这样做。留空：按默认。	src/ui/screens/models.js:81	
+1sywcgn	draft	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:83	
+5gbpvm	draft	Summarize at (% of the context)	总结时机（占上下文的 %）	src/ui/screens/models.js:83	
+gbbwof	draft	The largest request is from 1 to 64 MiB.	最大请求为 1 到 64 MiB。	src/ui/screens/models.js:84	
+jg9kdh	draft	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:84	
+9ubpo0	draft	Nothing switched on	未开启任何功能	src/ui/screens/models.js:100	
+y7dwt8#other	draft	# models	# 个模型	src/ui/screens/models.js:100	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	draft	Providers	提供商	src/ui/screens/models.js:102	
+rwmbqk	draft	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:104	
+1cjfpwc	draft	Add a provider	添加提供商	src/ui/screens/models.js:105	
+hbz43i	draft	Roles	角色	src/ui/screens/models.js:133	
+1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下尝试它的模型。一个失败时，由下一个回答。空的角色使用主要列表，Koe 的除外。	src/ui/screens/models.js:135	
+7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：使用对听你说话的模型可用的第一项，以及第一个响应的声音。	src/ui/screens/models.js:138	
+1erapbm	draft	Remove {0} from {1}	从{1}移除{0}	src/ui/screens/models.js:162	{0} = nameOf(id); {1} = called
+1w3dq5v	draft	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:168	
+pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空：Koe 没有实时语音，所以由经典回答。请从提供实时语音的提供商添加一个，比如 Gemini Live。	src/ui/screens/models.js:169	
+1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空：在经典模式下，Shiori 只有一个分身，即主要模型。在这里添加一个快速模型，让她在前面有个反应快的声音。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary.
+wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	这里没有任何项，所以 annai 听不到你。请添加一项。	src/ui/screens/models.js:171	
+1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	这里没有任何项，所以 Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:172	
+el9rbx	draft	Uses the main list.	使用主要列表。	src/ui/screens/models.js:173	
+1rqw64m	draft	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:174	
+48wtk9	draft	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:174	
+796n77	draft	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:174	
+q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	不能看照片或读 PDF 的模型，读到的每张照片或每个 PDF 会由这里能做到的模型描述，否则由主要模型描述。	src/ui/screens/models.js:179	
+14w2ppx	draft	Add a provider for {0}	为{0}添加提供商	src/ui/screens/models.js:181	{0} = called
+17olz31	draft	Add a model to {0}	向{0}添加模型	src/ui/screens/models.js:183	{0} = called
+ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:190	{0} = called
+58mvoq	draft	Reasoning for {0}	{0}的推理	src/ui/screens/models.js:191	{0} = called
+1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间为 1 到 600 秒；留空表示默认。	src/ui/screens/models.js:192	
+8nhvom	draft	Reorder {0}, {1} of {2}	重新排序{0}，第 {1} 个，共 {2} 个	src/ui/screens/models.js:207	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	draft	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:223	
+1ln5v12	draft	Move {0}	移动{0}	src/ui/screens/models.js:225	{0} = name
+1rvkqip	draft	Move up	上移	src/ui/screens/models.js:226	
+c2tjmw	draft	Move down	下移	src/ui/screens/models.js:227	
+ura2r7	draft	{0} a minute of speech	语音每分钟 {0}	src/ui/screens/provider.js:30	{0} = price(p.perMinute)
+1b0vcka	draft	{0} per million characters	每百万字符 {0}	src/ui/screens/provider.js:31	{0} = price(p.perMillionChars)
+1xducp7	draft	{0} in, {1} out	输入 {0}，输出 {1}	src/ui/screens/provider.js:33	{0} = price(p.input); {1} = price(p.output)
+1y6v82m	draft	{0} in, {1} out per million tokens	每百万 token 输入 {0}，输出 {1}	src/ui/screens/provider.js:33	{0} = price(p.input); {1} = price(p.output)
+cfub13	draft	{0} (from {1}: {2})	{0}（自 {1} 起：{2}）	src/ui/screens/provider.js:38	{0} = whole; {1} = next; {2} = then
+5xwskl	draft	This key is on the free tier ({0} doesn't charge)	此密钥为免费额度（{0}不收费）	src/ui/screens/provider.js:42	{0} = typeof freeTier === 'string' ? freeTier : pluginName
+1sns4yc#other	draft	With a new key or address, or Remove key, annai first asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}.	更换密钥或地址，或点“移除密钥”时，annai 会先请{0}删除它保留的 # 轮对话；10 秒内没能删除的，{0}会保留到过期为止，最长 {1}。	src/ui/screens/provider.js:51	plural; # = n; {0} = name; {1} = upTo; English: "With a new key or address, or Remove key, annai first asks {0} to delete the # turn of your conversations it keeps; any it can't in 10 seconds, {0} keeps until it expires, up to {1}." (one), "With a new key or address, or Remove key, annai first asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}." (other)
+k02514#other	draft	First, annai asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}.	annai 会先请{0}删除它保留的 # 轮对话；10 秒内没能删除的，{0}会保留到过期为止，最长 {1}。	src/ui/screens/provider.js:55	plural; # = n; {0} = name; {1} = upTo; English: "First, annai asks {0} to delete the # turn of your conversations it keeps; any it can't in 10 seconds, {0} keeps until it expires, up to {1}." (one), "First, annai asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}." (other)
+lcyovi#other	draft	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	离线时更换密钥或地址，或点“移除密钥”，{0}保留的 # 轮对话会一直留到过期为止，最长 {1}。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
+ifc222#other	draft	{0} keeps # turns until they expire, up to {1}.	{0}会保留 # 轮对话到过期为止，最长 {1}。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
+1fr4kgu	draft	This provider no longer exists	该提供商已不存在	src/ui/screens/provider.js:80	
+1yxhxra	draft	not set	未设置	src/ui/screens/provider.js:102	
+8rf2wi	draft	saved (type a new one to replace it)	已保存（输入新的以替换）	src/ui/screens/provider.js:102	
+17c1dhc	draft	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:103	
+lewgh4	draft	Save	保存	src/ui/screens/provider.js:134	
+1r2b41m	draft	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:141	{0} = plugin; {1} = list(protocols)
+5f7g8f	draft	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:142	{0} = plugin
+mcx63c	draft	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:143	{0} = list(protocols)
+1ue57qi	draft	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:144	
+1rtug95	draft	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:145	{0} = sourceLine(installed).replace(/^From /, '')
+nfdm8v	draft	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:146	
+u40nrw	draft	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:146	{0} = installed.file
+1tqi1rr	draft	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:157	{0} = list(k.who)
+evz7q4	draft	Provider	提供商	src/ui/screens/provider.js:174	
+2r1h4p	draft	Connection	连接	src/ui/screens/provider.js:176	
+1swq770	draft	API key	API 密钥	src/ui/screens/provider.js:179	
+1q0ylpv	draft	Get a key	获取密钥	src/ui/screens/provider.js:181	
+1o4hxda	draft	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:188	
+12td532	draft	Remove key	移除密钥	src/ui/screens/provider.js:191	
+1qapi39	draft	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:191	
+5bt3jk	draft	Key removed	已移除密钥	src/ui/screens/provider.js:194	
+1r04n6e	draft	Remove provider	移除提供商	src/ui/screens/provider.js:203	
+11faf7g	draft	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:224	{0} = src.name
+ih6plk	draft	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请从添加中添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:224	
+u91wwi	draft	Add by hand	手动添加	src/ui/screens/provider.js:242	
+1nqeyot	draft	By hand	手动	src/ui/screens/provider.js:247	
+cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:248	{0} = src.name
+1lckuuy	draft	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:266	
+10m9pho	draft	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:267	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	draft	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:272	
+6k2646	draft	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:273	
+1e1obo4	draft	Installing…	正在安装…	src/ui/screens/provider.js:280	
+9djdxp	draft	Install it	安装	src/ui/screens/provider.js:289	
+17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:290	{0} = entry.name
+mf1onk	draft	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:303	
+r4y7q	draft	Use {0}	使用{0}	src/ui/screens/provider.js:328	{0} = a.name
+1o304we	draft	New in the last update	上次更新新增	src/ui/screens/provider.js:335	
+1k5huc5	draft	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:355	{0} = providerOf(rec).baseUrl
+1ppqeqd	draft	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:355	
+12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:362	
+1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:367	{0} = who
+l91m05	draft	Its own address	自己的地址	src/ui/screens/provider.js:386	
+9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:392	
+1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:396	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
+1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:397	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
+1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:399	
+1iorloe	draft	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:399	
+1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:400	
+72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:401	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:402	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	draft	Test {0}	测试{0}	src/ui/screens/provider.js:413	{0} = first.name
+1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:430	{0} = who
+1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:431	{0} = who
+1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:431	{0} = who; {1} = tool.name
+11x4tx3	draft	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:437	{0} = name
+4nyk49	draft	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:437	
+15hdhx3	draft	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:459	
+1oz4euh	draft	Add model	添加模型	src/ui/screens/provider.js:472	
+tbmsa5	draft	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:477	
+1yko1my#other	draft	# models.	# 个模型。	src/ui/screens/provider.js:480	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	draft	Fetch model list	获取模型列表	src/ui/screens/provider.js:488	
+1scr2ml	draft	{0}K context	{0}K 上下文	src/ui/screens/provider.js:491	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	draft	Its models	它的模型	src/ui/screens/provider.js:493	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	draft	No models yet.	还没有模型。	src/ui/screens/provider.js:494	
+pnxisg	draft	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:495	
+1mod47e	draft	for example: haiku	例如：haiku	src/ui/screens/provider.js:509	
+uizt0x	draft	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:519	{0} = named
+1w6mxym	draft	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:520	{0} = on
+l7fn8k	draft	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:520	
+19ai2z0	draft	Filter the list	筛选列表	src/ui/screens/provider.js:531	
+11pl9jr	draft	Use the free models	使用免费模型	src/ui/screens/provider.js:539	
+vam64u	draft	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:539	
+1b2yx8m	draft	Suggested models	推荐的模型	src/ui/screens/provider.js:540	
+1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:541	{0} = src.name
+1x5hwmk	draft	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:542	{0} = src.name
+1iffu2j	draft	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:549	{0} = n
+1szeqxt	draft	Roles updated.	已更新角色。	src/ui/screens/provider.js:549	
+1egvjs1	draft	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:550	{0} = f.name; {1} = messageOf(f.error)
+wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:556	{0} = which
+11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
+13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
+16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
+1c0dpym	draft	Files	文件	src/ui/screens/tools.js:11	context: tool group
+1le202v	draft	Web	网页	src/ui/screens/tools.js:11	context: tool group
+4sa4zd	draft	Self	Shiori 自身	src/ui/screens/tools.js:11	context: tool group; Note: the tools about Shiori herself; the name keeps it clear.
+8fx6p2	draft	Time	时间	src/ui/screens/tools.js:11	context: tool group
+75p0ey	draft	Plugin: {0}	插件：{0}	src/ui/screens/tools.js:23	{0} = tool.pluginId
+1ljwqr0	draft	(off means voice off)	（关闭即语音关闭）	src/ui/screens/tools.js:49	
+9k5q86	draft	(always on)	（始终开启）	src/ui/screens/tools.js:49	
+1ai12ua	draft	Your models' own tools	模型自带的工具	src/ui/screens/tools.js:50	
+1bbv63y	draft	({0})	（{0}）	src/ui/screens/tools.js:51	{0} = list(p.models, 'plain')
+1nh56w1	draft	Get a free key from Jina	从 Jina 获取免费密钥	src/ui/screens/tools.js:56	
+1qqjoil	draft	Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. {0}. On that page the key is in the API key box: copy it and paste it above.	Jina Reader 能读取不允许网页应用读取的网站，Jina Search 能搜索网页。有些网络需要密钥。{0}。在那个页面上，密钥在 API 密钥框里：复制后粘贴到上方。	src/ui/screens/tools.js:57	{0} = get
+6b6ezt	draft	A key is set	已设置密钥	src/ui/screens/tools.js:66	
+vqmn1t	draft	Web	网页	src/ui/screens/tools.js:72	
+17jz3e3	draft	Your model's own search	模型自带的搜索	src/ui/screens/tools.js:74	
+1jhespe	draft	annai's providers (below)	annai 的提供商（见下方）	src/ui/screens/tools.js:74	
+3tlu3u	draft	Off	关闭	src/ui/screens/tools.js:74	
+7f3la6	draft	Your model's own search when it has one, else annai's providers (below)	模型有自带搜索就用它，否则用 annai 的提供商（见下方）	src/ui/screens/tools.js:74	
+oh3ukx	draft	Search via	搜索方式	src/ui/screens/tools.js:74	
+190j9od	draft	Your model's own fetch	模型自带的抓取	src/ui/screens/tools.js:75	
+1jwdtok	draft	annai: directly, then Jina Reader, then Exa, then your model	annai：先直接抓取，再用 Jina Reader，再用 Exa，最后用你的模型	src/ui/screens/tools.js:75	
+1yfc12f	draft	Fetch via	抓取方式	src/ui/screens/tools.js:75	
+1411bpy	draft	Jina key	Jina 密钥	src/ui/screens/tools.js:76	
+16y03zx	draft	A key is set. It stays on this device and is never shown again.	已设置密钥。它保存在此设备上，不会再显示。	src/ui/screens/tools.js:78	
+7701gj	draft	Key saved.	已保存密钥。	src/ui/screens/tools.js:85	
+s81kp3	draft	Save key	保存密钥	src/ui/screens/tools.js:87	
+r654x7	draft	Servers that give Shiori tools of their own, with a token or headers kept on this device.	为 Shiori 提供专属工具的服务器，令牌或请求头保存在此设备上。	src/ui/screens/tools.js:93	
+vayo7x	draft	Tool switches	工具开关	src/ui/screens/tools.js:95	
+a2pqv8	draft	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori 拥有的所有工具，包括插件的工具。关闭的工具不会出现在她的下一个请求中。	src/ui/screens/tools.js:97	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:23	
 33pqd9	draft	Last backup {0}, to {1}.	上次备份：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:27	
@@ -154,10 +531,22 @@ fc4c10	draft	Starts	开始日期	src/ui/screens/trips.js:71
 vr6m26	draft	Give the trip a name.	请为旅行命名。	src/ui/screens/trips.js:79	
 152lnj5	draft	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:80	
 1plbhzy	draft	Heard {0} of speech.	听到了{0}的语音。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
+1jrfsn4	draft	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免费搜索会把你的搜索发送给 Exa、Parallel 或 Firecrawl：只发送搜索的词，不发送你的文件或位置。Exa 还会读取其他方式读不了的网页，因此也会收到该网页的地址。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索内容训练模型，所以请不要在搜索中写名字和地址。在它们之后，还有一个始终开启的最后手段，会用同样的词询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有“搜索方式：关闭”能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
+16trcjc	draft	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜索的词会发送给你保留勾选的服务，Exa 还会收到它为她读取的网页地址：不发送你的文件或位置。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索训练模型，所以请不要在搜索中写名字和地址。在它们之后，作为最后手段，始终会询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有设置 → 工具 → 搜索方式：关闭能停止它。这些都可以在那里更改。	src/ui/search-panel.js:15	
+1fn0bdg	draft	Use	使用	src/ui/search-panel.js:31	
 1uowdjd	draft	resting after a failure, tries again {0}	失败后暂停中，{0}重试	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1分钟后".
+a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia 和 OpenStreetMap；始终开启，最后手段	src/ui/search-panel.js:50	
+10c8x63	draft	free, no key	免费，无需密钥	src/ui/search-panel.js:51	
+sbfb3o	draft	ready	就绪	src/ui/search-panel.js:51	
+qx2onv	draft	couldn't check	无法检查	src/ui/search-panel.js:54	
+1lhwd5p	draft	not ready	未就绪	src/ui/search-panel.js:57	
+qvtz3k	draft	On	开启	src/ui/search-panel.js:85	
+1j0itop	draft	Search	搜索	src/ui/search-panel.js:86	
+hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 从上往下尝试这些，第一个回答的胜出。失败的会休息一阵，之后再试。取消勾选即可停用。	src/ui/search-panel.js:88	
+1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜索提供商是插件：从目录中添加一个（Tavily、Serper、你自己的 SearXNG），它的密钥在它自己的页面上设置。	src/ui/search-panel.js:91	
+f2eaqi	draft	Find a search plugin	查找搜索插件	src/ui/search-panel.js:92	
 17o4v1i	draft	Conversation	对话	src/ui/shell.js:59	
 ata72m	draft	Trace	记录	src/ui/shell.js:59	
-mlh3jc	draft	Main	主要	src/ui/shell.js:62	Note: The top bar's name for screen readers.
 1skw031	draft	This screen couldn't open	无法打开此页面	src/ui/shell.js:257	
 1pm5i13	draft	Back to Trips	返回“旅行”	src/ui/shell.js:259	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
 1z00dfe	draft	An update is ready	更新已就绪	src/ui/shell.js:349	
