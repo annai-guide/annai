@@ -1,5 +1,5 @@
 import { h, t, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
-import { duration, numField } from '../format.js';
+import { seconds, numField } from '../format.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
@@ -107,7 +107,7 @@ export async function renderVoice(ctx) {
           micStatus.textContent = 'Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.';
           return;
         }
-        const lines = [t`Heard ${duration(seg.ms, 'long')} of speech.`];
+        const lines = [t`Heard ${seconds(seg.ms, 'long')} of speech.`];
         const [first] = await voice.transcribers();
         if (first) {
           micStatus.textContent = `${lines[0]} Writing it down…`;

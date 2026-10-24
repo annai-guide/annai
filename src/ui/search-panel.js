@@ -43,7 +43,10 @@ export async function freeTicks(ws) {
 /** A provider's state in a few words; its ready() is given a moment (READY_MS) to say. @param {any} p */
 export async function stateOf(p) {
   const left = cooldowns.left(p.id);
-  if (left > 0) return t`resting after a failure, tries again ${relTime(Date.now() + Math.ceil(left / 60_000) * 60_000)}`;
+  if (left > 0) {
+    const now = Date.now(); // one reading, so the last minute is "in 1 minute", not "now"
+    return t`resting after a failure, tries again ${relTime(now + Math.ceil(left / 60_000) * 60_000, now)}`;
+  }
   if (p.always) return 'Wikimedia and OpenStreetMap; always on, the last resort';
   if (!p.ready) return p.free ? 'free, no key' : 'ready';
   /** @type {ReturnType<typeof setTimeout> | undefined} */

@@ -14,6 +14,9 @@ const QUICK = /** @type {const} */ ([
   ['Restroom', 'Where is the nearest restroom?'],
 ]);
 
+/** How far and how long to a stop, for the road ahead: "≈ 26 mi · about 1 hr, 12 min"; a minute at least, even standing at it. @param {{ km: number | null, minutes: number | null }} s */
+export const roadText = (s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration(Math.max(1, s.minutes ?? 0) * 60_000)}`}`);
+
 /**
  * Driving (spec §16.2): the route strip, a maps card, big quick-ask buttons, and the big dock
  * ("voice layouts, such as driving, enlarge the dock"). Shiori's latest words or card show here, so
@@ -35,7 +38,6 @@ export async function renderDrive(ctx) {
   const ask = h('div', { class: 'quick-ask' });
   const awake = h('div', { class: 'acts' });
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
-  const road = (/** @type {{ km: number | null, minutes: number | null }} */ s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration((s.minutes ?? 0) * 60_000)}`}`);
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
     const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
@@ -43,7 +45,7 @@ export async function renderDrive(ctx) {
       h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (GPS off)'),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
-        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', road(s)].filter(Boolean).join(' · ') }))),
+        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', roadText(s)].filter(Boolean).join(' · ') }))),
       ...(stops.length ? [] : [h('li', { class: 'empty', text: 'Nothing more is planned with a place.' })]));
     const next = stops[0];
     maps.replaceChildren(...(!next ? [] : links ? [

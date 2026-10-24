@@ -18,6 +18,7 @@ import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
+import { roadText } from '../../src/ui/screens/drive.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -33,9 +34,9 @@ test('parseHash: "#import=<url>" from spec §12.3, with the URL kept whole', () 
 
 test('format helpers', () => {
   const now = Date.UTC(2026, 9, 15, 12);
-  assert.equal(relTime(now - 10_000, now), 'now');
+  assert.equal(relTime(now - 10_000, now), 'just now');
   assert.match(relTime(now - 2 * 3600_000, now), /2 hours ago/);
-  assert.equal(size(512), '512 byte');
+  assert.equal(size(512), '512 bytes');
   assert.equal(size(1536), '1.5 kB');
   assert.equal(size(5 * 1024 * 1024), '5.0 MB');
   assert.match(dateRange('2026-11-25', '2026-11-29'), /Nov/);
@@ -256,7 +257,7 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
     "An Android phone backed up to me/annai-backup 1 hour ago, after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it (the other backup stays in its history).");
   assert.equal(newerText(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), { where: 'x', noun: 'computer', tree: false }, now),
-    'Another device backed up to x now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
+    'Another device backed up to x just now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
   assert.equal(newerText(t(), { where: 'x', noun: 'phone', tree: true }, now), '');
   assert.deepEqual(parseHash('#/backups/place?id=bt-1'), { name: 'backups', parts: ['backups', 'place'], params: { id: 'bt-1' } });
 });
@@ -403,7 +404,7 @@ test('the limit for an unnamed connection, as typed and as shown', () => {
   assert.equal(limitField(100 * 1024 * 1024), '100');
   assert.equal(limitText(undefined), '25 MB');
   assert.equal(limitText(null), 'no limit');
-  assert.equal(limitText(0), '0 byte');
+  assert.equal(limitText(0), '0 bytes');
 });
 
 test('a microphone that fails says what happened and what to do, for this phone (spec §17 rule 3)', () => {
@@ -473,7 +474,7 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur' }], failed: [], full: false, stopped: false };
   const done = packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi');
   assert.equal(done.button, null);
-  assert.equal(done.lines[0], 'Downloaded now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
+  assert.equal(done.lines[0], 'Downloaded just now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
   assert.equal(done.lines[1], 'Guides: Big Sur.');
   assert.equal(done.lines.at(-1), 'On Wi-Fi, annai keeps it up to date by itself while this trip is open.');
   const changed = packWords(/** @type {any} */ ({ ...base, manifest, why: 'plan', estimate: 30 * 1024 }), 'unknown');
@@ -490,13 +491,13 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 kB)');
 });
 
-test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"now\"", () => {
+test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"just now\"", () => {
   const base = { stops: 2, cut: 0, why: null, estimate: 120 * 1024, running: null };
   const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], failed: [], full: false, stopped: false };
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
   assert.equal(downloadedWhen(''), '');
   assert.equal(downloadedWhen('not a time'), '');
-  assert.equal(downloadedWhen(new Date().toISOString()), ' now');
+  assert.equal(downloadedWhen(new Date().toISOString()), ' just now');
 });
 
 test('the trace says what each offline pack download did', () => {
@@ -638,7 +639,7 @@ test("Reset's note names what it cleared by the form's labels; with nothing save
 
 test("Reset M5: the trace's line for plugin.reset counts what went and says the space it gave back", () => {
   assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'park', name: 'Park', settings: ['station'], otherSettings: 1, secrets: ['token'], otherSecrets: 0, bytes: 2048 } }), `Park · 2 settings, 1 secret · ${size(2048)}`);
-  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'web', name: 'Web tools', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 } }), 'Web tools · 0 settings, 1 secret · 0 byte');
+  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'web', name: 'Web tools', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 } }), 'Web tools · 0 settings, 1 secret · 0 bytes');
 });
 
 test("Reset M4: a Reset that fails on a full disk shows the storage-full card, as Remove does; any other failure says it wasn't reset", async () => {
@@ -731,4 +732,12 @@ test("the price line says a change that is coming: from its date, the price then
   assert.equal(priceLine(/** @type {any} */ ({ input: 1, output: 4, schedule: 'later' }), Date.parse('2026-10-23T00:00:00Z')), '$1 in, $4 out per million tokens');
   const voice = { perMillionChars: 15, schedule: [{ from: '2027-01-01', perMillionChars: 30 }] };
   assert.equal(priceLine(voice, Date.parse('2026-10-23T00:00:00Z')), '$15 per million characters (from 2027-01-01: $30)');
+});
+
+test('the road ahead: how far and how long, and never "about 0 ms" when standing at the stop', () => {
+  assert.equal(roadText({ km: 42.3, minutes: 25 }), '≈ 26 mi · about 25 min');
+  assert.equal(roadText({ km: 42.3, minutes: 72 }), '≈ 26 mi · about 1 hr, 12 min');
+  assert.equal(roadText({ km: 0.01, minutes: 0 }), '≈ 0 mi · about 1 min');
+  assert.equal(roadText({ km: 0.02, minutes: null }), '≈ 0 mi · about 1 min');
+  assert.equal(roadText({ km: null, minutes: null }), '');
 });

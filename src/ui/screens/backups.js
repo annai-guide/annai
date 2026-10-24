@@ -1,5 +1,5 @@
-import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf } from '../dom.js';
-import { placeStatus, placeHref, newerText, withArticle, relTime, when, size, numField, parseNum, limitFromField, limitField, limitText } from '../format.js';
+import { h, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
+import { placeStatus, placeHref, newerText, withArticle, relTime, when, size, numField, limitFromField, limitField, limitText } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf } from '../auto-backup.js';
@@ -146,7 +146,7 @@ async function renderPlace(ctx, id) {
         await ctx.backups.update(id, {
           config: Object.fromEntries(inputs.map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
           secret: Object.fromEntries(secrets.filter((/** @type {any} */ i) => i.el.value.trim()).map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
-          ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: parseNum(keep.value) || 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
+          ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: keep.value.trim() ? numberIn(keep, 1, 30, 'Keep 1 to 30 backups.', { whole: true }) : 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
         });
         notes.set(id, (await ctx.backups.check(id)).note);
         ctx.render();

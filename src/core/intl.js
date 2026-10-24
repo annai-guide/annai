@@ -26,19 +26,27 @@ const signOf = (type) => make(Intl.NumberFormat).formatToParts(1234.5).find((p) 
 export const numField = (n) => (typeof n === 'number' && Number.isFinite(n) ? String(n).replace('.', signOf('decimal')) : '');
 
 /**
- * A number typed by a person: "1,5" in German, "1,500" in English, "1.5" anywhere. The last mark is the decimal sign, unless it
- * is the only one, is the language's group mark and has three digits after it (or the same mark comes again: all are groups).
+ * A number typed by a person: "1,5" in German, "1,500" in English, "1.5" anywhere, full-width digits too. Only digits and marks make
+ * one. The last mark is the decimal sign; the marks before it must be this language's group mark, with 1 to 999 and then groups of three
+ * ("1,234,567.5"); a lone group mark counts as thousands only so ("1,500", not "0,500"). Anything else is NaN, not a guess.
  * @param {unknown} text @returns {number} NaN when it isn't a number
  */
 export function parseNum(text) {
-  const s = String(text ?? '').replace(/[\s'’]/g, '');
-  const marks = /^[+-]?[\d.,]+$/.test(s) ? s.match(/[.,]/g) : null;
-  if (!marks) return Number(s);
-  const last = marks.at(-1) ?? '.';
-  const at = s.lastIndexOf(last);
-  const whole = marks.length > 1 ? marks.every((m) => m === last) : last === signOf('group') && s.length - at === 4;
-  if (whole && marks.length > 1 && !/^[+-]?\d{1,3}(?:[.,]\d{3})+$/.test(s)) return NaN; // several marks that are not thousands
-  return Number(whole ? s.replace(/[.,]/g, '') : `${s.slice(0, at).replace(/[.,]/g, '')}.${s.slice(at + 1)}`);
+  const s = String(text ?? '').normalize('NFKC').replace(/[\s'’]/g, '').replace(/^\u2212/, '-');
+  const m = /^([+-]?)(\d[\d.,]*|[.,]\d+)$/.exec(s);
+  if (!m) return NaN;
+  const parts = m[2].split(/[.,]/);
+  const marks = m[2].match(/[.,]/g) ?? [];
+  if (!marks.length) return Number(s);
+  const group = signOf('group');
+  const last = marks.at(-1);
+  const head = parts.slice(0, -1);
+  const tail = parts.at(-1) ?? '';
+  const thousands = (/** @type {string[]} */ ps) => /^[1-9]\d{0,2}$/.test(ps[0]) && ps.slice(1).every((p) => p.length === 3);
+  if (marks.slice(0, -1).some((x) => x !== group) || (marks.length > 1 && !thousands(head))) return NaN;
+  const grouped = last === group && tail.length === 3 && thousands(head);
+  if (marks.length > 1 && last === group && !grouped) return NaN;
+  return Number(`${m[1]}${head.join('')}${grouped ? '' : '.'}${tail}`);
 }
 
 /**
@@ -54,7 +62,7 @@ export function money(amount, currency = 'USD', options = {}) {
 }
 
 const BYTES = ['byte', 'kilobyte', 'megabyte', 'gigabyte'];
-/** "512 byte", "1.5 kB", "5.0 MB", "12 MB": a size in bytes, by 1024s. @param {number} n */
+/** "512 bytes", "1.5 kB", "5.0 MB", "12 MB": a size in bytes, by 1024s. @param {number} n */
 export function size(n) {
   let i = 0;
   let v = n;
@@ -63,7 +71,7 @@ export function size(n) {
     i++;
   }
   const digits = i && v < 10 ? 1 : 0;
-  return num(v, { style: 'unit', unit: BYTES[i], unitDisplay: 'short', minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return num(v, { style: 'unit', unit: BYTES[i], unitDisplay: i ? 'short' : 'long', minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 const MILES = new Set(['US', 'GB', 'LR', 'MM']);
@@ -75,29 +83,34 @@ export function distance(km) {
 }
 
 /**
- * "250 ms", "1.4 sec" (seconds always show a tenth), "25 min", and from an hour "2 hr, 10 min" (Intl.DurationFormat, Safari 16.4; a long time is minutes elsewhere).
+ * "250 ms", "1.4 sec" (seconds show a tenth), "25 min", and from an hour "2 hr, 10 min" (Intl.DurationFormat, Safari 16.4; minutes
+ * elsewhere). The unit is chosen after rounding: 999.6 ms is "1.0 sec", 59.96 s is "1 min", 59.99 min is "1 hr".
  * @param {number} ms @param {'short' | 'long' | 'narrow'} [style]
  */
 export function duration(ms, style = 'short') {
-  const s = ms / 1000;
+  const unit = (/** @type {string} */ u, /** @type {number} */ n, digits = 0) => num(n, { style: 'unit', unit: u, unitDisplay: style, minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (Math.round(ms) < 1000) return unit('millisecond', Math.round(ms));
+  if (Math.round(ms / 100) < 600) return unit('second', Math.round(ms / 100) / 10, 1);
+  const tenths = Math.round(ms / 6000);
   const Durations = /** @type {any} */ (Intl).DurationFormat;
-  if (s >= 3600 && typeof Durations === 'function') {
-    const m = Math.round(s / 60);
-    return make(Durations, { style }).format({ hours: Math.floor(m / 60), minutes: m % 60 });
-  }
-  const unit = s < 1 ? 'millisecond' : s < 60 ? 'second' : 'minute';
-  const digits = unit === 'second' ? 1 : 0;
-  return num(unit === 'millisecond' ? ms : unit === 'second' ? s : s / 60, { style: 'unit', unit, unitDisplay: style, minimumFractionDigits: digits, maximumFractionDigits: unit === 'minute' ? 1 : digits });
+  if (tenths < 600 || typeof Durations !== 'function') return num(tenths / 10, { style: 'unit', unit: 'minute', unitDisplay: style, maximumFractionDigits: 1 });
+  const m = Math.round(ms / 60_000);
+  return make(Durations, { style }).format({ hours: Math.floor(m / 60), minutes: m % 60 });
 }
+
+/** Seconds, to a tenth, however short: "0.9 seconds of speech". @param {number} ms @param {'short' | 'long' | 'narrow'} [style] */
+export const seconds = (ms, style = 'short') => num(Math.round(ms / 100) / 10, { style: 'unit', unit: 'second', unitDisplay: style, minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
 
-/** "2 hours ago", "yesterday", "now". @param {number} ts @param {number} [now] */
+/** "2 hours ago", "yesterday", "just now", and "in 1 minute" for something under a minute ahead. @param {number} ts @param {number} [now] */
 export function relTime(ts, now = Date.now()) {
   const diff = (ts - now) / 1000;
-  const [unit, sec] = UNITS.find(([, s]) => Math.abs(diff) >= s) ?? ['second', 1];
-  return make(Intl.RelativeTimeFormat, { numeric: 'auto' }).format(unit === 'second' ? 0 : Math.round(diff / sec), unit);
+  const found = UNITS.find(([, s]) => Math.abs(diff) >= s);
+  const rtf = () => make(Intl.RelativeTimeFormat, { numeric: 'auto' });
+  if (found) return rtf().format(Math.round(diff / found[1]), found[0]);
+  return diff > 0 ? rtf().format(1, 'minute') : t`just now`;
 }
 
 const PLAIN_DAY = /** @type {Intl.DateTimeFormatOptions} */ ({ month: 'short', day: 'numeric', timeZone: 'UTC' });

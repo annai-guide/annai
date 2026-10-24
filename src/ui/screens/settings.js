@@ -112,7 +112,7 @@ async function photoControls(ctx, app) {
   const size = number('photo-size', {}, s.ingest.maxBytes === null ? null : s.ingest.maxBytes / 1_000_000);
   const asMB = (/** @type {number | null} */ b) => (b === null ? '' : numField(Math.round(b / 10_000) / 100));
   const sentEdge = number('photo-sent-edge', { inputmode: 'numeric' }, s.request.maxEdge);
-  const sentSize = h('input', { id: 'photo-sent-size', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
+  const sentSize = h('input', { id: 'photo-sent-size', inputmode: 'decimal', placeholder: 'No limit', value: asMB(s.request.maxBytes) });
   const sentFormat = formatPick('photo-sent-format', s.request.formats);
   const sentQuality = number('photo-sent-quality', { placeholder: '' }, s.request.quality);
   const QUALITY = 'Quality goes from 0.5 to 1.';

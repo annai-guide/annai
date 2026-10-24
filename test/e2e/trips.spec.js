@@ -104,7 +104,7 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await page.getByRole('button', { name: 'Export trip' }).click();
   await buildAndSave(page);
   await page.getByRole('link', { name: 'Trips', exact: true }).click();
-  await expect(card).toContainText('backed up now');
+  await expect(card).toContainText('backed up just now');
   await expect(card).not.toContainText('changed since');
   await card.click();
   await page.getByLabel('File path').fill('/notes/day1.md');
