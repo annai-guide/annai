@@ -29,13 +29,17 @@
   --twig: #583623; /* her trail marker's twig, and its outline */
   --twig-line: #3e1a10;
   --grass: #486838; /* its grass blades, outlines only */
-  --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', ui-rounded, system-ui, sans-serif;
-  --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
+  /* No CJK font is named, so a browser picks the one for a Han character by the text's lang (localization design, section 6). */
+  --f-display: 'Zen Maru Gothic', ui-rounded, system-ui, sans-serif;
+  --f-body: 'Zen Kaku Gothic New', system-ui, -apple-system, sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
   --radius: 14px;
   --gap: 14px;
   color-scheme: light;
 }
+
+/* Japanese screens keep the rounded face the display type was chosen for. */
+:root:lang(ja) { --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', ui-rounded, system-ui, sans-serif; }
 
 @media (prefers-color-scheme: dark) {
   :root {

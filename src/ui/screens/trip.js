@@ -4,7 +4,7 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, dateRange, fileHref } from '../format.js';
+import { relTime, size, dateRange, fileHref, pathParts } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -34,7 +34,7 @@ export async function renderTrip(ctx, route) {
   const extra = h('div', {}); // the export panel opens here
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, h('a', { href: '#/trips' }, '← Trips')),
-    h('h1', { class: 'title', text: scope.title }),
+    h('h1', { class: 'title', dir: 'auto', text: scope.title }),
     h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     h('div', { class: 'acts' },
@@ -129,9 +129,9 @@ function fileList(id, files) {
   }
   return h('section', { class: 'files', 'aria-label': 'Files' },
     ...[...groups].map(([folder, list]) => h('div', {},
-      h('h2', { class: 'section', text: folder ? `${folder}/` : 'Trip' }),
+      h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : 'Trip' }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },
-        h('span', { class: 'path', text: f.path }),
+        h('span', { class: 'path', dir: 'ltr' }, ...pathParts(f.path)),
         h('span', { class: 'sub', text: `${size(f.size)} · ${f.author} · ${relTime(f.modified)}` }))))))));
 }
 

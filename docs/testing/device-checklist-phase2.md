@@ -67,13 +67,14 @@ Shiori searches the web out of the box through three free services, Exa, Paralle
 
 ## The font check
 
-The localization design (`docs/superpowers/specs/2026-10-23-localization-design.md`, "Fonts") says annai's font list names Hiragino Sans before any Chinese font, and nothing marks a line's language, so on an iPhone a Chinese line is likely drawn with Japanese glyph shapes, and a simplified character that a Japanese font lacks taken from another font mid-sentence. This check confirms what happens today; the localization work (L3) will fix it.
+The localization design (`docs/superpowers/specs/2026-10-23-localization-design.md`, "Fonts and CJK") and its step L3 changed how annai draws Chinese and Japanese. The font list no longer names a Japanese font, so a browser picks the font for a Han character by the line's language; and every line in the Conversation, the bubble over the dock, Shiori's cards and the recap now says its language (`lang`: kana is `ja`, Han characters alone are `zh-Hans`, or `ja` when Japanese is the only one of the two in Settings → Shiori → Languages). A phone set to Traditional Chinese gets `zh-Hant`. Latin text is never tagged. This check confirms what the iPhone does with it.
 
-Type these two messages to Shiori, so both lines are in the same conversation:
+Type these three messages to Shiori, so all the lines are in the same conversation (whatever she answers):
 - Chinese: `直角三角形的骨架，这是我们说的。`
 - Japanese: `直角三角形の骨組みです。`
+- Mixed: `TeamLab Planets は豊洲にあります。` (a line mostly in Japanese with English words is Japanese; a mostly English line with a Japanese word in it, such as `Meet at 渋谷駅 at noon`, is left to the screens' language)
 
-Compare 直, 骨 and 角 in your two bubbles. Each character is drawn differently in Japanese and in simplified Chinese:
+Compare 直, 骨 and 角 in your first two bubbles. Each character is drawn differently in Japanese and in simplified Chinese:
 
 | | Japanese shape | Simplified Chinese shape |
 |---|---|---|
@@ -81,10 +82,13 @@ Compare 直, 骨 and 角 in your two bubbles. Each character is drawn differentl
 | 骨 | In the top part, the small inner box sits in the right half | The small inner box sits in the left half |
 | 角 | The middle stroke of the lower part stops at the lowest crossbar | The middle stroke runs right through to the bottom |
 
-- [ ] **F1. Which shapes the Chinese line has.** Should be today: both lines show the Japanese shapes. Write down what the Chinese line shows. If the Chinese line already has the Chinese shapes, say so: the design's assumption is wrong for this iPhone.
-- [ ] **F2. A character from another font.** In the Chinese line, look at 这, 们 and 说 (simplified characters a Japanese font lacks). Do they look a different weight, size or style from the characters beside them? Write down which.
-- [ ] **F3. The font in use (optional, at the Mac).** Web Inspector → Elements → select the Chinese bubble's text → the Font panel: write down the font used ("Hiragino Sans" expected today, "PingFang SC" after L3).
-- [ ] **F4. Android.** The same two lines on the Android phone. Android picks its fallback font by the phone's language, so write down the phone's language and which shapes each line shows.
+- [ ] **F1. Which shapes each line has.** The Chinese line shows the Chinese shapes (the right column) and the Japanese line the Japanese ones (the left), in both your own bubble and Shiori's. Write down what each line shows; in the mixed line, 豊洲 has the Japanese shapes. If the Chinese line still shows Japanese shapes, the phone's font does not follow `lang`: say so, and the fix is a `:lang(zh)` rule that names PingFang SC.
+- [ ] **F2. No odd characters.** In the Chinese line, look at 这, 们 and 说 (simplified characters a Japanese font lacks). They match the characters beside them in weight, size and style; none looks borrowed from another font. Write down any that does.
+- [ ] **F3. The font in use (optional, at the Mac).** Web Inspector → Elements → select the Chinese line's text → the Font panel: "PingFang SC" expected for the Chinese line, "Hiragino Sans" for the Japanese one. Also select the line's `<p>`: it has `lang="zh-Hans"` (or `ja`), and the "SHIORI" label above it has none.
+- [ ] **F4. The bubble.** With voice on, ask Shiori for a short answer in Japanese. While she speaks, her words in the bubble are upright, not slanted (English there is slanted); then they stay in the Conversation with Japanese shapes.
+- [ ] **F5. VoiceOver.** Turn VoiceOver on and swipe through the Conversation. Each line is read in its own voice: the Chinese line in a Chinese voice (Mandarin), the Japanese line in a Japanese one, the English line in the English voice, and the "SHIORI" label and the buttons in English. Write down which voice reads each, and where the voice changes in the middle of a line.
+- [ ] **F6. Symbols.** The font list no longer names Hiragino, so the arrows (← →), the dots ○ ● and a few symbols (≈ ⋮ ™ ✓ ✗) that the Zen fonts lack are drawn by the system's San Francisco instead of Hiragino's full-width shapes. Look at the arrow in a screen's top link ("← Trips") and at the ○ and ● dots on Now and Plan. They are the right size and weight, and sit level with the words. If they look worse than before, write it down: the fix is adding those code points to the Zen subsets.
+- [ ] **F7. Android.** The same two lines on the Android phone. Android picks its fallback font by the line's language, now that the font list names none. Write down the phone's language and which shapes each line shows.
 
 ## The lock screen
 

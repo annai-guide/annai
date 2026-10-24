@@ -37,7 +37,7 @@ function tripCard(s, trip, backup, stamps) {
   const when = trip?.start ? dateRange(trip.start, trip.end) : null;
   return h('li', {}, h('a', { class: 'card trip-card', href: `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
-      h('span', { class: 'name', text: s.title }),
+      h('span', { class: 'name', dir: 'auto', text: s.title }),
       h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, t`updated ${relTime(s.updated)}`, backupText(backup)]))),
     stampMarks(stamps)));
 }

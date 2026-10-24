@@ -3,7 +3,7 @@ import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, takenText } from '../format.js';
+import { relTime, size, takenText, pathParts } from '../format.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 
@@ -20,7 +20,7 @@ export async function renderFile(ctx, route) {
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
   }
-  const head = [h('p', { class: 'crumbs' }, h('a', { href: back }, '← Back to trip')), h('h1', { class: 'title mono', text: path })];
+  const head = [h('p', { class: 'crumbs' }, h('a', { href: back }, '← Back to trip')), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: 'This file was deleted. You can bring back a version below.' }), historyView(ctx, id, path, history, null));
