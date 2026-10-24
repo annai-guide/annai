@@ -488,7 +488,7 @@ function modelsPart(ctx, id, abilityId, models) {
   }, t`Fetch model list`);
   const rows = models.map((m) => h('li', {}, h('a', { class: 'card', href: `#/models/model?id=${encodeURIComponent(m.id)}` },
     h('span', { class: 'name', text: m.name }),
-    h('span', { class: 'sub', text: [m.providerId !== m.name ? m.providerId : null, m.contextWindow ? t`${num(Math.round(m.contextWindow / 1000))}K context` : null, priceLine(m.prices)].filter(Boolean).join(' · ') }))));
+    h('span', { class: 'sub', text: [m.providerId !== m.name ? m.providerId : null, m.contextWindow ? t`${num(Math.round(m.contextWindow / 1000), { useGrouping: false })}K context` : null, priceLine(m.prices)].filter(Boolean).join(' · ') }))));
   return h('div', {},
     h('h3', { text: t`Its models` }),
     rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: t`No models yet.` }),
