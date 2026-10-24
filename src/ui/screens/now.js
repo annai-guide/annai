@@ -1,4 +1,4 @@
-import { h, t, linkIn } from '../dom.js';
+import { h, t, tc, linkIn } from '../dom.js';
 import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -77,8 +77,8 @@ export async function renderNow(ctx) {
   return h('div', { class: 'screen now' },
     h('h1', { class: 'title', text: title }),
     top, ...sections,
-    h('section', { 'aria-label': t`Next` },
-      h('h2', { class: 'section', text: t`Next` }),
+    h('section', { 'aria-label': tc('coming up')`Next` },
+      h('h2', { class: 'section', text: tc('coming up')`Next` }),
       next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: t`Nothing more is planned.` }),
       h('p', {}, h('a', { href: '#/plan' }, t`The whole plan`))),
     await packLine(ctx, id),

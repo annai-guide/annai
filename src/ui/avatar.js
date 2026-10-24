@@ -150,7 +150,7 @@ function outline(p) {
 }
 
 // One query for every avatar (reduced motion), read at load; each avatar on screen listens for it to change.
-const motion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const motion = typeof matchMedia === 'function' ? matchMedia(/* en */ '(prefers-reduced-motion: reduce)') : null;
 const reduced = () => Boolean(motion?.matches);
 
 /**
@@ -262,8 +262,8 @@ export function createAvatar({ size = 'md', label } = {}) {
       group('curl', 'tail-asleep'),
       s('g', { class: 'head' },
         s('g', { class: 'front' },
-          group('alt flat-r', 'ear-flat-right'), group('alt flat-l', 'ear-flat-left'), group('alt out-l', 'ear-out-left'),
-          part('caps'), group('ear ear-r', 'ear-right'), group('ear ear-l', 'ear-left'), part('head'),
+          group(/* en */ 'alt flat-r', 'ear-flat-right'), group(/* en */ 'alt flat-l', 'ear-flat-left'), group(/* en */ 'alt out-l', 'ear-out-left'),
+          part('caps'), group(/* en */ 'ear ear-r', 'ear-right'), group(/* en */ 'ear ear-l', 'ear-left'), part('head'),
           s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), hair.el, part('loop'), part('knot'))),
         group('asleep', 'head-asleep'),
         look.el,
@@ -470,7 +470,7 @@ export function createAvatar({ size = 'md', label } = {}) {
       if (still()) return;
       const clamp = (/** @type {number} */ v) => Math.max(-3, Math.min(3, Number(v) || 0)) * GLANCE;
       clearTimeout(glancing);
-      for (const e of [look.el, aside.el]) e.style.transform = `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
+      for (const e of [look.el, aside.el]) e.style.transform = /* en */ `translate(${clamp(dx)}px, ${clamp(dy)}px)`;
       glancing = setTimeout(() => { for (const e of [look.el, aside.el]) e.style.transform = ''; }, 1100);
     },
     blink,
