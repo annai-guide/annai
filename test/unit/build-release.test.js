@@ -14,6 +14,7 @@ test('a release gets x.br beside each text file annai fetches, and no file of it
   /** @type {Record<string, string>} */
   const files = {
     'sw.js': `const LANGS = ['ja'];\nconst SHELL = [\n  '/',\n  '/index.html',\n  '/src/app.js',\n  '/src/ui/base.css',\n  '/LICENSE',\n  '/assets/icon.png',\n];\n${words('// sw')}`,
+    'shell.json': words('{}'),
     'index.html': words('<!doctype html>'),
     'src/app.js': words('// app'),
     'src/ui/base.css': words('/* base */'),
@@ -33,7 +34,7 @@ test('a release gets x.br beside each text file annai fetches, and no file of it
     await mkdir(dirname(join(dir, name)), { recursive: true });
     await writeFile(join(dir, name), text);
   }
-  const shipped = ['sw.js', 'index.html', 'src/app.js', 'src/ui/base.css', 'LICENSE', 'tiny.txt', 'l10n/ja.json', 'catalog/plugins.json',
+  const shipped = ['sw.js', 'shell.json', 'index.html', 'src/app.js', 'src/ui/base.css', 'LICENSE', 'tiny.txt', 'l10n/ja.json', 'catalog/plugins.json',
     'plugins-official/gemini-api/annai-plugin.json', 'plugins-official/gemini-api/index.js'];
   assert.deepEqual((await shippedText(dir)).sort(), [...shipped].sort());
 

@@ -52,12 +52,15 @@ test('installing fetches the shell past the HTTP cache, so an update never store
   /** @type {any[]} */
   let added = [];
   const self = { location: new URL('https://annai.guide/sw.js'), addEventListener: (/** @type {string} */ type, /** @type {any} */ fn) => { handlers[type] = fn; } };
-  const caches = { open: async () => ({ addAll: async (/** @type {any[]} */ reqs) => { added = reqs; } }) };
+  const caches = {
+    keys: async () => [],
+    open: async () => ({ addAll: async (/** @type {any[]} */ reqs) => { added = reqs; }, match: async () => new Response('a file'), put: async () => {}, delete: async () => false }),
+  };
   // In a service worker, relative URLs resolve against its own location.
   class SwRequest extends Request {
     constructor(/** @type {string} */ u, /** @type {RequestInit} */ init) { super(new URL(u, self.location.href), init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, setTimeout: () => 0 });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, crypto, setTimeout: () => 0 });
   /** @type {Promise<unknown> | undefined} */
   let done;
   handlers.install({ waitUntil: (/** @type {Promise<unknown>} */ p) => { done = p; } });
