@@ -174,7 +174,7 @@ test("kept voice clips: kept as the smallest file the phone makes and plays, pla
     await filterTrace(page, { kind: 'Conversation' });
     const heard = page.locator('.trace li').filter({ hasText: 'clip kept' }).first();
     // Both browsers make Opus and play Ogg.
-    await expect(heard.locator('.d')).toHaveText(/ · clip kept: ogg, \d+(\.\d)? KB$/);
+    await expect(heard.locator('.d')).toHaveText(/ · clip kept: ogg, \d+(\.\d)? kB$/);
     await heard.locator('summary').click();
     await heard.getByRole('button', { name: 'Show what was stored' }).click();
     const src = String(await heard.locator('audio').getAttribute('src'));

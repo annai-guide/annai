@@ -1,5 +1,5 @@
-import { h } from './dom.js';
-import { bytes, relTime } from './format.js';
+import { h, plural } from './dom.js';
+import { size, relTime, num } from './format.js';
 import { connectionOf } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
 import { MAX_BYTES } from '../core/pack/download.js';
@@ -12,8 +12,7 @@ import { MAX_BYTES } from '../core/pack/download.js';
 
 /** "1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide". @param {NonNullable<PackStatus['manifest']>} m */
 function holds(m) {
-  const n = (/** @type {number} */ k, /** @type {string} */ one, /** @type {string} */ more) => `${k.toLocaleString('en-US')} ${k === 1 ? one : more}`;
-  return `${n(m.places, 'place', 'places')}, ${n(m.summaries, 'Wikipedia summary', 'Wikipedia summaries')}, ${n(m.guides.length, 'Wikivoyage guide', 'Wikivoyage guides')}`;
+  return `${plural(m.places, '# place', '# places')}, ${plural(m.summaries, '# Wikipedia summary', '# Wikipedia summaries')}, ${plural(m.guides.length, '# Wikivoyage guide', '# Wikivoyage guides')}`;
 }
 
 /** " 2 hours ago", or nothing when the manifest doesn't say when (an empty at). @param {string} at */
@@ -30,10 +29,10 @@ export function downloadedWhen(at) {
 export function packWords(s, connection) {
   if (s.running) {
     const r = s.running;
-    return { lines: [`Downloading${r.total ? ` ${Math.min(r.done + 1, r.total)} of ${r.total}` : ''}${r.label ? `: ${r.label}` : ''}…`], button: null };
+    return { lines: [`Downloading${r.total ? ` ${num(Math.min(r.done + 1, r.total))} of ${num(r.total)}` : ''}${r.label ? `: ${r.label}` : ''}…`], button: null };
   }
   if (!s.stops) return { lines: ['The pack follows the plan: once the plan has places, it can be downloaded here.'], button: null };
-  const about = `about ${bytes(s.estimate)}`;
+  const about = `about ${size(s.estimate)}`;
   const m = s.manifest;
   if (!m) {
     return {
@@ -44,9 +43,9 @@ export function packWords(s, connection) {
       button: `Download (${about})`,
     };
   }
-  const lines = [`Downloaded${downloadedWhen(m.at)} · ${bytes(m.bytes)} · ${holds(m)}.`];
+  const lines = [`Downloaded${downloadedWhen(m.at)} · ${size(m.bytes)} · ${holds(m)}.`];
   if (m.guides.length) lines.push(`Guides: ${m.guides.map((g) => g.title).join(', ')}.`);
-  if (m.full) lines.push(`It stopped at its ${bytes(MAX_BYTES)} limit, so it holds only the start of the plan.`);
+  if (m.full) lines.push(`It stopped at its ${size(MAX_BYTES)} limit, so it holds only the start of the plan.`);
   if (s.cut) lines.push('This plan is longer than a pack holds, so some of the way between stops is left out.');
   if (m.failed.length) {
     const f = m.failed[0];

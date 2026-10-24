@@ -70,7 +70,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     expect([...files.keys()].some((p) => /^trips\/[^/]+\/files\/gate\.(webp|jpg)$/.test(p))).toBe(true);
     expect(gh.count('POST', '/git/blobs')).toBe(1);
     await page.getByRole('link', { name: 'Trips', exact: true }).click();
-    await expect(page.getByText(/backed up (just now|\d+ seconds? ago)/)).toBeVisible();
+    await expect(page.getByText(/backed up (now|\d+ seconds? ago)/)).toBeVisible();
 
     // A change goes up by itself too, and the photo isn't sent again.
     await page.getByRole('link', { name: /Big Sur/ }).click();

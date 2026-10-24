@@ -42,11 +42,11 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await page.reload();
   const panel = page.getByRole('region', { name: 'Offline pack' });
   await expect(panel).toContainText("For when there's no connection");
-  const download = panel.getByRole('button', { name: /^Download \(about \d+(\.\d)? KB\)$/ });
+  const download = panel.getByRole('button', { name: /^Download \(about \d+(\.\d)? kB\)$/ });
   await expect(download).toBeVisible();
   expect(asked).toEqual([]); // nothing goes before the tap
   await download.click();
-  await expect(panel).toContainText(/Downloaded just now · [\d.]+ (B|KB) · 2 places, 1 Wikipedia summary, 1 Wikivoyage guide\./, { timeout: 30_000 });
+  await expect(panel).toContainText(/Downloaded now · [\d.]+ (byte|kB) · 2 places, 1 Wikipedia summary, 1 Wikivoyage guide\./, { timeout: 30_000 });
   await expect(panel).toContainText('Guides: Big Sur.');
   await expect(panel).not.toContainText('null'); // nothing left out shows as a word
   await expect(panel.getByRole('link', { name: 'OpenStreetMap contributors' })).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
@@ -63,7 +63,7 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await writeRecords(page, trip, { write: { '/plan/mcway.json': { id: 'mcway', title: 'McWay Falls', fixed: false, start: { at: at(21), tz: 'America/Los_Angeles' }, place: { name: 'McWay Falls', lat: 36.158, lng: -121.672 } } } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await expect(panel).toContainText('The plan changed since.');
-  await expect(panel.getByRole('button', { name: /^Update \(about \d+(\.\d)? KB\)$/ })).toBeVisible();
+  await expect(panel.getByRole('button', { name: /^Update \(about \d+(\.\d)? kB\)$/ })).toBeVisible();
 });
 
 test('a trip with no places in its plan says how the pack works, and offers no download', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { h, messageOf as message } from '../dom.js';
-import { andList } from '../format.js';
+import { list } from '../format.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
@@ -37,7 +37,7 @@ export async function keyNames(plugins) {
 }
 
 /** What a code plugin that isn't annai's own can do with them, in plain words. @param {string[]} names keyNames() */
-export const keysRisk = (names) => `It can read every key saved in annai and send it anywhere${names.length ? `: now your keys for ${andList(names)}` : ''}.`;
+export const keysRisk = (names) => `It can read every key saved in annai and send it anywhere${names.length ? `: now your keys for ${list(names)}` : ''}.`;
 
 /** A plugin's code loads through the service worker (spec §5.3). */
 export const NO_SERVICE = "Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.";
@@ -72,11 +72,11 @@ export function keysNote(pkg) {
   const out = [];
   if (pkg.provider) {
     const origins = descOrigins(pkg.provider);
-    out.push(origins.length ? `Keys you give this provider are sent to ${andList(origins)}.` : 'Keys you give this provider are sent only to the address you give it.');
+    out.push(origins.length ? `Keys you give this provider are sent to ${list(origins)}.` : 'Keys you give this provider are sent only to the address you give it.');
   }
   if (pkg.search) {
     const o = [...(pkg.search.origins ?? [])].sort();
-    out.push(o.length ? `Your search words${pkg.search.key && !pkg.provider ? ' and the key you give it' : ''} are sent to ${andList(o)}.` : 'Your search words are sent only to the address you give it.');
+    out.push(o.length ? `Your search words${pkg.search.key && !pkg.provider ? ' and the key you give it' : ''} are sent to ${list(o)}.` : 'Your search words are sent only to the address you give it.');
   }
   return out.length ? out.join(' ') : null;
 }
@@ -107,7 +107,7 @@ export async function needsOf(ctx, pkg) {
 
 /** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
 export function abilityWords(desc) {
-  return andList([...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))]) || 'nothing yet';
+  return list([...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))]) || 'nothing yet';
 }
 
 /**

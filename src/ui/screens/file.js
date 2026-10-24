@@ -3,7 +3,7 @@ import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, bytes, takenText } from '../format.js';
+import { relTime, size, takenText } from '../format.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 
@@ -26,7 +26,7 @@ export async function renderFile(ctx, route) {
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: 'This file was deleted. You can bring back a version below.' }), historyView(ctx, id, path, history, null));
   const { entry, bytes: content } = r;
   return h('div', { class: 'screen' }, ...head,
-    h('p', { class: 'sub', text: `${entry.type} · ${bytes(entry.size)} · changed by ${entry.author} ${relTime(entry.modified)}` }),
+    h('p', { class: 'sub', text: `${entry.type} · ${size(entry.size)} · changed by ${entry.author} ${relTime(entry.modified)}` }),
     editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
     h('div', { class: 'acts' }, twoStep('Delete file', 'Tap again to delete', async () => {

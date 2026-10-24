@@ -1,4 +1,5 @@
 import { h, field, savedField, savedCheck, savingNote, messageOf } from './dom.js';
+import { numField, parseNum } from './format.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 
@@ -62,7 +63,7 @@ export function readForm(schema, raw) {
         values[f.key] = null;
         continue;
       }
-      const n = Number(t);
+      const n = parseNum(t);
       if (!Number.isFinite(n) || (f.kind === 'integer' && !Number.isInteger(n))) {
         errors.push(`${f.label} is ${f.kind === 'integer' ? 'a whole number' : 'a number'}.`);
         continue;
@@ -144,12 +145,11 @@ export async function settingsForm(ctx, pluginId, schema) {
       input.value = now === undefined || now === null ? '' : String(now);
     } else {
       input = h('input', {
-        id, type: f.kind === 'text' ? 'text' : 'number', autocomplete: 'off', value: now === undefined || now === null ? '' : String(now),
-        ...(f.kind === 'integer' ? { step: '1' } : {}), ...(f.min !== undefined ? { min: String(f.min) } : {}), ...(f.max !== undefined ? { max: String(f.max) } : {}),
+        id, autocomplete: 'off', value: now === undefined || now === null ? '' : typeof now === 'number' ? numField(now) : String(now),
+        ...(f.kind === 'text' ? {} : { inputmode: f.kind === 'integer' ? 'numeric' : 'decimal' }),
       });
     }
     rows.push(savedField(f.label, input, () => {
-      if (input.validity?.badInput) throw new Error(`${f.label} is ${f.kind === 'integer' ? 'a whole number' : 'a number'}.`);
       return value(input.value);
     }, write), hint);
   }

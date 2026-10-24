@@ -8,6 +8,7 @@ import { speechAdd } from '../../core/llm/providers.js';
 import { renderProvider, renderNewProvider } from './provider.js';
 import { renderModel } from './model.js';
 import { featuredStart } from '../provider-setup.js';
+import { numField } from '../format.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -59,10 +60,10 @@ const section = (title, ...children) => h('section', { class: 'panel', 'aria-lab
  */
 function requestSections(ctx, s) {
   const save = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: c });
-  const spend = h('input', { id: 'budget-spend', type: 'number', inputmode: 'decimal', min: '0.01', step: '0.01', placeholder: 'No limit', value: s.budgets?.spendPerDay ?? '' });
+  const spend = h('input', { id: 'budget-spend', inputmode: 'decimal', placeholder: 'No limit', value: numField(s.budgets?.spendPerDay) });
   const c = { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) };
-  const share = h('input', { id: 'compaction-threshold', type: 'number', inputmode: 'numeric', min: '50', max: '90', step: '5', placeholder: '70', value: String(Math.round(c.threshold * 100)) });
-  const mib = h('input', { id: 'compaction-max', type: 'number', inputmode: 'decimal', min: '1', max: '64', step: '1', placeholder: '8', value: String(c.maxRequestMiB) });
+  const share = h('input', { id: 'compaction-threshold', inputmode: 'numeric', placeholder: '70', value: numField(Math.round(c.threshold * 100)) });
+  const mib = h('input', { id: 'compaction-max', inputmode: 'decimal', placeholder: '8', value: numField(c.maxRequestMiB) });
   return [
     section('Spend per day',
       h('p', { class: 'sub', text: "What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit." }),
@@ -157,7 +158,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, k
   const pick = h('select', { id: `role-${role}-add` }, ...others.map((m) => h('option', { value: m.id, text: m.name })));
   const level = speech || realtime ? null : h('select', { id: `role-${role}-level` }, ...LEVELS.map((l) => h('option', { value: l, text: l })));
   if (level) level.value = r.level;
-  const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : koe ? '8' : '30', value: r.firstOutputSeconds ?? '' });
+  const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : koe ? '8' : '30', value: numField(r.firstOutputSeconds) });
   const empty = role === 'main' ? 'No models yet. Add one.'
     : realtime ? 'Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.'
     : koe ? 'Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.'

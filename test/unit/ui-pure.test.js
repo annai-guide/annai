@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, bytes, dateRange, takenText, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -33,11 +33,11 @@ test('parseHash: "#import=<url>" from spec §12.3, with the URL kept whole', () 
 
 test('format helpers', () => {
   const now = Date.UTC(2026, 9, 15, 12);
-  assert.equal(relTime(now - 10_000, now), 'just now');
+  assert.equal(relTime(now - 10_000, now), 'now');
   assert.match(relTime(now - 2 * 3600_000, now), /2 hours ago/);
-  assert.equal(bytes(512), '512 B');
-  assert.equal(bytes(1536), '1.5 KB');
-  assert.equal(bytes(5 * 1024 * 1024), '5.0 MB');
+  assert.equal(size(512), '512 byte');
+  assert.equal(size(1536), '1.5 kB');
+  assert.equal(size(5 * 1024 * 1024), '5.0 MB');
   assert.match(dateRange('2026-11-25', '2026-11-29'), /Nov/);
   assert.match(dateRange('2026-11-25', '2026-11-29'), /25/);
   assert.match(dateRange('2026-11-25'), /Nov 25/);
@@ -48,12 +48,6 @@ test('parseHash: a mangled link opens Trips instead of failing', () => {
   assert.deepEqual(parseHash('#/trip/%E6'), trips);
   assert.deepEqual(parseHash('#/trip/trip-1/file?path=%E6%A1'), { name: 'file', parts: ['trip', 'trip-1', 'file'], params: { path: '�' } });
   assert.deepEqual(parseHash('#import=%ZZ'), trips);
-});
-
-test('takenText shows the time as the clock showed it where the photo was taken', () => {
-  assert.equal(takenText('2026-11-26T19:04:12-08:00', 'en-GB'), '26 Nov 2026, 19:04');
-  assert.equal(takenText('2026-11-27T08:15:00', 'en-GB'), '27 Nov 2026, 08:15');
-  assert.equal(takenText('sometime', 'en-GB'), 'sometime');
 });
 
 test('a full device gets advice that frees space: removing a trip does, deleting inside one does not (spec §4.9)', () => {
@@ -78,7 +72,7 @@ test('backupText: never, up to date, and changed since (spec §4.9)', () => {
 
 test('formatCost: free, small, ordinary and unknown costs', () => {
   assert.equal(formatCost(0), 'free');
-  assert.equal(formatCost(0.000125), '$0.0001');
+  assert.equal(formatCost(0.000125), '$0.00013');
   assert.equal(formatCost(0.0042), '$0.0042');
   assert.equal(formatCost(1.234), '$1.23');
   assert.equal(formatCost(undefined), 'cost unknown');
@@ -129,12 +123,12 @@ test('cards: a maps link per platform, and the paths Shiori uses', () => {
 test("the trace's lines for her live voice (the pops fix): the sound's rate and latencies as a session is ready, and each reply's numbers", () => {
   const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'x', scope: 's' });
   assert.equal(traceSummary(e('live.session', { state: 'ready', model: 'Gemini Live', ms: 900, sampleRate: 48_000, baseLatency: 0.0058, outputLatency: 0.032 })),
-    'live session ready · Gemini Live · 0.9 s · sound at 48.0 kHz, 6 ms processing latency, 32 ms output latency');
-  assert.equal(traceSummary(e('live.session', { state: 'resumed', model: 'Gemini Live', ms: 900, sampleRate: 44_100 })), 'live session resumed · Gemini Live · 0.9 s · sound at 44.1 kHz');
-  assert.equal(traceSummary(e('live.session', { state: 'ready', model: 'Gemini Live', ms: 900, sampleRate: 44_100, baseLatency: null, outputLatency: null })), 'live session ready · Gemini Live · 0.9 s · sound at 44.1 kHz');
+    'live session ready · Gemini Live · 900 ms · sound at 48 kHz, 6 ms processing latency, 32 ms output latency');
+  assert.equal(traceSummary(e('live.session', { state: 'resumed', model: 'Gemini Live', ms: 900, sampleRate: 44_100 })), 'live session resumed · Gemini Live · 900 ms · sound at 44.1 kHz');
+  assert.equal(traceSummary(e('live.session', { state: 'ready', model: 'Gemini Live', ms: 900, sampleRate: 44_100, baseLatency: null, outputLatency: null })), 'live session ready · Gemini Live · 900 ms · sound at 44.1 kHz');
   assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 3450, holes: 2, holeMs: 310, waitMs: 40, player: 'worklet', cut: true })),
-    'her voice: 3.5 s played · cut · started after 40 ms · 2 holes, 310 ms · on worklet');
-  assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 2000, holes: 0, holeMs: 0, waitMs: 0, player: 'buffers', cut: false })), 'her voice: 2.0 s played · started after 0 ms · 0 holes · on buffers');
+    'her voice: 3.5 sec played · cut · started after 40 ms · 2 holes, 310 ms · on worklet');
+  assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 2000, holes: 0, holeMs: 0, waitMs: 0, player: 'buffers', cut: false })), 'her voice: 2.0 sec played · started after 0 ms · 0 holes · on buffers');
   assert.equal(traceSummary(e('live.reply', { wake: 'w', ms: 0, holes: 0, holeMs: 0, waitMs: 0, player: 'worklet', cut: true, stalled: true })),
     'her voice: cut before it played · stalled · 0 holes · on worklet');
 });
@@ -224,16 +218,16 @@ test('bookingLines: what a booking says, with times in their own zone', () => {
     id: 'f', kind: 'flight', status: 'unverified', source: '/files/f.pkpass',
     start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
     place: { name: 'SFO', address: 'San Francisco, CA' }, confirmation: 'ABC123', cost: { amount: 412.5, currency: 'USD' }, fields: { seat: '21C', bags: 1 },
-  }, 'en-US');
+  });
   assert.deepEqual(lines.map(([k]) => k), ['Kind', 'Starts', 'Ends', 'Place', 'Confirmation', 'Cost', 'seat', 'bags']);
-  assert.match(lines[1][1], /^Wed, Nov 25, 8:00\sAM \(America\/Los_Angeles\)$/);
-  assert.match(lines[2][1], /^Wed, Nov 25, 4:30\sPM \(America\/New_York\)$/);
+  assert.match(lines[1][1], /^Wed, Nov 25, 8:00\sAM \(PT\)$/);
+  assert.match(lines[2][1], /^Wed, Nov 25, 4:30\sPM \(ET\)$/);
   assert.equal(lines[3][1], 'SFO, San Francisco, CA');
   assert.equal(lines[5][1], '$412.50');
   assert.deepEqual(lines.slice(6), [['seat', '21C'], ['bags', '1']]);
   // Only what is required; a zone annai doesn't know leaves the time out rather than breaking.
-  assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }, 'en-US'), [['Kind', 'Other']]);
-  assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }, 'en-US'), [['Kind', 'Car']]);
+  assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }), [['Kind', 'Other']]);
+  assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }), [['Kind', 'Car']]);
 });
 
 test('a backup place in a few words, and the newer backup at it (spec §12.4)', () => {
@@ -262,17 +256,17 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
     "An Android phone backed up to me/annai-backup 1 hour ago, after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it (the other backup stays in its history).");
   assert.equal(newerText(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), { where: 'x', noun: 'computer', tree: false }, now),
-    'Another device backed up to x just now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
+    'Another device backed up to x now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
   assert.equal(newerText(t(), { where: 'x', noun: 'phone', tree: true }, now), '');
   assert.deepEqual(parseHash('#/backups/place?id=bt-1'), { name: 'backups', parts: ['backups', 'place'], params: { id: 'bt-1' } });
 });
 
 test('the trace says what each backup did (spec §15)', () => {
-  assert.equal(traceSummary({ type: 'backup', data: { type: 'github', reason: 'auto', backup: 'c1', files: 3, uploaded: 2048, ms: 900 } }), 'github · auto · 3 files sent, 2.0 KB · 900 ms');
+  assert.equal(traceSummary({ type: 'backup', data: { type: 'github', reason: 'auto', backup: 'c1', files: 3, uploaded: 2048, ms: 900 } }), 'github · auto · 3 files sent, 2.0 kB · 900 ms');
   assert.equal(traceSummary({ type: 'backup.newer', data: { type: 'github', remote: { id: 'c2', at: 0, label: 'Android phone' } } }), 'github · a newer backup from an Android phone is there');
   assert.equal(traceSummary({ type: 'backup.error', data: { type: 'github', kind: 'auth', message: 'GitHub refused the token.' } }), 'github · auth: GitHub refused the token.');
-  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 KB');
-  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096, stopped: true } }), 'github · downloaded c2, 4.0 KB, then stopped: thrown away');
+  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096 } }), 'github · downloaded c2, 4.0 kB');
+  assert.equal(traceSummary({ type: 'backup.download', data: { type: 'github', backup: 'c2', bytes: 4096, stopped: true } }), 'github · downloaded c2, 4.0 kB, then stopped: thrown away');
   assert.equal(traceSummary({ type: 'backup.peek', data: { type: 'forgejo', backup: 'c2', problem: '$.files[0].hash: does not match' } }), "forgejo · c2 can't be opened: $.files[0].hash: does not match");
   assert.equal(traceSummary({ type: 'backup.prune', data: { type: 's3', backup: 'annai-backup-1.annai.zip' } }), 's3 · deleted an older backup, annai-backup-1.annai.zip');
 });
@@ -409,7 +403,7 @@ test('the limit for an unnamed connection, as typed and as shown', () => {
   assert.equal(limitField(100 * 1024 * 1024), '100');
   assert.equal(limitText(undefined), '25 MB');
   assert.equal(limitText(null), 'no limit');
-  assert.equal(limitText(0), '0 B');
+  assert.equal(limitText(0), '0 byte');
 });
 
 test('a microphone that fails says what happened and what to do, for this phone (spec §17 rule 3)', () => {
@@ -471,7 +465,7 @@ test("the trace's one-line summaries of live mode: points, firings, reminders an
 test('the Offline pack panel: the estimate before anything is downloaded, then what it holds and what an update brings (spec §11.5)', () => {
   const base = { stops: 2, cut: 0, manifest: null, why: null, estimate: 120 * 1024, running: null };
   const none = packWords(/** @type {any} */ (base), 'unknown');
-  assert.equal(none.button, 'Download (about 120 KB)');
+  assert.equal(none.button, 'Download (about 120 kB)');
   assert.match(none.lines[0], /^For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's 2 stops and along the way between them\./);
   assert.equal(none.lines[1], "Downloading sends the plan's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.");
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, stops: 0 }), 'wifi'), { lines: ['The pack follows the plan: once the plan has places, it can be downloaded here.'], button: null });
@@ -479,35 +473,35 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur' }], failed: [], full: false, stopped: false };
   const done = packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi');
   assert.equal(done.button, null);
-  assert.equal(done.lines[0], 'Downloaded just now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
+  assert.equal(done.lines[0], 'Downloaded now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
   assert.equal(done.lines[1], 'Guides: Big Sur.');
   assert.equal(done.lines.at(-1), 'On Wi-Fi, annai keeps it up to date by itself while this trip is open.');
   const changed = packWords(/** @type {any} */ ({ ...base, manifest, why: 'plan', estimate: 30 * 1024 }), 'unknown');
-  assert.equal(changed.button, 'Update (about 30 KB)');
+  assert.equal(changed.button, 'Update (about 30 kB)');
   assert.ok(changed.lines.includes('The plan changed since.'));
   assert.equal(changed.lines.at(-1), "This browser doesn't tell annai when it is on Wi-Fi, so update it here.");
   const failed = packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'overpass-api.de answered 504.' }] }, why: 'missing' }), 'wifi');
-  assert.equal(failed.button, 'Try again (about 120 KB)');
+  assert.equal(failed.button, 'Try again (about 120 kB)');
   assert.ok(failed.lines.includes("One part didn't download: OpenStreetMap around Nepenthe (overpass-api.de answered 504)."));
-  assert.equal(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, stopped: true }, why: 'missing' }), 'wifi').button, 'Download the rest (about 120 KB)');
+  assert.equal(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, stopped: true }, why: 'missing' }), 'wifi').button, 'Download the rest (about 120 kB)');
   assert.ok(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, full: true } }), 'wifi').lines.includes('It stopped at its 20 MB limit, so it holds only the start of the plan.'));
   assert.match(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, places: 1, summaries: 1, guides: [] } }), 'wifi').lines[0], / · 1 place, 1 Wikipedia summary, 0 Wikivoyage guides\.$/);
   assert.ok(packWords(/** @type {any} */ ({ ...base, manifest, cut: 3 }), 'wifi').lines.includes('This plan is longer than a pack holds, so some of the way between stops is left out.'));
-  assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 KB)');
+  assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 kB)');
 });
 
-test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"just now\"", () => {
+test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"now\"", () => {
   const base = { stops: 2, cut: 0, why: null, estimate: 120 * 1024, running: null };
   const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], failed: [], full: false, stopped: false };
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
   assert.equal(downloadedWhen(''), '');
   assert.equal(downloadedWhen('not a time'), '');
-  assert.equal(downloadedWhen(new Date().toISOString()), ' just now');
+  assert.equal(downloadedWhen(new Date().toISOString()), ' now');
 });
 
 test('the trace says what each offline pack download did', () => {
   assert.equal(traceSummary(/** @type {any} */ ({ type: 'pack.download', data: { files: 7, bytes: 120_000, guides: 2, failed: 1, stopped: false, full: false, auto: true } })),
-    '7 files · 117 KB · 2 guides · 1 failed · by itself on Wi-Fi');
+    '7 files · 117 kB · 2 guides · 1 failed · by itself on Wi-Fi');
 });
 
 test('Trace lines for notifications', () => {
@@ -547,7 +541,7 @@ test('the install screen says what a package brings and where it came from', asy
   const { whatItBrings, sourceLine, keysNote } = await import('../../src/ui/screens/plugin-install.js');
   assert.deepEqual(whatItBrings({ code: true, skills: [{ name: 'trail-safety', description: 'Before a hike.' }], personalities: [{ name: 'ranger' }],
     provider: { abilities: { chat: { kind: 'chat' }, ears: { kind: 'transcription' }, voice: { kind: 'voice' } } } }),
-  ['Code that runs in annai', 'Skill "trail-safety": Before a hike.', 'Personality "ranger"', 'A model provider: chat, transcription and voice']);
+  ['Code that runs in annai', 'Skill "trail-safety": Before a hike.', 'Personality "ranger"', 'A model provider: chat, transcription, and voice']);
   assert.deepEqual(whatItBrings({ code: false, skills: [], personalities: [], origins: ['https://api.b.test'] }), ['Its provider now sends keys you give it to https://api.b.test']);
   // Security review: a fresh install of a provider says where keys go, with each origin's scheme.
   assert.equal(keysNote({ provider: { baseUrl: 'https://api.openai.test/v1', abilities: { voice: { kind: 'voice', baseUrl: 'http://localhost:8880/v1' } } } }),
@@ -643,8 +637,8 @@ test("Reset's note names what it cleared by the form's labels; with nothing save
 });
 
 test("Reset M5: the trace's line for plugin.reset counts what went and says the space it gave back", () => {
-  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'park', name: 'Park', settings: ['station'], otherSettings: 1, secrets: ['token'], otherSecrets: 0, bytes: 2048 } }), `Park · 2 settings, 1 secret · ${bytes(2048)}`);
-  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'web', name: 'Web tools', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 } }), 'Web tools · 0 settings, 1 secret · 0 B');
+  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'park', name: 'Park', settings: ['station'], otherSettings: 1, secrets: ['token'], otherSecrets: 0, bytes: 2048 } }), `Park · 2 settings, 1 secret · ${size(2048)}`);
+  assert.equal(traceSummary({ type: 'plugin.reset', data: { plugin: 'web', name: 'Web tools', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 } }), 'Web tools · 0 settings, 1 secret · 0 byte');
 });
 
 test("Reset M4: a Reset that fails on a full disk shows the storage-full card, as Remove does; any other failure says it wasn't reset", async () => {

@@ -1,8 +1,8 @@
-import { h } from '../dom.js';
+import { h, t } from '../dom.js';
 import { routeStrip } from '../../core/now.js';
-import { distanceText } from '../../core/plan.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
+import { distance, duration } from '../format.js';
 import { whileText, knownFix } from '../live-chip.js';
 import { latestCard, eventCard, nowOf } from './now.js';
 
@@ -29,13 +29,13 @@ export async function renderDrive(ctx) {
   }
   const { rows } = await tripRows(ctx, id);
   const live = ctx.live;
-  const locale = navigator.language || 'en-US';
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
   const strip = h('ol', { class: 'route-strip', 'aria-label': 'The road ahead' });
   const maps = h('div', { class: 'maps-card' });
   const ask = h('div', { class: 'quick-ask' });
   const awake = h('div', { class: 'acts' });
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
+  const road = (/** @type {{ km: number | null, minutes: number | null }} */ s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration((s.minutes ?? 0) * 60_000)}`}`);
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
     const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
@@ -43,7 +43,7 @@ export async function renderDrive(ctx) {
       h('li', { class: 'you' }, here ? 'You' : live?.on ? 'You (finding where)' : 'You (GPS off)'),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
-        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', s.km !== null ? `${distanceText(s.km, locale)} · about ${s.minutes} min` : ''].filter(Boolean).join(' · ') }))),
+        h('span', { class: 'sub', text: [s.row.time ? `at ${s.row.time}` : '', road(s)].filter(Boolean).join(' · ') }))),
       ...(stops.length ? [] : [h('li', { class: 'empty', text: 'Nothing more is planned with a place.' })]));
     const next = stops[0];
     maps.replaceChildren(...(!next ? [] : links ? [

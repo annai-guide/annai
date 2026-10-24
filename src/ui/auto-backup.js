@@ -1,7 +1,7 @@
 import { startAutoBackup, TIMINGS } from '../core/backup-auto.js';
 import { connectionOf } from './platform.js';
 import { setPendingImport } from './import-state.js';
-import { newerText, placeHref, bytes, localDay, gettingFiles } from './format.js';
+import { newerText, placeHref, size, localDay, gettingFiles } from './format.js';
 
 /**
  * @typedef {import('../core/backup-targets.js').Target} Target
@@ -75,7 +75,7 @@ function holdCard(ctx, t) {
   } else if (h?.kind === 'large') {
     ctx.notices.card({
       title: 'A large backup is waiting',
-      body: `This backup uploads ${bytes(h.bytes)} to ${t.name}. annai can't tell whether this ${noun} is on Wi-Fi, so larger backups wait for your OK.`,
+      body: `This backup uploads ${size(h.bytes)} to ${t.name}. annai can't tell whether this ${noun} is on Wi-Fi, so larger backups wait for your OK.`,
       actions: [{ label: 'Back up now', primary: true, run: () => { backUpFromCard(ctx, t.id, {}); } }, open],
     });
   } else if (h?.kind === 'error') {

@@ -120,7 +120,7 @@ test("the limit for connections annai can't name is yours: at 0 MB, each automat
     await expect(limit).toHaveValue('25');
     await limit.fill('0');
     await limit.blur();
-    await expect(page.getByText(/larger than 0 B wait for your OK/)).toBeVisible();
+    await expect(page.getByText(/larger than 0 byte wait for your OK/)).toBeVisible();
     await page.getByRole('button', { name: 'Save and test' }).click();
     await expect(page.getByText('A large backup is waiting')).toBeVisible({ timeout: 30_000 });
     expect(dav.files().size).toBe(0);

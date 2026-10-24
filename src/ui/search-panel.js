@@ -1,4 +1,5 @@
-import { h, autosave, queueSave } from './dom.js';
+import { h, autosave, queueSave, t } from './dom.js';
+import { relTime } from './format.js';
 import { reorderable } from './screens/models.js';
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { orderSearch, searchOffIn, cooldowns, trusted, FREE_SERVICES, READY_MS } from '../core/web-search.js';
@@ -42,7 +43,7 @@ export async function freeTicks(ws) {
 /** A provider's state in a few words; its ready() is given a moment (READY_MS) to say. @param {any} p */
 export async function stateOf(p) {
   const left = cooldowns.left(p.id);
-  if (left > 0) return `resting after a failure, tries again in ${Math.ceil(left / 60_000)} min`;
+  if (left > 0) return t`resting after a failure, tries again ${relTime(Date.now() + Math.ceil(left / 60_000) * 60_000)}`;
   if (p.always) return 'Wikimedia and OpenStreetMap; always on, the last resort';
   if (!p.ready) return p.free ? 'free, no key' : 'ready';
   /** @type {ReturnType<typeof setTimeout> | undefined} */
