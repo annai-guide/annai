@@ -36,7 +36,7 @@ export class Updates {
   #started = false;
   /** @type {Promise<Result> | null} */
   #running = null;
-  /** @type {Promise<void> | null} */
+  /** @type {Promise<boolean> | null} */
   #restarting = null;
   /** The restart asked for: Don't restart, or its swap, ends it. @type {object | null} */
   #asked = null;
@@ -167,7 +167,7 @@ export class Updates {
     this.changed(false);
   }
 
-  /** Restarts annai, into the version that waits if one does, once Shiori's turn is over and a tap's unlock settled. */
+  /** Restarts annai, into the version that waits if one does, once Shiori's turn is over and a tap's unlock settled. Says whether it did (not if called off). @returns {Promise<boolean>} */
   restart() {
     this.#restarting ??= this.#restartOnce({});
     return this.#restarting;
@@ -186,7 +186,9 @@ export class Updates {
         while (this.agent.busy && !off()) await this.agent.idle();
       }
       await this.voice?.settled();
-      if (!off()) (this.#swap ?? this.reload)();
+      if (off()) return false;
+      (this.#swap ?? this.reload)();
+      return true;
     } finally {
       if (!off()) this.#asked = this.#restarting = null;
     }

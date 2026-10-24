@@ -1,7 +1,7 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
-import { languageSettings, tagOf } from '../core/languages.js';
-import { t } from '../core/l10n.js';
+import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
+import { t, lang as screensLang } from '../core/l10n.js';
 import { h } from './dom.js';
 import { num, money, size, when, relTime, zone, parseNum, numField } from '../core/intl.js';
 
@@ -163,18 +163,23 @@ export function limitText(limit) {
 }
 
 /**
- * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure) and `dir="auto"`.
+ * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure, so it takes the
+ * screens'; empty when theirs would be wrong for it) and `dir="auto"`.
  * Used as `h('p', { ...say(text), text })`, or `mark(el, say(text))`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
  * @returns {(text: string) => { lang: string | undefined, dir: 'auto' }}
  */
 export function wording(app, byShiori = false) {
   const settings = languageSettings(app, navigator.language);
-  return (text) => ({ lang: tagOf(text, settings, byShiori) || undefined, dir: 'auto' });
+  const ui = screensLang();
+  return (text) => {
+    const tag = tagOf(text, settings, byShiori, ui);
+    return { lang: tag === NO_LANGUAGE ? '' : tag || undefined, dir: 'auto' };
+  };
 }
 
 /** Gives an element the attributes `wording` gave its words, taking away a language it no longer has. @param {HTMLElement} el @param {{ lang?: string, dir: string }} a */
 export function mark(el, { lang, dir }) {
-  if (lang) el.setAttribute('lang', lang);
+  if (lang !== undefined) el.setAttribute('lang', lang);
   else el.removeAttribute('lang');
   el.setAttribute('dir', dir);
 }

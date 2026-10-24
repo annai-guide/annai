@@ -1,11 +1,49 @@
-import { h, field, queueSave, messageOf } from './dom.js';
-import { updateAppSettings } from '../core/settings.js';
+import { h, field, queueSave, messageOf, t } from './dom.js';
+import { readAppSettings, updateAppSettings } from '../core/settings.js';
+import { chooseTag, lang as screensLang } from '../core/l10n.js';
+import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor } from '../core/languages.js';
+import { languageName } from '../core/intl.js';
+
+/** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
+export function ownName(tag) {
+  try { return new Intl.DisplayNames([tag], { type: 'language' }).of(tag) ?? tag; } catch { return tag; }
+}
+
+/** The device's copy of the screens' language (`annai.ui`), read at the start; none: as the phone is set. @param {string | null | undefined} tag */
+export function keepUiChoice(tag) {
+  try {
+    if (tag) localStorage.setItem('annai.ui', tag);
+    else localStorage.removeItem('annai.ui');
+  } catch { /* storage blocked: annai starts in English then */ }
+}
+
+/** The screens' language the app settings choose: a tag, or '' as the phone is set. @param {Record<string, any>} app */
+export const chosenUi = (app) => (typeof app.languages?.ui === 'string' ? app.languages.ui : '');
+
+/** Writes that copy from the app settings, as a restore does before its restart. @param {any} ws */
+export async function keepUiFrom(ws) {
+  keepUiChoice(chosenUi(await readAppSettings(ws)));
+}
+
+/** Asks the worker to keep a language's words; with no worker, checks they can be fetched. @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o] */
+export async function keepWords(tag, { worker = navigator.serviceWorker?.controller, limitMs = 30_000 } = {}) {
+  if (!worker) {
+    try { return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
+  }
+  return new Promise((resolve) => {
+    const { port1, port2 } = new MessageChannel();
+    const done = (/** @type {boolean} */ ok) => { clearTimeout(timer); port1.close(); resolve(ok); };
+    const timer = setTimeout(() => done(false), limitMs);
+    port1.onmessage = (e) => done(e.data?.ok === true);
+    worker.postMessage({ type: 'cache-words', tag }, [port2]);
+  });
+}
 
 /** A language of ours by its id. @param {string} id */
 const language = (id) => LANGUAGES.find((l) => l.id === id);
-/** A language as a picker shows it: its name, then its own. @param {import('../core/languages.js').Language} l */
-const optionText = (l) => W.option(l.name, nativeName(l));
+/** A language as a picker shows it: its name in the screens' language, then its own. @param {import('../core/languages.js').Language} l */
+const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
 /**
  * Settings → Shiori → Languages (phase 2): the languages you speak, in order, and the one Shiori answers in. Each change is saved at
@@ -26,6 +64,7 @@ export function languagesSection(ctx, app) {
 
   const note = h('span', { class: 'saved', role: 'status' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const screens = screensRow(ctx, app);
   const hint = h('p', { class: 'sub' });
   const list = h('ol', { class: 'langs', 'aria-label': W.spokenLabel });
   const add = h('select', { id: 'language-add' });
@@ -72,13 +111,14 @@ export function languagesSection(ctx, app) {
     list.replaceChildren(...ids.map((id, i) => {
       const l = /** @type {import('../core/languages.js').Language} */ (language(id));
       const own = nativeName(l);
+      const name = languageName(id);
       const button = (/** @type {string} */ act, /** @type {string} */ label, /** @type {string} */ text, /** @type {() => unknown} */ run, disabled = false) =>
         h('button', { class: 'btn', type: 'button', 'aria-label': label, dataset: { lang: id, act }, disabled, onclick: run }, text);
       return h('li', { tabindex: '-1', dataset: { lang: id } },
-        h('span', { class: 'lang-name' }, l.name, own !== l.name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
-        i ? button('up', W.moveUpLabel(l.name), W.moveUpText, () => change(swap(i - 1), W.moved(l.name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
-        i < ids.length - 1 ? button('down', W.moveDownLabel(l.name), W.moveDownText, () => change(swap(i), W.moved(l.name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
-        button('remove', W.removeLabel(l.name), W.remove, () => remove(id), ids.length < 2));
+        h('span', { class: 'lang-name' }, name, own !== name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
+        i ? button('up', W.moveUpLabel(name), W.moveUpText, () => change(swap(i - 1), W.moved(name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
+        i < ids.length - 1 ? button('down', W.moveDownLabel(name), W.moveDownText, () => change(swap(i), W.moved(name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
+        button('remove', W.removeLabel(name), W.remove, () => remove(id), ids.length < 2));
     }));
     hint.textContent = chosen ? W.spokenHint : W.emptyHint;
     add.replaceChildren(h('option', { value: '', text: W.add }), ...LANGUAGES.filter((l) => !ids.includes(l.id)).map((l) => h('option', { value: l.id, text: optionText(l) })));
@@ -104,7 +144,7 @@ export function languagesSection(ctx, app) {
   const remove = (id) => {
     const at = ids.indexOf(id);
     const next = ids.filter((x) => x !== id);
-    const name = /** @type {any} */ (language(id)).name;
+    const name = languageName(id);
     const resets = answerId === id;
     const near = next[Math.min(at, next.length - 1)];
     return change(next, resets ? W.removedAnswer(name) : W.removed(name), near ? { id: near, act: 'remove' } : 'add', resets ? 'follow' : answerId);
@@ -113,22 +153,106 @@ export function languagesSection(ctx, app) {
   /** Adds the language picked, once Add is pressed: arrow keys in the list only choose. */
   const pick = () => {
     const l = language(add.value);
-    if (l && !ids.includes(l.id)) change([...ids, l.id], W.added(l.name));
+    if (l && !ids.includes(l.id)) change([...ids, l.id], W.added(languageName(l.id)));
   };
 
   add.addEventListener('change', () => { addButton.disabled = !add.value; });
   answer.addEventListener('change', () => {
     answerId = answer.value;
-    save(answerId === 'follow' ? W.answeredFollow() : W.answered(/** @type {any} */ (language(answerId)).name));
+    save(answerId === 'follow' ? W.answeredFollow() : W.answered(languageName(answerId)));
   });
   draw();
 
   return h('section', { class: 'panel', 'aria-label': W.heading },
     h('h2', { class: 'section', text: W.heading }),
     h('p', { class: 'sub', text: W.intro }),
+    screens,
     h('div', { class: 'saving' },
       h('h3', { text: W.spokenLabel }), list,
       h('div', { class: 'row' }, field(W.add, add), addButton),
       field(W.answerLabel, answer),
       note, error, hint));
+}
+
+/** "annai's screens in": the phone's, then each language by its own name; unfinished ones only while Experimental allows (a chosen one always shows). @param {any} ctx @param {Record<string, any>} app */
+function screensRow(ctx, app) {
+  const phone = navigator.languages ?? [];
+  const chosen = chosenUi(app);
+  const offered = [...SHIPPED, ...(app.experimental?.unfinishedTranslations === true ? EXPERIMENTAL : [])];
+  if (chosen && !offered.includes(chosen) && EXPERIMENTAL.includes(chosen)) offered.push(chosen);
+  const select = h('select', { id: 'language-ui' },
+    h('option', { value: '', text: t`As this phone is set (${ownName(chooseTag(null, phone, SHIPPED).tag)})` }),
+    ...offered.map((tag) => h('option', { value: tag, lang: tag, text: ownName(tag) })));
+  select.value = offered.includes(chosen) ? chosen : '';
+  const note = h('span', { class: 'saved', 'aria-live': 'polite' });
+  const error = h('p', { class: 'error', 'aria-live': 'assertive', hidden: true });
+  let shown = select.value;
+  select.addEventListener('change', async () => {
+    const pick = select.value;
+    select.disabled = true;
+    error.hidden = true;
+    const next = chooseTag(pick || null, phone, offered, SHIPPED);
+    const name = ownName(next.tag);
+    const back = (/** @type {string} */ why) => { select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
+    if (next.tag !== 'en') {
+      note.textContent = t`Getting ${name}…`;
+      if (!(await keepWords(next.tag))) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
+    }
+    try {
+      await updateAppSettings(ctx.ws, { languages: { ui: pick || null } });
+    } catch (e) {
+      return back(messageOf(e));
+    }
+    keepUiChoice(pick);
+    shown = pick;
+    // Already in it: nothing to restart into.
+    if (document.documentElement.lang === (next.region ? `${next.tag}-${next.region}` : next.tag)) {
+      select.disabled = false;
+      note.textContent = t`Saved`;
+      return;
+    }
+    note.textContent = t`Saved. Restarting…`;
+    // Called off ("Don't restart"): the row works again, and the change waits for the next restart.
+    if (!ctx.updates) location.reload();
+    else if (!(await ctx.updates.restart())) {
+      select.disabled = false;
+      note.textContent = t`Saved. It applies the next time annai restarts.`;
+    }
+  });
+  return h('div', { class: 'saving' }, field(t`annai's screens in`, select), note, error);
+}
+
+/**
+ * The start's cards: the words that failed to load, and a setting the device's copy disagrees with (the copy is then to be written, and
+ * a restart offered if it would change the language shown). running: the page's tag; failed: the tag whose words couldn't load.
+ * @param {{ settings: string, kept: string, running: string, failed?: string, phone?: readonly string[], offered?: readonly string[], shipped?: readonly string[], restart: () => unknown }} o
+ */
+export function screensCards({ settings, kept, running, failed, phone = navigator.languages ?? [], offered = [...SHIPPED, ...EXPERIMENTAL], shipped = SHIPPED, restart }) {
+  /** @type {{ title: string, body: string, actions: { label: string, primary?: boolean, run: () => unknown }[] }[]} */
+  const cards = [];
+  if (failed) {
+    const name = ownName(failed);
+    cards.push({ title: t`${name} couldn't be loaded`, body: t`annai shows English until it is online.`, actions: [{ label: t`Try again`, run: () => location.reload() }] });
+  }
+  if (settings === kept) return { copy: null, cards };
+  const next = chooseTag(settings || null, phone, offered, shipped);
+  if (next.tag !== running && !(failed && next.tag === failed)) {
+    const name = ownName(next.tag);
+    cards.push({
+      title: t`Restart to show annai in ${name}`,
+      body: t`Your settings say annai's screens are in ${name}, but this device is showing something else.`,
+      actions: [{ label: t`Restart annai`, primary: true, run: restart }],
+    });
+  }
+  return { copy: settings, cards };
+}
+
+/** At start: the device's copy written if the settings differ, and the cards, whether or not the settings can be read. @param {{ ws: any, notices: { card: (c: any) => unknown }, restart: () => unknown }} o */
+export async function screensAtStart({ ws, notices, restart }) {
+  const app = await readAppSettings(ws).catch(() => null);
+  let kept = '';
+  try { kept = localStorage.getItem('annai.ui') ?? ''; } catch { /* storage blocked */ }
+  const got = screensCards({ settings: app ? chosenUi(app) : kept, kept, running: screensLang(), failed: document.documentElement.dataset.l10nFailed, restart });
+  if (got.copy !== null) keepUiChoice(got.copy);
+  for (const c of got.cards) notices.card(c);
 }

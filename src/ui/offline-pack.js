@@ -1,5 +1,5 @@
 import { h, plural } from './dom.js';
-import { size, relTime, num } from './format.js';
+import { size, relTime, num, list } from './format.js';
 import { connectionOf } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
 import { MAX_BYTES } from '../core/pack/download.js';
@@ -12,7 +12,7 @@ import { MAX_BYTES } from '../core/pack/download.js';
 
 /** "1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide". @param {NonNullable<PackStatus['manifest']>} m */
 function holds(m) {
-  return `${plural(m.places, '# place', '# places')}, ${plural(m.summaries, '# Wikipedia summary', '# Wikipedia summaries')}, ${plural(m.guides.length, '# Wikivoyage guide', '# Wikivoyage guides')}`;
+  return list([plural(m.places, '# place', '# places'), plural(m.summaries, '# Wikipedia summary', '# Wikipedia summaries'), plural(m.guides.length, '# Wikivoyage guide', '# Wikivoyage guides')], 'plain');
 }
 
 /** " 2 hours ago", or nothing when the manifest doesn't say when (an empty at). @param {string} at */

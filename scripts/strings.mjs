@@ -2,7 +2,7 @@
 // annai's words, found, gathered and checked (localization design, section 1). The English is written in the code, marked
 // t`…`, tc(context)`…` or plural(n, one, other); this reads those marks with TypeScript's parser (no type checking), and keeps
 // one translator's file per language, l10n/<tag>.tsv, from which it writes what ships, l10n/<tag>.json.
-//   node scripts/strings.mjs                    updates the TSVs, the JSON files and src/core/l10n-list.js
+//   node scripts/strings.mjs                    updates the TSVs, the JSON files, src/core/l10n-list.js and sw.js's LANGS
 //   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
 //                                               and any bare English where a screen surely shows it (npm run check)
 //   node scripts/strings.mjs --find [paths]     lists the literals that read as words and are not marked
@@ -227,6 +227,16 @@ function close(a, b) {
 const fileOf = (/** @type {string} */ where) => where.replace(/:\d+$/, '');
 const catOf = (/** @type {string} */ k) => (k.includes('#') ? k.slice(k.indexOf('#')) : '');
 const WAS = 'English was: ';
+/** A translator's own words on a row, after the script's (why a draft says what it says): kept when the script writes the row again. */
+const NOTE = 'Note: ';
+/** A row's note in its parts: what the English was (a carried draft), and the translator's note, each with its mark. @param {string} note */
+function noteParts(note) {
+  const n = note.search(new RegExp(`(?:^|; )${NOTE}`));
+  const mine = n < 0 ? '' : note.slice(n).replace(/^; /, '');
+  const rest = n < 0 ? note : note.slice(0, n);
+  const w = rest.indexOf(WAS);
+  return { was: w < 0 ? '' : rest.slice(w), mine };
+}
 
 /**
  * A language's rows after the code changed: a row for every message, new ones `new`, rows of vanished messages gone, or, when the
@@ -240,8 +250,9 @@ export function updateRows(old, messages, tag) {
   for (const m of messages.values()) {
     for (const w of wanted(m, tag)) {
       const r = had.get(w.key);
-      const was = r?.state === 'draft' && r.note.includes(WAS) ? ` ${r.note.slice(r.note.indexOf(WAS))}` : '';
-      rows.push({ key: w.key, state: r?.state ?? 'new', en: w.en, text: r?.text ?? '', where: `${m.file}:${m.line}`, note: `${w.note}${was}` });
+      const { was, mine } = noteParts(r?.note ?? '');
+      const note = [w.note, r?.state === 'draft' ? was : '', mine].filter(Boolean).join('; ');
+      rows.push({ key: w.key, state: r?.state ?? 'new', en: w.en, text: r?.text ?? '', where: `${m.file}:${m.line}`, note });
     }
   }
   const now = new Set(rows.map((r) => r.key));
@@ -253,7 +264,7 @@ export function updateRows(old, messages, tag) {
     const [o] = orphans.splice(i, 1);
     r.state = 'draft';
     r.text = o.text;
-    r.note = [r.note, `${WAS}${o.en}`].filter(Boolean).join('; ');
+    r.note = [r.note, `${WAS}${o.en}`, noteParts(o.note).mine].filter(Boolean).join('; ');
   }
   const at = (/** @type {{ where: string }} */ r) => /** @type {[string, number]} */ ([fileOf(r.where), Number(r.where.split(':').pop())]);
   return rows.sort((a, b) => {
@@ -283,14 +294,24 @@ async function languages(root) {
   return existsSync(f) ? JSON.parse(await readFile(f, 'utf8')) : [];
 }
 /** What src/core/l10n-list.js says. @param {Language[]} list */
-export const listFile = (list) => `// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships, English first. Do not edit.\nexport const SHIPPED = Object.freeze(${JSON.stringify(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)]).replace(/"/g, "'").replace(/,/g, ', ')});\n`;
+export const listFile = (list) => {
+  return `// Written by scripts/strings.mjs from l10n/languages.json. Do not edit.\nexport const SHIPPED = Object.freeze(${quoted(['en', ...list.filter((l) => l.status === 'shipped').map((l) => l.tag)])});\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze(${quoted(list.filter((l) => l.status === 'experimental').map((l) => l.tag))});\n`;
+};
+/** The lines of sw.js that name the languages with a catalog (all listed), and those a phone is matched against (the shipped ones). */
+const LANGS_LINE = /^const LANGS = \[[^\]]*\];$/m;
+const SHIPPED_LANGS_LINE = /^const SHIPPED_LANGS = \[[^\]]*\];$/m;
+const quoted = (/** @type {string[]} */ tags) => JSON.stringify(tags).replace(/"/g, "'").replace(/,/g, ', ');
+/** sw.js with those lines made from the list, or null when it lacks one. @param {string} sw @param {Language[]} list */
+export const swWithLangs = (sw, list) => (LANGS_LINE.test(sw) && SHIPPED_LANGS_LINE.test(sw)
+  ? sw.replace(LANGS_LINE, `const LANGS = ${quoted(list.map((l) => l.tag))};`).replace(SHIPPED_LANGS_LINE, `const SHIPPED_LANGS = ${quoted(list.filter((l) => l.status === 'shipped').map((l) => l.tag))};`)
+  : null);
 
 /** The tags that have a translator's file. @param {string} root */
 async function tsvTags(root) {
   return existsSync(`${root}/l10n`) ? (await readdir(`${root}/l10n`)).filter((f) => f.endsWith('.tsv') && f !== 'glossary.tsv').map((f) => f.slice(0, -4)).sort() : [];
 }
 
-/** The default run: writes every language's TSV and JSON, and the list. @param {string} root @returns {Promise<string[]>} the files written */
+/** The default run: writes every language's TSV and JSON, the list, and the languages sw.js caches. @param {string} root @returns {Promise<string[]>} the files written */
 export async function update(root) {
   const { messages, problems } = await extract(root);
   if (problems.length) throw new Error(problems.map((p) => `${p.file}:${p.line}: ${p.message}`).join('\n'));
@@ -313,7 +334,81 @@ export async function update(root) {
     await put(`l10n/${tag}.json`, shippedJson(rows));
   }
   await put('src/core/l10n-list.js', listFile(list));
+  if (existsSync(`${root}/sw.js`)) {
+    const made = swWithLangs(await readFile(`${root}/sw.js`, 'utf8'), list);
+    if (made !== null) await put('sw.js', made);
+  }
   return written;
+}
+
+// ---- the glossary ----
+
+/** @typedef {{ en: string, kind: string, terms: Record<string, string>, where: string, note: string }} Term */
+/**
+ * l10n/glossary.tsv: the names of annai's screens and things, per language (columns en, kind, then a column per language, where, note).
+ * `never` rows are kept as written in every language, so a language's cell may be empty there. @param {string} text @returns {Term[]}
+ */
+export function readGlossary(text) {
+  const [head = '', ...lines] = text.split('\n');
+  const names = head.replace(/\r$/, '').split('\t');
+  /** @type {Term[]} */
+  const out = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\r$/, '');
+    if (!line.trim()) continue;
+    const cells = line.split('\t').map(unescape);
+    /** @type {Record<string, string>} */
+    const by = {};
+    names.forEach((n, i) => { by[n] = (cells[i] ?? '').trim(); });
+    if (!by.en) continue;
+    const { en, kind = '', where = '', note = '', ...terms } = by;
+    out.push({ en, kind, terms, where, note });
+  }
+  return out;
+}
+const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/**
+ * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
+ * is a name only where a name stands, not as the first word of a sentence ("Plan your day", "Ask Shiori"); a lowercase one (a thing)
+ * is also met with a capital. A name kept as written (Shiori, Koe) is a name wherever it stands. The longest terms go first, and their
+ * words are not read again as a shorter term's. @param {Set<string>} [never] the terms kept as written
+ */
+function naming(/** @type {string} */ english, /** @type {string[]} */ ens, never = new Set()) {
+  let rest = english;
+  /** @type {string[]} */
+  const found = [];
+  for (const en of [...ens].sort((a, b) => b.length - a.length)) {
+    const first = en[0];
+    const lower = first === first.toLowerCase() && first !== first.toUpperCase();
+    const head = lower ? `[${escapeRe(first)}${escapeRe(first.toUpperCase())}]` : escapeRe(first);
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])${head}${escapeRe(en.slice(1))}(?:e?s)?(?![\\p{L}\\p{N}])`, 'u');
+    const m = re.exec(rest);
+    if (!m) continue;
+    const opens = m.index === 0 && rest.slice(m[0].length).replace(/[\s.!?…:]+$/u, '') !== '';
+    if (lower || !opens || never.has(en)) found.push(en);
+    rest = rest.replace(re, ' ');
+  }
+  return found;
+}
+/**
+ * A language's rows that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
+ * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written.
+ * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @returns {Problem[]}
+ */
+export function glossaryWarnings(glossary, tag, rows) {
+  const termOf = (/** @type {Term} */ g) => g.terms[tag] || (g.kind === 'never' ? g.en : '');
+  const usable = glossary.filter((g) => termOf(g));
+  /** @type {Problem[]} */
+  const out = [];
+  for (const r of rows) {
+    if (!r.text || r.state === 'new') continue;
+    for (const en of naming(r.en, usable.map((g) => g.en), new Set(usable.filter((g) => g.kind === 'never').map((g) => g.en)))) {
+      const g = /** @type {Term} */ (usable.find((x) => x.en === en));
+      const term = termOf(g);
+      if (!r.text.includes(term)) out.push({ file: `l10n/${tag}.tsv`, line: r.line ?? 0, message: `"${r.en}" names ${g.kind === 'never' ? '' : 'the glossary\'s '}"${g.en}", which is "${term}" in ${tag}, and the text doesn't use it` });
+    }
+  }
+  return out;
 }
 
 // ---- the check ----
@@ -395,6 +490,8 @@ export async function check(root, files = EXTRACTED) {
   /** @type {Record<string, { draft: number, ok: number }>} */
   const drafts = {};
   const list = await languages(root);
+  // Once the glossary is there, a message that names one of its terms is held to the language's word for it (a warning).
+  const glossary = existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : [];
   for (const tag of [...new Set([...list.map((l) => l.tag), ...(await tsvTags(root))])].sort()) {
     const file = `l10n/${tag}.tsv`;
     const listed = list.some((l) => l.tag === tag);
@@ -424,6 +521,7 @@ export async function check(root, files = EXTRACTED) {
       const m = messages.get(base);
       bag.push({ file, line: r.line, message: m?.kind === 'plural' ? `${tag} has no "${r.key.split('#')[1]}" form: its categories are ${categories(tag).join(', ')}` : `"${r.en}" is no longer in the code: run npm run strings` });
     }
+    warnings.push(...glossaryWarnings(glossary, tag, rows));
     if (listed) {
       const json = `l10n/${tag}.json`;
       if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows)) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
@@ -431,6 +529,12 @@ export async function check(root, files = EXTRACTED) {
   }
   const listPath = 'src/core/l10n-list.js';
   if (!existsSync(`${root}/${listPath}`) || (await readFile(`${root}/${listPath}`, 'utf8')) !== listFile(list)) problems.push({ file: listPath, line: 1, message: `${listPath} isn't what l10n/languages.json makes: run npm run strings` });
+  if (existsSync(`${root}/sw.js`)) {
+    const sw = await readFile(`${root}/sw.js`, 'utf8');
+    const made = swWithLangs(sw, list);
+    if (made === null) problems.push({ file: 'sw.js', line: 1, message: "has no `const LANGS = [...];` and `const SHIPPED_LANGS = [...];` lines for the languages it caches" });
+    else if (made !== sw) problems.push({ file: 'sw.js', line: sw.slice(0, sw.search(LANGS_LINE)).split('\n').length, message: "LANGS isn't what l10n/languages.json makes: run npm run strings" });
+  }
   for (const file of files) {
     if (!existsSync(`${root}/${file}`)) { problems.push({ file, line: 1, message: 'is listed in EXTRACTED but is not there' }); continue; }
     for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });

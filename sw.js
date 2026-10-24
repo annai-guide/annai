@@ -1,14 +1,16 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '672e30d13ada';
+const BUILD = '0e87cac56fc2';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
-// The languages cached with a version (written by strings.mjs); their catalogs are outside SHELL, which stamp.mjs hashes too.
-const LANGS = [];
+// The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
+const LANGS = ['ja', 'zh-Hans'];
+// The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
+const SHIPPED_LANGS = [];
 const SHELL = [
   '/',
   '/index.html',
@@ -289,9 +291,96 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  // Past the HTTP cache: a new version must never store a stale copy of one of its files.
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))));
+  // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache.
+  event.waitUntil((async () => {
+    const words = await wordsToCache();
+    const cache = await caches.open(CACHE);
+    await cache.addAll([...SHELL, ...words.map(wordsPath)].map((u) => new Request(u, { cache: 'reload' })));
+  })());
 });
+
+/** @param {string} tag */
+const wordsPath = (tag) => `/l10n/${tag}.json`;
+
+/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
+function sameLanguage(a, b) {
+  try {
+    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
+    return x.language === y.language && x.script === y.script;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The languages whose catalogs a version caches: languages.ui in the app settings, else the worker's own languages against the shipped
+ * ones; none: English. When the settings can't be read in time, also each one an older version holds, so a chosen one isn't lost
+ * when activate drops the old cache. @returns {Promise<string[]>}
+ */
+async function wordsToCache() {
+  // An open queued behind a blocked upgrade or delete never answers, and no update may wait for it: after 3 s the phone decides.
+  const late = {};
+  const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(() => resolve(late), 3000))]);
+  const chosen = chosenWords(app === late ? null : app);
+  const tags = chosen ? [chosen] : [];
+  if (app !== late) return tags;
+  for (const name of await caches.keys()) {
+    if (!name.startsWith('annai-shell-') || name === CACHE) continue;
+    const old = await caches.open(name);
+    for (const tag of LANGS) if (!tags.includes(tag) && await old.match(wordsPath(tag))) tags.push(tag);
+  }
+  return tags;
+}
+
+/** The language the settings choose, else the phone's among the shipped ones; null: English. @param {any} app */
+function chosenWords(app) {
+  const ui = app?.languages?.ui;
+  if (ui === 'en') return null;
+  if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
+  for (const wanted of sw.navigator?.languages ?? []) {
+    const found = SHIPPED_LANGS.find((tag) => sameLanguage(wanted, tag));
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Keeps a language's words in every shell cache (a waiting version's too), and answers on the port. Offline, words already on the
+ * device do. @param {unknown} tag @param {MessagePort | undefined} port
+ */
+async function cacheWords(tag, port) {
+  let ok = false;
+  try {
+    if (typeof tag !== 'string' || !LANGS.includes(tag)) throw new Error('not a language annai has');
+    let res = await fetch(new Request(wordsPath(tag), { cache: 'reload' })).catch(() => null);
+    const device = !(await isCatalog(res));
+    if (device) res = (await (await caches.open(CACHE)).match(wordsPath(tag))) ?? null;
+    if (!res || !(await isCatalog(res))) throw new Error('not a catalog');
+    for (const name of await caches.keys()) {
+      if (!name.startsWith('annai-shell-')) continue;
+      const cache = await caches.open(name);
+      // The device's words never cover a catalog a cache has: a waiting version's may be newer. Where they go, they are marked, so
+      // that version fetches its own once it is online (respond).
+      if (!device) await cache.put(wordsPath(tag), res.clone());
+      else if (!(await cache.match(wordsPath(tag)))) await cache.put(wordsPath(tag), new Response(await res.clone().text(), { headers: { 'Content-Type': 'application/json', [FROM_DEVICE]: 'device' } }));
+    }
+    ok = true;
+  } catch { /* said no below */ }
+  port?.postMessage({ ok });
+}
+
+/** The header on words a version took from an older one's cache, offline: they are fetched fresh once there is a connection. */
+const FROM_DEVICE = 'x-annai-words';
+
+/** Whether a response is a catalog: a JSON object (a captive portal answers 200 with its own page). @param {Response | null | undefined} res */
+async function isCatalog(res) {
+  try {
+    const words = res?.ok ? await res.clone().json() : null;
+    return Boolean(words) && typeof words === 'object' && !Array.isArray(words);
+  } catch {
+    return false;
+  }
+}
 
 sw.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -306,6 +395,7 @@ sw.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') sw.skipWaiting();
   else if (event.data === 'build') event.ports?.[0]?.postMessage({ version: VERSION, build: BUILD });
   else if (event.data === 'claim') event.waitUntil(sw.clients.claim().catch(() => {}));
+  else if (event.data?.type === 'cache-words') event.waitUntil(cacheWords(event.data.tag, event.ports?.[0]));
 });
 
 sw.addEventListener('fetch', (event) => {
@@ -322,21 +412,35 @@ sw.addEventListener('fetch', (event) => {
   }
   if (req.method !== 'GET' || url.pathname.startsWith('/test/')) return;
   // Every page is the app, but the frame Google's search suggestions are drawn in: a page of its own, with its own policy (G4).
-  event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null));
+  event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null, (p) => event.waitUntil(p)));
 });
 
-/** Production: cache first. Development (localhost): network first, so edits show up. @param {Request} req @param {string | null} fallback */
-async function respond(req, fallback) {
+/** Production: cache first. Development (localhost): network first, so edits show up. A catalog that comes from the network is kept for the next start offline.
+ * @param {Request} req @param {string | null} fallback @param {(p: Promise<unknown>) => unknown} [later] work that goes on after the answer
+ */
+async function respond(req, fallback, later = (p) => p) {
   const cache = await caches.open(CACHE);
   const cached = () => cache.match(fallback ?? req, { ignoreSearch: true });
+  const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
+  const fetched = async () => {
+    const res = await fetch(req);
+    if (!tag) return res;
+    // Words are kept only when they are a catalog; else the words kept here answer, if there are any.
+    if (!(await isCatalog(res))) return (await cached()) ?? res;
+    await cache.put(wordsPath(tag), res.clone()).catch(() => {});
+    return res;
+  };
   if (DEV) {
     try {
-      return await fetch(req);
+      return await fetched();
     } catch {
       return (await cached()) ?? Response.error();
     }
   }
-  return (await cached()) ?? fetch(req);
+  const hit = await cached();
+  // Words marked as an older version's: served at once, and this version's own fetched in the background, once.
+  if (tag && hit?.headers.get(FROM_DEVICE)) later(fetched().catch(() => {}));
+  return hit ?? fetched();
 }
 
 /** Opens the app's database without ever creating it from here. @returns {Promise<IDBDatabase>} */
@@ -487,20 +591,25 @@ async function showReminder(data) {
   await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
 }
 
-/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
-async function handled(key) {
+/** One JSON file of the app's database, or null when it can't be had. @param {string} scope @param {string} path @returns {Promise<any>} */
+async function readJson(scope, path) {
   /** @type {IDBDatabase | undefined} */
   let db;
   try {
     db = await openExisting();
-    const file = (await readFiles(db, 'sys:device', ['/push.json'])).get('/push.json');
-    const given = file ? JSON.parse(new TextDecoder().decode(file.data))?.given : null;
-    return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
+    const file = (await readFiles(db, scope, [path])).get(path);
+    return file ? JSON.parse(new TextDecoder().decode(file.data)) : null;
   } catch {
-    return false;
+    return null;
   } finally {
     db?.close();
   }
+}
+
+/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
+async function handled(key) {
+  const given = (await readJson('sys:device', '/push.json'))?.given;
+  return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
 }
 
 // Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is
