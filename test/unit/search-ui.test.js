@@ -39,3 +39,17 @@ test('a provider\'s state: a ready() that never answers is "couldn\'t check", a 
     cooldowns.clear('wiki');
   }
 });
+
+test('the wait a resting provider shows is worked out from one reading of the clock, so the last minute never reads "now"', async () => {
+  cooldowns.clear('wiki');
+  cooldowns.rest('wiki');
+  const real = Date.now;
+  let readings = 0;
+  Date.now = () => real() + 7 * readings++; // every reading a little later than the one before
+  try {
+    assert.match(await stateOf(KNOWLEDGE), /^resting after a failure, tries again in 1 minute$/);
+  } finally {
+    Date.now = real;
+    cooldowns.clear('wiki');
+  }
+});

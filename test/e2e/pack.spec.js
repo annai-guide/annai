@@ -46,7 +46,7 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await expect(download).toBeVisible();
   expect(asked).toEqual([]); // nothing goes before the tap
   await download.click();
-  await expect(panel).toContainText(/Downloaded now · [\d.]+ (byte|kB) · 2 places, 1 Wikipedia summary, 1 Wikivoyage guide\./, { timeout: 30_000 });
+  await expect(panel).toContainText(/Downloaded just now · [\d.]+ (bytes|kB) · 2 places, 1 Wikipedia summary, 1 Wikivoyage guide\./, { timeout: 30_000 });
   await expect(panel).toContainText('Guides: Big Sur.');
   await expect(panel).not.toContainText('null'); // nothing left out shows as a word
   await expect(panel.getByRole('link', { name: 'OpenStreetMap contributors' })).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');

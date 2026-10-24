@@ -4,6 +4,12 @@ import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 
 /**
+ * The keypad a number field asks for: digits only when nothing below zero is allowed, since the iPhone's digit keypads have no minus;
+ * otherwise the plain keyboard (the schema's range is checked on saving). @param {{ kind: string, min?: number, max?: number }} f @returns {'numeric' | 'decimal' | undefined}
+ */
+export const keypad = (f) => ((f.kind === 'number' || f.kind === 'integer') && typeof f.min === 'number' && f.min >= 0 ? (f.kind === 'integer' ? 'numeric' : 'decimal') : undefined);
+
+/**
  * A plugin's settings form, from the JSON Schema in its manifest (spec §5.2: "a JSON Schema, from
  * which we render a settings form automatically"; milestone 8b choice 12). Values go where
  * annai.settings.get() reads them; writeOnly ones go to the plugin's secrets, never into files.
@@ -146,7 +152,7 @@ export async function settingsForm(ctx, pluginId, schema) {
     } else {
       input = h('input', {
         id, autocomplete: 'off', value: now === undefined || now === null ? '' : typeof now === 'number' ? numField(now) : String(now),
-        ...(f.kind === 'text' ? {} : { inputmode: f.kind === 'integer' ? 'numeric' : 'decimal' }),
+        ...(keypad(f) ? { inputmode: keypad(f) } : {}),
       });
     }
     rows.push(savedField(f.label, input, () => {

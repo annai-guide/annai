@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural } from '../../src/core/l10n.js';
 import {
-  locale, num, numField, parseNum, money, size, distance, duration, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
+  locale, num, numField, parseNum, money, size, distance, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -58,6 +58,9 @@ test('parseNum reads what a person types in their language', () => {
     assert.equal(parseNum('1,500'), 1500, `${ui} ${on}: a comma before three digits is a thousands mark`);
     assert.equal(parseNum('1,500.25'), 1500.25);
     assert.equal(parseNum('1,5'), 1.5, 'a comma that cannot be a thousands mark is a decimal one');
+    assert.equal(parseNum('0,500'), 0.5, 'a thousands mark has 1 to 999 before it');
+    assert.equal(parseNum('0.500'), 0.5);
+    assert.equal(parseNum('12,500'), 12500);
     assert.equal(parseNum(' 42 '), 42);
     assert.equal(parseNum('.5'), 0.5);
     assert.equal(parseNum('-3'), -3);
@@ -71,13 +74,29 @@ test('parseNum reads what a person types in their language', () => {
   }
   as('de', 'de-DE');
   assert.equal(parseNum('1.500'), 1500, 'a German thousands mark');
+  assert.equal(parseNum('0.500'), 0.5, 'not a thousands mark: nothing, or a zero, before it');
   assert.equal(parseNum('1.234,5'), 1234.5);
   assert.equal(parseNum('1 234,5'), 1234.5);
+  assert.equal(parseNum('1.234.567'), 1234567);
   as('en', 'de-DE');
   assert.equal(parseNum('1.234,5'), 1234.5);
-  for (const bad of ['lots', '1,2,x', '--1', '1..2.', '1,23,45']) assert.ok(Number.isNaN(parseNum(bad)), bad);
-  assert.equal(parseNum('1e3'), 1000);
-  assert.equal(parseNum(''), 0, 'nothing typed is for the caller to see, as Number("") is');
+  assert.equal(parseNum('0.500'), 0.5);
+  // Marks that are not thousands before the last one are a typo, not a number.
+  as('en', 'en-US');
+  for (const bad of ['2.5,5', '1.5,0', '1.5,5', '1.234,5', '1,23,45', '1,2,3', '1..2', '1,,2', '1.2.3']) assert.ok(Number.isNaN(parseNum(bad)), `en ${bad}`);
+  as('de', 'de-DE');
+  for (const bad of ['2,5.5', '1,5.0', '1,234.5', '1.23.45', '1,2,3']) assert.ok(Number.isNaN(parseNum(bad)), `de ${bad}`);
+  // Only digits and marks are a number: no names, no hex, no exponents, no Infinity, and nothing is not zero.
+  for (const bad of ['', '  ', 'lots', 'Infinity', '-Infinity', '0x1F', '1e400', '1e3', '--1', '+-1', '1,2,x', '.', ',', '-', '1 2 x']) assert.ok(Number.isNaN(parseNum(bad)), JSON.stringify(bad));
+  assert.ok(Number.isNaN(parseNum(undefined)));
+  assert.equal(parseNum('+1.5'), 1.5);
+  assert.equal(parseNum('5.'), 5);
+  // A Japanese keyboard types full-width digits and marks.
+  as('ja', 'ja-JP');
+  assert.equal(parseNum('１２'), 12);
+  assert.equal(parseNum('１，５００'), 1500);
+  assert.equal(parseNum('１．５'), 1.5);
+  assert.equal(parseNum('\u22123'), -3, 'a typographic minus');
 });
 
 test('money: a cost below a cent keeps two significant digits', () => {
@@ -105,8 +124,10 @@ test('money: a cost below a cent keeps two significant digits', () => {
 
 test('size: by 1024s, a tenth below ten', () => {
   as('en', 'en-US');
-  assert.equal(size(0), '0 byte');
-  assert.equal(size(512), '512 byte');
+  assert.equal(size(0), '0 bytes');
+  assert.equal(size(1), '1 byte');
+  assert.equal(size(512), '512 bytes');
+  assert.equal(size(1023), '1,023 bytes');
   assert.equal(size(1536), '1.5 kB');
   assert.equal(size(5 * 1024 * 1024), '5.0 MB');
   assert.equal(size(12.4 * 1024 * 1024), '12 MB');
@@ -143,6 +164,15 @@ test('duration: milliseconds, seconds, minutes, and hours with a minute count', 
   assert.equal(duration(1400), '1.4 sec');
   assert.equal(duration(2000), '2.0 sec');
   assert.equal(duration(1400, 'long'), '1.4 seconds');
+  // The unit is chosen after rounding: 999.6 ms is a second, 59.96 s a minute, 59.99 min an hour.
+  assert.equal(duration(999.4), '999 ms');
+  assert.equal(duration(999.6), '1.0 sec');
+  assert.equal(duration(59_940), '59.9 sec');
+  assert.equal(duration(59_960), '1 min');
+  assert.equal(duration(59.94 * 60_000), '59.9 min');
+  assert.equal(duration(59.99 * 60_000), typeof (/** @type {any} */ (Intl).DurationFormat) === 'function' ? '1 hr' : '60 min');
+  assert.equal(seconds(900, 'long'), '0.9 seconds', 'speech is counted in seconds, however short');
+  assert.equal(seconds(1400, 'long'), '1.4 seconds');
   assert.equal(duration(25 * 60_000), '25 min');
   assert.equal(duration(84_000), '1.4 min');
   assert.equal(duration(130 * 60_000), typeof (/** @type {any} */ (Intl).DurationFormat) === 'function' ? '2 hr, 10 min' : '130 min');
@@ -154,18 +184,24 @@ test('duration: milliseconds, seconds, minutes, and hours with a minute count', 
   assert.equal(duration(1400), '1.4秒');
 });
 
-test('relTime says "now" within a minute, and the units after', () => {
+test('relTime says "just now" under a minute, "in 1 minute" for a minute ahead, and the units after', () => {
   const now = Date.UTC(2026, 9, 15, 12);
   as('en', 'en-US');
-  assert.equal(relTime(now - 10_000, now), 'now');
+  assert.equal(relTime(now - 10_000, now), 'just now');
+  assert.equal(relTime(now, now), 'just now');
+  assert.equal(relTime(now - 59_000, now), 'just now');
+  assert.equal(relTime(now + 10_000, now), 'in 1 minute', 'never "0 seconds ago" or "now"');
+  assert.equal(relTime(now - 60_000, now), '1 minute ago');
   assert.equal(relTime(now - 2 * 3600_000, now), '2 hours ago');
   assert.equal(relTime(now - 86_400_000, now), 'yesterday');
   assert.equal(relTime(now + 5 * 60_000, now), 'in 5 minutes');
   as('de', 'de-DE');
   assert.equal(relTime(now - 2 * 3600_000, now), 'vor 2 Stunden');
+  assert.equal(relTime(now + 10_000, now), 'in 1 Minute');
   as('ja', 'ja-JP');
   assert.equal(relTime(now - 2 * 3600_000, now), '2 時間前');
-  assert.equal(relTime(now - 10_000, now), '今');
+  assert.equal(relTime(now - 10_000, now), 'just now', 'until a translation says it');
+  assert.equal(relTime(now + 10_000, now), '1 分後');
 });
 
 test('dates: plain days, ranges, instants in a zone, and the zone\'s name', () => {
