@@ -48,10 +48,8 @@ function sameLanguage(a, b) {
   } catch { return false; /* not a language tag */ }
 }
 /**
- * The screens' language at the start and the region its formats take. own: the choice kept on the device (`annai.ui`); offered: what
- * it may be; shipped: what the phone's languages are matched against (a draft is only ever chosen). A choice no longer offered is
- * as none: the first of the phone's languages annai has, not straight English. The region is the phone's, from its first language
- * that is the chosen one (ja chosen on a ja-JP phone gives ja-JP).
+ * The screens' language at the start, and the phone's region for it. own: the device's choice; offered: what it may be; shipped: what
+ * the phone's languages are matched against. A choice no longer offered is as none.
  * @param {string | null | undefined} own @param {readonly string[]} phone @param {readonly string[]} offered @param {readonly string[]} [shipped]
  * @returns {{ tag: string, region: string }}
  */

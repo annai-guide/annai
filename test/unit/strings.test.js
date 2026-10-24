@@ -82,7 +82,7 @@ test('update adds a new row, drops the stale one, and ships only keys and texts'
       [key('Saved to {0} for {1}')]: '{0}に保存',
       [key('# stamp\0# stamps')]: { other: 'スタンプ#個' },
     });
-    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json: the languages annai ships (English first) and the unfinished ones, offered only while Experimental's switch is on. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze([]);\n");
+    assert.equal(await readFile(`${dir}/src/core/l10n-list.js`, 'utf8'), "// Written by scripts/strings.mjs from l10n/languages.json. Do not edit.\nexport const SHIPPED = Object.freeze(['en', 'ja']);\n/** @type {readonly string[]} */\nexport const EXPERIMENTAL = Object.freeze([]);\n");
     assert.deepEqual(await update(dir), [], 'a second run has nothing to write');
   });
 });
@@ -266,24 +266,28 @@ test('an unfinished (experimental) language fails the check for a new row, as a 
   });
 });
 
-test('the list names the unfinished languages apart from the shipped, and sw.js caches every listed one', () => {
+test('the list names the unfinished languages apart from the shipped, and sw.js lists every language and the shipped ones apart', () => {
   const list = /** @type {const} */ ([{ tag: 'ja', status: 'experimental' }, { tag: 'zh-Hans', status: 'shipped' }]);
   const text = listFile([...list]);
   assert.match(text, /export const SHIPPED = Object\.freeze\(\['en', 'zh-Hans'\]\);\n\/\*\* @type \{readonly string\[\]\} \*\/\nexport const EXPERIMENTAL = Object\.freeze\(\['ja'\]\);\n$/);
-  assert.equal(swWithLangs("const A = 1;\nconst LANGS = [];\nconst SHELL = [];\n", [...list]), "const A = 1;\nconst LANGS = ['ja', 'zh-Hans'];\nconst SHELL = [];\n");
-  assert.equal(swWithLangs("const LANGS = ['ja'];\n", []), 'const LANGS = [];\n');
+  assert.equal(swWithLangs("const A = 1;\nconst LANGS = [];\nconst SHIPPED_LANGS = [];\nconst SHELL = [];\n", [...list]), "const A = 1;\nconst LANGS = ['ja', 'zh-Hans'];\nconst SHIPPED_LANGS = ['zh-Hans'];\nconst SHELL = [];\n");
+  assert.equal(swWithLangs("const LANGS = ['ja'];\nconst SHIPPED_LANGS = ['ja'];\n", []), 'const LANGS = [];\nconst SHIPPED_LANGS = [];\n');
   assert.equal(swWithLangs('const SHELL = [];\n', [...list]), null, 'no LANGS line, nothing to write');
+  assert.equal(swWithLangs('const LANGS = [];\n', [...list]), null, 'and no SHIPPED_LANGS line either');
 });
 
-test('update writes sw.js\'s LANGS, and the check says when it is out of date', async () => {
+test('update writes sw.js\'s LANGS and SHIPPED_LANGS, and the check says when they are out of date', async () => {
   await inCopy(async (dir) => {
-    await writeFile(`${dir}/sw.js`, "// worker\nconst LANGS = [];\nconst SHELL = [];\n");
+    await writeFile(`${dir}/sw.js`, "// worker\nconst LANGS = [];\nconst SHIPPED_LANGS = [];\nconst SHELL = [];\n");
     const stale = await check(dir, []);
     assert.ok(has(stale.problems, 'sw.js', 2, /LANGS isn't what l10n\/languages\.json makes/));
     const written = await update(dir);
     assert.ok(written.includes('sw.js'));
-    assert.equal(await readFile(`${dir}/sw.js`, 'utf8'), "// worker\nconst LANGS = ['ja'];\nconst SHELL = [];\n");
+    assert.equal(await readFile(`${dir}/sw.js`, 'utf8'), "// worker\nconst LANGS = ['ja'];\nconst SHIPPED_LANGS = ['ja'];\nconst SHELL = [];\n");
     assert.ok(!(await check(dir, [])).problems.some((p) => p.file === 'sw.js'));
+    await writeFile(`${dir}/l10n/languages.json`, JSON.stringify([{ tag: 'ja', status: 'experimental' }]));
+    await update(dir);
+    assert.match(await readFile(`${dir}/sw.js`, 'utf8'), /const LANGS = \['ja'\];\nconst SHIPPED_LANGS = \[\];/);
     await writeFile(`${dir}/sw.js`, 'const SHELL = [];\n');
     assert.ok(has((await check(dir, [])).problems, 'sw.js', 1, /no `const LANGS/));
   });
@@ -338,4 +342,17 @@ test('the check warns, and does not fail, for the glossary', async () => {
     await rm(`${dir}/l10n/glossary.tsv`);
     assert.ok(!(await check(dir, [])).warnings.some((x) => /glossary/.test(x.message)));
   });
+});
+
+test('the glossary is matched as it is written: a Capitalised name only where a name stands, a lowercase thing in either case', () => {
+  const g = readGlossary(['en\tkind\tja\tzh-Hans\twhere\tnote', 'Now\tscreen\t今\t现在\t\t', 'About\tscreen\t情報\t关于\t\t', 'Voice\tscreen\t音声\t语音\t\t', 'Plan\tscreen\t計画\t计划\t\t',
+    'trip\tthing\t旅\t行程\t\t', 'Ask\tscreen\t質問\t提问\t\t'].join('\n'));
+  const w = (/** @type {string} */ en) => glossaryWarnings(g, 'ja', [{ key: 'k', state: 'draft', en, text: 'x', where: '', note: '', line: 2 }]).length;
+  for (const fine of ['{0} just now', 'about {0}', 'Restart now', "Shiori's voice", 'Plan your day', 'Ask Shiori', 'Voice is off now']) assert.equal(w(fine), 0, fine);
+  assert.equal(w('Now'), 1, 'the name alone');
+  assert.equal(w('Open Voice'), 1, 'a name in the middle of a sentence');
+  assert.equal(w('Go to the Plan.'), 1);
+  assert.equal(w('Start a trip'), 1, 'a thing, lowercase');
+  assert.equal(w('Trip name'), 1, 'and at the start of a sentence');
+  assert.equal(w('Your trips'), 1);
 });

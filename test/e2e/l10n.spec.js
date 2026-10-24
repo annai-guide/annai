@@ -118,6 +118,18 @@ test('under a Japanese interface the display stack gets Hiragino Maru Gothic bac
   expect(await display()).toContain('Hiragino Maru Gothic ProN');
   await page.evaluate(() => { document.documentElement.lang = 'zh-Hans'; });
   expect(await display()).not.toContain('Hiragino');
+  // Under Japanese screens, a title in Chinese, Cantonese or Korean does not take Japanese shapes.
+  await page.evaluate(() => { document.documentElement.lang = 'ja'; });
+  for (const lang of ['zh-Hans', 'zh-Hant', 'yue-Hant', 'ko']) {
+    expect(await page.evaluate((l) => {
+      const el = document.createElement('h2');
+      el.lang = l;
+      document.body.append(el);
+      const v = getComputedStyle(el).getPropertyValue('--f-display');
+      el.remove();
+      return v;
+    }, lang), lang).not.toContain('Hiragino');
+  }
 });
 
 test('Japanese headings break between phrases where the browser can', async ({ page }) => {
@@ -510,6 +522,11 @@ test('words that cannot be loaded leave English and a card that says why, and Tr
     await card.getByRole('button', { name: 'Try again' }).click();
     await retried;
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+    // What came from the network is kept: the next start, offline, is Japanese and has no card.
+    await server.stop();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+    await expect(page.locator('html')).not.toHaveAttribute('data-l10n-failed', /./);
   } finally {
     await server.stop();
   }
@@ -610,4 +627,36 @@ test('under Japanese screens an English line is English, a script annai cannot t
   expect(fonts.ja).toContain('Hiragino Maru Gothic ProN');
   expect(fonts.zh).not.toContain('Hiragino');
   expect(fonts.ko).not.toContain('Hiragino');
+});
+
+test('Don\'t restart, on the card that waits for Shiori, gives the row back and says the change waits', async ({ page }) => {
+  needJapanese();
+  const reply = { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Low tide is at 5:40.' } }, { name: 'sleep', input: {} }]), delayMs: 6000 };
+  const llm = await startModelServer({ '/b/v1/messages': [reply] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await page.goto('/#/trips');
+    await startTrip(page, 'Big Sur');
+    await allowUnfinished(page);
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('When is low tide?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
+    await page.evaluate(() => { location.hash = '#/shiori'; });
+    const row = page.locator('#language-ui');
+    await row.selectOption('ja');
+    const card = page.getByRole('status').locator('.notice', { hasText: 'annai restarts once Shiori has finished' });
+    await expect(card).toBeVisible();
+    await expect(row).toBeDisabled();
+    await card.getByRole('button', { name: "Don't restart" }).click();
+    await expect(row).toBeEnabled();
+    await expect(row.locator('xpath=ancestor::div[contains(@class,"saving")]').locator('.saved')).toHaveText('Saved. It applies the next time annai restarts.');
+    await expect(row).toHaveValue('ja');
+  } finally {
+    await llm.stop();
+  }
 });

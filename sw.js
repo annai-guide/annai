@@ -1,14 +1,16 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'c5b4162a343b';
+const BUILD = 'b1398ffa8ea4';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
-// The languages cached with a version (written by strings.mjs); their catalogs are outside SHELL, which stamp.mjs hashes too.
+// The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
 const LANGS = ['ja', 'zh-Hans'];
+// The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
+const SHIPPED_LANGS = [];
 const SHELL = [
   '/',
   '/index.html',
@@ -289,8 +291,7 @@ const SHELL = [
 ];
 
 sw.addEventListener('install', (event) => {
-  // The shell and the interface language's words, as one: a version whose words can't be fetched is not installed, and is tried
-  // again later, as when a shell file can't be fetched. Past the HTTP cache: a new version must never store a stale copy of one.
+  // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache.
   event.waitUntil((async () => {
     const words = await wordsToCache();
     const cache = await caches.open(CACHE);
@@ -311,38 +312,21 @@ function sameLanguage(a, b) {
   }
 }
 
-/**
- * The language whose catalog a version caches: the choice in the app settings (sys:settings /app.json, languages.ui), as handled()
- * reads /push.json; with none, or one annai no longer has, the first of the worker's own languages that LANGS has. Null: English.
- * @returns {Promise<string | null>}
- */
+/** The language whose catalog a version caches: languages.ui in the app settings, else the worker's own languages against the shipped ones. Null: English. @returns {Promise<string | null>} */
 async function wordsToCache() {
-  /** @type {IDBDatabase | undefined} */
-  let db;
-  /** @type {unknown} */
-  let ui;
-  try {
-    db = await openExisting();
-    const file = (await readFiles(db, 'sys:settings', ['/app.json'])).get('/app.json');
-    ui = file ? JSON.parse(new TextDecoder().decode(file.data))?.languages?.ui : undefined;
-  } catch {
-    // no settings yet: as the phone is set
-  } finally {
-    db?.close();
-  }
+  // An open queued behind a blocked upgrade or delete never answers, and no update may wait for it: after 3 s the phone decides.
+  const app = await Promise.race([readJson('sys:settings', '/app.json'), new Promise((resolve) => setTimeout(resolve, 3000, null))]);
+  const ui = app?.languages?.ui;
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = LANGS.find((tag) => sameLanguage(wanted, tag));
+    const found = SHIPPED_LANGS.find((tag) => sameLanguage(wanted, tag));
     if (found) return found;
   }
   return null;
 }
 
-/**
- * Picking a language asks for its words to be kept before annai restarts: fetched once, into this version's cache and into that of a
- * version that waits (the restart may land in it), then answered on the port.
- * @param {unknown} tag @param {MessagePort | undefined} port
+/** Keeps a language's words in every shell cache (a waiting version's too), and answers on the port. @param {unknown} tag @param {MessagePort | undefined} port
  */
 async function cacheWords(tag, port) {
   let ok = false;
@@ -353,9 +337,7 @@ async function cacheWords(tag, port) {
     if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
     for (const name of await caches.keys()) if (name.startsWith('annai-shell-')) await (await caches.open(name)).put(wordsPath(tag), res.clone());
     ok = true;
-  } catch {
-    // answered below
-  }
+  } catch { /* said no below */ }
   port?.postMessage({ ok });
 }
 
@@ -392,18 +374,24 @@ sw.addEventListener('fetch', (event) => {
   event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null));
 });
 
-/** Production: cache first. Development (localhost): network first, so edits show up. @param {Request} req @param {string | null} fallback */
+/** Production: cache first. Development (localhost): network first, so edits show up. A catalog that comes from the network is kept for the next start offline. @param {Request} req @param {string | null} fallback */
 async function respond(req, fallback) {
   const cache = await caches.open(CACHE);
   const cached = () => cache.match(fallback ?? req, { ignoreSearch: true });
+  const fetched = async () => {
+    const res = await fetch(req);
+    const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
+    if (tag && res.ok) await cache.put(wordsPath(tag), res.clone()).catch(() => {});
+    return res;
+  };
   if (DEV) {
     try {
-      return await fetch(req);
+      return await fetched();
     } catch {
       return (await cached()) ?? Response.error();
     }
   }
-  return (await cached()) ?? fetch(req);
+  return (await cached()) ?? fetched();
 }
 
 /** Opens the app's database without ever creating it from here. @returns {Promise<IDBDatabase>} */
@@ -554,20 +542,25 @@ async function showReminder(data) {
   await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
 }
 
-/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
-async function handled(key) {
+/** One JSON file of the app's database, or null when it can't be had. @param {string} scope @param {string} path @returns {Promise<any>} */
+async function readJson(scope, path) {
   /** @type {IDBDatabase | undefined} */
   let db;
   try {
     db = await openExisting();
-    const file = (await readFiles(db, 'sys:device', ['/push.json'])).get('/push.json');
-    const given = file ? JSON.parse(new TextDecoder().decode(file.data))?.given : null;
-    return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
+    const file = (await readFiles(db, scope, [path])).get(path);
+    return file ? JSON.parse(new TextDecoder().decode(file.data)) : null;
   } catch {
-    return false;
+    return null;
   } finally {
     db?.close();
   }
+}
+
+/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
+async function handled(key) {
+  const given = (await readJson('sys:device', '/push.json'))?.given;
+  return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
 }
 
 // Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is
