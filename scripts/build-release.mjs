@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // Readies an unpacked release of annai in place (scripts/release.sh runs it before switching to the release):
 //   node scripts/build-release.mjs <dir>
-// Beside each text file annai fetches it writes x.br (brotli, quality 11) and x.gz (gzip, level 9), keeping
-// each only when it is smaller than the file; scripts/serve.mjs sends one of them to a browser that takes it.
-// No file of the release changes: both forms decode to the file's own bytes, so a phone runs exactly what the
+// Beside each text file annai fetches it writes x.br (brotli, quality 11), kept only when it is smaller than
+// the file; scripts/serve.mjs sends it to a browser that takes brotli (every browser annai supports does, over
+// HTTPS). No file of the release changes: x.br decodes to the file's own bytes, so a phone runs exactly what the
 // tests ran, and every hash taken on the source still holds (sw.js's BUILD, the catalog's file hashes, and
 // the per-file hashes a later update will compare to fetch only the files that changed).
 import { readFile, readdir, stat, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { brotliCompressSync, gzipSync, constants } from 'node:zlib';
+import { brotliCompressSync, constants } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 /** What counts as text: the kinds of file annai ships that aren't compressed already (fonts and pictures are). */
@@ -40,26 +40,21 @@ export const brotli = (buf) => brotliCompressSync(buf, { params: {
   [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_MODE]: constants.BROTLI_MODE_TEXT, [constants.BROTLI_PARAM_SIZE_HINT]: buf.length,
 } });
 
-/** @param {Buffer} buf */
-export const gzip = (buf) => gzipSync(buf, { level: 9 });
-
 /**
- * Writes the compressed forms beside dir's shipped text files, and returns the totals: files, and bytes as
- * the files are (raw) and as sent to a browser that takes brotli (br) or only gzip (gz).
+ * Writes x.br beside dir's shipped text files, and returns the totals: files, and bytes as the files are (raw)
+ * and as sent to a browser that takes brotli (br).
  * @param {string} dir
  */
 export async function precompress(dir) {
-  const sizes = { files: 0, raw: 0, br: 0, gz: 0 };
+  const sizes = { files: 0, raw: 0, br: 0 };
   for (const name of await shippedText(dir)) {
     const own = await readFile(join(dir, name));
+    const packed = brotli(own);
+    if (packed.length < own.length) await writeFile(join(dir, `${name}.br`), packed);
+    else await rm(join(dir, `${name}.br`), { force: true });
     sizes.files++;
     sizes.raw += own.length;
-    for (const [key, suffix, squeeze] of /** @type {const} */ ([['br', '.br', brotli], ['gz', '.gz', gzip]])) {
-      const packed = squeeze(own);
-      if (packed.length < own.length) await writeFile(join(dir, name + suffix), packed);
-      else await rm(join(dir, name + suffix), { force: true });
-      sizes[key] += Math.min(packed.length, own.length);
-    }
+    sizes.br += Math.min(packed.length, own.length);
   }
   return sizes;
 }
@@ -70,7 +65,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error('Which release folder? node scripts/build-release.mjs <dir>');
     process.exit(2);
   }
-  const { files, raw, br, gz } = await precompress(dir);
+  const { files, raw, br } = await precompress(dir);
   const kib = (/** @type {number} */ n) => `${(n / 1024).toFixed(1)} KiB`;
-  console.log(`${files} text files: ${kib(raw)} as they are, ${kib(br)} as brotli, ${kib(gz)} as gzip`);
+  console.log(`${files} text files: ${kib(raw)} as they are, ${kib(br)} as brotli`);
 }

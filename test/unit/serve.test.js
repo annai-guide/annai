@@ -5,7 +5,7 @@ import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import http from 'node:http';
-import { brotliCompressSync, gzipSync } from 'node:zlib';
+import { brotliCompressSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 /** Starts scripts/serve.mjs on a free port, serving the folder above the script it runs. @param {string} script */
@@ -45,8 +45,8 @@ test('the dev server answers a malformed URL with 400 and keeps running', async 
   }
 });
 
-test('a release sends x.br or x.gz when the browser takes it, and the file itself otherwise', async (t) => {
-  // A release folder: serve.mjs and what it needs, a script with both forms beside it, one with only .gz, one with neither.
+test('a release sends x.br when the browser takes brotli, and the file itself otherwise', async (t) => {
+  // A release folder: serve.mjs and what it needs, a script with its .br beside it, a style sheet without one (a stray .gz is never sent).
   const dir = await mkdtemp(join(tmpdir(), 'annai-serve-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'scripts'));
@@ -54,9 +54,8 @@ test('a release sends x.br or x.gz when the browser takes it, and the file itsel
   const js = Buffer.from(`// a shipped script\n${'export const words = "Low tide is at 5:40.";\n'.repeat(40)}`);
   await writeFile(join(dir, 'app.js'), js);
   await writeFile(join(dir, 'app.js.br'), brotliCompressSync(js));
-  await writeFile(join(dir, 'app.js.gz'), gzipSync(js));
-  await writeFile(join(dir, 'only-gz.css'), js);
-  await writeFile(join(dir, 'only-gz.css.gz'), gzipSync(js));
+  await writeFile(join(dir, 'no-br.css'), js);
+  await writeFile(join(dir, 'no-br.css.gz'), 'not sent');
   await writeFile(join(dir, 'plain.json'), '{"a":1}');
   const server = await start(join(dir, 'scripts/serve.mjs'));
   t.after(() => server.stop());
@@ -74,13 +73,9 @@ test('a release sends x.br or x.gz when the browser takes it, and the file itsel
   // What the browser decodes is the file's own bytes.
   assert.deepEqual(Buffer.from(await (await fetch(url)).arrayBuffer()), js);
 
-  const gz = await get(url, { headers: { 'Accept-Encoding': 'gzip' } });
-  assert.equal(gz.headers['content-encoding'], 'gzip');
-  assert.equal(Number(gz.headers['content-length']), gz.body.length);
-  assert.equal((await get(url, { headers: { 'Accept-Encoding': 'br;q=0, gzip' } })).headers['content-encoding'], 'gzip');
+  assert.equal((await get(url, { headers: { 'Accept-Encoding': 'BR;q=0.5' } })).headers['content-encoding'], 'br');
   assert.equal((await get(url, { headers: { 'Accept-Encoding': '*' } })).headers['content-encoding'], 'br');
-
-  for (const accept of [undefined, 'identity', 'br;q=0, gzip;q=0', 'deflate']) {
+  for (const accept of [undefined, 'identity', 'gzip, deflate', 'br;q=0, gzip', '*, br;q=0']) {
     const plain = await get(url, { headers: accept === undefined ? {} : { 'Accept-Encoding': accept } });
     assert.equal(plain.status, 200);
     assert.equal(plain.headers['content-encoding'], undefined, `Accept-Encoding: ${accept}`);
@@ -89,15 +84,14 @@ test('a release sends x.br or x.gz when the browser takes it, and the file itsel
     assert.equal(Number(plain.headers['content-length']), js.length);
   }
 
-  // No .br beside it: the .gz, then the file.
-  const fallback = await get(`${server.origin}/only-gz.css`, { headers: { 'Accept-Encoding': 'br, gzip' } });
-  assert.equal(fallback.headers['content-encoding'], 'gzip');
-  assert.equal(fallback.headers['content-type'], 'text/css; charset=utf-8');
-  assert.deepEqual(fallback.body, gzipSync(js));
-  const onlyBr = await get(`${server.origin}/only-gz.css`, { headers: { 'Accept-Encoding': 'br' } });
-  assert.equal(onlyBr.headers['content-encoding'], undefined);
-  assert.deepEqual(onlyBr.body, js);
-  const none = await get(`${server.origin}/plain.json`, { headers: { 'Accept-Encoding': 'br, gzip' } });
+  // No .br beside it: the file itself.
+  const noBr = await get(`${server.origin}/no-br.css`, { headers: { 'Accept-Encoding': 'gzip, deflate, br' } });
+  assert.equal(noBr.status, 200);
+  assert.equal(noBr.headers['content-encoding'], undefined);
+  assert.equal(noBr.headers['content-type'], 'text/css; charset=utf-8');
+  assert.equal(noBr.headers.vary, undefined);
+  assert.deepEqual(noBr.body, js);
+  const none = await get(`${server.origin}/plain.json`, { headers: { 'Accept-Encoding': 'gzip, deflate, br' } });
   assert.equal(none.headers['content-encoding'], undefined);
   assert.equal(none.headers.vary, undefined);
   assert.equal(none.body.toString(), '{"a":1}');
@@ -113,7 +107,7 @@ test('a release sends x.br or x.gz when the browser takes it, and the file itsel
   assert.equal(headPlain.body.length, 0);
 
   // Range is ignored, as HTTP allows: the same answer as without it.
-  const ranged = await get(url, { headers: { 'Accept-Encoding': 'br, gzip', Range: 'bytes=3-8' } });
+  const ranged = await get(url, { headers: { 'Accept-Encoding': 'gzip, deflate, br', Range: 'bytes=3-8' } });
   assert.equal(ranged.status, 200);
   assert.equal(ranged.headers['content-encoding'], 'br');
   assert.deepEqual(ranged.body, br.body);

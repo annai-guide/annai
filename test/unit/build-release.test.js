@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { brotliDecompressSync, gunzipSync } from 'node:zlib';
+import { brotliDecompressSync } from 'node:zlib';
 import { precompress, shippedText } from '../../scripts/build-release.mjs';
 
 const words = (/** @type {string} */ s) => `${s}\n${'Low tide is at 5:40, and the road to the point opens an hour later.\n'.repeat(30)}`;
 
-test('a release gets x.br and x.gz beside each text file annai fetches, and no file of its own changes', async (t) => {
+test('a release gets x.br beside each text file annai fetches, and no file of its own changes', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'annai-release-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   /** @type {Record<string, string>} */
@@ -42,20 +42,20 @@ test('a release gets x.br and x.gz beside each text file annai fetches, and no f
     const own = await readFile(join(dir, name));
     assert.equal(own.toString(), files[name], `${name} is unchanged`);
     assert.deepEqual(brotliDecompressSync(await readFile(join(dir, `${name}.br`))), own, `${name}.br`);
-    assert.deepEqual(gunzipSync(await readFile(join(dir, `${name}.gz`))), own, `${name}.gz`);
   }
-  // A form that isn't smaller than the file isn't kept: the server sends the file itself.
+  // A brotli form that isn't smaller than the file isn't kept: the server sends the file itself.
   const all = await readdir(dir, { recursive: true });
   assert.ok(!all.some((n) => n.startsWith('tiny.txt.')));
+  assert.ok(!all.some((n) => n.endsWith('.gz')));
   // Pictures, fonts and what annai never fetches are left alone.
-  for (const name of ['assets/icon.png', 'src/not-shipped.js', 'scripts/serve.mjs', 'docs/vision.md']) assert.ok(!all.includes(`${name}.br`) && !all.includes(`${name}.gz`), name);
+  for (const name of ['assets/icon.png', 'src/not-shipped.js', 'scripts/serve.mjs', 'docs/vision.md']) assert.ok(!all.includes(`${name}.br`), name);
   assert.equal(sizes.files, shipped.length);
   assert.equal(sizes.raw, shipped.reduce((n, name) => n + Buffer.byteLength(files[name]), 0));
-  assert.ok(sizes.br < sizes.gz && sizes.gz < sizes.raw);
+  assert.ok(sizes.br < sizes.raw);
 
   // Run again (a release folder built twice): the same bytes, nothing compressed twice.
   const before = await readFile(join(dir, 'src/app.js.br'));
   assert.deepEqual(await precompress(dir), sizes);
   assert.deepEqual(await readFile(join(dir, 'src/app.js.br')), before);
-  assert.ok(!(await readdir(join(dir, 'src'))).some((n) => n.endsWith('.br.br') || n.endsWith('.gz.br')));
+  assert.ok(!(await readdir(join(dir, 'src'))).some((n) => n.endsWith('.br.br')));
 });

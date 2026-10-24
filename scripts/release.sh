@@ -1,6 +1,6 @@
 #!/bin/sh
 # annai-release [commit]: unpacks a commit of the annai repository into its own release folder, writes the
-# compressed forms of its shipped files beside them (scripts/build-release.mjs, the release's own copy; a
+# brotli forms of its shipped files beside them (scripts/build-release.mjs, the release's own copy; a
 # commit older than that script is served as it is), switches the "current" link to it, restarts the site
 # and the relay (whose waiting reminders are in /var/lib/annai-relay and survive), and keeps the last 5
 # releases. /usr/local/sbin/annai-release is a link to this file.

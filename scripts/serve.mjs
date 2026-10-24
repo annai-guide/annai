@@ -2,8 +2,8 @@
 // Static server for annai: serves the folder above this script (the repository, or a release of it)
 // on 127.0.0.1 with the _headers rules applied, so the CSP is enforced during development and tests,
 // and behind an HTTPS reverse proxy when annai.guide is served from a machine of its own. A release holds x.br
-// and x.gz beside its text files (scripts/build-release.mjs); a browser that takes one of them gets it. The
-// source has none, so development serves every file as it is.
+// beside its text files (scripts/build-release.mjs); a browser that takes brotli gets it. The source has
+// none, so development serves every file as it is.
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize, extname, sep } from 'node:path';
@@ -20,9 +20,6 @@ const TYPES = {
   '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.zip': 'application/zip', '.wav': 'audio/wav',
   '.txt': 'text/plain; charset=utf-8', '.md': 'text/markdown; charset=utf-8', '.ico': 'image/x-icon',
 };
-/** The stored forms of a file, best first: [Content-Encoding, the file's suffix]. */
-const ENCODINGS = [['br', '.br'], ['gzip', '.gz']];
-
 /**
  * Whether an Accept-Encoding header takes a coding: named with a q above 0, or else covered by "*".
  * @param {string | undefined} header @param {string} coding
@@ -67,13 +64,12 @@ const server = http.createServer(async (req, res) => {
     if (!s.isFile()) throw new Error('not a file');
     res.setHeader('Content-Type', TYPES[extname(file)] ?? 'application/octet-stream');
     if (!res.hasHeader('Cache-Control')) res.setHeader('Cache-Control', 'no-cache');
-    const stored = [];
-    for (const [coding, suffix] of ENCODINGS) if ((await stat(file + suffix).catch(() => null))?.isFile()) stored.push([coding, file + suffix]);
-    if (stored.length) res.setHeader('Vary', 'Accept-Encoding');
+    const packed = (await stat(`${file}.br`).catch(() => null))?.isFile() ? `${file}.br` : null;
+    if (packed) res.setHeader('Vary', 'Accept-Encoding');
     const head = req.method === 'HEAD';
-    const pick = stored.find(([coding]) => accepts(req.headers['accept-encoding'], coding));
-    const body = await readFile(pick ? pick[1] : file);
-    if (pick) res.setHeader('Content-Encoding', pick[0]);
+    const brotli = packed !== null && accepts(req.headers['accept-encoding'], 'br');
+    const body = await readFile(brotli ? packed : file);
+    if (brotli) res.setHeader('Content-Encoding', 'br');
     // Range is ignored, as HTTP allows: nothing annai serves is asked for in parts.
     res.writeHead(200, { 'Content-Length': body.length }).end(head ? undefined : body);
   } catch {
