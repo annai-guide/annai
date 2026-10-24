@@ -45,7 +45,7 @@ test('the dev server answers a malformed URL with 400 and keeps running', async 
   }
 });
 
-test('a release sends x.br or x.gz when the browser takes it, the file itself otherwise, and ranges of the file itself', async (t) => {
+test('a release sends x.br or x.gz when the browser takes it, and the file itself otherwise', async (t) => {
   // A release folder: serve.mjs and what it needs, a script with both forms beside it, one with only .gz, one with neither.
   const dir = await mkdtemp(join(tmpdir(), 'annai-serve-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -112,30 +112,12 @@ test('a release sends x.br or x.gz when the browser takes it, the file itself ot
   assert.equal(Number(headPlain.headers['content-length']), js.length);
   assert.equal(headPlain.body.length, 0);
 
-  // Range: the file's own bytes, never a compressed form.
-  const part = await get(url, { headers: { 'Accept-Encoding': 'br, gzip', Range: 'bytes=3-8' } });
-  assert.equal(part.status, 206);
-  assert.equal(part.headers['content-encoding'], undefined);
-  assert.equal(part.headers['content-range'], `bytes 3-8/${js.length}`);
-  assert.equal(Number(part.headers['content-length']), 6);
-  assert.deepEqual(part.body, js.subarray(3, 9));
-  const tail = await get(url, { headers: { Range: 'bytes=-5' } });
-  assert.equal(tail.status, 206);
-  assert.deepEqual(tail.body, js.subarray(js.length - 5));
-  const rest = await get(url, { headers: { Range: `bytes=${js.length - 2}-` } });
-  assert.deepEqual(rest.body, js.subarray(js.length - 2));
-  const beyond = await get(url, { headers: { Range: `bytes=${js.length}-` } });
-  assert.equal(beyond.status, 416);
-  assert.equal(beyond.headers['content-range'], `bytes */${js.length}`);
-  const headPart = await get(url, { method: 'HEAD', headers: { Range: 'bytes=0-9' } });
-  assert.equal(headPart.status, 206);
-  assert.equal(Number(headPart.headers['content-length']), 10);
-  assert.equal(headPart.body.length, 0);
-  // Ranges it doesn't serve (several, or not bytes) get the whole file, as HTTP allows.
-  const several = await get(url, { headers: { Range: 'bytes=0-1,4-5' } });
-  assert.equal(several.status, 200);
-  assert.deepEqual(several.body, js);
-  assert.equal((await get(url)).headers['accept-ranges'], 'bytes');
+  // Range is ignored, as HTTP allows: the same answer as without it.
+  const ranged = await get(url, { headers: { 'Accept-Encoding': 'br, gzip', Range: 'bytes=3-8' } });
+  assert.equal(ranged.status, 200);
+  assert.equal(ranged.headers['content-encoding'], 'br');
+  assert.deepEqual(ranged.body, br.body);
+  assert.equal(ranged.headers['accept-ranges'], undefined);
 
   assert.equal((await get(`${server.origin}/missing.js`, { headers: { 'Accept-Encoding': 'br' } })).status, 404);
 });
