@@ -126,8 +126,8 @@ or at once with Restart now. CI fails when the stamp is stale; the Cloudflare Pa
 
 While annai is being tested, annai.guide is served from a machine of the author's: a release
 (`scripts/release.sh [commit]`) is `git archive <commit>` unpacked into a folder of its own, with a brotli
-and a gzip form of each text file annai fetches written beside it (`node scripts/build-release.mjs <dir>`),
-served by `node scripts/serve.mjs --port <port>` (which sends `x.br` or `x.gz` when the browser takes it, and
+form of each text file annai fetches written beside it (`node scripts/build-release.mjs <dir>`),
+served by `node scripts/serve.mjs --port <port>` (which sends `x.br` when the browser takes brotli, and
 applies the `_headers` rules as Cloudflare Pages does: a header two rules set is joined, and `! Name`
 detaches one) behind an HTTPS reverse proxy, and a `current` link is switched
 to it. The push relay runs there too, as [relay/README.md](relay/README.md) describes.
