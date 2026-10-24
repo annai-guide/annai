@@ -1,14 +1,14 @@
-import { h, crumb, field, whenGone } from '../dom.js';
+import { h, crumb, t, plural, field, whenGone } from '../dom.js';
 import { readJourney } from '../../core/after/journey.js';
 import { replayOf, momentAt, entryLine, PLAY_SPEEDS } from '../../core/after/replay.js';
-import { stampCount } from '../../core/after/stamps.js';
 import { PlayClock } from '../../core/live/clock.js';
 import { loadPack } from '../../core/pack/read.js';
 import { timeIn } from '../../core/time.js';
 import { renderCard } from '../cards.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { stampMarks } from '../stamps.js';
-import { day as dayText, dayClock } from '../format.js';
+import { readAppSettings } from '../../core/settings.js';
+import { day as dayText, dayClock, sentences, wording } from '../format.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -31,26 +31,30 @@ export async function renderReplay(ctx, route) {
   const id = route.parts[1];
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
   if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
   const pack = await loadPack(ctx.ws, id).catch(() => null);
   const j = await readJourney({ store: ctx.store, ws: ctx.ws, trip: id, namer: (p) => pack?.name(p) ?? null });
   const day = j.days.includes(route.params.day ?? '') ? route.params.day : null;
   const r = replayOf(j, day);
-  const base = `#/trip/${encodeURIComponent(id)}/replay`;
+  const base = /* en */ `#/trip/${encodeURIComponent(id)}/replay`;
   const dayName = (/** @type {string} */ d) => dayText(d, true);
   const tab = (/** @type {string | null} */ d, /** @type {string} */ label) => h('a', { class: 'tab', href: d ? `${base}?day=${d}` : base, 'aria-current': d === day ? 'page' : null }, label);
   const head = [
     h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
-    h('h1', { class: 'title', text: 'Replay' }),
-    j.days.length > 1 ? h('nav', { class: 'tabs', 'aria-label': 'Days' }, tab(null, 'Whole trip'), ...j.days.map((d) => tab(d, dayName(d)))) : null,
+    h('h1', { class: 'title', text: t`Replay` }),
+    j.days.length > 1 ? h('nav', { class: 'tabs', 'aria-label': t`Days` }, tab(null, t`Whole trip`), ...j.days.map((d) => tab(d, dayName(d)))) : null,
   ];
   if (!r) {
     return h('div', { class: 'screen replay' }, ...head,
-      h('p', { class: 'empty', text: "Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too." }));
+      h('p', { class: 'empty', text: t`Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.` }));
   }
+  // Her words and the user's carry their language (L3), as in the Conversation.
+  const app = await readAppSettings(ctx.ws);
+  const hers = wording(app, true);
+  const mine = wording(app);
   const clock = new PlayClock(r.from, { speed: 600, playing: false });
-  const clockText = (/** @type {number} */ t) => dayClock(t, r.tz);
+  const clockText = (/** @type {number} */ at) => dayClock(at, r.tz);
 
   // The map: the drawn route grey, what is behind vermilion, jumps dashed, stays and stamps as rings, you as a dot (choice 8).
   const { width, height, xy } = r.map;
@@ -65,12 +69,12 @@ export async function renderReplay(ctx, route) {
   const stays = /** @type {Extract<import('../../core/after/journey.js').Entry, { kind: 'stay' }>[]} */ (r.entries.filter((e) => e.kind === 'stay'));
   const rings = stays.map((e) => {
     const [cx, cy] = xy(e);
-    return svg('circle', { class: e.stamp ? 'route-stamp' : 'route-stay', cx, cy, r: e.stamp ? 16 : 9 }, svg('title', {}, e.name ?? 'A stop'));
+    return svg('circle', { class: e.stamp ? 'route-stamp' : 'route-stay', cx, cy, r: e.stamp ? 16 : 9 }, svg('title', {}, e.name ?? t`A stop`));
   });
   const here = svg('circle', { class: 'route-here', r: 13, cx: -100, cy: -100 });
   const titleId = `route-${Math.random().toString(36).slice(2)}`;
-  const map = svg('svg', { class: 'route-map', viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-labelledby': titleId, preserveAspectRatio: 'xMidYMid meet' },
-    svg('title', { id: titleId }, `The route: ${r.words}`),
+  const map = svg('svg', { class: 'route-map', viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-labelledby': titleId, preserveAspectRatio: /* en */ 'xMidYMid meet' },
+    svg('title', { id: titleId }, t`The route: ${r.words}`),
     ...jumps, ...r.segments.map((seg) => svg('polyline', { class: 'route-all', points: line(seg) })), ...done, ...rings, here);
 
   // At this moment (choice 7).
@@ -95,25 +99,25 @@ export async function renderReplay(ctx, route) {
       return;
     }
     const when = h('span', { class: 'sub', text: timeIn(e.at, r.tz) });
-    if (e.kind === 'card') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: 'SHIORI' }), renderCard(e.card, { ctx }), when));
-    else if (e.kind === 'said') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: e.spoken ? 'YOU SAID' : 'YOU' }), h('p', { text: e.text }), when));
+    if (e.kind === 'card') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: t`Shiori` }), renderCard(e.card, { ctx, say: hers }), when));
+    else if (e.kind === 'said') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: e.spoken ? t`You said` : t`You` }), h('p', { ...mine(e.text), text: e.text }), when));
     else {
-      const img = h('img', { class: 'replay-photo', alt: `Photo ${e.path.split('/').pop()}, ${timeIn(e.at, r.tz)}` });
-      const open = h('button', { class: 'btn ghost', type: 'button', disabled: true }, 'Open full size');
+      const img = h('img', { class: 'replay-photo', alt: t`Photo ${e.path.split('/').pop()}, ${timeIn(e.at, r.tz)}` });
+      const open = h('button', { class: 'btn ghost', type: 'button', disabled: true }, t`Open full size`);
       shown.replaceChildren(h('figure', { class: 'replay-figure' }, img, h('figcaption', {}, when, open)));
-      const mine = e;
+      const shownNow = e;
       ctx.ws.read(id, e.path).then((/** @type {any} */ got) => {
-        if (shownEntry !== mine || !got) return;
+        if (shownEntry !== shownNow || !got) return;
         photoUrl = URL.createObjectURL(new Blob([got.bytes], { type: got.entry.type }));
         img.src = photoUrl;
         open.disabled = false;
-        open.onclick = () => openPhotoViewer(photoUrl, mine.path);
+        open.onclick = () => openPhotoViewer(photoUrl, shownNow.path);
       }).catch(() => {});
     }
   };
 
   // The controls (choice 5).
-  const play = h('button', { class: 'btn pri', type: 'button' }, 'Play');
+  const play = h('button', { class: 'btn pri', type: 'button' }, t`Play`);
   const speed = h('select', { id: 'replay-speed' }, ...PLAY_SPEEDS.map(([v, label]) => h('option', { value: String(v), text: label })));
   speed.value = '600';
   const scrub = h('input', { id: 'replay-scrub', type: 'range', min: String(r.from), max: String(r.to), step: '60000', value: String(r.from) });
@@ -133,25 +137,25 @@ export async function renderReplay(ctx, route) {
   let was = { index: -2, where: '', minute: NaN, stamps: -1 };
   /** @param {boolean} [say] tell the moment, though paused */
   const draw = (say = false) => {
-    const t = Math.min(r.to, Math.max(r.from, clock.now()));
-    const m = momentAt(r, t);
+    const at = Math.min(r.to, Math.max(r.from, clock.now()));
+    const m = momentAt(r, at);
     if (m.xy) {
       here.setAttribute('cx', String(m.xy[0]));
       here.setAttribute('cy', String(m.xy[1]));
     }
     done.forEach((pl, i) => pl.setAttribute('stroke-dashoffset', String(Math.max(0, r.lengths[i] - m.done[i]))));
-    const minute = Math.floor(t / 60_000);
+    const minute = Math.floor(at / 60_000);
     if (minute !== was.minute || m.where !== was.where) {
-      const words = clockText(t);
+      const words = clockText(at);
       timeEl.textContent = words;
-      scrub.value = String(t);
-      scrub.setAttribute('aria-valuetext', `${words}, ${m.where}`);
+      scrub.value = String(at);
+      scrub.setAttribute('aria-valuetext', t`${words}, ${m.where}`);
     }
     if (m.where !== was.where) whereEl.textContent = m.where;
     // Paused, the scrubber says the moment: nothing older stays told.
-    if (say || (clock.playing && m.where !== was.where)) told.textContent = `${timeIn(t, r.tz)}, ${m.where}`;
+    if (say || (clock.playing && m.where !== was.where)) told.textContent = t`${timeIn(at, r.tz)}, ${m.where}`;
     else if (!clock.playing) told.textContent = '';
-    if (m.stamps !== was.stamps) soFar.textContent = `${stampCount(m.stamps)} so far`;
+    if (m.stamps !== was.stamps) soFar.textContent = plural(m.stamps, '# stamp so far', '# stamps so far');
     if (m.index !== was.index) {
       items[was.index]?.classList.remove('now');
       items[was.index]?.firstElementChild?.removeAttribute('aria-current');
@@ -163,14 +167,14 @@ export async function renderReplay(ctx, route) {
   };
   const root = h('div', { class: 'screen replay' }, ...head,
     stampMarks(r.stamps, { max: 24, big: true }),
-    h('figure', { class: 'route' }, map, h('figcaption', { class: 'sub', text: `${r.words} The timeline below lists each place in order.` })),
-    h('section', { class: 'replay-now', 'aria-label': 'At this moment' }, timeEl, whereEl, soFar, shown, told),
+    h('figure', { class: 'route' }, map, h('figcaption', { class: 'sub', text: sentences(r.words, t`The timeline below lists each place in order.`) })),
+    h('section', { class: 'replay-now', 'aria-label': t`At this moment` }, timeEl, whereEl, soFar, shown, told),
     h('div', { class: 'replay-controls' },
       h('div', { class: 'acts' }, play),
-      h('label', { class: 'field' }, h('span', { class: 'field-label', text: 'Time in the trip' }), scrub),
-      field('Speed', speed)),
-    h('section', { 'aria-label': 'The trip in order' }, h('h2', { class: 'section', text: 'Timeline' }), h('ol', { class: 'timeline', 'aria-label': 'Timeline' }, ...items)));
-  const setPlaying = (/** @type {boolean} */ on) => { play.textContent = on ? 'Pause' : 'Play'; };
+      h('label', { class: 'field' }, h('span', { class: 'field-label', text: t`Time in the trip` }), scrub),
+      field(t`Speed`, speed)),
+    h('section', { 'aria-label': t`The trip in order` }, h('h2', { class: 'section', text: t`Timeline` }), h('ol', { class: 'timeline', 'aria-label': t`Timeline` }, ...items)));
+  const setPlaying = (/** @type {boolean} */ on) => { play.textContent = on ? t`Pause` : t`Play`; };
   /** The screen is gone: playback stops with it, and the photo shown lets its memory go. */
   const gone = () => {
     clock.pause();

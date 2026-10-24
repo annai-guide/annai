@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, t, linkIn } from '../dom.js';
 import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -7,7 +7,7 @@ import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
-import { fileHref, distance, wording } from '../format.js';
+import { fileHref, distance, wording, sentenceGap } from '../format.js';
 import { packLine } from '../offline-pack.js';
 import { component, mount, slotEntries } from '../slots.js';
 
@@ -24,8 +24,8 @@ export async function renderNow(ctx) {
   await ctx.agent?.opening.catch(() => {});
   const id = ctx.agent?.trip;
   if (!id) {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: 'Now' }),
-      h('p', { class: 'empty' }, 'Open a trip to see where you are and what is next. ', h('a', { href: '#/trips' }, 'Go to Trips')));
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Now` }),
+      h('p', { class: 'empty' }, t`Open a trip to see where you are and what is next.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
   }
   const { scope, tz, rows } = await tripRows(ctx, id);
   const live = ctx.live;
@@ -36,9 +36,9 @@ export async function renderNow(ctx) {
     const now = nowOf(live);
     place.textContent = whereWords(live);
     const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
-    const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? 'Offline · reminders still work' : null];
-    chips.replaceChildren(...words.filter(Boolean).map((t) => h('span', { class: 'chip', text: String(t) })));
-    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, 'Turn GPS on')] : []));
+    const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? t`Offline · reminders still work` : null];
+    chips.replaceChildren(...words.filter(Boolean).map((w) => h('span', { class: 'chip', text: String(w) })));
+    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
   };
   draw();
   // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
@@ -56,12 +56,12 @@ export async function renderNow(ctx) {
   });
   const next = upcoming(rows, nowOf(live), 4);
   const latest = await latestCard(ctx, id);
-  const title = String(scope?.title ?? 'Now');
+  const title = String(scope?.title ?? t`Now`);
   // A plugin may draw the Now card's top itself (spec §16.4: now-card); annai's own when there is none.
   const card = component(ctx, 'now-card');
   const top = h('div', { class: 'now-card' });
   if (card) {
-    const words = [live ? liveText(live) : null, live && !live.online ? 'Offline · reminders still work' : null].filter(Boolean);
+    const words = [live ? liveText(live) : null, live && !live.online ? t`Offline · reminders still work` : null].filter(Boolean);
     // When the plugin's Now card fails, annai's own is drawn (fix pass 8b-3).
     mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live), chips: words, liveOn: Boolean(live?.on) }), {
       what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
@@ -71,19 +71,19 @@ export async function renderNow(ctx) {
   }
   const sections = slotEntries(ctx, 'ui:now-section').map((e) => {
     const el = h('section', { class: 'now-section', 'aria-label': String(e.item.title) });
-    mount(ctx, e, el, (ui) => e.item.render(el, ui), { what: `Now section ${e.item.id}` });
+    mount(ctx, e, el, (ui) => e.item.render(el, ui), { what: /* en */ `Now section ${e.item.id}` });
     return el;
   });
   return h('div', { class: 'screen now' },
     h('h1', { class: 'title', text: title }),
     top, ...sections,
-    h('section', { 'aria-label': 'Next' },
-      h('h2', { class: 'section', text: 'Next' }),
-      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: 'Nothing more is planned.' }),
-      h('p', {}, h('a', { href: '#/plan' }, 'The whole plan'))),
+    h('section', { 'aria-label': t`Next` },
+      h('h2', { class: 'section', text: t`Next` }),
+      next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: t`Nothing more is planned.` }),
+      h('p', {}, h('a', { href: '#/plan' }, t`The whole plan`))),
     await packLine(ctx, id),
-    latest ? h('section', { 'aria-label': 'Latest' }, h('h2', { class: 'section', text: 'Latest' }), latest) : null,
-    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, 'Driving')));
+    latest ? h('section', { 'aria-label': t`Latest` }, h('h2', { class: 'section', text: t`Latest` }), latest) : null,
+    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)));
 }
 
 /**
@@ -123,14 +123,15 @@ export function planRowOf(ctx, trip, r, when, own) {
 
 /** Where the user is, in words for them (Shiori's are in the now block). @param {any} live */
 export function whereWords(live) {
-  if (!live || !live.on) return "GPS is off, so annai isn't following where you are.";
+  if (!live || !live.on) return t`GPS is off, so annai isn't following where you are.`;
   const f = knownFix(live);
   if (!f) {
-    if (live.gps === 'denied') return "Location isn't allowed for annai. Tap GPS below to say where you are.";
-    return live.gps === 'unavailable' ? 'No GPS signal right now. Tap GPS below to say where you are.' : 'Finding where you are…';
+    if (live.gps === 'denied') return t`Location isn't allowed for annai. Tap GPS below to say where you are.`;
+    return live.gps === 'unavailable' ? t`No GPS signal right now. Tap GPS below to say where you are.` : t`Finding where you are…`;
   }
   const near = live.near(f);
-  if (near) return near.m < 100 ? `At ${near.name}` : `Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
+  if (near) return near.m < 100 ? t`At ${near.name}` : t`Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
+  // Coordinates as maps write them: a dot, whatever the language.
   return `${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}`;
 }
 
@@ -141,7 +142,7 @@ function nowRow(id, r) {
     h('span', { class: 'when', text: r.time }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
     h('a', { class: 'what', href: fileHref(id, r.path) },
-      h('span', { class: 'visually-hidden', text: it.fixed ? 'Fixed: ' : 'Flexible: ' }),
+      h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
       h('span', { class: 'name', text: String(it.title ?? r.path) }),
       it.place?.name ? h('span', { class: 'sub', text: String(it.place.name) }) : null));
 }
@@ -157,17 +158,23 @@ export async function eventCard(ctx, e) {
   const d = e.data ?? {};
   const app = await readAppSettings(ctx.ws);
   const hers = wording(app, true);
-  const who = () => h('span', { class: 'who', text: 'SHIORI' });
+  const who = () => h('span', { class: 'who', text: t`Shiori` });
   if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
   if (e.type === 'reminder') {
     const words = String(d.text ?? '');
-    return h('p', { class: 'system-line' }, `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: `, h('span', { ...wording(app)(words), text: words }));
+    return h('p', { class: 'system-line' }, ...linkIn(reminderLine(d, words), h('span', { ...wording(app)(words), text: words })));
   }
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));
   // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
-  if (shownSettings(app).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { ...hers(text), class: 'said-words', text }));
+  if (shownSettings(app).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: t`said aloud` })), h('p', { ...hers(text), class: 'said-words', text }));
   const words = h('p', { ...hers(text), text, hidden: true });
-  const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, 'Show what she said');
-  return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: 'Said aloud' }), show, words);
+  const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, t`Show what she said`);
+  return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: t`Said aloud` }), show, words);
+}
+
+/** A reminder annai showed, its words after what it is: its plan item's title when it has one. @param {any} d the event's data @param {string} words */
+function reminderLine(d, words) {
+  if (d.title) return d.aloud ? t`${String(d.title)}, said aloud: ${words}` : t`${String(d.title)}: ${words}`;
+  return d.aloud ? t`Reminder, said aloud: ${words}` : t`Reminder: ${words}`;
 }
