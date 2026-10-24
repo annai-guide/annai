@@ -162,8 +162,8 @@ export async function eventCard(ctx, e) {
   const who = () => h('span', { class: 'who', text: 'SHIORI' });
   if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
   if (e.type === 'reminder') {
-    const line = `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}`;
-    return h('p', { ...wording(app)(line), class: 'system-line', text: line });
+    const words = String(d.text ?? '');
+    return h('p', { class: 'system-line' }, `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: `, h('span', { ...wording(app)(words), text: words }));
   }
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));

@@ -114,6 +114,24 @@ test('under a Japanese interface the display stack gets Hiragino Maru Gothic bac
   expect(await display()).not.toContain('Hiragino');
 });
 
+test('Japanese headings break between phrases where the browser can', async ({ page }) => {
+  await openApp(page, '#/trips');
+  const got = await page.evaluate(() => {
+    const probe = (/** @type {string} */ tag, /** @type {string} */ lang) => {
+      const el = document.createElement(tag);
+      el.lang = lang;
+      document.body.append(el);
+      const v = getComputedStyle(el).wordBreak;
+      el.remove();
+      return v;
+    };
+    return { supported: CSS.supports('word-break', 'auto-phrase'), ja: probe('h2', 'ja'), jaText: probe('p', 'ja'), en: probe('h2', 'en') };
+  });
+  expect(got.en).toBe('normal');
+  expect(got.jaText, 'only headings').toBe('normal');
+  expect(got.ja).toBe(got.supported ? 'auto-phrase' : 'normal');
+});
+
 test('Japanese lines break strictly, Korean at spaces, and no Chinese, Japanese or Korean line is slanted in the dock\'s bubble', async ({ page }) => {
   await openApp(page, '#/trips');
   const style = await page.evaluate(() => {
@@ -143,12 +161,17 @@ test('what the user wrote is told apart from annai\'s words: dir="auto" on trip 
   await page.goto('/#/trips');
   await expect(page.locator('.trip-card .name')).toHaveAttribute('dir', 'auto');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
-  await expect(page.locator('.file-row .path').first()).toHaveAttribute('dir', 'auto');
+  // A path reads left to right as a whole; only the file's name is turned by its own letters.
+  const row = page.locator('.file-row .path', { hasText: 'שלום.md' });
+  await expect(row).toHaveAttribute('dir', 'ltr');
+  await expect(row).toHaveText('/notes/שלום.md');
+  await expect(row.locator('span')).toHaveAttribute('dir', 'auto');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
   await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible();
   await expect(page.locator('.crumbs [dir="auto"]')).toHaveText('טיול לקיוטו');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/notes/שלום.md')}`);
-  await expect(page.getByRole('heading', { level: 1, name: '/notes/שלום.md' })).toHaveAttribute('dir', 'auto');
+  await expect(page.getByRole('heading', { level: 1, name: '/notes/שלום.md' })).toHaveAttribute('dir', 'ltr');
+  await expect(page.getByRole('heading', { level: 1 }).locator('span')).toHaveAttribute('dir', 'auto');
   await page.goto('/#/shiori');
   const panel = page.getByRole('region', { name: 'Languages' });
   await panel.getByLabel('Add a language').selectOption('ja');
@@ -203,4 +226,79 @@ test('the language Shiori answers in does not override what her words are: a Jap
   expect(await lines.evaluateAll((els) => els.map((el) => el.getAttribute('lang')))).toEqual(['en', 'ja', null]);
   await expect(page.locator('.convo .card-place span')).toHaveAttribute('lang', 'en');
   await expect(page.locator('.convo .card .acts a')).not.toHaveAttribute('lang', /./);
+});
+
+test('the announcer tags only her words: the label before them, the choices after them and annai\'s own lines have no language of their own', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [speak('清水寺は朝6時に開きます。'), { status: 400, type: 'application/json', body: '{"error":{"type":"invalid_request_error","message":"bad request"}}' }] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await page.goto('/#/trips');
+    await startTrip(page, 'Big Sur');
+    // She answers in Japanese: the setting that used to tag every line announced.
+    await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const { updateAppSettings } = await import(at('/src/core/settings.js'));
+      const store = await createIdbStore();
+      await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'ja'], answer: 'ja' } });
+      store.close();
+    });
+    await page.goto('/#/talk');
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+      w.announced = [];
+      new MutationObserver(() => w.announced.push(announcer.innerHTML)).observe(announcer, { childList: true, subtree: true });
+    });
+    for (const words of ['Tell me about Kiyomizu-dera', 'And again']) {
+      await page.getByRole('button', { name: 'Type', exact: true }).click();
+      await page.getByLabel('Message to Shiori').fill(words);
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+      if (words.startsWith('Tell')) await expect(page.locator('.convo li.shiori > p')).toHaveCount(1, { timeout: 20_000 });
+    }
+    await expect(page.locator('.convo li.system')).toHaveCount(1, { timeout: 30_000 });
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced.length)).toBeGreaterThan(1);
+    const html = /** @type {string[]} */ (await page.evaluate(() => /** @type {any} */ (window).announced));
+    expect(html).toContain('<span>Shiori: <span lang="ja">清水寺は朝6時に開きます。</span></span>');
+    // Her error is annai\'s own English: nothing in it says Japanese.
+    expect(html.some((h) => h.includes('lang="ja"') && /reach|ended|budget/i.test(h))).toBe(false);
+    expect(html.filter((h) => !h.includes('清水寺')).every((h) => !h.includes('lang='))).toBe(true);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('a reminder\'s label is annai\'s: only its words carry their language', async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto Spring');
+  await writeEvent(page, trip, { type: 'reminder', data: { title: 'Reminder', aloud: true, text: '京都駅で会いましょう。' } });
+  await page.goto('/#/talk');
+  const line = page.locator('.convo li.system-line');
+  await expect(line).toHaveText('Reminder, said aloud: 京都駅で会いましょう。');
+  await expect(line).not.toHaveAttribute('lang', /./);
+  await expect(line.locator('span')).toHaveAttribute('lang', 'ja');
+  await page.goto('/#/now');
+  const card = page.locator('p.system-line');
+  await expect(card).toHaveText('Reminder, said aloud: 京都駅で会いましょう。');
+  await expect(card).not.toHaveAttribute('lang', /./);
+  await expect(card.locator('span')).toHaveAttribute('lang', 'ja');
+});
+
+test('a recap\'s blocks turn on their own letters, not on the first of the whole text: an English paragraph after a Hebrew place name stays left to right', async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto Spring');
+  await writeRecords(page, trip, { text: { '/recap.md': 'שלום\n\nWe walked to the temple and ate lunch.\n\n- one\n- two' } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible();
+  const md = page.locator('.recap-text .md');
+  await expect(md).not.toHaveAttribute('dir', /./);
+  expect(await md.locator('> *').evaluateAll((els) => els.map((el) => el.getAttribute('dir')))).toEqual(['auto', 'auto', 'auto']);
+  expect(await md.locator('p').nth(1).evaluate((el) => getComputedStyle(el).direction)).toBe('ltr');
 });

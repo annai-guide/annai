@@ -9,6 +9,7 @@ body {
 /* No line begins with ゃ or ー; Korean breaks between words, not between syllables. */
 :lang(ja) { line-break: strict; }
 :lang(ko) { word-break: keep-all; }
+:is(h1, h2, h3, .md-h):lang(ja) { word-break: auto-phrase; } /* a heading breaks between phrases, where the browser can (Chrome 119); Safari leaves it */
 h1, h2, h3, p, ul, ol, figure { margin: 0; }
 a { color: var(--ai); }
 :focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }

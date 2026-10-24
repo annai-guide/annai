@@ -87,7 +87,8 @@ Compare 直, 骨 and 角 in your first two bubbles. Each character is drawn diff
 - [ ] **F3. The font in use (optional, at the Mac).** Web Inspector → Elements → select the Chinese line's text → the Font panel: "PingFang SC" expected for the Chinese line, "Hiragino Sans" for the Japanese one. Also select the line's `<p>`: it has `lang="zh-Hans"` (or `ja`), and the "SHIORI" label above it has none.
 - [ ] **F4. The bubble.** With voice on, ask Shiori for a short answer in Japanese. While she speaks, her words in the bubble are upright, not slanted (English there is slanted); then they stay in the Conversation with Japanese shapes.
 - [ ] **F5. VoiceOver.** Turn VoiceOver on and swipe through the Conversation. Each line is read in its own voice: the Chinese line in a Chinese voice (Mandarin), the Japanese line in a Japanese one, the English line in the English voice, and the "SHIORI" label and the buttons in English. Write down which voice reads each, and where the voice changes in the middle of a line.
-- [ ] **F6. Android.** The same two lines on the Android phone. Android picks its fallback font by the line's language, now that the font list names none. Write down the phone's language and which shapes each line shows.
+- [ ] **F6. Symbols.** The font list no longer names Hiragino, so the arrows (← →), the dots ○ ● and a few symbols (≈ ⋮ ™ ✓ ✗) that the Zen fonts lack are drawn by the system's San Francisco instead of Hiragino's full-width shapes. Look at the arrow in a screen's top link ("← Trips") and at the ○ and ● dots on Now and Plan. They are the right size and weight, and sit level with the words. If they look worse than before, write it down: the fix is adding those code points to the Zen subsets.
+- [ ] **F7. Android.** The same two lines on the Android phone. Android picks its fallback font by the line's language, now that the font list names none. Write down the phone's language and which shapes each line shows.
 
 ## The lock screen
 
