@@ -1,7 +1,9 @@
 import { officialUpdates, updateOfficial } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
-import { whatItBrings, FULL_ACCESS, keyNames, keysRisk } from './screens/plugin-install.js';
+import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
+import { t } from './dom.js';
+import { list, sentences } from './format.js';
 
 /**
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
@@ -61,14 +63,18 @@ export async function knownAddressUpdates(host) {
 }
 
 /** "Tides 1.0.0 → 1.1.0", or "tide-pools (changed)" when only its files did. @param {Update} u */
-export const offerWords = (u) => `${u.changed || u.installed === u.available ? `${u.name} (changed)` : `${u.name} ${u.installed} → ${u.available}`}${addsAnything(u.added) ? ' (brings something new: you\'ll be asked first)' : ''}`;
+export function offerWords(u) {
+  const changed = u.changed || u.installed === u.available;
+  if (addsAnything(u.added)) return changed ? t`${u.name} (changed) (brings something new: you'll be asked first)` : t`${u.name} ${u.installed} → ${u.available} (brings something new: you'll be asked first)`;
+  return changed ? t`${u.name} (changed)` : t`${u.name} ${u.installed} → ${u.available}`;
+}
 
 /** The card that offers updates; nothing changes until Update. @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Env} [env] @returns {() => void} dismiss */
 export function offerCard(ctx, updates, env = {}) {
   return ctx.notices.card({
-    title: 'Plugin updates are ready',
-    body: `New versions: ${updates.map(offerWords).join(', ')}. Nothing changes until you update. An updated plugin that is running now is off until annai restarts.`,
-    actions: [{ label: 'Update', primary: true, run: () => { applyUpdates(ctx, updates, env); } }],
+    title: t`Plugin updates are ready`,
+    body: sentences(t`New versions: ${list(updates.map(offerWords), 'plain')}.`, t`Nothing changes until you update. An updated plugin that is running now is off until annai restarts.`),
+    actions: [{ label: t`Update`, primary: true, run: () => { applyUpdates(ctx, updates, env); } }],
   });
 }
 
@@ -97,19 +103,19 @@ export async function applyUpdates(ctx, updates, env = {}) {
       knownOf(ctx.plugins).delete(u.id);
       if (how === 'restart') waiting.push(u.name);
     } catch (e) {
-      failed.push(`${u.name}: ${/** @type {any} */ (e)?.message ?? e}`);
+      failed.push(t`${u.name}: ${/** @type {any} */ (e)?.message ?? e}`);
     }
   }
-  if (failed.length) ctx.notices.card({ tone: 'warn', title: "Some plugins weren't updated", body: failed.join(' ') });
+  if (failed.length) ctx.notices.card({ tone: 'warn', title: t`Some plugins weren't updated`, body: sentences(...failed) });
   if (waiting.length) {
     ctx.notices.card({
       tone: 'warn',
-      title: 'Restart annai to use the new versions',
-      body: `The update is installed and runs the next time annai starts. Until then, ${waiting.join(' and ')} can't be used.`,
-      actions: [{ label: 'Restart now', primary: true, run: env.reload ?? (() => location.reload()) }],
+      title: t`Restart annai to use the new versions`,
+      body: sentences(t`The update is installed and runs the next time annai starts.`, t`Until then, ${list(waiting)} can't be used.`),
+      actions: [{ label: t`Restart now`, primary: true, run: env.reload ?? (() => location.reload()) }],
     });
   } else if (!failed.length && applied) {
-    ctx.notices.toast('Plugins updated.');
+    ctx.notices.toast(t`Plugins updated.`);
   }
   env.applied?.();
 }
@@ -122,14 +128,15 @@ export async function applyUpdates(ctx, updates, env = {}) {
 async function askFirst(ctx, u, env) {
   const added = /** @type {import('../core/packages.js').Added} */ (u.added);
   // New code from an address, not annai's: what it can do with the keys saved now, by name (fixes-ui 15).
-  const risk = added.code ? ` ${keysRisk(await keyNames(ctx.plugins).catch(() => []))}` : '';
+  const risk = added.code ? keysRisk(await keyNames(ctx.plugins).catch(() => [])) : '';
   ctx.notices.card({
     tone: added.code ? 'risk' : 'warn',
-    title: `${u.name} ${u.available} brings something new`,
-    body: `New in this version: ${whatItBrings(added).join('; ')}.${added.code ? ` ${FULL_ACCESS}${risk} Only update if you trust where it came from.` : ''} Nothing changes until you tap Update.`,
+    title: t`${u.name} ${u.available} brings something new`,
+    body: sentences(t`New in this version: ${semicolons(whatItBrings(added))}.`, added.code ? FULL_ACCESS : '', risk, added.code ? t`Only update if you trust where it came from.` : '',
+      t`Nothing changes until you tap Update.`),
     actions: [
-      { label: added.code ? 'Update anyway' : 'Update', primary: true, run: () => applyUpdates(ctx, [{ ...u, agreed: true }], env) },
-      { label: 'Not now', run: () => {} },
+      { label: added.code ? t`Update anyway` : t`Update`, primary: true, run: () => applyUpdates(ctx, [{ ...u, agreed: true }], env) },
+      { label: t`Not now`, run: () => {} },
     ],
   });
 }

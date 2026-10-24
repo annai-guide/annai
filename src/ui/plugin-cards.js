@@ -1,4 +1,5 @@
-import { list } from './format.js';
+import { t, plural } from './dom.js';
+import { list, sentences } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
@@ -8,20 +9,22 @@ import { list } from './format.js';
 export function disabledCard({ name, reason, message }) {
   return {
     tone: /** @type {const} */ ('warn'),
-    title: `The plugin "${name}" was turned off`,
-    body: `It ${reason}. The last error: ${message} You can turn it back on in Settings → Plugins.`,
+    title: t`The plugin "${name}" was turned off`,
+    // The reason is core's words (registry.js, hooks.js), in English for now.
+    body: sentences(t`It ${reason}.`, t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
   };
 }
 
 /** What needs a plugin says on a page no service worker took, where none can load (spec §5.3). */
-export const NEEDS_RELOAD = "annai needs a reload: it opened without its offline service, so its plugins can't start.";
+export const NEEDS_RELOAD = t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
 
 /** That page's one card, naming the plugins that are on, if any; Reload now is the user's own tap, so it can't loop. @param {string[]} names @param {() => void} reload */
 export function reloadCard(names, reload) {
   return {
-    tone: /** @type {const} */ ('warn'), title: 'annai needs a reload',
-    body: `It opened without its offline service, so ${names.length ? `${names.length > 1 ? 'these plugins' : 'this plugin'} can't start: ${list(names)}` : "plugins can't start or be installed"}.`,
-    actions: [{ label: 'Reload now', primary: true, run: reload }],
+    tone: /** @type {const} */ ('warn'), title: t`annai needs a reload`,
+    body: names.length ? plural(names.length, "It opened without its offline service, so this plugin can't start: {0}.", "It opened without its offline service, so these plugins can't start: {0}.", list(names))
+      : t`It opened without its offline service, so plugins can't start or be installed.`,
+    actions: [{ label: t`Reload now`, primary: true, run: reload }],
   };
 }
 
@@ -35,9 +38,9 @@ export function startCards(failures, { name, taken }) {
   const unloaded = [];
   for (const f of failures) {
     const why = String(/** @type {any} */ (f.error)?.message ?? f.error);
-    const it = `The plugin "${name(f.id)}"`;
-    if (f.disabled) cards.push({ title: `${it} was turned off`, body: `It didn't start the last few times annai opened: ${why} You can turn it back on in Settings → Plugins.` });
-    else if (taken) cards.push({ title: `${it} didn't start`, body: `${why} You can turn it off in Settings → Plugins.` });
+    const it = name(f.id);
+    if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened: ${why}`, t`You can turn it back on in Settings → Plugins.`) });
+    else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`) });
     else unloaded.push(name(f.id));
   }
   return { cards: cards.map((c) => ({ tone: /** @type {const} */ ('warn'), ...c })), unloaded };
