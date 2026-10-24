@@ -181,7 +181,7 @@ export class LiveInput {
       this.#theirs = false;
     }
     if (first && !this.duplex()) {
-      if (!this.#held && !this.active) return this.#deaf(d);
+      if (!this.active && !(this.#held && d.speechMs)) return this.#deaf(d); // speech the detector isn't sure of yet (over a guessed floor) is not the user's
       if (this.#held) this.#start(); // the user's turn, which cuts her
     }
     // What was let go ends at its first quiet: her echo is over, and what follows is fresh. Going on OVER_MS past her end, it is the user
