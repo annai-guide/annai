@@ -137,6 +137,22 @@ test('a quiet room heard after the zeros ends the guess: a sentence later is sur
   assert.ok(d.floorDb !== null && d.floorDb < -70, `the room's floor: ${d.floorDb}`);
 });
 
+test('a steady room of about -52 dB after the zeros, over the guess\'s keep margin but too quiet to start speech against it, is the floor at once: a sentence in it is sure as it goes (detector-floor review 2)', () => {
+  const d = new Detector({ sampleRate: RATE });
+  const pcm = cat(new Float32Array(RATE / 2), quiet(0.4, 0.0071), hum(2), quiet(1.2, 0));
+  const from = Math.round(0.9 * RATE);
+  /** @type {number | null} */
+  let floor = null;
+  let sure = 0;
+  for (let i = 0; i < pcm.length; i += 320) {
+    if (i === from) floor = d.floorDb;
+    d.push(pcm.subarray(i, i + 320));
+    if (i === from + RATE / 2) sure = d.speechMs;
+  }
+  assert.ok(floor !== null && floor > -56, `the room is the floor as the sentence begins: ${floor} dB`);
+  assert.ok(sure >= 250, `${sure} ms of sure speech half a second in`);
+});
+
 test('speech said the instant the zeros end, with no quiet in it, is held as unsure for a second; then the floor is its quietest frame, and it goes on to its pause', () => {
   const d = new Detector({ sampleRate: RATE });
   const voice = hum(2);
