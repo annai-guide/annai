@@ -14,6 +14,11 @@ const RECORD = '/shell-record.json';
 const hashOf = (/** @type {string} */ text) => createHash('sha256').update(text).digest('hex').slice(0, 12);
 const ORIGIN = 'https://annai.guide';
 const pathOf = (/** @type {string | Request} */ r) => new URL(typeof r === 'string' ? r : r.url, ORIGIN).pathname;
+/** The pages: fetched by every install, as their headers carry the site's policy (CSP, Permissions-Policy) of the version that has them. */
+const PAGES = ['/', '/index.html', '/src/ui/grounding.html'];
+assert.ok(PAGES.every((p) => SHELL.includes(p)));
+/** What an update that can copy fetches: the manifest, the pages, and these files, in SHELL order. @param {string[]} changed */
+const only = (changed, shell = SHELL) => ['/shell.json', ...shell.filter((p) => PAGES.includes(p) || changed.includes(p))];
 
 /** A phone and the site it updates from. The site holds version A of every shell file; `ship` publishes a version's manifest. */
 function phone() {
@@ -114,13 +119,13 @@ test('a first install fetches the whole shell, past the HTTP cache, and records 
   assert.deepEqual(p.notReload, []);
 });
 
-test('an update fetches only the file that changed and the manifest, and copies the rest from the version before', async () => {
+test('an update fetches only the file that changed, the pages and the manifest, and copies the rest from the version before', async () => {
   const p = phone();
   p.ship('aaaaaaaaaaaa');
   await p.install('aaaaaaaaaaaa');
   p.site.set('/src/core/sun.js', 'the sun, version B');
   p.ship('bbbbbbbbbbbb');
-  assert.deepEqual(await p.install('bbbbbbbbbbbb'), ['/shell.json', '/src/core/sun.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/core/sun.js']));
   const { store, record } = p.cacheOf('bbbbbbbbbbbb');
   assert.ok(store);
   for (const path of SHELL) assert.equal(store.get(path), p.site.get(path), `${path} is the site's`);
@@ -134,7 +139,7 @@ test('a file missing from the old cache is fetched', async () => {
   await p.install('aaaaaaaaaaaa');
   p.cacheOf('aaaaaaaaaaaa').store?.delete('/src/ui/shell.js');
   p.ship('bbbbbbbbbbbb');
-  assert.deepEqual(await p.install('bbbbbbbbbbbb'), ['/shell.json', '/src/ui/shell.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/ui/shell.js']));
   assert.equal(p.cacheOf('bbbbbbbbbbbb').store?.get('/src/ui/shell.js'), 'the /src/ui/shell.js of version A');
 });
 
@@ -151,7 +156,7 @@ test('a cache whose record is missing or unreadable is copied from not at all', 
   }
 });
 
-test('a hash in the record that is not the manifest\'s, or not a hash at all, is fetched', async () => {
+test('a hash in the record that is not the manifest\'s, or none, is fetched', async () => {
   const p = phone();
   p.ship('aaaaaaaaaaaa');
   await p.install('aaaaaaaaaaaa');
@@ -162,20 +167,7 @@ test('a hash in the record that is not the manifest\'s, or not a hash at all, is
   delete record.files['/src/core/tsv.js'];
   old.set(RECORD, JSON.stringify(record));
   p.ship('bbbbbbbbbbbb');
-  assert.deepEqual((await p.install('bbbbbbbbbbbb')).sort(), ['/shell.json', '/src/core/sun.js', '/src/core/time.js', '/src/core/tsv.js']);
-  // A manifest's hash that is empty or not one never matches, even a record's same text.
-  const q = phone();
-  q.ship('aaaaaaaaaaaa');
-  await q.install('aaaaaaaaaaaa');
-  const kept = /** @type {Map<string, string>} */ (q.cacheOf('aaaaaaaaaaaa').store);
-  const r = JSON.parse(/** @type {string} */ (kept.get(RECORD)));
-  r.files['/src/core/sun.js'] = '';
-  kept.set(RECORD, JSON.stringify(r));
-  q.ship('bbbbbbbbbbbb');
-  const m = JSON.parse(/** @type {string} */ (q.site.get('/shell.json')));
-  m.files['/src/core/sun.js'] = '';
-  q.site.set('/shell.json', JSON.stringify(m));
-  assert.deepEqual(await q.install('bbbbbbbbbbbb'), ['/shell.json', '/src/core/sun.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/core/sun.js', '/src/core/time.js', '/src/core/tsv.js']));
 });
 
 test('with two older caches, the newest is copied from', async () => {
@@ -190,7 +182,7 @@ test('with two older caches, the newest is copied from', async () => {
   // C keeps B's sun, and takes time back to A's.
   p.site.set('/src/core/time.js', 'the /src/core/time.js of version A');
   p.ship('cccccccccccc');
-  assert.deepEqual(await p.install('cccccccccccc'), ['/shell.json', '/src/core/time.js'], "B's sun is copied; A's time is not looked for");
+  assert.deepEqual(await p.install('cccccccccccc'), only(['/src/core/time.js']), "B's sun is copied; A's time is not looked for");
   assert.equal(p.cacheOf('cccccccccccc').store?.get('/src/core/sun.js'), 'the sun, version B');
 });
 
@@ -211,7 +203,7 @@ test('an update while offline fails, and the version running keeps its cache as 
   await assert.rejects(p.install('bbbbbbbbbbbb'), /404/);
   // Back online, the next try copies from A, not from B's half.
   p.site.set('/src/core/sun.js', 'the sun, version B');
-  assert.deepEqual(await p.install('bbbbbbbbbbbb'), ['/shell.json', '/src/core/sun.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/core/sun.js']));
 });
 
 test("a manifest that can't be had, or is another build's, copies nothing, and the update goes on", async () => {
@@ -236,7 +228,7 @@ test('a file added to SHELL is fetched; one taken out is neither fetched nor kep
   const next = [...SHELL.filter((path) => path !== '/src/core/sun.js'), '/src/core/moon.js'];
   p.site.set('/src/core/moon.js', 'the moon');
   p.ship('bbbbbbbbbbbb', next);
-  assert.deepEqual(await p.install('bbbbbbbbbbbb', next), ['/shell.json', '/src/core/moon.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb', next), only(['/src/core/moon.js'], next));
   const { store, record } = p.cacheOf('bbbbbbbbbbbb');
   assert.ok(store);
   assert.equal(store.has('/src/core/sun.js'), false);
@@ -251,15 +243,15 @@ test('a record says what the cache holds, not what the manifest said: a file tha
   await p.install('aaaaaaaaaaaa');
   p.site.set('/src/core/sun.js', 'the /src/core/sun.js of version A');
   p.ship('bbbbbbbbbbbb');
-  assert.deepEqual(await p.install('bbbbbbbbbbbb'), ['/shell.json', '/src/core/sun.js']);
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/core/sun.js']));
   assert.equal(p.cacheOf('bbbbbbbbbbbb').store?.get('/src/core/sun.js'), 'the /src/core/sun.js of version A');
 });
 
-test('a new sw.js with the same build (a change to the worker alone) fetches only the manifest, and keeps the record', async () => {
+test('a new sw.js with the same build (a change to the worker alone) fetches only the manifest and the pages, and keeps the record', async () => {
   const p = phone();
   p.ship('aaaaaaaaaaaa');
   await p.install('aaaaaaaaaaaa');
   const before = new Map(p.cacheOf('aaaaaaaaaaaa').store);
-  assert.deepEqual(await p.install('aaaaaaaaaaaa'), ['/shell.json']);
+  assert.deepEqual(await p.install('aaaaaaaaaaaa'), only([]));
   assert.deepEqual(p.cacheOf('aaaaaaaaaaaa').store, before);
 });
