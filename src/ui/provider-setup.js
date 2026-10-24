@@ -1,4 +1,4 @@
-import { h, messageOf } from './dom.js';
+import { h, messageOf, t, plural } from './dom.js';
 import { made } from './slots.js';
 import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
@@ -14,6 +14,12 @@ import { list } from './format.js';
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
  */
 const SLOT = 'annai.return';
+
+/** Sentences side by side, the empty left out (a message: Japanese drops the space). @param {...string} parts */
+export function sentences(...parts) {
+  const some = parts.filter(Boolean);
+  return some.length ? some.reduce((a, b) => t`${a} ${b}`) : '';
+}
 const MAX_AGE = 15 * 60_000;
 
 /** Notes that a plugin expects annai's address back. @param {string} pluginId @param {{ storage?: KeyValue, now?: number }} [o] */
@@ -72,7 +78,8 @@ export function setupUi(ctx, pluginId, { added } = {}) {
         const wrong = addressProblem(String(u));
         if (wrong) throw new Error(wrong);
         const at = new URL(String(u)).origin;
-        if (m?.catchAll !== true && !where.includes(at)) throw new Error(`${m?.name ?? pluginId} can't add a provider at ${at}: it sends keys only to ${where.join(', ') || 'none'}.`);
+        const who = m?.name ?? pluginId;
+        if (m?.catchAll !== true && !where.includes(at)) throw new Error(where.length ? t`${who} can't add a provider at ${at}: it sends keys only to ${list(where, 'plain')}.` : t`${who} can't add a provider at ${at}: it sends keys only to none.`);
       }
       // What failed, in words a panel can show as they are: no plugin's id in them.
       const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities })
@@ -83,9 +90,9 @@ export function setupUi(ctx, pluginId, { added } = {}) {
     /** @param {string} providerId @param {any} key */
     keep: async (providerId, key) => {
       const rec = (await ctx.llm.config()).providers[providerId];
-      if (!rec) throw new Error('That provider no longer exists. Add it again in Settings → Models.');
+      if (!rec) throw new Error(t`That provider no longer exists. Add it again in Settings → Models.`);
       const mine = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId;
-      if (rec.plugin !== pluginId) throw new Error(`That provider isn't one of ${mine}'s, so it can't keep a key for it.`);
+      if (rec.plugin !== pluginId) throw new Error(t`That provider isn't one of ${mine}'s, so it can't keep a key for it.`);
       await setKey(ctx.store, providerId, await take(key));
       await ctx.llm.unbench(providerId);
     },
@@ -101,7 +108,7 @@ export function setupUi(ctx, pluginId, { added } = {}) {
 export function drawPanel(ctx, pluginId, provider, o) {
   const s = setupOf(ctx.registry, pluginId);
   const panel = s?.panel;
-  return panel ? made(ctx, { pluginId, item: s }, 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : 'its panel is no element')) : null;
+  return panel ? made(ctx, { pluginId, item: s }, /* en */ 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : /* en */ 'its panel is no element')) : null;
 }
 
 /** A catalog entry that makes a model provider, by the rule a restore's plugins follow (review M1). */
@@ -113,7 +120,7 @@ export const isProviderEntry = makesProvider;
  * is data, and may name anything (review M1). One that then gives no provider is removed again. @param {any} ctx @param {any} entry
  */
 export async function installMissing(ctx, entry) {
-  if (!isProviderEntry(entry)) throw new Error(`${entry?.name ?? 'That plugin'} isn't a model provider.`);
+  if (!isProviderEntry(entry)) throw new Error(entry?.name ? t`${entry.name} isn't a model provider.` : t`That plugin isn't a model provider.`);
   try {
     await ctx.llm.installProvider(entry.id, { official: true });
   } catch (e) {
@@ -143,7 +150,7 @@ export async function readyFeatured(ctx) {
     if (typeof m?.featured === 'string' && m.featured) return (featured = { id: e.pluginId, name: String(m.name), featured: m.featured });
   }
   const entry = (await officialPlugins().catch(() => {
-    throw new Error('Connect to the internet to sign in.');
+    throw new Error(t`Connect to the internet to sign in.`);
   })).find((p) => typeof p.featured === 'string' && p.featured);
   if (!entry || !(await ctx.llm.prepareStart(entry.id))) return null;
   return (featured = { id: entry.id, name: entry.name, featured: String(entry.featured) });
@@ -152,18 +159,18 @@ export async function readyFeatured(ctx) {
 /** The one-tap start: the featured provider's panel; until it is in, a disabled button, never a link without an address. @param {any} ctx */
 export function featuredStart(ctx) {
   const slot = h('div', {});
-  const status = h('p', { class: 'sub', role: 'status', text: finishing ? `Finishing the sign-in with ${finishing}…` : '' });
+  const status = h('p', { class: 'sub', role: 'status', text: finishing ? t`Finishing the sign-in with ${finishing}…` : '' });
   /** @param {{ id: string, name: string }} f */
   const show = (f) => {
     const panel = drawPanel(ctx, f.id, null);
     slot.replaceChildren(...(panel ? [panel] : []));
-    if (!panel) status.textContent = `${f.name}'s sign-in couldn't be shown. Add it from Add a provider instead.`;
+    if (!panel) status.textContent = t`${f.name}'s sign-in couldn't be shown. Add it from Add a provider instead.`;
   };
-  const section = h('section', { class: 'panel', 'aria-label': 'Sign in' }, h('h2', { class: 'section', text: 'The quickest start' }), slot, status);
+  const section = h('section', { class: 'panel', 'aria-label': t`Sign in` }, h('h2', { class: 'section', text: t`The quickest start` }), slot, status);
   if (featured && setupOf(ctx.registry, featured.id)?.panel) show(featured);
   else {
     const wait = h('p', { class: 'sub' });
-    slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, 'Getting the sign-in ready…')), wait);
+    slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, t`Getting the sign-in ready…`)), wait);
     // Its plugin loads through the offline service: still none after a few seconds (or none in this browser), say so.
     const sw = globalThis.navigator?.serviceWorker;
     if (!sw?.controller) setTimeout(() => { if (!sw?.controller) wait.textContent = NO_SERVICE; }, sw ? 3000 : 0);
@@ -193,7 +200,7 @@ export async function finishReturn(ctx, env = {}) {
   to(back ? `${search}#/models` : loc.hash);
   if (!back) {
     // In annai's own words: no plugin's are known for it.
-    if (new URLSearchParams(search).size) ctx.notices.card({ tone: 'warn', title: 'A sign-in came back too late', body: 'A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.' });
+    if (new URLSearchParams(search).size) ctx.notices.card({ tone: 'warn', title: t`A sign-in came back too late`, body: t`A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.` });
     return false;
   }
   const name = String((await ctx.plugins.installed())[back.plugin]?.name ?? back.plugin);
@@ -207,13 +214,13 @@ export async function finishReturn(ctx, env = {}) {
     (env.storage ?? localStorage).removeItem(SLOT);
     to(loc.hash);
     const returned = setupOf(ctx.registry, back.plugin)?.returned;
-    if (!returned) throw new Error(`${name} isn't running. Look at it in Settings → Plugins, then sign in again.`);
+    if (!returned) throw new Error(t`${name} isn't running. Look at it in Settings → Plugins, then sign in again.`);
     await Promise.resolve(returned(back.params, setupUi(ctx, back.plugin))).catch((e) => {
       if (isPluginBug(e)) ctx.registry.fail(back.plugin, 'sign-in', e);
       throw e;
     });
   } catch (e) {
-    ctx.notices.card({ tone: 'warn', title: `Signing in with ${name} didn't finish`, body: messageOf(e) });
+    ctx.notices.card({ tone: 'warn', title: t`Signing in with ${name} didn't finish`, body: messageOf(e) });
   } finally {
     finishing = null;
   }
@@ -221,7 +228,7 @@ export async function finishReturn(ctx, env = {}) {
 }
 
 /** @type {Record<string, string>} */
-const ROLE_SHORT = { main: 'Main', koe: 'Koe', utility: 'Utility', decide: 'Quick decision', 'speech-in': 'Speech in', 'speech-out': 'Speech out' };
+const ROLE_SHORT = { main: t`Main`, koe: /* en */ 'Koe', utility: t`Utility`, decide: t`Quick decision`, 'speech-in': t`Speech in`, 'speech-out': t`Speech out` };
 
 /**
  * What adding a provider did to the roles, in words (spec §9.8): the chat roles it filled with free models, and those it had to
@@ -235,16 +242,19 @@ export function filledWords(name, filled, costs = {}, freeTier = false) {
   const speech = filled.filter((r) => r.startsWith('speech-'));
   const paid = chat.filter((r) => costs[r]);
   const free = chat.filter((r) => !costs[r]);
-  return [
-    free.length ? `${list(free.map((r) => ROLE_SHORT[r] ?? r))} now ${free.length === 1 ? 'uses' : 'use'} ${name}'s free models.` : '',
-    paid.length ? `${list(paid.map((r) => `${ROLE_SHORT[r] ?? r} ${costs[r]}`))} ${paid.length === 1 ? 'costs' : 'cost'} money: ${name} has no free model to start with, and Shiori needs one to answer.${freeTier ? ' If your key is on the free tier, switch that on, on this page: its models then cost nothing.' : ''}` : '',
-    speech.length ? `Its ${speech.map((r) => ROLE_SHORT[r].toLowerCase()).join(' and ')} models went behind the free entries.` : '',
-  ].filter(Boolean).join(' ');
+  const both = speech.length > 1;
+  return sentences(
+    free.length ? plural(free.length, "{0} now uses {1}'s free models.", "{0} now use {1}'s free models.", list(free.map((r) => ROLE_SHORT[r] ?? r)), name) : '',
+    paid.length ? plural(paid.length, '{0} costs money: {1} has no free model to start with, and Shiori needs one to answer.', '{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.',
+      list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)), name) : '',
+    paid.length && freeTier ? t`If your key is on the free tier, switch that on, on this page: its models then cost nothing.` : '',
+    both ? t`Its speech in and speech out models went behind the free entries.` : speech[0] === 'speech-in' ? t`Its speech in models went behind the free entries.`
+      : speech.length ? t`Its speech out models went behind the free entries.` : '');
 }
 
 /** Says what an add did to the roles, if anything. @param {any} ctx @param {string} plugin @param {string[]} filled @param {Record<string, string>} [costs] */
 export function sayFilled(ctx, plugin, filled, costs = {}) {
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === plugin);
-  const words = filledWords(src?.name ?? 'The provider', filled, costs, Boolean(src?.provider.freeTier));
+  const words = filledWords(src?.name ?? t`The provider`, filled, costs, Boolean(src?.provider.freeTier));
   if (words) ctx.notices.toast(words);
 }

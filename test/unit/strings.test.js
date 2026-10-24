@@ -192,6 +192,12 @@ test('English inside a message\'s ${} is bare English, in the check and in --fin
   assert.deepEqual(bareEnglish('x.js', plain).map((b) => b.text), ['Kept for good']);
 });
 
+test("--find leaves out a plural's forms and a context, which are the message's, and lists English in its values", () => {
+  const src = `${IMPORT}export const a = (n, who) => plural(n, '{0} keeps # turn until it expires.', '{0} keeps # turns until they expire.', who ? 'Someone else' : 'The provider');\n`;
+  assert.deepEqual(findWords('x.js', src).map((b) => b.text), ['Someone else', 'The provider']);  const context = `${IMPORT}export const a = tc('tool group')\`Files\`;\n`;
+  assert.deepEqual(findWords('x.js', context), [], 'a context is no words either');
+});
+
 test('English joined on in a shown place is bare English', () => {
   const src = `${IMPORT}export const a = (ctx) => [h('p', { text: 'Trips for ' + ctx.name }), h('p', {}, ctx.n + ' trips'), h('p', {}, String('Nothing ' + ctx.x))];\n`;
   assert.deepEqual(bareEnglish('x.js', src).map((b) => b.text), ['Trips for', 'trips', 'Nothing']);

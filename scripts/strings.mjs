@@ -43,12 +43,25 @@ export const EXTRACTED = [
   'src/ui/media-keys.js',
   'src/ui/tap-keeps-keyboard.js',
   'src/ui/dock-hides.js',
+  // l10n-L5d: models and tools.
+  'src/ui/screens/models.js',
+  'src/ui/screens/model.js',
+  'src/ui/screens/provider.js',
+  'src/ui/provider-setup.js',
+  'src/ui/screens/add.js',
+  'src/ui/search-panel.js',
+  'src/ui/screens/tools.js',
+  'src/ui/screens/mcp.js',
+  'src/ui/credits.js',
+  'src/ui/privacy.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
 /** The runtime itself and the pseudo-locale mention t and plural without being messages. */
 const SKIP = new Set(['src/core/l10n.js', 'src/core/l10n-pseudo.js', 'src/core/l10n-list.js']);
 const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
+/** A back link ("← Settings") is crumb()'s, which l10n-L5a makes while L5d extracts the same files: not counted until it merges. Remove with that merge. */
+const BACK_LINK = /^← /;
 /** Properties whose value a screen shows as it is, and calls whose first argument it does (the design's "certain places"). */
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
 /** Properties that hold a code, not words: a class, an id, a type, a link. */
@@ -558,7 +571,7 @@ export async function check(root, files = EXTRACTED) {
   }
   for (const file of files) {
     if (!existsSync(`${root}/${file}`)) { problems.push({ file, line: 1, message: 'is listed in EXTRACTED but is not there' }); continue; }
-    for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });
+    for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) if (!BACK_LINK.test(b.text)) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });
   }
   return { problems, warnings, drafts };
 }
@@ -580,11 +593,14 @@ export const readerOf = (file) => (/agent|instructions|koe\/|live\/|^src\/plugin
 /** Literals that read as words, are not marked, and are not obviously code. @param {string} file @param {string} text @returns {{ line: number, text: string }[]} */
 export function findWords(file, text) {
   const sf = parse(file, text);
+  const imports = importedNames(sf, file);
+  /** A plural's forms are its message, as a tagged template's words are t's, and tc's context is no words. @param {ts.Node} n */
+  const form = (n) => ts.isCallExpression(n.parent) && n.parent.arguments.slice(...(markerOf(imports, n.parent.expression) === 'plural' ? [1, 3] : markerOf(imports, n.parent.expression) === 'tc' ? [0, 1] : [0, 0])).includes(/** @type {any} */ (n));
   /** @type {{ line: number, text: string }[]} */
   const out = [];
   const visit = (/** @type {ts.Node} */ n) => {
     const s = staticText(n);
-    if (s !== null && readsAsWords(s) && !skipped(sf, n) && !markedEnglish(sf, n)) out.push({ line: lineOf(sf, n), text: s.trim() });
+    if (s !== null && readsAsWords(s) && !skipped(sf, n) && !form(n) && !markedEnglish(sf, n)) out.push({ line: lineOf(sf, n), text: s.trim() });
     // A tagged template's words are its tag's business (t marks them); the code in its ${} is looked at all the same.
     if (!ts.isTaggedTemplateExpression(n)) ts.forEachChild(n, visit);
     else {

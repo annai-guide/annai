@@ -1,7 +1,8 @@
-import { h, crumb, t, field, twoStep, messageOf as message } from '../dom.js';
+import { h, crumb, t, field, twoStep, messageOf as message, plural } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
+import { num } from '../format.js';
 
-const AUTH = /** @type {Record<string, string>} */ ({ none: 'No key', token: 'A bearer token, kept on this device', headers: 'Headers, kept on this device' });
+const AUTH = /** @type {Record<string, string>} */ ({ none: t`No key`, token: t`A bearer token, kept on this device`, headers: t`Headers, kept on this device` });
 
 /**
  * Settings → Tools → MCP servers (spec §5.1): the servers whose tools Shiori has, and adding one with
@@ -13,18 +14,18 @@ export async function renderMcp(ctx) {
   const service = ctx.registry.list('mcp-servers')[0];
   const back = h('p', { class: 'crumbs' }, crumb('#/tools', t`Tools`));
   if (!service) {
-    return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: 'MCP servers' }),
-      h('p', { text: "annai's MCP client isn't running. Reload annai and try again." }));
+    return h('div', { class: 'screen' }, back, h('h1', { class: 'title', text: t`MCP servers` }),
+      h('p', { text: t`annai's MCP client isn't running. Reload annai and try again.` }));
   }
   const servers = await service.list();
-  const name = h('input', { id: 'mcp-name', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'trail' });
-  const address = h('input', { id: 'mcp-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://…/mcp' });
+  const name = h('input', { id: 'mcp-name', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: t`trail` });
+  const address = h('input', { id: 'mcp-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: /* en */ 'https://…/mcp' });
   const kind = h('select', { id: 'mcp-key' },
-    h('option', { value: 'none', text: 'None' }), h('option', { value: 'token', text: 'Bearer token' }), h('option', { value: 'headers', text: 'Headers' }));
+    h('option', { value: 'none', text: t`None` }), h('option', { value: 'token', text: t`Bearer token` }), h('option', { value: 'headers', text: t`Headers` }));
   const token = h('input', { id: 'mcp-token', type: 'password', autocomplete: 'off', spellcheck: 'false' });
-  const headers = h('textarea', { id: 'mcp-headers', rows: 3, spellcheck: 'false', autocapitalize: 'off', class: 'mono', placeholder: 'X-Api-Key: …' });
-  const tokenField = field('Token', token);
-  const headersField = field('Headers, one "Name: value" a line', headers);
+  const headers = h('textarea', { id: 'mcp-headers', rows: 3, spellcheck: 'false', autocapitalize: 'off', class: 'mono', placeholder: /* en */ 'X-Api-Key: …' });
+  const tokenField = field(t`Token`, token);
+  const headersField = field(t`Headers, one "Name: value" a line`, headers);
   const show = () => {
     tokenField.hidden = kind.value !== 'token';
     headersField.hidden = kind.value !== 'headers';
@@ -37,13 +38,13 @@ export async function renderMcp(ctx) {
     onclick: async () => {
       error.hidden = true;
       add.disabled = true;
-      add.textContent = 'Checking…';
+      add.textContent = t`Checking…`;
       try {
         const { tools } = await service.add({
           name: name.value, url: address.value,
           ...(kind.value === 'token' ? { token: token.value } : {}), ...(kind.value === 'headers' ? { headers: headers.value } : {}),
         });
-        ctx.notices.toast(`Added ${name.value.trim()}: ${tools} tool${tools === 1 ? '' : 's'}.`);
+        ctx.notices.toast(plural(tools, 'Added {0}: # tool.', 'Added {0}: # tools.', name.value.trim()));
         ctx.render();
       } catch (e) {
         if (explainStorageFull(ctx, e)) return;
@@ -51,22 +52,22 @@ export async function renderMcp(ctx) {
         error.hidden = false;
       } finally {
         add.disabled = false;
-        add.textContent = 'Add server';
+        add.textContent = t`Add server`;
       }
     },
-  }, 'Add server');
+  }, t`Add server`);
   return h('div', { class: 'screen' }, back,
-    h('h1', { class: 'title', text: 'MCP servers' }),
-    h('p', { class: 'sub', text: "An MCP server gives Shiori tools of its own. Its tools appear in Settings → Tools, where each can be switched off, and every request to it is in the trace. What a server answers is yours to trust, as anything you bring in is." }),
-    servers.length ? h('ul', { class: 'cards' }, ...servers.map((/** @type {any} */ s) => serverCard(ctx, service, s))) : h('p', { class: 'empty', text: 'No MCP servers yet.' }),
-    h('section', { class: 'panel', 'aria-label': 'Add a server' },
-      h('h2', { class: 'section', text: 'Add a server' }),
-      field('Name', name),
-      field('Address', address),
-      field('Key', kind),
+    h('h1', { class: 'title', text: t`MCP servers` }),
+    h('p', { class: 'sub', text: t`An MCP server gives Shiori tools of its own. Its tools appear in Settings → Tools, where each can be switched off, and every request to it is in the trace. What a server answers is yours to trust, as anything you bring in is.` }),
+    servers.length ? h('ul', { class: 'cards' }, ...servers.map((/** @type {any} */ s) => serverCard(ctx, service, s))) : h('p', { class: 'empty', text: t`No MCP servers yet.` }),
+    h('section', { class: 'panel', 'aria-label': t`Add a server` },
+      h('h2', { class: 'section', text: t`Add a server` }),
+      field(t`Name`, name),
+      field(t`Address`, address),
+      field(t`Key`, kind),
       tokenField, headersField,
-      h('p', { class: 'sub', text: "To change a server's token or headers later, remove it and add it again." }),
-      h('p', { class: 'sub', text: "The server must let web apps call it (CORS): allow annai's address, the headers Content-Type, Accept, Authorization, Mcp-Session-Id and MCP-Protocol-Version, and expose Mcp-Session-Id." }),
+      h('p', { class: 'sub', text: t`To change a server's token or headers later, remove it and add it again.` }),
+      h('p', { class: 'sub', text: t`The server must let web apps call it (CORS): allow annai's address, the headers Content-Type, Accept, Authorization, Mcp-Session-Id and MCP-Protocol-Version, and expose Mcp-Session-Id.` }),
       error,
       h('div', { class: 'acts' }, add)));
 }
@@ -78,25 +79,25 @@ function serverCard(ctx, service, s) {
     h('span', { class: 'sub', text: s.url }),
     h('span', { class: 'sub', text: AUTH[s.auth] ?? AUTH.none }),
     h('ul', { class: 'brings' }, ...s.tools.map((/** @type {any} */ t) => h('li', { text: t.name }))),
-    s.more ? h('p', { class: 'sub', text: `and ${s.more} more it has, which annai leaves out` }) : null,
+    s.more ? h('p', { class: 'sub', text: t`and ${num(s.more)} more it has, which annai leaves out` }) : null,
     h('div', { class: 'acts' },
       h('button', {
         class: 'btn', type: 'button',
         onclick: async () => {
           try {
             const { tools } = await service.refresh(s.name);
-            ctx.notices.toast(`${s.name}: ${tools} tool${tools === 1 ? '' : 's'}.`);
+            ctx.notices.toast(plural(tools, '{0}: # tool.', '{0}: # tools.', s.name));
           } catch (e) {
-            ctx.notices.card({ tone: 'warn', title: `${s.name}'s tools weren't refreshed`, body: message(e) });
+            ctx.notices.card({ tone: 'warn', title: t`${s.name}'s tools weren't refreshed`, body: message(e) });
           }
           ctx.render();
         },
-      }, 'Refresh tools'),
-      twoStep('Remove', 'Tap again to remove', async () => {
+      }, t`Refresh tools`),
+      twoStep(t`Remove`, t`Tap again to remove`, async () => {
         try {
           await service.remove(s.name);
         } catch (e) {
-          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: `${s.name} wasn't removed`, body: `${message(e)} Try again.` });
+          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${s.name} wasn't removed`, body: t`${message(e)} Try again.` });
         }
         ctx.render();
       })));

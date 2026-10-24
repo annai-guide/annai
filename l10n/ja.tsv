@@ -59,6 +59,17 @@ au82n5	draft	None picked: annai uses the browser’s language. In order of use. 
 io1qx	draft	Open the booking	予約を開く	src/ui/cards.js:73	
 1ghy26u	draft	A photo Shiori showed	Shiori が見せた写真	src/ui/cards.js:76	
 1hvdy8q	draft	This card's kind ({0}) comes from a plugin that isn't on.	このカードの種類（{0}）は、オンになっていないプラグインのものです。	src/ui/cards.js:88	{0} = card.type
+1qozjyj	draft	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や予定に沿った場所。Shiori の nearby ツールとオフラインパックで使い、Overpass（overpass-api.de、混雑時は private.coffee のサーバー）で探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
+g4c01g	draft	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探し、地点から場所の名前を調べます。Shiori の geocode と reverse ツールで使い、無料検索の最後の手段として場所の公式サイトも探します。annai は利用規約に従い、問い合わせを1秒に1回までにしています。	src/ui/credits.js:26	
+1jfh2kq	draft	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shiori が読む記事にはアドレスが付きます。常に有効な無料検索の最後の手段として、検索した言葉を問い合わせます。	src/ui/credits.js:33	
+1ufrhy7	draft	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shiori の guide ツールとオフラインパックで使い、無料検索の代わりにもなります。	src/ui/credits.js:40	
+1g8sy5k	draft	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shiori の weather ツールで使います。予報の日の出と日の入りも Open-Meteo のものです。いま画面のゴールデンアワーと、Open-Meteo が応答しないときの日の出・日の入りは、端末で計算します。	src/ui/credits.js:47	
+a8awk7	draft	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_search の無料 Web 検索と、ほかの読み込み方法で読めないページを fetch で読む手段。設定 → ツールでチェックしている間だけ使います。送るのは検索した言葉か、ページのアドレスだけです。	src/ui/credits.js:54	
+382qu6	draft	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	web_search の無料 Web 検索。設定 → ツールでチェックしている間だけ使います。送るのは検索した言葉だけです。	src/ui/credits.js:61	
+138nh47	draft	Web search for web_search, with your key, once the Tavily Search plugin is installed.	web_search の Web 検索。Tavily Search プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).
+1a5kitj	draft	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_search の Web 検索。Serper Search プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:82	
+1yvqge7	draft	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Web アプリからは読めないページを読み、Web を検索します。Shiori の fetch と web_search ツールで、設定 → ツールの選択に従って使います。	src/ui/credits.js:89	
+l5jx6y	draft	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori のイラスト：annai のために AI 画像生成でデザインし、ベクター画像になぞり直しました。	src/ui/credits.js:107	
 gb19et	draft	Message to Shiori	Shiori へのメッセージ	src/ui/dock.js:43	
 1vatbdb	draft	Send	送信	src/ui/dock.js:58	
 1m2zofh	draft	Type	入力	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
@@ -126,10 +137,117 @@ an1pf7	draft	Dismiss	閉じる	src/ui/notices.js:156
 16ujpkf#other	draft	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+1cjjnaq	draft	Kept on this device.	この端末に保存。	src/ui/privacy.js:25	
+tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annai にはアカウントがなく、あなたの旅やキーを保存する annai のサーバーもありません。	src/ui/privacy.js:25	
+14xwlem	draft	Sent only where it's needed.	必要な所にだけ送信。	src/ui/privacy.js:26	
+5ycw8s	draft	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	Shiori への質問は、旅から彼女が必要とする情報と一緒に、接続したモデルのプロバイダーに送られます。話した声は、設定 → 音声に表示される所に送られます。彼女が調べる場所は、設定 → 情報に記載の提供元に送られます。記録には、annai が Shiori のために送るすべてのリクエスト（モデルの呼び出し、ツール、オフラインパック）が表示されます。	src/ui/privacy.js:26	Note: "her" kept where it reads natural; the Trace is 記録/记录 per the glossary.
+1g2tvlf	draft	Your keys stay yours.	キーはあなたのもの。	src/ui/privacy.js:27	
+1jo7026	draft	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	モデルのキーは、この端末のストレージに保存され、対応するプロバイダーにだけ送られます。キーは Shiori のモデルが読む内容には入らず、記録では伏せられ、エクスポートにも含まれません。ただし、暗号化したバックアップに入れることは選べます。	src/ui/privacy.js:27	
+12t6czb	draft	No tracking.	追跡なし。	src/ui/privacy.js:28	
+5d5p39	draft	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai には分析も広告もありません。ほかのサイトからスクリプトを読み込まず、コンテンツセキュリティポリシーで annai 自身のアドレスのスクリプトだけを実行します。例外は、あなたが入れたコード付きプラグインで、annai が自分で保存して配信します。	src/ui/privacy.js:28	
+1e9jheb	draft	Reminders stay sealed.	リマインダーは封をしたまま。	src/ui/privacy.js:29	
+1ves2ac	draft	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	通知をオンにすると、プッシュ中継は時刻のリマインダーをこの端末で暗号化したまま預かり、保持するのは端末のプッシュアドレス、それぞれの時刻、待っている数、そのほかわずかな情報（それぞれの取り消しコードと、この端末が受け取ったという記録）だけです。場所のリマインダーは端末から出ません。	src/ui/privacy.js:29	
+13wlc44	draft	Open code.	オープンなコード。	src/ui/privacy.js:30	
+1qhqdx	draft	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai のコードは AGPL-3.0 で公開されていて、誰でも {0} で読めます。	src/ui/privacy.js:30	{0} = REPO.replace('https://', '')
+1q2zxy5	draft	Where this stops	限界	src/ui/privacy.js:31	Note: "Where this stops" as one noun heading.
+1bk8ve3	draft	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	入れたコード付きプラグインは完全に信頼されて動きます。旅やキーを読めて、そのリクエストは記録を通らないこともあります。信頼できるプラグインだけを入れてください。	src/ui/privacy.js:33	
+19jox8f	draft	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	モデル自身の検索や読み込み（設定 → ツール）を使うと、検索やページの取得はプロバイダーのサーバーで行われ、記録にはモデルのターンしか表示されません。	src/ui/privacy.js:34	
+426n3h	draft	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	キーの安全はこの端末しだいです。この端末でこのブラウザを使える人なら誰でも触れられます。端末はロックしておいてください。	src/ui/privacy.js:35	
+ldqm5c	draft	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	iPhone では、Safari とホーム画面のアプリはデータを別々に持ちます。片方で追加したキーや旅は、もう片方にはありません。	src/ui/privacy.js:36	
+mj3oi4	draft	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai はフリーソフトウェアで、法律が許す限り無保証の現状のまま、{0}（AGPL-3.0）のもとで提供されます。	src/ui/privacy.js:43	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
+19ow2h0	draft	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori は AI なので、間違えることがあります。予約、料金、営業時間、ルート、安全に関する情報はご自身で確認してください。	src/ui/privacy.js:44	
+5aqdvy	draft	When you drive, use her hands-free, and follow the road and the local rules.	運転中はハンズフリーで使い、道路状況と現地のルールに従ってください。	src/ui/privacy.js:45	
+hirfin	draft	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	接続したモデルのプロバイダーの料金は、あなたの負担です。インポート、取得、接続したものの責任はあなたにあります。	src/ui/privacy.js:46	
+1wdrhx6	draft	{0} {1}	{0}{1}	src/ui/provider-setup.js:21	{0} = a; {1} = b; Note: two sentences side by side; no space between them in Chinese and Japanese.
+1qelf30	draft	{0} can't add a provider at {1}: it sends keys only to none.	{0}は{1}にプロバイダーを追加できません。キーを送る先がありません。	src/ui/provider-setup.js:82	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
+rq1jha	draft	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}は{1}にプロバイダーを追加できません。キーを送るのは{2}だけです。	src/ui/provider-setup.js:82	{0} = who; {1} = at; {2} = list(where, 'plain')
+1st0ijv	draft	That provider no longer exists. Add it again in Settings → Models.	そのプロバイダーはもうありません。設定 → モデルでもう一度追加してください。	src/ui/provider-setup.js:93	
+1lwfyvo	draft	That provider isn't one of {0}'s, so it can't keep a key for it.	そのプロバイダーは{0}のものではないため、キーを保存できません。	src/ui/provider-setup.js:95	{0} = mine
+13upi6b	draft	{0} isn't a model provider.	{0}はモデルのプロバイダーではありません。	src/ui/provider-setup.js:123	{0} = entry.name
+17q3a6l	draft	That plugin isn't a model provider.	そのプラグインはモデルのプロバイダーではありません。	src/ui/provider-setup.js:123	
+1p012cf	draft	Connect to the internet to sign in.	サインインするには、インターネットに接続してください。	src/ui/provider-setup.js:153	
+14m6i84	draft	Finishing the sign-in with {0}…	{0}でのサインインを完了しています…	src/ui/provider-setup.js:162	{0} = finishing
+yyxfov	draft	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	{0}のサインインを表示できませんでした。代わりに「プロバイダーを追加」から追加してください。	src/ui/provider-setup.js:167	{0} = f.name
+15aq08d	draft	The quickest start	いちばん早い始め方	src/ui/provider-setup.js:169	
+w9nig3	draft	Sign in	サインイン	src/ui/provider-setup.js:169	
+edml6o	draft	Getting the sign-in ready…	サインインを準備しています…	src/ui/provider-setup.js:173	
+1rk1a1z	draft	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	サインインが戻ってきましたが、annai はもう待っていませんでした。15分以上たったか、すでに完了しています。設定 → モデルからもう一度始めてください。	src/ui/provider-setup.js:203	
+sv1qqk	draft	A sign-in came back too late	サインインの戻りが遅すぎました	src/ui/provider-setup.js:203	
+gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}が動いていません。設定 → プラグインで確認してから、もう一度サインインしてください。	src/ui/provider-setup.js:217	{0} = name
+1fbojq2	draft	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:223	{0} = name
+16s9khr	draft	Utility	補助	src/ui/provider-setup.js:231	
+1fm7mjz	draft	Speech out	読み上げ	src/ui/provider-setup.js:231	
+mlh3jc	draft	Main	メイン	src/ui/provider-setup.js:231	
+v20s4a	draft	Quick decision	クイック判定	src/ui/provider-setup.js:231	
+w8niry	draft	Speech in	聞き取り	src/ui/provider-setup.js:231	
+eudybe#other	draft	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:247	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	draft	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}は有料です。{1}には最初に使える無料モデルがなく、Shiori が答えるにはモデルが必要です。	src/ui/provider-setup.js:248	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1c8it09	draft	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	キーが無料枠なら、このページでそれをオンにしてください。そのモデルは無料になります。	src/ui/provider-setup.js:250	
+1dsri4f	draft	Its speech in models went behind the free entries.	聞き取りのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:251	
+jvtji4	draft	Its speech in and speech out models went behind the free entries.	聞き取りと読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:251	
+1r0x31s	draft	Its speech out models went behind the free entries.	読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:252	
+1llun41	draft	The provider	プロバイダー	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
 ktdb8o	draft	Settings	設定	src/ui/screens/about.js:76	
 spfq0z	draft	About annai	annai について	src/ui/screens/about.js:119	
+17r42id	draft	Backup places	バックアップ先	src/ui/screens/add.js:26	
+1q6sl6	draft	Skills and personalities	スキルと性格	src/ui/screens/add.js:26	
+1w8nsi3	draft	Voices and transcription	声と文字起こし	src/ui/screens/add.js:26	
+b5o954	draft	Model providers	モデルのプロバイダー	src/ui/screens/add.js:26	
+elt1il	draft	Developer	開発者向け	src/ui/screens/add.js:26	
+lrurod	draft	Tools and MCP	ツールと MCP	src/ui/screens/add.js:26	
+17ifucf	draft	Transcription	文字起こし	src/ui/screens/add.js:28	
+9kdcjv	draft	Chat	チャット	src/ui/screens/add.js:28	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	draft	Voice	声	src/ui/screens/add.js:28	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	draft	Live voice	ライブ音声	src/ui/screens/add.js:28	
 1pod8pr	draft	Experimental	試験運用版	src/ui/screens/add.js:30	
 hzmwb	draft	Models	モデル	src/ui/screens/add.js:30	
+1n6w7a7	draft	That file isn't something annai can install	そのファイルは annai がインストールできるものではありません	src/ui/screens/add.js:31	
+2jxl7l	draft	Tools from a server that speaks MCP, by its address.	MCP を話すサーバーのツールを、そのアドレスで追加します。	src/ui/screens/add.js:35	
+u7w1bx	draft	An MCP server	MCP サーバー	src/ui/screens/add.js:35	
+15w3tf2	draft	Built into annai	annai に内蔵	src/ui/screens/add.js:37	
+5eawm0	draft	From a file	ファイルから	src/ui/screens/add.js:42	
+1gblst7	draft	From {0}	{0}から	src/ui/screens/add.js:44	{0} = new URL(s.url).host
+1ufe6kk	draft	From an address	アドレスから	src/ui/screens/add.js:46	
+x4eio0	draft	Official	公式	src/ui/screens/add.js:65	
+w28ztz	draft	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	インストール済みの{0}は別の場所から来たものですが、annai 公式のものと同じ ID を持つため、annai は使いません。annai のものを追加するには、設定 → プラグインで削除してください。	src/ui/screens/add.js:67	{0} = facts.name
+tdrd3b	draft	A name, "voice", "free"…	名前、「voice」、「free」…	src/ui/screens/add.js:94	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	draft	Kind	種類	src/ui/screens/add.js:112	
+345x4c	draft	Filters	絞り込み	src/ui/screens/add.js:113	
+11ywf17	draft	Third-party	サードパーティ	src/ui/screens/add.js:115	
+7va5tn	draft	Free	無料	src/ui/screens/add.js:115	
+bahzfs	draft	Local	ローカル	src/ui/screens/add.js:115	
+2rcuyl	draft	Nothing here matches. Try other words, or take a chip off.	一致するものがありません。別の言葉にするか、ボタンを外してください。	src/ui/screens/add.js:123	Note: chip is ボタン/按钮 per the glossary.
+18bnex5	draft	Search the catalog	カタログを検索	src/ui/screens/add.js:145	
+j0fdnt	draft	Nothing here matches.	一致するものがありません。	src/ui/screens/add.js:153	
+rv2u3	draft	Not listed? Add it by its address.	見つかりませんか？アドレスで追加できます。	src/ui/screens/add.js:153	
+npq0yc	draft	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	モデルのプロバイダー、声、バックアップ先、ツール、スキル：annai 公式のものと、インストールしたもの。	src/ui/screens/add.js:161	
+1hszhgv	draft	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	annai のカタログを読み込めませんでした。インターネットに接続して、この画面を開き直してください。インストール済みのものは表示されています。	src/ui/screens/add.js:162	
+1dbd7kr	draft	Also for: {0}	ほかの用途：{0}	src/ui/screens/add.js:173	{0} = why
+b6qm2p	draft	Data only	データのみ	src/ui/screens/add.js:176	
+glpdbk	draft	Has code	コードあり	src/ui/screens/add.js:176	
+1fzjiri	draft	Set up {0}	{0}を設定	src/ui/screens/add.js:199	{0} = name
+isr2rg	draft	Set up	設定する	src/ui/screens/add.js:199	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+n6hn1l	draft	Open	開く	src/ui/screens/add.js:199	
+xf2xmv	draft	Open {0}	{0}を開く	src/ui/screens/add.js:199	{0} = name
+1e8gegw	draft	Install	インストール	src/ui/screens/add.js:202	
+1sd5lj	draft	Add another	もう1つ追加	src/ui/screens/add.js:202	
+18374qe	draft	Add {0}	{0}を追加	src/ui/screens/add.js:204	{0} = name
+1m87n8p	draft	Add another {0}	{0}をもう1つ追加	src/ui/screens/add.js:204	{0} = name
+4bn9ve	draft	Install {0}	{0}をインストール	src/ui/screens/add.js:204	{0} = name
+1srp47z	draft	{0} wasn't installed	{0}をインストールできませんでした	src/ui/screens/add.js:205	{0} = name
+l11acj	draft	{0} wasn't added	{0}を追加できませんでした	src/ui/screens/add.js:205	{0} = name
+orcwpv	draft	Installed {0}.	{0}をインストールしました。	src/ui/screens/add.js:209	{0} = name
+8zey4w	draft	Adding…	追加しています…	src/ui/screens/add.js:216	
+1drktj9	draft	Added	追加済み	src/ui/screens/add.js:228	
+1ox21wg	draft	Get it	取得	src/ui/screens/add.js:243	
+ksdme7	draft	Install from an address or a file	アドレスかファイルからインストール	src/ui/screens/add.js:245	
+1b7aabm	draft	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	コード付きのプラグインは、旅と API キーにすべてアクセスできます。データだけのプラグインは何も実行できません。信頼できるプラグインだけをインストールしてください。	src/ui/screens/add.js:247	
+1e2k1fe	draft	Address of a plugin or skill	プラグインかスキルのアドレス	src/ui/screens/add.js:248	
+17bnagd	draft	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip ファイル、annai-plugin.json、または SKILL.md。Web アプリから読めるサイトにあるもの（GitHub のファイルページは使えます）。	src/ui/screens/add.js:249	
+7ikogv	draft	Install from a file	ファイルからインストール	src/ui/screens/add.js:251	
+hn1sl5	draft	this file isn't a plugin package annai can open: {0}	このファイルは annai が開けるプラグインのパッケージではありません：{0}	src/ui/screens/add.js:265	{0} = message(e)
+ai5f3u	draft	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	まず zip ファイル、annai-plugin.json、または SKILL.md のアドレスを貼り付けてください。	src/ui/screens/add.js:293	
+1huuh2k	draft	Getting it…	取得しています…	src/ui/screens/add.js:298	
 c65xlw	draft	Backups	バックアップ	src/ui/screens/backups.js:77	
 8icj76	draft	Plan	予定	src/ui/screens/booking.js:17	
 1xb4fg	draft	about {0}	約{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
@@ -138,7 +256,266 @@ c65xlw	draft	Backups	バックアップ	src/ui/screens/backups.js:77
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語を読める人がまだ確認していない翻訳です。オンにすると、設定 → Shiori → 言語で選べます。表現が誤っていることがあり、未翻訳の部分は英語のままです。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅	src/ui/screens/ext.js:54	
 1jpjwmm	draft	Back to trip	旅に戻る	src/ui/screens/file.js:23	
-15cdqf0	draft	Tools	ツール	src/ui/screens/mcp.js:14	
+1xtp0n4	draft	Headers, kept on this device	ヘッダー（この端末に保存）	src/ui/screens/mcp.js:5	
+e9m35h	draft	No key	キーなし	src/ui/screens/mcp.js:5	
+il2bb	draft	A bearer token, kept on this device	Bearer トークン（この端末に保存）	src/ui/screens/mcp.js:5	
+15cdqf0	draft	Tools	ツール	src/ui/screens/mcp.js:15	
+195b0jb	draft	MCP servers	MCPサーバー	src/ui/screens/mcp.js:17	Note: The glossary's screen name.
+14uki6b	draft	annai's MCP client isn't running. Reload annai and try again.	annai の MCP クライアントが動いていません。annai を再読み込みして、もう一度試してください。	src/ui/screens/mcp.js:18	
+wu0283	draft	trail	trail	src/ui/screens/mcp.js:21	Note: an example server name typed by the user; kept as a short Latin word, as names are typed.
+19kawat	draft	Bearer token	Bearer トークン	src/ui/screens/mcp.js:24	
+deku7v	draft	None	なし	src/ui/screens/mcp.js:24	
+e8ir2h	draft	Headers	ヘッダー	src/ui/screens/mcp.js:24	
+g5fefm	draft	Token	トークン	src/ui/screens/mcp.js:27	
+4loygk	draft	Headers, one "Name: value" a line	ヘッダー（1行に「Name: value」を1つ）	src/ui/screens/mcp.js:28	
+11q2z7b	draft	Checking…	確認しています…	src/ui/screens/mcp.js:41	
+lzenvg#other	draft	Added {0}: # tools.	{0}を追加しました：ツール#個。	src/ui/screens/mcp.js:47	plural; # = tools; {0} = name.value.trim(); English: "Added {0}: # tool." (one), "Added {0}: # tools." (other)
+16t20wv	draft	Add server	サーバーを追加	src/ui/screens/mcp.js:55	
+z9wl8n	draft	An MCP server gives Shiori tools of its own. Its tools appear in Settings → Tools, where each can be switched off, and every request to it is in the trace. What a server answers is yours to trust, as anything you bring in is.	MCPサーバーは Shiori に独自のツールを与えます。そのツールは設定 → ツールに表示され、1つずつオフにでき、サーバーへのリクエストはすべて記録に残ります。サーバーの答えを信頼するかどうかは、持ち込むほかのものと同じく、あなたしだいです。	src/ui/screens/mcp.js:61	
+raifju	draft	No MCP servers yet.	MCPサーバーはまだありません。	src/ui/screens/mcp.js:62	
+1df7h82	draft	Add a server	サーバーを追加	src/ui/screens/mcp.js:63	
+4el6o6	draft	Name	名前	src/ui/screens/mcp.js:65	
+v2y2ur	draft	Address	アドレス	src/ui/screens/mcp.js:66	
+1kwqdxo	draft	Key	キー	src/ui/screens/mcp.js:67	
+m74jjg	draft	To change a server's token or headers later, remove it and add it again.	あとでサーバーのトークンやヘッダーを変えるには、削除してから追加し直してください。	src/ui/screens/mcp.js:69	
+19zfnyk	draft	The server must let web apps call it (CORS): allow annai's address, the headers Content-Type, Accept, Authorization, Mcp-Session-Id and MCP-Protocol-Version, and expose Mcp-Session-Id.	サーバーは Web アプリからの呼び出しを許可する必要があります（CORS）。annai のアドレス、ヘッダー Content-Type、Accept、Authorization、Mcp-Session-Id、MCP-Protocol-Version を許可し、Mcp-Session-Id を公開してください。	src/ui/screens/mcp.js:70	
+1hnd4d2	draft	and {0} more it has, which annai leaves out	ほかに{0}個あり、annai は使いません	src/ui/screens/mcp.js:82	{0} = num(s.more)
+1oqf3ew#other	draft	{0}: # tools.	{0}：ツール#個。	src/ui/screens/mcp.js:89	plural; # = tools; {0} = s.name; English: "{0}: # tool." (one), "{0}: # tools." (other)
+1eukdi8	draft	{0}'s tools weren't refreshed	{0}のツールを更新できませんでした	src/ui/screens/mcp.js:91	{0} = s.name
+dlgvv3	draft	Refresh tools	ツールを更新	src/ui/screens/mcp.js:95	
+171izid	draft	Tap again to remove	もう一度タップすると削除します	src/ui/screens/mcp.js:96	
+109w3ya	draft	{0} Try again.	{0}もう一度試してください。	src/ui/screens/mcp.js:100	{0} = message(e); Note: {0} is an error message, a sentence of its own.
+j4kt4t	draft	{0} wasn't removed	{0}を削除できませんでした	src/ui/screens/mcp.js:100	{0} = s.name
+1bicsne	draft	off	オフ	src/ui/screens/model.js:11	Note: a reasoning level.
+1ntxi55	draft	max	最大	src/ui/screens/model.js:11	Note: a reasoning level.
+ew9h86	draft	medium	中	src/ui/screens/model.js:11	Note: a reasoning level.
+h5yol9	draft	high	高	src/ui/screens/model.js:11	Note: a reasoning level.
+m0aa9t	draft	low	低	src/ui/screens/model.js:11	Note: a reasoning level.
+1gcnxbm	draft	This model no longer exists.	このモデルはもうありません。	src/ui/screens/model.js:43	
+3kaxmm	draft	Provider model id	プロバイダーのモデル ID	src/ui/screens/model.js:78	
+4iiule	draft	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/ui/screens/model.js:79	
+h1nzmw	draft	This model no longer exists	このモデルはもうありません	src/ui/screens/model.js:94	
+u1a0kf	draft	Back to Models	モデルに戻る	src/ui/screens/model.js:94	
+emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（オフ）	src/ui/screens/model.js:102	{0} = ep.name; {1} = ability.name
+1xvdzwo	draft	Takes photos	写真を受け付ける	src/ui/screens/model.js:109	
+1r9uewq	draft	Takes PDFs	PDF を受け付ける	src/ui/screens/model.js:110	
+1kimkqd	draft	Calls tools	ツールを呼び出す	src/ui/screens/model.js:111	
+vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	キャッシュの保持時間は 5m、1h、またはその両方です。	src/ui/screens/model.js:117	
+107rbay	draft	Model	モデル	src/ui/screens/model.js:125	
+iklo8r	draft	Each setting is saved as you change it.	設定は変更するたびに保存されます。	src/ui/screens/model.js:126	
+5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	コンテキストウィンドウはトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:130	
+tdcgnl	draft	Context window (tokens)	コンテキストウィンドウ（トークン）	src/ui/screens/model.js:130	
+13r1phn	draft	Maximum output (tokens)	最大出力（トークン）	src/ui/screens/model.js:131	
+k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大出力はトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:131	
+1kqdeet	draft	Prices, USD per million tokens (JSON)	料金（100万トークンあたりの USD、JSON）	src/ui/screens/model.js:132	
+pmkq6x	draft	Cache lifetimes (5m, 1h)	キャッシュの保持時間（5m、1h）	src/ui/screens/model.js:133	
+1abbjex	draft	Empty: it is asked for five minutes.	空の場合：5分を求めます。	src/ui/screens/model.js:134	
+i6hz4y	draft	Photo limits (JSON)	写真の上限（JSON）	src/ui/screens/model.js:136	
+dnuqbz	draft	Reasoning levels (JSON)	推論レベル（JSON）	src/ui/screens/model.js:137	
+181p6me	draft	Tunables (JSON)	調整項目（JSON）	src/ui/screens/model.js:138	
+12ylk5m	draft	Extra request fields (JSON)	リクエストの追加フィールド（JSON）	src/ui/screens/model.js:139	
+1b0m2g4	draft	Remove model	モデルを削除	src/ui/screens/model.js:142	
+1hx8faa	draft	Tap again to remove it	もう一度タップすると削除します	src/ui/screens/model.js:142	
+15qwlpp	draft	This voice can't take a style: it is kept, not sent.	この声はスタイルを受け付けません。保存はしますが、送りません。	src/ui/screens/model.js:168	
+a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	どう話してほしいか、短い言葉で。たとえば、落ち着いて、温かく、親しみやすく。	src/ui/screens/model.js:168	
+1gq0a8x	draft	A transcription model: it turns what you say into text.	文字起こしのモデル：話した言葉を文字にします。	src/ui/screens/model.js:188	
+1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	ライブ音声：Koe として、1つのストリームで聞いて話します。	src/ui/screens/model.js:188	
+1r9buge	draft	A voice: Shiori speaks with it.	声：Shiori はこれで話します。	src/ui/screens/model.js:188	
+15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	すべてのリクエストと一緒に送ります。空にすると、モデルの既定値（灰色）を使います。何も送らないようにするには、リクエストの追加フィールドに "voice": null と書いてください。	src/ui/screens/model.js:194	
+nf3vcm	draft	Style	スタイル	src/ui/screens/model.js:195	
+18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	料金（100万トークンあたりの USD、JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
+1wo5fes	draft	Prices, USD (JSON: perMillionChars)	料金（USD、JSON：perMillionChars）	src/ui/screens/model.js:197	
+heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	料金（USD、JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
+dbbxmt	draft	Test	テスト	src/ui/screens/model.js:200	
+1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · リアルタイム：1つのストリームで聞いて話す	src/ui/screens/models.js:15	
+k0393o	draft	Main: talks with you	メイン：あなたと話す	src/ui/screens/models.js:15	
+mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · クラシック：チャットモデルに聞き取りと読み上げを組み合わせる	src/ui/screens/models.js:15	
+187fzjq	draft	Quick decision: yes-or-no checks	クイック判定：はい・いいえの確認	src/ui/screens/models.js:16	
+5815dj	draft	Utility: summaries and small jobs	補助：要約や小さな作業	src/ui/screens/models.js:16	
+1hclnju	draft	Speech in: how Shiori hears you	聞き取り：Shiori があなたの声を聞く方法	src/ui/screens/models.js:17	
+dadv07	draft	Speech out: Shiori's voice	読み上げ：Shiori の声	src/ui/screens/models.js:17	
+1h7ll5r	draft	utility	補助	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
+1naapyq	draft	speech-out	読み上げ	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+1t30hzc	draft	main	メイン	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
+1u27rxd	draft	decide	クイック判定	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+1u7wm22	draft	Koe · Realtime	Koe · リアルタイム	src/ui/screens/models.js:21	
+a363wx	draft	speech-in	聞き取り	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
+a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:21	
+12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	音声がオンで、音声ボタンでリアルタイムを選んでいる間、Koe はこれを使います。ここに答えられるものがなければ、クラシックが答えます。	src/ui/screens/models.js:27	
+1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	クラシックを選んでいるとき、音声がオフのとき、リアルタイムが答えられないとき、Koe はこれを使います。聞き取りがあなたの声を聞き、読み上げが話します。	src/ui/screens/models.js:28	
+1m5zm0a	draft	Phone dictation	端末の音声入力	src/ui/screens/models.js:32	
+1vi25zs	draft	Send audio to the model	音声をモデルに送る	src/ui/screens/models.js:32	
+742sn5	draft	Browser voice	ブラウザの声	src/ui/screens/models.js:32	
+1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:34	
+1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインになる声もあります	src/ui/screens/models.js:34	
+ce8br5	draft	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:34	
+jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori が考える場所：annai が呼び出すプロバイダー、そのモデル、各役割が順に試すモデル、そしてリクエストにかけられる費用。	src/ui/screens/models.js:51	
+uhtk71	draft	No limit	上限なし	src/ui/screens/models.js:69	
+exnl8y	draft	Spend per day	1日の利用額	src/ui/screens/models.js:74	
+1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori のモデルの呼び出しに、すべての旅を合わせて1日に使える額です。使い切ると、彼女のターンはカードで終わり、翌日に続けます。空の場合：上限なし。	src/ui/screens/models.js:75	
+3bernd	draft	Spend per day (USD)	1日の利用額（USD）	src/ui/screens/models.js:76	
+yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	1日は 0.01 ドル以上にしてください。上限なしにするには空にします。	src/ui/screens/models.js:76	
+1kmogw5	draft	Cache	キャッシュ	src/ui/screens/models.js:77	
+el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	プロバイダーは会話の始まりをしばらく保持するので、次のリクエストが安くなります。1時間は5分より書き込みが高くつきますが、数分おきより間を空けて話すなら元が取れます。5分しか保持しないモデルには5分を求めます。	src/ui/screens/models.js:78	
+1bz9ywx	draft	5 minutes	5分	src/ui/screens/models.js:79	
+3eima2	draft	1 hour	1時間	src/ui/screens/models.js:79	
+kl14fu	draft	Keep it for	保持する時間	src/ui/screens/models.js:79	
+uw7pcm	draft	Housekeeping	会話の整理	src/ui/screens/models.js:80	
+qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	会話が長くなると、Shiori は古い部分を要約します。モデルのコンテキストのこの割合に達したとき、またはリクエストがこの大きさになるときに行います。空の場合：通常どおり。	src/ui/screens/models.js:81	
+1sywcgn	draft	Summarize at a share from 50 to 90%.	要約する割合は 50〜90% にしてください。	src/ui/screens/models.js:83	
+5gbpvm	draft	Summarize at (% of the context)	要約するタイミング（コンテキストの %）	src/ui/screens/models.js:83	
+gbbwof	draft	The largest request is from 1 to 64 MiB.	最大のリクエストは 1〜64 MiB です。	src/ui/screens/models.js:84	
+jg9kdh	draft	Largest request (MiB)	最大のリクエスト（MiB）	src/ui/screens/models.js:84	
+9ubpo0	draft	Nothing switched on	オンのものなし	src/ui/screens/models.js:100	
+y7dwt8#other	draft	# models	モデル#個	src/ui/screens/models.js:100	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	draft	Providers	プロバイダー	src/ui/screens/models.js:102	
+rwmbqk	draft	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:104	
+1cjfpwc	draft	Add a provider	プロバイダーを追加	src/ui/screens/models.js:105	
+hbz43i	draft	Roles	役割	src/ui/screens/models.js:133	
+1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上からモデルを試します。1つが失敗すると、次のモデルが答えます。空の役割はメインのリストを使います（Koe は除く）。	src/ui/screens/models.js:135	
+7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から試します。聞くモデルで使える最初の項目と、最初に応答した声を使います。	src/ui/screens/models.js:138	
+1erapbm	draft	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:162	{0} = nameOf(id); {1} = called
+1w3dq5v	draft	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:168	
+pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空です：Koe にはリアルタイムの声がないので、クラシックが答えます。ライブ音声のあるプロバイダーから、Gemini Live などを追加してください。	src/ui/screens/models.js:169	
+1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空です：クラシックでは、Shiori はメインのモデルの半身1つだけです。ここに速いモデルを追加すると、手前で素早く話す声になります。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary.
+wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	何もないので、annai はあなたの声を聞けません。項目を追加してください。	src/ui/screens/models.js:171	
+1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	何もないので、Shiori は声に出して話せません。声を追加してください。	src/ui/screens/models.js:172	
+el9rbx	draft	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:173	
+1rqw64m	draft	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:174	
+48wtk9	draft	Wait for the words (seconds)	言葉を待つ時間（秒）	src/ui/screens/models.js:174	
+796n77	draft	Wait for the first words (seconds)	最初の言葉を待つ時間（秒）	src/ui/screens/models.js:174	
+q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	写真を見られない、PDF を読めないモデルには、読む写真や PDF を、ここにある対応モデルが説明します。なければメインのモデルが説明します。	src/ui/screens/models.js:179	
+14w2ppx	draft	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:181	{0} = called
+17olz31	draft	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:183	{0} = called
+ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/models.js:190	{0} = called
+58mvoq	draft	Reasoning for {0}	{0}の推論	src/ui/screens/models.js:191	{0} = called
+1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	待つ時間は 1〜600 秒です。通常どおりにするには空にします。	src/ui/screens/models.js:192	
+8nhvom	draft	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:207	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	draft	Drag, or use the arrow keys	ドラッグするか、矢印キーを使います	src/ui/screens/models.js:223	
+1ln5v12	draft	Move {0}	{0}を移動	src/ui/screens/models.js:225	{0} = name
+1rvkqip	draft	Move up	上へ移動	src/ui/screens/models.js:226	
+c2tjmw	draft	Move down	下へ移動	src/ui/screens/models.js:227	
+ura2r7	draft	{0} a minute of speech	音声1分あたり{0}	src/ui/screens/provider.js:30	{0} = price(p.perMinute)
+1b0vcka	draft	{0} per million characters	100万文字あたり{0}	src/ui/screens/provider.js:31	{0} = price(p.perMillionChars)
+1xducp7	draft	{0} in, {1} out	入力{0}、出力{1}	src/ui/screens/provider.js:33	{0} = price(p.input); {1} = price(p.output)
+1y6v82m	draft	{0} in, {1} out per million tokens	100万トークンあたり入力{0}、出力{1}	src/ui/screens/provider.js:33	{0} = price(p.input); {1} = price(p.output)
+cfub13	draft	{0} (from {1}: {2})	{0}（{1}から：{2}）	src/ui/screens/provider.js:38	{0} = whole; {1} = next; {2} = then
+5xwskl	draft	This key is on the free tier ({0} doesn't charge)	このキーは無料枠です（{0}は課金しません）	src/ui/screens/provider.js:42	{0} = typeof freeTier === 'string' ? freeTier : pluginName
+1sns4yc#other	draft	With a new key or address, or Remove key, annai first asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}.	キーやアドレスを変えるか、「キーを削除」すると、annai はまず{0}に、保持している会話のターン#件の削除を求めます。10秒以内に削除できなかった分は、期限が切れるまで、最長{1}、{0}が保持します。	src/ui/screens/provider.js:51	plural; # = n; {0} = name; {1} = upTo; English: "With a new key or address, or Remove key, annai first asks {0} to delete the # turn of your conversations it keeps; any it can't in 10 seconds, {0} keeps until it expires, up to {1}." (one), "With a new key or address, or Remove key, annai first asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}." (other)
+k02514#other	draft	First, annai asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}.	annai はまず{0}に、保持している会話のターン#件の削除を求めます。10秒以内に削除できなかった分は、期限が切れるまで、最長{1}、{0}が保持します。	src/ui/screens/provider.js:55	plural; # = n; {0} = name; {1} = upTo; English: "First, annai asks {0} to delete the # turn of your conversations it keeps; any it can't in 10 seconds, {0} keeps until it expires, up to {1}." (one), "First, annai asks {0} to delete the # turns of your conversations it keeps; any it can't in 10 seconds, {0} keeps until they expire, up to {1}." (other)
+lcyovi#other	draft	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	オフラインでキーやアドレスを変えるか、「キーを削除」すると、{0}が保持しているターン#件は、期限が切れるまで、最長{1}、そのまま残ります。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
+ifc222#other	draft	{0} keeps # turns until they expire, up to {1}.	{0}はターン#件を、期限が切れるまで、最長{1}保持します。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
+1fr4kgu	draft	This provider no longer exists	このプロバイダーはもうありません	src/ui/screens/provider.js:80	
+1yxhxra	draft	not set	未設定	src/ui/screens/provider.js:102	
+8rf2wi	draft	saved (type a new one to replace it)	保存済み（置き換えるには新しいキーを入力）	src/ui/screens/provider.js:102	
+17c1dhc	draft	Extra headers (JSON)	追加のヘッダー（JSON）	src/ui/screens/provider.js:103	
+lewgh4	draft	Save	保存	src/ui/screens/provider.js:134	
+1r2b41m	draft	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、{0}プラグインと、ほかに必要とされていない{1}も削除します。	src/ui/screens/provider.js:141	{0} = plugin; {1} = list(protocols)
+5f7g8f	draft	Removes its key, its models and their places in roles, and the {0} plugin.	キー、モデル、役割の中のその位置を削除し、{0}プラグインも削除します。	src/ui/screens/provider.js:142	{0} = plugin
+mcx63c	draft	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、ほかに必要とされていない{0}も削除します。	src/ui/screens/provider.js:143	{0} = list(protocols)
+1ue57qi	draft	Removes its key, its models and their places in roles.	キー、モデル、役割の中のその位置を削除します。	src/ui/screens/provider.js:144	
+1rtug95	draft	To add it back, you'll need its address again: {0}.	元に戻すには、もう一度そのアドレスが必要です：{0}。	src/ui/screens/provider.js:145	{0} = sourceLine(installed).replace(/^From /, '')
+nfdm8v	draft	To add it back, you'll need its file again.	元に戻すには、もう一度そのファイルが必要です。	src/ui/screens/provider.js:146	
+u40nrw	draft	To add it back, you'll need its file again ({0}).	元に戻すには、もう一度そのファイル（{0}）が必要です。	src/ui/screens/provider.js:146	{0} = installed.file
+1tqi1rr	draft	Asking {0} to delete what it keeps…	{0}に、保持しているものの削除を求めています…	src/ui/screens/provider.js:157	{0} = list(k.who)
+evz7q4	draft	Provider	プロバイダー	src/ui/screens/provider.js:174	
+2r1h4p	draft	Connection	接続	src/ui/screens/provider.js:176	
+1swq770	draft	API key	API キー	src/ui/screens/provider.js:179	
+1q0ylpv	draft	Get a key	キーを取得	src/ui/screens/provider.js:181	
+1o4hxda	draft	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、その呼び出しは記録で無料と表示され、1日の利用額にも数えません。	src/ui/screens/provider.js:188	
+12td532	draft	Remove key	キーを削除	src/ui/screens/provider.js:191	
+1qapi39	draft	Tap again to remove the key	もう一度タップするとキーを削除します	src/ui/screens/provider.js:191	
+5bt3jk	draft	Key removed	キーを削除しました	src/ui/screens/provider.js:194	
+1r04n6e	draft	Remove provider	プロバイダーを削除	src/ui/screens/provider.js:203	
+11faf7g	draft	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}にはここで追加する独自の方法がありません。手動で追加して、そのページで設定してください。	src/ui/screens/provider.js:224	{0} = src.name
+ih6plk	draft	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	このプロバイダーのプラグインが動いていません。追加から追加するか、設定 → プラグインで確認してください。	src/ui/screens/provider.js:224	
+u91wwi	draft	Add by hand	手動で追加	src/ui/screens/provider.js:242	
+1nqeyot	draft	By hand	手動	src/ui/screens/provider.js:247	
+cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its own page.	または{0}をそのまま追加して、キーと使える機能をそのページで設定してください。	src/ui/screens/provider.js:248	{0} = src.name
+1lckuuy	draft	Look at it in Settings → Plugins	設定 → プラグインで確認してください	src/ui/screens/provider.js:266	
+10m9pho	draft	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	プラグイン{0}が動いていないため、annai は何ができるかを表示できません。{1}。	src/ui/screens/provider.js:267	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	draft	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	元のプラグインがこの端末になく、annai 公式のプロバイダーでもないため、annai は取得できません。入手した所から、設定 → プラグイン → 追加でもう一度インストールするか、このプロバイダーを削除してください。	src/ui/screens/provider.js:272	
+6k2646	draft	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	プラグインがこの端末になく、取得するための annai のカタログも読み込めませんでした。インターネットに接続して、このページを開き直してください。	src/ui/screens/provider.js:273	
+1e1obo4	draft	Installing…	インストールしています…	src/ui/screens/provider.js:280	
+9djdxp	draft	Install it	インストールする	src/ui/screens/provider.js:289	
+17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン{0}がインストールされていないため、annai は何ができるかを表示できません。	src/ui/screens/provider.js:290	{0} = entry.name
+mf1onk	draft	This provider no longer exists.	このプロバイダーはもうありません。	src/ui/screens/provider.js:303	
+r4y7q	draft	Use {0}	{0}を使う	src/ui/screens/provider.js:328	{0} = a.name
+1o304we	draft	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:335	
+1k5huc5	draft	the provider's: {0}	プロバイダーのもの：{0}	src/ui/screens/provider.js:355	{0} = providerOf(rec).baseUrl
+1ppqeqd	draft	the provider's: none yet	プロバイダーのもの：まだなし	src/ui/screens/provider.js:355	
+12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:362	
+1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	{0}にターン間の会話を保持させる：毎回の送信量が減ります。	src/ui/screens/provider.js:367	{0} = who
+l91m05	draft	Its own address	独自のアドレス	src/ui/screens/provider.js:386	
+9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	空の場合：プロバイダーのアドレス。ここの設定は変更するたびに保存されます。	src/ui/screens/provider.js:392	
+1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：{1}。	src/ui/screens/provider.js:396	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
+1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：無料のキーでは1日、有料のキーでは最長#日。	src/ui/screens/provider.js:397	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
+1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、これをオフにしたときに、annai が削除します。	src/ui/screens/provider.js:399	
+1iorloe	draft	Off, each turn sends the whole conversation.	オフにすると、毎ターン会話全体を送ります。	src/ui/screens/provider.js:399	
+1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、毎ターン会話全体を送ります。	src/ui/screens/provider.js:400	
+72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため、annai は送れません。	src/ui/screens/provider.js:401	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたときに annai が送ります。	src/ui/screens/provider.js:402	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	draft	Test {0}	{0}をテスト	src/ui/screens/provider.js:413	{0} = first.name
+1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:430	{0} = who
+1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:431	{0} = who
+1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:431	{0} = who; {1} = tool.name
+11x4tx3	draft	This needs the {0} plugin, which isn't running.	これには{0}プラグインが必要ですが、動いていません。	src/ui/screens/provider.js:437	{0} = name
+4nyk49	draft	This needs a plugin that isn't running.	これには動いていないプラグインが必要です。	src/ui/screens/provider.js:437	
+15hdhx3	draft	the provider's model id	プロバイダーのモデル ID	src/ui/screens/provider.js:459	
+1oz4euh	draft	Add model	モデルを追加	src/ui/screens/provider.js:472	
+tbmsa5	draft	Asking for its models…	モデルを問い合わせています…	src/ui/screens/provider.js:477	
+1yko1my#other	draft	# models.	モデル#個。	src/ui/screens/provider.js:480	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	draft	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:488	
+1scr2ml	draft	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:491	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	draft	Its models	モデル	src/ui/screens/provider.js:493	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	draft	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:494	
+pnxisg	draft	Add a model by id	ID でモデルを追加	src/ui/screens/provider.js:495	
+1mod47e	draft	for example: haiku	例：haiku	src/ui/screens/provider.js:509	
+uizt0x	draft	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:519	{0} = named
+1w6mxym	draft	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:520	{0} = on
+l7fn8k	draft	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:520	
+19ai2z0	draft	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:531	
+11pl9jr	draft	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:539	
+vam64u	draft	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:539	
+1b2yx8m	draft	Suggested models	おすすめのモデル	src/ui/screens/provider.js:540	
+1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにモデルをおすすめします。その音声のモデルは、無料の端末の音声入力とブラウザの声より前に入るので、有料のものがそれより先に試されます。	src/ui/screens/provider.js:541	{0} = src.name
+1x5hwmk	draft	{0} suggests a model for each role.	{0}は役割ごとにモデルをおすすめします。	src/ui/screens/provider.js:542	{0} = src.name
+1iffu2j	draft	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:549	{0} = n
+1szeqxt	draft	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:549	
+1egvjs1	draft	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:550	{0} = f.name; {1} = messageOf(f.error)
+wlh055	draft	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:556	{0} = which
+11gkctr	draft	Places	場所	src/ui/screens/tools.js:11	context: tool group
+13mxqrp	draft	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
+16crtql	draft	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
+1c0dpym	draft	Files	ファイル	src/ui/screens/tools.js:11	context: tool group
+1le202v	draft	Web	Web	src/ui/screens/tools.js:11	context: tool group
+4sa4zd	draft	Self	Shiori 自身	src/ui/screens/tools.js:11	context: tool group; Note: the tools about Shiori herself; the name keeps it clear.
+8fx6p2	draft	Time	時間	src/ui/screens/tools.js:11	context: tool group
+75p0ey	draft	Plugin: {0}	プラグイン：{0}	src/ui/screens/tools.js:23	{0} = tool.pluginId
+1ljwqr0	draft	(off means voice off)	（オフにすると音声オフ）	src/ui/screens/tools.js:49	
+9k5q86	draft	(always on)	（常にオン）	src/ui/screens/tools.js:49	
+1ai12ua	draft	Your models' own tools	モデル自身のツール	src/ui/screens/tools.js:50	
+1bbv63y	draft	({0})	（{0}）	src/ui/screens/tools.js:51	{0} = list(p.models, 'plain')
+1nh56w1	draft	Get a free key from Jina	Jina で無料のキーを取得	src/ui/screens/tools.js:56	
+1qqjoil	draft	Jina Reader reads sites that don't let web apps read them, and Jina Search searches the web. Some networks need a key. {0}. On that page the key is in the API key box: copy it and paste it above.	Jina Reader は Web アプリから読めないサイトを読み、Jina Search は Web を検索します。キーが必要なネットワークもあります。{0}。そのページでは、キーは API キーの欄にあります。コピーして上に貼り付けてください。	src/ui/screens/tools.js:57	{0} = get
+6b6ezt	draft	A key is set	キーは設定済み	src/ui/screens/tools.js:66	
+vqmn1t	draft	Web	Web	src/ui/screens/tools.js:72	
+17jz3e3	draft	Your model's own search	モデル自身の検索	src/ui/screens/tools.js:74	
+1jhespe	draft	annai's providers (below)	annai のプロバイダー（下）	src/ui/screens/tools.js:74	
+3tlu3u	draft	Off	オフ	src/ui/screens/tools.js:74	
+7f3la6	draft	Your model's own search when it has one, else annai's providers (below)	モデル自身に検索があればそれを、なければ annai のプロバイダー（下）	src/ui/screens/tools.js:74	
+oh3ukx	draft	Search via	検索の方法	src/ui/screens/tools.js:74	
+190j9od	draft	Your model's own fetch	モデル自身のページ取得	src/ui/screens/tools.js:75	
+1jwdtok	draft	annai: directly, then Jina Reader, then Exa, then your model	annai：直接、次に Jina Reader、次に Exa、最後にモデル	src/ui/screens/tools.js:75	
+1yfc12f	draft	Fetch via	ページ取得の方法	src/ui/screens/tools.js:75	
+1411bpy	draft	Jina key	Jina のキー	src/ui/screens/tools.js:76	
+16y03zx	draft	A key is set. It stays on this device and is never shown again.	キーは設定済みです。この端末に保存され、二度と表示されません。	src/ui/screens/tools.js:78	
+7701gj	draft	Key saved.	キーを保存しました。	src/ui/screens/tools.js:85	
+s81kp3	draft	Save key	キーを保存	src/ui/screens/tools.js:87	
+r654x7	draft	Servers that give Shiori tools of their own, with a token or headers kept on this device.	Shiori に独自のツールを与えるサーバー。トークンやヘッダーはこの端末に保存します。	src/ui/screens/tools.js:93	
+vayo7x	draft	Tool switches	ツールのオン/オフ	src/ui/screens/tools.js:95	
+a2pqv8	draft	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori が持つすべてのツール（プラグインのツールも含む）。オフにしたツールは、次のリクエストから外れます。	src/ui/screens/tools.js:97	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	まだ旅はありません。下で始めることも、送られてきた旅を開くこともできます。	src/ui/screens/trips.js:23	Note: Keeps the glossary's 送られてきた旅を開く, the button's own words below it.
 33pqd9	draft	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:27	
@@ -154,10 +531,22 @@ fc4c10	draft	Starts	開始日	src/ui/screens/trips.js:71
 vr6m26	draft	Give the trip a name.	旅の名前を入力してください。	src/ui/screens/trips.js:79	
 152lnj5	draft	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:80	
 1plbhzy	draft	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
+1jrfsn4	draft	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	無料検索は、検索を Exa、Parallel、Firecrawl に送ります。送るのは検索した言葉だけで、ファイルや居場所は送りません。Exa はほかでは読めないページも読むので、そのページのアドレスも送ります。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索内容をモデルの学習に使うことがあるので、検索に名前や住所を入れないでください。その後ろには常に有効な最後の手段があり、同じ言葉を Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは「検索の方法：オフ」だけです。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
+16trcjc	draft	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	チェックしたものには、彼女が検索する言葉だけが送られ、Exa には彼女のために読むページのアドレスも送られます。ファイルや居場所は送りません。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索をモデルの学習に使うことがあるので、名前や住所は入れないでください。その後ろでは、最後の手段として常に Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは設定 → ツール → 検索の方法：オフだけです。これらはすべてそこで変更できます。	src/ui/search-panel.js:15	
+1fn0bdg	draft	Use	使う	src/ui/search-panel.js:31	
 1uowdjd	draft	resting after a failure, tries again {0}	失敗後の休止中、{0}に再試行	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1 分後".
+a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia と OpenStreetMap。常にオンの最後の手段	src/ui/search-panel.js:50	
+10c8x63	draft	free, no key	無料、キー不要	src/ui/search-panel.js:51	
+sbfb3o	draft	ready	準備完了	src/ui/search-panel.js:51	
+qx2onv	draft	couldn't check	確認できませんでした	src/ui/search-panel.js:54	
+1lhwd5p	draft	not ready	準備ができていません	src/ui/search-panel.js:57	
+qvtz3k	draft	On	オン	src/ui/search-panel.js:85	
+1j0itop	draft	Search	検索	src/ui/search-panel.js:86	
+hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search はこれらを上から試し、最初に答えたものを使います。失敗したものはしばらく休んでから、また試されます。使うのをやめるには、チェックを外してください。	src/ui/search-panel.js:88	
+1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	ほかの検索プロバイダーはプラグインです。カタログから追加でき（Tavily、Serper、自分の SearXNG）、キーはそれぞれのページで設定します。	src/ui/search-panel.js:91	
+f2eaqi	draft	Find a search plugin	検索プラグインを探す	src/ui/search-panel.js:92	
 17o4v1i	draft	Conversation	会話	src/ui/shell.js:59	
 ata72m	draft	Trace	記録	src/ui/shell.js:59	
-mlh3jc	draft	Main	メイン	src/ui/shell.js:62	Note: The top bar's name for screen readers.
 1skw031	draft	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:257	
 1pm5i13	draft	Back to Trips	「旅」に戻る	src/ui/shell.js:259	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
 1z00dfe	draft	An update is ready	アップデートの準備ができました	src/ui/shell.js:349	

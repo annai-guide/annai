@@ -23,27 +23,27 @@ import { SYS } from '../../core/scopes.js';
  */
 
 /** @type {Record<string, string>} */
-const KIND_NAMES = { providers: 'Model providers', speech: 'Voices and transcription', backup: 'Backup places', tools: 'Tools and MCP', skills: 'Skills and personalities', developer: 'Developer' };
+const KIND_NAMES = { providers: t`Model providers`, speech: t`Voices and transcription`, backup: t`Backup places`, tools: t`Tools and MCP`, skills: t`Skills and personalities`, developer: t`Developer` };
 /** @type {Record<string, string>} */
-const ABILITY_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' };
+const ABILITY_NAMES = { chat: t`Chat`, transcription: t`Transcription`, voice: t`Voice`, realtime: t`Live voice` };
 /** Where Add was opened from (?from=), for its crumb; Plugins otherwise. @type {Record<string, [string, string]>} */
 const FROM = { models: ['#/models', t`Models`], experimental: ['#/experimental', t`Experimental`] };
-const NOT_INSTALLABLE = "That file isn't something annai can install";
+const NOT_INSTALLABLE = t`That file isn't something annai can install`;
 
 /** An MCP server, added on its own screen: a fixed row whose id no manifest can have. @type {Row} */
 const MCP_ROW = {
-  facts: { id: '#mcp', name: 'An MCP server', version: '', description: 'Tools from a server that speaks MCP, by its address.', category: 'tools',
-    keywords: ['MCP', 'Model Context Protocol'], abilities: [], free: false, local: false, code: false, size: 0, requires: [], official: true },
-  official: true, added: 0, action: 'set-up', from: 'Built into annai', href: '#/mcp',
+  facts: { id: '#mcp', name: t`An MCP server`, version: '', description: t`Tools from a server that speaks MCP, by its address.`, category: 'tools',
+    keywords: /* en */ ['MCP', 'Model Context Protocol'], abilities: [], free: false, local: false, code: false, size: 0, requires: [], official: true },
+  official: true, added: 0, action: 'set-up', from: t`Built into annai`, href: '#/mcp',
 };
 
 /** Where a package from elsewhere came from, in words: its address's host, or a file. @param {any} s */
 function fromWords(s) {
-  if (s.source !== 'url') return 'From a file';
+  if (s.source !== 'url') return t`From a file`;
   try {
-    return `From ${new URL(s.url).host}`;
+    return t`From ${new URL(s.url).host}`;
   } catch {
-    return 'From an address';
+    return t`From an address`;
   }
 }
 
@@ -62,9 +62,9 @@ export function addRows(catalog, installed, configured) {
   const row = (facts, official, s) => {
     const id = facts.id;
     /** @type {Row} */
-    const r = { facts: { ...facts, official }, official, added: configured[id] ?? 0, action: 'install', from: official ? 'Official' : fromWords(s) };
+    const r = { facts: { ...facts, official }, official, added: configured[id] ?? 0, action: 'install', from: official ? t`Official` : fromWords(s) };
     const type = facts.provides?.['storage-type']?.[0];
-    if (official && s && s.source !== 'official') Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}`, note: `The ${facts.name} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.` });
+    if (official && s && s.source !== 'official') Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}`, note: t`The ${facts.name} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.` });
     else if (facts.abilities.length) r.action = r.added ? 'add-another' : 'add';
     else if (facts.category === 'backup') Object.assign(r, { action: 'set-up', href: type ? `#/backups?add=${encodeURIComponent(type)}` : '#/backups' });
     else if (s) Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}` });
@@ -91,7 +91,7 @@ export function addRows(catalog, installed, configured) {
 export function finder({ label, entries, filters = {}, draw }) {
   /** @type {Record<string, any>} */
   const f = { ...filters };
-  const box = h('input', { type: 'search', 'aria-label': label, placeholder: 'A name, "voice", "free"…', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
+  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
   const list = h('div', { class: 'found' });
   /** @type {[HTMLElement, string, any][]} */
   const chips = [];
@@ -109,10 +109,10 @@ export function finder({ label, entries, filters = {}, draw }) {
   };
   box.addEventListener('input', update);
   const el = h('div', { class: 'finder' }, box,
-    h('div', { class: 'chips', role: 'group', 'aria-label': 'Kind' }, ...CATEGORIES.map((k) => chip('kind', k, KIND_NAMES[k]))),
-    h('div', { class: 'chips', role: 'group', 'aria-label': 'Filters' },
+    h('div', { class: 'chips', role: 'group', 'aria-label': t`Kind` }, ...CATEGORIES.map((k) => chip('kind', k, KIND_NAMES[k]))),
+    h('div', { class: 'chips', role: 'group', 'aria-label': t`Filters` },
       ...Object.entries(ABILITY_NAMES).map(([a, text]) => chip('ability', a, text)),
-      chip('free', true, 'Free'), chip('local', true, 'Local'), chip('source', 'official', 'Official'), chip('source', 'third-party', 'Third-party')),
+      chip('free', true, t`Free`), chip('local', true, t`Local`), chip('source', 'official', t`Official`), chip('source', 'third-party', t`Third-party`)),
     list);
   update();
   return { el, update };
@@ -120,7 +120,7 @@ export function finder({ label, entries, filters = {}, draw }) {
 
 /** Grouped by kind when nothing is typed, else in the search's order. @template {{ entry: { category: string } }} F @param {F[]} found @param {boolean} typed @param {(x: F) => Node} item */
 export function byKind(found, typed, item) {
-  if (!found.length) return [h('p', { class: 'empty', text: 'Nothing here matches. Try other words, or take a chip off.' })];
+  if (!found.length) return [h('p', { class: 'empty', text: t`Nothing here matches. Try other words, or take a chip off.` })];
   if (typed) return [h('ul', { class: 'cards' }, ...found.map(item))];
   return CATEGORIES.map((k) => {
     const these = found.filter((x) => x.entry.category === k);
@@ -142,7 +142,7 @@ export async function renderAdd(ctx, route) {
   const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.catchAll || x.entry === MCP_ROW.facts ? 1 : 0);
   const redraw = () => view.update(); // after an install, the row it changed
   const view = finder({
-    label: 'Search the catalog', entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
+    label: t`Search the catalog`, entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
     draw: (found, typed, f) => {
       const item = (/** @type {{ entry: Facts, why?: string }} */ x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw);
       // Nothing found for model providers, transcription or voices: the user's own server is one such, so Custom provider is offered, by its
@@ -150,16 +150,16 @@ export async function renderAdd(ctx, route) {
       const custom = rows.find((r) => r.facts.catchAll);
       const speechy = f.kind ? f.kind === 'providers' || f.kind === 'speech' : Boolean(f.ability);
       if (typed && !found.length && custom && speechy && searchCatalog([custom.facts], '', { ...f, kind: undefined }).length) {
-        return [h('p', { class: 'empty', text: 'Nothing here matches.' }), h('p', { class: 'sub offer', text: 'Not listed? Add it by its address.' }), h('ul', { class: 'cards' }, item({ entry: custom.facts }))];
+        return [h('p', { class: 'empty', text: t`Nothing here matches.` }), h('p', { class: 'sub offer', text: t`Not listed? Add it by its address.` }), h('ul', { class: 'cards' }, item({ entry: custom.facts }))];
       }
       return byKind(typed ? found : found.sort((a, b) => last(a) - last(b)), typed, item);
     },
   });
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(back, backText)),
-    h('h1', { class: 'title', text: 'Add' }),
-    h('p', { class: 'sub', text: "Model providers, voices, backup places, tools and skills: annai's own, and what you have installed." }),
-    catalog === null ? h('p', { class: 'sub warn', text: "annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows." }) : null,
+    h('h1', { class: 'title', text: t`Add` }),
+    h('p', { class: 'sub', text: t`Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.` }),
+    catalog === null ? h('p', { class: 'sub warn', text: t`annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.` }) : null,
     view.el,
     fromElsewhere(ctx));
 }
@@ -167,13 +167,13 @@ export async function renderAdd(ctx, route) {
 /** One row (spec §16.2), with "Also for" when a keyword matched. @param {any} ctx @param {Row} r @param {string | undefined} why @param {() => void} update */
 function rowItem(ctx, r, why, update) {
   const f = r.facts;
-  const badges = [...f.abilities.map((a) => ABILITY_NAMES[a] ?? a), f.free ? 'Free' : null, f.local ? 'Local' : null].filter((b) => b !== null);
+  const badges = [...f.abilities.map((a) => h('span', { class: 'chip', text: ABILITY_NAMES[a] ?? a })), f.free ? h('span', { class: 'chip ok', text: t`Free` }) : null, f.local ? h('span', { class: 'chip', text: t`Local` }) : null].filter((b) => b !== null);
   return h('li', { class: 'card' },
     h('span', { class: 'name', text: f.name }),
-    why ? h('span', { class: 'sub', text: `Also for: ${why}` }) : null,
-    badges.length ? h('span', { class: 'chips' }, ...badges.map((b) => h('span', { class: b === 'Free' ? 'chip ok' : 'chip', text: b }))) : null,
+    why ? h('span', { class: 'sub', text: t`Also for: ${why}` }) : null,
+    badges.length ? h('span', { class: 'chips' }, ...badges) : null,
     f.description ? h('p', { class: 'sub', text: f.description }) : null,
-    h('span', { class: 'sub', text: [r.from, f.version ? (f.code ? 'Has code' : 'Data only') : null, f.size ? size(f.size) : null].filter(Boolean).join(' · ') }),
+    h('span', { class: 'sub', text: [r.from, f.version ? (f.code ? t`Has code` : t`Data only`) : null, f.size ? size(f.size) : null].filter(Boolean).join(' · ') }),
     r.note ? h('p', { class: 'sub warn', text: r.note }) : null,
     h('div', { class: 'acts' }, ...actions(ctx, r, update)));
 }
@@ -195,25 +195,25 @@ async function run(ctx, b, title, work) {
 function actions(ctx, r, update) {
   const { id, name } = r.facts;
   if (r.href) {
-    const text = r.action === 'open' ? 'Open' : 'Set up';
-    return [h('a', { class: 'btn', href: r.href, 'aria-label': `${text} ${name}` }, text)];
+    const open = r.action === 'open';
+    return [h('a', { class: 'btn', href: r.href, 'aria-label': open ? t`Open ${name}` : t`Set up ${name}` }, open ? t`Open` : t`Set up`)];
   }
   const install = r.action === 'install';
-  const label = install ? 'Install' : r.added ? 'Add another' : 'Add';
+  const label = install ? t`Install` : r.added ? t`Add another` : t`Add`;
   const b = h('button', {
-    class: install || r.added ? 'btn' : 'btn pri', type: 'button', 'aria-label': `${label} ${name}`,
-    onclick: () => run(ctx, b, `${name} wasn't ${install ? 'installed' : 'added'}`, install
+    class: install || r.added ? 'btn' : 'btn pri', type: 'button', 'aria-label': install ? t`Install ${name}` : r.added ? t`Add another ${name}` : t`Add ${name}`,
+    onclick: () => run(ctx, b, install ? t`${name} wasn't installed` : t`${name} wasn't added`, install
       ? async () => {
         if (!navigator.serviceWorker?.controller) throw new Error(NO_SERVICE);
         await addFromCatalog(ctx.plugins, id, { tap: true }); // with what it requires
-        ctx.notices.toast(`Installed ${name}.`);
+        ctx.notices.toast(t`Installed ${name}.`);
         Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}` });
         update();
       }
       // A provider: its plugin with what it needs, then the provider and its page (spec §9.8); one with code may
       // have its own Add flow (decision 15), such as a look at what an address offers.
       : async () => {
-        b.textContent = 'Adding…';
+        b.textContent = t`Adding…`;
         // Chat roles still empty get free models only; the speech lists get the rest behind the free entries (spec §9.8).
         /** @type {string[]} */
         const filled = [];
@@ -225,7 +225,7 @@ function actions(ctx, r, update) {
         if (added !== null) sayFilled(ctx, id, filled, costs);
       }),
   }, label);
-  return [r.added ? h('span', { class: 'sub', text: 'Added' }) : null, b];
+  return [r.added ? h('span', { class: 'sub', text: t`Added` }) : null, b];
 }
 
 /** Installing from an address or a file: the install screen comes first (choice 8 of milestone 8a). @param {any} ctx */
@@ -238,17 +238,17 @@ function fromElsewhere(ctx) {
       if (f) await fromFile(ctx, f);
     },
   });
-  const address = h('input', { id: 'plugin-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://…/SKILL.md' });
+  const address = h('input', { id: 'plugin-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: /* en */ 'https://…/SKILL.md' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
-  const get = h('button', { class: 'btn', type: 'button', onclick: () => fromAddress(ctx, address.value, get, error) }, 'Get it');
+  const get = h('button', { class: 'btn', type: 'button', onclick: () => fromAddress(ctx, address.value, get, error) }, t`Get it`);
   address.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => { if (e.key === 'Enter') get.click(); });
-  return h('section', { class: 'panel', 'aria-label': 'Install from an address or a file' },
-    h('h2', { class: 'section', text: 'Install from an address or a file' }),
-    h('p', { class: 'risk-note', text: "A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust." }),
-    h('label', { class: 'field' }, h('span', { class: 'field-label', text: 'Address of a plugin or skill' }), address),
-    h('p', { class: 'sub', text: 'A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).' }),
+  return h('section', { class: 'panel', 'aria-label': t`Install from an address or a file` },
+    h('h2', { class: 'section', text: t`Install from an address or a file` }),
+    h('p', { class: 'risk-note', text: t`A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.` }),
+    h('label', { class: 'field' }, h('span', { class: 'field-label', text: t`Address of a plugin or skill` }), address),
+    h('p', { class: 'sub', text: t`A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).` }),
     error,
-    h('div', { class: 'acts' }, get, h('label', { class: 'btn', for: 'plugin-file' }, 'Install from a file'), input));
+    h('div', { class: 'acts' }, get, h('label', { class: 'btn', for: 'plugin-file' }, t`Install from a file`), input));
 }
 
 /** A file picked: a zip, or a SKILL.md on its own. @param {any} ctx @param {File} f */
@@ -262,7 +262,7 @@ async function fromFile(ctx, f) {
       try {
         files = await readZip(bytes, { maxTotal: PLUGIN_MAX_BYTES });
       } catch (e) {
-        throw new Error(`this file isn't a plugin package annai can open: ${message(e)}`);
+        throw new Error(t`this file isn't a plugin package annai can open: ${message(e)}`);
       }
     }
     const pkg = await ctx.plugins.inspect(files);
@@ -290,12 +290,12 @@ async function fromAddress(ctx, value, button, error) {
   const url = value.trim();
   error.hidden = true;
   if (!url) {
-    error.textContent = 'Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.';
+    error.textContent = t`Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.`;
     error.hidden = false;
     return;
   }
   button.disabled = true;
-  button.textContent = 'Getting it…';
+  button.textContent = t`Getting it…`;
   try {
     // A key in the address isn't a secret yet: the trace blanks it all the same (fix pass 8a-1).
     const files = await fetchPackage(url, { fetch: tracedFetch(ctx.store, SYS, { tool: 'plugins', blank: keysIn(url) }) });
@@ -307,6 +307,6 @@ async function fromAddress(ctx, value, button, error) {
     error.hidden = false;
   } finally {
     button.disabled = false;
-    button.textContent = 'Get it';
+    button.textContent = t`Get it`;
   }
 }
