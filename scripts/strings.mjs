@@ -54,6 +54,23 @@ export const EXTRACTED = [
   'src/ui/screens/mcp.js',
   'src/ui/credits.js',
   'src/ui/privacy.js',
+  // l10n-L5b: trips and the trip.
+  'src/ui/screens/trip.js',
+  'src/ui/screens/plan.js',
+  'src/ui/screens/booking.js',
+  'src/ui/screens/file.js',
+  'src/ui/screens/now.js',
+  'src/ui/screens/drive.js',
+  'src/ui/screens/replay.js',
+  'src/ui/screens/recap.js',
+  'src/ui/stamps.js',
+  'src/ui/trip-rows.js',
+  'src/ui/photo-viewer.js',
+  'src/ui/add-files.js',
+  'src/ui/open-file.js',
+  'src/ui/bring-in.js',
+  'src/ui/offline-pack.js',
+  'src/ui/format.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];

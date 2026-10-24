@@ -1,4 +1,5 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
+import { list } from './format.js';
 import { stampsOf, stampLabel, stampCount } from '../core/after/stamps.js';
 import { validZone, deviceZone } from '../core/time.js';
 
@@ -23,7 +24,7 @@ export async function tripStamps(ctx, id) {
 export function stampMarks(stamps, { max = 2, big = false } = {}) {
   if (!stamps.length) return null;
   const shown = stamps.length > max + 1 ? stamps.slice(0, max) : stamps;
-  return h('span', { class: ['stamps', big ? 'big' : ''], role: 'img', 'aria-label': `${stampCount(stamps.length)}: ${stamps.map((s) => s.name).join(', ')}` },
+  return h('span', { class: ['stamps', big ? 'big' : ''], role: 'img', 'aria-label': t`${stampCount(stamps.length)}: ${list(stamps.map((s) => s.name), 'plain')}` },
     ...shown.map((s) => {
       const label = [...stampLabel(s.name)].slice(0, big ? 11 : 8).join('');
       // A longer word gets smaller type (base.css), so it is never cut or broken across lines.

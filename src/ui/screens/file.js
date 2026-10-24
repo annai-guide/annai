@@ -3,7 +3,7 @@ import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, takenText, pathParts } from '../format.js';
+import { relTime, size, num, takenText, pathParts, authorName } from '../format.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 
@@ -18,18 +18,18 @@ export async function renderFile(ctx, route) {
   // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
   if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
   const head = [h('p', { class: 'crumbs' }, crumb(back, t`Back to trip`)), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
-  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: 'This file was deleted. You can bring back a version below.' }), historyView(ctx, id, path, history, null));
+  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
   const { entry, bytes: content } = r;
   return h('div', { class: 'screen' }, ...head,
-    h('p', { class: 'sub', text: `${entry.type} · ${size(entry.size)} · changed by ${entry.author} ${relTime(entry.modified)}` }),
+    h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),
     editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
-    h('div', { class: 'acts' }, twoStep('Delete file', 'Tap again to delete', async () => {
+    h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
       await ctx.ws.delete(id, path, { author: 'user' });
       ctx.go(back);
     })));
@@ -46,15 +46,15 @@ function editor(ctx, id, entry, content) {
       try {
         await ctx.ws.write(id, entry.path, area.value, { author: 'user', type: entry.type });
         await ctx.render();
-        ctx.notices.toast('Saved');
+        ctx.notices.toast(t`Saved`);
       } catch (e) {
         explainStorageFull(ctx, e);
-        const lines = e instanceof ValidationError ? e.errors : [String(/** @type {any} */ (e)?.message ?? e)];
-        errors.replaceChildren(...lines.map((m) => h('li', { text: m })));
+        // A schema's refusals are its English (decision 11), marked so.
+        errors.replaceChildren(...(e instanceof ValidationError ? e.errors.map((m) => h('li', { lang: 'en', text: m })) : [h('li', { text: String(/** @type {any} */ (e)?.message ?? e) })]));
         errors.hidden = false;
       }
     };
-    return h('div', { class: 'panel' }, field('Content', area), errors, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: save }, 'Save')));
+    return h('div', { class: 'panel' }, field(t`Content`, area), errors, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: save }, t`Save`)));
   }
   if (entry.type.startsWith('image/')) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -62,60 +62,84 @@ function editor(ctx, id, entry, content) {
     const img = h('img', { src: url, alt: entry.path });
     const figure = h('figure', { class: 'preview' },
       h('button', {
-        class: 'photo', type: 'button', 'aria-label': 'Open the photo full size',
+        class: 'photo', type: 'button', 'aria-label': t`Open the photo full size`,
         // In the trip Shiori is in, the viewer can show her the part on screen (spec §16.2).
         onclick: () => openPhotoViewer(url, entry.path, ctx.agent?.target === id ? {
           onShowPart: (/** @type {number[]} */ region) => {
-            ctx.agent.send(`Look at this part of /trip${entry.path}.`, { photos: [{ path: `/trip${entry.path}`, region }] });
+            // The user's words to her, so in their language, as what they type is.
+            const shown = `/trip${entry.path}`;
+            ctx.agent.send(t`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
             ctx.go('#/talk');
           },
         } : {}),
       }, img),
       photoFacts(entry));
     img.addEventListener('error', () => figure.replaceChildren(
-      h('p', { class: 'sub', text: "This browser can't show this photo. It shows in Safari, and a Share export converts it where it can." }),
+      h('p', { class: 'sub', text: t`This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.` }),
       photoFacts(entry)));
     return figure;
   }
   return h('div', { class: 'acts' }, h('button', {
     class: 'btn', type: 'button',
     onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type }), entry.path.split('/').pop() ?? 'file'),
-  }, 'Download'));
+  }, t`Download`));
 }
 
 /** Size, when and where a photo was taken, and whether it is stored as taken. @param {any} entry */
 function photoFacts(entry) {
   const m = entry.meta ?? {};
   const facts = [
-    m.width && m.height ? `${m.width} × ${m.height}` : null,
-    m.taken ? `Taken ${takenText(m.taken)}` : null,
-    m.original ? 'Stored as taken' : null,
+    // Pixels as cameras write them: no thousands mark.
+    m.width && m.height ? `${num(m.width, { useGrouping: false })} × ${num(m.height, { useGrouping: false })}` : null,
+    m.taken ? t`Taken ${takenText(m.taken)}` : null,
+    m.original ? t`Stored as taken` : null,
   ].filter(Boolean).join(' · ');
   const map = m.place
-    ? h('a', { href: `https://www.openstreetmap.org/?mlat=${m.place.lat}&mlon=${m.place.lng}#map=16/${m.place.lat}/${m.place.lng}`, target: '_blank', rel: 'noopener noreferrer' }, 'Where it was taken')
+    ? h('a', { href: `https://www.openstreetmap.org/?mlat=${m.place.lat}&mlon=${m.place.lng}#map=16/${m.place.lat}/${m.place.lng}`, target: '_blank', rel: 'noopener noreferrer' }, t`Where it was taken`)
     : null;
   return h('figcaption', { class: 'sub' }, facts, facts && map ? ' · ' : null, map);
 }
 
 /** @param {any} ctx @param {string} id @param {string} path @param {any[]} history @param {string | null} current */
 function historyView(ctx, id, path, history, current) {
-  if (!history.length) return h('p', { class: 'sub', text: 'No earlier versions.' });
-  return h('section', { class: 'panel', 'aria-label': 'History' },
-    h('h2', { class: 'section', text: 'History' }),
+  if (!history.length) return h('p', { class: 'sub', text: t`No earlier versions.` });
+  return h('section', { class: 'panel', 'aria-label': t`History` },
+    h('h2', { class: 'section', text: t`History` }),
     h('ol', { class: 'history' }, ...history.slice().reverse().map((v) => h('li', {},
-      h('span', { text: `${v.type === 'file.delete' ? 'Deleted' : 'Saved'} by ${v.actor} ${relTime(v.ts)}` }),
+      h('span', { text: versionText(v) }),
       // A version an import didn't carry has no content here (spec §12.3), and one may be gone: said, never thrown.
-      v.type === 'file.write' && !v.new ? h('span', { class: 'sub', text: 'Not kept in this copy' })
+      v.type === 'file.write' && !v.new ? h('span', { class: 'sub', text: t`Not kept in this copy` })
         : v.type === 'file.write' && v.new !== current
           ? h('button', { class: 'btn', type: 'button', onclick: async () => {
             try {
               await ctx.ws.restore(id, path, v.new, { author: 'user' });
             } catch {
-              ctx.notices.toast("That version isn't stored on this device.");
+              ctx.notices.toast(t`That version isn't stored on this device.`);
               return;
             }
             await ctx.render();
-            ctx.notices.toast('Version restored');
-          } }, 'Restore this version')
-          : v.new === current ? h('span', { class: 'sub', text: 'Current' }) : null))));
+            ctx.notices.toast(t`Version restored`);
+          } }, t`Restore this version`)
+          : v.new === current ? h('span', { class: 'sub', text: t`Current` }) : null))));
+}
+
+/** Who changed a file, and when: a message for each who, as the words around a name change with it. @param {any} entry */
+function changedText(entry) {
+  const ago = relTime(entry.modified);
+  if (entry.author === 'user') return t`changed by you ${ago}`;
+  if (entry.author === 'shiori') return t`changed by Shiori ${ago}`;
+  return entry.author === 'system' ? t`changed by annai ${ago}` : t`changed by ${authorName(entry.author)} ${ago}`;
+}
+
+/** A version in a file's history: saved or deleted, by whom, when. @param {any} v */
+function versionText(v) {
+  const ago = relTime(v.ts);
+  if (v.type === 'file.delete') {
+    if (v.actor === 'user') return t`Deleted by you ${ago}`;
+    if (v.actor === 'shiori') return t`Deleted by Shiori ${ago}`;
+    return v.actor === 'system' ? t`Deleted by annai ${ago}` : t`Deleted by ${authorName(v.actor)} ${ago}`;
+  }
+  if (v.actor === 'user') return t`Saved by you ${ago}`;
+  if (v.actor === 'shiori') return t`Saved by Shiori ${ago}`;
+  return v.actor === 'system' ? t`Saved by annai ${ago}` : t`Saved by ${authorName(v.actor)} ${ago}`;
 }

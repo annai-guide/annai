@@ -255,10 +255,15 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
   const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
   assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
-    "An Android phone backed up to me/annai-backup 1 hour ago, after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it (the other backup stays in its history).");
+    "An Android phone backed up to me/annai-backup 1 hour ago. That was after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it. The other backup stays in its history.");
   assert.equal(newerText(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), { where: 'x', noun: 'computer', tree: false }, now),
     'Another device backed up to x just now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
   assert.equal(newerText(t(), { where: 'x', noun: 'phone', tree: true }, now), '');
+  // Whole sentences for each kind of device; one annai doesn't name is "another device".
+  assert.equal(newerText(t({ last, hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'iPad' } } }), { where: 'x', noun: 'iPad', tree: false }, now),
+    "An iPad backed up to x just now. That was after this iPad's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this iPad over it.");
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'toaster' } } }), null, now), 'Paused: there is a newer backup from another device');
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'computer' } } }), null, now), 'Paused: there is a newer backup from a computer');
   assert.deepEqual(parseHash('#/backups/place?id=bt-1'), { name: 'backups', parts: ['backups', 'place'], params: { id: 'bt-1' } });
 });
 
@@ -497,7 +502,7 @@ test("a pack whose manifest doesn't say when it was downloaded says only that it
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
   assert.equal(downloadedWhen(''), '');
   assert.equal(downloadedWhen('not a time'), '');
-  assert.equal(downloadedWhen(new Date().toISOString()), ' just now');
+  assert.equal(downloadedWhen(new Date().toISOString()), 'just now');
 });
 
 test('the trace says what each offline pack download did', () => {
