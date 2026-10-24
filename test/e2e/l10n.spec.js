@@ -653,6 +653,29 @@ test('under Japanese screens the languages you speak are named in Japanese, each
   await expect(status).toHaveText(JA[key('{0} removed; Shiori answers in the language you speak to her again. Saved')].replace('{0}', '英語'));
 });
 
+test('under Japanese screens a trip card\'s name carries its own language, not the screens\'', async ({ page }) => {
+  needJapanese();
+  await openApp(page, '#/trips');
+  for (const name of ['云南国庆之旅', '京都の紅葉', 'Kyoto Spring']) {
+    await page.evaluate(() => { location.hash = '#/trips'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await startTrip(page, name);
+  }
+  await allowUnfinished(page);
+  await page.evaluate(() => { location.hash = '#/shiori'; });
+  const restarted = page.waitForEvent('load');
+  await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
+  await restarted;
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await page.evaluate(() => { location.hash = '#/trips'; });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(TRIPS_JA);
+  const names = page.locator('.trip-card .name');
+  await expect(names).toHaveCount(3);
+  const langs = Object.fromEntries(await names.evaluateAll((els) => els.map((el) => [el.textContent, el.getAttribute('lang')])));
+  expect(langs).toEqual({ '云南国庆之旅': 'zh-Hans', '京都の紅葉': 'ja', 'Kyoto Spring': 'en' });
+  await expect(names.first()).toHaveAttribute('dir', 'auto');
+});
+
 test('Don\'t restart, on the card that waits for Shiori, gives the row back and says the change waits', async ({ page }) => {
   needJapanese();
   const reply = { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Low tide is at 5:40.' } }, { name: 'sleep', input: {} }]), delayMs: 6000 };
