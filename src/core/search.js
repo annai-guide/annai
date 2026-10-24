@@ -5,6 +5,7 @@
  * @typedef {{ score: 0 | 1 | 2 | 3, why?: string }} Rank  why: the keyword, as written, that matched
  * @typedef {{ text: string, starts: Set<number> }} Squashed
  */
+import { sortWords } from './intl.js';
 
 /** A query past this many characters is cut there: matching is read once per field, but a pasted page needn't be. */
 const MAX_QUERY = 100;
@@ -97,5 +98,5 @@ export function searchCatalog(entries, query, filters = {}) {
   }
   const yes = (/** @type {unknown} */ v) => (v ? 1 : 0);
   return out.sort((a, b) => b.score - a.score || yes(b.entry.featured) - yes(a.entry.featured)
-    || yes(b.entry.official) - yes(a.entry.official) || a.entry.name.localeCompare(b.entry.name));
+    || yes(b.entry.official) - yes(a.entry.official) || sortWords(a.entry.name, b.entry.name));
 }

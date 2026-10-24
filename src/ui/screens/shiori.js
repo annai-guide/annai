@@ -6,6 +6,7 @@ import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core
 import { LABELS } from '../../core/agent/loop.js';
 import { createAvatar } from '../avatar.js';
 import { languagesSection } from '../languages.js';
+import { numField } from '../format.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -54,7 +55,7 @@ export async function renderShiori(ctx, route) {
   const showHalves = savedCheck('Show what the halves tell each other', shownSettings(app).showHalves, (on) => updateAppSettings(ctx.ws, { shiori: { showHalves: on } }));
   const b = app.shiori?.budgets ?? {};
   const budgets = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: { budgets: c } });
-  const num = (/** @type {string} */ id, /** @type {any} */ value) => h('input', { id, type: 'number', inputmode: 'numeric', min: '1', step: '1', placeholder: 'No limit', value: value ?? '' });
+  const num = (/** @type {string} */ id, /** @type {any} */ value) => h('input', { id, inputmode: 'numeric', placeholder: 'No limit', value: numField(value) });
   const steps = num('budget-steps', b.stepsPerWake);
   const wakes = num('budget-wakes', b.wakesPerHour);
   const quietFrom = h('input', { id: 'quiet-from', type: 'time', value: b.quietHours?.from ?? '' });

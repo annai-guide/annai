@@ -1889,10 +1889,10 @@ export class Agent {
     }
   }
 
-  /** What went wrong with a model call, in words for a card. @param {unknown} e @param {string} [role] */
-  #explain(e, role = 'main') {
+  /** What went wrong with a model call, in words for a card (or, for a model to read, in annai's English). @param {unknown} e @param {string} [role] @param {boolean} [forModel] */
+  #explain(e, role = 'main', forModel = false) {
     return e instanceof AllFailedError
-      ? (e.attempts.length ? failedText(e.attempts, { offline: !this.online() }) : `No model is set for the ${role} role. Add one in Settings → Models.`)
+      ? (e.attempts.length ? failedText(e.attempts, { offline: !this.online(), plain: forModel }) : `No model is set for the ${role} role. Add one in Settings → Models.`)
       : e instanceof ProviderError ? explain(e) : String(/** @type {any} */ (e)?.message ?? e);
   }
 
@@ -2206,7 +2206,7 @@ export class Agent {
             const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: pdf ? DESCRIBE_PDF : DESCRIBE, maxOutput: pdf ? 3000 : 600, messages: [{ role: 'user', parts: [part, { type: 'text', text: pdf ? 'Give this PDF\'s content.' : 'Describe this photo.' }] }] } });
             why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}${pdf && r.reply.stop === 'length' ? GOES_ON : ''}` : '';
           } catch (e) {
-            why ||= `It couldn't be described: ${this.#explain(e, role)}`;
+            why ||= `It couldn't be described: ${this.#explain(e, role, true)}`;
             continue;
           }
           if (why) break;

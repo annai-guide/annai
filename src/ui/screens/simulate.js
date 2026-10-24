@@ -2,6 +2,7 @@ import { h, field } from '../dom.js';
 import { SPEEDS } from '../../core/live/sim-run.js';
 import { listTrips } from '../../core/scopes.js';
 import { answerJSON } from '../../core/answer.js';
+import { dayClock } from '../format.js';
 
 const SAMPLE = '/assets/simulations/big-sur.json';
 /** @type {Record<string, string>} */
@@ -56,7 +57,7 @@ function tickTime(ctx, body) {
   const time = body.querySelector('.sim-time');
   const bar = body.querySelector('progress');
   if (!s || now === null || !time || !bar) return;
-  time.textContent = new Intl.DateTimeFormat(navigator.language || 'en-US', { timeZone: s.tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+  time.textContent = dayClock(now, s.tz);
   bar.value = Math.max(0, now - s.from);
 }
 

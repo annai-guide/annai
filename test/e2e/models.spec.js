@@ -382,3 +382,39 @@ for (const how of ['touch', 'mouse']) {
     }
   });
 }
+
+// Formats follow the screens' language with the phone's region (localization L2): a German phone gets English screens with German
+// number marks, and a number typed the German way is read the German way.
+test.describe('on a German phone', () => {
+  test.use({ locale: 'de-DE' });
+
+  test('the screens stay English, the formats are en-DE, and a spend typed "1,5" is saved as 1.5', async ({ page }) => {
+    await openApp(page, '#/models');
+    await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
+    expect(await page.evaluate(async () => {
+      const { locale, num, size } = await import(/** @type {string} */ ('/src/ui/format.js'));
+      return [document.documentElement.lang, locale(), num(1234.5), size(1536)];
+    })).toEqual(['en', 'en-DE', '1.234,5', '1,5 kB']);
+    const spend = page.getByLabel('Spend per day (USD)');
+    await spend.fill('1,5');
+    await spend.press('Tab');
+    await expect(savedBy(spend)).toHaveText('Saved');
+    expect(await page.evaluate(async () => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const { readAppSettings } = await load('/src/core/settings.js');
+      const store = await createIdbStore();
+      try {
+        return (await readAppSettings(new Workspace(store))).shiori?.budgets?.spendPerDay;
+      } finally {
+        store.close();
+      }
+    })).toBe(1.5);
+    await page.reload();
+    await expect(page.getByLabel('Spend per day (USD)')).toHaveValue('1,5'); // shown the way it is typed here
+    await page.getByLabel('Spend per day (USD)').fill('lots');
+    await page.getByLabel('Spend per day (USD)').press('Tab');
+    await expect(page.getByText('A day costs at least $0.01; leave it empty for no limit.')).toBeVisible();
+  });
+});

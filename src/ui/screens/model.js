@@ -4,6 +4,7 @@ import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
 import { pricesProblem } from '../../core/llm/cost.js';
+import { numField } from '../format.js';
 import { NotFoundError } from '../../core/workspace.js';
 
 /**
@@ -105,8 +106,8 @@ export async function renderModel(ctx, id) {
   const images = takes('Takes photos', 'image');
   const pdfs = takes('Takes PDFs', 'pdf');
   const tools = savedCheck('Calls tools', m.tools !== false, (on) => save('tools', on));
-  const window = h('input', { id: 'model-window', inputmode: 'numeric', value: m.contextWindow ?? '' });
-  const max = h('input', { id: 'model-max', inputmode: 'numeric', value: m.maxOutput ?? '' });
+  const window = h('input', { id: 'model-window', inputmode: 'numeric', value: numField(m.contextWindow) });
+  const max = h('input', { id: 'model-max', inputmode: 'numeric', value: numField(m.maxOutput) });
   const ttls = h('input', { id: 'model-ttls', autocomplete: 'off', value: m.cacheTtls.join(', '), placeholder: '5m, 1h' });
   const readTtls = () => {
     const list = ttls.value.split(/[\s,]+/).filter(Boolean);

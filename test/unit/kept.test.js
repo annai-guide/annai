@@ -419,8 +419,8 @@ test('a call that fails after Google kept its turn deletes it before it settles;
 test('the Trace says when a call continued a kept turn and how much it sent, and each deletion', async () => {
   const { traceSummary } = await import('../../src/ui/screens/trace.js');
   assert.equal(traceSummary({ type: 'net.request', data: { model: 'Gemini 3.5 Flash Lite', outcome: 'ok', status: 200, ms: 800, bytes: 2400, kept: { from: 4 } } }),
-    'Gemini 3.5 Flash Lite · ok (200) · 800 ms · 2.3 KB sent, after a kept turn');
-  assert.equal(traceSummary({ type: 'net.request', data: { model: 'Gemini 3.5 Flash Lite', outcome: 'ok', status: 200, ms: 800, bytes: 24000 } }), 'Gemini 3.5 Flash Lite · ok (200) · 800 ms · 23 KB sent');
+    'Gemini 3.5 Flash Lite · ok (200) · 800 ms · 2.3 kB sent, after a kept turn');
+  assert.equal(traceSummary({ type: 'net.request', data: { model: 'Gemini 3.5 Flash Lite', outcome: 'ok', status: 200, ms: 800, bytes: 24000 } }), 'Gemini 3.5 Flash Lite · ok (200) · 800 ms · 23 kB sent');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'forget', endpoint: 'Google Gemini', outcome: 'ok', status: 200, ms: 120 } }), 'kept turn deleted · Google Gemini · 200 · 120 ms');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'forget', endpoint: 'Google Gemini', outcome: 'waiting', status: 0, ms: 3 } }), 'kept turn not deleted yet · Google Gemini · no answer · 3 ms');
 });

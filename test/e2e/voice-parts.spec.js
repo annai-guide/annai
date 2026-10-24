@@ -65,8 +65,8 @@ test("a transcription model's Test: you say something and it writes it down, sen
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Web' });
     const line = page.locator('.trace li').filter({ hasText: 'asr-test' }).first().locator('.d');
-    await expect(line).toHaveText(/^asr-test · ok \(200\) · \d+ ms · webm, \d+(\.\d)? KB$/);
-    expect(Number(/webm, ([\d.]+) KB/.exec(await line.innerText())?.[1])).toBeLessThan(15); // the same speech as WAV is about 70 KB
+    await expect(line).toHaveText(/^asr-test · ok \(200\) · \d+ ms · webm, \d+(\.\d)? kB$/);
+    expect(Number(/webm, ([\d.]+) kB/.exec(await line.innerText())?.[1])).toBeLessThan(15); // the same speech as WAV is about 70 KB
   } finally {
     await asr.stop();
   }

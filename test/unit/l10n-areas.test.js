@@ -30,8 +30,8 @@ test('backupText is three whole messages, so a translation can put the time wher
     [key('backed up {0}, changed since')]: '{0}にバックアップ済み、その後に変更あり',
   });
   assert.equal(backupText({ at: null, changed: true }, now), '未バックアップ');
-  assert.equal(backupText({ at: twoDays, changed: false }, now), '2 days agoにバックアップ済み');
-  assert.equal(backupText({ at: twoDays, changed: true }, now), '2 days agoにバックアップ済み、その後に変更あり');
+  assert.equal(backupText({ at: twoDays, changed: false }, now), '一昨日にバックアップ済み');
+  assert.equal(backupText({ at: twoDays, changed: true }, now), '一昨日にバックアップ済み、その後に変更あり');
 });
 
 test('the Languages section\'s statuses are whole messages, each with its saved form; the English reads as before', () => {

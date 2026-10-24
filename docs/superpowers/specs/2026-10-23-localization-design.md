@@ -280,7 +280,7 @@ The helpers in `src/ui/format.js` grow into the one place that formats for peopl
 | `relTime(ts)` | `Intl.RelativeTimeFormat`, `numeric: 'auto'` | "2 hours ago", "yesterday", "now" |
 | `day`, `dateRange`, `when(at, tz)` | `Intl.DateTimeFormat`, `formatRange` | dates, trip dates, booking times |
 | `zone(at, tz)` | `DateTimeFormat` `timeZoneName: 'shortGeneric'` | "PT", "Japan Time": never "America/Los_Angeles" |
-| `list(items, 'and' \| 'or')` | `Intl.ListFormat` | "English, Chinese and Japanese", "英語、中国語、日本語" |
+| `list(items, 'and' \| 'or')` | `Intl.ListFormat` | "English, Chinese, and Japanese", "英語、中国語、日本語" |
 | `languageName(id)` | `Intl.DisplayNames` in the interface language | the Languages screen ("Japanese" / "日本語" / "日语"), falling back to `LANGUAGES`' English name when the browser has none |
 | `sortWords(a, b)` | `Intl.Collator` | the plan's untimed rows by title (src/core/plan.js:101), plugin names |
 | `parseNum(text)` | the language's decimal sign, from `formatToParts` | 16 number fields: "1,5" typed in German is 1.5, not refused |

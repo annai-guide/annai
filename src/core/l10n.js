@@ -16,6 +16,22 @@ let rules = null;
 /** Sets the language and words, at the start and in tests. @param {string} next @param {Record<string, any> | null} words @param {(english: string) => string} [transform] */
 export function setWords(next, words, transform) { tag = next; table = words; pseudo = transform ?? null; seen = new WeakMap(); rules = null; }
 export const lang = () => tag;
+
+let phoneSeen = '';
+let current = 'en-US';
+/** The formats' locale: the interface language with the phone's region ("en-GB", "en-DE"; "ja" for ja-US, as Intl resolves it). */
+export function locale() {
+  const phone = globalThis.navigator?.language || 'en-US';
+  if (phoneSeen !== `${tag}|${phone}`) {
+    phoneSeen = `${tag}|${phone}`;
+    try {
+      current = new Intl.Locale(tag, { region: new Intl.Locale(phone).maximize().region }).toString();
+    } catch {
+      current = tag;
+    }
+  }
+  return current;
+}
 export const dir = () => (['ar', 'he', 'fa', 'ur'].includes(tag.split('-')[0]) ? 'rtl' : 'ltr');
 
 /** A message's key: FNV-1a over its UTF-8, base 36. @param {string} source @param {string} [context] */
@@ -84,6 +100,6 @@ export function plural(n, one, other, ...values) {
   // English without a translation, counted the English way.
   const english = Math.abs(n) === 1 ? one : other;
   const text = typeof own === 'string' && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
-  const shown = n.toLocaleString(table ? tag : 'en');
+  const shown = n.toLocaleString(locale());
   return text.replace(/#|\{(\d+)\}/g, (m, i) => (i === undefined ? shown : wrap(values[i])));
 }

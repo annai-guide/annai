@@ -1,3 +1,4 @@
+import { timeIn, deviceZone } from '../../src/core/time.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -138,7 +139,7 @@ test('a 429 carries its wait as retryAfter; the per-day one says when, in words,
   });
   const r = await call();
   assert.equal(r.modelId, 'm-l', "the role falls to the next flash, with a day's quota of its own");
-  const end = new Date(now + 27631000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const end = timeIn(now + 27631000, deviceZone());
   assert.match(String(r.attempts[0].error), new RegExp(`its daily limit is used up; it rests until .*${end}`));
   assert.equal(bench.until('m-g'), now + 27631000);
   await call();

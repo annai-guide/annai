@@ -1,4 +1,5 @@
 export { t, tc, plural } from '../core/l10n.js';
+import { parseNum } from '../core/intl.js';
 
 /**
  * Builds DOM without innerHTML (the CSP and spec §15 forbid it).
@@ -165,7 +166,7 @@ export function messageOf(e) {
 export function numberIn(input, lo, hi, words, { whole = false, need = false } = {}) {
   const t = input.value.trim();
   if (!t && !need && !input.validity?.badInput) return null;
-  const n = Number(t);
+  const n = parseNum(t);
   if (!t || !(n >= lo && n <= hi) || (whole && !Number.isInteger(n))) throw new Error(words);
   return n;
 }

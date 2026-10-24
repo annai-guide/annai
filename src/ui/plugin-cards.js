@@ -1,4 +1,4 @@
-import { andList } from './format.js';
+import { list } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
@@ -20,7 +20,7 @@ export const NEEDS_RELOAD = "annai needs a reload: it opened without its offline
 export function reloadCard(names, reload) {
   return {
     tone: /** @type {const} */ ('warn'), title: 'annai needs a reload',
-    body: `It opened without its offline service, so ${names.length ? `${names.length > 1 ? 'these plugins' : 'this plugin'} can't start: ${andList(names)}` : "plugins can't start or be installed"}.`,
+    body: `It opened without its offline service, so ${names.length ? `${names.length > 1 ? 'these plugins' : 'this plugin'} can't start: ${list(names)}` : "plugins can't start or be installed"}.`,
     actions: [{ label: 'Reload now', primary: true, run: reload }],
   };
 }

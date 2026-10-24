@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { planRowOf } from './now.js';
-import { planRows, planDays, legKm, distanceText, dayLabel, shioriUndos, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
+import { planRows, planDays, legKm, shioriUndos, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -8,7 +8,7 @@ import { validZone, deviceZone, dayIn } from '../../core/time.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { ask } from '../ask.js';
-import { fileHref, bookingHref, dateRange } from '../format.js';
+import { fileHref, bookingHref, dateRange, day, distance } from '../format.js';
 
 const KINDS = /** @type {Record<string, string>} */ ({ flight: 'Flight', lodging: 'Stay', car: 'Car', rail: 'Train', event: 'Event', restaurant: 'Restaurant', other: 'Booking' });
 
@@ -27,14 +27,13 @@ export async function renderPlan(ctx, route) {
   const fallbackTz = [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
   const plan = await records(ctx, id, '/plan/', PLAN_FILE);
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
-  const locale = navigator.language || 'en-US';
-  const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz, locale });
+  const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });
   const { days, untimed } = planDays(rows, trip);
   // Plan files Shiori changed last, and what Undo does (choice 9), from one read of the log.
   const undo = await shioriUndos(ctx.ws, id, plan.list);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
 
-  const tabs = [...days.map((d) => ({ key: d.key, label: dayLabel(d.key, locale), rows: d.rows })), ...(untimed.length ? [{ key: '', label: `No time yet (${untimed.length})`, rows: untimed }] : [])];
+  const tabs = [...days.map((d) => ({ key: d.key, label: day(d.key, true), rows: d.rows })), ...(untimed.length ? [{ key: '', label: `No time yet (${untimed.length})`, rows: untimed }] : [])];
   const today = dayIn(Date.now(), deviceZone());
   const first = tabs.find((t) => t.key === today) ?? tabs.find((t) => t.rows.length) ?? tabs[0];
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
@@ -44,7 +43,7 @@ export async function renderPlan(ctx, route) {
   function show(t) {
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === t)));
     panel.setAttribute('aria-label', t.label);
-    panel.replaceChildren(t.rows.length ? timetable(ctx, id, t.rows, links, locale, undo) : h('p', { class: 'empty', text: 'Nothing planned this day.' }));
+    panel.replaceChildren(t.rows.length ? timetable(ctx, id, t.rows, links, undo) : h('p', { class: 'empty', text: 'Nothing planned this day.' }));
   }
   if (first) show(first);
 
@@ -99,13 +98,13 @@ async function records(ctx, id, prefix, shape) {
   return { list, broken };
 }
 
-/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {string} locale @param {Map<string, { restore: string } | { remove: true }>} undo */
-function timetable(ctx, id, rows, links, locale, undo) {
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {Map<string, { restore: string } | { remove: true }>} undo */
+function timetable(ctx, id, rows, links, undo) {
   /** @type {HTMLElement[]} */
   const out = [];
   rows.forEach((r, i) => {
     const km = i ? legKm(rows[i - 1], r) : null;
-    if (km !== null) out.push(leg(rows[i - 1], r, km, links, locale));
+    if (km !== null) out.push(leg(rows[i - 1], r, km, links));
     out.push(row(ctx, id, r, undo));
   });
   return h('ol', { class: 'timetable' }, ...out);
@@ -162,13 +161,13 @@ function undoChip(ctx, id, r, u) {
 }
 
 /** The leg between two stops: how far apart, and directions in the phone's maps app. */
-function leg(/** @type {any} */ a, /** @type {any} */ b, /** @type {number} */ km, /** @type {any} */ links, /** @type {string} */ locale) {
+function leg(/** @type {any} */ a, /** @type {any} */ b, /** @type {number} */ km, /** @type {any} */ links) {
   const prefer = platform() === 'ios' ? 'apple' : 'google';
   const maps = links?.maps?.find((/** @type {any} */ m) => m.id === prefer && m.modes.drive) ?? links?.maps?.find((/** @type {any} */ m) => m.modes.drive);
   const p = a.item.place;
   const q = b.item.place;
   const url = maps ? expandLink(maps.directions, { origin: `${p.lat},${p.lng}`, destination: `${q.lat},${q.lng}`, mode: maps.modes.drive }) : null;
   return h('li', { class: 'leg' },
-    h('span', { text: `${distanceText(km, locale)} apart` }),
+    h('span', { text: `≈ ${distance(km)} apart` }),
     url ? h('a', { class: 'btn', href: url, target: '_blank', rel: 'noopener noreferrer' }, 'Directions') : null);
 }

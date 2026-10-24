@@ -1,8 +1,11 @@
 import { h, field } from '../dom.js';
-import { formatCost, bytes, withArticle } from '../format.js';
+import { formatCost, size, withArticle, duration, num, when } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
 import { readBlob } from '../../core/reach.js';
+
+/** The trace's time: numeric, to the second, as the phone writes it. */
+const STAMP = /** @type {Intl.DateTimeFormatOptions} */ ({ year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
 /** What each kind of entry is, for the Kind filter. */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
@@ -84,7 +87,7 @@ export async function renderTrace(ctx, route) {
 function row(ctx, e, titles, perWake) {
   return h('li', {}, h('details', {},
     h('summary', {},
-      h('span', { class: 'tm', text: new Date(e.ts).toLocaleString() }),
+      h('span', { class: 'tm', text: when(e.ts, undefined, STAMP) }),
       h('span', { class: 'k', text: e.type }),
       h('span', { class: 'sub', text: `${titles.get(e.scope) ?? e.scope} · ${e.actor}` }),
       h('span', { class: 'd', text: traceSummary(e, { costs: perWake }) })),
@@ -115,9 +118,9 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'halves') return `annai to Kokoro · ${d.state} · ${cut(d.text)}`;
   if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
   if (e.type === 'heard') {
-    return [d.source === 'dictation' ? 'phone dictation' : `${((d.ms ?? 0) / 1000).toFixed(1)} s from the microphone`, d.text ? `"${cut(d.text)}"` : null,
+    return [d.source === 'dictation' ? 'phone dictation' : `${duration(d.ms ?? 0)} from the microphone`, d.text ? `"${cut(d.text)}"` : null,
       d.answer ? 'an answer' : d.meanwhile ? 'while she was thinking' : null, d.dismissed ? 'not for Shiori' : null,
-      d.clip ? `clip kept${d.clipFormat ? `: ${d.clipFormat}, ${bytes(d.clipBytes ?? 0)}` : ''}` : null].filter(Boolean).join(' · ');
+      d.clip ? `clip kept${d.clipFormat ? `: ${d.clipFormat}, ${size(d.clipBytes ?? 0)}` : ''}` : null].filter(Boolean).join(' · ');
   }
   if (e.type === 'heard.text') return `"${cut(d.text)}"${d.by ? ` · written down by ${d.by}` : ''}`;
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
@@ -160,40 +163,40 @@ export function traceSummary(e, { costs: perWake } = {}) {
   }
   // A live session's life (K4): never its address or key, which annai never keeps.
   if (e.type === 'live.session') {
-    return [`live session ${d.state}`, d.model, d.ms !== undefined ? (d.ms >= 60_000 ? `${(d.ms / 60_000).toFixed(1)} min` : `${(d.ms / 1000).toFixed(1)} s`) : null, d.why ? cut(d.why) : null, d.kind,
-      d.bytesIn !== undefined ? `${bytes(d.bytesIn)} in, ${bytes(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
-      d.sampleRate ? [`sound at ${(d.sampleRate / 1000).toFixed(1)} kHz`, ...[['processing', d.baseLatency], ['output', d.outputLatency]]
+    return [`live session ${d.state}`, d.model, d.ms !== undefined ? duration(d.ms) : null, d.why ? cut(d.why) : null, d.kind,
+      d.bytesIn !== undefined ? `${size(d.bytesIn)} in, ${size(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
+      d.sampleRate ? [`sound at ${num(d.sampleRate / 1000, { maximumFractionDigits: 1 })} kHz`, ...[['processing', d.baseLatency], ['output', d.outputLatency]]
         .filter(([, x]) => x !== undefined && x !== null).map(([name, x]) => `${Math.round(x * 1000)} ms ${name} latency`)].join(', ') : null].filter(Boolean).join(' · ');
   }
   // How her voice played in a live session, in numbers only (the pops investigation, 2026-10-23).
   if (e.type === 'live.reply') {
     const before = d.cut && !d.ms;
-    return [before ? 'her voice: cut before it played' : `her voice: ${((d.ms ?? 0) / 1000).toFixed(1)} s played`, d.cut && !before ? 'cut' : null,
+    return [before ? 'her voice: cut before it played' : `her voice: ${duration(d.ms ?? 0)} played`, d.cut && !before ? 'cut' : null,
       d.stalled ? 'stalled' : null, d.waitMs !== undefined && !before ? `started after ${d.waitMs} ms` : null,
       d.holes !== undefined ? `${d.holes} hole${d.holes === 1 ? '' : 's'}${d.holes ? `, ${d.holeMs ?? 0} ms` : ''}` : null, d.player ? `on ${d.player}` : null].filter(Boolean).join(' · ');
   }
   // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).
-  if (e.type === 'live.turn') return `your turn ended: ${d.end} · ${((d.ms ?? 0) / 1000).toFixed(1)} s sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`;
+  if (e.type === 'live.turn') return `your turn ended: ${d.end} · ${duration(d.ms ?? 0)} sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`;
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
-    const clips = d.format ? ` · ${d.format}, ${bytes(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${bytes(a.bytes)}`).join('; ')}` : '';
+    const clips = d.format ? ` · ${d.format}, ${size(d.bytes ?? 0)}` : d.audio?.length ? ` · audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')}` : '';
     // How much it sent, and whether after a kept turn (G2).
-    const sent = !d.format && d.bytes ? ` · ${bytes(d.bytes)} sent${d.kept ? ', after a kept turn' : ''}` : '';
+    const sent = !d.format && d.bytes ? ` · ${size(d.bytes)} sent${d.kept ? ', after a kept turn' : ''}` : '';
     return `${d.model ?? ''} · ${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''} · ${d.ms ?? '?'} ms${clips}${sent}`;
   }
   if (e.type === 'pack.download') {
-    return [`${d.files ?? 0} files`, bytes(d.bytes ?? 0), `${d.guides ?? 0} guide${d.guides === 1 ? '' : 's'}`, d.failed ? `${d.failed} failed` : null,
+    return [`${d.files ?? 0} files`, size(d.bytes ?? 0), `${d.guides ?? 0} guide${d.guides === 1 ? '' : 's'}`, d.failed ? `${d.failed} failed` : null,
       d.full ? 'at its limit' : null, d.stopped ? 'stopped' : null, d.auto ? 'by itself on Wi-Fi' : null].filter(Boolean).join(' · ');
   }
-  if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${bytes(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
+  if (e.type === 'backup') return `${d.type} · ${d.reason} · ${d.files ?? '?'} files sent, ${size(d.uploaded ?? 0)} · ${d.ms ?? '?'} ms`;
   if (e.type === 'backup.newer') return `${d.type} · a newer backup from ${d.remote?.label ? withArticle(d.remote.label) : 'another device'} is there`;
   if (e.type === 'backup.error') return `${d.type} · ${d.kind}: ${cut(d.message)}`;
-  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${bytes(d.bytes ?? 0)}${d.stopped ? ', then stopped: thrown away' : ''}`;
+  if (e.type === 'backup.download') return `${d.type} · downloaded ${d.backup}, ${size(d.bytes ?? 0)}${d.stopped ? ', then stopped: thrown away' : ''}`;
   if (e.type === 'backup.peek') return `${d.type} · ${d.backup} can't be opened: ${cut(d.problem)}`;
   if (e.type === 'backup.prune') return `${d.type} · deleted an older backup, ${d.backup}`;
   if (e.type === 'plugin.reset') {
     const n = (/** @type {number} */ c, /** @type {string} */ w) => `${c} ${w}${c === 1 ? '' : 's'}`;
-    return `${d.name ?? d.plugin} · ${n((d.settings?.length ?? 0) + (d.otherSettings ?? 0), 'setting')}, ${n((d.secrets?.length ?? 0) + (d.otherSecrets ?? 0), 'secret')} · ${bytes(d.bytes ?? 0)}`;
+    return `${d.name ?? d.plugin} · ${n((d.settings?.length ?? 0) + (d.otherSettings ?? 0), 'setting')}, ${n((d.secrets?.length ?? 0) + (d.otherSecrets ?? 0), 'secret')} · ${size(d.bytes ?? 0)}`;
   }
   return d.message ?? d.title ?? '';
 }
