@@ -201,7 +201,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         if (result.trips.length || result.archived.length) await ctx.live?.tripsChanged().catch(() => {});
         // The plugins the providers that came use, in the same step (spec §12.3).
         if (result.settings) status.textContent = 'Installing the plugins your providers use…';
-        // The screens' language came with the settings: its copy for the start is written before the restart (design, section 2).
+        // The screens' language came with the settings: its device copy is written before the restart.
         if (result.settings) await keepUiFrom(ctx.ws).catch(() => {});
         const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx, result.plugins), result.plugins) : null;
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);

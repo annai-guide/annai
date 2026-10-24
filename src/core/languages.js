@@ -218,7 +218,7 @@ function hanTag(text, l) {
   return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 
-/** What tagOf says for a line that must not take the screens' language and whose own can't be told (shown as `lang=""`, HTML's "unknown"). */
+/** What tagOf says for a line that must not take the screens' language and has none of its own (shown as `lang=""`). */
 export const NO_LANGUAGE = 'und';
 /** Whether most of a text's letters are in the script a language tag is likeliest written in (false for Han, which Unicode scripts name apart). @param {string} text @param {string} tag */
 function writtenIn(text, tag) {
