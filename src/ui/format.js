@@ -1,7 +1,8 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
-import { LANGUAGES } from '../core/languages.js';
+import { LANGUAGES, languageSettings, tagOf } from '../core/languages.js';
 import { t, lang } from '../core/l10n.js';
+import { h } from './dom.js';
 
 // How annai formats for people (localization design, section 4): one set of Intl helpers, each formatter made once per locale.
 // The locale is the screens' language with the phone's region: English screens on a German phone format as en-DE.
@@ -36,10 +37,10 @@ function make(Ctor, options = {}) {
 export const num = (n, options) => make(Intl.NumberFormat, options).format(n);
 
 /** This language's mark of a kind, from how it writes 1,234.5. @param {'group' | 'decimal'} type */
-const mark = (type) => make(Intl.NumberFormat).formatToParts(1234.5).find((p) => p.type === type)?.value ?? '';
+const signOf = (type) => make(Intl.NumberFormat).formatToParts(1234.5).find((p) => p.type === type)?.value ?? '';
 
 /** A number as a field shows it, whole and with this language's decimal sign; empty for none. @param {unknown} n */
-export const numField = (n) => (typeof n === 'number' && Number.isFinite(n) ? String(n).replace('.', mark('decimal')) : '');
+export const numField = (n) => (typeof n === 'number' && Number.isFinite(n) ? String(n).replace('.', signOf('decimal')) : '');
 
 /**
  * A number typed by a person: "1,5" in German, "1,500" in English, "1.5" anywhere. The last mark is the decimal sign, unless it
@@ -52,7 +53,7 @@ export function parseNum(text) {
   if (!marks) return Number(s);
   const last = marks.at(-1) ?? '.';
   const at = s.lastIndexOf(last);
-  const whole = marks.length > 1 ? marks.every((m) => m === last) : last === mark('group') && s.length - at === 4;
+  const whole = marks.length > 1 ? marks.every((m) => m === last) : last === signOf('group') && s.length - at === 4;
   if (whole && marks.length > 1 && !/^[+-]?\d{1,3}(?:[.,]\d{3})+$/.test(s)) return NaN; // several marks that are not thousands
   return Number(whole ? s.replace(/[.,]/g, '') : `${s.slice(0, at).replace(/[.,]/g, '')}.${s.slice(at + 1)}`);
 }
@@ -305,4 +306,27 @@ export function limitField(limit) {
 /** The limit in words. @param {number | null | undefined} limit */
 export function limitText(limit) {
   return limit === null ? 'no limit' : size(limit ?? TIMINGS.askAbove);
+}
+
+/**
+ * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure) and `dir="auto"`.
+ * Used as `h('p', { ...say(text), text })`, or `mark(el, say(text))`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
+ * @returns {(text: string) => { lang: string | undefined, dir: 'auto' }}
+ */
+export function wording(app, byShiori = false) {
+  const settings = languageSettings(app, navigator.language);
+  return (text) => ({ lang: tagOf(text, settings, byShiori) || undefined, dir: 'auto' });
+}
+
+/** Gives an element the attributes `wording` gave its words, taking away a language it no longer has. @param {HTMLElement} el @param {{ lang?: string, dir: string }} a */
+export function mark(el, { lang, dir }) {
+  if (lang) el.setAttribute('lang', lang);
+  else el.removeAttribute('lang');
+  el.setAttribute('dir', dir);
+}
+
+/** A path for the page: left to right as a whole, its file's name turned by its own letters, so a Hebrew name does not reorder "/notes/". @param {string} path */
+export function pathParts(path) {
+  const at = path.lastIndexOf('/') + 1;
+  return [path.slice(0, at), h('span', { dir: 'auto', text: path.slice(at) })];
 }

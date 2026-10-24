@@ -7,7 +7,7 @@ import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
-import { fileHref, distance } from '../format.js';
+import { fileHref, distance, wording } from '../format.js';
 import { packLine } from '../offline-pack.js';
 import { component, mount, slotEntries } from '../slots.js';
 
@@ -155,14 +155,19 @@ export async function latestCard(ctx, scope) {
 /** One of those, drawn: model output as text or through the card renderer, never innerHTML. @param {any} ctx @param {any} e */
 export async function eventCard(ctx, e) {
   const d = e.data ?? {};
+  const app = await readAppSettings(ctx.ws);
+  const hers = wording(app, true);
   const who = () => h('span', { class: 'who', text: 'SHIORI' });
-  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o) }));
-  if (e.type === 'reminder') return h('p', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
+  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
+  if (e.type === 'reminder') {
+    const words = String(d.text ?? '');
+    return h('p', { class: 'system-line' }, `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: `, h('span', { ...wording(app)(words), text: words }));
+  }
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
-  if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { text }));
+  if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));
   // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
-  if (shownSettings(await readAppSettings(ctx.ws)).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { class: 'said-words', text }));
-  const words = h('p', { text, hidden: true });
+  if (shownSettings(app).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { ...hers(text), class: 'said-words', text }));
+  const words = h('p', { ...hers(text), text, hidden: true });
   const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, 'Show what she said');
   return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: 'Said aloud' }), show, words);
 }

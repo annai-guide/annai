@@ -5,6 +5,7 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
+import { wording, mark } from './format.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
@@ -157,9 +158,11 @@ export function createDock(ctx) {
     clearTimeout(lingering);
     if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
   };
-  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words */
-  const showCaption = (words) => {
+  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words @param {ReturnType<typeof wording>} say */
+  const showCaption = (words, say) => {
     captionText.textContent = words;
+    // The bubble's own: the caption is slanted unless its words are Chinese, Japanese or Korean (shiori.css).
+    mark(caption, say(words));
     caption.hidden = !words;
     captionText.scrollTop = captionText.scrollHeight;
     captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
@@ -169,13 +172,13 @@ export function createDock(ctx) {
     hideCaption();
     captionText.textContent = '';
   };
-  /** "Show what she says", read once and again whenever the app settings change: switched off mid-speech, the bubble goes at once, words and all. */
-  const readOn = () => readAppSettings(ctx.ws).then((a) => shownSettings(a).showWords, () => true);
+  /** "Show what she says" and the way to mark her words, read once and again whenever the app settings change: switched off mid-speech, the bubble goes at once, words and all. */
+  const readOn = () => readAppSettings(ctx.ws).then((a) => ({ on: shownSettings(a).showWords, say: wording(a, true) }), () => ({ on: true, say: wording({}, true) }));
   let wordsOn = readOn();
   offs.push(ctx.ws?.onChange?.((/** @type {{ scope: string, path: string }} */ c) => {
     if (c.scope !== SYS_SETTINGS || c.path !== '/app.json') return;
     wordsOn = readOn();
-    wordsOn.then((on) => {
+    wordsOn.then(({ on }) => {
       if (on) return;
       latest++;
       clearCaption();
@@ -186,10 +189,10 @@ export function createDock(ctx) {
   /** @param {() => Promise<string> | string} words */
   const show = async (words) => {
     const mine = ++latest;
-    const on = await wordsOn;
+    const { on, say } = await wordsOn;
     const text = on ? await words() : '';
     if (mine !== latest) return;
-    if (on) showCaption(text);
+    if (on) showCaption(text, say);
     else clearCaption();
   };
   offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
