@@ -326,3 +326,16 @@ test('the check warns, and does not fail, for the glossary', async () => {
     assert.ok(!(await check(dir, [])).warnings.some((x) => /glossary/.test(x.message)));
   });
 });
+
+test('the glossary is matched as it is written: a Capitalised name only where a name stands, a lowercase thing in either case', () => {
+  const g = readGlossary(['en\tkind\tja\tzh-Hans\twhere\tnote', 'Now\tscreen\t今\t现在\t\t', 'About\tscreen\t情報\t关于\t\t', 'Voice\tscreen\t音声\t语音\t\t', 'Plan\tscreen\t計画\t计划\t\t',
+    'trip\tthing\t旅\t行程\t\t', 'Ask\tscreen\t質問\t提问\t\t'].join('\n'));
+  const w = (/** @type {string} */ en) => glossaryWarnings(g, 'ja', [{ key: 'k', state: 'draft', en, text: 'x', where: '', note: '', line: 2 }]).length;
+  for (const fine of ['{0} just now', 'about {0}', 'Restart now', "Shiori's voice", 'Plan your day', 'Ask Shiori', 'Voice is off now']) assert.equal(w(fine), 0, fine);
+  assert.equal(w('Now'), 1, 'the name alone');
+  assert.equal(w('Open Voice'), 1, 'a name in the middle of a sentence');
+  assert.equal(w('Go to the Plan.'), 1);
+  assert.equal(w('Start a trip'), 1, 'a thing, lowercase');
+  assert.equal(w('Trip name'), 1, 'and at the start of a sentence');
+  assert.equal(w('Your trips'), 1);
+});
