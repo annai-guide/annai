@@ -1,7 +1,7 @@
 key	state	en	text	where	note
 1e9ja08#other	draft	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
 1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:103	{0} = money(spent); {1} = money(budgets.spendPerDay)
-1acz027	draft	just now	刚刚	src/core/intl.js:113	Note: Glossary warning (Now): this is relTime's "just now", not the Now tab; 刚刚 is the phrase.
+1acz027	draft	just now	刚刚	src/core/intl.js:113	Note: Glossary warning, a false match (the check matches "now" to the Now tab regardless of case): this is relTime's "just now"; 刚刚 is the phrase.
 3fqfy0	draft	Languages	语言	src/core/languages.js:294	
 1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:295	
 1giusr1	draft	Languages you speak	你说的语言	src/core/languages.js:296	
@@ -49,7 +49,7 @@ dc30do	draft	annai shows English until it is online.	联网之前，annai 显示
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other); Note: Joined with ", " in the code (offline-pack.js holds()), not 、.
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
-1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000); Note: Glossary warning (About): "about" here is "roughly", before a drive's time, not the About section.
+1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000); Note: Glossary warning, a false match (the check matches "about" to the About section regardless of case): here it is "roughly", before a drive's time.
 1py6vf8	draft	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	尚未经懂该语言的人检查的翻译。开启后，可在设置 → Shiori → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅行	src/ui/screens/trips.js:21	
