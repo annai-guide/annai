@@ -359,13 +359,18 @@ async function cacheWords(tag, port) {
     for (const name of await caches.keys()) {
       if (!name.startsWith('annai-shell-')) continue;
       const cache = await caches.open(name);
-      // The device's words never cover a catalog a cache has: a waiting version's may be newer.
-      if (!device || !(await cache.match(wordsPath(tag)))) await cache.put(wordsPath(tag), res.clone());
+      // The device's words never cover a catalog a cache has: a waiting version's may be newer. Where they go, they are marked, so
+      // that version fetches its own once it is online (respond).
+      if (!device) await cache.put(wordsPath(tag), res.clone());
+      else if (!(await cache.match(wordsPath(tag)))) await cache.put(wordsPath(tag), new Response(await res.clone().text(), { headers: { 'Content-Type': 'application/json', [FROM_DEVICE]: 'device' } }));
     }
     ok = true;
   } catch { /* said no below */ }
   port?.postMessage({ ok });
 }
+
+/** The header on words a version took from an older one's cache, offline: they are fetched fresh once there is a connection. */
+const FROM_DEVICE = 'x-annai-words';
 
 /** Whether a response is a catalog: a JSON object (a captive portal answers 200 with its own page). @param {Response | null | undefined} res */
 async function isCatalog(res) {
@@ -407,16 +412,18 @@ sw.addEventListener('fetch', (event) => {
   }
   if (req.method !== 'GET' || url.pathname.startsWith('/test/')) return;
   // Every page is the app, but the frame Google's search suggestions are drawn in: a page of its own, with its own policy (G4).
-  event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null));
+  event.respondWith(respond(req, req.mode === 'navigate' && url.pathname !== '/src/ui/grounding.html' ? '/index.html' : null, (p) => event.waitUntil(p)));
 });
 
-/** Production: cache first. Development (localhost): network first, so edits show up. A catalog that comes from the network is kept for the next start offline. @param {Request} req @param {string | null} fallback */
-async function respond(req, fallback) {
+/** Production: cache first. Development (localhost): network first, so edits show up. A catalog that comes from the network is kept for the next start offline.
+ * @param {Request} req @param {string | null} fallback @param {(p: Promise<unknown>) => unknown} [later] work that goes on after the answer
+ */
+async function respond(req, fallback, later = (p) => p) {
   const cache = await caches.open(CACHE);
   const cached = () => cache.match(fallback ?? req, { ignoreSearch: true });
+  const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
   const fetched = async () => {
     const res = await fetch(req);
-    const tag = LANGS.find((l) => new URL(req.url).pathname === wordsPath(l));
     if (!tag) return res;
     // Words are kept only when they are a catalog; else the words kept here answer, if there are any.
     if (!(await isCatalog(res))) return (await cached()) ?? res;
@@ -430,7 +437,10 @@ async function respond(req, fallback) {
       return (await cached()) ?? Response.error();
     }
   }
-  return (await cached()) ?? fetched();
+  const hit = await cached();
+  // Words marked as an older version's: served at once, and this version's own fetched in the background, once.
+  if (tag && hit?.headers.get(FROM_DEVICE)) later(fetched().catch(() => {}));
+  return hit ?? fetched();
 }
 
 /** Opens the app's database without ever creating it from here. @returns {Promise<IDBDatabase>} */
