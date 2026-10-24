@@ -353,10 +353,16 @@ async function cacheWords(tag, port) {
   try {
     if (typeof tag !== 'string' || !LANGS.includes(tag)) throw new Error('not a language annai has');
     let res = await fetch(new Request(wordsPath(tag), { cache: 'reload' })).catch(() => null);
-    if (!res?.ok) res = (await (await caches.open(CACHE)).match(wordsPath(tag))) ?? null;
+    const device = !res?.ok;
+    if (device) res = (await (await caches.open(CACHE)).match(wordsPath(tag))) ?? null;
     const words = res?.ok ? await res.clone().json() : null;
     if (!res || !words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
-    for (const name of await caches.keys()) if (name.startsWith('annai-shell-')) await (await caches.open(name)).put(wordsPath(tag), res.clone());
+    for (const name of await caches.keys()) {
+      if (!name.startsWith('annai-shell-')) continue;
+      const cache = await caches.open(name);
+      // The device's words never cover a catalog a cache has: a waiting version's may be newer.
+      if (!device || !(await cache.match(wordsPath(tag)))) await cache.put(wordsPath(tag), res.clone());
+    }
     ok = true;
   } catch { /* said no below */ }
   port?.postMessage({ ok });

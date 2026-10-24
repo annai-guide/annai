@@ -70,6 +70,8 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
   const handlers = {};
   /** @type {Map<string, Map<string, string>>} */
   const stores = new Map(cacheNames.map((n) => [n, new Map()]));
+  /** The headers each stored response had, by "cache path". @type {Map<string, Record<string, string>>} */
+  const heads = new Map();
   /** @type {string[][]} */
   const added = [];
   /** @type {string[]} */
@@ -87,9 +89,13 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
       },
       match: async (/** @type {Request | string} */ req) => {
         const text = /** @type {Map<string, string>} */ (stores.get(name)).get(new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname);
-        return text === undefined ? undefined : new Response(text);
+        return text === undefined ? undefined : new Response(text, { headers: heads.get(`${name} ${new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname}`) });
       },
-      put: async (/** @type {string} */ key, /** @type {Response} */ res) => { /** @type {Map<string, string>} */ (stores.get(name)).set(new URL(key, 'https://annai.guide').pathname, await res.text()); },
+      put: async (/** @type {string} */ key, /** @type {Response} */ res) => {
+        const path = new URL(key, 'https://annai.guide').pathname;
+        heads.set(`${name} ${path}`, Object.fromEntries(res.headers));
+        /** @type {Map<string, string>} */ (stores.get(name)).set(path, await res.text());
+      },
     };
   };
   const caches = { open: async (/** @type {string} */ n) => cache(n), keys: async () => [...stores.keys()] };
@@ -128,10 +134,14 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
   const get = async (path) => {
     /** @type {Promise<Response> | undefined} */
     let answer;
-    handlers.fetch({ request: new SwRequest(path, {}), respondWith: (/** @type {Promise<Response>} */ p) => { answer = p; } });
-    return answer?.then((r) => (r.ok ? r.text() : null), () => null);
+    /** @type {Promise<unknown>[]} */
+    const after = [];
+    handlers.fetch({ request: new SwRequest(path, {}), respondWith: (/** @type {Promise<Response>} */ p) => { answer = p; }, waitUntil: (/** @type {Promise<unknown>} */ p) => { after.push(p); } });
+    const text = await answer?.then((r) => (r.ok ? r.text() : null), () => null);
+    await Promise.all(after); // what the worker goes on doing once it has answered
+    return text;
   };
-  return { fire, ask, get, offline: () => { down = true; }, stores, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
+  return { fire, ask, get, offline: () => { down = true; }, online: () => { down = false; }, stores, heads, added, fetched, install: async () => { await fire('install'); return [...added[added.length - 1]].filter((p) => p.startsWith('/l10n/')); } };
 }
 
 const app = (/** @type {Record<string, unknown>} */ languages) => ({ '/app.json': JSON.stringify({ languages }) });
@@ -198,6 +208,19 @@ test('a language already on the device is kept offline: asked again with no conn
   const missing = await swKit({ cacheNames: [now], network: {} });
   missing.stores.get(now)?.set('/l10n/ja.json', '{"a":"b"}');
   assert.deepEqual(await missing.ask('ja'), [{ ok: true }], 'a 404 too');
+});
+
+/** The running version's cache name, as sw.js makes it. */
+const running = async () => `annai-shell-0.1.0-${/const BUILD = '([^']*)';/.exec(await readFile(new URL('sw.js', root), 'utf8'))?.[1]}`;
+
+test('offline, the device\'s words go only where a catalog is missing: a waiting version\'s newer one stays', async () => {
+  const now = await running();
+  const k = await swKit({ cacheNames: [now, 'annai-shell-0.1.0-waiting'] });
+  k.stores.get(now)?.set('/l10n/ja.json', '{"a":"old"}');
+  k.stores.get('annai-shell-0.1.0-waiting')?.set('/l10n/ja.json', '{"a":"new"}');
+  k.offline();
+  assert.deepEqual(await k.ask('ja'), [{ ok: true }]);
+  assert.equal(k.stores.get('annai-shell-0.1.0-waiting')?.get('/l10n/ja.json'), '{"a":"new"}');
 });
 
 test('a catalog that comes from the network is kept, so the next start offline has it (restore, Try again, a read that raced cache-words)', async () => {
