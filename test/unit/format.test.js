@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { setWords } from '../../src/core/l10n.js';
+import { setWords, plural } from '../../src/core/l10n.js';
 import {
   locale, num, numField, parseNum, money, size, distance, duration, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
 } from '../../src/ui/format.js';
@@ -229,4 +229,12 @@ test('sortWords follows the language\'s order', () => {
   assert.deepEqual(['ä', 'z', 'a'].sort(sortWords), ['a', 'z', 'ä'], 'Swedish puts ä after z');
   as('en', 'de-DE');
   assert.deepEqual(['ä', 'z', 'a'].sort(sortWords), ['a', 'ä', 'z']);
+});
+
+test('plural\'s # is written the way the other numbers are: the screens\' language with the phone\'s region', () => {
+  as('en', 'en-US');
+  assert.equal(plural(1200, '# place', '# places'), '1,200 places');
+  as('en', 'de-DE');
+  assert.equal(plural(1200, '# place', '# places'), '1.200 places');
+  assert.equal(plural(1, '# place', '# places'), '1 place');
 });

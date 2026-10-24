@@ -1,5 +1,5 @@
 export { t, tc, plural } from '../core/l10n.js';
-import { parseNum } from './format.js';
+import { parseNum } from '../core/intl.js';
 
 /**
  * Builds DOM without innerHTML (the CSP and spec §15 forbid it).

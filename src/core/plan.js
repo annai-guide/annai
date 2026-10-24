@@ -1,5 +1,5 @@
 import { dayIn, timeIn, validZone, offsetMinutes } from './time.js';
-import { zone, sortWords } from '../ui/format.js';
+import { zone, sortWords } from './intl.js';
 
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the

@@ -1,6 +1,6 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { t } from '../l10n.js';
-import { when } from '../../ui/format.js';
+import { when } from '../intl.js';
 import { ProviderError, portable, explain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';

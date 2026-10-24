@@ -5,7 +5,7 @@
  * @typedef {{ score: 0 | 1 | 2 | 3, why?: string }} Rank  why: the keyword, as written, that matched
  * @typedef {{ text: string, starts: Set<number> }} Squashed
  */
-import { sortWords } from '../ui/format.js';
+import { sortWords } from './intl.js';
 
 /** A query past this many characters is cut there: matching is read once per field, but a pasted page needn't be. */
 const MAX_QUERY = 100;
