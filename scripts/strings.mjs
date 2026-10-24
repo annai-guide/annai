@@ -356,15 +356,25 @@ export function readGlossary(text) {
   return out;
 }
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-/** Whether a message names a term in English, whole-word, the first letter in either case, with an s or es after it; the rest of the message after the term's words are taken out. */
+/**
+ * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
+ * is a name only where a name stands, not as the first word of a sentence ("Plan your day", "Ask Shiori"); a lowercase one (a thing)
+ * is also met with a capital. The longest terms go first, and their words are not read again as a shorter term's.
+ */
 function naming(/** @type {string} */ english, /** @type {string[]} */ ens) {
   let rest = english;
   /** @type {string[]} */
   const found = [];
   for (const en of [...ens].sort((a, b) => b.length - a.length)) {
     const first = en[0];
-    const re = new RegExp(`(?<![\\p{L}\\p{N}])[${escapeRe(first.toLowerCase())}${escapeRe(first.toUpperCase())}]${escapeRe(en.slice(1))}(?:e?s)?(?![\\p{L}\\p{N}])`, 'u');
-    if (re.test(rest)) { found.push(en); rest = rest.replace(re, ' '); }
+    const lower = first === first.toLowerCase() && first !== first.toUpperCase();
+    const head = lower ? `[${escapeRe(first)}${escapeRe(first.toUpperCase())}]` : escapeRe(first);
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])${head}${escapeRe(en.slice(1))}(?:e?s)?(?![\\p{L}\\p{N}])`, 'u');
+    const m = re.exec(rest);
+    if (!m) continue;
+    const opens = m.index === 0 && rest.slice(m[0].length).replace(/[\s.!?…:]+$/u, '') !== '';
+    if (lower || !opens) found.push(en);
+    rest = rest.replace(re, ' ');
   }
   return found;
 }
