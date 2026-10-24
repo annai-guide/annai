@@ -91,6 +91,7 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
         const text = /** @type {Map<string, string>} */ (stores.get(name)).get(new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname);
         return text === undefined ? undefined : new Response(text, { headers: heads.get(`${name} ${new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname}`) });
       },
+      delete: async (/** @type {Request | string} */ req) => /** @type {Map<string, string>} */ (stores.get(name)).delete(new URL(typeof req === 'string' ? req : req.url, 'https://annai.guide').pathname),
       put: async (/** @type {string} */ key, /** @type {Response} */ res) => {
         const path = new URL(key, 'https://annai.guide').pathname;
         heads.set(`${name} ${path}`, Object.fromEntries(res.headers));
@@ -116,7 +117,7 @@ async function swKit({ langs = ['ja', 'zh-Hans'], shipped = langs, phone = /** @
   class SwRequest extends Request {
     constructor(/** @type {string | Request} */ u, /** @type {RequestInit} */ init) { super(typeof u === 'string' ? new URL(u, self.location.href) : u, init); }
   }
-  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings, hang), TextDecoder, DOMException, fetch: fetchStub, setTimeout: (/** @type {() => void} */ f) => setTimeout(f, hang ? 5 : 60_000).unref() });
+  vm.runInNewContext(source, { self, caches, Request: SwRequest, Response, URL, console, indexedDB: fakeIndexedDB(settings, hang), TextDecoder, DOMException, crypto, fetch: fetchStub, setTimeout: (/** @type {() => void} */ f) => setTimeout(f, hang ? 5 : 60_000).unref() });
   /** @type {(type: string, ev?: any) => Promise<unknown>} */
   const fire = async (type, ev = {}) => {
     /** @type {Promise<unknown> | undefined} */
