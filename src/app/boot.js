@@ -1,24 +1,13 @@
 // The start (localization design, section 3): language and words are set before the app is imported, so words made at a module's
 // top level are right. What can't be had leaves English.
-import { setWords, dir } from '../core/l10n.js';
-import { SHIPPED } from '../core/l10n-list.js';
+import { setWords, dir, chooseTag } from '../core/l10n.js';
+import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 
 const html = document.documentElement;
-let tag = 'en';
-let region = '';
 let own;
 try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
-if (own && SHIPPED.includes(own)) tag = own;
-else if (!own) {
-  // The first of the phone's languages annai has, by language and script: zh-TW is Traditional, not Simplified.
-  for (const wanted of navigator.languages ?? []) {
-    try {
-      const a = new Intl.Locale(wanted).maximize();
-      const found = SHIPPED.find((s) => { const b = new Intl.Locale(s).maximize(); return b.language === a.language && b.script === a.script; });
-      if (found) { tag = found; region = new Intl.Locale(wanted).region ?? ''; break; }
-    } catch { /* not a language tag */ }
-  }
-}
+// The device's choice, else the first of the phone's languages annai has (zh-TW is Traditional, not Simplified).
+let { tag, region } = chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED);
 const pseudo = ['localhost', '127.0.0.1'].includes(location.hostname) ? new URLSearchParams(location.search).get('l10n') : null;
 if (pseudo === 'en-XA' || pseudo === 'ar-XB') {
   tag = pseudo;

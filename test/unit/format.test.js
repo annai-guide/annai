@@ -245,6 +245,15 @@ test('list: "and" and "or" in the language', () => {
   assert.equal(list(['英语', '日语', '法语']), '英语、日语和法语');
 });
 
+test('list: a plain list has no "and", only the language\'s separator', () => {
+  as('en', 'en-US');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a, b, c');
+  as('ja', 'ja-JP');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a、b、c');
+  as('zh-Hans', 'zh-CN');
+  assert.equal(list(['a', 'b', 'c'], 'plain'), 'a、b、c');
+});
+
 test('languageName: the language\'s name in the screens\' language, annai\'s English where the browser has none', () => {
   as('en', 'en-US');
   assert.equal(languageName('ja'), 'Japanese');
@@ -256,6 +265,15 @@ test('languageName: the language\'s name in the screens\' language, annai\'s Eng
   assert.equal(languageName('en'), '英語');
   as('zh-Hans', 'zh-CN');
   assert.equal(languageName('ja'), '日语');
+});
+
+test('languageName: English screens keep annai\'s own English names, where the browser\'s differ', () => {
+  as('en', 'en-US');
+  assert.equal(languageName('zh'), 'Chinese (Mandarin)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('bn'), 'Bengali', 'not "Bangla"');
+  as('ja', 'ja-JP');
+  assert.equal(languageName('zh'), '中国語');
+  assert.equal(languageName('bn'), 'ベンガル語');
 });
 
 test('sortWords follows the language\'s order', () => {

@@ -1,8 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf } from '../../src/core/languages.js';
+import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
+
+test('a language the browser has no name of its own for (Chromium\'s ICU and Cantonese) gets annai\'s: 粵語, never "Cantonese · Cantonese"', () => {
+  const real = Intl.DisplayNames;
+  const of = (/** @type {string} */ id) => /** @type {import('../../src/core/languages.js').Language} */ (LANGUAGES.find((l) => l.id === id));
+  try {
+    for (const lacking of [(/** @type {string} */ code) => (code === 'yue' ? 'Cantonese' : undefined), (/** @type {string} */ code) => code]) {
+      // As Chromium answers: the English name, or the code back, for yue; the rest as the browser has them.
+      /** @type {any} */ (Intl).DisplayNames = (class extends real { of(/** @type {string} */ code) { return code === 'yue' ? lacking(code) : super.of(code); } });
+      assert.equal(nativeName(of('yue')), '粵語');
+      assert.equal(nativeName(of('ja')), '日本語', 'one the browser has stays the browser\'s');
+      assert.equal(nativeName(of('fil')), 'Filipino', 'and one whose own name is its English one stays so');
+    }
+  } finally {
+    /** @type {any} */ (Intl).DisplayNames = real;
+  }
+});
 
 test('every language has a name and the codes each model takes, and the browser knows its name for itself; ids are unique', () => {
   const ids = new Set(LANGUAGES.map((l) => l.id));
@@ -253,4 +269,47 @@ test('tagOf: Simplified or Traditional Chinese is told by the characters, the ph
   assert.equal(tagOf('这是我们说的', only(['en', 'ja'])), 'zh-Hans', 'characters Japanese does not use are Chinese though only Japanese is listed');
   assert.equal(tagOf('中国', only(['en', 'ja'])), 'ja', 'characters Japanese shares are not');
   assert.equal(tagOf('我們明天去故宮吧', { ...only(['en']), answer: /** @type {any} */ (languageSettings({ languages: { spoken: ['zh'] } }, 'en-US').spoken[0]) }, true), 'zh-Hant', 'Shiori answering in Chinese: the line\'s own characters');
+});
+
+// Localization L4: under screens that are not in Latin letters, a line in another script never takes the screens' language.
+
+test('tagOf under Japanese or Chinese screens: a Latin line is the one listed Latin-script language, else the one its words name, else no language', () => {
+  const listed = (/** @type {string[]} */ ids, /** @type {string | undefined} */ answer = undefined) => languageSettings({ languages: { spoken: ids, ...(answer ? { answer } : {}) } }, 'ja-JP');
+  for (const ui of ['ja', 'zh-Hans', 'ko']) {
+    assert.equal(tagOf('Where is the station, please?', listed(['en', 'ja']), false, ui), 'en', `exactly one Latin language is listed (${ui} screens)`);
+    assert.equal(tagOf('Kiyomizu-dera opens at 6.', listed(['ja', 'en']), false, ui), 'en');
+    assert.equal(tagOf('Où est la gare, merci beaucoup', listed(['en', 'fr', 'ja']), false, ui), 'fr', 'two are listed: the words say which');
+    assert.equal(tagOf('Kiyomizu-dera', listed(['en', 'fr', 'ja']), false, ui), NO_LANGUAGE, 'and with nothing to go on, no language, not the screens\'');
+    assert.equal(tagOf('Where is the station, please?', listed(['ja']), false, ui), 'en', 'none listed: the words say English');
+    assert.equal(tagOf('Hmm', listed(['ja']), false, ui), NO_LANGUAGE);
+  }
+  assert.equal(tagOf('Where is the station, please?', listed(['en', 'ja']), false, 'en'), '', 'English screens: Latin text still inherits');
+  assert.equal(tagOf('Where is the station, please?', listed(['en', 'ja'])), '', 'and so by default');
+});
+
+test('tagOf under Japanese screens: lines in a script annai has no table row for are no language, and the rest are told as before', () => {
+  const s = languageSettings({ languages: { spoken: ['en', 'bn', 'ja'] } }, 'ja-JP');
+  assert.equal(tagOf('আমি কিয়োটো যাচ্ছি', s, false, 'ja'), NO_LANGUAGE);
+  assert.equal(tagOf('আমি কিয়োটো যাচ্ছি', s, false, 'en'), '', 'under English screens it inherits, as every unsure line does');
+  assert.equal(tagOf('42 · 7:30', s, false, 'ja'), '', 'figures have no language to be wrong about');
+  assert.equal(tagOf('', s, false, 'ja'), '');
+  assert.equal(tagOf('直角三角形の骨組みです。', s, false, 'ja'), 'ja');
+  assert.equal(tagOf('这是我们说的', s, false, 'ja'), 'zh-Hans', 'Chinese under Japanese screens is Chinese');
+  assert.equal(tagOf('안녕하세요', s, false, 'zh-Hans'), 'ko');
+});
+
+test('tagOf: Shiori\'s line in a script annai has no table row for (Bengali, Tamil) is her answer language, by the script; an English line is not', () => {
+  const answers = (/** @type {string} */ id) => languageSettings({ languages: { spoken: ['en', id], answer: id } }, 'en-US');
+  for (const id of ['bn', 'ta']) {
+    assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers(id), true), '', `an English line is not ${id}`);
+    assert.equal(tagOf('Kiyomizu-dera opens at 6.', answers(id), true, 'ja'), 'en', `under Japanese screens it is the one Latin language listed (${id})`);
+  }
+  assert.equal(tagOf('Hola', answers('es'), true, 'ja'), 'es', 'a Latin answer language still tells a Latin line');
+  for (const ui of ['en', 'ja']) {
+    assert.equal(tagOf('আমি কিয়োটো যাচ্ছি', answers('bn'), true, ui), 'bn', `her Bengali line is Bengali (${ui} screens)`);
+    assert.equal(tagOf('நான் கியோட்டோ போகிறேன்', answers('ta'), true, ui), 'ta');
+    assert.equal(tagOf('আমি Kyoto যাচ্ছি', answers('bn'), true, ui), 'bn', 'mostly Bengali');
+  }
+  assert.equal(tagOf('நான் கியோட்டோ போகிறேன்', answers('bn'), true, 'en'), '', 'Tamil is not the Bengali she answers in');
+  assert.equal(tagOf('আমি যাচ্ছি', answers('bn'), false, 'ja'), NO_LANGUAGE, 'the answer language is only hers');
 });

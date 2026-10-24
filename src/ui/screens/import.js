@@ -10,6 +10,7 @@ import { typeForPath } from '../../core/paths.js';
 import { bringIn } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
 import { restartAnnai } from './plugins.js';
+import { keepUiFrom } from '../languages.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
  *   from: the backup place it came from (spec §12.4) */
@@ -200,6 +201,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         if (result.trips.length || result.archived.length) await ctx.live?.tripsChanged().catch(() => {});
         // The plugins the providers that came use, in the same step (spec §12.3).
         if (result.settings) status.textContent = 'Installing the plugins your providers use…';
+        // The screens' language came with the settings: its device copy is written before the restart.
+        if (result.settings) await keepUiFrom(ctx.ws).catch(() => {});
         const plugged = result.settings && ctx.llm ? pluginsBrought(ctx, await restorePlugins(ctx, result.plugins), result.plugins) : null;
         const titles = desc.trips.map((/** @type {any} */ t) => t.title);
         // The import is over: nothing is listening for the user's leaving, and one who left in its last step is told by a toast.

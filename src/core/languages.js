@@ -43,8 +43,13 @@ const display = (in_, code, fallback) => {
     return fallback;
   }
 };
+/** Names for itself a browser may lack, answering with the English name or the code: Chromium's ICU has none for Cantonese. */
+const OWN = /** @type {Record<string, string>} */ ({ yue: '粵語' });
 /** A language's name for itself ("日本語"). @param {Language} l */
-export const nativeName = (l) => display(l.id, l.id, l.name);
+export function nativeName(l) {
+  const own = display(l.id, l.id, l.name);
+  return own !== l.name && own !== l.id ? own : OWN[l.id] ?? own;
+}
 
 /** What a browser's language tag is, as a language: the browser's own tag stays the locale (zh-Hant-TW, nb-NO, et-EE), as it was before this branch. @param {unknown} locale @returns {Language} */
 function browserLanguage(locale) {
@@ -218,18 +223,45 @@ function hanTag(text, l) {
   return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 
+/** What tagOf says for a line that must not take the screens' language and has none of its own (shown as `lang=""`). */
+export const NO_LANGUAGE = 'und';
+/** Whether most of a text's letters are in the script a language tag is likeliest written in (false for Han, which Unicode scripts name apart). @param {string} text @param {string} tag */
+function writtenIn(text, tag) {
+  try {
+    const script = new Intl.Locale(tag).maximize().script;
+    return (text.match(new RegExp(`\\p{Script=${script}}`, 'gu'))?.length ?? 0) * 2 > (text.match(/[\p{L}\p{M}]/gu)?.length ?? 0);
+  } catch { return false; }
+}
+/** Whether a language is written in Latin letters, by its likeliest script. @param {string} tag */
+function latinTag(tag) {
+  try { return new Intl.Locale(tag).maximize().script === 'Latn'; } catch { return false; }
+}
+
 /**
  * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads them by it (localization L3). From the
  * writing system (scriptOf) and the listed languages (listedFor); an address is no language. Latin text is never guessed (a wrong tag gives
  * it a wrong voice): it and any unsure text get '' and inherit the screens'. byShiori: the language she is set to answer in, where the
  * text agrees with it (its script, or Latin when hers is written in Latin); Han alone is taken for hers, if she answers in Japanese.
- * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori]
+ * ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one is
+ * (usually English), else the one languageOf names from two of its words, else NO_LANGUAGE: it never takes the screens'.
+ * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
  */
-export function tagOf(text, s, byShiori = false) {
+export function tagOf(text, s, byShiori = false, ui = 'en') {
   const said = text.replace(/\b(?:https?:\/\/|www\.)\S+/gi, ' ');
   const kind = scriptOf(said);
   const answer = byShiori ? s.answer : null;
-  if (!kind) return answer && /\p{L}/u.test(said) && !Object.keys(SCRIPT_TAGS).some((k) => listedFor(k, [answer])) ? tagFor(answer) : '';
+  if (!kind) {
+    if (!/\p{L}/u.test(said)) return '';
+    // Hers, when most of the line is in the script her answer language is written in (Bengali, Tamil… as well as Latin).
+    if (answer && writtenIn(said, tagFor(answer))) return tagFor(answer);
+    if (latinTag(ui)) return '';
+    if (!writtenIn(said, 'en')) return NO_LANGUAGE;
+    const listed = s.spoken.filter((l) => latinTag(tagFor(l)));
+    if (listed.length === 1) return tagFor(listed[0]);
+    const guess = languageOf(said, 2);
+    const named = guess ? LANGUAGES.find((l) => l.name === guess) : undefined;
+    return named ? tagFor(named) : NO_LANGUAGE;
+  }
   const l = (answer && listedFor(kind, [answer])) || listedFor(kind, s.spoken);
   return kind === 'Chinese' ? hanTag(said, l) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }

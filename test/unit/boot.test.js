@@ -44,3 +44,10 @@ test('a catalog that parses but is not an object is no catalog: boot.js falls to
   assert.match(src, /!words \|\| typeof words !== 'object' \|\| Array\.isArray\(words\)\) throw/);
   assert.ok(src.indexOf("Array.isArray(words)") < src.indexOf('setWords(tag, words)'), 'checked before the words are set');
 });
+
+test('boot.js takes a choice kept on the device from the shipped and the unfinished languages, and leaves the card to main.js when the words fail', async () => {
+  const { src } = await importsOf('src/app/boot.js');
+  assert.match(src, /import \{ SHIPPED, EXPERIMENTAL \} from '\.\.\/core\/l10n-list\.js'/);
+  assert.match(src, /chooseTag\(own, navigator\.languages \?\? \[\], \[\.\.\.SHIPPED, \.\.\.EXPERIMENTAL\], SHIPPED\)/);
+  assert.match(src, /catch \{\n\s+html\.dataset\.l10nFailed = tag;/);
+});

@@ -4,6 +4,7 @@ import { setWords, key } from '../../src/core/l10n.js';
 import { stampCount } from '../../src/core/after/stamps.js';
 import { backupText } from '../../src/ui/format.js';
 import { LANGUAGE_WORDS as W } from '../../src/core/languages.js';
+import { packWords } from '../../src/ui/offline-pack.js';
 
 // The first areas spoken through t (localization L1): the Trips screen's helpers and the Languages section's words. Their English
 // is what the app showed before; with words set, each message is translated whole.
@@ -56,4 +57,16 @@ test('a translated status reorders its values, and the saved form is its own mes
     [key('{0} moved to {1}. Saved')]: '{0}を{1}番目に移動し、保存しました',
   });
   assert.deepEqual(W.moved('日本語', 2), ['日本語を2番目に移動しました', '日本語を2番目に移動し、保存しました']);
+});
+
+test('the offline pack\'s counts are a list in the screens\' language: commas in English, 、 in Japanese', () => {
+  const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [{ title: 'Big Sur' }], failed: [], full: false, stopped: false };
+  const pack = /** @type {any} */ ({ stops: 2, cut: 0, why: null, estimate: 0, running: null, manifest });
+  assert.match(packWords(pack, 'wifi').lines[0], / · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide\.$/);
+  setWords('ja', {
+    [key('# place\0# places')]: { other: '#か所' },
+    [key('# Wikipedia summary\0# Wikipedia summaries')]: { other: 'Wikipedia の要約#件' },
+    [key('# Wikivoyage guide\0# Wikivoyage guides')]: { other: 'Wikivoyage のガイド#件' },
+  });
+  assert.match(packWords(pack, 'wifi').lines[0], / · 1,200か所、Wikipedia の要約40件、Wikivoyage のガイド1件\.$/);
 });

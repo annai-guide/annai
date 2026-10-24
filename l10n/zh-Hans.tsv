@@ -1,0 +1,72 @@
+key	state	en	text	where	note
+1e9ja08#other	draft	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
+1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:103	{0} = money(spent); {1} = money(budgets.spendPerDay)
+1acz027	draft	just now	刚刚	src/core/intl.js:113	
+3fqfy0	draft	Languages	语言	src/core/languages.js:299	
+1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:300	
+1giusr1	draft	Languages you speak	你说的语言	src/core/languages.js:301	
+krvxy3	draft	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:302	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
+5h4ntn	draft	Add a language	添加语言	src/core/languages.js:303	
+17rv3f8	draft	Add	添加	src/core/languages.js:304	
+9c35st	draft	Remove	移除	src/core/languages.js:305	Note: 移除 (take off the list) over 删除 (delete a thing).
+oogs2r	draft	Remove {0}	移除{0}	src/core/languages.js:308	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+1u9ac5b	draft	Move {0} up	上移{0}	src/core/languages.js:309	{0} = name
+9v00pm	draft	Move {0} down	下移{0}	src/core/languages.js:310	{0} = name
+h355qb	draft	{0} · {1}	{0} · {1}	src/core/languages.js:312	{0} = name; {1} = own
+18uuegb	draft	Added {0}	已添加{0}	src/core/languages.js:313	{0} = name
+zu7130	draft	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:313	{0} = name
+14va31	draft	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:314	{0} = name; {1} = place
+ehoetc	draft	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:314	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	draft	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:315	{0} = name
+p2yont	draft	{0} removed	已移除{0}	src/core/languages.js:315	{0} = name
+1i1xhz6	draft	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:317	{0} = name
+wbdbo7	draft	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:318	{0} = name
+53lnxp	draft	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:320	{0} = name
+fhhm2e	draft	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:320	{0} = name
+1c7ft9k	draft	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:321	
+bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:321	
+1qt7a9v	draft	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:322	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	draft	The language you speak to her	你对她说的语言	src/core/languages.js:323	
+au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:324	
+13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+la9701	draft	not backed up	未备份	src/ui/format.js:26	
+1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:27	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
+1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
+7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:32	
+16name3	draft	free	免费	src/ui/format.js:33	
+n3y7d4	draft	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	draft	Getting {0}…	正在获取{0}…	src/ui/languages.js:198	{0} = name
+ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:199	{0} = name
+12ek4is	draft	Saved	已保存	src/ui/languages.js:211	
+1t9l1f1	draft	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:214	
+1lycsu9	draft	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:219	
+v4uyh0	draft	annai's screens in	annai 界面语言	src/ui/languages.js:222	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
+15go2in	draft	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:235	{0} = name
+982hh6	draft	Try again	重试	src/ui/languages.js:235	
+dc30do	draft	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:235	
+8rqn0k	draft	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:242	{0} = name
+150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:243	{0} = name
+1of7r8x	draft	Restart annai	重启 annai	src/ui/languages.js:244	
+16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
+18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
+1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+1py6vf8	draft	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
+aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	尚未经懂该语言的人检查的翻译。开启后，可在设置 → Shiori → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:31	
+xb1ny3	draft	Trips	旅行	src/ui/screens/trips.js:21	
+yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:22	
+33pqd9	draft	Last backup {0}, to {1}.	上次备份：{0}（{1}）	src/ui/screens/trips.js:25	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, as "Last export" beside it.
+in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:26	
+rpzgfn	draft	Last export {0}.	上次导出：{0}	src/ui/screens/trips.js:26	{0} = relTime(settings.lastExportAt)
+sjnfyu	draft	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:28	{0} = archived.length
+ru2yru	draft	updated {0}	{0}更新	src/ui/screens/trips.js:41	{0} = relTime(s.updated)
+1ceddv5	draft	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:47	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
+axugy7	draft	Start a trip	开始旅行	src/ui/screens/trips.js:67	
+ero67x	draft	Trip name	旅行名称	src/ui/screens/trips.js:68	
+1yii6kb	draft	Ends	结束日期	src/ui/screens/trips.js:69	
+fc4c10	draft	Starts	开始日期	src/ui/screens/trips.js:69	
+1baslgi	draft	Start trip	开始旅行	src/ui/screens/trips.js:71	Note: The same words as the form's heading, "Start a trip".
+vr6m26	draft	Give the trip a name.	请为旅行命名。	src/ui/screens/trips.js:77	
+152lnj5	draft	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:78	
+1plbhzy	draft	Heard {0} of speech.	听到了{0}的语音。	src/ui/screens/voice.js:110	{0} = seconds(seg.ms, 'long')
+1uowdjd	draft	resting after a failure, tries again {0}	失败后暂停中，{0}重试	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1分钟后".
