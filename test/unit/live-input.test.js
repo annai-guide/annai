@@ -417,6 +417,31 @@ test('Koe speaking first after the zeros, then her echo, a short quiet and the u
   r.input.stop();
 });
 
+test('full duplex (the car, headphones) after zeros in a room of about -47 dB: her own faint echo, held over the guess, never starts a turn while she plays (detector-floor re-check 1)', async () => {
+  const her = cat(lunch, gas, lunch);
+  for (const gain of [0.07, 0.1]) {
+    let playing = false;
+    /** @type {string[]} */
+    const during = [];
+    const r = rig({ speaking: () => playing, duplex: () => true });
+    await r.input.start();
+    const noise = roomFor(8, 0.012);
+    const at = Math.round(0.4 * RATE);
+    const echo = new Float32Array(noise.length);
+    echo.set(her.map((x) => x * gain), at);
+    const pcm = cat(new Float32Array(RATE / 2), mix(noise, echo));
+    const from = RATE / 2 + at;
+    for (let i = 0; i < pcm.length; i += 683) {
+      playing = i >= from && i < from + her.length;
+      const before = r.sent.length;
+      r.feed(pcm.subarray(i, i + 683), RATE);
+      if (playing) during.push(...r.sent.slice(before).filter((x) => typeof x === 'string').map(String));
+    }
+    assert.deepEqual(during, [], `her echo at x${gain}: no turn while she plays`);
+    r.input.stop();
+  }
+});
+
 test("given the session to send to, it sends at the session's rate: 8 kHz for one that takes G.711 (K6)", async () => {
   /** @type {(string | Uint8Array)[]} */
   const sent = [];
