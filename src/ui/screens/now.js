@@ -1,4 +1,5 @@
-import { h, t, tc, linkIn } from '../dom.js';
+import { h, t, tc } from '../dom.js';
+import { reminderParts } from './talk.js';
 import { upcoming, sunPlace } from '../../core/now.js';
 import { sunChips } from '../../core/sun.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -160,10 +161,7 @@ export async function eventCard(ctx, e) {
   const hers = wording(app, true);
   const who = () => h('span', { class: 'who', text: t`Shiori` });
   if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), renderCard(d.card ?? {}, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
-  if (e.type === 'reminder') {
-    const words = String(d.text ?? '');
-    return h('p', { class: 'system-line' }, ...linkIn(reminderLine(d, words), h('span', { ...wording(app)(words), text: words })));
-  }
+  if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));
   // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
@@ -173,8 +171,3 @@ export async function eventCard(ctx, e) {
   return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: t`Said aloud` }), show, words);
 }
 
-/** A reminder annai showed, its words after what it is: its plan item's title when it has one. @param {any} d the event's data @param {string} words */
-function reminderLine(d, words) {
-  if (d.title) return d.aloud ? t`${String(d.title)}, said aloud: ${words}` : t`${String(d.title)}: ${words}`;
-  return d.aloud ? t`Reminder, said aloud: ${words}` : t`Reminder: ${words}`;
-}

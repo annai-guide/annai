@@ -150,7 +150,7 @@ function importedNames(sf, file) {
 /** Which of t, tc and plural an expression names: an imported name, or a member of a namespace import. @param {ReturnType<typeof importedNames>} imports @param {ts.Node} n */
 function markerOf(imports, n) {
   if (ts.isIdentifier(n)) return imports.names.get(n.text) ?? null;
-  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && imports.spaces.has(n.expression.text) && ['t', 'tc', 'plural'].includes(n.name.text)) return n.name.text;
+  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && imports.spaces.has(n.expression.text) && ['t', 'tc', 'plural', 'asUser'].includes(n.name.text)) return n.name.text;
   return null;
 }
 
@@ -175,7 +175,8 @@ export function readMessages(file, text) {
     if (ts.isTaggedTemplateExpression(n)) {
       let context = '';
       let marked = false;
-      if (is(n.tag, 't')) marked = true;
+      // asUser(speaks)`…` is t's message, sent as the user's words: no context.
+      if (is(n.tag, 't') || (ts.isCallExpression(n.tag) && is(n.tag.expression, 'asUser'))) marked = true;
       else if (ts.isCallExpression(n.tag) && is(n.tag.expression, 'tc')) {
         marked = true;
         const c = n.tag.arguments[0];
@@ -534,7 +535,7 @@ export function bareEnglish(file, text) {
       }
       // The values of a message are code, but English in them is shown (t`Saved ${ok ? 'Kept' : 'Lost'}`).
       if (markerOf(imports, n.expression) === 'plural') n.arguments.slice(3).forEach(shown);
-    } else if (ts.isTaggedTemplateExpression(n) && ts.isTemplateExpression(n.template) && (markerOf(imports, n.tag) === 't' || (ts.isCallExpression(n.tag) && markerOf(imports, n.tag.expression) === 'tc'))) {
+    } else if (ts.isTaggedTemplateExpression(n) && ts.isTemplateExpression(n.template) && (markerOf(imports, n.tag) === 't' || (ts.isCallExpression(n.tag) && ['tc', 'asUser'].includes(String(markerOf(imports, n.tag.expression)))))) {
       for (const span of n.template.templateSpans) shown(span.expression);
     } else if (ts.isPropertyAssignment(n) && SHOWN_PROPS.has(nameOf(n.name))) shown(n.initializer);
     ts.forEachChild(n, visit);

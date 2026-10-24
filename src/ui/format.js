@@ -1,7 +1,7 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
-import { t, tc, lang as screensLang } from '../core/l10n.js';
+import { t, tc, lang as screensLang, sameLanguage } from '../core/l10n.js';
 import { h } from './dom.js';
 import { num, money, size, when, relTime, zone, parseNum, numField, sentences } from '../core/intl.js';
 
@@ -196,6 +196,9 @@ export function limitField(limit) {
 export function limitText(limit) {
   return limit === null ? t`no limit` : size(limit ?? TIMINGS.askAbove);
 }
+
+/** Whether the user speaks the screens' language (their Languages, else the phone's): asUser's choice. @param {Record<string, any>} app */
+export const speaksScreens = (app) => languageSettings(app, navigator.language).spoken.some((l) => sameLanguage(l.locale, screensLang()));
 
 /**
  * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure, so it takes the

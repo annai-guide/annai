@@ -1,12 +1,13 @@
-import { h, settled, t } from './dom.js';
-import { relTime } from './format.js';
+import { h, settled, t, asUser } from './dom.js';
+import { relTime, speaksScreens } from './format.js';
+import { readAppSettings } from '../core/settings.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { markVerified } from '../core/llm/config.js';
 import { micProblem } from './mic-help.js';
 import { withoutSecrets } from '../core/agent/net.js';
 
-/** What a voice says when it is tested, in the screens' language: a voice speaks a sentence in its own language. */
-export const SAMPLE = t`Hello! This is how I sound when I talk to you.`;
+/** What a voice says when it is tested, as the user's own words (asUser): a voice speaks a sentence in its own language. @param {boolean} speaks */
+export const sample = (speaks) => asUser(speaks)`Hello! This is how I sound when I talk to you.`;
 
 /** A speech call that failed, in plain words with what to do next. @param {unknown} e */
 export function speechProblem(e) {
@@ -33,7 +34,7 @@ export function speechTestPanel(ctx, model, kind, verified, title = t`Test`) {
       try {
         if (kind === 'out') {
           status.textContent = t`Playing a sample…`;
-          const r = await ctx.voice.sample(model.id, SAMPLE);
+          const r = await ctx.voice.sample(model.id, sample(speaksScreens(await readAppSettings(ctx.ws))));
           status.textContent = r.ended ? t`It works: that was this voice.` : t`The sample stopped early.`;
           await mark(true);
           return;

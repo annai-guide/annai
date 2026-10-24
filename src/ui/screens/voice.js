@@ -1,10 +1,10 @@
 import { h, crumb, linkIn, t, tc, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
-import { seconds, numField, list, sentences } from '../format.js';
+import { seconds, numField, list, sentences, speaksScreens } from '../format.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
-import { SAMPLE, speechProblem } from '../speech-check.js';
+import { sample, speechProblem } from '../speech-check.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
@@ -70,7 +70,7 @@ export async function renderVoice(ctx) {
       sayStatus.textContent = t`Speaking…`;
       await settled(); // the speed or pause just typed is saved first
       try {
-        const r = await voice.say(SAMPLE);
+        const r = await voice.say(sample(speaksScreens(await readAppSettings(ctx.ws))));
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
           : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
             // A provider's own words may hold a key (spec §9.9), as in a model's Test.

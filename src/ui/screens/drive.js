@@ -1,25 +1,23 @@
-import { h, crumb, t } from '../dom.js';
+import { h, crumb, t, asUser } from '../dom.js';
 import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
-import { distance, duration, sentenceGap } from '../format.js';
-import { knownFix } from '../live-chip.js';
+import { readAppSettings } from '../../core/settings.js';
+import { distance, duration, sentenceGap, speaksScreens } from '../format.js';
+import { knownFix, screenOn } from '../live-chip.js';
 import { latestCard, eventCard, nowOf } from './now.js';
 
-/** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words, so in their language. */
-const QUICK = [
-  [t`What's around here?`, t`What is around us right now that is worth knowing about?`],
-  [t`Food`, t`Where can we eat along the way?`],
-  [t`Fuel`, t`Where is the next fuel station or charger?`],
-  [t`Restroom`, t`Where is the nearest restroom?`],
+/** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
+const quickAsks = (speaks, next) => [
+  [t`What's around here?`, asUser(speaks)`What is around us right now that is worth knowing about?`],
+  [t`Food`, asUser(speaks)`Where can we eat along the way?`],
+  [t`Fuel`, asUser(speaks)`Where is the next fuel station or charger?`],
+  [t`Restroom`, asUser(speaks)`Where is the nearest restroom?`],
+  [t`How long?`, next ? asUser(speaks)`How long until we reach ${next.name}?` : asUser(speaks)`How long until our next stop?`],
 ];
 
 /** How far and how long to a stop, for the road ahead: "≈ 26 mi · about 1 hr, 12 min"; a minute at least, even standing at it. @param {{ km: number | null, minutes: number | null }} s */
 export const roadText = (s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration(Math.max(1, s.minutes ?? 0) * 60_000)}`}`);
-
-/** Keep the screen on, for what live mode says the user is doing: a whole message each. @param {string} activity */
-const keepOnText = (activity) => (activity === 'moving-fast' ? t`Keep the screen on while driving or riding` : activity === 'walking' ? t`Keep the screen on while walking`
-  : activity === 'still' ? t`Keep the screen on while stopped` : t`Keep the screen on while GPS is on`);
 
 /**
  * Driving (spec §16.2): the route strip, a maps card, big quick-ask buttons, and the big dock
@@ -37,6 +35,7 @@ export async function renderDrive(ctx) {
   const { rows } = await tripRows(ctx, id);
   const live = ctx.live;
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
+  const speaks = speaksScreens(await readAppSettings(ctx.ws));
   const strip = h('ol', { class: 'route-strip', 'aria-label': t`The road ahead` });
   const maps = h('div', { class: 'maps-card' });
   const ask = h('div', { class: 'quick-ask' });
@@ -57,8 +56,7 @@ export async function renderDrive(ctx) {
       h('div', { class: 'acts' }, ...mapsLinks(links, { destination: `${next.place.lat},${next.place.lng}`, ...(here ? { origin: `${here.lat},${here.lng}` } : {}), mode: 'drive' })
         .map((l) => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))),
     ] : [h('p', { class: 'sub', text: t`annai hasn't downloaded its maps links yet; it needs to be online once.` })]));
-    const quick = [...QUICK, [t`How long?`, next ? t`How long until we reach ${next.name}?` : t`How long until our next stop?`]];
-    ask.replaceChildren(...quick.map(([label, text]) => h('button', {
+    ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
       class: 'btn big', type: 'button',
       onclick: () => {
         ctx.agent.send(text);
@@ -67,7 +65,7 @@ export async function renderDrive(ctx) {
     }, label)));
     const a = ctx.awake;
     awake.replaceChildren(...(live?.on && a?.available
-      ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, keepOnText(live.activity))]
+      ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, screenOn(live.activity).keep)]
       : live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
   };
   draw();

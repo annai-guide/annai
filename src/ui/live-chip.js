@@ -38,11 +38,6 @@ export function screenOn(activity) {
   return { keep: t`Keep the screen on while GPS is on`, stays: t`The screen stays on while GPS is on.`, goes: t`The screen goes off as usual while GPS is on.` };
 }
 
-/** "while driving or riding": the Driving screen's, until its button says screenOn(activity).keep. @param {string} activity */
-export function whileText(activity) {
-  return /** @type {Record<string, string>} */ ({ 'moving-fast': t`while driving or riding`, walking: t`while walking`, still: t`while stopped` })[activity] ?? t`while GPS is on`;
-}
-
 /**
  * The live chip (spec §11.1: live mode is a switch), one tap away on every screen next to the voice
  * chip. A tap shows the switch; with live mode on, "Keep the screen on" for this situation; and with

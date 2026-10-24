@@ -237,20 +237,16 @@ il754y	draft	Keep the screen on while stopped	停留时保持屏幕常亮	src/ui
 1aspuv3	draft	The screen goes off as usual while GPS is on.	GPS 开启时，屏幕照常熄灭。	src/ui/live-chip.js:38	
 1r528n6	draft	Keep the screen on while GPS is on	GPS 开启时保持屏幕常亮	src/ui/live-chip.js:38	
 m1jg5r	draft	The screen stays on while GPS is on.	GPS 开启时，屏幕保持常亮。	src/ui/live-chip.js:38	
-1r67kxj	draft	while driving or riding	驾驶或乘车时	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-1yp7plh	draft	while walking	步行时	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-qis7kn	draft	while GPS is on	GPS 开启时	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-rhvo7b	draft	while stopped	停下时	src/ui/live-chip.js:43	Note: a part the Driving screen's button still adds after "Keep the screen on", until it uses the whole sentence.
-13ebf61	draft	Pause the simulation	暂停模拟	src/ui/live-chip.js:83	
-1ui2yvw	draft	Resume the simulation	继续模拟	src/ui/live-chip.js:83	
-5zs6ip	draft	Stop the simulation	停止模拟	src/ui/live-chip.js:84	
-1yuht27	draft	Simulate a trip	模拟旅行	src/ui/live-chip.js:85	
-100a56n	draft	Turn GPS off	关闭 GPS	src/ui/live-chip.js:94	
-ah9gez	draft	Turn GPS on	打开 GPS	src/ui/live-chip.js:94	
-1cm49b4	draft	The plan has no places to choose from yet.	行程里还没有可选的地点。	src/ui/live-chip.js:109	
-1sedy1m	draft	Where are you?	你在哪里？	src/ui/live-chip.js:109	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	draft	annai now knows you're at {0}.	annai 现在知道你在{0}。	src/ui/live-chip.js:116	{0} = p.name
-12nwa0c	draft	A plan place	行程中的地点	src/ui/live-chip.js:153	
+13ebf61	draft	Pause the simulation	暂停模拟	src/ui/live-chip.js:78	
+1ui2yvw	draft	Resume the simulation	继续模拟	src/ui/live-chip.js:78	
+5zs6ip	draft	Stop the simulation	停止模拟	src/ui/live-chip.js:79	
+1yuht27	draft	Simulate a trip	模拟旅行	src/ui/live-chip.js:80	
+100a56n	draft	Turn GPS off	关闭 GPS	src/ui/live-chip.js:89	
+ah9gez	draft	Turn GPS on	打开 GPS	src/ui/live-chip.js:89	
+1cm49b4	draft	The plan has no places to choose from yet.	行程里还没有可选的地点。	src/ui/live-chip.js:104	
+1sedy1m	draft	Where are you?	你在哪里？	src/ui/live-chip.js:104	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	draft	annai now knows you're at {0}.	annai 现在知道你在{0}。	src/ui/live-chip.js:111	{0} = p.name
+12nwa0c	draft	A plan place	行程中的地点	src/ui/live-chip.js:148	
 19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	必须开启定位服务：设置 → 隐私与安全 → 定位服务。	src/ui/live-help.js:14	
 6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：设置 → 隐私与安全 → 定位服务 → Safari 浏览器网站 → 使用 App 期间，以及设置 → App → Safari 浏览器 → 位置 → 允许。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; Safari 浏览器网站, 使用 App 期间 and Safari's 位置 are to be checked on a phone (glossary).
 m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：轻点地址栏中的“页面菜单”按钮，然后选择网站设置 → 位置 → 允许（或设置 → App → Safari 浏览器 → 位置 → 允许）。	src/ui/live-help.js:17	Note: “页面菜单”按钮 as Apple's zh-cn guide names it; 网站设置 is to be checked on a phone (glossary).
@@ -455,43 +451,43 @@ d0tqtj	draft	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行
 yp5voz	draft	This booking doesn't say which file it came from.	这个预订没有说明来自哪个文件。	src/ui/screens/booking.js:66	
 98drsx	draft	Open the original	打开原件	src/ui/screens/booking.js:67	
 c4110z	draft	The original, {0}	原件：{0}	src/ui/screens/booking.js:69	{0} = entry.path
-19jra30	draft	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:11	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	draft	What's around here?	附近有什么？	src/ui/screens/drive.js:11	
-1gkqhnt	draft	Food	吃饭	src/ui/screens/drive.js:12	
-1hv457u	draft	Where can we eat along the way?	沿途哪里可以吃饭？	src/ui/screens/drive.js:12	
-112axt9	draft	Fuel	加油	src/ui/screens/drive.js:13	
-1c79d90	draft	Where is the next fuel station or charger?	下一个加油站或充电站在哪里？	src/ui/screens/drive.js:13	
-1d8ka8b	draft	Where is the nearest restroom?	最近的洗手间在哪里？	src/ui/screens/drive.js:14	
-iw9ebk	draft	Restroom	洗手间	src/ui/screens/drive.js:14	
-1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:18	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-1q5u96o	draft	Driving	驾驶中	src/ui/screens/drive.js:34	
-7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/drive.js:35	
-ov2ou9	draft	Open a trip to see the road ahead.	打开一个旅行即可查看前方的路。	src/ui/screens/drive.js:35	
-sxc7mr	draft	The road ahead	前方的路	src/ui/screens/drive.js:40	
-1b4mdx5	draft	You (finding where)	你（正在定位）	src/ui/screens/drive.js:49	
-1efd4xo	draft	You	你	src/ui/screens/drive.js:49	
-591tvw	draft	You (GPS off)	你（GPS 已关闭）	src/ui/screens/drive.js:49	
-ugf9pe	draft	at {0}	预定{0}	src/ui/screens/drive.js:52	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	draft	Nothing more is planned with a place.	之后没有带地点的安排了。	src/ui/screens/drive.js:53	
-l329ve	draft	Directions to {0}	前往{0}的路线	src/ui/screens/drive.js:56	{0} = next.name
-kb2apf	draft	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 还没有下载地图链接；需要联网一次。	src/ui/screens/drive.js:59	
-14k2tsa	draft	How long?	还要多久？	src/ui/screens/drive.js:60	
-18wvy25	draft	How long until our next stop?	到下一站还要多久？	src/ui/screens/drive.js:60	
-1r191hj	draft	How long until we reach {0}?	到{0}还要多久？	src/ui/screens/drive.js:60	{0} = next.name
-1tuqp1	draft	Asked Shiori: {0}	已问 Shiori：{0}	src/ui/screens/drive.js:65	{0} = text
-12mubvb	draft	Now	此刻	src/ui/screens/drive.js:101	
+19jra30	draft	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	draft	What's around here?	附近有什么？	src/ui/screens/drive.js:12	
+1gkqhnt	draft	Food	吃饭	src/ui/screens/drive.js:13	
+1hv457u	draft	Where can we eat along the way?	沿途哪里可以吃饭？	src/ui/screens/drive.js:13	
+112axt9	draft	Fuel	加油	src/ui/screens/drive.js:14	
+1c79d90	draft	Where is the next fuel station or charger?	下一个加油站或充电站在哪里？	src/ui/screens/drive.js:14	
+1d8ka8b	draft	Where is the nearest restroom?	最近的洗手间在哪里？	src/ui/screens/drive.js:15	
+iw9ebk	draft	Restroom	洗手间	src/ui/screens/drive.js:15	
+14k2tsa	draft	How long?	还要多久？	src/ui/screens/drive.js:16	
+18wvy25	draft	How long until our next stop?	到下一站还要多久？	src/ui/screens/drive.js:16	
+1r191hj	draft	How long until we reach {0}?	到{0}还要多久？	src/ui/screens/drive.js:16	{0} = next.name
+1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:20	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+1q5u96o	draft	Driving	驾驶中	src/ui/screens/drive.js:32	
+7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/drive.js:33	
+ov2ou9	draft	Open a trip to see the road ahead.	打开一个旅行即可查看前方的路。	src/ui/screens/drive.js:33	
+sxc7mr	draft	The road ahead	前方的路	src/ui/screens/drive.js:39	
+1b4mdx5	draft	You (finding where)	你（正在定位）	src/ui/screens/drive.js:48	
+1efd4xo	draft	You	你	src/ui/screens/drive.js:48	
+591tvw	draft	You (GPS off)	你（GPS 已关闭）	src/ui/screens/drive.js:48	
+ugf9pe	draft	at {0}	预定{0}	src/ui/screens/drive.js:51	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	draft	Nothing more is planned with a place.	之后没有带地点的安排了。	src/ui/screens/drive.js:52	
+l329ve	draft	Directions to {0}	前往{0}的路线	src/ui/screens/drive.js:55	{0} = next.name
+kb2apf	draft	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 还没有下载地图链接；需要联网一次。	src/ui/screens/drive.js:58	
+1tuqp1	draft	Asked Shiori: {0}	已问 Shiori：{0}	src/ui/screens/drive.js:63	{0} = text
+12mubvb	draft	Now	此刻	src/ui/screens/drive.js:99	
 1py6vf8	draft	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
 aesk48	draft	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	尚未经懂该语言的人检查的翻译。开启后，可在设置 → Shiori → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:31	
 xb1ny3	draft	Trips	旅行	src/ui/screens/ext.js:54	
-10rafvo	draft	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:21	
-1pm5i13	draft	Back to Trips	返回“旅行”	src/ui/screens/file.js:21	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-1jpjwmm	draft	Back to trip	返回旅行	src/ui/screens/file.js:23	
-krcze5	draft	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:26	
-1jlj988	draft	Delete file	删除文件	src/ui/screens/file.js:32	
-1ygxf36	draft	Tap again to delete	再点一次以删除	src/ui/screens/file.js:32	
-1hnv6ua	draft	Content	内容	src/ui/screens/file.js:57	
-lewgh4	draft	Save	保存	src/ui/screens/file.js:57	
-1m183es	draft	Open the photo full size	放大查看照片	src/ui/screens/file.js:65	
+10rafvo	draft	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:22	
+1pm5i13	draft	Back to Trips	返回“旅行”	src/ui/screens/file.js:22	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+1jpjwmm	draft	Back to trip	返回旅行	src/ui/screens/file.js:24	
+krcze5	draft	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:27	
+1jlj988	draft	Delete file	删除文件	src/ui/screens/file.js:33	
+1ygxf36	draft	Tap again to delete	再点一次以删除	src/ui/screens/file.js:33	
+1hnv6ua	draft	Content	内容	src/ui/screens/file.js:58	
+lewgh4	draft	Save	保存	src/ui/screens/file.js:58	
+1m183es	draft	Open the photo full size	放大查看照片	src/ui/screens/file.js:66	
 wbyn1d	draft	Look at this part of {0}.	请看{0}的这一部分。	src/ui/screens/file.js:71	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
 129ed1b	draft	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此浏览器无法显示这张照片。它在 Safari 浏览器中可以显示，用“共享”导出时会尽可能转换格式。	src/ui/screens/file.js:78	
 t8quxl	draft	Download	下载	src/ui/screens/file.js:85	
@@ -648,26 +644,23 @@ ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:190	{0} = called
 1ln5v12	draft	Move {0}	移动{0}	src/ui/screens/models.js:225	{0} = name
 1rvkqip	draft	Move up	上移	src/ui/screens/models.js:226	
 c2tjmw	draft	Move down	下移	src/ui/screens/models.js:227	
-1tbrgfp	draft	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:28	
-izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/ui/screens/now.js:39	
-15h0umr	draft	Next	接下来	src/ui/screens/now.js:80	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	draft	Nothing more is planned.	之后没有安排了。	src/ui/screens/now.js:82	
-17yr96a	draft	The whole plan	完整行程	src/ui/screens/now.js:83	
-11lm89y	draft	Latest	最新	src/ui/screens/now.js:85	
-1tzspvr	draft	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/screens/now.js:126	
-69apv3	draft	Location isn't allowed for annai. Tap GPS below to say where you are.	annai 未获允许使用位置信息。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:129	
-1770v5g	draft	Finding where you are…	正在确定你的位置…	src/ui/screens/now.js:130	
-1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	现在没有 GPS 信号。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:130	
-17826bm	draft	At {0}	在{0}	src/ui/screens/now.js:133	{0} = near.name
-ue501f	draft	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/screens/now.js:133	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
-tdmj58	draft	Flexible:	可调整：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
-u35e3n	draft	said aloud	已朗读	src/ui/screens/now.js:170	Note: the mark on a line of hers that was said aloud.
-16ocoht	draft	Show what she said	显示她说的话	src/ui/screens/now.js:172	
-1yj7glf	draft	Said aloud	已朗读	src/ui/screens/now.js:173	
-1iq3mns	draft	{0}, said aloud: {1}	{0}（已朗读）：{1}	src/ui/screens/now.js:178	{0} = String(d.title); {1} = words; Note: A reminder annai said aloud: its plan item's title, then its words.
-1oe5z73	draft	Reminder, said aloud: {0}	提醒（已朗读）：{0}	src/ui/screens/now.js:179	{0} = words; Note: {0} is the reminder's words.
-n22tq9	draft	Reminder: {0}	提醒：{0}	src/ui/screens/now.js:179	{0} = words; Note: {0} is the reminder's words.
+1tbrgfp	draft	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:29	
+izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/ui/screens/now.js:40	
+15h0umr	draft	Next	接下来	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	draft	Nothing more is planned.	之后没有安排了。	src/ui/screens/now.js:83	
+17yr96a	draft	The whole plan	完整行程	src/ui/screens/now.js:84	
+11lm89y	draft	Latest	最新	src/ui/screens/now.js:86	
+1tzspvr	draft	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/screens/now.js:127	
+69apv3	draft	Location isn't allowed for annai. Tap GPS below to say where you are.	annai 未获允许使用位置信息。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:130	
+1770v5g	draft	Finding where you are…	正在确定你的位置…	src/ui/screens/now.js:131	
+1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	现在没有 GPS 信号。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:131	
+17826bm	draft	At {0}	在{0}	src/ui/screens/now.js:134	{0} = near.name
+ue501f	draft	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
+1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:146	Note: Read aloud before a plan item that keeps its time.
+tdmj58	draft	Flexible:	可调整：	src/ui/screens/now.js:146	Note: Read aloud before a plan item whose time can move.
+u35e3n	draft	said aloud	已朗读	src/ui/screens/now.js:168	Note: the mark on a line of hers that was said aloud.
+16ocoht	draft	Show what she said	显示她说的话	src/ui/screens/now.js:170	
+1yj7glf	draft	Said aloud	已朗读	src/ui/screens/now.js:171	
 ls5hgo	draft	Open a trip to see its plan.	打开一个旅行即可查看其行程。	src/ui/screens/plan.js:24	
 ow5t4g	draft	No time yet ({0})	未定时间（{0}）	src/ui/screens/plan.js:36	{0} = num(untimed.length)
 u71m40	draft	Nothing planned this day.	这一天没有安排。	src/ui/screens/plan.js:46	
@@ -874,49 +867,51 @@ o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sig
 susy7u	draft	Shiori woke to tell you the recap.	Shiori 已唤醒，给你讲回顾。	src/ui/screens/talk.js:97	
 18rv8j7	draft	Shiori woke.	Shiori 已唤醒。	src/ui/screens/talk.js:99	
 gofzl2	draft	Shiori woke for the plugin {0}.	插件 {0} 唤醒了 Shiori。	src/ui/screens/talk.js:99	{0} = nameOf(String(r.plugin ?? ''))
+1oe5z73	draft	Reminder, said aloud: {0}	提醒（已朗读）：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is the reminder's words.
 7ew4gb	draft	Shiori's answer: {0}	Shiori 的回答：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	draft	Reminder: {0}	提醒：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is the reminder's words.
 y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori 的回答（已朗读）：{0}	src/ui/screens/talk.js:109	{0} = WORDS; Note: {0} is her answer, shown by annai.
-6xevdr	draft	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:125	
-1ussy6i	draft	Trip	旅行	src/ui/screens/talk.js:182	Note: The heading over a trip's files that are in no folder.
-137bppl	draft	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:196	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	draft	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:196	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-1v011e1	draft	This trip so far: {0}	这次旅行到目前为止：{0}	src/ui/screens/talk.js:202	{0} = formatCost(c.total)
-glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:202	{0} = formatCost(c.total)
-td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:229	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:295	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:295	Note: a note from Koe to Kokoro; its words follow.
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/ui/screens/talk.js:303	
-e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:305	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:306	
-1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/ui/screens/talk.js:313	
-1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:313	
-1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:313	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:327	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:381	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-17o4v1i	draft	Conversation	对话	src/ui/screens/talk.js:398	
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:400	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:430	
-bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:431	
-7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:445	
-12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:447	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:447	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:447	
-va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:447	
-mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:450	
-10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:455	
-va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:462	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:463	
-czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:464	
-1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:474	{0} = String(/** @type {any} */ (e)?.message ?? e)
-1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:477	
-3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:477	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:477	
-p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:477	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:497	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:498	
-159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:513	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:520	
-vmlwpb	draft	Undo	撤销	src/ui/screens/talk.js:527	
+6xevdr	draft	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:135	
+1ussy6i	draft	Trip	旅行	src/ui/screens/talk.js:192	Note: The heading over a trip's files that are in no folder.
+137bppl	draft	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:206	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:206	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	这次旅行到目前为止：{0}	src/ui/screens/talk.js:212	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:212	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:239	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:302	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:302	Note: a note from Koe to Kokoro; its words follow.
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/ui/screens/talk.js:310	
+e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:312	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:313	
+1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/ui/screens/talk.js:320	
+1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:320	
+1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:320	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:334	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:388	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+17o4v1i	draft	Conversation	对话	src/ui/screens/talk.js:405	
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:407	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:437	
+bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:438	
+7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:452	
+12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:454	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:454	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:454	
+va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:454	
+mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:457	
+10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:462	
+va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:469	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:470	
+czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:471	
+1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:481	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:484	
+3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:484	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:484	
+p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:484	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:504	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:505	
+159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:520	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:527	
+vmlwpb	draft	Undo	撤销	src/ui/screens/talk.js:534	
 11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -1125,19 +1120,19 @@ ata72m	draft	Trace	记录	src/ui/shell.js:59
 1z00dfe	draft	An update is ready	更新已就绪	src/ui/shell.js:349	
 gt0nrj	draft	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:349	
 nb21do	draft	Restart now	立即重启	src/ui/shell.js:349	
-sntfon	draft	Hello! This is how I sound when I talk to you.	你好！我和你说话时就是这样的声音。	src/ui/speech-check.js:9	Note: spoken by the voice being tested, so it is heard in the screens' language.
-n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:15	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
-1a27ynt	draft	Last tested {0}: it worked.	上次测试于{0}：可用。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
-lrzlka	draft	Last tested {0}: it didn't work.	上次测试于{0}：不可用。	src/ui/speech-check.js:25	{0} = relTime(verified.at)
-11k50g8	draft	Playing a sample…	正在播放示例…	src/ui/speech-check.js:35	
-10nc9qe	draft	The sample stopped early.	示例提前停止了。	src/ui/speech-check.js:37	
-f41br8	draft	It works: that was this voice.	可以使用：刚才就是这个声音。	src/ui/speech-check.js:37	
-en3jzv	draft	Say something, such as "Where should we stop for lunch?"	说点什么，例如“我们在哪里停下来吃午饭？”	src/ui/speech-check.js:41	
-sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒内没听到声音。请确认麦克风已开启，然后再试一次。	src/ui/speech-check.js:46	
-16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	听到了语音，但什么也没写出来。请离手机近一点，再试一次。	src/ui/speech-check.js:51	
-a2r8f0	draft	It heard: "{0}"	听到：“{0}”	src/ui/speech-check.js:51	{0} = text
-1alwf78	draft	Say something	说点什么	src/ui/speech-check.js:64	
-1qerct6	draft	Play a sample	播放示例	src/ui/speech-check.js:64	
+sntfon	draft	Hello! This is how I sound when I talk to you.	你好！我和你说话时就是这样的声音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
+n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+1a27ynt	draft	Last tested {0}: it worked.	上次测试于{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+lrzlka	draft	Last tested {0}: it didn't work.	上次测试于{0}：不可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+11k50g8	draft	Playing a sample…	正在播放示例…	src/ui/speech-check.js:36	
+10nc9qe	draft	The sample stopped early.	示例提前停止了。	src/ui/speech-check.js:38	
+f41br8	draft	It works: that was this voice.	可以使用：刚才就是这个声音。	src/ui/speech-check.js:38	
+en3jzv	draft	Say something, such as "Where should we stop for lunch?"	说点什么，例如“我们在哪里停下来吃午饭？”	src/ui/speech-check.js:42	
+sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒内没听到声音。请确认麦克风已开启，然后再试一次。	src/ui/speech-check.js:47	
+16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	听到了语音，但什么也没写出来。请离手机近一点，再试一次。	src/ui/speech-check.js:52	
+a2r8f0	draft	It heard: "{0}"	听到：“{0}”	src/ui/speech-check.js:52	{0} = text
+1alwf78	draft	Say something	说点什么	src/ui/speech-check.js:65	
+1qerct6	draft	Play a sample	播放示例	src/ui/speech-check.js:65	
 edrwuk	draft	annai's storage is full	annai 的存储空间已满	src/ui/storage-full.js:12	
 dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	没有保存了一半的内容。要腾出空间，请删除不再需要的旅行（请先备份），或释放此设备上的空间。	src/ui/storage-full.js:14	
 1yr1lra	draft	Export a backup	导出备份	src/ui/storage-full.js:16	

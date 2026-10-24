@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { keepAwake, situation } from '../../src/ui/wake-lock.js';
-import { liveText, whileText, knownFix } from '../../src/ui/live-chip.js';
+import { liveText, screenOn, knownFix } from '../../src/ui/live-chip.js';
 import { whereWords } from '../../src/ui/screens/now.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -98,10 +98,10 @@ test('the live chip says how things stand, in a few words', () => {
   assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: { lat: 1, lng: 2, at: now - 3_600_000, source: 'manual' } }), 'GPS on'); // a place the user set
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'moving-fast', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'GPS on · moving fast');
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'GPS on · stopped');
-  assert.equal(whileText('moving-fast'), 'while driving or riding');
-  assert.equal(whileText('walking'), 'while walking');
-  assert.equal(whileText('still'), 'while stopped');
-  assert.equal(whileText('unknown'), 'while GPS is on');
+  assert.equal(screenOn('moving-fast').keep, 'Keep the screen on while driving or riding');
+  assert.equal(screenOn('walking').keep, 'Keep the screen on while walking');
+  assert.equal(screenOn('still').keep, 'Keep the screen on while stopped');
+  assert.equal(screenOn('unknown').keep, 'Keep the screen on while GPS is on');
 });
 
 test('a GPS position from before the GPS was lost, or too old, is not shown as where you are (B1)', () => {
