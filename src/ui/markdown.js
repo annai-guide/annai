@@ -96,12 +96,13 @@ function inlineNodes(c) {
   });
 }
 
-/** @param {string} src @param {Record<string, any>} [attrs] more attributes for the block: the language and direction of its words */
+/** @param {string} src @param {Record<string, any>} [attrs] the words' language and direction: the language is the block's, the direction each paragraph's own */
 export function renderMarkdown(src, attrs = {}) {
-  return h('div', { class: 'md', ...attrs }, ...parseMarkdown(src).map((b) => {
-    if (b.t === 'p') return h('p', {}, ...inlineNodes(b.c));
-    if (b.t === 'h') return h('p', { class: 'md-h' }, ...inlineNodes(b.c));
+  const { dir, ...rest } = attrs;
+  return h('div', { class: 'md', ...rest }, ...parseMarkdown(src).map((b) => {
+    if (b.t === 'p') return h('p', { dir }, ...inlineNodes(b.c));
+    if (b.t === 'h') return h('p', { class: 'md-h', dir }, ...inlineNodes(b.c));
     if (b.t === 'pre') return h('pre', { class: 'mono', text: b.v });
-    return h(b.t, {}, ...b.items.map((it) => h('li', {}, ...inlineNodes(it))));
+    return h(b.t, { dir }, ...b.items.map((it) => h('li', {}, ...inlineNodes(it))));
   }));
 }

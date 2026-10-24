@@ -5,7 +5,7 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
-import { wording } from './format.js';
+import { wording, mark } from './format.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
@@ -162,10 +162,7 @@ export function createDock(ctx) {
   const showCaption = (words, say) => {
     captionText.textContent = words;
     // The bubble's own: the caption is slanted unless its words are Chinese, Japanese or Korean (shiori.css).
-    const { lang, dir } = say(words);
-    if (lang) caption.setAttribute('lang', lang);
-    else caption.removeAttribute('lang');
-    caption.setAttribute('dir', dir);
+    mark(caption, say(words));
     caption.hidden = !words;
     captionText.scrollTop = captionText.scrollHeight;
     captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);

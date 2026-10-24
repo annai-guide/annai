@@ -4,7 +4,7 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, bytes, dateRange, fileHref } from '../format.js';
+import { relTime, bytes, dateRange, fileHref, pathParts } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -131,7 +131,7 @@ function fileList(id, files) {
     ...[...groups].map(([folder, list]) => h('div', {},
       h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : 'Trip' }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },
-        h('span', { class: 'path', dir: 'auto', text: f.path }),
+        h('span', { class: 'path', dir: 'ltr' }, ...pathParts(f.path)),
         h('span', { class: 'sub', text: `${bytes(f.size)} · ${f.author} · ${relTime(f.modified)}` }))))))));
 }
 

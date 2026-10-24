@@ -1,6 +1,7 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { t } from '../core/l10n.js';
+import { h } from './dom.js';
 import { languageSettings, tagOf } from '../core/languages.js';
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** @type {[Intl.RelativeTimeFormatUnit, number][]} */
@@ -202,11 +203,24 @@ export function limitText(limit) {
 }
 
 /**
- * The attributes of someone's own words (the user's, or Shiori's) among annai's: their language (`lang`, from the text; none when unsure) and
- * `dir="auto"`. Used as `h('p', { ...say(text), text })`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
+ * The attributes of someone's own words (the user's, or Shiori's) among annai's: `lang` from the text (none when unsure) and `dir="auto"`.
+ * Used as `h('p', { ...say(text), text })`, or `mark(el, say(text))`. @param {Record<string, any>} app the app settings @param {boolean} [byShiori] her lines
  * @returns {(text: string) => { lang: string | undefined, dir: 'auto' }}
  */
 export function wording(app, byShiori = false) {
   const settings = languageSettings(app, navigator.language);
   return (text) => ({ lang: tagOf(text, settings, byShiori) || undefined, dir: 'auto' });
+}
+
+/** Gives an element the attributes `wording` gave its words, taking away a language it no longer has. @param {HTMLElement} el @param {{ lang?: string, dir: string }} a */
+export function mark(el, { lang, dir }) {
+  if (lang) el.setAttribute('lang', lang);
+  else el.removeAttribute('lang');
+  el.setAttribute('dir', dir);
+}
+
+/** A path for the page: left to right as a whole, its file's name turned by its own letters, so a Hebrew name does not reorder "/notes/". @param {string} path */
+export function pathParts(path) {
+  const at = path.lastIndexOf('/') + 1;
+  return [path.slice(0, at), h('span', { dir: 'auto', text: path.slice(at) })];
 }

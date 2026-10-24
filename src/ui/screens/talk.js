@@ -7,7 +7,7 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording } from '../format.js';
+import { formatCost, wording, mark } from '../format.js';
 import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
 import { onTap } from '../dock-hides.js';
@@ -27,14 +27,17 @@ const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
  * @param {string} words the line's words without its label @param {string[]} [choices] buttons that answer it
  * @param {{ image?: unknown }} [card] the card, for one with no words
  */
-export function announcement(type, kind, words, choices = [], card = {}) {
-  if (type === 'msg.user' || type === 'note') return '';
+export const announcement = (type, kind, words, choices = [], card = {}) => announced(type, kind, words, choices, card).join('');
+
+/** The same in three parts: annai's label, the words, and the choices that follow. Only the words can carry a language. @param {string} type @param {string} kind @param {string} words @param {string[]} [choices] @param {{ image?: unknown }} [card] */
+export function announced(type, kind, words, choices = [], card = {}) {
+  if (type === 'msg.user' || type === 'note') return ['', '', ''];
   const name = kind ? `Shiori (${kind})` : 'Shiori';
   const said = words || (type === 'out.show' ? (card.image ? 'a photo' : 'a card') : '');
   const pick = choices.length ? ` Choices: ${choices.join(', ')}.` : '';
-  if (type === 'out.speak' || type === 'out.show') return `${name}: ${said}${pick}`;
-  if (type === 'out.ask') return `${name} asks: ${said}${pick}`;
-  return words;
+  if (type === 'out.speak' || type === 'out.show') return [`${name}: `, said, pick];
+  if (type === 'out.ask') return [`${name} asks: `, said, pick];
+  return ['', words, ''];
 }
 
 /** The words in a node, each piece of text apart, but those inside what a selector names. @param {HTMLElement} root @param {string} skip */
@@ -140,7 +143,7 @@ export async function renderTalk(ctx) {
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });
   const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
-  const tell = (/** @type {string} */ text, /** @type {string | undefined} */ lang) => { if (built && text) announce.replaceChildren(h('span', { lang, text })); };
+  const tell = (/** @type {string[]} */ [before, said, after], /** @type {string | undefined} */ lang) => { if (built && (before || said)) announce.replaceChildren(h('span', {}, before, h('span', { lang }, said), after)); };
   /** Heard lines announced, and those waiting HEARD_MS for more words: each is announced once, as its last revision. @type {Map<string, any>} */
   const hearing = new Map();
   /** @param {string} id @param {HTMLElement} words */
@@ -149,7 +152,7 @@ export async function renderTalk(ctx) {
     clearTimeout(hearing.get(id));
     hearing.set(id, setTimeout(() => {
       hearing.set(id, true);
-      tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`, mine(words.textContent ?? '').lang);
+      tell([`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: `, words.textContent ?? '', ''], mine(words.textContent ?? '').lang);
     }, HEARD_MS));
   };
   const cost = h('p', { class: 'sub' });
@@ -164,9 +167,7 @@ export async function renderTalk(ctx) {
   /** Words heard, with the language they are in. @param {HTMLElement} span @param {string} text */
   const heardAs = (span, text) => {
     span.textContent = text;
-    const { lang } = mine(text);
-    if (lang) span.setAttribute('lang', lang);
-    else span.removeAttribute('lang');
+    mark(span, mine(text));
   };
   /** @type {Map<string, HTMLElement>} heard lines' words, by id: written down, or ending, later (heard.text) */
   const unheard = new Map();
@@ -213,7 +214,7 @@ export async function renderTalk(ctx) {
     }
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
-      const words = h('span', { dir: 'auto' });
+      const words = h('span', {});
       heardAs(words, typeof d.text === 'string' ? d.text : '…');
       unheard.set(d.id, words); // its words may come later, or end later (Gemini's input transcript): heard.text
       return d.dismissed ? h('li', { class: 'system-line' }, 'Heard, not for Shiori: ', words) : h('li', { class: 'you heard' }, h('p', {}, words));
@@ -244,8 +245,8 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') {
-      const line = `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}`;
-      return h('li', { ...mine(line), class: 'system-line', text: line });
+      const words = String(d.text ?? '');
+      return h('li', { class: 'system-line' }, `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: `, h('span', { ...mine(words), text: words }));
     }
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
     if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: `${d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe'}:` }), ' ', h('span', { ...hers(String(texts.text ?? '')), text: String(texts.text ?? '') })) : null;
@@ -328,7 +329,12 @@ export async function renderTalk(ctx) {
             // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
             words = textOf(node, pick.length ? '.who, .card .acts button' : '.who');
           }
-          tell(announcement(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {}), hers(words).lang);
+          // Her words carry their language; annai's labels, errors and notes around and beside them do not.
+          const parts = announced(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {});
+          if (e.type === 'grounded') {
+            const [title, text] = [node.querySelector('strong')?.textContent ?? '', node.querySelector('p')?.textContent ?? ''];
+            tell([`${title}. `, text, ` ${words.replace(title, '').replace(text, '').trim()}`], mine(text).lang);
+          } else tell(parts, ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words).lang : undefined);
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).

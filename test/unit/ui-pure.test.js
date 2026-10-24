@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -698,6 +698,15 @@ test("Trace order: newest first by when an entry was written, so a simulated tri
   const a = e('trip', 7, 5, 100);
   const b = e('trip', 8, 5, 100);
   assert.deepEqual(newestFirst([a, b], 1), [b]);
+});
+
+test('the announcer\'s line is in three parts, so only her words can carry a language: annai\'s label and the choices\' lead-in are not hers', () => {
+  assert.deepEqual(announced('out.speak', '', '清水寺は朝6時に開きます。'), ['Shiori: ', '清水寺は朝6時に開きます。', '']);
+  assert.deepEqual(announced('out.ask', '', 'Where?', ['Ramen', 'Sushi']), ['Shiori asks: ', 'Where?', ' Choices: Ramen, Sushi.']);
+  assert.deepEqual(announced('out.show', 'Trail', 'Pfeiffer Falls'), ['Shiori (Trail): ', 'Pfeiffer Falls', '']);
+  assert.deepEqual(announced('out.show', '', '', [], {}), ['Shiori: ', 'a card', '']);
+  assert.deepEqual(announced('msg.user', '', 'Hello'), ['', '', '']);
+  assert.deepEqual(announced('error', '', 'Her turn ended'), ['', 'Her turn ended', '']);
 });
 
 test('the announcer reads her lines as "Shiori: …": a spoken line, a card (a plugin\'s kind named as the plugin names it), a question or a card with its choices ("SHIORINepenthe" was the label run into the words)', () => {
