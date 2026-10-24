@@ -177,6 +177,25 @@ export function listedFor(guess, spoken) {
   return same ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
 }
 
+/** A language's BCP 47 tag, for `lang`: Chinese by script (a Traditional Chinese phone's is Traditional), Norwegian as Bokmål. @param {Language} l */
+export const tagFor = (l) => (l.id === 'zh' ? (/Hant|-(?:TW|HK|MO)\b/i.test(l.locale) ? 'zh-Hant' : 'zh-Hans') : l.id === 'yue' ? 'yue-Hant' : l.id === 'no' ? 'nb' : l.id);
+/** What a script says when no listed language is its own (Han alone, with neither Chinese nor Japanese listed, is Chinese). */
+const SCRIPT_TAGS = /** @type {Record<string, string>} */ ({ Chinese: 'zh-Hans', Japanese: 'ja', Korean: 'ko', Thai: 'th', Arabic: 'ar', Hebrew: 'he', Greek: 'el', Hindi: 'hi', Russian: 'ru', Ukrainian: 'uk' });
+
+/**
+ * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads them by it (localization L3). From the
+ * writing system (languageOf) and the listed languages (listedFor). Latin text is never guessed (a wrong tag gives it a wrong voice): it
+ * and any unsure text get '' and inherit the screens'. byShiori: her lines take the language she is set to answer in.
+ * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori]
+ */
+export function tagOf(text, s, byShiori = false) {
+  if (byShiori && s.answer) return tagFor(s.answer);
+  const guess = languageOf(text);
+  if (!SCRIPT_TAGS[guess]) return '';
+  const listed = listedFor(guess, s.spoken);
+  return listed ? tagFor(listed) : SCRIPT_TAGS[guess];
+}
+
 /**
  * The locale browser voice uses: the answer language if she answers in one; else the listed language the sentence itself is written
  * in (kana: Japanese, Han: Chinese or Japanese...); else the first listed. @param {LanguageSettings} s @param {string} [text]

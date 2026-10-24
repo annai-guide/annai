@@ -64,9 +64,9 @@ test('where annai cannot tell what audio is connected, Auto follows your last ch
 });
 
 /** Her one spoken line, from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */
-async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /** @type {(server: Awaited<ReturnType<typeof startModelServer>>) => Promise<void>} */ fn, /** @type {() => Promise<void>} */ before = async () => {}) {
+async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /** @type {(server: Awaited<ReturnType<typeof startModelServer>>) => Promise<void>} */ fn, /** @type {() => Promise<void>} */ before = async () => {}, /** @type {string} */ words = 'Nepenthe is 25 minutes south.') {
   const server = await startModelServer({
-    '/b/v1/messages': sse(anthropicToolReply([{ name: 'speak', input: { text: 'Nepenthe is 25 minutes south.' } }, { name: 'sleep', input: {} }])),
+    '/b/v1/messages': sse(anthropicToolReply([{ name: 'speak', input: { text: words } }, { name: 'sleep', input: {} }])),
     '/voice/audio/speech': wav,
   });
   try {
@@ -90,7 +90,7 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
       const caption = /** @type {HTMLElement} */ (document.querySelector('.dock .caption'));
       const label = /** @type {HTMLElement} */ (document.querySelector('.dock .talk-label'));
       w.sawBubble = '';
-      const look = () => { if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) w.sawBubble = caption.textContent; };
+      const look = () => { if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) { w.sawBubble = caption.textContent; w.sawBubbleLook = { lang: caption.getAttribute('lang'), dir: caption.getAttribute('dir'), style: getComputedStyle(caption).fontStyle }; } };
       for (const el of [caption, label]) new MutationObserver(look).observe(el, { attributes: true, childList: true, characterData: true, subtree: true });
       // What the conversation's announcer said, each time.
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -123,6 +123,7 @@ test('what she says aloud is shown: its words in the conversation, marked "said 
     expect(quiet.size).toBeLessThan(loud.size);
     expect(quiet.color).not.toBe(loud.color);
     expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'the bubble held her words while she spoke').toBe('Nepenthe is 25 minutes south.');
+    expect((await page.evaluate(() => /** @type {any} */ (window).sawBubbleLook)).style, 'English in the bubble stays slanted, with no language of its own').toBe('italic');
     await expect(page.locator('.dock .caption')).toHaveText('Nepenthe is 25 minutes south.');
     await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
     // One route for a screen reader (fix pass 2, item 10): the conversation's announcer says her spoken line once; the list holding the same
@@ -135,6 +136,14 @@ test('what she says aloud is shown: its words in the conversation, marked "said 
     // The transcript stays: the line is still there to look back on.
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
   });
+});
+
+// Localization L3: the bubble carries the language of her words, so a Japanese line is drawn with Japanese shapes and not slanted.
+test('her words in the bubble carry their language: a Japanese line is "ja" and upright, an English one is slanted', async ({ page }) => {
+  await sheSpeaks(page, async () => {
+    expect(await page.evaluate(() => /** @type {any} */ (window).sawBubbleLook)).toEqual({ lang: 'ja', dir: 'auto', style: 'normal' });
+    await expect(page.locator('.convo .said p')).toHaveAttribute('lang', 'ja');
+  }, async () => {}, '直角三角形の骨組みです。');
 });
 
 test('"Show what she says" in Settings → Voice is on, and off it hides both: the bubble, and the words in the conversation until asked', async ({ page }) => {

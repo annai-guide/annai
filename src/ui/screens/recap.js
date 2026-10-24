@@ -2,11 +2,11 @@ import { h } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_SENDS } from '../../core/after/recap.js';
 import { loadPack } from '../../core/pack/read.js';
-import { updateAppSettings } from '../../core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { text } from '../../core/bytes.js';
 import { codec } from '../photo-codec.js';
-import { fileHref, relTime } from '../format.js';
+import { fileHref, relTime, wording } from '../format.js';
 import { tripStamps, stampMarks } from '../stamps.js';
 
 /** Recaps being written, by trip: the screen drawn again finds its own, and leaving the screen stops it. @type {Map<string, AbortController>} */
@@ -66,11 +66,11 @@ export async function renderRecap(ctx, route) {
     },
   }, 'Hear Shiori tell it') : null;
   return h('div', { class: 'screen recap' },
-    h('p', { class: 'crumbs' }, h('a', { href: trip }, `← ${scope.title}`)),
+    h('p', { class: 'crumbs' }, h('a', { href: trip }, '← ', h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: 'Recap' }),
     stampMarks(stamps, { max: 24, big: true }),
     recap
-      ? h('article', { class: 'recap-text' }, renderMarkdown(recap))
+      ? h('article', { class: 'recap-text' }, renderMarkdown(recap, wording(await readAppSettings(ctx.ws))(recap)))
       : h('p', { class: 'empty', text: "No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos." }),
     got ? h('p', { class: 'sub', text: `Written ${relTime(got.entry.modified)}${got.entry.author === 'user' ? ', then edited by you' : ''}.` }) : null,
     h('div', { class: 'acts' }, tell, write,

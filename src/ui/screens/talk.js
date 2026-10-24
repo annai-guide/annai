@@ -7,7 +7,7 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost } from '../format.js';
+import { formatCost, wording } from '../format.js';
 import { ask } from '../ask.js';
 import { ME } from '../../core/scopes.js';
 import { onTap } from '../dock-hides.js';
@@ -73,9 +73,9 @@ export function replacements(events) {
 /**
  * A reply grounded in Google Search, as Google gave it (G4; Google's terms): its words untouched, its links (web addresses
  * only, the loop's), and Google's suggestions in a frame sandboxed without allow-same-origin, which gets them by message.
- * Shown whatever the halves' toggle says. @param {any} d @param {Record<string, any>} texts
+ * Shown whatever the halves' toggle says. @param {any} d @param {Record<string, any>} texts @param {ReturnType<typeof wording>} say
  */
-function groundedCard(d, texts) {
+function groundedCard(d, texts, say) {
   const links = /** @type {{ url: string, title?: string }[]} */ (Array.isArray(d.links) ? d.links : []);
   const html = String(texts.html ?? '');
   const frame = html ? h('iframe', { class: 'suggestions', src: '/src/ui/grounding.html', title: 'Search suggestions from Google', sandbox: 'allow-scripts allow-popups allow-popups-to-escape-sandbox', referrerpolicy: 'no-referrer' }) : null;
@@ -84,8 +84,8 @@ function groundedCard(d, texts) {
   frame?.addEventListener('load', () => (loads++ ? frame.remove() : frame.contentWindow?.postMessage({ html }, '*')));
   return h('li', { class: 'shiori grounded' },
     h('strong', { class: 'card-title', text: `From ${String(d.source || 'Google Search')}` }),
-    texts.text ? h('p', { text: String(texts.text) }) : null,
-    links.length ? h('ul', { class: 'sources' }, ...links.map((l) => h('li', {}, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.title || l.url })))) : null,
+    texts.text ? h('p', { ...say(String(texts.text)), text: String(texts.text) }) : null,
+    links.length ? h('ul', { class: 'sources' }, ...links.map((l) => h('li', {}, h('a', { ...say(l.title ?? ''), href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.title || l.url })))) : null,
     frame);
 }
 
@@ -129,14 +129,18 @@ export async function renderTalk(ctx) {
   const agent = ctx.agent;
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
   // What Shiori's halves tell each other shows, and her spoken lines show their words, unless Settings say not (spec §16.1).
-  const { showWords, showHalves: halves } = shownSettings(await readAppSettings(ctx.ws));
+  const app = await readAppSettings(ctx.ws);
+  const { showWords, showHalves: halves } = shownSettings(app);
+  // The lines' languages (`lang`): the font and the screen reader's voice follow them. The user's by their text; Shiori's by the language she is set to answer in, else by her text.
+  const mine = wording(app);
+  const hers = wording(app, true);
   const scope = agent.scope;
   const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(agent.trip)))?.title ?? 'Trip' : 'No trip open';
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });
   const announce = h('div', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' });
-  const tell = (/** @type {string} */ text) => { if (built && text) announce.replaceChildren(h('span', { text })); };
+  const tell = (/** @type {string} */ text, /** @type {string | undefined} */ lang) => { if (built && text) announce.replaceChildren(h('span', { lang, text })); };
   /** Heard lines announced, and those waiting HEARD_MS for more words: each is announced once, as its last revision. @type {Map<string, any>} */
   const hearing = new Map();
   /** @param {string} id @param {HTMLElement} words */
@@ -145,7 +149,7 @@ export async function renderTalk(ctx) {
     clearTimeout(hearing.get(id));
     hearing.set(id, setTimeout(() => {
       hearing.set(id, true);
-      tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`);
+      tell(`${words.closest('.system-line') ? 'Heard, not for Shiori' : 'Heard'}: ${words.textContent}`, mine(words.textContent ?? '').lang);
     }, HEARD_MS));
   };
   const cost = h('p', { class: 'sub' });
@@ -157,6 +161,13 @@ export async function renderTalk(ctx) {
   const asks = new Map();
   /** The newest error note with a Try again: it goes when anything newer joins the conversation. @type {{ li: HTMLElement, again: HTMLElement } | null} */
   let retry = null;
+  /** Words heard, with the language they are in. @param {HTMLElement} span @param {string} text */
+  const heardAs = (span, text) => {
+    span.textContent = text;
+    const { lang } = mine(text);
+    if (lang) span.setAttribute('lang', lang);
+    else span.removeAttribute('lang');
+  };
   /** @type {Map<string, HTMLElement>} heard lines' words, by id: written down, or ending, later (heard.text) */
   const unheard = new Map();
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
@@ -183,12 +194,13 @@ export async function renderTalk(ctx) {
   const item = async (e) => {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
-    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { text: texts.text ?? '' }), ...(await sentPhotos(e)));
+    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { ...mine(texts.text ?? ''), text: texts.text ?? '' }), ...(await sentPhotos(e)));
     if (e.type === 'out.speak') {
-      if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: texts.text ?? '' }));
+      const said = String(texts.text ?? '');
+      if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { ...hers(said), text: said }));
       // Said aloud: its words show like any of hers, marked; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
-      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { class: 'said-words', text: texts.text ?? '' }));
-      const words = h('p', { text: texts.text ?? '', hidden: true });
+      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: 'SHIORI' }), h('span', { class: 'sub said-mark', text: 'said aloud' })), h('p', { ...hers(said), class: 'said-words', text: said }));
+      const words = h('p', { ...hers(said), text: said, hidden: true });
       const show = h('button', {
         class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
         onclick: () => {
@@ -201,27 +213,28 @@ export async function renderTalk(ctx) {
     }
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
-      const words = h('span', { text: typeof d.text === 'string' ? d.text : '…' });
+      const words = h('span', { dir: 'auto' });
+      heardAs(words, typeof d.text === 'string' ? d.text : '…');
       unheard.set(d.id, words); // its words may come later, or end later (Gemini's input transcript): heard.text
       return d.dismissed ? h('li', { class: 'system-line' }, 'Heard, not for Shiori: ', words) : h('li', { class: 'you heard' }, h('p', {}, words));
     }
     if (e.type === 'heard.text') {
       const words = unheard.get(d.of);
       if (words) {
-        words.textContent = String(d.text ?? '');
+        heardAs(words, String(d.text ?? ''));
         hearSoon(d.of, words);
       }
       return null;
     }
     if (e.type === 'out.show') {
-      const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o) });
+      const card = renderCard(d.card ?? {}, { ctx, onChoice: (o) => agent.send(o), say: hers });
       const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
       return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }
-    if (e.type === 'grounded') return groundedCard(d, texts);
+    if (e.type === 'grounded') return groundedCard(d, texts, hers);
     if (e.type === 'out.ask') {
-      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
-      const node = h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons));
+      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
+      const node = h('li', { class: 'shiori' }, h('span', { class: 'who', text: 'SHIORI' }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons));
       asks.set(d.id, node);
       return node;
     }
@@ -230,9 +243,12 @@ export async function renderTalk(ctx) {
       asks.delete(d.id);
       return null;
     }
-    if (e.type === 'reminder') return h('li', { class: 'system-line', text: `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}` });
+    if (e.type === 'reminder') {
+      const line = `${d.title ?? 'Reminder'}${d.aloud ? ', said aloud' : ''}: ${String(d.text ?? '')}`;
+      return h('li', { ...mine(line), class: 'system-line', text: line });
+    }
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
-    if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: `${d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe'}:` }), ` ${String(texts.text ?? '')}`) : null;
+    if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: `${d.from === 'koe' ? 'Koe to Kokoro' : 'Kokoro to Koe'}:` }), ' ', h('span', { ...hers(String(texts.text ?? '')), text: String(texts.text ?? '') })) : null;
     if (e.type === 'wake') {
       // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
       if (d.half === 'kokoro') return null;
@@ -312,7 +328,7 @@ export async function renderTalk(ctx) {
             // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
             words = textOf(node, pick.length ? '.who, .card .acts button' : '.who');
           }
-          tell(announcement(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {}));
+          tell(announcement(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {}), hers(words).lang);
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's (fix pass 8b-2).

@@ -96,9 +96,9 @@ function inlineNodes(c) {
   });
 }
 
-/** @param {string} src */
-export function renderMarkdown(src) {
-  return h('div', { class: 'md' }, ...parseMarkdown(src).map((b) => {
+/** @param {string} src @param {Record<string, any>} [attrs] more attributes for the block: the language and direction of its words */
+export function renderMarkdown(src, attrs = {}) {
+  return h('div', { class: 'md', ...attrs }, ...parseMarkdown(src).map((b) => {
     if (b.t === 'p') return h('p', {}, ...inlineNodes(b.c));
     if (b.t === 'h') return h('p', { class: 'md-h' }, ...inlineNodes(b.c));
     if (b.t === 'pre') return h('pre', { class: 'mono', text: b.v });

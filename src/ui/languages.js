@@ -1,6 +1,6 @@
 import { h, field, queueSave, messageOf } from './dom.js';
 import { updateAppSettings } from '../core/settings.js';
-import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName } from '../core/languages.js';
+import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor } from '../core/languages.js';
 
 /** A language of ours by its id. @param {string} id */
 const language = (id) => LANGUAGES.find((l) => l.id === id);
@@ -75,7 +75,7 @@ export function languagesSection(ctx, app) {
       const button = (/** @type {string} */ act, /** @type {string} */ label, /** @type {string} */ text, /** @type {() => unknown} */ run, disabled = false) =>
         h('button', { class: 'btn', type: 'button', 'aria-label': label, dataset: { lang: id, act }, disabled, onclick: run }, text);
       return h('li', { tabindex: '-1', dataset: { lang: id } },
-        h('span', { class: 'lang-name' }, l.name, own !== l.name ? [' ', h('span', { class: 'sub', text: own })] : null, ' '),
+        h('span', { class: 'lang-name' }, l.name, own !== l.name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
         i ? button('up', W.moveUpLabel(l.name), W.moveUpText, () => change(swap(i - 1), W.moved(l.name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
         i < ids.length - 1 ? button('down', W.moveDownLabel(l.name), W.moveDownText, () => change(swap(i), W.moved(l.name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
         button('remove', W.removeLabel(l.name), W.remove, () => remove(id), ids.length < 2));
