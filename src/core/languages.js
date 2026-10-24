@@ -218,18 +218,40 @@ function hanTag(text, l) {
   return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 
+/** What tagOf says for a line that must not take the screens' language and whose own can't be told (shown as `lang=""`, HTML's "unknown"). */
+export const NO_LANGUAGE = 'und';
+/** Whether a language is written in Latin letters, by its likeliest script; Bengali, Tamil and the like are not. @param {string} tag */
+function latinTag(tag) {
+  try { return new Intl.Locale(tag).maximize().script === 'Latn'; } catch { return false; }
+}
+
 /**
  * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads them by it (localization L3). From the
  * writing system (scriptOf) and the listed languages (listedFor); an address is no language. Latin text is never guessed (a wrong tag gives
  * it a wrong voice): it and any unsure text get '' and inherit the screens'. byShiori: the language she is set to answer in, where the
  * text agrees with it (its script, or Latin when hers is written in Latin); Han alone is taken for hers, if she answers in Japanese.
- * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori]
+ * ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one is
+ * (usually English), else the one languageOf names from two of its words, else NO_LANGUAGE: it never takes the screens'.
+ * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
  */
-export function tagOf(text, s, byShiori = false) {
+export function tagOf(text, s, byShiori = false, ui = 'en') {
   const said = text.replace(/\b(?:https?:\/\/|www\.)\S+/gi, ' ');
   const kind = scriptOf(said);
   const answer = byShiori ? s.answer : null;
-  if (!kind) return answer && /\p{L}/u.test(said) && !Object.keys(SCRIPT_TAGS).some((k) => listedFor(k, [answer])) ? tagFor(answer) : '';
+  if (!kind) {
+    const letters = said.match(/\p{L}/gu)?.length ?? 0;
+    if (!letters) return '';
+    const latin = (said.match(/\p{Script=Latin}/gu)?.length ?? 0) * 2 > letters;
+    // Hers, in a Latin-script language: her answer language.
+    if (answer && latin && latinTag(tagFor(answer))) return tagFor(answer);
+    if (latinTag(ui)) return '';
+    if (!latin) return NO_LANGUAGE;
+    const listed = s.spoken.filter((l) => latinTag(tagFor(l)));
+    if (listed.length === 1) return tagFor(listed[0]);
+    const guess = languageOf(said, 2);
+    const named = guess ? LANGUAGES.find((l) => l.name === guess) : undefined;
+    return named ? tagFor(named) : NO_LANGUAGE;
+  }
   const l = (answer && listedFor(kind, [answer])) || listedFor(kind, s.spoken);
   return kind === 'Chinese' ? hanTag(said, l) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }

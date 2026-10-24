@@ -40,6 +40,8 @@
 
 /* Japanese screens keep the rounded face the display type was chosen for. */
 :root:lang(ja) { --f-display: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', ui-rounded, system-ui, sans-serif; }
+/* A Chinese or Korean title under Japanese screens must not take Japanese shapes: no Maru for them, so the platform's own font for their lang draws them. */
+:lang(zh), :lang(ko) { --f-display: 'Zen Maru Gothic', ui-rounded, system-ui, sans-serif; }
 
 @media (prefers-color-scheme: dark) {
   :root {

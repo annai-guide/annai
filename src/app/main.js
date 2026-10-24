@@ -26,6 +26,8 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
+import { lang as screensLang } from '../core/l10n.js';
+import { screensCards, keepUiChoice } from '../ui/languages.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
@@ -206,6 +208,14 @@ async function boot() {
     });
   }
   for (const n of early.splice(0)) pushCard(n);
+  // The screens' language: the words that could not be loaded, and a setting the copy on this device doesn't match (design, sections 2 and 3).
+  readAppSettings(ws).then((app) => {
+    let kept = '';
+    try { kept = localStorage.getItem('annai.ui') ?? ''; } catch { /* storage blocked */ }
+    const got = screensCards({ settings: typeof app.languages?.ui === 'string' ? app.languages.ui : '', kept, running: screensLang(), failed: document.documentElement.dataset.l10nFailed, restart: () => updates.restart() });
+    if (got.copy !== null) keepUiChoice(got.copy);
+    for (const c of got.cards) shell.notices.card(c);
+  }).catch(() => {});
   // A plugin switched off after repeated errors gets a card saying why (spec §5.5), with no key in it.
   registry.onDisabled(async (d) => {
     const row = (await plugins.describe().catch(() => [])).find((/** @type {any} */ r) => r.id === d.pluginId);
