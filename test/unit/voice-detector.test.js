@@ -166,6 +166,24 @@ test('speech said the instant the zeros end, with no quiet in it, is held as uns
   assert.ok(given !== null && Math.abs(given - quietest) < 1, `the floor as the guess gave way, ${given} dB, is the run's quietest frame, ${quietest.toFixed(1)} dB`);
 });
 
+test('a car whose microphone gates to zeros every half second from the open: the floor learned from the first second stays learned, so the gates don\'t make it a guess again (a sentence later is sure in 0.5 s)', () => {
+  const pcm = brown(8, 0.5);
+  pcm.set(lunch.map((x, j) => x + pcm[3 * RATE + j]), 3 * RATE);
+  for (let i = 0; i < pcm.length; i++) if ((i / RATE) % 0.5 < 0.06) pcm[i] = 0;
+  const d = new Detector({ sampleRate: RATE });
+  /** @type {string[]} */
+  const types = [];
+  /** @type {number | null} */
+  let sure = null;
+  for (let i = 0; i < pcm.length; i += 320) {
+    types.push(...d.push(pcm.subarray(i, i + 320)).map((e) => e.type));
+    if (sure === null && i >= 3 * RATE && d.speechMs >= 250) sure = i / RATE - 3;
+  }
+  assert.equal(types.filter((t) => t === 'segment').length, 1, 'the sentence');
+  assert.ok(types.filter((t) => t === 'discard').length <= 1, `the car is thrown away once at most: ${types.join(', ')}`);
+  assert.ok(sure !== null && sure < 0.5, `sure ${sure} s after the sentence began`);
+});
+
 test('the level rises while someone speaks; end() keeps speech that was still going', () => {
   const d = new Detector({ sampleRate: RATE });
   d.push(quiet(0.5));
