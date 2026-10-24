@@ -43,8 +43,13 @@ const display = (in_, code, fallback) => {
     return fallback;
   }
 };
+/** Names for itself a browser may lack, answering with the English name or the code: Chromium's ICU has none for Cantonese. */
+const OWN = /** @type {Record<string, string>} */ ({ yue: '粵語' });
 /** A language's name for itself ("日本語"). @param {Language} l */
-export const nativeName = (l) => display(l.id, l.id, l.name);
+export function nativeName(l) {
+  const own = display(l.id, l.id, l.name);
+  return own !== l.name && own !== l.id ? own : OWN[l.id] ?? own;
+}
 
 /** What a browser's language tag is, as a language: the browser's own tag stays the locale (zh-Hant-TW, nb-NO, et-EE), as it was before this branch. @param {unknown} locale @returns {Language} */
 function browserLanguage(locale) {
