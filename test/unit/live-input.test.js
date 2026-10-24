@@ -339,7 +339,7 @@ test('a microphone that opens with zeros: a short word said at once is sent whol
     const r = rig();
     await r.input.start();
     r.feed(up3(cat(zeros, noise)));
-    assert.deepEqual(r.sent, [], 'nothing left the phone');
+    assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], 'nothing left the phone');
     r.input.stop();
   }
 });
@@ -355,9 +355,66 @@ test('Koe speaks first as a microphone that opened with zeros hears a car: the c
     r.feed(up3(mix(car.subarray(Math.round(at * RATE), Math.round((at + 2) * RATE)), lunch.map((x) => x * 0.3))));
     playing = false;
     r.feed(up3(car.subarray(Math.round((at + 2) * RATE))));
-    assert.deepEqual(r.sent, [], `her voice ${at} s into the car: nothing left the phone`);
+    assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], `her voice ${at} s into the car: nothing left the phone`);
     r.input.stop();
   }
+});
+
+/** The loudest stretch of a clip, as a short word. @param {Float32Array} pcm @param {number} seconds */
+function loudest(pcm, seconds) {
+  const n = Math.round(seconds * RATE);
+  let best = 0;
+  let most = -1;
+  for (let i = 0; i + n <= pcm.length; i += 160) {
+    let e = 0;
+    for (let j = i; j < i + n; j++) e += pcm[j] * pcm[j];
+    if (e > most) [most, best] = [e, i];
+  }
+  return pcm.slice(best, best + n);
+}
+/** A 1 kHz tone at about db in the speech band, its loudness swinging by swingDb at 4 Hz (a word's syllables). @param {number} db @param {number} seconds @param {number} [swingDb] */
+const tone = (db, seconds, swingDb = 0) => Float32Array.from({ length: Math.round(seconds * RATE) }, (_, i) =>
+  Math.sqrt(2 * 10 ** (db / 10)) * 10 ** ((swingDb * Math.sin((2 * Math.PI * 4 * i) / RATE)) / 20) * Math.sin((2 * Math.PI * 1000 * i) / RATE));
+/** A room of about -49 dBFS (amp 0.006) or another, for any length. @param {number} seconds @param {number} [amp] */
+const roomFor = (seconds, amp = 0.006) => room(seconds + 3.1, new Float32Array(0), undefined, amp).subarray(0, Math.round(seconds * RATE));
+
+test('a microphone that opened with zeros in a room of -49 dB, Koe speaking first: a quick "yes" 100 ms after her is sent, as on main (detector-floor review 2)', async () => {
+  const yes = loudest(gas, 0.45);
+  for (const before of [0, 0.5]) {
+    let playing = false;
+    const r = rig({ speaking: () => playing });
+    await r.input.start();
+    // In batches of 683 samples, as a 16 kHz capture can give them: where a turn starts depends on it.
+    const feed = (/** @type {Float32Array} */ pcm) => { for (let i = 0; i < pcm.length; i += 683) r.feed(pcm.subarray(i, i + 683), RATE); };
+    feed(cat(new Float32Array(RATE / 2), roomFor(before)));
+    playing = true;
+    feed(mix(roomFor(2), lunch.map((x) => x * 0.3)));
+    playing = false;
+    feed(cat(roomFor(0.1), yes, roomFor(2)));
+    assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end'], `${before} s of the room before her voice`);
+    r.input.stop();
+  }
+});
+
+test('a tap or a knock as a microphone opens with zeros, then a steady room of -45 dB: nothing is sent (detector-floor review 2, S3b)', async () => {
+  const r = rig();
+  await r.input.start();
+  r.feed(up3(cat(new Float32Array(RATE / 5), burst(0.08, 0.8), roomFor(3, 0.016))));
+  assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), msOf(r.sent)], [[], 0], 'nothing left the phone');
+  r.input.stop();
+});
+
+test('Koe speaking first after the zeros, then her echo, a short quiet and the user\'s word: the word is sent, as on main (detector-floor review 2, S5)', async () => {
+  let playing = false;
+  const r = rig({ speaking: () => playing });
+  await r.input.start();
+  r.feed(new Float32Array(RATE / 10), RATE);
+  playing = true;
+  r.feed(tone(-30, 1), RATE);
+  playing = false;
+  for (const gap of [0.1, 0.5]) r.feed(cat(tone(-40, 0.15), tone(-50, gap), tone(-25, 0.4, 10), tone(-58, 2)), RATE);
+  assert.deepEqual(r.sent.filter((x) => typeof x === 'string'), ['start', 'end', 'start', 'end'], 'each word after a quiet of 0.1 and 0.5 s');
+  r.input.stop();
 });
 
 test("given the session to send to, it sends at the session's rate: 8 kHz for one that takes G.711 (K6)", async () => {
