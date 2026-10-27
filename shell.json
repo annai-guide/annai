@@ -1,5 +1,5 @@
 {
-  "build": "75b5002891eb",
+  "build": "ba44938cfe8a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -115,7 +115,7 @@
     "/src/core/now.js": "c47b701f7e42",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
-    "/src/core/packages.js": "5d3d31f9246f",
+    "/src/core/packages.js": "4e01a009efb2",
     "/src/core/requires.js": "8773feefd9e8",
     "/src/core/pack/download.js": "4823640428e0",
     "/src/core/pack/keeper.js": "b03982f77e3a",
@@ -277,7 +277,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "7721f0c5ccd3",
-    "/l10n/zh-Hans.json": "e78602c5e293"
+    "/l10n/ja.json": "dab8998c3ea8",
+    "/l10n/zh-Hans.json": "9ce802f28729"
   }
 }

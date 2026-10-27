@@ -748,18 +748,19 @@ is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the z
 1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:342	{0} = MANIFEST_FILE; {1} = SKILL_FILE
 ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:360	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
 jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:440	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:473	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:482	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:495	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:511	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:570	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:581	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:591	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:632	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:633	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:634	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:635	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:635	{0} = o; Note: one of a list of what an update adds.
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:476	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:485	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:498	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:514	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:526	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	draft	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	annai 无法从 {1} 读取 {0}，这是 {2} 中列出的文件。请检查该文件是否存在，以及该网站是否允许网页应用读取。	src/core/packages.js:527	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:597	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:607	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:648	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:649	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:650	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:651	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:651	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/core/plugins.js:174	{0} = why

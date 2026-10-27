@@ -195,7 +195,15 @@ test('an address install brings the translations its manifest lists', async () =
   // A request that gets no answer (a network blip) is no answer that it isn't there: the install fails, to be tried again.
   site.set('https://x.example/p/l10n/ja.json', JSON.stringify(JA));
   const blip = async (/** @type {string} */ url) => { if (url.endsWith('/l10n/ja.json')) throw new TypeError('Failed to fetch'); return get(url); };
-  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: blip }), /couldn't reach/);
+  // A file after the manifest is named: a 404 without CORS headers looks the same, and annai has just read the manifest from that site.
+  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: blip }), /annai couldn't read l10n\/ja.json from x.example, a file its annai-plugin.json names/);
+  // Only an answer that it isn't there (404, 410, or 403 as S3 says it) leaves it out; a busy site (503, 429) fails, as a blip does.
+  for (const [status, out] of [[404, true], [410, true], [403, true], [503, false], [429, false], [500, false]]) {
+    const answer = async (/** @type {string} */ url) => (url.endsWith('/l10n/ja.json') ? new Response('', { status: /** @type {number} */ (status) }) : get(url));
+    const got = fetchPackage('https://x.example/p/annai-plugin.json', { fetch: answer });
+    if (out) assert.deepEqual([...(await got).keys()], ['annai-plugin.json']);
+    else await assert.rejects(got, new RegExp(`x.example answered ${status} for l10n/ja.json`));
+  }
 });
 
 test("a plugin's refusal is kept in its English, its words beside it with their language, shown only in that language", () => {

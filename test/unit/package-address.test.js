@@ -33,6 +33,19 @@ test('a file a SKILL.md links to that is missing is left out (choice 6)', async 
   assert.deepEqual(names(await fetchPackage(`${T}/tide-pools/SKILL.md`, { fetch })), ['SKILL.md']);
 });
 
+test("a file a SKILL.md links to is left out only when the site answers it hasn't it (404, 410, 403); a busy site or no answer fails, naming the file", async () => {
+  const at = `${T}/tide-pools/references/safety.md`;
+  for (const status of [404, 410, 403]) {
+    assert.deepEqual(names(await fetchPackage(`${T}/tide-pools/SKILL.md`, web({ [`${T}/tide-pools/SKILL.md`]: SKILL, [at]: status }))), ['SKILL.md']);
+  }
+  for (const status of [503, 429, 500]) {
+    await assert.rejects(fetchPackage(`${T}/tide-pools/SKILL.md`, web({ [`${T}/tide-pools/SKILL.md`]: SKILL, [at]: status })),
+      new RegExp(`trails.example answered ${status} for references/safety.md, a file its SKILL.md names`));
+  }
+  await assert.rejects(fetchPackage(`${T}/tide-pools/SKILL.md`, web({ [`${T}/tide-pools/SKILL.md`]: SKILL, [at]: new TypeError('Failed to fetch') })),
+    /annai couldn't read references\/safety.md from trails.example, a file its SKILL.md names/);
+});
+
 test('an annai-plugin.json address: the manifest and every file it names', async () => {
   const manifest = JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', files: ['index.js', 'lib.js'], skills: ['skills/tide-pools'] });
   const { fetch } = web({
