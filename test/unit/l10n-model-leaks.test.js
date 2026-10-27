@@ -2,7 +2,8 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { setWords } from '../../src/core/l10n.js';
-import { liveKit, iso, LA } from './live-kit.js';
+import { liveKit, at, iso, LA } from './live-kit.js';
+import { Live } from '../../src/core/live/live.js';
 
 // What reaches a model stays annai's English under Japanese screens (the L5f review's probes, made tests): the next plan reminder
 // in Koe's view, an opened notification in Shiori's catch-up, and why the microphone stopped while she listened.
@@ -19,4 +20,19 @@ test("a plan reminder live mode lists: English for Koe's view (text), the screen
   assert.equal(r?.text, 'In 15 min: Tea at the inn at 16:00.');
   assert.equal(r?.shown, 'あと15分：Tea at the inn（16:00）。');
   k.live.dispose();
+});
+
+test("a plan reminder opened from its notification: Shiori's catch-up quotes its English, never the notification's words", async () => {
+  const k = await liveKit({ live: false, plan: { tea: TEA } });
+  const r = (await k.live.reminders())?.find((x) => x.watch === 'plan:tea:coming-up');
+  k.live.dispose();
+  await k.clock.advanceTo(at('15:50'));
+  const news = [{ kind: 'opened', key: r?.key, scope: k.trip, watch: r?.watch, title: 'Big Sur', body: 'あと10分：Tea at the inn（16:00）。', t: at('15:50') }];
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA, news: async () => /** @type {any} */ (news.splice(0)) });
+  await again.start();
+  await again.settled();
+  const woke = k.agent.wakes.map((/** @type {any} */ w) => w.text).join('\n');
+  assert.match(woke, /opened the reminder "In 15 min: Tea at the inn at 16:00\."/);
+  assert.doesNotMatch(woke, KANA);
+  again.dispose();
 });

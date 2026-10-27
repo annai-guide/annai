@@ -724,7 +724,10 @@ export class Live {
         if (!n.stale) this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
-        const words = String(n.body ?? '').trim().slice(0, 300);
+        // A plan reminder's notification says it in the screens' words: Shiori is quoted its English (the plan's own, when it is
+        // still planned here). Anyone else's reminder is quoted as it was written.
+        const plan = String(n.watch ?? '').startsWith('plan:');
+        const words = (plan ? this.#plan.find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
         this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? /* en */ 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
       }
       await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);
