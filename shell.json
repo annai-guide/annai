@@ -1,5 +1,5 @@
 {
-  "build": "08606fd9b66c",
+  "build": "7b9bd02a2fda",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -200,7 +200,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "ebc14a0bce6f",
     "/src/ui/export-panel.js": "24430d1eb82b",
-    "/src/ui/format.js": "2a1038c47442",
+    "/src/ui/format.js": "f868a648d4e8",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",

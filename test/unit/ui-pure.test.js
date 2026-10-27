@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -251,7 +251,6 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 120, total: 650 }, now), 'Getting files: 120 of 650');
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 1 }, now), 'Getting the backup…', 'one file is no count');
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 0 }, now), 'Getting the backup…');
-  assert.deepEqual(['iPhone', 'iPad', 'Android phone', 'computer'].map(withArticle), ['an iPhone', 'an iPad', 'an Android phone', 'a computer']);
   assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
   const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
   assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
