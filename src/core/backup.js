@@ -27,18 +27,21 @@ import { sentences, size } from './intl.js';
  * @typedef {import('./storage-types.js').TargetContext} TargetContext
  * @typedef {import('./storage-types.js').Progress} Progress
  * @typedef {ReturnType<typeof createBackups>} Backups
- * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer', name?: string, noun?: string, bytes?: number }
+ * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer', name?: string, type?: string, noun?: string, bytes?: number }
  *   | import('./answer.js').AnswerSaid | import('./archive.js').ArchiveSaid} Said
- *   one of annai's own errors, as data (a hold keeps it): backup's own (the place's name, this device's noun, the upload's size), a server's
+ *   one of annai's own errors, as data (a hold keeps it): backup's own (the place's stored name, '' for one named by its kind, and its
+ *   type; this device's noun; the upload's size), a server's
  *   (answer.js: unreachable, or its answer) or an export's (archive.js)
  */
 
 /**
  * One of annai's own backup errors in the screens' words, made from its data: when it is thrown, and again when a hold that keeps it
  * is shown (localization L5f). Its English is the log's. null for a code this annai doesn't know (a later one's): shown as an old hold.
- * @param {Said} s @returns {string | null}
+ * @param {Said} s @param {string} [place] the place's name as the screens show it, for one that stored none (named by its kind)
+ * @returns {string | null}
  */
-export function backupWords(s) {
+export function backupWords(s, place) {
+  if ('name' in s && !s.name) s = { ...s, name: place || s.type };
   if (ANSWER_CODES.has(s.code)) return sentences(answerWords(/** @type {import('./answer.js').AnswerSaid} */ (s)), t`annai tries again later.`);
   if (ARCHIVE_CODES.has(s.code)) return archiveWords(/** @type {import('./archive.js').ArchiveSaid} */ (s));
   if (s.code === 'plugin-off') return t`The plugin for ${s.name} isn't running. Open this backup place in Settings → Backups to turn it on.`;
@@ -57,9 +60,10 @@ export function backupWords(s) {
  * screens' language when they were kept in it (a backup can bring the hold to a device in another); else a place's or a plugin's
  * words, and a hold kept before it said what it was, as they were written.
  * @param {{ message: string, said?: Said | null, offline?: boolean, shown?: string, lang?: string }} h
+ * @param {string} [place] the place's name as the screens show it (Backups' list and get)
  */
-export function holdWords(h) {
-  const why = (h.said ? backupWords(h.said) : null) ?? (h.shown && h.lang === lang() ? h.shown : h.message);
+export function holdWords(h, place) {
+  const why = (h.said ? backupWords(h.said, place) : null) ?? (h.shown && h.lang === lang() ? h.shown : h.message);
   return h.offline ? sentences(why, t`annai tries again once it's back online.`) : why;
 }
 
@@ -151,12 +155,23 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   };
   /** A place with its name to show: its own, else its kind's, made here (a new place stores none: data, not words). @param {Target} rec */
   const named = (rec) => (rec.name ? rec : { ...rec, name: kindName(rec.type) });
+  /**
+   * One of annai's own errors about a place: its English names the place by its stored name, else its kind's English; said keeps the
+   * stored name ('' for one named by its kind) and its type, never the screens' words; shown names it as the screens do.
+   * @param {Target} rec @param {ConstructorParameters<typeof TargetError>[0]} kind @param {(name: string) => string} en @param {Said} said
+   * @param {ConstructorParameters<typeof TargetError>[2]} [extra]
+   */
+  const about = (rec, kind, en, said, extra) => {
+    const kept = /** @type {Said} */ ({ ...said, name: rec.name, type: rec.type });
+    const english = rec.name || /** @type {Record<string, string>} */ (STORAGE_NAMES)[rec.type] || rec.type;
+    return Object.assign(own(kind, en(english), kept, extra), { shown: backupWords(kept, kindName(rec.type)) ?? en(english) });
+  };
 
-  /** @param {string} id */
+  /** The place as stored. @param {string} id */
   async function target(id) {
     const rec = await getTarget(ws, id);
     if (!rec) throw Object.assign(new TargetError('missing', /* en */ "That backup place was removed."), { shown: t`That backup place was removed.` });
-    return named(rec);
+    return rec;
   }
 
   /**
@@ -210,7 +225,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
    */
   async function call(rec, what, fn) {
     const type = typeOf(rec.type);
-    if (!type) throw own('setup', /* en */ `The plugin for ${rec.name} isn't running.`, { code: 'plugin-off', name: rec.name });
+    if (!type) throw about(rec, 'setup', (name) => /* en */ `The plugin for ${name} isn't running.`, { code: 'plugin-off' });
     // Offline, no place answers, whatever it would guess why (browser access, its address): said so, and tried again once back.
     const offline = () => own('other', /* en */ `This ${noun} is offline.`, { code: 'offline', noun }, { retryAt: now() });
     if (!online()) throw offline();
@@ -269,7 +284,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     if (bytes > maxUpload) throw own('large', /* en */ `This backup would upload ${bytes} bytes.`, { code: 'large', bytes }, { bytes });
     const there = await listed(rec);
     const newer = newerOf(there, rec.last, me, over);
-    if (newer) throw Object.assign(own('newer', /* en */ `There is a newer backup at ${rec.name}.`, { code: 'newer', name: rec.name }, { remote: newer }), { known: knownOf(there) });
+    if (newer) throw Object.assign(about(rec, 'newer', (name) => /* en */ `There is a newer backup at ${name}.`, { code: 'newer' }, { remote: newer }), { known: knownOf(there) });
     return there;
   }
 
@@ -305,7 +320,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const me = await deviceId(ws);
       // A whole-file place may keep its backups encrypted, with the API keys when the user chose (spec §12.2).
       const passphrase = file && rec.encrypt ? (await targetSecret(store, id)).passphrase : undefined;
-      if (file && rec.encrypt && !passphrase) throw own('setup', /* en */ `The passphrase for the encrypted backups at ${rec.name} isn't saved.`, { code: 'passphrase', name: rec.name });
+      if (file && rec.encrypt && !passphrase) throw about(rec, 'setup', (name) => /* en */ `The passphrase for the encrypted backups at ${name} isn't saved.`, { code: 'passphrase' });
       const built = await exportArchive(store, {
         kind: 'everything', include: { ...PRESETS.backup }, app, now: Date.now(), ...(passphrase ? { passphrase, secrets: Boolean(rec.keys) } : {}),
       });
@@ -443,7 +458,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const note = await shownWithoutSecrets(store, String(said?.note ?? t`Works.`));
       // What the place filled in for fields left empty is the place's own from now on: later backups don't look again.
       const filled = settingsOf(rec, said?.config);
-      if (Object.keys(filled).length) rec = named(await setTarget(ws, id, { config: { ...rec.config, ...filled } }));
+      if (Object.keys(filled).length) rec = await setTarget(ws, id, { config: { ...rec.config, ...filled } });
       const there = await listed(rec);
       const me = await deviceId(ws);
       const newer = newerOf(there, rec.last, me);

@@ -269,3 +269,28 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   const entry = /** @type {any} */ ({ id: 'remote-trace', name: 'Remote trace (for developers)', version: '0.2.0', files: {} });
   await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
 });
+
+test("a default-named place's hold keeps no screens' words: its said names no place, and its kind is named where it is shown", async () => {
+  const { memoryPlace, device } = await import('./backup-kit.js');
+  const { setTarget } = await import('../../src/core/backup-targets.js');
+  const { holdWords } = await import('../../src/core/backup.js');
+  setWords('ja', {});
+  const place = memoryPlace();
+  // A kind named in the screens' words, as S3-compatible storage is: S3 互換ストレージ.
+  Object.assign(place.type, { name: 'メモリー', stores: 'file' });
+  const d = await device(place);
+  const id = await d.backups.add('memory');
+  await setTarget(d.ws, id, { encrypt: true });
+  await assert.rejects(d.backups.backUp(id), (e) => /メモリー/.test(/** @type {any} */ (e).shown) && !/メモリー/.test(/** @type {any} */ (e).message));
+  const raw = /** @type {any} */ ((await import('../../src/core/backup-targets.js')).getTarget);
+  const hold = (await raw(d.ws, id)).hold;
+  assert.doesNotMatch(JSON.stringify(hold), /[\p{Script=Katakana}\p{Script=Han}]/u);
+  assert.deepEqual(hold.said, { code: 'passphrase', name: '', type: 'memory' });
+  const shown = /** @type {any} */ (await d.backups.get(id));
+  assert.match(holdWords(shown.hold, shown.name), /メモリー/);
+  // On English screens (a backup restored there), the kind's name as that device names it.
+  setWords('en', null);
+  assert.equal(holdWords(shown.hold, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
+  // A hold from before, with the place's name stored, says it.
+  assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'Home NAS' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Home NAS, then save.');
+});

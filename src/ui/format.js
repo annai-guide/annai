@@ -146,7 +146,7 @@ export function placeStatus(target, progress, now = Date.now()) {
   if (h?.kind === 'large') return sentences(last, t`Waiting for your OK to upload ${size(h.bytes)}`);
   // A hold kept before it said what it was: its English is a line of its own (holdNote).
   if (oldHold(h)) return sentences(last, t`The last try failed.`);
-  if (h?.kind === 'error') return sentences(last, t`The last try failed: ${holdWords(h)}`);
+  if (h?.kind === 'error') return sentences(last, t`The last try failed: ${holdWords(h, target.name)}`);
   if (!target.checked) return t`Not set up yet: fill it in, then Save and test`;
   if (target.auto === 'off') return sentences(last, t`Automatic backups are off`);
   return at ? t`Last backup ${at}` : t`Not backed up yet`;
