@@ -20,6 +20,7 @@ translates them, a person or an agent. The design is
 npm run strings                    # after changing English: new rows, rows carried over, the JSON files
 npm run strings -- --review ja     # a language's drafts as a Markdown table
 npm run strings -- --check         # what npm run check runs: fails on anything missing or wrong
+npm run strings -- --check --glossary-all   # after changing a glossary word: warns on every row, accepted ones too
 ```
 
 ## A row's state
@@ -29,6 +30,10 @@ npm run strings -- --check         # what npm run check runs: fails on anything 
   carried over as a draft, with "English was: …" in its note.
 - `ok`: read against its English and its place on the screen, and accepted. The check doesn't warn about the
   glossary on an `ok` row: its `Note:` says why it reads as it does.
+
+**Changing a glossary word:** edit `l10n/glossary.tsv` (and `glossary.md`), then run
+`npm run strings -- --check --glossary-all`. It warns on every row that names the term without the new word, the
+accepted ones too; fix each, or say in its `Note:` why it keeps another word.
 
 Whoever changes English writes the drafts for every language in the same commit. A row is marked `ok` only by
 someone who has read it in place: the `where` column says where it is used.
