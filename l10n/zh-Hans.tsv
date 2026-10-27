@@ -1,455 +1,455 @@
 key	state	en	text	where	note
-1aajvdy	draft	Opening annai…	正在打开 annai…	src/app/boot.js:32	
-1v76pcd	draft	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:61	
-cohfbh	draft	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:62	
-u0vojx	draft	Use it here	在这里使用	src/app/main.js:63	
-p4x3of	draft	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:68	
-11qyuy7	draft	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:69	
-1ku6bv3	draft	Use it here instead	改在这里使用	src/app/main.js:70	
-fki4un	draft	Notifications	通知	src/app/main.js:204	
-1clzv4	draft	Settings → Models changed	设置 → 模型已更改	src/app/main.js:207	
-1ak3i8g	draft	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:208	{0} = list(moved.names, 'plain')
-whpd9d	draft	Open Models	打开模型	src/app/main.js:209	
-10renyj	draft	Plugins	插件	src/app/main.js:220	
-1sp21de	draft	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:309	{0} = o.name
-1yoe82	draft	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:310	
-1n8cxuc	draft	Compare	比较	src/app/main.js:312	
-rzp4o3	draft	Keep mine	保留我的	src/app/main.js:313	
-1j662as	draft	Let Shiori merge	让 Shiori 合并	src/app/main.js:314	
-x0ig66	draft	Something went wrong	出了点问题	src/app/main.js:366	
-1oy79dy	draft	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:367	
-c5yzsu	draft	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:367	
-11n1kcg	draft	Open Trace	打开记录	src/app/main.js:368	
-gt9ssw	draft	annai couldn't start	annai 无法启动	src/app/main.js:379	
-6v646m	draft	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:381	
-982hh6	draft	Try again	重试	src/app/main.js:382	
-1u3dm1p	draft	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:70	
-1f8b0m5	draft	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:53	
-7m1pck	draft	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:54	
-5lqjwd	draft	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你输入或说出的话（各自缩短）。	src/core/after/recap.js:55	
-nqzovd	draft	The trip's notes and memory, and your profile.	旅行的笔记和记忆，以及你的个人资料。	src/core/after/recap.js:56	
-1nvz32n	draft	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	如果模型接受照片，最多 {0} 张照片。按原样保存的照片（设置 → 照片 → 保留原图）可能仍包含拍摄地点。	src/core/after/recap.js:57	{0} = RECAP_PHOTOS
-rntcrc	draft	No model is set for the utility or main role. Add one in Settings → Models.	辅助和主要角色都没有设置模型。请在设置 → 模型中添加。	src/core/after/recap.js:162	
-1hy1f74	draft	No model could write it.	没有模型能写出回顾。	src/core/after/recap.js:163	Note: "it" is the recap (振り返り / 回顾).
-h5o9ec	draft	Check Settings → Models, then try again.	请检查设置 → 模型，然后再试一次。	src/core/after/recap.js:163	
-1ocmp3v	draft	Try again in a while.	请稍后再试。	src/core/after/recap.js:165	
-11vzyc7	draft	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:179	
-tbxeeg	draft	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回了空的回顾。请重试，或在辅助角色中把另一个模型放在最前面（设置 → 模型）。	src/core/after/recap.js:221	
-1sob3wf	draft	1 hour a second	每秒 1 小时	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
-6jq1bh	draft	1 minute a second	每秒 1 分钟	src/core/after/replay.js:22	
-7013qq	draft	10 minutes a second	每秒 10 分钟	src/core/after/replay.js:22	
-1xgi8k0	draft	less than a minute	不到 1 分钟	src/core/after/replay.js:25	
-1tydm1k#other	draft	No road was recorded, with # stops and {0}.	没有记录到路线，共 # 个停留点，{0}。	src/core/after/replay.js:73	plural; # = n; {0} = marks; English: "No road was recorded, with # stop and {0}." (one), "No road was recorded, with # stops and {0}." (other); Note: {0} is the stamps counted, "スタンプ#個" / "# 个纪念章".
-1pigqmy#other	draft	{0} on the road, with # stops and {1}.	路程 {0}，共 # 个停留点，{1}。	src/core/after/replay.js:75	plural; # = n; {0} = road; {1} = marks; English: "{0} on the road, with # stop and {1}." (one), "{0} on the road, with # stops and {1}." (other); Note: {1} is the stamps counted.
-aad9xo#other	draft	{0} on the road, from {1}, with # stops and {2}.	从{1}出发，路程 {0}，共 # 个停留点，{2}。	src/core/after/replay.js:76	plural; # = n; {0} = road; {1} = first; {2} = marks; English: "{0} on the road, from {1}, with # stop and {2}." (one), "{0} on the road, from {1}, with # stops and {2}." (other); Note: {2} is the stamps counted.
-p6d198#other	draft	{0} on the road, from {1} to {2}, with # stops and {3}.	从{1}到{2}，路程 {0}，共 # 个停留点，{3}。	src/core/after/replay.js:77	plural; # = n; {0} = road; {1} = first; {2} = last; {3} = marks; English: "{0} on the road, from {1} to {2}, with # stop and {3}." (one), "{0} on the road, from {1} to {2}, with # stops and {3}." (other); Note: {3} is the stamps counted.
-118y86m	draft	Stopped	停留中	src/core/after/replay.js:98	Note: where the replay is: at a stop with no name.
-17826bm	draft	At {0}	在{0}	src/core/after/replay.js:98	{0} = stay.name
-1q5u96o	draft	Driving	驾驶中	src/core/after/replay.js:99	
-1t1k02g	draft	Walking	步行中	src/core/after/replay.js:99	
-bzqb1u	draft	Walking from {0}	从{0}步行中	src/core/after/replay.js:99	{0} = prev.name
-d6w22	draft	Driving from {0}	从{0}驾驶中	src/core/after/replay.js:99	{0} = prev.name
-1i4bl4d	draft	Not started yet	尚未开始	src/core/after/replay.js:100	
-1ceq85s	draft	On the way	在路上	src/core/after/replay.js:101	
-tzwrpj	draft	After {0}	{0}之后	src/core/after/replay.js:101	{0} = prev.name
-1rgnrl8	draft	A stop	一个停留点	src/core/after/replay.js:117	
-1ml0xuv	draft	{0} · arrived · stamp	{0} · 已到达 · 纪念章	src/core/after/replay.js:119	{0} = name
-4wysut	draft	{0} · arrived	{0} · 已到达	src/core/after/replay.js:119	{0} = name
-esglmt	draft	{0} · {1} · stamp	{0} · {1} · 纪念章	src/core/after/replay.js:121	{0} = name; {1} = long
-1mng1sm	draft	Walked {0} · {1} (partly unseen: the phone was locked)	步行 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:125	{0} = far; {1} = long
-2xd7wx	draft	Walked {0} · {1}	步行 {0} · {1}	src/core/after/replay.js:125	{0} = far; {1} = long
-1lwm8i6	draft	Drove {0} · {1} (partly unseen: the phone was locked)	驾驶 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:126	{0} = far; {1} = long
-s3mlgp	draft	Drove {0} · {1}	驾驶 {0} · {1}	src/core/after/replay.js:126	{0} = far; {1} = long
-1szxw8q	draft	a card	一张卡片	src/core/after/replay.js:131	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
-ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cut(String(words), 120) : t`a card`; Note: read by a screen reader; {0} is what she said or showed.
-1ot96wv	draft	You said: {0}	你（语音）：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120); Note: what you said aloud, beside "You: {0}" for what you typed.
-zxi5vs	draft	You: {0}	你：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120)
-d4j0a5	draft	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('/').pop()
-1e9ja08#other	draft	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
-1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:118	{0} = money(over.spent); {1} = money(over.perDay)
-bo3wjk	draft	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:118	
-67wvld	draft	Shiori stopped: step limit	Shiori 已停止：步数上限	src/core/agent/budgets.js:123	
-177194c	draft	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在没人要求时自己做事，已经走了{0}步，所以停在了这里。想让她继续，就告诉她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.
-1o4yqf3	draft	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次唤醒可走的{0}步（设置 → Shiori → 她主动行动的频率）。想让她继续，就告诉她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.
-edkx3h	draft	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:513	
-yvabm6	draft	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:513	
-bzrasi	draft	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:634	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	draft	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:634	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	draft	Tap to talk	轻点说话	src/core/agent/loop.js:109	
-1ldobgc	draft	Tap to interrupt	轻点打断	src/core/agent/loop.js:109	
-4mbury	draft	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:109	
-89yydm	draft	Listening	聆听中	src/core/agent/loop.js:109	Note: one of Shiori's states, as the dock shows her.
-g8840o	draft	Waiting for your OK	等待你的确认	src/core/agent/loop.js:109	
-yydchc	draft	Hearing you	正在听你说	src/core/agent/loop.js:109	Note: one of Shiori's states: she hears you speaking.
-akjf4d	draft	Working on …	处理中…	src/core/agent/loop.js:110	
-izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:110	
-1080xlr	draft	Working on {0}	处理中：{0}	src/core/agent/loop.js:534	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	draft	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:534	
-19793n8	draft	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:843	
-16ny0z2	draft	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1066	
-1sxm1ou	draft	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1066	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	draft	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1098	
-oeaxaa	draft	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1098	
-x10s30	draft	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1231	
-1ds0zov	draft	Reminder	提醒	src/core/agent/loop.js:1429	
-1szzjml	draft	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1429	
-nxpady	draft	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1527	
-sp1muy	draft	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1527	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	draft	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1527	
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1580	
-1b4988h	draft	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1843	
-pydksy	draft	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1843	
-1nvuxc8	draft	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1880	Note: "Her" is Shiori's in ja.
-2bgbpn	draft	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1884	
-1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1947	
-1m0gt56	draft	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1975	{0} = names; {1} = names
-1uhz9dg	draft	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2030	
-vjxaph	draft	Your turn	轮到你了	src/core/agent/loop.js:2391	
-19tfckg	draft	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2533	
-guullf	draft	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2533	
-1h2ina6	draft	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2534	
-1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2534	
-1r1dhd7	draft	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2672	
-8wd0xv	draft	Listening stopped	收听已停止	src/core/agent/loop.js:2807	
-43klog	draft	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2981	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	draft	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2982	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	draft	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2983	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	draft	only {0}	仅限{0}	src/core/agent/loop.js:2984	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2986	
-vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:2993	
-1bwbvkk#other	draft	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3003	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other); English was: The plugin {0} woke her more than the # times an hour you allow: {1}
-1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
-1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
-1im1t3t	draft	Enter a passphrase to encrypt the file.	请输入用于加密文件的密码短语。	src/core/archive-crypto.js:66	
-1bw0b6k	draft	This file is not encrypted.	这个文件没有加密。	src/core/archive-crypto.js:90	
-1nzwtma	draft	This file is damaged.	这个文件已损坏。	src/core/archive-crypto.js:91	
-qh6gdt	draft	Wrong passphrase, or the file is damaged.	密码短语不对，或者文件已损坏。	src/core/archive-crypto.js:104	
-4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:69	
-am2v0c	draft	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:159	
-13a6l3r	draft	There is nothing to export.	没有可导出的内容。	src/core/archive.js:166	
-4ngq1	draft	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:266	{0} = why; Note: {0} is a developer's detail, in English.
-gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:340	{0} = path
-1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:354	
-q7ee2s	draft	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:358	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:361	{0} = path
-hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:386	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:388	
-j0v5kk	draft	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:395	
-lfeohr#other	draft	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:401	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	draft	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:417	
-1aqa7w5	draft	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:429	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	draft	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:434	{0} = name
-21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:460	{0} = i + 1; {1} = name
-1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:464	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	draft	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:544	
-qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:648	
-cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
-pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置并将其开启。	src/core/backup.js:36	{0} = s.name
-al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:37	{0} = s.name
-1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:38	{0} = size(s.bytes ?? 0)
-3t4mx2	draft	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:39	{0} = s.name
-1r146xn	draft	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:40	
-1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:41	
-1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:42	
-bbv043	draft	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:43	
-1oqcoyx	draft	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:52	
-16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:139	
-mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:337	
-lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:354	
-1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:365	
-tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:373	
-230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	draft	Works.	可以使用。	src/core/backup.js:418	Note: the result of Save and test when the place says nothing itself.
-173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:469	
-1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:469	
-14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请删除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	
-1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
-gnrtev	draft	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
-iwgrsx	draft	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此日历中有超过 {0} 个事件。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
-10s60wn	draft	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
-5l9pv6	draft	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
-1tw617t	draft	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	draft	just now	刚刚	src/core/intl.js:126	
-1g1ud28	draft	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:405	
-1ml2kgi	draft	Tap Shiori to talk over her	轻点即可打断 Shiori	src/core/koe/live.js:405	
-3fqfy0	draft	Languages	语言	src/core/languages.js:304	
-1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:305	
-1giusr1	draft	Languages you speak	你说的语言	src/core/languages.js:306	
-krvxy3	draft	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:307	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
-5h4ntn	draft	Add a language	添加语言	src/core/languages.js:308	
-17rv3f8	draft	Add	添加	src/core/languages.js:309	
-9c35st	draft	Remove	移除	src/core/languages.js:310	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	draft	Remove {0}	移除{0}	src/core/languages.js:313	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
-1u9ac5b	draft	Move {0} up	上移{0}	src/core/languages.js:314	{0} = name
-9v00pm	draft	Move {0} down	下移{0}	src/core/languages.js:315	{0} = name
-h355qb	draft	{0} · {1}	{0} · {1}	src/core/languages.js:317	{0} = name; {1} = own
-18uuegb	draft	Added {0}	已添加{0}	src/core/languages.js:318	{0} = name
-zu7130	draft	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:318	{0} = name
-14va31	draft	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:319	{0} = name; {1} = place
-ehoetc	draft	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:319	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	draft	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:320	{0} = name
-p2yont	draft	{0} removed	已移除{0}	src/core/languages.js:320	{0} = name
-1i1xhz6	draft	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:322	{0} = name
-wbdbo7	draft	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:323	{0} = name
-53lnxp	draft	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:325	{0} = name
-fhhm2e	draft	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:325	{0} = name
-1c7ft9k	draft	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:326	
-bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:326	
-1qt7a9v	draft	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:327	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	draft	The language you speak to her	你对她说的语言	src/core/languages.js:328	
-au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
-1dyfzsg	draft	A simulation is already running.	模拟已在运行。	src/core/live/live.js:244	
-157qf8n	draft	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	draft	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
-1d0bfhb	draft	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	draft	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	draft	Leave soon: {0}.	该出发了：{0}。	src/core/live/plan-watches.js:151	{0} = what
-1nq6h1n	draft	About {0} min by car.	开车约{0}分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-1s9ayzz	draft	About {0} min on foot.	步行约{0}分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-osmwu5	draft	Leave in about {0} min: {1}.	约{0}分钟后出发：{1}。	src/core/live/plan-watches.js:152	{0} = num(LEAVE_LEAD_MIN); {1} = what
-12cmqu6	draft	Running late: {0}.	要迟到了：{0}。	src/core/live/plan-watches.js:153	{0} = what
-3qig1w	draft	About {0} min away.	还有约{0}分钟路程。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
-ub25px	draft	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/core/live/plan-watches.js:154	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	draft	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:155	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	draft	In {0} min: {1}.	{0}分钟后：{1}。	src/core/live/plan-watches.js:156	{0} = num(COMING_UP_MIN); {1} = what
-112i693	draft	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:158	
-1hf686i	draft	Nothing more is on the plan.	行程中没有更多安排了。	src/core/live/plan-watches.js:159	
-1jsyqjn	draft	Next on the plan: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
-h8yuqy	draft	annai can reach this address from the browser.	annai 可以从浏览器连到这个地址。	src/core/llm/check.js:60	
-152u1pq	draft	The key works. The model said: "{0}".	密钥可用。模型说：“{0}”。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
-iiy1hf	draft	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型在调用测试工具之前就用完了输出空间；它可能会先思考很久。请试试更低的推理级别。	src/core/llm/check.js:88	
-lh9fzn	draft	Tool calls work.	工具调用可用。	src/core/llm/check.js:88	
-rk5rlm	draft	The model answered but didn't call the test tool.	模型回答了，但没有调用测试工具。	src/core/llm/check.js:88	
-1xj1cuk	draft	Photos work: it saw the red square.	照片可用：它看到了红色方块。	src/core/llm/check.js:94	
-dhnf3r	draft	It didn't see the red square (it said {0}).	它没有看到红色方块（它说：{0}）。	src/core/llm/check.js:94	{0} = answer.slice(0, 60)
-d9hh16	draft	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:127	
-1u5s6ep	draft	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:129	
-1uj9pv4	draft	annai will send photos in each request instead.	annai 会改为在每次请求中发送照片。	src/core/llm/check.js:129	
-16s9khr	draft	Utility	辅助	src/core/llm/check.js:134	
-a5cd15	draft	Koe · Classic	Koe · 经典	src/core/llm/check.js:134	
-mlh3jc	draft	Main	主要	src/core/llm/check.js:134	
-1q9bibx	draft	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
-1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
-1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:96	
-1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:97	
-99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:98	
-1f1gofm	draft	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:99	
-1m90sjx	draft	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:100	
-ofpdqd	draft	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:101	
-1acsflt	draft	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:102	
-1htll8g	draft	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:103	
-reueb3	draft	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:104	
-3bfivn	draft	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:105	
-z0xde1	draft	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:106	
-11ib30k	draft	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:107	
-1sdnnoc	draft	The connection dropped.	连接中断了。	src/core/llm/contract.js:108	
-vfwfwf	draft	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:109	
-5x3mf4	draft	Stopped.	已停止。	src/core/llm/contract.js:110	
-1jk8mhk	draft	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:111	
-r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:112	
-19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:113	
-1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:114	{0} = provider
-sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	
-4zknwy	draft	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:101	
-9bk0c8	draft	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
-12h1lml	draft	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:103	
-uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:104	
-19lcshx	draft	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:105	
-1coimht	draft	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:106	
-6o9g3j	draft	It doesn't have the provider tool this needs.	它没有这项需要的提供商工具。	src/core/llm/fallback.js:107	
-8xm1wt	draft	It isn't a chat model.	它不是聊天模型。	src/core/llm/fallback.js:108	
-1i0eq06	draft	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
-10vxomx	draft	It was removed.	它已被删除。	src/core/llm/fallback.js:110	
-s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
-13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:144	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
-g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
-2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
-mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
-zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:53	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	draft	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:55	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
-oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/llm/official.js:166	
-8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
-tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
-1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
-aaicx8	draft	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-emc8n2	draft	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:58	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	draft	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:213	
-is7g6t	draft	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:220	{0} = file; {1} = folder
-1k2igo9	draft	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:221	{0} = file; {1} = folder
-1svq3gn	draft	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:223	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	draft	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:241	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	draft	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:321	
-13j5338	draft	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:354	
-1xovhb	draft	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:363	{0} = u.host
-4lh0yw	draft	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:375	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
-hm96ty	draft	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:391	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	draft	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:446	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
-1iuga68	draft	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:457	
-1toghwz	draft	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:467	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	draft	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:508	Note: one of a list of what an update adds.
-1tdxuf	draft	the skill {0}	技能 {0}	src/core/packages.js:509	{0} = s.name
-1j0uwka	draft	the personality {0}	性格 {0}	src/core/packages.js:510	{0} = p.name
-14wn58m	draft	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
-tqmba2	draft	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
-18tp402	draft	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
-1nz795c	draft	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
-u8bf72	draft	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:74	
-1dxa9va	draft	Notifications are on again: reminders come like this while annai is closed.	通知已再次开启：annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:75	
-dcq7bh	draft	annai has a reminder for you. Open annai to see it.	annai 有一条提醒。打开 annai 查看。	src/core/push/mirror.js:82	Note: a notification for a reminder the phone couldn't read.
-105rlv8	draft	Started {0} min ago: {1}.	{0}分钟前已开始：{1}。	src/core/push/mirror.js:83	{0} = '{0}'; {1} = '{1}'; Note: a notification; the service worker puts the minutes for {0} and the plan item for {1}.
-xjrph	draft	Now: {0}.	现在：{0}。	src/core/push/mirror.js:83	{0} = '{1}'; Note: a notification; the service worker puts the plan item for {0}.
-j6onej	draft	annai tries again by itself.	annai 会自动重试。	src/core/push/mirror.js:89	
-bonvch	draft	Nothing was turned on: tap Turn on notifications again once that is fixed.	没有开启任何内容：问题解决后，请再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
-luvbjl	draft	Nothing was turned on: check the connection, then tap Turn on notifications again.	没有开启任何内容：请检查网络连接，然后再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
-1sqfmh1	draft	Turn notifications on first.	请先开启通知。	src/core/push/mirror.js:343	
-1hoeukd	draft	A test: reminders reach this phone through the relay.	测试：提醒会通过中继送达这部手机。	src/core/push/mirror.js:347	
-1gmsel8	draft	Notifications are off	通知已关闭	src/core/push/mirror.js:489	
-4nwn73	draft	The relay address must start with https:// (http:// only for localhost, to test).	中继地址必须以 https:// 开头（http:// 仅限测试用的 localhost）。	src/core/push/relay-client.js:18	
-1i03za7	draft	This phone has no connection: annai sends its reminders to the relay once it's back.	这部手机没有网络连接：恢复后，annai 会把提醒发送到中继。	src/core/push/relay-client.js:26	
-z45u0n	draft	annai's offline service isn't running yet. Try again in a moment.	annai 的离线服务还没有运行。请稍后再试。	src/core/push/relay-client.js:27	
-bu0i4z	draft	annai couldn't reach the relay at {0}. Is the phone offline?	annai 无法连接到 {0} 的中继。手机是否处于离线状态？	src/core/push/relay-client.js:28	{0} = host
-1dl1svy	draft	The relay is waiting for this phone's first notification.	中继正在等待这部手机的第一条通知。	src/core/push/relay-client.js:30	
-f5w28p	draft	The relay at {0} is busy.	{0} 的中继正忙。	src/core/push/relay-client.js:31	{0} = host
-1fsoa06	draft	The relay at {0} keeps no more of this phone's reminders for now. More can wait once some are sent.	{0} 的中继目前无法再为这部手机保留更多提醒。等一些提醒发出后，就可以继续等待。	src/core/push/relay-client.js:32	{0} = host
-1di80c2	draft	The relay's key changed.	中继的密钥已更改。	src/core/push/relay-client.js:33	
-ido0tg	draft	The phone's push service says this subscription no longer exists.	手机的推送服务表示此订阅已不存在。	src/core/push/relay-client.js:34	
-1tirqj9#other	draft	# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile.	旧中继 {0} 上的 # 条提醒尚未取消。annai 会一直尝试，直到它们的时间过去；在此期间新中继照常工作。	src/core/push/relay-client.js:36	plural; # = count; {0} = host; English: "A reminder at the old relay, {0}, couldn't be called off yet. annai keeps trying until its time has passed; the new relay works meanwhile." (one), "# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile." (other)
-3d2k3u	draft	The relay at {0} answered {1}.	{0} 的中继返回了 {1}。	src/core/push/relay-client.js:39	{0} = host; {1} = status
-4nwp6a	draft	The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. In Settings → Notifications, tap Turn on notifications.	手机关闭了 annai 的通知，或在其设置中被关闭，因此提醒无法送达已关闭的 annai。请在设置 → 通知中点击“开启通知”。	src/core/push/relay-client.js:40	Note: Settings → Notifications is annai's own screen, and the button's own words, Turn on notifications.
-1eeb6fm	draft	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回了 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
-12gfn9	draft	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中继发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
-n5y19n	draft	The relay at {0} refused it ({1}).	{0} 的中继拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-stkvyf	draft	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	draft	System log	系统日志	src/core/scopes.js:42	
-ktdb8o	draft	Settings	设置	src/core/scopes.js:43	
-13w3r95	draft	This device	这台设备	src/core/scopes.js:45	
-ulzb3n	draft	Midnight sun	极昼	src/core/sun.js:78	
-1fjho8h	draft	Polar night	极夜	src/core/sun.js:79	
-tqn1pi	draft	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
-1xdfgdt	draft	Golden light all day	全天黄金时刻光线	src/core/sun.js:86	
-wd3hcp	draft	Sunset {0}	日落 {0}	src/core/sun.js:86	{0} = hm(sunset)
-1dxlj44	draft	Golden hour until {0}	黄金时刻至 {0}	src/core/sun.js:88	{0} = hm(goldenEnd)
-z7v0ig	draft	Golden hour {0}	黄金时刻 {0}	src/core/sun.js:90	{0} = hm(golden)
-12l7fk6	draft	Golden hour now	正值黄金时刻	src/core/sun.js:92	
-bxt142	draft	Dusk {0}	黄昏 {0}	src/core/sun.js:93	{0} = hm(sun.dusk)
-1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	在 iPhone 上：打开设置 → App → Safari 浏览器 → 麦克风，选择“询问”或“允许”，然后回来再试一次。	src/core/voice/mic.js:13	
-h8lp19	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	在 Android 上：轻点地址左边的图标（在已安装的应用中：长按 annai 图标，然后应用信息 → 权限），允许麦克风，然后再试一次。	src/core/voice/mic.js:15	
-17920wl	draft	Allow the microphone for this site in your browser's site settings, then try again.	在浏览器的网站设置中允许这个网站使用麦克风，然后再试一次。	src/core/voice/mic.js:16	
-3o9sc5	draft	annai can't use the microphone	annai 无法使用麦克风	src/core/voice/mic.js:17	
-9xy2uc	draft	It wasn't allowed.	未获允许。	src/core/voice/mic.js:17	
-17nwcga	draft	This device has no microphone annai can use. Connect one, or type to Shiori instead.	这台设备没有 annai 能用的麦克风。请连接一个，或改为向 Shiori 打字。	src/core/voice/mic.js:19	
-1av5abe	draft	No microphone found	找不到麦克风	src/core/voice/mic.js:19	
-10q20kb	draft	Another app is using it, such as a call or a voice recorder. Close it, then try again.	另一个应用正在使用它，比如通话或录音机。关闭它，然后再试一次。	src/core/voice/mic.js:20	
-1kv2ch5	draft	The microphone is busy	麦克风正被占用	src/core/voice/mic.js:20	
-1mv2ac5	draft	Try again; if it keeps happening, restart annai.	请再试一次；如果反复出现，请重启 annai。	src/core/voice/mic.js:23	
-8ycwt2	draft	The microphone didn't start	麦克风未能启动	src/core/voice/mic.js:23	
-1r1k76k	draft	Realtime	实时	src/core/voice/mode.js:65	
-1kmd589	draft	Realtime off	实时已关闭	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
-599lim	draft	Realtime resting	实时休息中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
-v13cxh	draft	Shiori answers directly until it can.	在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:68	
-1xyn0at	draft	Classic unavailable	经典不可用	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
-2nakam	draft	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 经典现在无法回答。在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:69	
-1qzc99v	draft	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 经典没有模型，所以 Shiori 独自回答。请在设置 → 模型中添加。	src/core/voice/mode.js:71	
-nr2jvc	draft	(no model)	（无模型）	src/core/voice/mode.js:71	
-y7erjn	draft	Classic	经典	src/core/voice/mode.js:71	
-1jfshdf	draft	(no Realtime model)	（无实时模型）	src/core/voice/mode.js:73	
-pfn1mf	draft	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	实时没有模型：请在设置 → 模型的 Koe · 实时下添加。在此期间由经典说话。	src/core/voice/mode.js:73	
-1fq5gan	draft	(Realtime resting)	（实时休息中）	src/core/voice/mode.js:74	
-1iee2u1	draft	Realtime is resting after a failure. Classic talks until it can.	实时在出错后正在休息。在它恢复之前，由经典说话。	src/core/voice/mode.js:74	
-1p1eu5	draft	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	实时的实时语音已关闭，或它的插件没有运行。在此期间由经典说话。	src/core/voice/mode.js:75	
-mszveu	draft	(Realtime off)	（实时已关闭）	src/core/voice/mode.js:75	
-dra7tz	draft	moving	移动中	src/core/voice/mode.js:81	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-3c71hb	draft	car audio	车载音频	src/core/voice/mode.js:82	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-86z50m	draft	headphones	耳机	src/core/voice/mode.js:83	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-1noivph	draft	your last choice	上次的选择	src/core/voice/mode.js:84	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-bxwivy	draft	Voice auto · off	语音自动 · 关闭	src/core/voice/mode.js:94	
-46l9so	draft	Voice off	语音关闭	src/core/voice/mode.js:95	
-1o81qfq	draft	Voice on	语音开启	src/core/voice/mode.js:96	
-xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:157	
-1da2r7t	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:163	{0} = model.name
-1j6uoln	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:164	
-1oy92m8	draft	This browser has no phone dictation either.	这个浏览器也没有手机语音输入。	src/core/voice/resolve.js:165	
-l80ifa	draft	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
-jo5o9d	draft	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:314	
-ocv5zw	draft	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:359	
-pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
-m93xm3	draft	On this phone only: the browser recognizes your speech on the device.	仅在这部手机上：浏览器在设备上识别你的语音。	src/core/voice/where.js:16	
-1m5zm0a	draft	Phone dictation	手机语音输入	src/core/voice/where.js:18	
-1vi25zs	draft	Send audio to the model	把音频发给模型	src/core/voice/where.js:18	
-742sn5	draft	Browser voice	浏览器声音	src/core/voice/where.js:18	
-2pflf	draft	{0} ({1})	{0}（{1}）	src/core/voice/where.js:37	{0} = provider.name; {1} = host; Note: A stack of cards of one kind: its title and how many.
-jyk16a	draft	As sound, to the model that hears it: {0}.	以音频形式发给能听它的模型：{0}。	src/core/voice/where.js:55	{0} = list(places, 'or')
-l00mfq	draft	Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.	只发给能接收音频的模型，但现在听你说话的模型都不接收音频：这条路不会发送任何内容。	src/core/voice/where.js:55	
-ppm2mg	draft	This browser has no dictation: it is skipped.	这个浏览器没有语音输入：已跳过。	src/core/voice/where.js:58	
-1ed9jam	draft	This model is gone: it is skipped.	这个模型已不存在：已跳过。	src/core/voice/where.js:60	
-1y3s50o	draft	As sound, to {0}, to be written down.	以音频形式发给{0}，转成文字。	src/core/voice/where.js:60	{0} = placeOf(cfg, id)
-2o1a5s	draft	This browser has no voice of its own: it is skipped.	这个浏览器没有自带的声音：已跳过。	src/core/voice/where.js:73	
-1pvxdq0	draft	The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.	由浏览器选择声音：annai 无法判断它是在这部手机上朗读，还是把她的话发给某个服务。	src/core/voice/where.js:74	
-11mo7a8	draft	Spoken on this phone ({0}): her words stay on it.	在这部手机上朗读（{0}）：她的话留在手机上。	src/core/voice/where.js:75	{0} = voice.name
-ihf6hd	draft	Her words go to the service behind {0} (Google's), to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务（Google 的）来朗读，不在这部手机上朗读。	src/core/voice/where.js:76	{0} = voice.name
-1tsyo5q	draft	Her words go to the service behind {0} (Microsoft's), to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务（Microsoft 的）来朗读，不在这部手机上朗读。	src/core/voice/where.js:77	{0} = voice.name
-14jkvn5	draft	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务来朗读，不在这部手机上朗读。	src/core/voice/where.js:78	{0} = voice.name
-i7rrx1	draft	This voice is gone: it is skipped.	这个声音已不存在：已跳过。	src/core/voice/where.js:80	
-mf44l1	draft	Her words go to {0}, which sends back the sound.	她的话发给{0}，由它传回声音。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
-1izzjz4	draft	Trip record checks	旅行记录检查	src/plugins/core-schemas/index.js:7	
-1y0f0hr	draft	Checks trip.json, plan items, bookings and watches when they are saved.	保存时检查旅行的 trip.json、行程项目、预订和监测项。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	draft	File tools	文件工具	src/plugins/files/index.js:13	
-1dyo7ln	draft	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 处理旅行文件和你自己文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
-jh5a9s	draft	Go tools	出行工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
-1xge7qy	draft	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：路线，以及预先填好的航班、酒店和租车搜索，供你预订。	src/plugins/go/index.js:10	
-13a1ine	draft	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用的 MCP 版本未知；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
-h6sxxb	draft	The MCP server {0} speaks MCP {1}; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用 MCP {1}；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; {1} = v
-x0tv1f	draft	The MCP server {0} answered {1}.	MCP 服务器“{0}”返回了 {1}。	src/plugins/mcp/client.js:173	{0} = this.server; {1} = code; Note: {1} is an HTTP status, such as 503.
-g27u66	draft	The MCP server {0} was removed.	MCP 服务器“{0}”已被移除。	src/plugins/mcp/client.js:178	{0} = this.server
-3qa9yv	draft	The MCP server {0} said: {1}	MCP 服务器“{0}”回复：{1}	src/plugins/mcp/client.js:228	{0} = this.server; {1} = String(said); Note: {1} is the server's own words, as it sent them.
-kslyd9	draft	The MCP server {0} answered with an error.	MCP 服务器“{0}”返回了错误。	src/plugins/mcp/client.js:228	{0} = this.server
-3m1fxi	draft	annai couldn't reach the MCP server {0}: this device is offline. Try again once it is online.	annai 无法连接 MCP 服务器“{0}”：此设备处于离线状态。请在联网后重试。	src/plugins/mcp/client.js:251	{0} = this.server
-5hoep6	draft	annai couldn't reach the MCP server {0}. Check its address, that it is running, and that it lets web apps call it (CORS).	annai 无法连接 MCP 服务器“{0}”。请检查它的地址、它是否在运行，以及它是否允许网页应用调用（CORS）。	src/plugins/mcp/client.js:254	{0} = this.server
-w6u4rv	draft	The MCP server {0} doesn't take requests from annai at {1}: it checks the Origin they come from. Add {2} to the origins it allows.	MCP 服务器“{0}”不接受来自 {1} 的 annai 的请求：它会检查请求的来源（Origin）。请把 {2} 添加到它允许的来源中。	src/plugins/mcp/client.js:261	{0} = this.server; {1} = here; {2} = here; Note: {1} and {2} are both annai's own address, such as https://annai.guide.
-1e1o93i	draft	The MCP server {0} doesn't take requests from annai's address: it checks the Origin they come from. Add annai's address to the origins it allows.	MCP 服务器“{0}”不接受来自 annai 地址的请求：它会检查请求的来源（Origin）。请把 annai 的地址添加到它允许的来源中。	src/plugins/mcp/client.js:262	{0} = this.server
-igm0pc	draft	The MCP server {0} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.	MCP 服务器“{0}”拒绝了 annai 的密钥。请在设置 → 工具 → MCP 服务器中检查它的令牌或请求头。	src/plugins/mcp/client.js:266	{0} = this.server
-1n9ii8g	draft	The MCP server {0} ended annai's session.	MCP 服务器“{0}”结束了 annai 的会话。	src/plugins/mcp/client.js:270	{0} = this.server
-25n9uk	draft	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCP 服务器“{0}”开启了一个 annai 看不到的会话。它必须在 Access-Control-Expose-Headers 中列出 Mcp-Session-Id。	src/plugins/mcp/client.js:277	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
-lzl064	draft	The MCP server {0} sent an answer annai can't read.	MCP 服务器“{0}”发来了 annai 无法读取的回复。	src/plugins/mcp/client.js:291	{0} = this.server
-1kq4f3c	draft	The MCP server {0} sent more than annai reads ({1} MB).	MCP 服务器“{0}”发来的内容超过了 annai 能读取的上限（{1} MB）。	src/plugins/mcp/client.js:296	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
-195b0jb	draft	MCP servers	MCP 服务器	src/plugins/mcp/index.js:26	Note: The glossary's screen name.
-pnu9f5	draft	Tools from MCP servers you add in Settings → Tools.	来自你在设置 → 工具中添加的 MCP 服务器的工具。	src/plugins/mcp/index.js:29	
-hs6d0h	draft	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	令牌中有网页请求无法携带的字符：U+{0}（第 {1} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:56	{0} = code; {1} = n
-1akzgkh	draft	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	请求头 {0} 中有网页请求无法携带的字符：U+{1}（第 {2} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:57	{0} = header; {1} = code; {2} = n
-zgh0se	draft	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	地址必须以 https:// 开头（在本设备上也可以用 http://localhost 或 http://127.0.0.1）。	src/plugins/mcp/index.js:78	
-1xt26lz	draft	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	这个地址在 @ 前面包含用户名或密码。请去掉它，并把密钥填入令牌或请求头一栏。	src/plugins/mcp/index.js:80	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
-1v5ab85	draft	Each header is one line: Name: value.	每个请求头占一行，格式为“Name: value”。	src/plugins/mcp/index.js:91	Note: "Name: value" stays English: it is the form of what is typed.
-z6ass1	draft	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	annai 会自己发送 {0}，所以它不能作为这里的请求头。请删掉那一行。	src/plugins/mcp/index.js:92	{0} = m[1]
-1wffyf4#other	draft	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCP 服务器在 # 秒内没有回应。请确认它正在运行，然后重试。	src/plugins/mcp/index.js:261	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
-129gp7y	draft	There is no MCP server called {0}.	没有名为“{0}”的 MCP 服务器。	src/plugins/mcp/index.js:277	{0} = name
-i69zke	draft	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	服务器名称由 1 到 20 个小写字母、数字和连字符组成，例如 trail。	src/plugins/mcp/index.js:316	Note: trail is an example name, as the form's placeholder; kept as written.
-ku5jlk	draft	There is a server called {0} already.	已经有名为“{0}”的服务器了。	src/plugins/mcp/index.js:317	{0} = n
-126nbeu	draft	Places tools	地点工具	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
-1gghsme	draft	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，数据来自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:18	
-143ff3s	draft	Sensors	传感器	src/plugins/sensors/index.js:6	
-3mo7sf	draft	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手机的位置（GPS，仅在 annai 中开启 GPS 且 annai 显示在屏幕上时）、annai 是否显示在屏幕上，以及是否有网络连接。	src/plugins/sensors/index.js:9	
-gec6zp	draft	Built-in skills	内置技能	src/plugins/skills/index.js:15	
-1t0u9tp	draft	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
-fsfyxb	draft	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:68	
-wp5yx4	draft	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
-elkw42	draft	The voice's audio couldn't be played.	无法播放朗读的音频。	src/plugins/voice-browser/index.js:456	Note: The voice is a Speech out voice: the glossary's 読み上げ / 朗读.
-9gdjo3	draft	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
-1mrk9hl	draft	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:579	
-1l4zitw	draft	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:119	
-scnz2y	draft	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
-eob60g	draft	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	
-b4g7z9	draft	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:188	
+1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:32	
+1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:61	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:62	
+u0vojx	ok	Use it here	在这里使用	src/app/main.js:63	
+p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:68	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:69	
+1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:70	
+fki4un	ok	Notifications	通知	src/app/main.js:204	
+1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:207	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:208	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	打开模型	src/app/main.js:209	
+10renyj	ok	Plugins	插件	src/app/main.js:220	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:309	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:310	
+1n8cxuc	ok	Compare	比较	src/app/main.js:312	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:313	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:314	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:366	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:367	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:367	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:368	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:379	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:381	
+982hh6	ok	Try again	重试	src/app/main.js:382	
+1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:70	
+1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:53	
+7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:54	
+5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你输入或说出的话（各自缩短）。	src/core/after/recap.js:55	
+nqzovd	ok	The trip's notes and memory, and your profile.	旅行的笔记和记忆，以及你的个人资料。	src/core/after/recap.js:56	
+1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	如果模型接受照片，最多 {0} 张照片。按原样保存的照片（设置 → 照片 → 保留原图）可能仍包含拍摄地点。	src/core/after/recap.js:57	{0} = RECAP_PHOTOS
+rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	辅助和主要角色都没有设置模型。请在设置 → 模型中添加。	src/core/after/recap.js:162	
+1hy1f74	ok	No model could write it.	没有模型能写出回顾。	src/core/after/recap.js:163	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	ok	Check Settings → Models, then try again.	请检查设置 → 模型，然后再试一次。	src/core/after/recap.js:163	
+1ocmp3v	ok	Try again in a while.	请稍后再试。	src/core/after/recap.js:165	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:179	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回了空的回顾。请重试，或在辅助角色中把另一个模型放在最前面（设置 → 模型）。	src/core/after/recap.js:221	
+1sob3wf	ok	1 hour a second	每秒 1 小时	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
+6jq1bh	ok	1 minute a second	每秒 1 分钟	src/core/after/replay.js:22	
+7013qq	ok	10 minutes a second	每秒 10 分钟	src/core/after/replay.js:22	
+1xgi8k0	ok	less than a minute	不到 1 分钟	src/core/after/replay.js:25	
+1tydm1k#other	ok	No road was recorded, with # stops and {0}.	没有记录到路线，共 # 个停留点，{0}。	src/core/after/replay.js:73	plural; # = n; {0} = marks; English: "No road was recorded, with # stop and {0}." (one), "No road was recorded, with # stops and {0}." (other); Note: {0} is the stamps counted, "# 枚纪念章" (see # stamps).
+1pigqmy#other	ok	{0} on the road, with # stops and {1}.	路程 {0}，共 # 个停留点，{1}。	src/core/after/replay.js:75	plural; # = n; {0} = road; {1} = marks; English: "{0} on the road, with # stop and {1}." (one), "{0} on the road, with # stops and {1}." (other); Note: {1} is the stamps counted.
+aad9xo#other	ok	{0} on the road, from {1}, with # stops and {2}.	从{1}出发，路程 {0}，共 # 个停留点，{2}。	src/core/after/replay.js:76	plural; # = n; {0} = road; {1} = first; {2} = marks; English: "{0} on the road, from {1}, with # stop and {2}." (one), "{0} on the road, from {1}, with # stops and {2}." (other); Note: {2} is the stamps counted.
+p6d198#other	ok	{0} on the road, from {1} to {2}, with # stops and {3}.	从{1}到{2}，路程 {0}，共 # 个停留点，{3}。	src/core/after/replay.js:77	plural; # = n; {0} = road; {1} = first; {2} = last; {3} = marks; English: "{0} on the road, from {1} to {2}, with # stop and {3}." (one), "{0} on the road, from {1} to {2}, with # stops and {3}." (other); Note: {3} is the stamps counted.
+118y86m	ok	Stopped	停留中	src/core/after/replay.js:98	Note: where the replay is: at a stop with no name.
+17826bm	ok	At {0}	在{0}	src/core/after/replay.js:98	{0} = stay.name
+1q5u96o	ok	Driving	驾驶中	src/core/after/replay.js:99	
+1t1k02g	ok	Walking	步行中	src/core/after/replay.js:99	
+bzqb1u	ok	Walking from {0}	从{0}步行中	src/core/after/replay.js:99	{0} = prev.name
+d6w22	ok	Driving from {0}	从{0}驾驶中	src/core/after/replay.js:99	{0} = prev.name
+1i4bl4d	ok	Not started yet	尚未开始	src/core/after/replay.js:100	
+1ceq85s	ok	On the way	在路上	src/core/after/replay.js:101	
+tzwrpj	ok	After {0}	{0}之后	src/core/after/replay.js:101	{0} = prev.name
+1rgnrl8	ok	A stop	一个停留点	src/core/after/replay.js:117	
+1ml0xuv	ok	{0} · arrived · stamp	{0} · 已到达 · 纪念章	src/core/after/replay.js:119	{0} = name
+4wysut	ok	{0} · arrived	{0} · 已到达	src/core/after/replay.js:119	{0} = name
+esglmt	ok	{0} · {1} · stamp	{0} · {1} · 纪念章	src/core/after/replay.js:121	{0} = name; {1} = long
+1mng1sm	ok	Walked {0} · {1} (partly unseen: the phone was locked)	步行 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:125	{0} = far; {1} = long
+2xd7wx	ok	Walked {0} · {1}	步行 {0} · {1}	src/core/after/replay.js:125	{0} = far; {1} = long
+1lwm8i6	ok	Drove {0} · {1} (partly unseen: the phone was locked)	驾驶 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:126	{0} = far; {1} = long
+s3mlgp	ok	Drove {0} · {1}	驾驶 {0} · {1}	src/core/after/replay.js:126	{0} = far; {1} = long
+1szxw8q	ok	a card	一张卡片	src/core/after/replay.js:131	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
+ngwtmh	ok	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cut(String(words), 120) : t`a card`; Note: read by a screen reader; {0} is what she said or showed.
+1ot96wv	ok	You said: {0}	你（语音）：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120); Note: what you said aloud, beside "You: {0}" for what you typed.
+zxi5vs	ok	You: {0}	你：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120)
+d4j0a5	ok	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('/').pop()
+1e9ja08#other	ok	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
+1gzex44	ok	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:118	{0} = money(over.spent); {1} = money(over.perDay)
+bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:118	
+67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数上限	src/core/agent/budgets.js:123	
+177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在没人要求时自己做事，已经走了{0}步，所以停在了这里。想让她继续，就告诉她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
+1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次唤醒可走的{0}步（设置 → Shiori → 她主动行动的频率）。想让她继续，就告诉她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:513	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:513	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:634	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:634	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:109	
+1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:109	
+4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:109	
+89yydm	ok	Listening	聆听中	src/core/agent/loop.js:109	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	等待你的确认	src/core/agent/loop.js:109	
+yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:109	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:110	
+izy3tv	ok	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:110	
+1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:534	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:534	
+19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:843	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1066	
+1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1066	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1098	
+oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1098	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1231	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1429	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1429	
+nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1527	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1527	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1527	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1580	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1843	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1843	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1880	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1884	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1947	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1975	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2030	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2391	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2533	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2533	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2534	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2534	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2672	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2807	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2981	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2982	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2983	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:2984	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2986	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:2993	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3003	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1im1t3t	ok	Enter a passphrase to encrypt the file.	请输入用于加密文件的密码短语。	src/core/archive-crypto.js:66	
+1bw0b6k	ok	This file is not encrypted.	这个文件没有加密。	src/core/archive-crypto.js:90	
+1nzwtma	ok	This file is damaged.	这个文件已损坏。	src/core/archive-crypto.js:91	
+qh6gdt	ok	Wrong passphrase, or the file is damaged.	密码短语不对，或者文件已损坏。	src/core/archive-crypto.js:104	
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:69	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:159	
+13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:166	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:266	{0} = why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:340	{0} = path
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:354	
+q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:358	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:361	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:386	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:388	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:395	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:401	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:417	
+1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:429	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:434	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:460	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:464	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:544	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:648	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
+pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:36	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
+al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:37	{0} = s.name
+1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:38	{0} = size(s.bytes ?? 0)
+3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:39	{0} = s.name
+1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:40	
+1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:41	
+1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:42	
+bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:43	
+1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:52	
+16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:139	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:337	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:354	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:365	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:373	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	可以使用。	src/core/backup.js:418	Note: the result of Save and test when the place says nothing itself.
+173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:469	
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:469	
+14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	Note: 移除, as the trip's own button, Remove trip (移除旅行).
+1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
+gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
+iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此日历中有超过 {0} 个事件。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
+10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
+5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
+1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
+1acz027	ok	just now	刚刚	src/core/intl.js:126	
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:405	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:405	Note: The dock's Shiori button: tap it to talk over her.
+3fqfy0	ok	Languages	语言	src/core/languages.js:304	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:305	
+1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:306	
+krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:307	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
+5h4ntn	ok	Add a language	添加语言	src/core/languages.js:308	
+17rv3f8	ok	Add	添加	src/core/languages.js:309	
+9c35st	ok	Remove	移除	src/core/languages.js:310	Note: 移除 (take off the list) over 删除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:313	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+1u9ac5b	ok	Move {0} up	上移{0}	src/core/languages.js:314	{0} = name
+9v00pm	ok	Move {0} down	下移{0}	src/core/languages.js:315	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:317	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:318	{0} = name
+zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:318	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:319	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:319	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:320	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:320	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:322	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:323	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:325	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:325	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:326	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:326	
+1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:327	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:328	
+au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
+1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:244	
+157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	该出发了：{0}。	src/core/live/plan-watches.js:151	{0} = what
+1nq6h1n	ok	About {0} min by car.	开车约{0}分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	步行约{0}分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	约{0}分钟后出发：{1}。	src/core/live/plan-watches.js:152	{0} = num(LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	要迟到了：{0}。	src/core/live/plan-watches.js:153	{0} = what
+3qig1w	ok	About {0} min away.	还有约{0}分钟路程。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/core/live/plan-watches.js:154	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:155	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	{0}分钟后：{1}。	src/core/live/plan-watches.js:156	{0} = num(COMING_UP_MIN); {1} = what
+112i693	ok	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:158	
+1hf686i	ok	Nothing more is on the plan.	行程中没有更多安排了。	src/core/live/plan-watches.js:159	
+1jsyqjn	ok	Next on the plan: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
+h8yuqy	ok	annai can reach this address from the browser.	annai 可以从浏览器连到这个地址。	src/core/llm/check.js:60	
+152u1pq	ok	The key works. The model said: "{0}".	密钥可用。模型说：“{0}”。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
+iiy1hf	ok	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型在调用测试工具之前就用完了输出空间；它可能会先思考很久。请试试更低的推理级别。	src/core/llm/check.js:88	
+lh9fzn	ok	Tool calls work.	工具调用可用。	src/core/llm/check.js:88	
+rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但没有调用测试工具。	src/core/llm/check.js:88	
+1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了红色方块。	src/core/llm/check.js:94	
+dhnf3r	ok	It didn't see the red square (it said {0}).	它没有看到红色方块（它说：{0}）。	src/core/llm/check.js:94	{0} = answer.slice(0, 60)
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:127	
+1u5s6ep	ok	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:129	
+1uj9pv4	ok	annai will send photos in each request instead.	annai 会改为在每次请求中发送照片。	src/core/llm/check.js:129	
+16s9khr	ok	Utility	辅助	src/core/llm/check.js:134	
+a5cd15	ok	Koe · Classic	Koe · 经典	src/core/llm/check.js:134	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:134	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:96	
+1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:97	Note: Credit is a prepaid balance (余额), not a quota (额度).
+99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:98	
+1f1gofm	ok	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:99	
+1m90sjx	ok	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:100	
+ofpdqd	ok	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:101	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:102	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:103	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:104	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:105	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:106	
+11ib30k	ok	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:107	
+1sdnnoc	ok	The connection dropped.	连接中断了。	src/core/llm/contract.js:108	
+vfwfwf	ok	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:109	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:110	
+1jk8mhk	ok	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:111	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:112	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:113	
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:114	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	
+4zknwy	ok	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:101	
+9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
+12h1lml	ok	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:103	
+uxj42v	ok	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:104	
+19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:105	
+1coimht	ok	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:106	
+6o9g3j	ok	It doesn't have the provider tool this needs.	它没有这里需要的提供商工具。	src/core/llm/fallback.js:107	
+8xm1wt	ok	It isn't a chat model.	它不是对话模型。	src/core/llm/fallback.js:108	Note: chat model → 对话模型, as the glossary's Koe · Classic note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
+10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:110	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:144	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
+g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
+2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:53	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:55	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
+oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/llm/official.js:166	
+8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
+tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
+1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
+aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:58	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
+1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:213	
+is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:220	{0} = file; {1} = folder
+1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:221	{0} = file; {1} = folder
+1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:223	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:241	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:321	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:354	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:363	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:375	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:391	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:446	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:457	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:467	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:508	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:509	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:510	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
+18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
+u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:74	
+1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已再次开启：annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:75	
+dcq7bh	ok	annai has a reminder for you. Open annai to see it.	annai 有一条提醒。打开 annai 查看。	src/core/push/mirror.js:82	Note: a notification for a reminder the phone couldn't read.
+105rlv8	ok	Started {0} min ago: {1}.	{0}分钟前已开始：{1}。	src/core/push/mirror.js:83	{0} = '{0}'; {1} = '{1}'; Note: a notification; the service worker puts the minutes for {0} and the plan item for {1}.
+xjrph	ok	Now: {0}.	现在：{0}。	src/core/push/mirror.js:83	{0} = '{1}'; Note: a notification; the service worker puts the plan item for {0}.
+j6onej	ok	annai tries again by itself.	annai 会自动重试。	src/core/push/mirror.js:89	
+bonvch	ok	Nothing was turned on: tap Turn on notifications again once that is fixed.	没有开启任何内容：问题解决后，请再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
+luvbjl	ok	Nothing was turned on: check the connection, then tap Turn on notifications again.	没有开启任何内容：请检查网络连接，然后再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
+1sqfmh1	ok	Turn notifications on first.	请先开启通知。	src/core/push/mirror.js:343	
+1hoeukd	ok	A test: reminders reach this phone through the relay.	测试：提醒会通过中继送达这部手机。	src/core/push/mirror.js:347	
+1gmsel8	ok	Notifications are off	通知已关闭	src/core/push/mirror.js:489	
+4nwn73	ok	The relay address must start with https:// (http:// only for localhost, to test).	中继地址必须以 https:// 开头（http:// 仅限测试用的 localhost）。	src/core/push/relay-client.js:18	
+1i03za7	ok	This phone has no connection: annai sends its reminders to the relay once it's back.	这部手机没有网络连接：恢复后，annai 会把提醒发送到中继。	src/core/push/relay-client.js:26	
+z45u0n	ok	annai's offline service isn't running yet. Try again in a moment.	annai 的离线服务还没有运行。请稍后再试。	src/core/push/relay-client.js:27	
+bu0i4z	ok	annai couldn't reach the relay at {0}. Is the phone offline?	annai 无法连接到 {0} 的中继。手机是否处于离线状态？	src/core/push/relay-client.js:28	{0} = host
+1dl1svy	ok	The relay is waiting for this phone's first notification.	中继正在等待这部手机的第一条通知。	src/core/push/relay-client.js:30	
+f5w28p	ok	The relay at {0} is busy.	{0} 的中继正忙。	src/core/push/relay-client.js:31	{0} = host
+1fsoa06	ok	The relay at {0} keeps no more of this phone's reminders for now. More can wait once some are sent.	{0} 的中继目前无法再为这部手机存放更多提醒。等一些提醒发出后，才能再存放。	src/core/push/relay-client.js:32	{0} = host; Note: The old draft said "can go on waiting", which hid that the relay is full.
+1di80c2	ok	The relay's key changed.	中继的密钥已更改。	src/core/push/relay-client.js:33	
+ido0tg	ok	The phone's push service says this subscription no longer exists.	手机的推送服务表示此订阅已不存在。	src/core/push/relay-client.js:34	
+1tirqj9#other	ok	# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile.	旧中继 {0} 上的 # 条提醒尚未取消。annai 会一直尝试，直到它们的时间过去；在此期间新中继照常工作。	src/core/push/relay-client.js:36	plural; # = count; {0} = host; English: "A reminder at the old relay, {0}, couldn't be called off yet. annai keeps trying until its time has passed; the new relay works meanwhile." (one), "# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile." (other)
+3d2k3u	ok	The relay at {0} answered {1}.	{0} 的中继返回了 {1}。	src/core/push/relay-client.js:39	{0} = host; {1} = status
+4nwp6a	ok	The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. In Settings → Notifications, tap Turn on notifications.	手机关闭了 annai 的通知，或在其设置中被关闭，因此提醒无法送达已关闭的 annai。请在设置 → 通知中点击“开启通知”。	src/core/push/relay-client.js:40	Note: Settings → Notifications is annai's own screen, and the button's own words, Turn on notifications.
+1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回了 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
+12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中继发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
+n5y19n	ok	The relay at {0} refused it ({1}).	{0} 的中继拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
+stkvyf	ok	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系统日志	src/core/scopes.js:42	
+ktdb8o	ok	Settings	设置	src/core/scopes.js:43	
+13w3r95	ok	This device	这台设备	src/core/scopes.js:45	
+ulzb3n	ok	Midnight sun	极昼	src/core/sun.js:78	
+1fjho8h	ok	Polar night	极夜	src/core/sun.js:79	
+tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
+1xdfgdt	ok	Golden light all day	全天都是金色光线	src/core/sun.js:86	Note: Near the poles the sun stays low all day.
+wd3hcp	ok	Sunset {0}	日落 {0}	src/core/sun.js:86	{0} = hm(sunset)
+1dxlj44	ok	Golden hour until {0}	黄金时刻至 {0}	src/core/sun.js:88	{0} = hm(goldenEnd)
+z7v0ig	ok	Golden hour {0}	黄金时刻 {0}	src/core/sun.js:90	{0} = hm(golden)
+12l7fk6	ok	Golden hour now	正值黄金时刻	src/core/sun.js:92	
+bxt142	ok	Dusk {0}	黄昏 {0}	src/core/sun.js:93	{0} = hm(sun.dusk)
+1p63zkc	ok	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	在 iPhone 上：打开设置 → App → Safari 浏览器 → 麦克风，选择“询问”或“允许”，然后回来再试一次。	src/core/voice/mic.js:13	
+h8lp19	ok	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	在 Android 上：轻点地址左边的图标（在已安装的应用中：长按 annai 图标，然后应用信息 → 权限），允许麦克风，然后再试一次。	src/core/voice/mic.js:15	
+17920wl	ok	Allow the microphone for this site in your browser's site settings, then try again.	在浏览器的网站设置中允许这个网站使用麦克风，然后再试一次。	src/core/voice/mic.js:16	
+3o9sc5	ok	annai can't use the microphone	annai 无法使用麦克风	src/core/voice/mic.js:17	
+9xy2uc	ok	It wasn't allowed.	未获允许。	src/core/voice/mic.js:17	
+17nwcga	ok	This device has no microphone annai can use. Connect one, or type to Shiori instead.	这台设备没有 annai 能用的麦克风。请连接一个，或改为向 Shiori 打字。	src/core/voice/mic.js:19	
+1av5abe	ok	No microphone found	找不到麦克风	src/core/voice/mic.js:19	
+10q20kb	ok	Another app is using it, such as a call or a voice recorder. Close it, then try again.	另一个应用正在使用它，比如通话或录音机。关闭它，然后再试一次。	src/core/voice/mic.js:20	Note: "voice recorder" is a recording app (录音机), not a voice she speaks with.
+1kv2ch5	ok	The microphone is busy	麦克风正被占用	src/core/voice/mic.js:20	
+1mv2ac5	ok	Try again; if it keeps happening, restart annai.	请再试一次；如果反复出现，请重启 annai。	src/core/voice/mic.js:23	
+8ycwt2	ok	The microphone didn't start	麦克风未能启动	src/core/voice/mic.js:23	
+1r1k76k	ok	Realtime	实时	src/core/voice/mode.js:65	
+1kmd589	ok	Realtime off	实时已关闭	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
+599lim	ok	Realtime resting	实时休息中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
+v13cxh	ok	Shiori answers directly until it can.	在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:68	
+1xyn0at	ok	Classic unavailable	经典不可用	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
+2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 经典现在无法回答。在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:69	
+1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 经典没有模型，所以 Shiori 独自回答。请在设置 → 模型中添加。	src/core/voice/mode.js:71	
+nr2jvc	ok	(no model)	（无模型）	src/core/voice/mode.js:71	
+y7erjn	ok	Classic	经典	src/core/voice/mode.js:71	
+1jfshdf	ok	(no Realtime model)	（无实时模型）	src/core/voice/mode.js:73	
+pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	实时没有模型：请在设置 → 模型的 Koe · 实时下添加。在此期间由经典说话。	src/core/voice/mode.js:73	
+1fq5gan	ok	(Realtime resting)	（实时休息中）	src/core/voice/mode.js:74	
+1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	实时在出错后正在休息。在它恢复之前，由经典说话。	src/core/voice/mode.js:74	
+1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	Koe · 实时所用的实时语音已关闭，或它的插件没有运行。在此期间由经典说话。	src/core/voice/mode.js:75	Note: "Realtime's live voice" is the glossary's Live voice (实时语音); the list is named whole so 实时 isn't said twice in a row.
+mszveu	ok	(Realtime off)	（实时已关闭）	src/core/voice/mode.js:75	
+dra7tz	ok	moving	移动中	src/core/voice/mode.js:81	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+3c71hb	ok	car audio	车载音频	src/core/voice/mode.js:82	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+86z50m	ok	headphones	耳机	src/core/voice/mode.js:83	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+1noivph	ok	your last choice	上次的选择	src/core/voice/mode.js:84	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+bxwivy	ok	Voice auto · off	语音自动 · 关	src/core/voice/mode.js:94	Note: The glossary's own example: 语音自动 · 关.
+46l9so	ok	Voice off	语音关闭	src/core/voice/mode.js:95	
+1o81qfq	ok	Voice on	语音开启	src/core/voice/mode.js:96	
+xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:157	
+1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:163	{0} = model.name
+1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:164	
+1oy92m8	ok	This browser has no phone dictation either.	这个浏览器也没有手机语音输入。	src/core/voice/resolve.js:165	
+l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
+jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:314	
+ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:359	
+pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
+m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	仅在这部手机上：浏览器在设备上识别你的语音。	src/core/voice/where.js:16	
+1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
+1vi25zs	ok	Send audio to the model	把音频发给模型	src/core/voice/where.js:18	
+742sn5	ok	Browser voice	浏览器声音	src/core/voice/where.js:18	
+2pflf	ok	{0} ({1})	{0}（{1}）	src/core/voice/where.js:37	{0} = provider.name; {1} = host; Note: A stack of cards of one kind: its title and how many.
+jyk16a	ok	As sound, to the model that hears it: {0}.	以音频形式发给能听它的模型：{0}。	src/core/voice/where.js:55	{0} = list(places, 'or')
+l00mfq	ok	Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.	只发给能接收音频的模型，但现在听你说话的模型都不接收音频：这条路不会发送任何内容。	src/core/voice/where.js:55	
+ppm2mg	ok	This browser has no dictation: it is skipped.	这个浏览器没有语音输入：已跳过。	src/core/voice/where.js:58	
+1ed9jam	ok	This model is gone: it is skipped.	这个模型已不存在：已跳过。	src/core/voice/where.js:60	
+1y3s50o	ok	As sound, to {0}, to be written down.	以音频形式发给{0}，转成文字。	src/core/voice/where.js:60	{0} = placeOf(cfg, id)
+2o1a5s	ok	This browser has no voice of its own: it is skipped.	这个浏览器没有自带的声音：已跳过。	src/core/voice/where.js:73	
+1pvxdq0	ok	The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.	由浏览器选择声音：annai 无法判断它是在这部手机上朗读，还是把她的话发给某个服务。	src/core/voice/where.js:74	
+11mo7a8	ok	Spoken on this phone ({0}): her words stay on it.	在这部手机上朗读（{0}）：她的话留在手机上。	src/core/voice/where.js:75	{0} = voice.name
+ihf6hd	ok	Her words go to the service behind {0} (Google's), to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务（Google 的）来朗读，不在这部手机上朗读。	src/core/voice/where.js:76	{0} = voice.name
+1tsyo5q	ok	Her words go to the service behind {0} (Microsoft's), to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务（Microsoft 的）来朗读，不在这部手机上朗读。	src/core/voice/where.js:77	{0} = voice.name
+14jkvn5	ok	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	她的话会发给 {0} 背后的服务来朗读，不在这部手机上朗读。	src/core/voice/where.js:78	{0} = voice.name
+i7rrx1	ok	This voice is gone: it is skipped.	这个声音已不存在：已跳过。	src/core/voice/where.js:80	
+mf44l1	ok	Her words go to {0}, which sends back the sound.	她的话发给{0}，由它传回声音。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
+1izzjz4	ok	Trip record checks	旅行记录检查	src/plugins/core-schemas/index.js:7	
+1y0f0hr	ok	Checks trip.json, plan items, bookings and watches when they are saved.	保存时检查旅行的 trip.json、行程项目、预订和监测项。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
+6t16a0	ok	File tools	文件工具	src/plugins/files/index.js:13	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 处理旅行文件和你自己文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+jh5a9s	ok	Go tools	出行工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
+1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：路线，以及预先填好的航班、酒店和租车搜索，供你预订。	src/plugins/go/index.js:10	
+13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用的 MCP 版本未知；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
+h6sxxb	ok	The MCP server {0} speaks MCP {1}; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用 MCP {1}；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; {1} = v
+x0tv1f	ok	The MCP server {0} answered {1}.	MCP 服务器“{0}”返回了 {1}。	src/plugins/mcp/client.js:173	{0} = this.server; {1} = code; Note: {1} is an HTTP status, such as 503.
+g27u66	ok	The MCP server {0} was removed.	MCP 服务器“{0}”已被移除。	src/plugins/mcp/client.js:178	{0} = this.server
+3qa9yv	ok	The MCP server {0} said: {1}	MCP 服务器“{0}”回复：{1}	src/plugins/mcp/client.js:228	{0} = this.server; {1} = String(said); Note: {1} is the server's own words, as it sent them.
+kslyd9	ok	The MCP server {0} answered with an error.	MCP 服务器“{0}”返回了错误。	src/plugins/mcp/client.js:228	{0} = this.server
+3m1fxi	ok	annai couldn't reach the MCP server {0}: this device is offline. Try again once it is online.	annai 无法连接 MCP 服务器“{0}”：此设备处于离线状态。请在联网后重试。	src/plugins/mcp/client.js:251	{0} = this.server
+5hoep6	ok	annai couldn't reach the MCP server {0}. Check its address, that it is running, and that it lets web apps call it (CORS).	annai 无法连接 MCP 服务器“{0}”。请检查它的地址、它是否在运行，以及它是否允许网页应用调用（CORS）。	src/plugins/mcp/client.js:254	{0} = this.server
+w6u4rv	ok	The MCP server {0} doesn't take requests from annai at {1}: it checks the Origin they come from. Add {2} to the origins it allows.	MCP 服务器“{0}”不接受来自 {1} 的 annai 的请求：它会检查请求的来源（Origin）。请把 {2} 添加到它允许的来源中。	src/plugins/mcp/client.js:261	{0} = this.server; {1} = here; {2} = here; Note: {1} and {2} are both annai's own address, such as https://annai.guide.
+1e1o93i	ok	The MCP server {0} doesn't take requests from annai's address: it checks the Origin they come from. Add annai's address to the origins it allows.	MCP 服务器“{0}”不接受来自 annai 地址的请求：它会检查请求的来源（Origin）。请把 annai 的地址添加到它允许的来源中。	src/plugins/mcp/client.js:262	{0} = this.server
+igm0pc	ok	The MCP server {0} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.	MCP 服务器“{0}”拒绝了 annai 的密钥。请在设置 → 工具 → MCP 服务器中检查它的令牌或请求头。	src/plugins/mcp/client.js:266	{0} = this.server
+1n9ii8g	ok	The MCP server {0} ended annai's session.	MCP 服务器“{0}”结束了 annai 的会话。	src/plugins/mcp/client.js:270	{0} = this.server
+25n9uk	ok	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCP 服务器“{0}”开启了一个 annai 看不到的会话。它必须在 Access-Control-Expose-Headers 中列出 Mcp-Session-Id。	src/plugins/mcp/client.js:277	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
+lzl064	ok	The MCP server {0} sent an answer annai can't read.	MCP 服务器“{0}”发来了 annai 无法读取的回复。	src/plugins/mcp/client.js:291	{0} = this.server
+1kq4f3c	ok	The MCP server {0} sent more than annai reads ({1} MB).	MCP 服务器“{0}”发来的内容超过了 annai 能读取的上限（{1} MB）。	src/plugins/mcp/client.js:296	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
+195b0jb	ok	MCP servers	MCP 服务器	src/plugins/mcp/index.js:26	Note: The glossary's screen name.
+pnu9f5	ok	Tools from MCP servers you add in Settings → Tools.	来自你在设置 → 工具中添加的 MCP 服务器的工具。	src/plugins/mcp/index.js:29	
+hs6d0h	ok	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	令牌中有网页请求无法携带的字符：U+{0}（第 {1} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:56	{0} = code; {1} = n
+1akzgkh	ok	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	请求头 {0} 中有网页请求无法携带的字符：U+{1}（第 {2} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:57	{0} = header; {1} = code; {2} = n
+zgh0se	ok	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	地址必须以 https:// 开头（在本设备上也可以用 http://localhost 或 http://127.0.0.1）。	src/plugins/mcp/index.js:78	
+1xt26lz	ok	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	这个地址在 @ 前面包含用户名或密码。请去掉它，并把密钥填入令牌或请求头一栏。	src/plugins/mcp/index.js:80	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
+1v5ab85	ok	Each header is one line: Name: value.	每个请求头占一行，格式为“Name: value”。	src/plugins/mcp/index.js:91	Note: "Name: value" stays English: it is the form of what is typed.
+z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	annai 会自己发送 {0}，所以它不能作为这里的请求头。请删掉那一行。	src/plugins/mcp/index.js:92	{0} = m[1]
+1wffyf4#other	ok	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCP 服务器在 # 秒内没有回应。请确认它正在运行，然后重试。	src/plugins/mcp/index.js:261	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
+129gp7y	ok	There is no MCP server called {0}.	没有名为“{0}”的 MCP 服务器。	src/plugins/mcp/index.js:277	{0} = name
+i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	服务器名称由 1 到 20 个小写字母、数字和连字符组成，例如 trail。	src/plugins/mcp/index.js:316	Note: trail is an example name, as the form's placeholder; kept as written.
+ku5jlk	ok	There is a server called {0} already.	已经有名为“{0}”的服务器了。	src/plugins/mcp/index.js:317	{0} = n
+126nbeu	ok	Places tools	地点工具	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，数据来自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:18	
+143ff3s	ok	Sensors	传感器	src/plugins/sensors/index.js:6	
+3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手机的位置（GPS，仅在 annai 中开启 GPS 且 annai 显示在屏幕上时）、annai 是否显示在屏幕上，以及是否有网络连接。	src/plugins/sensors/index.js:9	
+gec6zp	ok	Built-in skills	内置技能	src/plugins/skills/index.js:15	
+1t0u9tp	ok	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
+fsfyxb	ok	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:68	
+wp5yx4	ok	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
+elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音频。	src/plugins/voice-browser/index.js:456	Note: The voice is a Speech out voice (声音).
+9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:579	
+1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:119	
+scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
+eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	
+b4g7z9	ok	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:188	
 ew9em3	draft	Cancel	取消	src/ui/ask.js:21	
 7fxcga	draft	Back up this phone over it	用这部手机的备份覆盖它	src/ui/auto-backup.js:65	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
 qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这部手机是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:65	
