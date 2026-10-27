@@ -94,7 +94,7 @@ function where(config) {
   } catch {
     // not an address yet
   }
-  return { server, host: host || 'the server', owner, repo, branch: String(config.branch ?? '').trim() };
+  return { server, host, owner, repo, branch: String(config.branch ?? '').trim() };
 }
 
 /** @param {any} annai */
@@ -120,7 +120,8 @@ export function activate(annai) {
     help: t`First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.`,
     where: (/** @type {any} */ config) => {
       const w = where(config);
-      return w.owner && w.repo ? `${w.host}/${w.owner}/${w.repo}` : w.host;
+      // No server yet: said in the screens' words. Every message names the host after ready() has checked the address.
+      return !w.host ? t`the server` : w.owner && w.repo ? `${w.host}/${w.owner}/${w.repo}` : w.host;
     },
     browserAccess: (/** @type {string} */ origin) => ({
       text: t`The server must let web apps at ${origin} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.`,

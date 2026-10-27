@@ -811,3 +811,12 @@ test("peek refuses what isn't a whole backup, in plain words", async () => {
     await fj.stop();
   }
 });
+
+test("a place with no server yet is said in the screens' words on its row, from the plugin's own translation", async () => {
+  const { key } = await import('../../src/core/l10n.js');
+  /** @type {any} */
+  let type = null;
+  activate({ l10n: pluginWords({ [key('the server')]: 'サーバー' }), helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } }, net: { fetch }, storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } } });
+  assert.equal(type.where({}), 'サーバー');
+  assert.equal(type.where({ server: 'https://git.example.com', owner: 'me', repo: 'b' }), 'git.example.com/me/b');
+});

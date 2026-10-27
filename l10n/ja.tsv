@@ -253,52 +253,53 @@ storage-forgejo:17nk9ra	draft	The repository's own	リポジトリの既定の�
 storage-forgejo:19gzx45	draft	Branch	ブランチ	plugins-official/storage-forgejo/index.js:117	
 storage-forgejo:z1mfie	draft	Access token	アクセストークン	plugins-official/storage-forgejo/index.js:119	
 storage-forgejo:1jg6jh4	draft	First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.	まず、サーバー上に annai のバックアップ用の新しい非公開リポジトリを作ってください。annai はリポジトリを作りません。次に、Repository: Read and write の権限を持つアクセストークンを作り（自分の Settings → Applications）、ここに貼り付けてください。「所有者」と「リポジトリ」を空欄にすると、annai はトークンで変更できる非公開リポジトリを探します。トークンはこの端末に保存され、バックアップに含まれることはありません。Codeberg のサーバーのアドレスは https://codeberg.org です。	plugins-official/storage-forgejo/index.js:120	
-storage-forgejo:12zsu7y	draft	The server must let web apps at {0} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.	サーバーは {0} の Web アプリに API の使用を許可する必要があります。次の行をサーバーの app.ini に加えてから、サーバーを再起動してください。Codeberg はすでに許可しています。	plugins-official/storage-forgejo/index.js:126	{0} = origin
-storage-forgejo:js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} から annai が読めない応答が返りました。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:151	{0} = g.host
-storage-forgejo:1479rne	draft	annai couldn't reach {0}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.	annai は {0} に接続できませんでした。この端末がオンラインなら、サーバーがまだ Web アプリに API の使用を許可していないのかもしれません：このバックアップ先の画面の「ブラウザからのアクセス」を見てください。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:154	{0} = g.host
-storage-forgejo:fufehm	draft	Check the server's address: it must be a web address that starts with https://.	サーバーのアドレスを確認してください：https:// で始まる Web アドレスである必要があります。	plugins-official/storage-forgejo/index.js:204	
-storage-forgejo:xxxgmz	draft	Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.	「保存してテスト」をタップしてください：annai がトークンから所有者とリポジトリを探します。または、you と annai-backup のように入力してください。	plugins-official/storage-forgejo/index.js:206	
-storage-forgejo:a57ijt	draft	Type the owner and the repository's name, for example you and annai-backup.	所有者とリポジトリの名前を入力してください（例：you と annai-backup）。	plugins-official/storage-forgejo/index.js:208	
-storage-forgejo:qnr55p	draft	Check the branch's name, or leave it empty for the repository's own.	ブランチの名前を確認するか、空欄にしてリポジトリの既定のブランチを使ってください。	plugins-official/storage-forgejo/index.js:209	
-storage-forgejo:nb61qg	draft	Paste an access token for the repository, then save.	リポジトリのアクセストークンを貼り付けて、保存してください。	plugins-official/storage-forgejo/index.js:210	
-storage-forgejo:921ywo	draft	The access token has letters no token has. Paste it again, then save.	アクセストークンに、トークンには含まれない文字があります。もう一度貼り付けて、保存してください。	plugins-official/storage-forgejo/index.js:211	
-storage-forgejo:1hwhu5k	draft	{0} didn't accept the access token. Make a new one, paste it here, and save.	{0} がアクセストークンを受け付けませんでした。新しいトークンを作り、ここに貼り付けて保存してください。	plugins-official/storage-forgejo/index.js:252	{0} = g.host
-storage-forgejo:zgntl5	draft	The access token isn't allowed to change {0} on {1}. Make one with Repository: Read and write, and check that the branch isn't protected.	アクセストークンには {1} の {0} を変更する権限がありません。Repository: Read and write の権限を持つトークンを作り、ブランチが保護されていないか確認してください。	plugins-official/storage-forgejo/index.js:253	{0} = named(g); {1} = g.host
-storage-forgejo:gpe7i2	draft	There is no repository {0} on {1} that this token can see. Create a private repository named {2} there first (annai doesn't make one), or check the owner and the name.	{1} には、このトークンから見えるリポジトリ {0} がありません。まずそこに {2} という名前の非公開リポジトリを作るか（annai はリポジトリを作りません）、所有者と名前を確認してください。	plugins-official/storage-forgejo/index.js:254	{0} = named(g); {1} = g.host; {2} = g.repo
-storage-forgejo:d13y2m	draft	Your account on {0} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.	{0} のアカウントの容量がいっぱいです（割り当てを使い切りました）。そこで空きを作るか、サーバーの管理者に容量を増やしてもらってから、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:255	{0} = g.host
-storage-forgejo:1ceq40h	draft	{0} on {1} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.	{1} の {0} はアーカイブされているため、何も追加できません。リポジトリの設定でアーカイブを解除するか、別のリポジトリを選んでください。	plugins-official/storage-forgejo/index.js:256	{0} = named(g); {1} = g.host
-storage-forgejo:14cnjoa#other	draft	{0} is busy. annai tries again in about # minutes.	{0} は混み合っています。annai は約#分後にもう一度試します。	plugins-official/storage-forgejo/index.js:262	plural; # = m; {0} = g.host; English: "{0} is busy. annai tries again in about # minute." (one), "{0} is busy. annai tries again in about # minutes." (other)
-storage-forgejo:d276v8	draft	{0} had a problem (HTTP {1}: {2}). annai tries again later.	{0} 側で問題が起きました（HTTP {1}：{2}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:266	{0} = g.host; {1} = res.status; {2} = said
-storage-forgejo:s23xfw	draft	{0} had a problem (HTTP {1}). annai tries again later.	{0} 側で問題が起きました（HTTP {1}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:266	{0} = g.host; {1} = res.status
-storage-forgejo:1wxl4rv	draft	{0} refused this (HTTP {1}: {2}). annai tries again later.	{0} がこれを拒否しました（HTTP {1}：{2}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status; {2} = said
-storage-forgejo:h8lnld	draft	{0} refused this (HTTP {1}). annai tries again later.	{0} がこれを拒否しました（HTTP {1}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status
-storage-forgejo:15txwh7	draft	{0} on {1} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.	{1} の {0} は公開されているため、そこにある旅を誰でも読めてしまいます。非公開にするか（リポジトリの設定）、非公開のリポジトリを選んでください。	plugins-official/storage-forgejo/index.js:284	{0} = r.full_name; {1} = g.host
-storage-forgejo:cbvpyg	draft	The access token can read {0} but not change it. Make one with Repository: Read and write.	アクセストークンは {0} を読めますが、変更はできません。Repository: Read and write の権限を持つトークンを作ってください。	plugins-official/storage-forgejo/index.js:287	{0} = r.full_name
-storage-forgejo:1wtqmrj	draft	{0} has no branch {1}. Leave Branch empty to use {2}, or make the branch on {3} first.	{0} にはブランチ {1} がありません。「ブランチ」を空欄にして {2} を使うか、先に {3} でブランチを作ってください。	plugins-official/storage-forgejo/index.js:296	{0} = repo.full_name; {1} = branch; {2} = repo.default_branch; {3} = g.host
-storage-forgejo:et4che	draft	The access token can't list repositories on {0}. Make one with Repository: Read and write, and paste it here.	アクセストークンでは {0} のリポジトリを一覧できません。Repository: Read and write の権限を持つトークンを作り、ここに貼り付けてください。	plugins-official/storage-forgejo/index.js:324	{0} = g.host
-storage-forgejo:1qf9gnl#other	draft	This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name.	このトークンは {0} の非公開リポジトリを#個変更できます。annai のバックアップ用のものを選ぶか、所有者と名前を入力してください。	plugins-official/storage-forgejo/index.js:341	plural; # = pool.length; {0} = g.host; English: "This token can change # private repository on {0}. Choose the one for annai's backups, or type its owner and name." (one), "This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name." (other)
-storage-forgejo:11h7pl0	draft	There is no private repository named {0} on {1} that this token can change. Create it there first (annai doesn't make one), or check the name.	{1} には、このトークンで変更できる {0} という名前の非公開リポジトリがありません。先にそこで作るか（annai はリポジトリを作りません）、名前を確認してください。	plugins-official/storage-forgejo/index.js:346	{0} = g.repo; {1} = g.host
-storage-forgejo:1nnora8	draft	This token can't change any private repository of {0} on {1}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	このトークンでは、{1} にある {0} の非公開リポジトリをどれも変更できません。先にそこで非公開リポジトリを作ってから（名前は annai-backup など。annai はリポジトリを作りません）、もう一度「保存してテスト」してください。	plugins-official/storage-forgejo/index.js:347	{0} = g.owner; {1} = g.host
-storage-forgejo:1fgblug	draft	This token can't change any private repository on {0}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	このトークンでは、{0} の非公開リポジトリをどれも変更できません。先にそこで非公開リポジトリを作ってから（名前は annai-backup など。annai はリポジトリを作りません）、もう一度「保存してテスト」してください。	plugins-official/storage-forgejo/index.js:348	{0} = g.host
-storage-forgejo:bycc1b	draft	Works: annai can reach {0} on {1}, a private repository.	動作しています：annai は {1} の非公開リポジトリ {0} に接続できます。	plugins-official/storage-forgejo/index.js:361	{0} = r.full_name; {1} = g.host
-storage-forgejo:1ihsbj	draft	It is the only private repository of {0} this token can change, so annai filled it in.	このトークンで変更できる {0} の非公開リポジトリはこれだけなので、annai が入力しました。	plugins-official/storage-forgejo/index.js:363	{0} = filled.of
-storage-forgejo:2o5148	draft	annai filled in its owner, {0}.	annai が所有者 {0} を入力しました。	plugins-official/storage-forgejo/index.js:363	{0} = filled.owner
-storage-forgejo:gg50v4	draft	It is the only private repository this token can change, so annai filled it in.	このトークンで変更できる非公開リポジトリはこれだけなので、annai が入力しました。	plugins-official/storage-forgejo/index.js:364	
-storage-forgejo:1i52hlb	draft	{0} holds more files than annai reads, so annai can't use it. Choose a new private repository.	{0} には annai が読み取れる数より多くのファイルがあるため、annai は使えません。新しい非公開リポジトリを選んでください。	plugins-official/storage-forgejo/index.js:387	{0} = named(g)
-storage-forgejo:1qqlp9q	draft	{0} holds other files ({1}), so annai won't back up into it. Make a new private repository for annai's backups.	{0} にはほかのファイル（{1}）があるため、annai はそこにはバックアップしません。annai のバックアップ用に新しい非公開リポジトリを作ってください。	plugins-official/storage-forgejo/index.js:480	{0} = name; {1} = g.l10n.format.list(foreign.slice(0, 3), 'plain')
-storage-forgejo:998w7o	draft	There is a newer backup in {0}.	{0} に新しいバックアップがあります。	plugins-official/storage-forgejo/index.js:504	{0} = repo.full_name
-storage-forgejo:zy9dwb	draft	annai sends files of up to {0} to this kind of place, and {1} is {2}. Remove it from annai, or back up to another kind of place.	annai がこの種類のバックアップ先に送れるファイルは {0} までですが、{1} は {2} あります。annai から削除するか、別の種類のバックアップ先にバックアップしてください。	plugins-official/storage-forgejo/index.js:516	{0} = format.size(maxFile); {1} = shown(path); {2} = format.size(n)
-storage-forgejo:8wvxp8	draft	This backup has no annai-archive.json, so annai didn't send it. annai tries again later.	このバックアップには annai-archive.json がないため、annai は送信しませんでした。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:545	
-storage-forgejo:1cm4kmv	draft	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	plugins-official/storage-forgejo/index.js:553	{0} = format.size(bytes)
-storage-forgejo:1q8ijd2	draft	{0} didn't take {1} ({2}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.	{0} は {1}（{2}）を受け取りませんでした：サーバーか、その前にあるプロキシが、これほど大きなアップロードを受け付けません。上限を上げてから（nginx なら client_max_body_size）、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:596	{0} = g.host; {1} = shown(op.path); {2} = format.size(op.size)
-storage-forgejo:eqdmta	draft	Another device backed up to {0} at the same moment.	別の端末が同時に {0} へバックアップしました。	plugins-official/storage-forgejo/index.js:604	{0} = repo.full_name
-storage-forgejo:gtzba8	draft	{0} changed while annai backed up. annai tries again later.	annai がバックアップしている間に {0} が変更されました。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:605	{0} = repo.full_name
-storage-forgejo:1wsxcht	draft	The branch {0} of {1} was deleted while annai backed up to it, so this backup stopped. Make it again on {2}, or leave Branch empty to back up to {3}, then back up again.	annai がバックアップしている間に {1} のブランチ {0} が削除されたため、このバックアップは止まりました。{2} でブランチを作り直すか、「ブランチ」を空欄にして {3} にバックアップするようにしてから、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:609	{0} = branch; {1} = repo.full_name; {2} = g.host; {3} = repo.default_branch
-storage-forgejo:18ueum0	draft	That backup isn't in {0} on {1}.	そのバックアップは {1} の {0} にありません。	plugins-official/storage-forgejo/index.js:638	{0} = named(g); {1} = g.host
-storage-forgejo:1spzqqr	draft	That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.	そのコミットは途中で止まったバックアップの一部にすぎないため、開けません。完全なバックアップを開いてください。	plugins-official/storage-forgejo/index.js:643	
-storage-forgejo:1ljvup9	draft	This backup is damaged: its annai-archive.json is not readable.	このバックアップは壊れています：annai-archive.json を読めません。	plugins-official/storage-forgejo/index.js:652	
-storage-forgejo:9mtyxq	draft	That commit isn't an annai backup.	そのコミットは annai のバックアップではありません。	plugins-official/storage-forgejo/index.js:669	
-storage-forgejo:1vyk6qz	draft	This backup is damaged: {0} is missing from {1}.	このバックアップは壊れています：{1} に {0} がありません。	plugins-official/storage-forgejo/index.js:691	{0} = shown(name); {1} = named(g)
+storage-forgejo:zrv4ev	draft	the server	サーバー	plugins-official/storage-forgejo/index.js:124	
+storage-forgejo:12zsu7y	draft	The server must let web apps at {0} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.	サーバーは {0} の Web アプリに API の使用を許可する必要があります。次の行をサーバーの app.ini に加えてから、サーバーを再起動してください。Codeberg はすでに許可しています。	plugins-official/storage-forgejo/index.js:127	{0} = origin
+storage-forgejo:js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} から annai が読めない応答が返りました。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:152	{0} = g.host
+storage-forgejo:1479rne	draft	annai couldn't reach {0}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.	annai は {0} に接続できませんでした。この端末がオンラインなら、サーバーがまだ Web アプリに API の使用を許可していないのかもしれません：このバックアップ先の画面の「ブラウザからのアクセス」を見てください。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:155	{0} = g.host
+storage-forgejo:fufehm	draft	Check the server's address: it must be a web address that starts with https://.	サーバーのアドレスを確認してください：https:// で始まる Web アドレスである必要があります。	plugins-official/storage-forgejo/index.js:205	
+storage-forgejo:xxxgmz	draft	Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.	「保存してテスト」をタップしてください：annai がトークンから所有者とリポジトリを探します。または、you と annai-backup のように入力してください。	plugins-official/storage-forgejo/index.js:207	
+storage-forgejo:a57ijt	draft	Type the owner and the repository's name, for example you and annai-backup.	所有者とリポジトリの名前を入力してください（例：you と annai-backup）。	plugins-official/storage-forgejo/index.js:209	
+storage-forgejo:qnr55p	draft	Check the branch's name, or leave it empty for the repository's own.	ブランチの名前を確認するか、空欄にしてリポジトリの既定のブランチを使ってください。	plugins-official/storage-forgejo/index.js:210	
+storage-forgejo:nb61qg	draft	Paste an access token for the repository, then save.	リポジトリのアクセストークンを貼り付けて、保存してください。	plugins-official/storage-forgejo/index.js:211	
+storage-forgejo:921ywo	draft	The access token has letters no token has. Paste it again, then save.	アクセストークンに、トークンには含まれない文字があります。もう一度貼り付けて、保存してください。	plugins-official/storage-forgejo/index.js:212	
+storage-forgejo:1hwhu5k	draft	{0} didn't accept the access token. Make a new one, paste it here, and save.	{0} がアクセストークンを受け付けませんでした。新しいトークンを作り、ここに貼り付けて保存してください。	plugins-official/storage-forgejo/index.js:253	{0} = g.host
+storage-forgejo:zgntl5	draft	The access token isn't allowed to change {0} on {1}. Make one with Repository: Read and write, and check that the branch isn't protected.	アクセストークンには {1} の {0} を変更する権限がありません。Repository: Read and write の権限を持つトークンを作り、ブランチが保護されていないか確認してください。	plugins-official/storage-forgejo/index.js:254	{0} = named(g); {1} = g.host
+storage-forgejo:gpe7i2	draft	There is no repository {0} on {1} that this token can see. Create a private repository named {2} there first (annai doesn't make one), or check the owner and the name.	{1} には、このトークンから見えるリポジトリ {0} がありません。まずそこに {2} という名前の非公開リポジトリを作るか（annai はリポジトリを作りません）、所有者と名前を確認してください。	plugins-official/storage-forgejo/index.js:255	{0} = named(g); {1} = g.host; {2} = g.repo
+storage-forgejo:d13y2m	draft	Your account on {0} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.	{0} のアカウントの容量がいっぱいです（割り当てを使い切りました）。そこで空きを作るか、サーバーの管理者に容量を増やしてもらってから、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:256	{0} = g.host
+storage-forgejo:1ceq40h	draft	{0} on {1} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.	{1} の {0} はアーカイブされているため、何も追加できません。リポジトリの設定でアーカイブを解除するか、別のリポジトリを選んでください。	plugins-official/storage-forgejo/index.js:257	{0} = named(g); {1} = g.host
+storage-forgejo:14cnjoa#other	draft	{0} is busy. annai tries again in about # minutes.	{0} は混み合っています。annai は約#分後にもう一度試します。	plugins-official/storage-forgejo/index.js:263	plural; # = m; {0} = g.host; English: "{0} is busy. annai tries again in about # minute." (one), "{0} is busy. annai tries again in about # minutes." (other)
+storage-forgejo:d276v8	draft	{0} had a problem (HTTP {1}: {2}). annai tries again later.	{0} 側で問題が起きました（HTTP {1}：{2}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status; {2} = said
+storage-forgejo:s23xfw	draft	{0} had a problem (HTTP {1}). annai tries again later.	{0} 側で問題が起きました（HTTP {1}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status
+storage-forgejo:1wxl4rv	draft	{0} refused this (HTTP {1}: {2}). annai tries again later.	{0} がこれを拒否しました（HTTP {1}：{2}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:268	{0} = g.host; {1} = res.status; {2} = said
+storage-forgejo:h8lnld	draft	{0} refused this (HTTP {1}). annai tries again later.	{0} がこれを拒否しました（HTTP {1}）。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:268	{0} = g.host; {1} = res.status
+storage-forgejo:15txwh7	draft	{0} on {1} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.	{1} の {0} は公開されているため、そこにある旅を誰でも読めてしまいます。非公開にするか（リポジトリの設定）、非公開のリポジトリを選んでください。	plugins-official/storage-forgejo/index.js:285	{0} = r.full_name; {1} = g.host
+storage-forgejo:cbvpyg	draft	The access token can read {0} but not change it. Make one with Repository: Read and write.	アクセストークンは {0} を読めますが、変更はできません。Repository: Read and write の権限を持つトークンを作ってください。	plugins-official/storage-forgejo/index.js:288	{0} = r.full_name
+storage-forgejo:1wtqmrj	draft	{0} has no branch {1}. Leave Branch empty to use {2}, or make the branch on {3} first.	{0} にはブランチ {1} がありません。「ブランチ」を空欄にして {2} を使うか、先に {3} でブランチを作ってください。	plugins-official/storage-forgejo/index.js:297	{0} = repo.full_name; {1} = branch; {2} = repo.default_branch; {3} = g.host
+storage-forgejo:et4che	draft	The access token can't list repositories on {0}. Make one with Repository: Read and write, and paste it here.	アクセストークンでは {0} のリポジトリを一覧できません。Repository: Read and write の権限を持つトークンを作り、ここに貼り付けてください。	plugins-official/storage-forgejo/index.js:325	{0} = g.host
+storage-forgejo:1qf9gnl#other	draft	This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name.	このトークンは {0} の非公開リポジトリを#個変更できます。annai のバックアップ用のものを選ぶか、所有者と名前を入力してください。	plugins-official/storage-forgejo/index.js:342	plural; # = pool.length; {0} = g.host; English: "This token can change # private repository on {0}. Choose the one for annai's backups, or type its owner and name." (one), "This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name." (other)
+storage-forgejo:11h7pl0	draft	There is no private repository named {0} on {1} that this token can change. Create it there first (annai doesn't make one), or check the name.	{1} には、このトークンで変更できる {0} という名前の非公開リポジトリがありません。先にそこで作るか（annai はリポジトリを作りません）、名前を確認してください。	plugins-official/storage-forgejo/index.js:347	{0} = g.repo; {1} = g.host
+storage-forgejo:1nnora8	draft	This token can't change any private repository of {0} on {1}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	このトークンでは、{1} にある {0} の非公開リポジトリをどれも変更できません。先にそこで非公開リポジトリを作ってから（名前は annai-backup など。annai はリポジトリを作りません）、もう一度「保存してテスト」してください。	plugins-official/storage-forgejo/index.js:348	{0} = g.owner; {1} = g.host
+storage-forgejo:1fgblug	draft	This token can't change any private repository on {0}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	このトークンでは、{0} の非公開リポジトリをどれも変更できません。先にそこで非公開リポジトリを作ってから（名前は annai-backup など。annai はリポジトリを作りません）、もう一度「保存してテスト」してください。	plugins-official/storage-forgejo/index.js:349	{0} = g.host
+storage-forgejo:bycc1b	draft	Works: annai can reach {0} on {1}, a private repository.	動作しています：annai は {1} の非公開リポジトリ {0} に接続できます。	plugins-official/storage-forgejo/index.js:362	{0} = r.full_name; {1} = g.host
+storage-forgejo:1ihsbj	draft	It is the only private repository of {0} this token can change, so annai filled it in.	このトークンで変更できる {0} の非公開リポジトリはこれだけなので、annai が入力しました。	plugins-official/storage-forgejo/index.js:364	{0} = filled.of
+storage-forgejo:2o5148	draft	annai filled in its owner, {0}.	annai が所有者 {0} を入力しました。	plugins-official/storage-forgejo/index.js:364	{0} = filled.owner
+storage-forgejo:gg50v4	draft	It is the only private repository this token can change, so annai filled it in.	このトークンで変更できる非公開リポジトリはこれだけなので、annai が入力しました。	plugins-official/storage-forgejo/index.js:365	
+storage-forgejo:1i52hlb	draft	{0} holds more files than annai reads, so annai can't use it. Choose a new private repository.	{0} には annai が読み取れる数より多くのファイルがあるため、annai は使えません。新しい非公開リポジトリを選んでください。	plugins-official/storage-forgejo/index.js:388	{0} = named(g)
+storage-forgejo:1qqlp9q	draft	{0} holds other files ({1}), so annai won't back up into it. Make a new private repository for annai's backups.	{0} にはほかのファイル（{1}）があるため、annai はそこにはバックアップしません。annai のバックアップ用に新しい非公開リポジトリを作ってください。	plugins-official/storage-forgejo/index.js:481	{0} = name; {1} = g.l10n.format.list(foreign.slice(0, 3), 'plain')
+storage-forgejo:998w7o	draft	There is a newer backup in {0}.	{0} に新しいバックアップがあります。	plugins-official/storage-forgejo/index.js:505	{0} = repo.full_name
+storage-forgejo:zy9dwb	draft	annai sends files of up to {0} to this kind of place, and {1} is {2}. Remove it from annai, or back up to another kind of place.	annai がこの種類のバックアップ先に送れるファイルは {0} までですが、{1} は {2} あります。annai から削除するか、別の種類のバックアップ先にバックアップしてください。	plugins-official/storage-forgejo/index.js:517	{0} = format.size(maxFile); {1} = shown(path); {2} = format.size(n)
+storage-forgejo:8wvxp8	draft	This backup has no annai-archive.json, so annai didn't send it. annai tries again later.	このバックアップには annai-archive.json がないため、annai は送信しませんでした。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:546	
+storage-forgejo:1cm4kmv	draft	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	plugins-official/storage-forgejo/index.js:554	{0} = format.size(bytes)
+storage-forgejo:1q8ijd2	draft	{0} didn't take {1} ({2}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.	{0} は {1}（{2}）を受け取りませんでした：サーバーか、その前にあるプロキシが、これほど大きなアップロードを受け付けません。上限を上げてから（nginx なら client_max_body_size）、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:597	{0} = g.host; {1} = shown(op.path); {2} = format.size(op.size)
+storage-forgejo:eqdmta	draft	Another device backed up to {0} at the same moment.	別の端末が同時に {0} へバックアップしました。	plugins-official/storage-forgejo/index.js:605	{0} = repo.full_name
+storage-forgejo:gtzba8	draft	{0} changed while annai backed up. annai tries again later.	annai がバックアップしている間に {0} が変更されました。annai はあとでもう一度試します。	plugins-official/storage-forgejo/index.js:606	{0} = repo.full_name
+storage-forgejo:1wsxcht	draft	The branch {0} of {1} was deleted while annai backed up to it, so this backup stopped. Make it again on {2}, or leave Branch empty to back up to {3}, then back up again.	annai がバックアップしている間に {1} のブランチ {0} が削除されたため、このバックアップは止まりました。{2} でブランチを作り直すか、「ブランチ」を空欄にして {3} にバックアップするようにしてから、もう一度バックアップしてください。	plugins-official/storage-forgejo/index.js:610	{0} = branch; {1} = repo.full_name; {2} = g.host; {3} = repo.default_branch
+storage-forgejo:18ueum0	draft	That backup isn't in {0} on {1}.	そのバックアップは {1} の {0} にありません。	plugins-official/storage-forgejo/index.js:639	{0} = named(g); {1} = g.host
+storage-forgejo:1spzqqr	draft	That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.	そのコミットは途中で止まったバックアップの一部にすぎないため、開けません。完全なバックアップを開いてください。	plugins-official/storage-forgejo/index.js:644	
+storage-forgejo:1ljvup9	draft	This backup is damaged: its annai-archive.json is not readable.	このバックアップは壊れています：annai-archive.json を読めません。	plugins-official/storage-forgejo/index.js:653	
+storage-forgejo:9mtyxq	draft	That commit isn't an annai backup.	そのコミットは annai のバックアップではありません。	plugins-official/storage-forgejo/index.js:670	
+storage-forgejo:1vyk6qz	draft	This backup is damaged: {0} is missing from {1}.	このバックアップは壊れています：{1} に {0} がありません。	plugins-official/storage-forgejo/index.js:692	{0} = shown(name); {1} = named(g)
 storage-github:@name	draft	GitHub	GitHub	plugins-official/storage-github/annai-plugin.json:3	
 storage-github:@description	draft	Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.	GitHub の非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。	plugins-official/storage-github/annai-plugin.json:8	
 storage-github:1yf590i	draft	git can't hold "{0}": it has an empty, "." or ".." part. Rename it in annai, then back up again.	git は「{0}」を保存できません：空の部分、「.」または「..」の部分があります。annai で名前を変えてから、もう一度バックアップしてください。	plugins-official/storage-github/git.js:28	{0} = e.path
@@ -549,14 +550,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} �
 bbv043	ok	This device is offline, so annai couldn't reach this place.	この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:50	
 1oqcoyx	ok	annai tries again once it's back online.	オンラインに戻ると、annai はもう一度試します。	src/core/backup.js:61	
 16b3dai	ok	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:148	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai はこの種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:351	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト数を入力するか、上限なしなら空欄にしてください。	src/core/backup.js:368	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:379	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:387	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:388	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	動作しています。	src/core/backup.js:432	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:483	
-173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:484	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai はこの種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:349	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト数を入力するか、上限なしなら空欄にしてください。	src/core/backup.js:366	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:377	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:385	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:386	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	動作しています。	src/core/backup.js:430	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:481	
+173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:482	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末の annai の保存領域がいっぱいです。不要になった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/core/errors.js:31	
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai が別のタブで開かれたため、このタブでは止まりました。ここで annai を使うには、このタブを再読み込みしてください。	src/core/errors.js:32	
 gnrtev	ok	Shiori can't reach her model.	Shiori がモデルにつながりません。	src/core/errors.js:33	
@@ -708,14 +709,14 @@ d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Ko
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:31	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:76	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:78	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:80	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:181	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:183	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:194	{0} = entry.name
-tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:203	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:205	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:91	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:93	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:95	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:196	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:198	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:209	{0} = entry.name
+tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:218	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:220	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -740,24 +741,24 @@ aaicx8	ok	{0} couldn't be checked: {1}	{0} を確認できませんでした：{
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールされていないため、annai には更新を探す場所がありません	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスには今は別のパッケージ（{0}）があるため、更新しませんでした。必要なら、これを削除してそちらをインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	この更新には、まだ同意していない部分が加わります：{0}。もう一度アップデートを確認し、何が加わるかを見てください。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	この zip には複数のスキルが入っています。1つずつインストールするか、それらを一覧にした annai-plugin.json を追加してください。	src/core/packages.js:309	
-is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} が {1} にあり、深すぎます。annai は zip の一番上か、その中の1つのフォルダーの中から読みます。そのフォルダーだけを zip にしてください。	src/core/packages.js:316	{0} = file; {1} = folder
-1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} が {1} にあり、ほかのファイルと並んでいます。annai は zip の一番上か、その中の1つのフォルダーの中から読みます。そのフォルダーだけを zip にしてください。	src/core/packages.js:317	{0} = file; {1} = folder
-1svq3gn	ok	there is no {0} or {1} in this package	このパッケージには {0} も {1} もありません	src/core/packages.js:319	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	ok	is too large: it unpacks to more than {0}	大きすぎます：展開すると{0}を超えます	src/core/packages.js:337	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Web アドレスではありません。zip ファイル、annai-plugin.json、または SKILL.md のアドレスを貼り付けてください。	src/core/packages.js:421	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHub のフォルダーには、その SKILL.md か annai-plugin.json のアドレスを使ってください。	src/core/packages.js:454	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai は {0} に接続できませんでした。アドレスと、そのサイトが Web アプリからの読み取りを許可しているかを確認してください。	src/core/packages.js:463	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} から届いた zip を annai は開けません：{1}	src/core/packages.js:475	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージのファイルは{0}個を超えています。annai がアドレスからインストールできるのは{1}個までです。代わりに zip を使ってください。	src/core/packages.js:491	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} は、{3} にある {2} について {1} と応答しました。	src/core/packages.js:547	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスに annai のプラグインやスキルはありません。annai は zip ファイル、annai-plugin.json、または SKILL.md を探します。	src/core/packages.js:558	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} の {0} は正しい JSON ではありません。	src/core/packages.js:568	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	annai の中で動くコード	src/core/packages.js:609	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	スキル {0}	src/core/packages.js:610	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:611	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	キーを {0} に送るプロバイダー	src/core/packages.js:612	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	検索が送られるアドレス：{0}	src/core/packages.js:612	{0} = o; Note: one of a list of what an update adds.
+1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	この zip には複数のスキルが入っています。1つずつインストールするか、それらを一覧にした annai-plugin.json を追加してください。	src/core/packages.js:325	
+is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} が {1} にあり、深すぎます。annai は zip の一番上か、その中の1つのフォルダーの中から読みます。そのフォルダーだけを zip にしてください。	src/core/packages.js:332	{0} = file; {1} = folder
+1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} が {1} にあり、ほかのファイルと並んでいます。annai は zip の一番上か、その中の1つのフォルダーの中から読みます。そのフォルダーだけを zip にしてください。	src/core/packages.js:333	{0} = file; {1} = folder
+1svq3gn	ok	there is no {0} or {1} in this package	このパッケージには {0} も {1} もありません	src/core/packages.js:335	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	ok	is too large: it unpacks to more than {0}	大きすぎます：展開すると{0}を超えます	src/core/packages.js:353	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Web アドレスではありません。zip ファイル、annai-plugin.json、または SKILL.md のアドレスを貼り付けてください。	src/core/packages.js:433	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHub のフォルダーには、その SKILL.md か annai-plugin.json のアドレスを使ってください。	src/core/packages.js:466	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai は {0} に接続できませんでした。アドレスと、そのサイトが Web アプリからの読み取りを許可しているかを確認してください。	src/core/packages.js:475	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} から届いた zip を annai は開けません：{1}	src/core/packages.js:487	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージのファイルは{0}個を超えています。annai がアドレスからインストールできるのは{1}個までです。代わりに zip を使ってください。	src/core/packages.js:503	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} は、{3} にある {2} について {1} と応答しました。	src/core/packages.js:562	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスに annai のプラグインやスキルはありません。annai は zip ファイル、annai-plugin.json、または SKILL.md を探します。	src/core/packages.js:573	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} の {0} は正しい JSON ではありません。	src/core/packages.js:583	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	annai の中で動くコード	src/core/packages.js:624	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	スキル {0}	src/core/packages.js:625	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:626	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	キーを {0} に送るプロバイダー	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	検索が送られるアドレス：{0}	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは {0} を変換できないため、annai はそのまま残しました。Safari でしか表示されないことがあります。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」は annai が知らないものです。{1}で表示しています。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルは annai が開けるプラグインのパッケージではありません：{0}	src/core/plugins.js:174	{0} = why
@@ -808,17 +809,17 @@ ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't h
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自身のプラグインがこの名前を使っていますが、インストールされているものはほかから来たため、annai は使いません。設定 → プラグインで削除してから、もう一度試してください。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	設定 → プラグインでオンにしてから、もう一度試してください。	src/core/registry.js:18	
 f1c9to	ok	is switched off after repeated errors	エラーが続いたためオフになっています	src/core/registry.js:217	
-1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン {0} にすると {1} が動かなくなります：{1} には {2} {3} が必要です。先に {4} を更新するか、このバージョンのままにしてください。	src/core/requires.js:48	{0} = version; {1} = other; {2} = name; {3} = r.version; {4} = other
-189pevd	ok	needs {0}, which you turned off.	オフにした {0} が必要です。	src/core/requires.js:73	{0} = named
-1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	インストールされていない {0} が必要です。先に {1} からインストールして、もう一度試してください。	src/core/requires.js:76	{0} = r.id; {1} = r.homepage
-j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	インストールされていない {0} が必要です。先にインストールして、もう一度試してください。	src/core/requires.js:78	{0} = r.id
-13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	{0} {1} が必要ですが、インストールされているのはバージョン {2} です。更新してから、もう一度試してください。	src/core/requires.js:80	{0} = r.id; {1} = r.version; {2} = s.version
-111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	annai の {0}（{1}）が必要ですが、インストールされている {2} はほかから来たもので、annai 自身のものではありません。設定 → プラグインで削除してから、もう一度試してください。	src/core/requires.js:84	{0} = e.name; {1} = r.id; {2} = r.id
-18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です（インストール済みは {3}）。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:87	{0} = e.name; {1} = r.version; {2} = e.version; {3} = s.version
-9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:89	{0} = e.name; {1} = r.version; {2} = e.version
-gvuaip	ok	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:195	
-olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:198	
-seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:200	{0} = entry.name
+1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン {0} にすると {1} が動かなくなります：{1} には {2} {3} が必要です。先に {4} を更新するか、このバージョンのままにしてください。	src/core/requires.js:48	{0} = version; {1} = other; {2} = officialName(id, name); {3} = r.version; {4} = other
+189pevd	ok	needs {0}, which you turned off.	オフにした {0} が必要です。	src/core/requires.js:75	{0} = shown
+1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	インストールされていない {0} が必要です。先に {1} からインストールして、もう一度試してください。	src/core/requires.js:78	{0} = r.id; {1} = r.homepage
+j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	インストールされていない {0} が必要です。先にインストールして、もう一度試してください。	src/core/requires.js:80	{0} = r.id
+13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	{0} {1} が必要ですが、インストールされているのはバージョン {2} です。更新してから、もう一度試してください。	src/core/requires.js:82	{0} = r.id; {1} = r.version; {2} = s.version
+111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	annai の {0}（{1}）が必要ですが、インストールされている {2} はほかから来たもので、annai 自身のものではありません。設定 → プラグインで削除してから、もう一度試してください。	src/core/requires.js:86	{0} = shown; {1} = r.id; {2} = r.id
+18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です（インストール済みは {3}）。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:89	{0} = shown; {1} = r.version; {2} = e.version; {3} = s.version
+9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:91	{0} = shown; {1} = r.version; {2} = e.version
+gvuaip	ok	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:197	
+olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:200	
+seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:202	{0} = officialName(entry.id, entry.name)
 stkvyf	ok	Me	自分	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	システムログ	src/core/scopes.js:42	
 ktdb8o	ok	Settings	設定	src/core/scopes.js:43	
@@ -1260,26 +1261,26 @@ fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:31
 1vgaaah	ok	It didn't start the last few times annai opened: {0}	annai を開いた最近の数回、起動しませんでした：{0}	src/ui/plugin-cards.js:46	{0} = why
 11arkb9	ok	You can turn it off in Settings → Plugins.	設定 → プラグインでオフにできます。	src/ui/plugin-cards.js:47	
 1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:47	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:68	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり）（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:68	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:69	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:69	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:75	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。いま動いているプラグインは、アップデートすると annai を再起動するまでオフになります。	src/ui/plugin-updates.js:76	
-1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:76	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:77	
-1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:109	
-1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには annai を再起動してください	src/ui/plugin-updates.js:113	
-1k0lt4v	ok	Until then, {0} can't be used.	それまで、{0}は使えません。	src/ui/plugin-updates.js:114	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みで、次に annai を起動したときに動きます。	src/ui/plugin-updates.js:114	
-nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:115	
-1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:118	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}は新しいものを含みます	src/ui/plugin-updates.js:134	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンの新しいもの：{0}。	src/ui/plugin-updates.js:135	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:135	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:136	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:138	
-c9wfke	ok	Not now	今はしない	src/ui/plugin-updates.js:139	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:72	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり）（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:72	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:73	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:73	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:79	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。いま動いているプラグインは、アップデートすると annai を再起動するまでオフになります。	src/ui/plugin-updates.js:80	
+1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:80	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:81	
+1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:113	
+1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには annai を再起動してください	src/ui/plugin-updates.js:117	
+1k0lt4v	ok	Until then, {0} can't be used.	それまで、{0}は使えません。	src/ui/plugin-updates.js:118	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みで、次に annai を起動したときに動きます。	src/ui/plugin-updates.js:118	
+nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:119	
+1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:122	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}は新しいものを含みます	src/ui/plugin-updates.js:138	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンの新しいもの：{0}。	src/ui/plugin-updates.js:139	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:139	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:140	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:142	
+c9wfke	ok	Not now	今はしない	src/ui/plugin-updates.js:143	
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annai にはアカウントがなく、あなたの旅やキーを保存する annai のサーバーもありません。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	必要な所にだけ送信。	src/ui/privacy.js:22	
@@ -1304,30 +1305,30 @@ hirfin	ok	What the model provider you connect charges is yours to pay. What you 
 1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}は{1}にプロバイダーを追加できません。キーを送る先がありません。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
 rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}は{1}にプロバイダーを追加できません。キーを送るのは{2}だけです。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
 1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	そのプロバイダーはもうありません。設定 → モデルでもう一度追加してください。	src/ui/provider-setup.js:88	
-1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	そのプロバイダーは{0}のものではないため、キーを保存できません。	src/ui/provider-setup.js:90	{0} = mine
-13upi6b	ok	{0} isn't a model provider.	{0}はモデルのプロバイダーではありません。	src/ui/provider-setup.js:118	{0} = entry.name
-17q3a6l	ok	That plugin isn't a model provider.	そのプラグインはモデルのプロバイダーではありません。	src/ui/provider-setup.js:118	
-1p012cf	ok	Connect to the internet to sign in.	サインインするには、インターネットに接続してください。	src/ui/provider-setup.js:148	
-14m6i84	ok	Finishing the sign-in with {0}…	{0}でのサインインを完了しています…	src/ui/provider-setup.js:157	{0} = finishing
-yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	{0}のサインインを表示できませんでした。代わりに「プロバイダーを追加」から追加してください。	src/ui/provider-setup.js:162	{0} = f.name
-15aq08d	ok	The quickest start	いちばん早い始め方	src/ui/provider-setup.js:164	
-w9nig3	ok	Sign in	サインイン	src/ui/provider-setup.js:164	
-edml6o	ok	Getting the sign-in ready…	サインインを準備しています…	src/ui/provider-setup.js:168	
-1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	サインインが戻ってきましたが、annai はもう待っていませんでした。15分以上たったか、すでに完了しています。設定 → モデルからもう一度始めてください。	src/ui/provider-setup.js:198	
-sv1qqk	ok	A sign-in came back too late	サインインの戻りが遅すぎました	src/ui/provider-setup.js:198	
-gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}が動いていません。設定 → プラグインで確認してから、もう一度サインインしてください。	src/ui/provider-setup.js:212	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:218	{0} = name
-1fm7mjz	ok	Speech out	読み上げ	src/ui/provider-setup.js:226	
-v20s4a	ok	Quick decision	クイック判定	src/ui/provider-setup.js:226	
-w8niry	ok	Speech in	聞き取り	src/ui/provider-setup.js:226	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}は有料です。{1}には最初に使える無料モデルがなく、Shiori が答えるにはモデルが必要です。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	キーが無料枠なら、このページでそれをオンにしてください。そのモデルは無料になります。	src/ui/provider-setup.js:245	
-1dsri4f	ok	Its speech in models went behind the free entries.	聞き取りのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:246	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	聞き取りと読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:246	
-1r0x31s	ok	Its speech out models went behind the free entries.	読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:247	
-1llun41	ok	The provider	プロバイダー	src/ui/provider-setup.js:253	Note: "The provider" stands where a provider's name is unknown.
+1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	そのプロバイダーは{0}のものではないため、キーを保存できません。	src/ui/provider-setup.js:91	{0} = mine
+13upi6b	ok	{0} isn't a model provider.	{0}はモデルのプロバイダーではありません。	src/ui/provider-setup.js:119	{0} = entry.name
+17q3a6l	ok	That plugin isn't a model provider.	そのプラグインはモデルのプロバイダーではありません。	src/ui/provider-setup.js:119	
+1p012cf	ok	Connect to the internet to sign in.	サインインするには、インターネットに接続してください。	src/ui/provider-setup.js:149	
+14m6i84	ok	Finishing the sign-in with {0}…	{0}でのサインインを完了しています…	src/ui/provider-setup.js:158	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	{0}のサインインを表示できませんでした。代わりに「プロバイダーを追加」から追加してください。	src/ui/provider-setup.js:163	{0} = f.name
+15aq08d	ok	The quickest start	いちばん早い始め方	src/ui/provider-setup.js:165	
+w9nig3	ok	Sign in	サインイン	src/ui/provider-setup.js:165	
+edml6o	ok	Getting the sign-in ready…	サインインを準備しています…	src/ui/provider-setup.js:169	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	サインインが戻ってきましたが、annai はもう待っていませんでした。15分以上たったか、すでに完了しています。設定 → モデルからもう一度始めてください。	src/ui/provider-setup.js:199	
+sv1qqk	ok	A sign-in came back too late	サインインの戻りが遅すぎました	src/ui/provider-setup.js:199	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}が動いていません。設定 → プラグインで確認してから、もう一度サインインしてください。	src/ui/provider-setup.js:213	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:219	{0} = name
+1fm7mjz	ok	Speech out	読み上げ	src/ui/provider-setup.js:227	
+v20s4a	ok	Quick decision	クイック判定	src/ui/provider-setup.js:227	
+w8niry	ok	Speech in	聞き取り	src/ui/provider-setup.js:227	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:243	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}は有料です。{1}には最初に使える無料モデルがなく、Shiori が答えるにはモデルが必要です。	src/ui/provider-setup.js:244	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:245	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	キーが無料枠なら、このページでそれをオンにしてください。そのモデルは無料になります。	src/ui/provider-setup.js:246	
+1dsri4f	ok	Its speech in models went behind the free entries.	聞き取りのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:247	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	聞き取りと読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:247	
+1r0x31s	ok	Its speech out models went behind the free entries.	読み上げのモデルは、無料の項目の後ろに入りました。	src/ui/provider-setup.js:248	
+1llun41	ok	The provider	プロバイダー	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	このブラウザでは、通知を表示する annai のオフラインサービスを動かせません。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	この端末のプッシュ登録にキーがありません。通知をいったんオフにして、もう一度オンにしてください。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	中継のキーは annai で使えるものではありません。	src/ui/push.js:78	
@@ -1867,17 +1868,17 @@ s0ybug	ok	Install, keep what's used now	インストール（いま使ってい�
 wjgdl3	ok	Install anyway, keep annai's	それでもインストール（annai のものを残す）	src/ui/screens/plugin-install.js:263	
 1eg7xgh	ok	Install anyway	それでもインストール	src/ui/screens/plugin-install.js:264	
 3i7of3	ok	Install {0}?	{0}をインストールしますか？	src/ui/screens/plugin-install.js:268	{0} = pkg.name
-1kg68qt	ok	What it brings	含まれるもの	src/ui/screens/plugin-install.js:274	
-owkvwp	ok	What it replaces	置き換えるもの	src/ui/screens/plugin-install.js:278	
-170p2zc	ok	It replaces {0} from {1}.	{1}の{0}を置き換えます。	src/ui/screens/plugin-install.js:280	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	ok	Only install it if you trust where it came from.	入手元を信頼できる場合だけインストールしてください。	src/ui/screens/plugin-install.js:282	
-1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	何も実行できません。annai にモデルのプロバイダーへのつなぎ方を伝えるデータです。	src/ui/screens/plugin-install.js:285	
-i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	スキルは Shiori への指示です。あなたの質問に合うときに読み、書かれたとおりに従います。annai はスキルの中身を実行しないので、信頼できるスキルを入れてください。	src/ui/screens/plugin-install.js:286	
-1q0ylpv	ok	Get a key	キーを取得	src/ui/screens/plugin-install.js:288	
-syby9s	ok	New in this version	このバージョンの新しいもの	src/ui/screens/plugin-install.js:291	
-6kb5j4	ok	Updated {0}. It stays off.	{0}をアップデートしました。オフのままです。	src/ui/screens/plugin-install.js:335	{0} = pkg.name
-7gzgtw	ok	{0} was installed, but it didn't start	{0}をインストールしましたが、起動しませんでした	src/ui/screens/plugin-install.js:343	{0} = pkg.name
-qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	設定 → プラグインでオフにするか削除できます。	src/ui/screens/plugin-install.js:343	
+1kg68qt	ok	What it brings	含まれるもの	src/ui/screens/plugin-install.js:276	
+owkvwp	ok	What it replaces	置き換えるもの	src/ui/screens/plugin-install.js:280	
+170p2zc	ok	It replaces {0} from {1}.	{1}の{0}を置き換えます。	src/ui/screens/plugin-install.js:282	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	ok	Only install it if you trust where it came from.	入手元を信頼できる場合だけインストールしてください。	src/ui/screens/plugin-install.js:284	
+1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	何も実行できません。annai にモデルのプロバイダーへのつなぎ方を伝えるデータです。	src/ui/screens/plugin-install.js:287	
+i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	スキルは Shiori への指示です。あなたの質問に合うときに読み、書かれたとおりに従います。annai はスキルの中身を実行しないので、信頼できるスキルを入れてください。	src/ui/screens/plugin-install.js:288	
+1q0ylpv	ok	Get a key	キーを取得	src/ui/screens/plugin-install.js:290	
+syby9s	ok	New in this version	このバージョンの新しいもの	src/ui/screens/plugin-install.js:293	
+6kb5j4	ok	Updated {0}. It stays off.	{0}をアップデートしました。オフのままです。	src/ui/screens/plugin-install.js:337	{0} = pkg.name
+7gzgtw	ok	{0} was installed, but it didn't start	{0}をインストールしましたが、起動しませんでした	src/ui/screens/plugin-install.js:345	{0} = pkg.name
+qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	設定 → プラグインでオフにするか削除できます。	src/ui/screens/plugin-install.js:345	
 16v75nb	ok	Cleared its settings ({0}) and its secrets ({1}).	設定（{0}）とシークレット（{1}）を消去しました。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	ok	Cleared its settings and its secrets ({0}).	設定とシークレット（{0}）を消去しました。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	ok	Cleared its settings ({0}).	設定（{0}）を消去しました。	src/ui/screens/plugin.js:32	{0} = keys
@@ -1930,81 +1931,81 @@ k02514#other	ok	First, annai asks {0} to delete the # turns of your conversation
 lcyovi#other	ok	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	オフラインでキーやアドレスを変えるか、「キーを削除」すると、{0}が保持しているターン#件は、期限が切れるまで、最長{1}、そのまま残ります。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	ok	{0} keeps # turns until they expire, up to {1}.	{0}はターン#件を、期限が切れるまで、最長{1}保持します。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	ok	This provider no longer exists	このプロバイダーはもうありません	src/ui/screens/provider.js:80	
-17c1dhc	ok	Extra headers (JSON)	追加のヘッダー（JSON）	src/ui/screens/provider.js:105	
-1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、{0}プラグインと、ほかに必要とされていない{1}も削除します。	src/ui/screens/provider.js:143	{0} = plugin; {1} = list(protocols)
-5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	キー、モデル、役割の中のその位置を削除し、{0}プラグインも削除します。	src/ui/screens/provider.js:144	{0} = plugin
-mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、ほかに必要とされていない{0}も削除します。	src/ui/screens/provider.js:145	{0} = list(protocols)
-1ue57qi	ok	Removes its key, its models and their places in roles.	キー、モデル、役割の中のその位置を削除します。	src/ui/screens/provider.js:146	
-1rtug95	ok	To add it back, you'll need its address again: {0}.	元に戻すには、もう一度そのアドレスが必要です：{0}。	src/ui/screens/provider.js:148	{0} = host
-nfdm8v	ok	To add it back, you'll need its file again.	元に戻すには、もう一度そのファイルが必要です。	src/ui/screens/provider.js:149	
-u40nrw	ok	To add it back, you'll need its file again ({0}).	元に戻すには、もう一度そのファイル（{0}）が必要です。	src/ui/screens/provider.js:149	{0} = installed.file
-1tqi1rr	ok	Asking {0} to delete what it keeps…	{0}に、保持しているものの削除を求めています…	src/ui/screens/provider.js:160	{0} = list(k.who)
-evz7q4	ok	Provider	プロバイダー	src/ui/screens/provider.js:177	
-2r1h4p	ok	Connection	接続	src/ui/screens/provider.js:179	
-1swq770	ok	API key	API キー	src/ui/screens/provider.js:182	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、その呼び出しは記録で無料と表示され、1日の利用額にも数えません。	src/ui/screens/provider.js:191	
-12td532	ok	Remove key	キーを削除	src/ui/screens/provider.js:194	
-1qapi39	ok	Tap again to remove the key	もう一度タップするとキーを削除します	src/ui/screens/provider.js:194	
-5bt3jk	ok	Key removed	キーを削除しました	src/ui/screens/provider.js:197	
-1r04n6e	ok	Remove provider	プロバイダーを削除	src/ui/screens/provider.js:206	
-11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}にはここで追加する独自の方法がありません。手動で追加して、そのページで設定してください。	src/ui/screens/provider.js:227	{0} = src.name
-ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	このプロバイダーのプラグインが動いていません。「追加」から追加するか、設定 → プラグインで確認してください。	src/ui/screens/provider.js:227	
-u91wwi	ok	Add by hand	手動で追加	src/ui/screens/provider.js:245	
-1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:250	
-cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	または{0}をそのまま追加して、キーと使える機能をそのページで設定してください。	src/ui/screens/provider.js:251	{0} = src.name
-1lckuuy	ok	Look at it in Settings → Plugins	設定 → プラグインで確認してください	src/ui/screens/provider.js:269	
-10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	プラグイン{0}が動いていないため、annai は何ができるかを表示できません。{1}。	src/ui/screens/provider.js:270	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	元のプラグインがこの端末になく、annai 公式のプロバイダーでもないため、annai は取得できません。入手した所から、設定 → プラグイン → 追加でもう一度インストールするか、このプロバイダーを削除してください。	src/ui/screens/provider.js:274	
-6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	プラグインがこの端末になく、取得するための annai のカタログも読み込めませんでした。インターネットに接続して、このページを開き直してください。	src/ui/screens/provider.js:275	
-1e1obo4	ok	Installing…	インストールしています…	src/ui/screens/provider.js:282	
-9djdxp	ok	Install it	インストールする	src/ui/screens/provider.js:291	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン{0}がインストールされていないため、annai は何ができるかを表示できません。	src/ui/screens/provider.js:292	{0} = entry.name
-mf1onk	ok	This provider no longer exists.	このプロバイダーはもうありません。	src/ui/screens/provider.js:308	
-r4y7q	ok	Use {0}	{0}を使う	src/ui/screens/provider.js:334	{0} = shownName
-1o304we	ok	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:341	
-1k5huc5	ok	the provider's: {0}	プロバイダーのもの：{0}	src/ui/screens/provider.js:361	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	プロバイダーのもの：まだなし	src/ui/screens/provider.js:361	
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:368	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	{0}にターン間の会話を保持させる：毎回の送信量が減ります。	src/ui/screens/provider.js:373	{0} = who
-l91m05	ok	Its own address	独自のアドレス	src/ui/screens/provider.js:392	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	空の場合：プロバイダーのアドレス。ここの設定は変更するたびに保存されます。	src/ui/screens/provider.js:398	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：そのサーバーが保持する限り。	src/ui/screens/provider.js:402	{0} = who; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, recordings, not the glossary's voice (one she speaks with).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：{1}。	src/ui/screens/provider.js:403	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：無料のキーでは1日、有料のキーでは最長#日。	src/ui/screens/provider.js:404	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、これをオフにしたときに、annai が削除します。	src/ui/screens/provider.js:406	
-1iorloe	ok	Off, each turn sends the whole conversation.	オフにすると、毎ターン会話全体を送ります。	src/ui/screens/provider.js:406	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、毎ターン会話全体を送ります。	src/ui/screens/provider.js:407	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため、annai は送れません。	src/ui/screens/provider.js:408	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたときに annai が送ります。	src/ui/screens/provider.js:409	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	{0}をテスト	src/ui/screens/provider.js:420	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:437	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:438	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:438	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	これには{0}プラグインが必要ですが、動いていません。	src/ui/screens/provider.js:444	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	これには動いていないプラグインが必要です。	src/ui/screens/provider.js:444	
-15hdhx3	ok	the provider's model id	プロバイダーのモデル ID	src/ui/screens/provider.js:466	
-1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:479	
-tbmsa5	ok	Asking for its models…	モデルを問い合わせています…	src/ui/screens/provider.js:484	
-1yko1my#other	ok	# models.	モデル#個。	src/ui/screens/provider.js:487	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:495	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:498	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:500	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:501	
-pnxisg	ok	Add a model by id	ID でモデルを追加	src/ui/screens/provider.js:502	
-1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:516	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:526	{0} = named
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:527	{0} = on
-l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:527	
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:538	
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:546	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:546	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:547	
-1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにモデルをおすすめします。その音声のモデルは、無料の端末の音声入力とブラウザの声より前に入るので、有料のものがそれより先に試されます。	src/ui/screens/provider.js:548	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにモデルをおすすめします。	src/ui/screens/provider.js:549	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:556	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:556	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:557	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:563	{0} = which
+17c1dhc	ok	Extra headers (JSON)	追加のヘッダー（JSON）	src/ui/screens/provider.js:107	
+1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、{0}プラグインと、ほかに必要とされていない{1}も削除します。	src/ui/screens/provider.js:145	{0} = plugin; {1} = list(protocols)
+5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	キー、モデル、役割の中のその位置を削除し、{0}プラグインも削除します。	src/ui/screens/provider.js:146	{0} = plugin
+mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	キー、モデル、役割の中のその位置を削除し、ほかに必要とされていない{0}も削除します。	src/ui/screens/provider.js:147	{0} = list(protocols)
+1ue57qi	ok	Removes its key, its models and their places in roles.	キー、モデル、役割の中のその位置を削除します。	src/ui/screens/provider.js:148	
+1rtug95	ok	To add it back, you'll need its address again: {0}.	元に戻すには、もう一度そのアドレスが必要です：{0}。	src/ui/screens/provider.js:150	{0} = host
+nfdm8v	ok	To add it back, you'll need its file again.	元に戻すには、もう一度そのファイルが必要です。	src/ui/screens/provider.js:151	
+u40nrw	ok	To add it back, you'll need its file again ({0}).	元に戻すには、もう一度そのファイル（{0}）が必要です。	src/ui/screens/provider.js:151	{0} = installed.file
+1tqi1rr	ok	Asking {0} to delete what it keeps…	{0}に、保持しているものの削除を求めています…	src/ui/screens/provider.js:162	{0} = list(k.who)
+evz7q4	ok	Provider	プロバイダー	src/ui/screens/provider.js:179	
+2r1h4p	ok	Connection	接続	src/ui/screens/provider.js:181	
+1swq770	ok	API key	API キー	src/ui/screens/provider.js:184	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、その呼び出しは記録で無料と表示され、1日の利用額にも数えません。	src/ui/screens/provider.js:193	
+12td532	ok	Remove key	キーを削除	src/ui/screens/provider.js:196	
+1qapi39	ok	Tap again to remove the key	もう一度タップするとキーを削除します	src/ui/screens/provider.js:196	
+5bt3jk	ok	Key removed	キーを削除しました	src/ui/screens/provider.js:199	
+1r04n6e	ok	Remove provider	プロバイダーを削除	src/ui/screens/provider.js:208	
+11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}にはここで追加する独自の方法がありません。手動で追加して、そのページで設定してください。	src/ui/screens/provider.js:232	{0} = src.name
+ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	このプロバイダーのプラグインが動いていません。「追加」から追加するか、設定 → プラグインで確認してください。	src/ui/screens/provider.js:232	
+u91wwi	ok	Add by hand	手動で追加	src/ui/screens/provider.js:250	
+1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:255	
+cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	または{0}をそのまま追加して、キーと使える機能をそのページで設定してください。	src/ui/screens/provider.js:256	{0} = src.name
+1lckuuy	ok	Look at it in Settings → Plugins	設定 → プラグインで確認してください	src/ui/screens/provider.js:274	
+10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	プラグイン{0}が動いていないため、annai は何ができるかを表示できません。{1}。	src/ui/screens/provider.js:275	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	元のプラグインがこの端末になく、annai 公式のプロバイダーでもないため、annai は取得できません。入手した所から、設定 → プラグイン → 追加でもう一度インストールするか、このプロバイダーを削除してください。	src/ui/screens/provider.js:279	
+6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	プラグインがこの端末になく、取得するための annai のカタログも読み込めませんでした。インターネットに接続して、このページを開き直してください。	src/ui/screens/provider.js:280	
+1e1obo4	ok	Installing…	インストールしています…	src/ui/screens/provider.js:287	
+9djdxp	ok	Install it	インストールする	src/ui/screens/provider.js:296	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン{0}がインストールされていないため、annai は何ができるかを表示できません。	src/ui/screens/provider.js:297	{0} = entry.name
+mf1onk	ok	This provider no longer exists.	このプロバイダーはもうありません。	src/ui/screens/provider.js:313	
+r4y7q	ok	Use {0}	{0}を使う	src/ui/screens/provider.js:339	{0} = shownName
+1o304we	ok	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:346	
+1k5huc5	ok	the provider's: {0}	プロバイダーのもの：{0}	src/ui/screens/provider.js:366	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	プロバイダーのもの：まだなし	src/ui/screens/provider.js:366	
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:373	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	{0}にターン間の会話を保持させる：毎回の送信量が減ります。	src/ui/screens/provider.js:378	{0} = who
+l91m05	ok	Its own address	独自のアドレス	src/ui/screens/provider.js:397	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	空の場合：プロバイダーのアドレス。ここの設定は変更するたびに保存されます。	src/ui/screens/provider.js:403	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：そのサーバーが保持する限り。	src/ui/screens/provider.js:407	{0} = who; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, recordings, not the glossary's voice (one she speaks with).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：{1}。	src/ui/screens/provider.js:408	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、Shiori が把握しているあなたの居場所と一緒に保持します：無料のキーでは1日、有料のキーでは最長#日。	src/ui/screens/provider.js:409	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、これをオフにしたときに、annai が削除します。	src/ui/screens/provider.js:411	
+1iorloe	ok	Off, each turn sends the whole conversation.	オフにすると、毎ターン会話全体を送ります。	src/ui/screens/provider.js:411	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、毎ターン会話全体を送ります。	src/ui/screens/provider.js:412	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため、annai は送れません。	src/ui/screens/provider.js:413	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたときに annai が送ります。	src/ui/screens/provider.js:414	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	{0}をテスト	src/ui/screens/provider.js:425	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:442	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:443	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:443	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	これには{0}プラグインが必要ですが、動いていません。	src/ui/screens/provider.js:449	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	これには動いていないプラグインが必要です。	src/ui/screens/provider.js:449	
+15hdhx3	ok	the provider's model id	プロバイダーのモデル ID	src/ui/screens/provider.js:471	
+1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:484	
+tbmsa5	ok	Asking for its models…	モデルを問い合わせています…	src/ui/screens/provider.js:489	
+1yko1my#other	ok	# models.	モデル#個。	src/ui/screens/provider.js:492	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:500	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:503	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:505	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:506	
+pnxisg	ok	Add a model by id	ID でモデルを追加	src/ui/screens/provider.js:507	
+1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:521	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:531	{0} = named
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:532	{0} = on
+l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:532	
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:543	
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:551	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:551	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:552	
+1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにモデルをおすすめします。その音声のモデルは、無料の端末の音声入力とブラウザの声より前に入るので、有料のものがそれより先に試されます。	src/ui/screens/provider.js:553	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにモデルをおすすめします。	src/ui/screens/provider.js:554	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:561	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:561	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:562	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:568	{0} = which
 1tu8lgg	ok	Writing it: {0} is reading the trip. This can take a minute.	作成中：{0}が旅を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:32	{0} = m.name
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:34	
 h6huep	ok	Write it again	もう一度書く	src/ui/screens/recap.js:34	
@@ -2527,11 +2528,11 @@ qx2onv	ok	couldn't check	確認できませんでした	src/ui/search-panel.js:5
 hdu04k	ok	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search はこれらを上から試し、最初に答えたものを使います。失敗したものはしばらく休んでから、また試されます。使うのをやめるには、チェックを外してください。	src/ui/search-panel.js:89	
 1a1oz0p	ok	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	ほかの検索プロバイダーはプラグインです。カタログから追加でき（Tavily、Serper、自分の SearXNG）、キーはそれぞれのページで設定します。	src/ui/search-panel.js:92	
 f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-panel.js:93	
-1le6ymq	ok	{0} is a whole number.	{0}は整数です。	src/ui/settings-form.js:78	{0} = f.label
-1ulakkp	ok	{0} is a number.	{0}は数値です。	src/ui/settings-form.js:78	{0} = f.label
-do1m5o	ok	{0}: annai can't show this setting.	{0}：annai ではこの設定を表示できません。	src/ui/settings-form.js:116	{0} = f.label
-1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
-phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
+1le6ymq	ok	{0} is a whole number.	{0}は整数です。	src/ui/settings-form.js:79	{0} = f.label
+1ulakkp	ok	{0} is a number.	{0}は数値です。	src/ui/settings-form.js:79	{0} = f.label
+do1m5o	ok	{0}: annai can't show this setting.	{0}：annai ではこの設定を表示できません。	src/ui/settings-form.js:117	{0} = f.label
+1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:122	
+phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:131	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:257	
 1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:349	
 gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:349	
