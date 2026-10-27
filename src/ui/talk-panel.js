@@ -1,8 +1,8 @@
 import { h, field, t, plural, messageOf } from './dom.js';
-import { AllFailedError, attemptWhy } from '../core/llm/fallback.js';
-import { ProviderError, explain } from '../core/llm/contract.js';
+import { AllFailedError } from '../core/llm/fallback.js';
+import { ProviderError, explain, saidWords } from '../core/llm/contract.js';
 import { shownWithoutSecrets } from '../core/agent/net.js';
-import { formatCost } from './format.js';
+import { formatCost, outcomeText } from './format.js';
 
 /** The test conversation's instructions: a model's words, so English (localization design, section 7). */
 export const SYSTEM = /* en */ 'You are a helpful travel assistant inside the annai app. This conversation only checks that the model works, so keep your replies short.';
@@ -17,8 +17,9 @@ export function metaLine(result) {
 /** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */
 function failure(ctx, err, name) {
   const a = err instanceof AllFailedError ? err.attempts[0] : null;
-  // The attempt's words as a card says them (its kind's, a provider's own, or what one of annai's own was), without their full stop.
-  const why = (a ? attemptWhy(a) : err instanceof ProviderError ? explain(err) : messageOf(err)).replace(/[.。]$/u, '');
+  // What went wrong, then in brackets a provider's own words, or the screens' words for what one of annai's own was (review 3).
+  const detail = a?.said ? saidWords(a.said, a.outcome).replace(/[.。]$/u, '') : a?.error;
+  const why = a ? `${outcomeText(a.outcome)}${detail ? t` (${detail})` : ''}` : err instanceof ProviderError ? explain(err) : messageOf(err);
   return shownWithoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
 }
 
