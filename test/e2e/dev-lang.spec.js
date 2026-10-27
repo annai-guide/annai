@@ -44,7 +44,31 @@ test('a plugin that fails to start in its own words: annai marks only its own En
   await page.locator('.plugin-install .acts .btn.pri').click();
   const body = page.locator('.notice p', { hasText: 'this plugin always fails to start' });
   await expect(body).toBeVisible();
-  await expect(body.locator('span[lang="en"]')).toHaveCount(0);
+  // Only annai's frame is its English; the plugin's own words are not marked.
+  await expect(body.locator('span[lang="en"]')).toHaveText('starting failed');
+  await expect(body.locator('span[lang="en"]')).toHaveCount(1);
+});
+
+test('a plugin that never finishes starting: annai\'s frame is marked English and the rest is in Japanese', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const files = await Promise.all(['annai-plugin.json', 'index.js'].map(async (name) => [name, await readFile(new URL(`../fixtures/plugins/hang/${name}`, import.meta.url), 'utf8')]));
+  await page.evaluate(async (files) => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (const [name, body] of files) await ws.write('sys:plugins', `/hang/${name}`, body, { author: 'system' });
+    await ws.write('sys:plugins', '/installed.json', { hang: { version: '1.0.0', name: 'Never starts', enabled: true, installed: 1, source: 'test' } }, { author: 'system' });
+    store.close();
+  }, files);
+  await page.reload();
+  const body = page.locator('.notice p', { hasText: 'starting failed' });
+  await expect(body).toBeVisible({ timeout: 20_000 });
+  await expect(body.locator('span[lang="en"]')).toHaveText('starting failed');
+  expect(await body.textContent()).toMatch(/秒/);
+  expect(await body.textContent()).not.toContain("didn't finish");
 });
 
 test("Simulate: an itinerary that is wrong is said in annai's English, marked lang=\"en\"", async ({ page }) => {

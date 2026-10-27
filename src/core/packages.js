@@ -8,7 +8,8 @@ import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FI
 import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
 import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
-import { t, lang, sameLanguage, EnglishError } from './l10n.js';
+import { t, lang, sameLanguage } from './l10n.js';
+import { EnglishError } from './errors.js';
 import { size, sentences, list } from './intl.js';
 
 /**

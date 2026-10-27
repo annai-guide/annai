@@ -1,5 +1,6 @@
 import { meters } from './geo.js';
-import { t, EnglishError } from '../l10n.js';
+import { t } from '../l10n.js';
+import { EnglishError } from '../errors.js';
 
 /**
  * Trip simulation (spec §13, §18): a GPS track and a fake clock fed through the same machinery as

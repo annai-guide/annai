@@ -5,7 +5,8 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { validZone, deviceZone, dayIn } from '../time.js';
 import { pointsOf } from '../after/route.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
-import { t, EnglishError } from '../l10n.js';
+import { t } from '../l10n.js';
+import { EnglishError } from '../errors.js';
 import { num } from '../intl.js';
 
 /**

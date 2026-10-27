@@ -24,6 +24,14 @@ export class StoppedError extends Error {
 }
 
 /**
+ * An Error whose words are annai's own developer English (decision 11): a screen shows them marked lang="en" (dom.js englishOf).
+ * en: true when all its words are English, or the part of its shown words that is.
+ */
+export class EnglishError extends Error {
+  /** @type {boolean | string} */ en = true;
+}
+
+/**
  * The screens' words for an error annai names, by its name (an error kept as data has its name, not its words); undefined for
  * any other. @param {string} name
  */
