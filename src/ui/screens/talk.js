@@ -132,7 +132,8 @@ export function reminderParts(d, mine, make = h) {
 /** A reminder's first sentence, about 80 characters at most, with no full stop: a watch's name in a line. @param {string} text */
 const brief = (text) => {
   const first = (/^.+?(?:[.!?](?=\s|$)|[。！？])/su.exec(text.trim())?.[0] ?? text.trim()).replace(/[.!?。！？]+$/u, '');
-  return first.length > 80 ? `${first.slice(0, 79)}…` : first;
+  const chars = Array.from(first); // by characters, so an emoji is never cut in half
+  return chars.length > 80 ? `${chars.slice(0, 79).join('')}…` : first;
 };
 
 /**
