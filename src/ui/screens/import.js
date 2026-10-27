@@ -10,6 +10,7 @@ import { typeForPath } from '../../core/paths.js';
 import { bringIn } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
 import { restartAnnai } from './plugins.js';
+import { keyNames } from './plugin-install.js';
 import { keepUiFrom } from '../languages.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
@@ -216,7 +217,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
           plugged,
           result.settings || result.plugins ? restartPanel(ctx) : null,
           result.plugins ? h('p', { class: 'sub', text: t`Imported plugins arrive switched off. Turn on the ones you trust in Plugins.` }) : null,
-          result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets) }) : null,
+          result.keptSecrets.length ? h('p', { class: 'sub', text: keptKeys(result.keptSecrets.length, await keyNames(ctx.plugins, result.keptSecrets)) }) : null,
           from ? h('p', { class: 'sub', text: t`annai's next backup to that place builds on this one.` }) : null));
       } catch (e) {
         if (quit.signal.aborted) return; // the user is gone: nothing was imported, and there is no one to tell
@@ -270,9 +271,10 @@ function pluginsBrought(ctx, got, imported) {
   return el;
 }
 
-/** @param {string[]} ids */
-function keptKeys(ids) {
-  return plural(ids.length, "Kept your own API key for {0}; the one in the file wasn't used.", "Kept your own API keys for {0}; the ones in the file weren't used.", list(ids, 'plain'));
+/** The keys an import left as they were: how many, and whose, by the names the screens give them (never a key's id). @param {number} n @param {string[]} names */
+function keptKeys(n, names) {
+  return names.length ? plural(n, "Kept your own API key for {0}; the one in the file wasn't used.", "Kept your own API keys for {0}; the ones in the file weren't used.", list(names, 'plain'))
+    : plural(n, "Kept your own API key; the one in the file wasn't used.", "Kept your own API keys; the ones in the file weren't used.");
 }
 
 /** Everything waiting in the share inbox. It stays there until it is added to a trip or opened. @returns {Promise<InboxFile[]>} */

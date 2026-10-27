@@ -138,4 +138,37 @@ test.describe('opening a hosted archive', () => {
     await page.getByRole('link', { name: 'Open Shared Big Sur' }).click();
     await expect(page.getByRole('link', { name: /bixby\.md/ })).toBeVisible();
   });
+
+  test('keys already on this device are kept on an import, and named as the screens name them, never by a key\'s id', async ({ page }) => {
+    const store = createMemoryStore();
+    const ws = new Workspace(store);
+    await ensureBaseScopes(ws);
+    await createTrip(ws, { title: 'Keyed Big Sur' });
+    await store.tx(['secrets'], 'readwrite', async (t) => {
+      await t.putSecret('plugin:mcp:Trail server', 'from-the-file');
+      await t.putSecret('llm:pv-gone', 'from-the-file');
+    });
+    const { blob } = await exportArchive(store, { kind: 'everything', include: PRESETS.backup, secrets: true, passphrase: 'p', iterations: 100_000, app: '0.1.0' });
+    const body = Buffer.from(await blob.arrayBuffer());
+    await page.route('https://files.example.test/keys.annai.zip', (route) =>
+      route.fulfill({ body, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/zip' } }));
+    await openApp(page);
+    await page.evaluate(async () => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const own = await createIdbStore();
+      await own.tx(['secrets'], 'readwrite', async (/** @type {any} */ t) => {
+        await t.putSecret('plugin:mcp:Trail server', 'mine');
+        await t.putSecret('llm:pv-gone', 'mine');
+      });
+      own.close();
+    });
+    await page.goto('/#import=' + encodeURIComponent('https://files.example.test/keys.annai.zip'));
+    await page.getByLabel('Passphrase').fill('p');
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.getByLabel('Restore API keys (keys already on this device are kept)').check();
+    await page.getByRole('button', { name: 'Import' }).click();
+    // The provider's key has no provider here to name it: it is counted, and its id is never shown.
+    await expect(page.getByText("Kept your own API keys for Trail server; the ones in the file weren't used.")).toBeVisible();
+    await expect(page.getByText('pv-gone')).toHaveCount(0);
+  });
 });

@@ -15,11 +15,12 @@ import { listTargets } from '../../core/backup-targets.js';
 export const FULL_ACCESS = t`This plugin gets full access to your trips and API keys.`;
 /**
  * Whose keys annai keeps now, by name only, never a value (fixes-ui 15): providers', backup places', MCP servers',
- * Jina's and plugins' own. @param {any} plugins the plugin host @returns {Promise<string[]>}
+ * Jina's and plugins' own. ids: only these keys (secret ids), else all. A key whose owner is gone has no name, and is left out.
+ * @param {any} plugins the plugin host @param {string[]} [only] @returns {Promise<string[]>}
  */
-export async function keyNames(plugins) {
+export async function keyNames(plugins, only) {
   const ws = plugins.ws;
-  const ids = /** @type {string[]} */ (await ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ tx) => tx.listSecretIds()).catch(() => []));
+  const ids = only ?? /** @type {string[]} */ (await ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ tx) => tx.listSecretIds()).catch(() => []));
   const providers = (await readConfig(ws).catch(() => null))?.providers ?? {};
   const places = await listTargets(ws).catch(() => []);
   const rows = await plugins.describe().catch(() => []);
