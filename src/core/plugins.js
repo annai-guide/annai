@@ -33,7 +33,7 @@ import { encodeWav, pcm16 } from './voice/pcm.js';
 
 /** @typedef {import('./registry.js').Registry} Registry @typedef {import('./workspace.js').Workspace} Workspace */
 
-export { API_VERSION, MANIFEST_FILE, PLUGIN_MAX_BYTES, PLUGIN_MANIFEST_SCHEMA } from './packages.js';
+export { MANIFEST_FILE, PLUGIN_MAX_BYTES, PLUGIN_MANIFEST_SCHEMA } from './packages.js';
 export { isPluginBug } from './registry.js';
 /** How long a plugin's activate() may take before annai gives up on it. */
 export const START_TIMEOUT = 10_000;
@@ -388,9 +388,10 @@ export class PluginHost {
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
     // An address kept raw before fix pass 8a-1 moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
-    // What an official plugin provides, kept with its record (read now for one installed before), stays annai's while it is off.
+    // What a plugin provides, kept with its record (read now for one installed before): an official plugin's stays annai's while it is
+    // off, and a backup place's kind is named by the plugin that provides it.
     for (const [id, s] of Object.entries(await this.installed())) {
-      if (s.source === 'official' && !s.provides) await this.#updateState(id, { provides: (await this.manifestOf(id))?.provides ?? {} }).catch(() => {});
+      if (!s.provides) await this.#updateState(id, { provides: (await this.manifestOf(id))?.provides ?? {} }).catch(() => {});
     }
     const rank = this.#rules.rank;
     const state = await this.installed();

@@ -65,9 +65,7 @@ export function backupWords(s, place) {
 export async function kindNames(registry, plugins, type) {
   const state = (await plugins?.installed()) ?? {};
   const gives = (/** @type {any} */ p) => [p?.provides?.['storage-type']].flat().includes(type);
-  // provides is kept with a record since 43c515f3; one from before is read from its manifest.
-  let id = Object.keys(state).find((x) => gives(state[x]));
-  for (const x of Object.keys(state)) if (!id && !state[x].provides && gives(await plugins?.manifestOf(x).catch(() => null))) id = x;
+  const id = Object.keys(state).find((x) => gives(state[x])); // provides, kept with each record (filled in at start for one from before)
   const s = id ? state[id] : null;
   const english = /** @type {Record<string, string>} */ (STORAGE_NAMES)[type] ?? s?.name ?? type;
   const running = storageTypes(registry).get(type)?.name;
