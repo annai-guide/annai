@@ -53,7 +53,7 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: automatic.length ? t`Backing up automatically to ${list(automatic, 'plain')}.` : t`No automatic backups yet. Add a place to back up to, such as a private GitHub repository.` }),
       h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
-        onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything', title: t`everything` })),
+        onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything' })),
       }, t`Export everything`), h('a', { class: 'btn', href: '#/backups' }, t`Automatic backups`)),
       exportSlot,
       h('p', { class: 'sub', text: t`A trip someone sent you, or a backup to bring back:` }),

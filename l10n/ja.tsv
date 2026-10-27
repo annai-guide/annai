@@ -483,21 +483,20 @@ ew9em3	draft	Cancel	キャンセル	src/ui/screens/import.js:238
 1p9jpyr	draft	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:267	{0} = list(g.installed, 'plain')
 c0u62t#other	draft	Kept your own API keys for {0}; the ones in the file weren't used.	{0}の API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:276	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	draft	Kept your own API keys; the ones in the file weren't used.	API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:277	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-zul4ei	draft	shared file	共有されたファイル	src/ui/screens/import.js:288	
-151rypw#other	draft	# photos	#枚の写真	src/ui/screens/import.js:306	plural; # = n; English: "# photo" (one), "# photos" (other)
-8w8k36	draft	a file	ファイル	src/ui/screens/import.js:306	
-ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/import.js:309	{0} = trip.title
-odevmc	draft	Adding {0} of {1}…	追加しています：{0} / {1}…	src/ui/screens/import.js:315	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-rcp6ga	draft	A photo was kept as it is	写真をそのまま保存しました	src/ui/screens/import.js:321	
-36fatd	draft	A calendar file couldn't be read	カレンダーのファイルを読めませんでした	src/ui/screens/import.js:322	
-liuhl8#other	draft	Added {0}, and # plan items from the calendar	{0}と、カレンダーから予定の項目を#件追加しました	src/ui/screens/import.js:323	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other)
-7quqpk	draft	Go to Trips	「旅」へ	src/ui/screens/import.js:339	
-f30m7u#other	draft	and # more photos	ほか#枚の写真	src/ui/screens/import.js:343	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	draft	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:346	
-17udxx8	draft	Start a trip first, then share it again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:349	
-19xnnmt	draft	Start a trip first, then share them again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:349	
-sc64d2	draft	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップか旅）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:352	{0} = a.file.name
-3wbwnq	draft	Open it	開く	src/ui/screens/import.js:353	
+151rypw#other	draft	# photos	#枚の写真	src/ui/screens/import.js:307	plural; # = n; English: "# photo" (one), "# photos" (other)
+8w8k36	draft	a file	ファイル	src/ui/screens/import.js:307	
+ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/import.js:310	{0} = trip.title
+odevmc	draft	Adding {0} of {1}…	追加しています：{0} / {1}…	src/ui/screens/import.js:316	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+rcp6ga	draft	A photo was kept as it is	写真をそのまま保存しました	src/ui/screens/import.js:322	
+36fatd	draft	A calendar file couldn't be read	カレンダーのファイルを読めませんでした	src/ui/screens/import.js:323	
+liuhl8#other	draft	Added {0}, and # plan items from the calendar	{0}と、カレンダーから予定の項目を#件追加しました	src/ui/screens/import.js:324	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other)
+7quqpk	draft	Go to Trips	「旅」へ	src/ui/screens/import.js:340	
+f30m7u#other	draft	and # more photos	ほか#枚の写真	src/ui/screens/import.js:344	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	draft	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:347	
+17udxx8	draft	Start a trip first, then share it again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:350	
+19xnnmt	draft	Start a trip first, then share them again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:350	
+sc64d2	draft	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップか旅）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:353	{0} = a.file.name
+3wbwnq	draft	Open it	開く	src/ui/screens/import.js:354	
 1xtp0n4	draft	Headers, kept on this device	ヘッダー（この端末に保存）	src/ui/screens/mcp.js:5	
 e9m35h	draft	No key	キーなし	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer トークン（この端末に保存）	src/ui/screens/mcp.js:5	
@@ -692,71 +691,57 @@ w2ndgc	draft	nothing yet	まだ何もありません	src/ui/screens/plugin-insta
 1vmhfh0	draft	From a file: {0}	ファイルから：{0}	src/ui/screens/plugin-install.js:157	{0} = value
 62wi84	draft	From annai	annai から	src/ui/screens/plugin-install.js:158	
 17ahsv6	draft	Version {0} is installed now. Installing replaces it.	バージョン {0} がインストールされています。インストールすると置き換わります。	src/ui/screens/plugin-install.js:170	{0} = v
-rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	バージョン {0} が{1}からインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:172	{0} = v; {1} = value
-1bkjwhh	draft	Version {0} is installed now, from an address, not where this one comes from.	バージョン {0} がアドレスからインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:173	{0} = v
-1viyd44	draft	Version {0} is installed now, from a file: {1}, not where this one comes from.	バージョン {0} がファイル（{1}）からインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = value
-kbu55t	draft	Version {0} is installed now, from a file, not where this one comes from.	バージョン {0} がファイルからインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:175	{0} = v
-rmnxkd	draft	Version {0} is installed now, from annai, not where this one comes from.	バージョン {0} が annai からインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:175	{0} = v
-a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	引き継ぐと、その設定、キー、名前の選択がこちらに移ります。新しく入れると、それらは削除されます。	src/ui/screens/plugin-install.js:176	
-10xvqd6	draft	The protocol {0}	プロトコル {0}	src/ui/screens/plugin-install.js:195	{0} = n
-cdbbto	draft	the tool {0}	ツール {0}	src/ui/screens/plugin-install.js:195	{0} = n
-dfauv0	draft	The tool {0}	ツール {0}	src/ui/screens/plugin-install.js:195	{0} = n; Note: As it starts a sentence; the same words without the English capital.
-o0687u	draft	the protocol {0}	プロトコル {0}	src/ui/screens/plugin-install.js:195	{0} = n
-18mpnpm	draft	The kind of backup place {0}	バックアップ先の種類 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-19apr1m	draft	the kind of backup place {0}	バックアップ先の種類 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1tdxuf	draft	the skill {0}	スキル {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1vkxp9z	draft	The skill {0}	スキル {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1iyj662	draft	The personality {0}	性格 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-jsf5jg	draft	The card type {0}	カードの種類 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-snr298	draft	the card type {0}	カードの種類 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-1uviaaj	draft	The search provider {0}	検索プロバイダー {0}	src/ui/screens/plugin-install.js:198	{0} = n
-540qyj	draft	the search provider {0}	検索プロバイダー {0}	src/ui/screens/plugin-install.js:198	{0} = n
-15itc3x	draft	How Shiori looks	Shiori の見た目	src/ui/screens/plugin-install.js:202	
-18lyuvn	draft	the dock	ドック	src/ui/screens/plugin-install.js:202	
-18ybxd9	draft	how Shiori looks	Shiori の見た目	src/ui/screens/plugin-install.js:202	
-1j66h9v	draft	The dock	ドック	src/ui/screens/plugin-install.js:202	
-1tyty7f	draft	how the plan's rows look	予定の行の見た目	src/ui/screens/plugin-install.js:202	
-irliwq	draft	The Now card	いまのカード	src/ui/screens/plugin-install.js:202	
-lfbn6i	draft	the Now card	いまのカード	src/ui/screens/plugin-install.js:202	
-zi6sgb	draft	How the plan's rows look	予定の行の見た目	src/ui/screens/plugin-install.js:202	
-1xqw6of	draft	the part {0}	部品 {0}	src/ui/screens/plugin-install.js:207	{0} = name
-6sh97z	draft	The part {0}	部品 {0}	src/ui/screens/plugin-install.js:207	{0} = name
-1twwnld	draft	The browser keeps the old code until annai starts again.	annai をもう一度起動するまで、ブラウザは古いコードを使い続けます。	src/ui/screens/plugin-install.js:225	
-5nx73t	draft	Restart annai to run the new version of {0}.	{0}の新しいバージョンを動かすには、annai を再起動してください。	src/ui/screens/plugin-install.js:225	{0} = name
-19ojpuq	draft	A model provider · has code	モデルのプロバイダー · コードあり	src/ui/screens/plugin-install.js:235	
-c2ihd5	draft	A skill	スキル	src/ui/screens/plugin-install.js:235	
-i0bxaj	draft	A model provider · data only	モデルのプロバイダー · データのみ	src/ui/screens/plugin-install.js:235	
-39jdhh	draft	A package without code	コードのないパッケージ	src/ui/screens/plugin-install.js:236	
-5cnrzb	draft	A plugin	プラグイン	src/ui/screens/plugin-install.js:236	
-kfpex	draft	version {0}	バージョン {0}	src/ui/screens/plugin-install.js:237	{0} = p.shownVersion
-km7fp2	draft	by {0}	作者：{0}	src/ui/screens/plugin-install.js:237	{0} = p.author
-mska2u	draft	Go back to Add.	追加に戻る。	src/ui/screens/plugin-install.js:251	
-8sh8rg	draft	Nothing to install	インストールするものはありません	src/ui/screens/plugin-install.js:252	
-1irgo0m	draft	There's nothing to install.	インストールするものはありません。	src/ui/screens/plugin-install.js:253	
-15gtrui	draft	Install anyway, keep its settings and keys	それでもインストール（設定とキーを引き継ぐ）	src/ui/screens/plugin-install.js:271	
-6o0r6s	draft	Install fresh	新しくインストール	src/ui/screens/plugin-install.js:271	
-r9by73	draft	Install, keep its settings and keys	インストール（設定とキーを引き継ぐ）	src/ui/screens/plugin-install.js:271	
-vxrnjh	draft	Install fresh anyway	それでも新しくインストール	src/ui/screens/plugin-install.js:271	
-3lj040	draft	Install anyway and use it	それでもインストールして使う	src/ui/screens/plugin-install.js:272	
-pq5i3n	draft	Install and use it	インストールして使う	src/ui/screens/plugin-install.js:272	
-4it78t	draft	Install anyway, keep what's used now	それでもインストール（いま使っているものを残す）	src/ui/screens/plugin-install.js:273	
-c455yu	draft	Install, keep annai's	インストール（annai のものを残す）	src/ui/screens/plugin-install.js:273	
-s0ybug	draft	Install, keep what's used now	インストール（いま使っているものを残す）	src/ui/screens/plugin-install.js:273	
-wjgdl3	draft	Install anyway, keep annai's	それでもインストール（annai のものを残す）	src/ui/screens/plugin-install.js:273	
-1eg7xgh	draft	Install anyway	それでもインストール	src/ui/screens/plugin-install.js:274	
-3i7of3	draft	Install {0}?	{0}をインストールしますか？	src/ui/screens/plugin-install.js:278	{0} = pkg.name
-1kg68qt	draft	What it brings	含まれるもの	src/ui/screens/plugin-install.js:284	
-owkvwp	draft	What it replaces	置き換えるもの	src/ui/screens/plugin-install.js:288	
-170p2zc	draft	It replaces {0} from {1}.	{1}の{0}を置き換えます。	src/ui/screens/plugin-install.js:290	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	draft	Only install it if you trust where it came from.	入手元を信頼できる場合だけインストールしてください。	src/ui/screens/plugin-install.js:292	
-1kfm2oy	draft	It can't run anything: it is data that tells annai how to reach a model provider.	何も実行できません。annai にモデルのプロバイダーへのつなぎ方を伝えるデータです。	src/ui/screens/plugin-install.js:295	
-i2z0ve	draft	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	スキルは Shiori への指示です。あなたの質問に合うときに読み、書かれたとおりに従います。annai はスキルの中身を実行しないので、信頼できるスキルを入れてください。	src/ui/screens/plugin-install.js:296	
-1q0ylpv	draft	Get a key	キーを取得	src/ui/screens/plugin-install.js:298	
-syby9s	draft	New in this version	このバージョンの新しいもの	src/ui/screens/plugin-install.js:301	
-6kb5j4	draft	Updated {0}. It stays off.	{0}をアップデートしました。オフのままです。	src/ui/screens/plugin-install.js:345	{0} = pkg.name
-7gzgtw	draft	{0} was installed, but it didn't start	{0}をインストールしましたが、起動しませんでした	src/ui/screens/plugin-install.js:353	{0} = pkg.name
-qn6t6j	draft	You can turn it off or remove it in Settings → Plugins.	設定 → プラグインでオフにするか削除できます。	src/ui/screens/plugin-install.js:353	
+11t6hui	draft	an address	アドレス	src/ui/screens/plugin-install.js:173	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+1wr9niq	draft	a file: {0}	ファイル（{0}）	src/ui/screens/plugin-install.js:173	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	バージョン {0} が{1}からインストールされていて、これの入手元とは違います。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = place
+a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	引き継ぐと、その設定、キー、名前の選択がこちらに移ります。新しく入れると、それらは削除されます。	src/ui/screens/plugin-install.js:175	
+19apr1m	draft	the kind of backup place {0}	バックアップ先の種類 {0}	src/ui/screens/plugin-install.js:190	{0} = n
+1tdxuf	draft	the skill {0}	スキル {0}	src/ui/screens/plugin-install.js:190	{0} = n
+cdbbto	draft	the tool {0}	ツール {0}	src/ui/screens/plugin-install.js:190	{0} = n
+o0687u	draft	the protocol {0}	プロトコル {0}	src/ui/screens/plugin-install.js:190	{0} = n
+1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:191	{0} = n
+540qyj	draft	the search provider {0}	検索プロバイダー {0}	src/ui/screens/plugin-install.js:191	{0} = n
+snr298	draft	the card type {0}	カードの種類 {0}	src/ui/screens/plugin-install.js:191	{0} = n
+18lyuvn	draft	the dock	ドック	src/ui/screens/plugin-install.js:193	
+18ybxd9	draft	how Shiori looks	Shiori の見た目	src/ui/screens/plugin-install.js:193	
+1tyty7f	draft	how the plan's rows look	予定の行の見た目	src/ui/screens/plugin-install.js:193	
+lfbn6i	draft	the Now card	いまのカード	src/ui/screens/plugin-install.js:193	
+1xqw6of	draft	the part {0}	部品 {0}	src/ui/screens/plugin-install.js:195	{0} = name
+1twwnld	draft	The browser keeps the old code until annai starts again.	annai をもう一度起動するまで、ブラウザは古いコードを使い続けます。	src/ui/screens/plugin-install.js:211	
+5nx73t	draft	Restart annai to run the new version of {0}.	{0}の新しいバージョンを動かすには、annai を再起動してください。	src/ui/screens/plugin-install.js:211	{0} = name
+19ojpuq	draft	A model provider · has code	モデルのプロバイダー · コードあり	src/ui/screens/plugin-install.js:221	
+c2ihd5	draft	A skill	スキル	src/ui/screens/plugin-install.js:221	
+i0bxaj	draft	A model provider · data only	モデルのプロバイダー · データのみ	src/ui/screens/plugin-install.js:221	
+39jdhh	draft	A package without code	コードのないパッケージ	src/ui/screens/plugin-install.js:222	
+5cnrzb	draft	A plugin	プラグイン	src/ui/screens/plugin-install.js:222	
+kfpex	draft	version {0}	バージョン {0}	src/ui/screens/plugin-install.js:223	{0} = p.shownVersion
+km7fp2	draft	by {0}	作者：{0}	src/ui/screens/plugin-install.js:223	{0} = p.author
+mska2u	draft	Go back to Add.	追加に戻る。	src/ui/screens/plugin-install.js:237	
+8sh8rg	draft	Nothing to install	インストールするものはありません	src/ui/screens/plugin-install.js:238	
+1irgo0m	draft	There's nothing to install.	インストールするものはありません。	src/ui/screens/plugin-install.js:239	
+15gtrui	draft	Install anyway, keep its settings and keys	それでもインストール（設定とキーを引き継ぐ）	src/ui/screens/plugin-install.js:257	
+6o0r6s	draft	Install fresh	新しくインストール	src/ui/screens/plugin-install.js:257	
+r9by73	draft	Install, keep its settings and keys	インストール（設定とキーを引き継ぐ）	src/ui/screens/plugin-install.js:257	
+vxrnjh	draft	Install fresh anyway	それでも新しくインストール	src/ui/screens/plugin-install.js:257	
+3lj040	draft	Install anyway and use it	それでもインストールして使う	src/ui/screens/plugin-install.js:258	
+pq5i3n	draft	Install and use it	インストールして使う	src/ui/screens/plugin-install.js:258	
+4it78t	draft	Install anyway, keep what's used now	それでもインストール（いま使っているものを残す）	src/ui/screens/plugin-install.js:259	
+c455yu	draft	Install, keep annai's	インストール（annai のものを残す）	src/ui/screens/plugin-install.js:259	
+s0ybug	draft	Install, keep what's used now	インストール（いま使っているものを残す）	src/ui/screens/plugin-install.js:259	
+wjgdl3	draft	Install anyway, keep annai's	それでもインストール（annai のものを残す）	src/ui/screens/plugin-install.js:259	
+1eg7xgh	draft	Install anyway	それでもインストール	src/ui/screens/plugin-install.js:260	
+3i7of3	draft	Install {0}?	{0}をインストールしますか？	src/ui/screens/plugin-install.js:264	{0} = pkg.name
+1kg68qt	draft	What it brings	含まれるもの	src/ui/screens/plugin-install.js:270	
+owkvwp	draft	What it replaces	置き換えるもの	src/ui/screens/plugin-install.js:274	
+170p2zc	draft	It replaces {0} from {1}.	{1}の{0}を置き換えます。	src/ui/screens/plugin-install.js:276	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	draft	Only install it if you trust where it came from.	入手元を信頼できる場合だけインストールしてください。	src/ui/screens/plugin-install.js:278	
+1kfm2oy	draft	It can't run anything: it is data that tells annai how to reach a model provider.	何も実行できません。annai にモデルのプロバイダーへのつなぎ方を伝えるデータです。	src/ui/screens/plugin-install.js:281	
+i2z0ve	draft	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	スキルは Shiori への指示です。あなたの質問に合うときに読み、書かれたとおりに従います。annai はスキルの中身を実行しないので、信頼できるスキルを入れてください。	src/ui/screens/plugin-install.js:282	
+1q0ylpv	draft	Get a key	キーを取得	src/ui/screens/plugin-install.js:284	
+syby9s	draft	New in this version	このバージョンの新しいもの	src/ui/screens/plugin-install.js:287	
+6kb5j4	draft	Updated {0}. It stays off.	{0}をアップデートしました。オフのままです。	src/ui/screens/plugin-install.js:331	{0} = pkg.name
+7gzgtw	draft	{0} was installed, but it didn't start	{0}をインストールしましたが、起動しませんでした	src/ui/screens/plugin-install.js:339	{0} = pkg.name
+qn6t6j	draft	You can turn it off or remove it in Settings → Plugins.	設定 → プラグインでオフにするか削除できます。	src/ui/screens/plugin-install.js:339	
 16v75nb	draft	Cleared its settings ({0}) and its secrets ({1}).	設定（{0}）とシークレット（{1}）を消去しました。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	draft	Cleared its settings and its secrets ({0}).	設定とシークレット（{0}）を消去しました。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	draft	Cleared its settings ({0}).	設定（{0}）を消去しました。	src/ui/screens/plugin.js:32	{0} = keys
@@ -771,18 +756,18 @@ bigbss	draft	Try again.	もう一度お試しください。	src/ui/screens/plug
 w01rfz	draft	Names	名前	src/ui/screens/plugin.js:61	
 1fuyi3p	draft	annai keeps it for Shiori's own use.	annai が Shiori 自身のために使っています。	src/ui/screens/plugin.js:65	
 vi0gxl	draft	It is handed the keys you give it, so it isn't switched: remove {0} to use this one.	渡したキーを受け取るため、切り替えはできません。こちらを使うには{0}を削除してください。	src/ui/screens/plugin.js:65	{0} = by
-8fqam3	draft	{0}: this one is used (your choice).	{0}：こちらを使っています（あなたの選択）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true)
-bv9qvd	draft	{0}: the one from {1} is used (your choice).	{0}：{1}のものを使っています（あなたの選択）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true); {1} = by
-yejxr6	draft	Not used: {0} is already provided by {1}.	未使用：{0}はすでに{1}が提供しています。	src/ui/screens/plugin.js:67	{0} = thing; {1} = by
-1vq6yyu	draft	Use this one instead	代わりにこちらを使う	src/ui/screens/plugin.js:68	
-vmlwpb	draft	Undo	元に戻す	src/ui/screens/plugin.js:68	
-1teqta3	draft	There's no plugin called {0} on this device.	この端末に{0}というプラグインはありません。	src/ui/screens/plugin.js:82	{0} = id
-1xnuq33	draft	Back to Plugins	プラグインに戻る	src/ui/screens/plugin.js:82	
-xkwhlc	draft	Not here	見つかりません	src/ui/screens/plugin.js:82	
-1qzaah1	draft	Settings → Tools	設定 → ツール	src/ui/screens/plugin.js:93	
-1bk7xrz	draft	Skills	スキル	src/ui/screens/plugin.js:105	
-1w1mhg4	draft	Each can be switched off in {0}.	どれも{0}でオフにできます。	src/ui/screens/plugin.js:107	{0} = toolsLink
-v2w06x	draft	Its pages	このプラグインのページ	src/ui/screens/plugin.js:112	
+8fqam3	draft	{0}: this one is used (your choice).	{0}：こちらを使っています（あなたの選択）。	src/ui/screens/plugin.js:67	{0} = thing
+bv9qvd	draft	{0}: the one from {1} is used (your choice).	{0}：{1}のものを使っています（あなたの選択）。	src/ui/screens/plugin.js:67	{0} = thing; {1} = by
+yejxr6	draft	Not used: {0} is already provided by {1}.	未使用：{0}はすでに{1}が提供しています。	src/ui/screens/plugin.js:68	{0} = thing; {1} = by
+1vq6yyu	draft	Use this one instead	代わりにこちらを使う	src/ui/screens/plugin.js:69	
+vmlwpb	draft	Undo	元に戻す	src/ui/screens/plugin.js:69	
+1teqta3	draft	There's no plugin called {0} on this device.	この端末に{0}というプラグインはありません。	src/ui/screens/plugin.js:83	{0} = id
+1xnuq33	draft	Back to Plugins	プラグインに戻る	src/ui/screens/plugin.js:83	
+xkwhlc	draft	Not here	見つかりません	src/ui/screens/plugin.js:83	
+1qzaah1	draft	Settings → Tools	設定 → ツール	src/ui/screens/plugin.js:94	
+1bk7xrz	draft	Skills	スキル	src/ui/screens/plugin.js:106	
+1w1mhg4	draft	Each can be switched off in {0}.	どれも{0}でオフにできます。	src/ui/screens/plugin.js:108	{0} = toolsLink
+v2w06x	draft	Its pages	このプラグインのページ	src/ui/screens/plugin.js:113	
 1flt3rs	draft	Search your plugins	プラグインを検索	src/ui/screens/plugins.js:32	
 3l91ca	draft	Built in	内蔵	src/ui/screens/plugins.js:43	
 18ydira	draft	Restart annai to run the new version	新しいバージョンを動かすには annai を再起動	src/ui/screens/plugins.js:44	
@@ -897,7 +882,6 @@ qhwigq	draft	How Shiori speaks and hears you, with a test for each.	Shiori の�
 rpzgfn	draft	Last export {0}.	前回のエクスポート：{0}	src/ui/screens/settings.js:52	{0} = relTime(app.lastExportAt)
 2i7wwt	draft	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	自動バックアップはまだありません。非公開の GitHub リポジトリなど、バックアップ先を追加してください。	src/ui/screens/settings.js:53	
 zi2agh	draft	Backing up automatically to {0}.	{0}に自動でバックアップしています。	src/ui/screens/settings.js:53	{0} = list(automatic, 'plain')
-1gfyasg	draft	everything	すべて	src/ui/screens/settings.js:56	
 1tpqgk3	draft	Automatic backups	自動バックアップ	src/ui/screens/settings.js:57	
 706cmq	draft	A trip someone sent you, or a backup to bring back:	送られてきた旅や、戻したいバックアップ：	src/ui/screens/settings.js:59	
 8f98y9	draft	Open an annai file	annai のファイルを開く	src/ui/screens/settings.js:60	

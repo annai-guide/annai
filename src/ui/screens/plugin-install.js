@@ -169,11 +169,10 @@ export function overLine(previous, from) {
   const v = previous.version;
   if (samePlace(previous.from, from)) return t`Version ${v} is installed now. Installing replaces it.`;
   const { kind, value } = placeOf(previous.from);
-  const now = kind === 'host' ? t`Version ${v} is installed now, from ${value}, not where this one comes from.`
-    : kind === 'address' ? t`Version ${v} is installed now, from an address, not where this one comes from.`
-      : kind === 'named file' ? t`Version ${v} is installed now, from a file: ${value}, not where this one comes from.`
-        : kind === 'file' ? t`Version ${v} is installed now, from a file, not where this one comes from.` : t`Version ${v} is installed now, from annai, not where this one comes from.`;
-  return sentences(now, t`Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.`);
+  // Where it came from, as a value: its address, an address, a file (by name), or annai.
+  const place = kind === 'host' ? value : kind === 'address' ? t`an address` : kind === 'named file' ? t`a file: ${value}` : kind === 'file' ? t`a file` : /* en */ 'annai';
+  return sentences(t`Version ${v} is installed now, from ${place}, not where this one comes from.`,
+    t`Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.`);
 }
 
 /** An http(s) address or null. @param {unknown} url */
@@ -186,27 +185,14 @@ function webAddress(url) {
   }
 }
 
-/**
- * A named thing in words, "the tool weather", "how Shiori looks", and as it starts a sentence, "The tool weather": a noun with its name,
- * which the sentences about names hold as a value.
- * @type {Record<string, [(name: string) => string, (name: string) => string]>}
- */
-const KIND_WORDS = {
-  tool: [(n) => t`the tool ${n}`, (n) => t`The tool ${n}`], 'endpoint-type': [(n) => t`the protocol ${n}`, (n) => t`The protocol ${n}`],
-  'storage-type': [(n) => t`the kind of backup place ${n}`, (n) => t`The kind of backup place ${n}`], skill: [(n) => t`the skill ${n}`, (n) => t`The skill ${n}`],
-  personality: [(n) => t`the personality ${n}`, (n) => t`The personality ${n}`], 'ui:card-type': [(n) => t`the card type ${n}`, (n) => t`The card type ${n}`],
-  search: [(n) => t`the search provider ${n}`, (n) => t`The search provider ${n}`],
-};
-/** @type {Record<string, [string, string]>} */
-const COMPONENT_WORDS = {
-  avatar: [t`how Shiori looks`, t`How Shiori looks`], dock: [t`the dock`, t`The dock`], 'now-card': [t`the Now card`, t`The Now card`], 'plan-row': [t`how the plan's rows look`, t`How the plan's rows look`],
-};
-/** @param {string} kind @param {string} name @param {boolean} [first] as it starts a sentence */
-export function thingWords(kind, name, first = false) {
-  const at = first ? 1 : 0;
-  if (kind === 'ui:component') return COMPONENT_WORDS[name]?.[at] ?? (first ? t`The part ${name}` : t`the part ${name}`);
-  return KIND_WORDS[kind]?.[at](name) ?? `${kind} ${name}`;
-}
+/** A named thing in words, "the tool weather", "how Shiori looks": a noun with its name, which the sentences about names hold as a value. */
+const KIND_WORDS = /** @type {Record<string, (name: string) => string>} */ ({
+  tool: (n) => t`the tool ${n}`, 'endpoint-type': (n) => t`the protocol ${n}`, 'storage-type': (n) => t`the kind of backup place ${n}`, skill: (n) => t`the skill ${n}`,
+  personality: (n) => t`the personality ${n}`, 'ui:card-type': (n) => t`the card type ${n}`, search: (n) => t`the search provider ${n}`,
+});
+const COMPONENT_WORDS = /** @type {Record<string, string>} */ ({ avatar: t`how Shiori looks`, dock: t`the dock`, 'now-card': t`the Now card`, 'plan-row': t`how the plan's rows look` });
+/** @param {string} kind @param {string} name */
+export const thingWords = (kind, name) => (kind === 'ui:component' ? COMPONENT_WORDS[name] ?? t`the part ${name}` : KIND_WORDS[kind]?.(name) ?? `${kind} ${name}`);
 /** Who owns a name: annai, a built-in's or official plugin's name, else a name from a manifest, with its id. @param {any[]} rows describe()'s @param {string} id */
 export function ownerName(rows, id) {
   const r = id === 'annai' ? null : rows.find((x) => x.id === id);

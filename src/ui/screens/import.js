@@ -285,7 +285,8 @@ async function inboxFiles() {
   for (const key of await inbox.keys()) {
     const res = await inbox.match(key);
     if (!res) continue;
-    const name = decodeURIComponent(res.headers.get('X-Annai-Name') ?? t`shared file`);
+    // sw.js names every file it keeps here.
+    const name = decodeURIComponent(res.headers.get('X-Annai-Name') ?? '');
     const type = (res.headers.get('Content-Type') || typeForPath(name)).split(';')[0].trim();
     out.push({ key, file: new File([await res.blob()], name, { type }) });
   }

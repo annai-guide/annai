@@ -483,21 +483,20 @@ ew9em3	draft	Cancel	取消	src/ui/screens/import.js:238
 1p9jpyr	draft	Installed what your providers use: {0}.	已安装你的提供商使用的内容：{0}。	src/ui/screens/import.js:267	{0} = list(g.installed, 'plain')
 c0u62t#other	draft	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 密钥；文件中的未被使用。	src/ui/screens/import.js:276	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	draft	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 密钥；文件中的未被使用。	src/ui/screens/import.js:277	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-zul4ei	draft	shared file	共享的文件	src/ui/screens/import.js:288	
-151rypw#other	draft	# photos	#张照片	src/ui/screens/import.js:306	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
-8w8k36	draft	a file	一个文件	src/ui/screens/import.js:306	
-ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/import.js:309	{0} = trip.title
-odevmc	draft	Adding {0} of {1}…	正在添加 {0}/{1}…	src/ui/screens/import.js:315	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-rcp6ga	draft	A photo was kept as it is	照片已按原样保存	src/ui/screens/import.js:321	
-36fatd	draft	A calendar file couldn't be read	无法读取日历文件	src/ui/screens/import.js:322	
-liuhl8#other	draft	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 个行程项目	src/ui/screens/import.js:323	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other)
-7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/import.js:339	
-f30m7u#other	draft	and # more photos	还有 # 张照片	src/ui/screens/import.js:343	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	draft	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:346	
-17udxx8	draft	Start a trip first, then share it again.	请先开始一个旅行，再重新分享它。	src/ui/screens/import.js:349	
-19xnnmt	draft	Start a trip first, then share them again.	请先开始一个旅行，再重新分享它们。	src/ui/screens/import.js:349	
-sc64d2	draft	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:352	{0} = a.file.name
-3wbwnq	draft	Open it	打开	src/ui/screens/import.js:353	
+151rypw#other	draft	# photos	#张照片	src/ui/screens/import.js:307	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
+8w8k36	draft	a file	一个文件	src/ui/screens/import.js:307	
+ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/import.js:310	{0} = trip.title
+odevmc	draft	Adding {0} of {1}…	正在添加 {0}/{1}…	src/ui/screens/import.js:316	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+rcp6ga	draft	A photo was kept as it is	照片已按原样保存	src/ui/screens/import.js:322	
+36fatd	draft	A calendar file couldn't be read	无法读取日历文件	src/ui/screens/import.js:323	
+liuhl8#other	draft	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 个行程项目	src/ui/screens/import.js:324	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other)
+7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/import.js:340	
+f30m7u#other	draft	and # more photos	还有 # 张照片	src/ui/screens/import.js:344	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	draft	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:347	
+17udxx8	draft	Start a trip first, then share it again.	请先开始一个旅行，再重新分享它。	src/ui/screens/import.js:350	
+19xnnmt	draft	Start a trip first, then share them again.	请先开始一个旅行，再重新分享它们。	src/ui/screens/import.js:350	
+sc64d2	draft	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:353	{0} = a.file.name
+3wbwnq	draft	Open it	打开	src/ui/screens/import.js:354	
 1xtp0n4	draft	Headers, kept on this device	请求头，保存在此设备上	src/ui/screens/mcp.js:5	
 e9m35h	draft	No key	无密钥	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer 令牌，保存在此设备上	src/ui/screens/mcp.js:5	
@@ -692,71 +691,57 @@ w2ndgc	draft	nothing yet	暂时没有	src/ui/screens/plugin-install.js:120
 1vmhfh0	draft	From a file: {0}	来自文件：{0}	src/ui/screens/plugin-install.js:157	{0} = value
 62wi84	draft	From annai	来自 annai	src/ui/screens/plugin-install.js:158	
 17ahsv6	draft	Version {0} is installed now. Installing replaces it.	当前已安装版本 {0}。安装会替换它。	src/ui/screens/plugin-install.js:170	{0} = v
-rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:172	{0} = v; {1} = value
-1bkjwhh	draft	Version {0} is installed now, from an address, not where this one comes from.	当前已安装版本 {0}，来自某个地址，与这个的来源不同。	src/ui/screens/plugin-install.js:173	{0} = v
-1viyd44	draft	Version {0} is installed now, from a file: {1}, not where this one comes from.	当前已安装版本 {0}，来自文件：{1}，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = value
-kbu55t	draft	Version {0} is installed now, from a file, not where this one comes from.	当前已安装版本 {0}，来自文件，与这个的来源不同。	src/ui/screens/plugin-install.js:175	{0} = v
-rmnxkd	draft	Version {0} is installed now, from annai, not where this one comes from.	当前已安装版本 {0}，来自 annai，与这个的来源不同。	src/ui/screens/plugin-install.js:175	{0} = v
-a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:176	
-10xvqd6	draft	The protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:195	{0} = n
-cdbbto	draft	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:195	{0} = n
-dfauv0	draft	The tool {0}	工具 {0}	src/ui/screens/plugin-install.js:195	{0} = n; Note: As it starts a sentence; the same words without the English capital.
-o0687u	draft	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:195	{0} = n
-18mpnpm	draft	The kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-19apr1m	draft	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1tdxuf	draft	the skill {0}	技能 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1vkxp9z	draft	The skill {0}	技能 {0}	src/ui/screens/plugin-install.js:196	{0} = n
-1iyj662	draft	The personality {0}	性格 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-jsf5jg	draft	The card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-snr298	draft	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:197	{0} = n
-1uviaaj	draft	The search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:198	{0} = n
-540qyj	draft	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:198	{0} = n
-15itc3x	draft	How Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:202	
-18lyuvn	draft	the dock	底栏	src/ui/screens/plugin-install.js:202	
-18ybxd9	draft	how Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:202	
-1j66h9v	draft	The dock	底栏	src/ui/screens/plugin-install.js:202	
-1tyty7f	draft	how the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:202	
-irliwq	draft	The Now card	此刻卡片	src/ui/screens/plugin-install.js:202	
-lfbn6i	draft	the Now card	此刻卡片	src/ui/screens/plugin-install.js:202	
-zi6sgb	draft	How the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:202	
-1xqw6of	draft	the part {0}	部件 {0}	src/ui/screens/plugin-install.js:207	{0} = name
-6sh97z	draft	The part {0}	部件 {0}	src/ui/screens/plugin-install.js:207	{0} = name
-1twwnld	draft	The browser keeps the old code until annai starts again.	在 annai 重新启动之前，浏览器会一直使用旧代码。	src/ui/screens/plugin-install.js:225	
-5nx73t	draft	Restart annai to run the new version of {0}.	重启 annai 以运行{0}的新版本。	src/ui/screens/plugin-install.js:225	{0} = name
-19ojpuq	draft	A model provider · has code	模型提供商 · 含代码	src/ui/screens/plugin-install.js:235	
-c2ihd5	draft	A skill	一个技能	src/ui/screens/plugin-install.js:235	
-i0bxaj	draft	A model provider · data only	模型提供商 · 仅数据	src/ui/screens/plugin-install.js:235	
-39jdhh	draft	A package without code	不含代码的包	src/ui/screens/plugin-install.js:236	
-5cnrzb	draft	A plugin	一个插件	src/ui/screens/plugin-install.js:236	
-kfpex	draft	version {0}	版本 {0}	src/ui/screens/plugin-install.js:237	{0} = p.shownVersion
-km7fp2	draft	by {0}	作者：{0}	src/ui/screens/plugin-install.js:237	{0} = p.author
-mska2u	draft	Go back to Add.	返回添加。	src/ui/screens/plugin-install.js:251	
-8sh8rg	draft	Nothing to install	没有要安装的内容	src/ui/screens/plugin-install.js:252	
-1irgo0m	draft	There's nothing to install.	没有要安装的内容。	src/ui/screens/plugin-install.js:253	
-15gtrui	draft	Install anyway, keep its settings and keys	仍然安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:271	
-6o0r6s	draft	Install fresh	全新安装	src/ui/screens/plugin-install.js:271	
-r9by73	draft	Install, keep its settings and keys	安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:271	
-vxrnjh	draft	Install fresh anyway	仍然全新安装	src/ui/screens/plugin-install.js:271	
-3lj040	draft	Install anyway and use it	仍然安装并使用	src/ui/screens/plugin-install.js:272	
-pq5i3n	draft	Install and use it	安装并使用	src/ui/screens/plugin-install.js:272	
-4it78t	draft	Install anyway, keep what's used now	仍然安装，保留当前使用的	src/ui/screens/plugin-install.js:273	
-c455yu	draft	Install, keep annai's	安装，保留 annai 的	src/ui/screens/plugin-install.js:273	
-s0ybug	draft	Install, keep what's used now	安装，保留当前使用的	src/ui/screens/plugin-install.js:273	
-wjgdl3	draft	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:273	
-1eg7xgh	draft	Install anyway	仍然安装	src/ui/screens/plugin-install.js:274	
-3i7of3	draft	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:278	{0} = pkg.name
-1kg68qt	draft	What it brings	它带来的内容	src/ui/screens/plugin-install.js:284	
-owkvwp	draft	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:288	
-170p2zc	draft	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:290	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	draft	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:292	
-1kfm2oy	draft	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:295	
-i2z0ve	draft	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:296	
-1q0ylpv	draft	Get a key	获取密钥	src/ui/screens/plugin-install.js:298	
-syby9s	draft	New in this version	此版本新增	src/ui/screens/plugin-install.js:301	
-6kb5j4	draft	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:345	{0} = pkg.name
-7gzgtw	draft	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:353	{0} = pkg.name
-qn6t6j	draft	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:353	
+11t6hui	draft	an address	某个地址	src/ui/screens/plugin-install.js:173	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+1wr9niq	draft	a file: {0}	文件 {0}	src/ui/screens/plugin-install.js:173	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = place
+a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:175	
+19apr1m	draft	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:190	{0} = n
+1tdxuf	draft	the skill {0}	技能 {0}	src/ui/screens/plugin-install.js:190	{0} = n
+cdbbto	draft	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:190	{0} = n
+o0687u	draft	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:190	{0} = n
+1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:191	{0} = n
+540qyj	draft	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:191	{0} = n
+snr298	draft	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:191	{0} = n
+18lyuvn	draft	the dock	底栏	src/ui/screens/plugin-install.js:193	
+18ybxd9	draft	how Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:193	
+1tyty7f	draft	how the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:193	
+lfbn6i	draft	the Now card	此刻卡片	src/ui/screens/plugin-install.js:193	
+1xqw6of	draft	the part {0}	部件 {0}	src/ui/screens/plugin-install.js:195	{0} = name
+1twwnld	draft	The browser keeps the old code until annai starts again.	在 annai 重新启动之前，浏览器会一直使用旧代码。	src/ui/screens/plugin-install.js:211	
+5nx73t	draft	Restart annai to run the new version of {0}.	重启 annai 以运行{0}的新版本。	src/ui/screens/plugin-install.js:211	{0} = name
+19ojpuq	draft	A model provider · has code	模型提供商 · 含代码	src/ui/screens/plugin-install.js:221	
+c2ihd5	draft	A skill	一个技能	src/ui/screens/plugin-install.js:221	
+i0bxaj	draft	A model provider · data only	模型提供商 · 仅数据	src/ui/screens/plugin-install.js:221	
+39jdhh	draft	A package without code	不含代码的包	src/ui/screens/plugin-install.js:222	
+5cnrzb	draft	A plugin	一个插件	src/ui/screens/plugin-install.js:222	
+kfpex	draft	version {0}	版本 {0}	src/ui/screens/plugin-install.js:223	{0} = p.shownVersion
+km7fp2	draft	by {0}	作者：{0}	src/ui/screens/plugin-install.js:223	{0} = p.author
+mska2u	draft	Go back to Add.	返回添加。	src/ui/screens/plugin-install.js:237	
+8sh8rg	draft	Nothing to install	没有要安装的内容	src/ui/screens/plugin-install.js:238	
+1irgo0m	draft	There's nothing to install.	没有要安装的内容。	src/ui/screens/plugin-install.js:239	
+15gtrui	draft	Install anyway, keep its settings and keys	仍然安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:257	
+6o0r6s	draft	Install fresh	全新安装	src/ui/screens/plugin-install.js:257	
+r9by73	draft	Install, keep its settings and keys	安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:257	
+vxrnjh	draft	Install fresh anyway	仍然全新安装	src/ui/screens/plugin-install.js:257	
+3lj040	draft	Install anyway and use it	仍然安装并使用	src/ui/screens/plugin-install.js:258	
+pq5i3n	draft	Install and use it	安装并使用	src/ui/screens/plugin-install.js:258	
+4it78t	draft	Install anyway, keep what's used now	仍然安装，保留当前使用的	src/ui/screens/plugin-install.js:259	
+c455yu	draft	Install, keep annai's	安装，保留 annai 的	src/ui/screens/plugin-install.js:259	
+s0ybug	draft	Install, keep what's used now	安装，保留当前使用的	src/ui/screens/plugin-install.js:259	
+wjgdl3	draft	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:259	
+1eg7xgh	draft	Install anyway	仍然安装	src/ui/screens/plugin-install.js:260	
+3i7of3	draft	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:264	{0} = pkg.name
+1kg68qt	draft	What it brings	它带来的内容	src/ui/screens/plugin-install.js:270	
+owkvwp	draft	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:274	
+170p2zc	draft	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:276	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	draft	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:278	
+1kfm2oy	draft	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:281	
+i2z0ve	draft	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:282	
+1q0ylpv	draft	Get a key	获取密钥	src/ui/screens/plugin-install.js:284	
+syby9s	draft	New in this version	此版本新增	src/ui/screens/plugin-install.js:287	
+6kb5j4	draft	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:331	{0} = pkg.name
+7gzgtw	draft	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:339	{0} = pkg.name
+qn6t6j	draft	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:339	
 16v75nb	draft	Cleared its settings ({0}) and its secrets ({1}).	已清除它的设置（{0}）和机密（{1}）。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	draft	Cleared its settings and its secrets ({0}).	已清除它的设置和机密（{0}）。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	draft	Cleared its settings ({0}).	已清除它的设置（{0}）。	src/ui/screens/plugin.js:32	{0} = keys
@@ -771,18 +756,18 @@ bigbss	draft	Try again.	请再试一次。	src/ui/screens/plugin.js:41
 w01rfz	draft	Names	名称	src/ui/screens/plugin.js:61	
 1fuyi3p	draft	annai keeps it for Shiori's own use.	annai 将它留给 Shiori 自己使用。	src/ui/screens/plugin.js:65	
 vi0gxl	draft	It is handed the keys you give it, so it isn't switched: remove {0} to use this one.	它会拿到你给它的密钥，所以不能切换：要使用这个，请移除{0}。	src/ui/screens/plugin.js:65	{0} = by
-8fqam3	draft	{0}: this one is used (your choice).	{0}：正在使用这个（你的选择）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true)
-bv9qvd	draft	{0}: the one from {1} is used (your choice).	{0}：正在使用来自{1}的那个（你的选择）。	src/ui/screens/plugin.js:66	{0} = thingWords(c.kind, c.name, true); {1} = by
-yejxr6	draft	Not used: {0} is already provided by {1}.	未使用：{0}已由{1}提供。	src/ui/screens/plugin.js:67	{0} = thing; {1} = by
-1vq6yyu	draft	Use this one instead	改用这个	src/ui/screens/plugin.js:68	
-vmlwpb	draft	Undo	撤销	src/ui/screens/plugin.js:68	
-1teqta3	draft	There's no plugin called {0} on this device.	此设备上没有名为 {0} 的插件。	src/ui/screens/plugin.js:82	{0} = id
-1xnuq33	draft	Back to Plugins	返回插件	src/ui/screens/plugin.js:82	
-xkwhlc	draft	Not here	不在这里	src/ui/screens/plugin.js:82	
-1qzaah1	draft	Settings → Tools	设置 → 工具	src/ui/screens/plugin.js:93	
-1bk7xrz	draft	Skills	技能	src/ui/screens/plugin.js:105	
-1w1mhg4	draft	Each can be switched off in {0}.	每一个都可以在{0}中关闭。	src/ui/screens/plugin.js:107	{0} = toolsLink
-v2w06x	draft	Its pages	它的页面	src/ui/screens/plugin.js:112	
+8fqam3	draft	{0}: this one is used (your choice).	{0}：正在使用这个（你的选择）。	src/ui/screens/plugin.js:67	{0} = thing
+bv9qvd	draft	{0}: the one from {1} is used (your choice).	{0}：正在使用来自{1}的那个（你的选择）。	src/ui/screens/plugin.js:67	{0} = thing; {1} = by
+yejxr6	draft	Not used: {0} is already provided by {1}.	未使用：{0}已由{1}提供。	src/ui/screens/plugin.js:68	{0} = thing; {1} = by
+1vq6yyu	draft	Use this one instead	改用这个	src/ui/screens/plugin.js:69	
+vmlwpb	draft	Undo	撤销	src/ui/screens/plugin.js:69	
+1teqta3	draft	There's no plugin called {0} on this device.	此设备上没有名为 {0} 的插件。	src/ui/screens/plugin.js:83	{0} = id
+1xnuq33	draft	Back to Plugins	返回插件	src/ui/screens/plugin.js:83	
+xkwhlc	draft	Not here	不在这里	src/ui/screens/plugin.js:83	
+1qzaah1	draft	Settings → Tools	设置 → 工具	src/ui/screens/plugin.js:94	
+1bk7xrz	draft	Skills	技能	src/ui/screens/plugin.js:106	
+1w1mhg4	draft	Each can be switched off in {0}.	每一个都可以在{0}中关闭。	src/ui/screens/plugin.js:108	{0} = toolsLink
+v2w06x	draft	Its pages	它的页面	src/ui/screens/plugin.js:113	
 1flt3rs	draft	Search your plugins	搜索你的插件	src/ui/screens/plugins.js:32	
 3l91ca	draft	Built in	内置	src/ui/screens/plugins.js:43	
 18ydira	draft	Restart annai to run the new version	重启 annai 以运行新版本	src/ui/screens/plugins.js:44	
@@ -897,7 +882,6 @@ qhwigq	draft	How Shiori speaks and hears you, with a test for each.	Shiori 如�
 rpzgfn	draft	Last export {0}.	上次导出：{0}	src/ui/screens/settings.js:52	{0} = relTime(app.lastExportAt)
 2i7wwt	draft	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:53	
 zi2agh	draft	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:53	{0} = list(automatic, 'plain')
-1gfyasg	draft	everything	全部	src/ui/screens/settings.js:56	
 1tpqgk3	draft	Automatic backups	自动备份	src/ui/screens/settings.js:57	
 706cmq	draft	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:59	
 8f98y9	draft	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:60	
