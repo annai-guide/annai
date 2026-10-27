@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "自分で動かしている SGLang サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。",
+    "name": "SGLang",
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。それぞれ、サーバーが保持するコンテキストの長さ付きで追加されます。ツールの呼び出しには --tool-call-parser <name>、考えるモデルには --reasoning-parser <name> が必要です。これらがないと Shiori はツールを使えず、彼女の思考が言葉に混ざって表示されます。",
+    "provider.note": "SGLang は --port で変えない限りポート 30000 で待ち受けます。--api-key でキーを設定するか、キーを空のままにしてください。"
+  },
+  "messages": {}
+}
