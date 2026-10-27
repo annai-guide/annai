@@ -1,8 +1,9 @@
 {
   "id": "search-tavily",
   "name": "Tavily Search",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",
   "category": "tools",
@@ -19,7 +20,7 @@
     "type": "object",
     "properties": {
       "key": { "type": "string", "title": "Tavily API key", "writeOnly": true },
-      "depth": { "type": "string", "title": "Depth", "description": "Basic costs 1 credit a search; advanced reads deeper for 2.", "enum": ["basic", "advanced"], "default": "basic" }
+      "depth": { "type": "string", "title": "Depth", "description": "Basic costs 1 credit a search; advanced reads deeper for 2.", "oneOf": [{ "const": "basic", "title": "Basic" }, { "const": "advanced", "title": "Advanced" }], "default": "basic" }
     }
   }
 }
