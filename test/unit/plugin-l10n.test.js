@@ -257,7 +257,7 @@ test("annai.l10n.format is the four formats official plugins use, with the signa
 });
 
 test("an official plugin is named in the screens' words wherever it is named: Updates, its card, and what a plugin needs", async () => {
-  const { namesReady, officialName, officialPlugins } = await import('../../src/core/llm/official.js');
+  const { officialName, officialPlugins } = await import('../../src/core/llm/official.js');
   const { offerWords } = await import('../../src/ui/plugin-updates.js');
   const { checkRequires } = await import('../../src/core/requires.js');
   setWords('ja', {});
@@ -265,7 +265,6 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   const fetch = async (/** @type {string} */ url) => new Response(JSON.stringify(served.get(url) ?? {}), { status: served.has(url) ? 200 : 404 });
   assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'Remote trace (for developers)', 'before the catalog is read: its English');
   await officialPlugins({ fetch });
-  await namesReady({ fetch });
   assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'リモート記録（開発者向け）');
   assert.match(offerWords({ id: 'remote-trace', name: 'Remote trace (for developers)', installed: '0.1.0', available: '0.2.0' }), /^リモート記録（開発者向け） 0\.1\.0 → 0\.2\.0$/);
   assert.equal(offerWords({ id: 'remote-trace', name: 'Their trace', installed: '1', available: '2', url: 'https://x.example/p' }), 'Their trace 1 → 2', "a third party's from an address: as written");
@@ -297,4 +296,15 @@ test("a default-named place's hold keeps no screens' words: its said names no pl
   assert.equal(holdWords(shown.hold, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
   // A hold from before, with the place's name stored, says it.
   assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'Home NAS' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Home NAS, then save.');
+});
+
+test("an installed official plugin is named from its own translation on the device, with no request: pluginName", async () => {
+  const { pluginName } = await import('../../src/core/llm/official.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  await k.host.install(pkg(TIDES({ entry: undefined }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  await k.host.start('acme-tides');
+  const state = (await k.host.installed())['acme-tides'];
+  assert.equal(pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐');
+  assert.equal(pluginName(k.host, { ...state, source: 'file' }, 'acme-tides', 'Acme Tides'), 'Acme Tides', "a third party's as written");
 });
