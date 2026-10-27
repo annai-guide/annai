@@ -39,7 +39,7 @@ export default function (test, assert) {
     /** @type {any[]} */
     const errors = [];
     const registry = new Registry({ log: (ev) => { if (ev.type === 'plugin.error') errors.push(ev); } });
-    const ctx = { registry, plugins: { active: new Map(on.map((id) => [id, { manifest: { id, name: 'Tides' } }])) } };
+    const ctx = { registry, plugins: { active: new Map(on.map((id) => [id, { manifest: { id, name: 'Tides' } }])), langOf: () => 'en' } };
     return { registry, errors, ctx };
   };
 
@@ -315,7 +315,7 @@ export default function (test, assert) {
       addEventListener('hashchange', done, { once: true });
       location.hash = '#/trip/t1/ext/tides/table';
     });
-    startShell(root, /** @type {any} */ ({ registry, plugins: { active: new Map([['tides', { manifest: { name: 'Tides' } }]]) }, store, version: 'test' }));
+    startShell(root, /** @type {any} */ ({ registry, plugins: { active: new Map([['tides', { manifest: { name: 'Tides' } }]]), langOf: () => 'en' }, store, version: 'test' }));
     await new Promise((done) => setTimeout(done, 30));
     location.hash = '#/ext/tides/now';
     await new Promise((done) => setTimeout(done, 300));
