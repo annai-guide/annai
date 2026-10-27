@@ -1,7 +1,7 @@
 import { PluginError, TAKEN, TURN_ON, takenShown, turnOnShown } from './registry.js';
 import { t } from './l10n.js';
 import { sentences } from './intl.js';
-import { officialPlugins, download, officialName } from './llm/official.js';
+import { officialPlugins, download, officialName, pluginName } from './llm/official.js';
 import { SYS_PLUGINS } from './scopes.js';
 
 /**
@@ -41,11 +41,14 @@ const needOf = (m, id) => (Array.isArray(m.requires) ? m.requires : []).find((/*
  * the same install. @param {PluginHost} host @param {string} id @param {string} version @param {string} name @param {string} [except]
  */
 export async function refuseBreaking(host, id, version, name, except) {
+  const state = await host.installed();
   for (const [o, m] of Object.entries(await manifests(host))) {
     const r = o === id || o === except ? null : needOf(m, id);
     const other = m.name ?? o;
+    // On the screens, annai's own by their own translations (pluginName), as Plugins names them.
+    const [them, it] = [pluginName(host, state[o], o, other), state[id] ? pluginName(host, state[id], id, name) : officialName(id, name)];
     /* en */
-    if (r && !satisfies(version, r.version)) throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`version ${version} would stop ${other} working: it needs ${officialName(id, name)} ${r.version}. Update ${other} first, or keep this version.` });
+    if (r && !satisfies(version, r.version)) throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`version ${version} would stop ${them} working: it needs ${it} ${r.version}. Update ${them} first, or keep this version.` });
   }
 }
 

@@ -268,6 +268,8 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'リモート記録（開発者向け）');
   assert.match(offerWords({ id: 'remote-trace', name: 'Remote trace (for developers)', installed: '0.1.0', available: '0.2.0' }), /^リモート記録（開発者向け） 0\.1\.0 → 0\.2\.0$/);
   assert.equal(offerWords({ id: 'remote-trace', name: 'Their trace', installed: '1', available: '2', url: 'https://x.example/p' }), 'Their trace 1 → 2', "a third party's from an address: as written");
+  const { waitingWords } = await import('../../src/ui/screens/settings.js');
+  assert.match(String(waitingWords(false, [{ id: 'remote-trace', name: 'Remote trace (for developers)' }])), /リモート記録（開発者向け）/);
   const k = await hostKit();
   const entry = /** @type {any} */ ({ id: 'remote-trace', name: 'Remote trace (for developers)', version: '0.2.0', files: {} });
   await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
@@ -307,4 +309,14 @@ test("an installed official plugin is named from its own translation on the devi
   const state = (await k.host.installed())['acme-tides'];
   assert.equal(pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐');
   assert.equal(pluginName(k.host, { ...state, source: 'file' }, 'acme-tides', 'Acme Tides'), 'Acme Tides', "a third party's as written");
+});
+
+test("an update another plugin can't take names that plugin as the screens do: annai's own from its translation", async () => {
+  const { refuseBreaking } = await import('../../src/core/requires.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  await k.host.install(pkg(TIDES({ entry: undefined, requires: [{ id: 'chat-completions', version: '^0' }] }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  await k.host.start('acme-tides');
+  await assert.rejects(refuseBreaking(k.host, 'chat-completions', '1.0.0', 'Chat Completions'),
+    (e) => /アクメ潮汐/.test(/** @type {any} */ (e).shown) && /Acme Tides/.test(/** @type {any} */ (e).message));
 });

@@ -1,5 +1,5 @@
 {
-  "build": "a51052d5ee65",
+  "build": "8044238f0d77",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -116,7 +116,7 @@
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
     "/src/core/packages.js": "1b868ac1c714",
-    "/src/core/requires.js": "7bd7542312ba",
+    "/src/core/requires.js": "8773feefd9e8",
     "/src/core/pack/download.js": "4823640428e0",
     "/src/core/pack/keeper.js": "b03982f77e3a",
     "/src/core/pack/osm.js": "8a3223493896",
@@ -222,7 +222,7 @@
     "/src/ui/plugin-cards.js": "e1f898788ff7",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "6434bed514fc",
-    "/src/ui/plugin-updates.js": "38a1a8293921",
+    "/src/ui/plugin-updates.js": "ba5c3be7b3e5",
     "/src/ui/push.js": "d86ed631d3b2",
     "/src/ui/resume.js": "bf9b0a3dbac0",
     "/src/ui/router.js": "a2d1a500f736",
@@ -249,7 +249,7 @@
     "/src/ui/screens/provider.js": "25f33225c037",
     "/src/ui/screens/recap.js": "439295edabe1",
     "/src/ui/screens/replay.js": "f3b77b241f52",
-    "/src/ui/screens/settings.js": "743ac37f29d3",
+    "/src/ui/screens/settings.js": "7a36b0092924",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "339bbf1d1193",
     "/src/ui/screens/talk.js": "46797f886d94",
