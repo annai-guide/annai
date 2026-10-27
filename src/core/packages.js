@@ -524,7 +524,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     const status = /** @type {any} */ (e)?.status;
     if (optional && MISSING.has(status)) return null;
     if (status) return new Error(t`${u.host} answered ${status} for ${name}, a file its ${from} names.`);
-    if (/** @type {any} */ (e)?.unreachable) return new Error(t`annai couldn't read ${name} from ${u.host}, a file its ${from} names. Check that it is there, and that the site lets web apps read it.`);
+    // A connection that dropped mid-file is no answer either.
+    if (/** @type {any} */ (e)?.unreachable || /** @type {any} */ (e)?.said?.code === 'cut') return new Error(t`annai couldn't read ${name} from ${u.host}, a file its ${from} names. Check that it is there, and that the site lets web apps read it.`);
     return e;
   };
   /** The files a SKILL.md links to, in its folder; one the site answers it hasn't is left out (failed). @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */

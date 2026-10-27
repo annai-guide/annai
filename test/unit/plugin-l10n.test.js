@@ -197,6 +197,12 @@ test('an address install brings the translations its manifest lists', async () =
   const blip = async (/** @type {string} */ url) => { if (url.endsWith('/l10n/ja.json')) throw new TypeError('Failed to fetch'); return get(url); };
   // A file after the manifest is named: a 404 without CORS headers looks the same, and annai has just read the manifest from that site.
   await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: blip }), /annai couldn't read l10n\/ja.json from x.example, a file its annai-plugin.json names/);
+  // A connection that drops mid-file is no answer either, and names the file too.
+  const cut = async (/** @type {string} */ url) => {
+    if (!url.endsWith('/l10n/ja.json')) return get(url);
+    return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"messages":')); c.error(new TypeError('network error')); } }));
+  };
+  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: cut }), /annai couldn't read l10n\/ja.json from x.example, a file its annai-plugin.json names/);
   // Only an answer that it isn't there (404, 410, or 403 as S3 says it) leaves it out; a busy site (503, 429) fails, as a blip does.
   for (const [status, out] of [[404, true], [410, true], [403, true], [503, false], [429, false], [500, false]]) {
     const answer = async (/** @type {string} */ url) => (url.endsWith('/l10n/ja.json') ? new Response('', { status: /** @type {number} */ (status) }) : get(url));

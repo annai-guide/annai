@@ -285,7 +285,7 @@ export class PluginHost {
       // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank.
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
       // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
-      ...(pkg.provider || pkg.search ? { origins: originsOf(pkg.manifest) } : {}), ...(pkg.manifest.provides ? { provides: pkg.manifest.provides } : {}),
+      ...(pkg.provider || pkg.search ? { origins: originsOf(pkg.manifest) } : {}), provides: pkg.manifest.provides ?? {},
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
     const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
