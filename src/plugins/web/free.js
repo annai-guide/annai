@@ -2,6 +2,7 @@ import { McpClient, toolOutput } from '../mcp/client.js';
 import { answerJSON } from '../../core/answer.js';
 import { nominatimTurn } from '../../core/nominatim.js';
 import { cut } from '../../core/web-search.js';
+import { t } from '../../core/l10n.js';
 
 /**
  * annai's free search (the user, 2026-10-23): three services that answer a web app's search with no key,
@@ -21,7 +22,9 @@ function failure(name, e) {
   if (e?.name === 'AbortError' || e?.name === 'TimeoutError') return e;
   const s = e?.status;
   // A free service that now asks for a key has closed its free tier to annai: told so, and left alone for a while.
+  /* en */
   if (e?.kind === 'auth') return Object.assign(new Error(`${name} now asks for a key`), { status: s, kind: 'auth', rest: true });
+  /* en */
   const why = s ? `${name} answered ${s}${s === 429 ? ' (its free limit)' : ''}`
     : e?.kind === 'cors' || e?.kind === 'network' || e instanceof TypeError ? `${name} couldn't be reached`
       : e?.kind === 'answer' ? `${name} sent an answer annai can't read` : `${name}: ${e?.message ?? e}`;
@@ -77,6 +80,7 @@ export const FREE_PROVIDERS = [
     id: 'parallel', name: 'Parallel', kind: 'web', free: true, limitMs: LIMIT_MS,
     async search(query, c) {
       // session_id is what Parallel's free tier counts by: the conversation's, made in memory by the chain.
+      /* en */
       const { text, result } = await callTool('Parallel', 'https://search.parallel.ai/mcp', {}, 'web_search', { objective: query, search_queries: [query], ...(c.session ? { session_id: c.session } : {}) }, c);
       const found = result?.structuredContent?.results ?? parseJSON(text)?.results;
       return (Array.isArray(found) ? found : []).map((/** @type {any} */ r) => ({ title: r?.title, url: r?.url, snippet: Array.isArray(r?.excerpts) ? r.excerpts.join(' ') : r?.excerpts }));
@@ -85,6 +89,7 @@ export const FREE_PROVIDERS = [
   {
     id: 'firecrawl', name: 'Firecrawl', kind: 'web', free: true, limitMs: LIMIT_MS,
     async search(query, c) {
+      /* en */
       const { text } = await callTool('Firecrawl', 'https://mcp.firecrawl.dev/v2/mcp', {}, 'firecrawl_search', { query, objective: query, limit: c.limit }, c);
       const data = parseJSON(text)?.data;
       return (Array.isArray(data?.web) ? data.web : Array.isArray(data) ? data : []).map((/** @type {any} */ r) => ({ title: r?.title, url: r?.url, snippet: r?.description ?? r?.markdown }));
@@ -111,7 +116,7 @@ const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? 
  * @type {import('../../core/web-search.js').SearchProvider}
  */
 export const KNOWLEDGE = {
-  id: 'wiki', name: 'Wikivoyage, Wikipedia and Nominatim', kind: 'knowledge', always: true, limitMs: LIMIT_MS,
+  id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
   async search(query, { fetch: get, signal, limit }) {
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
@@ -128,6 +133,7 @@ export const KNOWLEDGE = {
     /** @param {string} host @returns {Promise<any[]>} */
     const hits = async (host) => {
       for (const q of tries) {
+        /* en */
         const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
         if (Array.isArray(found) && found.length) return found;
       }
@@ -141,15 +147,16 @@ export const KNOWLEDGE = {
       const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
       const score = (/** @type {string} */ l) => want.filter((w) => l.toLowerCase().includes(w)).length;
       const picked = lines.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a)).slice(0, 3);
-      return [{ title: `${top.title} (Wikivoyage)`, url: wikiUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
+      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: wikiUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
     };
     const places = async () => {
       await nominatimTurn(); // one request a second to Nominatim, for the whole app
       const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3`);
+      /* en */
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    const articles = async () => (await hits('en.wikipedia.org')).map((h) => ({ title: `${h.title} (Wikipedia)`, url: wikiUrl('en.wikipedia.org', h.title), snippet: h.snippet }));
+    const articles = async () => (await hits('en.wikipedia.org')).map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: wikiUrl('en.wikipedia.org', h.title), snippet: h.snippet }));
     const settled = await Promise.allSettled([guide(), places(), articles()]);
     if (settled.every((s) => s.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (settled[0]).reason;
     return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));

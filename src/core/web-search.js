@@ -4,8 +4,9 @@ import { decodeEntities } from './html-text.js';
  * Web search's shared parts (spec §7.2): the order of search providers, the rows every provider's
  * answer is made into, and how long a provider that failed is left alone. The web plugin runs the
  * chain; Settings → Tools and the welcome draw the same list.
- * @typedef {{ id: string, name: string, kind?: 'web' | 'knowledge', free?: boolean, always?: boolean, note?: string, limitMs?: number,
- *   ready?: () => Promise<{ ok: boolean, why?: string }>, search: (query: string, c: { fetch: any, signal: AbortSignal, limit: number, session?: string }) => Promise<any[]> }} SearchProvider
+ * name and ready()'s why are what Shiori is told (English); shown, when there is one, is what the screen shows instead.
+ * @typedef {{ id: string, name: string, shown?: string, kind?: 'web' | 'knowledge', free?: boolean, always?: boolean, note?: string, limitMs?: number,
+ *   ready?: () => Promise<{ ok: boolean, why?: string, shown?: string }>, search: (query: string, c: { fetch: any, signal: AbortSignal, limit: number, session?: string }) => Promise<any[]> }} SearchProvider
  */
 
 /** annai's own free search services (the user, 2026-10-23): each can be unticked, all start on. */

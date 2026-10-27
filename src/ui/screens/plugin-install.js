@@ -196,7 +196,7 @@ export const thingWords = (kind, name) => (kind === 'ui:component' ? COMPONENT_W
 /** Who owns a name: annai, a built-in's or official plugin's name, else a name from a manifest, with its id. @param {any[]} rows describe()'s @param {string} id */
 export function ownerName(rows, id) {
   const r = id === 'annai' ? null : rows.find((x) => x.id === id);
-  return !r ? id : r.builtin || r.source === 'official' ? r.name : `${r.name} (${id})`;
+  return !r ? id : r.builtin || r.source === 'official' || r.lookalike ? r.name : `${r.name} (${id})`;
 }
 
 /** What a package's replaces would replace now, and the user may choose. @param {any} ctx @param {{ id: string, replaces?: string[] }} pkg @returns {{ kind: string, name: string, owner: string }[]} */

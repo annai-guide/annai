@@ -1,5 +1,6 @@
 import { VERSION } from '../../app/version.js';
 import { parseSkill } from '../../core/skills.js';
+import { t } from '../../core/l10n.js';
 
 /**
  * Shiori's own skills (spec §19: skills/), in the open format anyone's skills use (§5.1): one
@@ -11,10 +12,10 @@ export const BUILT_IN = Object.freeze(['driving-companion', 'replanning', 'plan-
 /** provides.skill: the names are annai's even when a file didn't load, so no package can take one. */
 export const manifest = {
   id: 'skills',
-  name: 'Built-in skills',
+  name: t`Built-in skills`,
   version: VERSION,
   api: 1,
-  description: "Shiori's own skills: the driving companion, replanning, and planning a trip.",
+  description: t`Shiori's own skills: the driving companion, replanning, and planning a trip.`,
   provides: { skill: [...BUILT_IN] },
 };
 
@@ -27,7 +28,7 @@ export async function loadBuiltinSkills(read) {
   const out = [];
   for (const name of BUILT_IN) {
     try {
-      const text = await read(`/skills/${name}/SKILL.md`);
+      const text = await read(/* en */ `/skills/${name}/SKILL.md`);
       if (text === null) continue;
       const s = parseSkill(text);
       out.push({ name: s.name, description: s.description, text: s.body.trim() });

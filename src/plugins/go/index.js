@@ -1,22 +1,27 @@
 import { VERSION } from '../../app/version.js';
 import { loadLinks, mapsLinks, searchLinks } from '../../core/links.js';
+import { t } from '../../core/l10n.js';
 
 export const manifest = {
   id: 'go',
-  name: 'Go tools',
+  name: t`Go tools`,
   version: VERSION,
   api: 1,
-  description: 'maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.',
+  description: t`maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.`,
 };
+
+// Below, Shiori's words: English (localization design, section 7).
 
 /** @param {any} annai */
 export function activate(annai) {
   /** The catalog, or a plain error. @param {any} call */
   const catalog = async (call) => {
     const c = await loadLinks({ ws: annai.files, fetch: call.fetch });
+    /* en */
     if (!c) throw new Error("annai hasn't downloaded its link formats yet. It needs to be online once; try again when it is.");
     return c;
   };
+  /* en */
   const tools = [
     {
       name: 'maps_link', group: 'Go',
