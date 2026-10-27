@@ -1,4 +1,5 @@
 import { CREDENTIAL } from './agent/net.js';
+import { t } from './l10n.js';
 
 /**
  * An address the user gives annai (an MCP server's, a package's) and the keys in it: shown and kept
@@ -66,5 +67,5 @@ export function fullAddress(shown, keys) {
  * have nowhere safe to keep it. @param {URL} u
  */
 export function refuseUserinfo(u) {
-  if (u.username || u.password) throw new Error('This address holds a name or password before an @. Leave it out.');
+  if (u.username || u.password) throw new Error(t`This address holds a name or password before an @. Leave it out.`);
 }

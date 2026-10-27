@@ -145,3 +145,13 @@ test("a watch that can't be checked is named by its reminder in the Conversation
   assert.match(String(line), /Tea at the inn/);
   assert.doesNotMatch(String(line), /w-abc|place の/);
 });
+
+test("a wrong passphrase on Import, and an address with a name or password, say so in the screens' words", async () => {
+  const { decrypt, PassphraseError } = await import('../../src/core/archive-crypto.js');
+  const { refuseUserinfo } = await import('../../src/core/address.js');
+  const e = await decrypt(new Blob([new TextEncoder().encode('PK plain zip')]), 'p').then(() => null, (x) => x);
+  assert.ok(e instanceof PassphraseError);
+  assert.equal(e.message, 'This file is not encrypted.', 'English for a backup\'s log and hold');
+  assert.equal(messageOf(e), 'このファイルは暗号化されていません。');
+  assert.throws(() => refuseUserinfo(new URL('https://me:pw@trails.example/kit.zip')), /^Error: [^A-Za-z]/);
+});
