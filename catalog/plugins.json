@@ -825,7 +825,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 21750,
+      "size": 21753,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -835,7 +835,7 @@
       "files": {
         "annai-plugin.json": "978ce407a1b032822dfcf4d9edc0459975e309f5d5b7f4a215503053e241c943",
         "index.js": "abfaefa33ea7ec7461d3c951251eeba3b277571255450d244fd9ac4d3cca222a",
-        "l10n/ja.json": "9d993ee3ecadff1aa227673c28189f9cdb374561b7e6218ebb95c5eb5a14e701",
+        "l10n/ja.json": "4361d20f1695e568757e173ab5c7bcac35562e3e33b983429cb5743efa6f8ea4",
         "l10n/zh-Hans.json": "410291dfbaedd05555b2bf3e77c340abeebbe037b031d9cfb4f73227a05364cb",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
@@ -851,7 +851,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 14803,
+      "size": 14800,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -861,7 +861,7 @@
       "files": {
         "annai-plugin.json": "b745c410226f872b9e25fadba2719a28d24e869886b7b166bf60c2104de0ec4c",
         "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
-        "l10n/ja.json": "35b42bbeb0df7a9cadc552ae2361b880287b910633dfc348ce9271312946da9a",
+        "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
         "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
       }
     }
