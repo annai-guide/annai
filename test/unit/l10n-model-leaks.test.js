@@ -6,6 +6,7 @@ import { liveKit, at, iso, LA } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { agentKit, until } from './agent-kit.js';
 import { useClock } from './clock.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 
 // What reaches a model stays annai's English under Japanese screens (the L5f review's probes, made tests): the next plan reminder
 // in Koe's view, an opened notification in Shiori's catch-up, and why the microphone stopped while she listened.
@@ -49,4 +50,20 @@ test('the microphone stops while speak listens: the card in Japanese, the tool r
   const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
   assert.doesNotMatch(String(speak?.data.content), KANA);
   assert.ok(k.notices.some((/** @type {any} */ n) => KANA.test(n.title)), JSON.stringify(k.notices.map((/** @type {any} */ n) => n.title)));
+});
+
+test("a wake skipped for the hour's limit: its card says what woke her from the wake's data, never the model's English reason", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
+  await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
+  k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
+  await k.agent.idle();
+  k.agent.wake({ kind: 'trigger', text: 'Your watch w1 (at 15:00) fired: the time came. Its reminder: "Tea"', titles: ['お茶の時間'] });
+  k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide now.' });
+  await k.agent.idle();
+  await until(() => k.notices.length >= 2);
+  const bodies = k.notices.filter((/** @type {any} */ n) => n.title === 'Shiori は起動を見送りました').map((/** @type {any} */ n) => n.body);
+  assert.equal(bodies.length, 2, JSON.stringify(k.notices));
+  assert.match(bodies[0], /お茶の時間/);
+  assert.match(bodies[1], /tides/);
+  for (const b of bodies) assert.doesNotMatch(b, /fired|Low tide/);
 });

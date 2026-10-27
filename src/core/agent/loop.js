@@ -840,9 +840,7 @@ export class Agent {
     const real = this.#real.now();
     this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
     if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
-      const body = w.plugin ? plural(budgets.wakesPerHour, 'The plugin {0} woke her more than the # time an hour you allow: {1}', 'The plugin {0} woke her more than the # times an hour you allow: {1}', w.plugin, w.text)
-        : plural(budgets.wakesPerHour, 'Something woke her more than the # time an hour you allow: {0}', 'Something woke her more than the # times an hour you allow: {0}', w.text);
-      this.#notice({ tone: 'info', title: t`Shiori skipped a wake`, body });
+      this.#notice({ tone: 'info', title: t`Shiori skipped a wake`, body: skippedWords(w, budgets.wakesPerHour) });
       if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
       return false;
     }
@@ -2993,4 +2991,17 @@ export function tidyFailed(why, plain = false) {
   /* en */
   if (plain) return `${whyWords(why, true)} Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`;
   return sentences(whyWords(why), t`Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`);
+}
+
+/**
+ * What a wake the hour's limit skipped was, in the screens' words, from its data (a plugin, what fired, the files), never its
+ * English reason, which is the model's. @param {Wake} w @param {number} n the wakes an hour allowed
+ */
+function skippedWords(w, n) {
+  const titles = (w.titles ?? []).map((x) => x.replace(/[.!?。！？]+$/u, ''));
+  const files = (w.files ?? []).map((p) => p.split('/').pop() ?? p);
+  if (w.kind === 'plugin' && w.plugin) return plural(n, 'The plugin {0} woke her more than the # time an hour you allow.', 'The plugin {0} woke her more than the # times an hour you allow.', w.plugin);
+  if (titles.length) return plural(n, 'A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}.', 'A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.', list(titles));
+  if (files.length) return plural(n, 'Files you added woke her more than the # time an hour you allow: {0}.', 'Files you added woke her more than the # times an hour you allow: {0}.', list(files));
+  return plural(n, 'Something woke her more than the # time an hour you allow.', 'Something woke her more than the # times an hour you allow.');
 }
