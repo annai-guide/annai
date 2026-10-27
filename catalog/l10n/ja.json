@@ -98,6 +98,10 @@
     "storage-github": {
       "name": "GitHub",
       "description": "GitHub の非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。"
+    },
+    "storage-s3": {
+      "name": "S3 互換ストレージ",
+      "description": "AWS S3、Cloudflare R2、Backblaze B2 など、S3 互換のストレージのバケットにすべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
     }
   }
 }

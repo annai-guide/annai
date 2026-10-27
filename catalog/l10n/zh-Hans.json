@@ -98,6 +98,10 @@
     "storage-github": {
       "name": "GitHub",
       "description": "把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+    },
+    "storage-s3": {
+      "name": "S3 兼容存储",
+      "description": "把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。"
     }
   }
 }
