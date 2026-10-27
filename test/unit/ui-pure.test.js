@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced, wokeText, reminderLine } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, wokeTitles, reminderLine } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -730,6 +730,13 @@ test('the announcer reads her lines as "Shiori: …": a spoken line, a card (a p
 
 test('a wake in the conversation says why from its kinds, never the words the model was given; a reminder line says what it is', () => {
   assert.equal(wokeText([{ kind: 'trigger', text: 'Your watch w1 (at 17:00) fired: it is 17:00.' }]), 'Shiori woke for a reminder, or something she watches for.');
+  // What fired and which files, from the wake's data; an older wake has none and is said by its kind.
+  assert.equal(wokeText([{ kind: 'trigger', text: 'x', titles: ['Tea time.'] }]), 'Shiori woke for a reminder, or something she watches for: Tea time.');
+  assert.equal(wokeText([{ kind: 'trigger', text: 'x', titles: ['Tea time', 'Hearst Castle tour'] }]), 'Shiori woke for 2 reminders, or things she watches for: Tea time and Hearst Castle tour.');
+  assert.deepEqual(wokeTitles([{ kind: 'trigger', titles: ['Tea time'] }, { kind: 'file', titles: ['no'] }]), ['Tea time']);
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/hotel.pdf'] }]), 'Shiori woke to look at the file you added: hotel.pdf.');
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/a.jpg', '/files/b.jpg', '/files/c.jpg', '/files/d.jpg'] }]), 'Shiori woke to look at the 4 files you added.');
+  assert.equal(wokeText([{ kind: 'file', text: 'x' }]), 'Shiori woke to look at the files you added.');
   assert.equal(wokeText([{ kind: 'recap', text: 'x' }, { kind: 'plugin', plugin: 'trail', text: 'y' }], (id) => `${id}!`), 'Shiori woke to tell you the recap. Shiori woke for the plugin trail!.');
   assert.deepEqual(reminderLine({}), ['Reminder: ', '']);
   assert.deepEqual(reminderLine({ aloud: true }), ['Reminder, said aloud: ', '']);
