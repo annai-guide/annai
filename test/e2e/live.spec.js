@@ -84,7 +84,7 @@ test("no model can be reached: annai shows the plan's reminder itself, and the c
     await expect(page.locator('.notice', { hasText: 'Reminder' })).toContainText('In 15 min: Tea at the inn at');
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toBeVisible();
     await page.goto('/#/talk');
-    await expect(page.locator('.convo .system-line', { hasText: 'Reminder' })).toContainText('In 15 min: Tea at the inn at');
+    await expect(page.locator('.convo .system-line', { hasText: 'Reminder:' })).toContainText('In 15 min: Tea at the inn at');
   } finally {
     await llm.stop();
   }

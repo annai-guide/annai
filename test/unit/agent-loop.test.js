@@ -1074,11 +1074,11 @@ test('a wake for a trip that is not open is written into its conversation, and a
   const k = await agentKit([[say('Your flight pass: I put it in the plan.')]]);
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
-  k.agent.wake({ kind: 'file', scope: B, text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
+  k.agent.wake({ kind: 'file', scope: B, files: ['/files/flight.pkpass'], text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
   await k.agent.idle();
   assert.equal(k.requests.length, 0);
   assert.equal((await eventsIn(k, A, ['wake'])).length, 0);
-  assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), [['file']]);
+  assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => [r.kind, r.files])), [[['file', ['/files/flight.pkpass']]]]);
   await k.agent.open(B);
   await k.agent.idle();
   assert.equal(k.requests.length, 1);

@@ -41,7 +41,7 @@ export function key(source, context) {
   return (n >>> 0).toString(36);
 }
 /** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
-function sameLanguage(a, b) {
+export function sameLanguage(a, b) {
   try {
     const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
     return x.language === y.language && x.script === y.script;
@@ -86,6 +86,12 @@ function say(strings, values, context) {
 export const t = (strings, ...values) => (table || pseudo ? say(strings, values) : strings.reduce((s, p, i) => `${s}${values[i - 1]}${p}`));
 /** A message with a context, for English that means two things: tc('verb')`Open`. @param {string} context */
 export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => say(strings, values, context);
+
+/**
+ * Words annai sends or speaks as if the user said them (a quick ask, a voice's sample): the screens' when the user speaks their
+ * language, else English (the user, 2026-10-24). asUser(speaks)`Where can we eat?`; the message is t's. @param {boolean} speaks
+ */
+export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => (speaks ? t(strings, ...values) : strings.reduce((s, p, i) => `${s}${values[i - 1]}${p}`));
 
 /**
  * plural(n, '# stamp', '# stamps'): `#` is n, formatted for the language; {0}… are the other values. The words give a text per

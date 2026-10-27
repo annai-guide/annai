@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
 
 const MAX_ZOOM = 8;
 
@@ -29,9 +29,9 @@ export function openPhotoViewer(src, label, opts = {}) {
   const opener = document.activeElement;
   const img = h('img', { class: 'viewer-img', src, alt: label, draggable: 'false' });
   const stage = h('div', { class: 'viewer-stage' }, img);
-  const close = h('button', { class: 'btn viewer-close', type: 'button' }, 'Close');
-  const part = opts.onShowPart ? h('button', { class: 'btn pri viewer-part', type: 'button' }, 'Show Shiori this part') : null;
-  const root = h('div', { class: 'viewer', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Photo ${label}`, dataset: { zoom: '1' } }, stage, close, part);
+  const close = h('button', { class: 'btn viewer-close', type: 'button' }, t`Close`);
+  const part = opts.onShowPart ? h('button', { class: 'btn pri viewer-part', type: 'button' }, t`Show Shiori this part`) : null;
+  const root = h('div', { class: 'viewer', role: 'dialog', 'aria-modal': 'true', 'aria-label': t`Photo ${label}`, dataset: { zoom: '1' } }, stage, close, part);
   /** @type {(() => void) | null} what runs once the viewer has closed */
   let after = null;
   let scale = 1;

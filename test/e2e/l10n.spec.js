@@ -7,6 +7,7 @@ import { openApp, unmarked, waitForServiceWorker, startModelServer, addProvider,
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
 import { key } from '../../src/core/l10n.js';
 import { accented } from '../../src/core/l10n-pseudo.js';
+import { seedMorning } from './after-kit.js';
 
 test('the pseudo-locale en-XA says its language, and ar-XB its direction', async ({ page }) => {
   await openApp(page, '?l10n=en-XA#/trips');
@@ -219,6 +220,23 @@ test('Shiori\'s cards, the card on Now and the recap carry the language of their
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
   await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible();
   await expect(page.locator('.recap-text .md')).toHaveAttribute('lang', 'ja');
+});
+
+test("the replay's card and the user's words carry their language, as in the Conversation", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto Spring');
+  await seedMorning(page, trip);
+  await writeEvent(page, trip, { type: 'out.show', data: { card: { title: '清水寺', text: '直角三角形的骨架，这是我们说的。' } } });
+  await writeEvent(page, trip, { type: 'msg.user', data: { text: '清水寺は何時に開きますか？' } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/replay`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Replay' })).toBeVisible();
+  const timeline = page.getByRole('list', { name: 'Timeline' });
+  await timeline.getByRole('button', { name: /Shiori: 清水寺/ }).click();
+  await expect(page.locator('.replay-shown .card-title')).toHaveAttribute('lang', 'zh-Hans');
+  await expect(page.locator('.replay-shown .who')).not.toHaveAttribute('lang', /./);
+  await timeline.getByRole('button', { name: /You: 清水寺は/ }).click();
+  await expect(page.locator('.replay-shown p')).toHaveAttribute('lang', 'ja');
+  await expect(page.locator('.replay-shown p')).toHaveAttribute('dir', 'auto');
 });
 
 test('the language Shiori answers in does not override what her words are: a Japanese line is ja though she answers in English, an English one is en; Google\'s snippets are told by their script alone', async ({ page }) => {
@@ -732,4 +750,65 @@ test('Don\'t restart, on the card that waits for Shiori, gives the row back and 
   } finally {
     await llm.stop();
   }
+});
+
+// The user, 2026-10-24: words annai sends as theirs go "in the screens' language when it's one you speak (your Languages list, or
+// the phone's language if none); otherwise in English."
+for (const [spoken, sent] of /** @type {const} */ ([['en', 'Where can we eat along the way?'], ['ja', JA[key('Where can we eat along the way?')]]])) {
+  test(`under Japanese screens a quick ask goes to Shiori in ${spoken === 'ja' ? 'Japanese, which the user speaks' : "English, as the user doesn't speak Japanese"}`, async ({ page }) => {
+    needJapanese();
+    const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
+    const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }]))] });
+    try {
+      await openApp(page, '#/models');
+      await waitForServiceWorker(page);
+      await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+      await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+      await page.goto('/#/trips');
+      await startTrip(page, 'Big Sur');
+      await page.evaluate(async (s) => {
+        const at = (/** @type {string} */ p) => p;
+        const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+        const { Workspace } = await import(at('/src/core/workspace.js'));
+        const { updateAppSettings } = await import(at('/src/core/settings.js'));
+        const store = await createIdbStore();
+        await updateAppSettings(new Workspace(store), { languages: { spoken: [s], ui: 'ja' } });
+        store.close();
+        localStorage.setItem('annai.ui', 'ja');
+      }, spoken);
+      // A new hash alone doesn't restart annai: the reload does, in Japanese.
+      await page.goto('/#/drive');
+      await page.reload();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+      await page.locator('.quick-ask button').nth(1).click();
+      await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 20_000 }).toBeGreaterThan(0);
+      expect(JSON.stringify(llm.bodies('/b/v1/messages').at(-1).messages.at(-1))).toContain(sent);
+    } finally {
+      await llm.stop();
+    }
+  });
+}
+
+// On Japanese screens at 393 px the voice chip's menu broke オン and オフ one kana a line (the review of L5b and L5c, 2026-10-26):
+// a row menu shrinks to its narrowest, and CJK breaks anywhere. phone-fit looks for overflow, not for wrapping.
+test('under Japanese screens each of the voice menu\'s buttons is one line, at 393 px', async ({ page }) => {
+  needJapanese();
+  await page.setViewportSize({ width: 393, height: 852 });
+  await openApp(page, '#/trips');
+  await startTrip(page, 'Big Sur');
+  await page.evaluate(() => localStorage.setItem('annai.ui', 'ja'));
+  await page.goto('/#/talk');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await page.locator('.voice-chip').click();
+  const buttons = page.locator('#voice-menu .btn');
+  await expect(buttons.first()).toBeVisible();
+  const lines = await buttons.evaluateAll((all) => all.map((b) => {
+    const range = document.createRange();
+    range.selectNodeContents(b);
+    return `${b.textContent}: ${new Set([...range.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top))).size}`;
+  }));
+  expect(lines.length).toBeGreaterThan(1);
+  for (const l of lines) expect(l).toMatch(/: 1$/);
 });

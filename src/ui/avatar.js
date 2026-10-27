@@ -150,7 +150,7 @@ function outline(p) {
 }
 
 // One query for every avatar (reduced motion), read at load; each avatar on screen listens for it to change.
-const motion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const motion = typeof matchMedia === 'function' ? matchMedia(/* en */ '(prefers-reduced-motion: reduce)') : null;
 const reduced = () => Boolean(motion?.matches);
 
 /**
@@ -262,8 +262,8 @@ export function createAvatar({ size = 'md', label } = {}) {
       group('curl', 'tail-asleep'),
       s('g', { class: 'head' },
         s('g', { class: 'front' },
-          group('alt flat-r', 'ear-flat-right'), group('alt flat-l', 'ear-flat-left'), group('alt out-l', 'ear-out-left'),
-          part('caps'), group('ear ear-r', 'ear-right'), group('ear ear-l', 'ear-left'), part('head'),
+          group(/* en */ 'alt flat-r', 'ear-flat-right'), group(/* en */ 'alt flat-l', 'ear-flat-left'), group(/* en */ 'alt out-l', 'ear-out-left'),
+          part('caps'), group(/* en */ 'ear ear-r', 'ear-right'), group(/* en */ 'ear ear-l', 'ear-left'), part('head'),
           s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), hair.el, part('loop'), part('knot'))),
         group('asleep', 'head-asleep'),
         look.el,
