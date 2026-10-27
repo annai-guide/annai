@@ -45,10 +45,11 @@ export async function refuseBreaking(host, id, version, name, except) {
   for (const [o, m] of Object.entries(await manifests(host))) {
     const r = o === id || o === except ? null : needOf(m, id);
     const other = m.name ?? o;
+    if (!r || satisfies(version, r.version)) continue;
     // On the screens, annai's own by their own translations (pluginName), as Plugins names them.
-    const [them, it] = [pluginName(host, state[o], o, other), state[id] ? pluginName(host, state[id], id, name) : officialName(id, name)];
+    const [them, it] = [await pluginName(host, state[o], o, other), state[id] ? await pluginName(host, state[id], id, name) : officialName(id, name)];
     /* en */
-    if (r && !satisfies(version, r.version)) throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`version ${version} would stop ${them} working: it needs ${it} ${r.version}. Update ${them} first, or keep this version.` });
+    throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`version ${version} would stop ${them} working: it needs ${it} ${r.version}. Update ${them} first, or keep this version.` });
   }
 }
 

@@ -8,7 +8,7 @@ import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
 import { t, lang } from './l10n.js';
 import { OFFICIAL_NAMES, STORAGE_NAMES } from './official-names.js';
-import { officialName } from './llm/official.js';
+import { officialName, pluginName } from './llm/official.js';
 import { sentences, size } from './intl.js';
 
 /**
@@ -72,7 +72,7 @@ export async function kindNames(registry, plugins, type) {
   const english = /** @type {Record<string, string>} */ (STORAGE_NAMES)[type] ?? s?.name ?? type;
   const running = storageTypes(registry).get(type)?.name;
   if (running) return { shown: running, english };
-  if (id && s) return { shown: s.source === 'official' ? (await /** @type {any} */ (plugins).words(id)).manifest?.name ?? s.name : s.name, english };
+  if (id && s) return { shown: await pluginName(/** @type {any} */ (plugins), s, id, s.name), english };
   const own = /** @type {Record<string, string>} */ (OFFICIAL_NAMES['storage-type'])[type];
   return { shown: own ? officialName(own, english) : type, english };
 }

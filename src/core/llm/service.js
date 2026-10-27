@@ -8,7 +8,7 @@ import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explai
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders, useSuggestion } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
-import { officialPlugins, makesProvider } from './official.js';
+import { officialPlugins, makesProvider, pluginName } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug, notOwnShown, turnOnShown } from '../registry.js';
 import { t } from '../l10n.js';
 import { sentences, list } from '../intl.js';
@@ -258,9 +258,11 @@ export function createLlm({
       await addFromCatalog(plugins, plugin, { fetch: get, base, tap });
       const src = running();
       // Not a tap: one annai switched off after errors stays off (§5.5), said in words, by its name.
-      const name = (await plugins.installed())[plugin]?.name ?? plugin;
+      const now = (await plugins.installed())[plugin];
+      const name = now?.name ?? plugin;
+      const shown = await pluginName(plugins, now, plugin, name);
       /* en */
-      if (!src && plugins.registry.isDisabled(plugin)) throw Object.assign(new Error(`${name} was switched off after errors. ${TURN_ON}`), { shown: sentences(t`${name} was switched off after errors.`, turnOnShown()) });
+      if (!src && plugins.registry.isDisabled(plugin)) throw Object.assign(new Error(`${name} was switched off after errors. ${TURN_ON}`), { shown: sentences(t`${shown} was switched off after errors.`, turnOnShown()) });
       if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`didn't provide a model provider.` });
       return src;
     },

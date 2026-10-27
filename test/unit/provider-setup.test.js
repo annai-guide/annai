@@ -248,7 +248,9 @@ test("the featured start's plugin installs in the background while no provider e
   // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
   await k.host.setEnabled('provider-acme', true);
   k.registry.disable('provider-acme', { kind: 'failed', count: 3 });
-  await assert.rejects(k.llm.prepareStart('provider-acme'), (/** @type {any} */ e) => e.message === 'Acme was switched off after errors. Turn it on in Settings → Plugins, then try again.');
+  // Named on the screens from its own words on the device, as Plugins names it; the log keeps its English.
+  Object.assign(k.host, { words: async () => ({ manifest: { name: 'アクメ' } }) });
+  await assert.rejects(k.llm.prepareStart('provider-acme'), (/** @type {any} */ e) => e.message === 'Acme was switched off after errors. Turn it on in Settings → Plugins, then try again.' && /^アクメ was switched off/.test(e.shown));
   assert.equal(k.registry.isDisabled('provider-acme'), true);
 });
 

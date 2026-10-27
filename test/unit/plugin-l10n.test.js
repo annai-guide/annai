@@ -281,6 +281,9 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   const k = await hostKit();
   const entry = /** @type {any} */ ({ id: 'remote-trace', name: 'Remote trace (for developers)', version: '0.2.0', files: {} });
   await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
+  // A catalog entry that isn't a model provider, named on the provider page's tap.
+  const { installMissing } = await import('../../src/ui/provider-setup.js');
+  await assert.rejects(installMissing({}, entry), /^Error: リモート記録（開発者向け） isn't a model provider/);
 });
 
 test("every place is named by its kind, as the screens name it: an old place and a new one alike, and a hold keeps only the kind (data, not words)", async () => {
@@ -330,15 +333,16 @@ test("a place whose plugin is installed but off is named by that plugin, not its
 });
 
 
-test("an installed official plugin is named from its own translation on the device, with no request: pluginName", async () => {
+test("an installed official plugin is named from its own translation on the device, running or off, with no request: pluginName", async () => {
   const { pluginName } = await import('../../src/core/llm/official.js');
   setWords('ja', {});
   const k = await hostKit();
   await k.host.install(pkg(TIDES({ entry: undefined }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
-  await k.host.start('acme-tides');
   const state = (await k.host.installed())['acme-tides'];
-  assert.equal(pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐');
-  assert.equal(pluginName(k.host, { ...state, source: 'file' }, 'acme-tides', 'Acme Tides'), 'Acme Tides', "a third party's as written");
+  assert.equal(await pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐', 'not running');
+  await k.host.start('acme-tides');
+  assert.equal(await pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐');
+  assert.equal(await pluginName(k.host, { ...state, source: 'file' }, 'acme-tides', 'Acme Tides'), 'Acme Tides', "a third party's as written");
 });
 
 test("an update another plugin can't take names that plugin as the screens do: annai's own from its translation", async () => {
@@ -346,7 +350,6 @@ test("an update another plugin can't take names that plugin as the screens do: a
   setWords('ja', {});
   const k = await hostKit();
   await k.host.install(pkg(TIDES({ entry: undefined, requires: [{ id: 'chat-completions', version: '^0' }] }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
-  await k.host.start('acme-tides');
   await assert.rejects(refuseBreaking(k.host, 'chat-completions', '1.0.0', 'Chat Completions'),
     (e) => /アクメ潮汐/.test(/** @type {any} */ (e).shown) && /Acme Tides/.test(/** @type {any} */ (e).message));
 });
