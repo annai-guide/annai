@@ -36,7 +36,7 @@ function lastLine(e) {
 
 test("an error's kind is the screens' words; a model reads annai's English, and a provider's own words stay as given", () => {
   const e = new ProviderError('auth', 'Invalid API key');
-  assert.equal(explain(e), 'キーが拒否されました。設定 → モデル で確認してください。');
+  assert.equal(explain(e), 'キーが拒否されました。設定 → モデルで確認してください。');
   assert.equal(explainPlain(e), 'The key was rejected. Check it in Settings → Models.');
   const redirect = new ProviderError('redirect', 'P answered with a redirect.', { provider: 'P' });
   assert.match(explain(redirect), /^P はリダイレクトで答えました。/);
@@ -51,7 +51,7 @@ test("why a call failed is data: the log keeps it, a card and the Conversation m
   assert.deepEqual(why, { attempts: [{ name: 'Gemini', outcome: 'context' }], offline: true });
   assert.equal(whyWords(why), 'この端末はオフラインです。\nGemini：会話がこのモデルには長すぎます。');
   assert.equal(whyWords(why, true), 'This device is offline.\nGemini: The conversation is too long for this model.');
-  assert.equal(whyWords(whyOf(new AllFailedError([]), { role: 'utility' })), '補助 の役割にモデルが設定されていません。設定 → モデル で追加してください。');
+  assert.equal(whyWords(whyOf(new AllFailedError([]), { role: 'utility' })), '補助の役割にモデルが設定されていません。設定 → モデルで追加してください。');
   // Both halves down: each half's lines, by its name.
   const both = { halves: { koe: { kind: 'network' }, kokoro: { kind: 'timeout' } } };
   assert.equal(whyWords(both), 'Koe：接続が切れました。\nKokoro：モデルが答え始めるまでに時間がかかりすぎました。');
