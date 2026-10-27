@@ -1,5 +1,5 @@
 {
-  "build": "c1b7ef591928",
+  "build": "b6527847b357",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -75,7 +75,7 @@
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "8119b472f0fb",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
-    "/src/core/llm/official.js": "5deabde5e092",
+    "/src/core/llm/official.js": "77fb2c57c55e",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
     "/src/core/llm/providers.js": "2079a491bd97",
     "/src/core/llm/setup.js": "7fa707720d18",
@@ -221,7 +221,7 @@
     "/src/ui/privacy.js": "fbe514b232cf",
     "/src/ui/plugin-cards.js": "078ba8c923a1",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
-    "/src/ui/provider-setup.js": "dba39b0fe267",
+    "/src/ui/provider-setup.js": "6434bed514fc",
     "/src/ui/plugin-updates.js": "8bde50b30445",
     "/src/ui/push.js": "d86ed631d3b2",
     "/src/ui/resume.js": "bf9b0a3dbac0",
@@ -246,7 +246,7 @@
     "/src/ui/screens/plugin-install.js": "3a81d1703141",
     "/src/ui/screens/plugin.js": "410ef7c10113",
     "/src/ui/screens/plugins.js": "f8be88d5559c",
-    "/src/ui/screens/provider.js": "4a9feffd485c",
+    "/src/ui/screens/provider.js": "25f33225c037",
     "/src/ui/screens/recap.js": "439295edabe1",
     "/src/ui/screens/replay.js": "f3b77b241f52",
     "/src/ui/screens/settings.js": "743ac37f29d3",
