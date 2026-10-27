@@ -713,6 +713,13 @@ export class Live {
     for (const [k, n] of this.#notified) if (now - n.t > 86_400_000) this.#notified.delete(k);
     /** @type {string[]} */
     const doubles = [];
+    // Each trip's plan read once for the opened reminders of this batch.
+    /** @type {Map<string, Promise<Watch[]>>} */
+    const plans = new Map();
+    const watchesOf = (/** @type {string} */ scope) => {
+      if (!plans.has(scope)) plans.set(scope, this.#planOf(scope).then((p) => p.watches, () => []));
+      return /** @type {Promise<Watch[]>} */ (plans.get(scope));
+    };
     for (const n of Array.isArray(list) ? list : []) {
       if (!n || typeof n !== 'object' || n.test || typeof n.key !== 'string' || typeof n.scope !== 'string' || !n.scope) continue;
       if (n.kind !== 'shown' && n.kind !== 'opened') continue;
@@ -728,7 +735,7 @@ export class Live {
         // (a plan watch's id is the same in two trips with a plan file of the same name), while it is still planned there. Anyone
         // else's reminder is quoted as it was written. With no words, none are quoted: an id tells her nothing.
         const plan = String(n.watch ?? '').startsWith('plan:');
-        const words = (plan ? (await this.#planOf(n.scope).catch(() => ({ watches: /** @type {Watch[]} */ ([]) }))).watches.find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
+        const words = (plan ? (await watchesOf(n.scope)).find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
         this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened ${words ? `the reminder "${words}"` : 'a reminder'} from its notification at ${timeIn(t, zone())}.` });
       }
       await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);

@@ -162,6 +162,10 @@ test("a watch that can't be checked is named briefly: its reminder's first sente
   const run = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-1', reminder: 'a'.repeat(300), why: 'x', message: 'x' }));
   assert.ok(run.length < 140, run);
   assert.match(String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-2', reminder: 'お茶の時間です。そのあと港まで歩きます。', why: 'x', message: 'x' })), /「お茶の時間です」/);
+  // Cut by characters: an emoji at the cut is kept whole, never half a surrogate pair.
+  const emoji = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-3', reminder: `${'a'.repeat(78)}🌊🌊🌊`, why: 'x', message: 'x' }));
+  assert.match(emoji, /a{78}🌊…/u);
+  assert.doesNotMatch(emoji, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
 });
 
 test("a wrong passphrase on Import, and an address with a name or password, say so in the screens' words", async () => {
