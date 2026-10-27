@@ -84,7 +84,7 @@
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のための Realtime の声も、1つのキーで使えます。"
+      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのリアルタイム音声も、1つのキーで使えます。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
@@ -105,7 +105,7 @@
     },
     "remote-trace": {
       "name": "リモート記録（開発者向け）",
-      "description": "開発者向け：annai の記録を、「記録」画面に表示されるとおりに、見ている間、自分で動かしているサーバーへ送ります。サーバーとトークンを入力して「送信」をオンにするまでは何も送りません。キーは決して送りません。"
+      "description": "開発者向け：annai の記録を、「記録」画面に表示されるとおりに、自分で動かしているサーバーへリアルタイムで送ります。サーバーとトークンを入力して「送信」をオンにするまでは何も送りません。キーは決して送りません。"
     },
     "scripted-model": {
       "name": "台本どおりのモデル",

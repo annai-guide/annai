@@ -540,25 +540,25 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺�
 syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:561	
 qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:665	
 cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:666	
-e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:42	
-pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:44	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
-al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:45	{0} = s.name
-1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:46	{0} = size(s.bytes ?? 0)
-3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:47	{0} = s.name
-1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:49	
-1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:50	
-1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:51	
-bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:52	
-1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:63	
-16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:158	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:362	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:379	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:390	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:398	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:399	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	可以使用。	src/core/backup.js:443	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:494	
-173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:495	
+e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:45	
+pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:47	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
+al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:48	{0} = s.name
+1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:49	{0} = size(s.bytes ?? 0)
+3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:50	{0} = s.name
+1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:52	
+1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:53	
+1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:54	
+bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:55	
+1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:67	
+16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:173	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:377	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:394	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:405	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:413	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:414	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	可以使用。	src/core/backup.js:458	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:509	
+173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:510	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	Note: 移除, as the trip's own button, Remove trip (移除旅行).
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
 gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
@@ -1096,7 +1096,7 @@ wn3ejs	ok	That was after this computer's last backup.	这晚于这台电脑上�
 d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:145	
 10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:146	{0} = size(h.bytes)
 nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:148	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:149	{0} = holdWords(h)
+osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:149	{0} = holdWords(h, target.name)
 1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:150	Note: "Save and test" is the backup place's button.
 1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:151	
 173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:152	{0} = at
@@ -1329,7 +1329,7 @@ eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模�
 1dsri4f	ok	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:247	
 jvtji4	ok	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
 1r0x31s	ok	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:248	
-1llun41	ok	The provider	提供商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
+1llun41	ok	The provider	提供商	src/ui/provider-setup.js:255	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	中继的密钥不是 annai 能用的。	src/ui/push.js:78	

@@ -62,7 +62,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 66004,
+      "size": 66010,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -76,7 +76,7 @@
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
-        "l10n/ja.json": "df2c5beb6ae3d89997c12e0a322152dff121438f38102f30b396c48c19ed76ac",
+        "l10n/ja.json": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
         "l10n/zh-Hans.json": "0d89919a47ffbecab71df86a8dd7f7a724aab4ad79b06b6a3276244776658c76",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
@@ -263,7 +263,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 16983,
+      "size": 16995,
       "requires": [
         {
           "id": "gemini-api",
@@ -273,7 +273,7 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "ece57873e8d0613ee72493325116f6a22517280b3abc1876aad521738d37e7ff",
-        "l10n/ja.json": "8d549c1cdacc83429528d7c602d0534b0bf437a6b6fb0f7491c6c86e9a0bc309",
+        "l10n/ja.json": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
         "l10n/zh-Hans.json": "61a269edcdf50b40ed00eb6a04e1bfe6f6b2a3ef3fc344663b63e0c0b49566e3"
       }
     },
@@ -472,7 +472,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 18529,
+      "size": 18537,
       "requires": [
         {
           "id": "openai-responses",
@@ -486,7 +486,7 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "d40fbdf51eb0fe35eb29e70cab8d730622a01c5e774d1fb62b31d783fa3fcb43",
-        "l10n/ja.json": "ca591711ef32fd29a64411b259c5c3ec37b231163f8c985fdaa4a7a41061a5a8",
+        "l10n/ja.json": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
         "l10n/zh-Hans.json": "e77f978f9f62442401d9e96dcc7abc8932d71e2cbab650c2e507072853dea4db"
       }
     },
@@ -505,7 +505,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 41780,
+      "size": 41747,
       "requires": [
         {
           "id": "chat-completions",
@@ -521,7 +521,7 @@
       "files": {
         "annai-plugin.json": "d5f9696d00a92db1ca7d450098de43908599274f5eddaaa10d9eed59fad74e4c",
         "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
-        "l10n/ja.json": "605c15e212d5d82127fe5244bd8304970ec276bf8985f5297f9d73edb1f2a6c8",
+        "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
         "l10n/zh-Hans.json": "d30c1dba64c3ec0c7d136542ce3d77f113ea2c69735b6be93d63b02ee73edb1f"
       }
     },
@@ -618,13 +618,13 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 28178,
+      "size": 28169,
       "requires": [],
       "provides": {},
       "files": {
         "annai-plugin.json": "afb9a2849511e48bf57b9b4b6f50ce0c777ffc67fdff4f11b9cd240d76b83cce",
         "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
-        "l10n/ja.json": "24e66333edf4188c8f4c87f71a0e18d76f6ad982a7c05b4e7ba035924a4671b9",
+        "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
         "l10n/zh-Hans.json": "0a4d314e5c0c2e7c16ab8e3a46779f1bb5d8180ea46c95557da87775af564d7d"
       }
     },
@@ -667,7 +667,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5035,
+      "size": 5027,
       "requires": [],
       "provides": {
         "search": [
@@ -677,7 +677,7 @@
       "files": {
         "annai-plugin.json": "d086511197ecc0fc347ca34bf4f6f723921f3212f9b36085c34ae5f24208b859",
         "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
-        "l10n/ja.json": "c2d95f59fa920da78042218d67c07f7ecfa80983c99e7b48f408cea690ab14cb",
+        "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
         "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2"
       }
     },
@@ -695,7 +695,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3927,
+      "size": 3919,
       "requires": [],
       "provides": {
         "search": [
@@ -705,7 +705,7 @@
       "files": {
         "annai-plugin.json": "f4c270517be1ca9ee045cb5562a56923e886b4371c477d03b3d90df6af412739",
         "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
-        "l10n/ja.json": "6bb0d3d5dca938342f806a3c1b17c0e7e5f2794dd80a5b18bb12febff0acb1ae",
+        "l10n/ja.json": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
         "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a"
       }
     },
@@ -722,7 +722,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5235,
+      "size": 5227,
       "requires": [],
       "provides": {
         "search": [
@@ -732,7 +732,7 @@
       "files": {
         "annai-plugin.json": "6c0e1583fd2cf48bb37856d5df8d5f1882f97c770e2c90639ba2aaf96577739a",
         "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
-        "l10n/ja.json": "ef5216e2ccc42f1a57faab01692d1604183e26cee19ca6e09434995f045e2dd5",
+        "l10n/ja.json": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
         "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08"
       }
     },
@@ -825,7 +825,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 21905,
+      "size": 21908,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -835,7 +835,7 @@
       "files": {
         "annai-plugin.json": "5163b7f4d1be142eaee922ce3bf4acdff8e73597bd792e7a7a0139f779de4bb3",
         "index.js": "84570a4a5184db62e47f67e4b8ef4642b363742546cfbc244dd95b596922c76e",
-        "l10n/ja.json": "e5036308cd1dab3cfa0c9ff5ff6efa8961b4e31632e01ab84b1ee03da105d84a",
+        "l10n/ja.json": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
         "l10n/zh-Hans.json": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
@@ -851,7 +851,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 14803,
+      "size": 14800,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -861,7 +861,7 @@
       "files": {
         "annai-plugin.json": "b745c410226f872b9e25fadba2719a28d24e869886b7b166bf60c2104de0ec4c",
         "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
-        "l10n/ja.json": "35b42bbeb0df7a9cadc552ae2361b880287b910633dfc348ce9271312946da9a",
+        "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
         "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
       }
     }
