@@ -389,14 +389,14 @@ async function wordsToCache() {
   return tags;
 }
 
-/** The language the settings choose, else the phone's among the shipped ones; null: English. @param {any} app */
+/** The language the settings choose, else the first of the phone's that annai ships, English among them, as the page's start does; null: English. @param {any} app */
 function chosenWords(app) {
   const ui = app?.languages?.ui;
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = SHIPPED_LANGS.find((tag) => sameLanguage(wanted, tag));
-    if (found) return found;
+    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(wanted, tag));
+    if (found) return found === 'en' ? null : found;
   }
   return null;
 }
