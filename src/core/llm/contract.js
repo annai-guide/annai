@@ -121,7 +121,7 @@ function shown(kind, provider) {
 /**
  * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
- * @typedef {{ code: 'kind' | 'late' | 'stalled' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
+ * @typedef {{ code: 'kind' | 'late' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
  *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
  *   name?: string, ability?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
  */
@@ -135,6 +135,7 @@ export function saidWords(s, kind, provider) {
   switch (s.code) {
     case 'late': return t`No output started in time.`;
     case 'stalled': return t`The voice stopped arriving for longer than its wait.`;
+    case 'held': return t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
     case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;
     case 'model-gone': return t`That model no longer exists.`;
     case 'no-plugin': return t`${name}'s ${ability} needs its plugin, which isn't running. Open ${name} in Settings → Models to install it.`;

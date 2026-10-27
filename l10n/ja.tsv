@@ -281,21 +281,22 @@ r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Se
 sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:116	
 izfolc	draft	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:136	
 13fumpt	draft	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:137	
-b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:138	
-1e0qpon	draft	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:139	
-6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} には、動いていないプラグインが必要です。インストールするには設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:140	{0} = name; {1} = ability; {2} = name
-11neb14	draft	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:141	{0} = name
-akhc81	draft	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:142	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	draft	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:143	{0} = name
-x31pwm	draft	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:144	
-il3b75	draft	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:145	
-1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:147	{0} = host
-10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:148	{0} = host
-16osh89	draft	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:149	{0} = ability
-1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:150	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:152	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:153	{0} = name
+1rls2oy	draft	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:138	
+b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:139	
+1e0qpon	draft	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:140	
+6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} には、動いていないプラグインが必要です。インストールするには設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:141	{0} = name; {1} = ability; {2} = name
+11neb14	draft	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:142	{0} = name
+akhc81	draft	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:143	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	draft	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:144	{0} = name
+x31pwm	draft	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:145	
+il3b75	draft	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:146	
+1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:148	{0} = host
+10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:149	{0} = host
+16osh89	draft	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:150	{0} = ability
+1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:151	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:152	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:153	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:154	{0} = name
 g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	段階の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
 z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	予定の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
@@ -867,14 +868,13 @@ u3xlwb	draft	The plugin "{0}" was turned off	プラグイン「{0}」はオフ�
 14cse4m	draft	You can turn it back on in Settings → Plugins.	設定 → プラグインで、もう一度オンにできます。	src/ui/plugin-cards.js:14	
 1m15smo#other	draft	It failed # times in a row.	#回続けて失敗しました。	src/ui/plugin-cards.js:14	plural; # = why.count; English: "It failed # time in a row." (one), "It failed # times in a row." (other)
 alpox6	draft	The last error: {0}	最後のエラー：{0}	src/ui/plugin-cards.js:14	{0} = message
-1rls2oy	draft	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/ui/plugin-cards.js:19	
-4egg99	draft	annai needs a reload	annai の再読み込みが必要です	src/ui/plugin-cards.js:30	
-6kkhkz#other	draft	It opened without its offline service, so these plugins can't start: {0}.	オフラインサービスなしで開いたため、次のプラグインを起動できません：{0}。	src/ui/plugin-cards.js:31	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
-53p50e	draft	It opened without its offline service, so plugins can't start or be installed.	オフラインサービスなしで開いたため、プラグインの起動もインストールもできません。	src/ui/plugin-cards.js:32	
-fzpt3w	draft	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:33	
-1vgaaah	draft	It didn't start the last few times annai opened: {0}	annai を開いた最近の数回、起動しませんでした：{0}	src/ui/plugin-cards.js:48	{0} = why
-11arkb9	draft	You can turn it off in Settings → Plugins.	設定 → プラグインでオフにできます。	src/ui/plugin-cards.js:49	
-1jz4o49	draft	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:49	{0} = it
+4egg99	draft	annai needs a reload	annai の再読み込みが必要です	src/ui/plugin-cards.js:28	
+6kkhkz#other	draft	It opened without its offline service, so these plugins can't start: {0}.	オフラインサービスなしで開いたため、次のプラグインを起動できません：{0}。	src/ui/plugin-cards.js:29	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
+53p50e	draft	It opened without its offline service, so plugins can't start or be installed.	オフラインサービスなしで開いたため、プラグインの起動もインストールもできません。	src/ui/plugin-cards.js:30	
+fzpt3w	draft	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:31	
+1vgaaah	draft	It didn't start the last few times annai opened: {0}	annai を開いた最近の数回、起動しませんでした：{0}	src/ui/plugin-cards.js:46	{0} = why
+11arkb9	draft	You can turn it off in Settings → Plugins.	設定 → プラグインでオフにできます。	src/ui/plugin-cards.js:47	
+1jz4o49	draft	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:47	{0} = it
 44nn0b	draft	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:68	{0} = u.name; {1} = u.installed; {2} = u.available
 trjp65	draft	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり）（新しいものを含みます：先に確認します）	src/ui/plugin-updates.js:68	{0} = u.name
 1kyfel6	draft	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:69	{0} = u.name
@@ -1026,68 +1026,68 @@ ksdme7	draft	Install from an address or a file	アドレスかファイルから
 7ikogv	draft	Install from a file	ファイルからインストール	src/ui/screens/add.js:251	
 ai5f3u	draft	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	まず zip ファイル、annai-plugin.json、または SKILL.md のアドレスを貼り付けてください。	src/ui/screens/add.js:293	
 1huuh2k	draft	Getting it…	取得しています…	src/ui/screens/add.js:298	
-16r9x4z	draft	From an Android phone	Android スマートフォンから	src/ui/screens/backups.js:15	
-1yzbug	draft	From an iPad	iPad から	src/ui/screens/backups.js:15	
-e0z2ub	draft	From a computer	コンピューターから	src/ui/screens/backups.js:15	
-e7ctat	draft	From an iPhone	iPhone から	src/ui/screens/backups.js:15	
-71oguk	draft	From another device	別の端末から	src/ui/screens/backups.js:17	
-3k42nl	draft	Getting it ready…	準備しています…	src/ui/screens/backups.js:39	
-c65xlw	draft	Backups	バックアップ	src/ui/screens/backups.js:50	
-cn5225	draft	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.	annai は、この端末のすべてをここに追加した場所にバックアップします。変更のあとか1日1回、Wi-Fi で、annai を開いている間に行います。API キーはこの端末に残ります。	src/ui/screens/backups.js:51	
-n9d7fo	draft	No backup places yet.	バックアップ先はまだありません。	src/ui/screens/backups.js:57	
-gqqie4	draft	Add a place	バックアップ先を追加	src/ui/screens/backups.js:59	
-t3jn1u	draft	Add a place to back up to	追加するバックアップ先	src/ui/screens/backups.js:59	
-a3z2xh	draft	annai couldn't load the kinds of backup places. Check the connection, then open this screen again.	annai はバックアップ先の種類を読み込めませんでした。接続を確認してから、この画面を開き直してください。	src/ui/screens/backups.js:60	
-112uufk	draft	Back to Backups	バックアップに戻る	src/ui/screens/backups.js:66	
-1kdmc2z	draft	This backup place was removed	このバックアップ先は削除されました	src/ui/screens/backups.js:66	
-1k7hmqc	draft	Turning it on…	オンにしています…	src/ui/screens/backups.js:103	
-14tfw5g	draft	Turn it on	オンにする	src/ui/screens/backups.js:111	
-m8ft8e	draft	The plugin for {0} isn't running, so annai can't back up here.	{0}のプラグインが動いていないため、annai はここにバックアップできません。	src/ui/screens/backups.js:113	{0} = target.name
-zkviy	draft	Plugin	プラグイン	src/ui/screens/backups.js:113	
-1yxhxra	draft	not set	未設定	src/ui/screens/backups.js:129	
-8rf2wi	draft	saved (type a new one to replace it)	保存済み（置き換えるには新しいキーを入力）	src/ui/screens/backups.js:129	
-raudcs	draft	Encrypt backups with a passphrase	バックアップをパスフレーズで暗号化	src/ui/screens/backups.js:132	
-13qje2w	draft	Include API keys (only in encrypted backups)	API キーを含める（暗号化したバックアップのみ）	src/ui/screens/backups.js:135	
-75wjfp	draft	Testing…	テストしています…	src/ui/screens/backups.js:156	
-ebg9wq	draft	Keep 1 to 30 backups.	1〜30個のバックアップを残せます。	src/ui/screens/backups.js:166	
-1gcdel3	draft	Save and test	保存してテスト	src/ui/screens/backups.js:176	
-wcqrhx	draft	A newer backup	新しいバックアップ	src/ui/screens/backups.js:179	
-1eedj8v	draft	A newer backup is here	新しいバックアップがあります	src/ui/screens/backups.js:180	
-xvbztk	draft	A backup is already here	すでにバックアップがあります	src/ui/screens/backups.js:180	
-1n4xwcb	draft	A large backup	大きなバックアップ	src/ui/screens/backups.js:186	
-7hmq4d	draft	This backup uploads {0}.	このバックアップは{0}をアップロードします。	src/ui/screens/backups.js:187	{0} = size(hold.bytes)
-111408e	draft	Back up automatically	自動でバックアップ	src/ui/screens/backups.js:190	
-15ywqaa	draft	After changes, within the hour	変更のあと、1時間以内	src/ui/screens/backups.js:191	
-tp830y	draft	After changes, at most every 6 hours	変更のあと、最大6時間ごと	src/ui/screens/backups.js:191	
-1u04fpp	draft	Once a day	1日1回	src/ui/screens/backups.js:192	
-3tlu3u	draft	Off	オフ	src/ui/screens/backups.js:193	
-1tdau7e	draft	Also over mobile data	モバイルデータ通信でも	src/ui/screens/backups.js:195	
-uhtk71	draft	No limit	上限なし	src/ui/screens/backups.js:197	
-b69cje	draft	Looking…	探しています…	src/ui/screens/backups.js:209	
-fdmwqv	draft	There are no backups here yet.	ここにはまだバックアップがありません。	src/ui/screens/backups.js:212	
-hcu7jn	draft	encrypted	暗号化済み	src/ui/screens/backups.js:215	
-17hpvne	draft	Show the backups here	ここのバックアップを表示	src/ui/screens/backups.js:222	
-lqkwe8	draft	How to set it up	設定のしかた	src/ui/screens/backups.js:225	
-14gwhko	draft	Where	場所	src/ui/screens/backups.js:229	
-6yqmdh	draft	Passphrase	パスフレーズ	src/ui/screens/backups.js:236	
-bdzmld	draft	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	パスフレーズは安全な場所に控えてください。ないと、これらのバックアップは開けません。annai は自分でバックアップできるよう、この端末に保存しています。	src/ui/screens/backups.js:237	
-1l5dtm7	draft	Keep this many of this device's backups here	ここに残すこの端末のバックアップの数	src/ui/screens/backups.js:239	
-552cet	draft	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	バックアップのたびに、この端末がここに作った古いものは削除されます。ほかの端末のバックアップは削除されません。	src/ui/screens/backups.js:240	
-l5nax	draft	When	タイミング	src/ui/screens/backups.js:245	
-xxa9v2	draft	Upload without asking up to, MB	確認なしでアップロードする上限（MB）	src/ui/screens/backups.js:247	
-4fiyr5	draft	Restore	復元	src/ui/screens/backups.js:253	
-12kqj5m	draft	Open a backup from here on the import screen, where you choose what comes in.	ここのバックアップを読み込み画面で開き、取り込むものを選べます。	src/ui/screens/backups.js:255	
-yzcijn	draft	Browser access	ブラウザからのアクセス	src/ui/screens/backups.js:277	
-13bzcw5	draft	Copied	コピーしました	src/ui/screens/backups.js:286	
-cdidgs	draft	Copying didn't work here: it is selected, so copy it yourself.	ここではコピーできませんでした。選択してあるので、自分でコピーしてください。	src/ui/screens/backups.js:289	
-s6g5lw	draft	Copy	コピー	src/ui/screens/backups.js:292	
-15ef6mt	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	このブラウザは Wi-Fi につながっているかを annai に伝えません。自動バックアップは大きさに関係なく確認なしで行われます。上限を決めるには数値を入力してください。	src/ui/screens/backups.js:302	
-9nqmyo	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	Wi-Fi につながっているかを annai に伝えないブラウザ（iPhone の Safari）では、自動バックアップは大きさに関係なく確認なしで行われます。上限を決めるには数値を入力してください。	src/ui/screens/backups.js:303	
-w51f7d	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	このブラウザは Wi-Fi につながっているかを annai に伝えません。{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでなければ、あなたの OK を待ちます。上限なしなら空欄にしてください。	src/ui/screens/backups.js:306	{0} = most
-1rx8b6y	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	Wi-Fi につながっているかを annai に伝えないブラウザ（iPhone の Safari）では、{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでなければ、あなたの OK を待ちます。上限なしなら空欄にしてください。	src/ui/screens/backups.js:307	{0} = most
-9patw8	draft	annai stops backing up here. The backups already there stay.	annai はここへのバックアップをやめます。すでにあるバックアップは残ります。	src/ui/screens/backups.js:313	
-1hx8faa	draft	Tap again to remove it	もう一度タップすると削除します	src/ui/screens/backups.js:314	
-78xlh8	draft	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:314	
+16r9x4z	draft	From an Android phone	Android スマートフォンから	src/ui/screens/backups.js:14	
+1yzbug	draft	From an iPad	iPad から	src/ui/screens/backups.js:14	
+e0z2ub	draft	From a computer	コンピューターから	src/ui/screens/backups.js:14	
+e7ctat	draft	From an iPhone	iPhone から	src/ui/screens/backups.js:14	
+71oguk	draft	From another device	別の端末から	src/ui/screens/backups.js:16	
+3k42nl	draft	Getting it ready…	準備しています…	src/ui/screens/backups.js:38	
+c65xlw	draft	Backups	バックアップ	src/ui/screens/backups.js:49	
+cn5225	draft	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.	annai は、この端末のすべてをここに追加した場所にバックアップします。変更のあとか1日1回、Wi-Fi で、annai を開いている間に行います。API キーはこの端末に残ります。	src/ui/screens/backups.js:50	
+n9d7fo	draft	No backup places yet.	バックアップ先はまだありません。	src/ui/screens/backups.js:56	
+gqqie4	draft	Add a place	バックアップ先を追加	src/ui/screens/backups.js:58	
+t3jn1u	draft	Add a place to back up to	追加するバックアップ先	src/ui/screens/backups.js:58	
+a3z2xh	draft	annai couldn't load the kinds of backup places. Check the connection, then open this screen again.	annai はバックアップ先の種類を読み込めませんでした。接続を確認してから、この画面を開き直してください。	src/ui/screens/backups.js:59	
+112uufk	draft	Back to Backups	バックアップに戻る	src/ui/screens/backups.js:65	
+1kdmc2z	draft	This backup place was removed	このバックアップ先は削除されました	src/ui/screens/backups.js:65	
+1k7hmqc	draft	Turning it on…	オンにしています…	src/ui/screens/backups.js:102	
+14tfw5g	draft	Turn it on	オンにする	src/ui/screens/backups.js:110	
+m8ft8e	draft	The plugin for {0} isn't running, so annai can't back up here.	{0}のプラグインが動いていないため、annai はここにバックアップできません。	src/ui/screens/backups.js:112	{0} = target.name
+zkviy	draft	Plugin	プラグイン	src/ui/screens/backups.js:112	
+1yxhxra	draft	not set	未設定	src/ui/screens/backups.js:128	
+8rf2wi	draft	saved (type a new one to replace it)	保存済み（置き換えるには新しいキーを入力）	src/ui/screens/backups.js:128	
+raudcs	draft	Encrypt backups with a passphrase	バックアップをパスフレーズで暗号化	src/ui/screens/backups.js:131	
+13qje2w	draft	Include API keys (only in encrypted backups)	API キーを含める（暗号化したバックアップのみ）	src/ui/screens/backups.js:134	
+75wjfp	draft	Testing…	テストしています…	src/ui/screens/backups.js:155	
+ebg9wq	draft	Keep 1 to 30 backups.	1〜30個のバックアップを残せます。	src/ui/screens/backups.js:165	
+1gcdel3	draft	Save and test	保存してテスト	src/ui/screens/backups.js:175	
+wcqrhx	draft	A newer backup	新しいバックアップ	src/ui/screens/backups.js:178	
+1eedj8v	draft	A newer backup is here	新しいバックアップがあります	src/ui/screens/backups.js:179	
+xvbztk	draft	A backup is already here	すでにバックアップがあります	src/ui/screens/backups.js:179	
+1n4xwcb	draft	A large backup	大きなバックアップ	src/ui/screens/backups.js:185	
+7hmq4d	draft	This backup uploads {0}.	このバックアップは{0}をアップロードします。	src/ui/screens/backups.js:186	{0} = size(hold.bytes)
+111408e	draft	Back up automatically	自動でバックアップ	src/ui/screens/backups.js:189	
+15ywqaa	draft	After changes, within the hour	変更のあと、1時間以内	src/ui/screens/backups.js:190	
+tp830y	draft	After changes, at most every 6 hours	変更のあと、最大6時間ごと	src/ui/screens/backups.js:190	
+1u04fpp	draft	Once a day	1日1回	src/ui/screens/backups.js:191	
+3tlu3u	draft	Off	オフ	src/ui/screens/backups.js:192	
+1tdau7e	draft	Also over mobile data	モバイルデータ通信でも	src/ui/screens/backups.js:194	
+uhtk71	draft	No limit	上限なし	src/ui/screens/backups.js:196	
+b69cje	draft	Looking…	探しています…	src/ui/screens/backups.js:208	
+fdmwqv	draft	There are no backups here yet.	ここにはまだバックアップがありません。	src/ui/screens/backups.js:211	
+hcu7jn	draft	encrypted	暗号化済み	src/ui/screens/backups.js:214	
+17hpvne	draft	Show the backups here	ここのバックアップを表示	src/ui/screens/backups.js:221	
+lqkwe8	draft	How to set it up	設定のしかた	src/ui/screens/backups.js:224	
+14gwhko	draft	Where	場所	src/ui/screens/backups.js:228	
+6yqmdh	draft	Passphrase	パスフレーズ	src/ui/screens/backups.js:235	
+bdzmld	draft	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	パスフレーズは安全な場所に控えてください。ないと、これらのバックアップは開けません。annai は自分でバックアップできるよう、この端末に保存しています。	src/ui/screens/backups.js:236	
+1l5dtm7	draft	Keep this many of this device's backups here	ここに残すこの端末のバックアップの数	src/ui/screens/backups.js:238	
+552cet	draft	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	バックアップのたびに、この端末がここに作った古いものは削除されます。ほかの端末のバックアップは削除されません。	src/ui/screens/backups.js:239	
+l5nax	draft	When	タイミング	src/ui/screens/backups.js:244	
+xxa9v2	draft	Upload without asking up to, MB	確認なしでアップロードする上限（MB）	src/ui/screens/backups.js:246	
+4fiyr5	draft	Restore	復元	src/ui/screens/backups.js:252	
+12kqj5m	draft	Open a backup from here on the import screen, where you choose what comes in.	ここのバックアップを読み込み画面で開き、取り込むものを選べます。	src/ui/screens/backups.js:254	
+yzcijn	draft	Browser access	ブラウザからのアクセス	src/ui/screens/backups.js:276	
+13bzcw5	draft	Copied	コピーしました	src/ui/screens/backups.js:285	
+cdidgs	draft	Copying didn't work here: it is selected, so copy it yourself.	ここではコピーできませんでした。選択してあるので、自分でコピーしてください。	src/ui/screens/backups.js:288	
+s6g5lw	draft	Copy	コピー	src/ui/screens/backups.js:291	
+15ef6mt	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	このブラウザは Wi-Fi につながっているかを annai に伝えません。自動バックアップは大きさに関係なく確認なしで行われます。上限を決めるには数値を入力してください。	src/ui/screens/backups.js:301	
+9nqmyo	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	Wi-Fi につながっているかを annai に伝えないブラウザ（iPhone の Safari）では、自動バックアップは大きさに関係なく確認なしで行われます。上限を決めるには数値を入力してください。	src/ui/screens/backups.js:302	
+w51f7d	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	このブラウザは Wi-Fi につながっているかを annai に伝えません。{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでなければ、あなたの OK を待ちます。上限なしなら空欄にしてください。	src/ui/screens/backups.js:305	{0} = most
+1rx8b6y	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	Wi-Fi につながっているかを annai に伝えないブラウザ（iPhone の Safari）では、{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでなければ、あなたの OK を待ちます。上限なしなら空欄にしてください。	src/ui/screens/backups.js:306	{0} = most
+9patw8	draft	annai stops backing up here. The backups already there stay.	annai はここへのバックアップをやめます。すでにあるバックアップは残ります。	src/ui/screens/backups.js:312	
+1hx8faa	draft	Tap again to remove it	もう一度タップすると削除します	src/ui/screens/backups.js:313	
+78xlh8	draft	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:313	
 8icj76	draft	Plan	予定	src/ui/screens/booking.js:17	
 nq6gpo	draft	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:21	
 19h3yfj	draft	It may have been deleted or renamed. The plan lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は予定に一覧があります。	src/ui/screens/booking.js:22	

@@ -331,8 +331,8 @@ test("on a page plugins can't load on (no service worker took it, spec §5.3), a
   await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && /Settings → Models/.test(e.message));
   held = true;
   const r = await k.llm.call({ request: HI });
-  assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error]), [['type-missing', words], ['ok', undefined]]);
-  await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && e.message === words);
+  assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error, a.said]), [['type-missing', words, { code: 'held' }], ['ok', undefined, undefined]]);
+  await assert.rejects(k.llm.synthesize({ modelId: voice.id, text: 'Hello.' }), (/** @type {any} */ e) => e.kind === 'type-missing' && e.message === words && e.said?.code === 'held' && e.shown === words);
 });
 
 test('a call never installs a protocol plugin: a model whose type is missing is skipped as type-missing, and the next one answers (anti-goal 1)', async () => {

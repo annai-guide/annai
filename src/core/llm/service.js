@@ -139,9 +139,9 @@ export function createLlm({
     if (install) await ensure(ability.type);
     else await ready;
     const type = types().get(ability.type);
-    // Held for a reload: pluginsHeld's English, which its screens show in theirs (heldOnScreen).
+    // Held for a reload: pluginsHeld's English, and what it was (held), from which the screens make theirs.
     const held = whyNoPlugins();
-    if (!type && held) throw new ProviderError('type-missing', held);
+    if (!type && held) throw new ProviderError('type-missing', held, { said: { code: 'held' } });
     /* en */
     if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`, { said: { code: 'no-plugin', name: provider.name, ability: ability.name } });
     return { rec, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
