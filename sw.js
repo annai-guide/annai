@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'd30a055b7676';
+const BUILD = '7fed43be1726';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -10,7 +10,7 @@ const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 // The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
 const LANGS = ['ja', 'zh-Hans'];
 // The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
-const SHIPPED_LANGS = [];
+const SHIPPED_LANGS = ['ja', 'zh-Hans'];
 const SHELL = [
   '/',
   '/index.html',
@@ -294,12 +294,16 @@ sw.addEventListener('install', (event) => {
   // The shell and the screens' words, as one: a version whose words can't be fetched isn't installed. Past the HTTP cache. A shell
   // file an older version holds unchanged is copied from it instead.
   event.waitUntil((async () => {
-    const words = await wordsToCache();
+    const words = (await wordsToCache()).map(wordsPath);
     const cache = await caches.open(CACHE);
-    const copies = await unchanged();
+    const copies = await unchanged(words);
     // The record goes first and comes back last, so a cache cut off part-way has none.
     await cache.delete(RECORD);
-    await cache.addAll([...SHELL.filter((p) => !copies.has(p)), ...words.map(wordsPath)].map((u) => new Request(u, { cache: 'reload' })));
+    await cache.addAll([...SHELL, ...words].filter((p) => !copies.has(p)).map((u) => new Request(u, { cache: 'reload' })));
+    for (const path of words) {
+      const copy = copies.get(path);
+      if (copy?.res) await cache.put(path, copy.res);
+    }
     /** @type {Record<string, string>} */
     const files = {};
     for (const path of SHELL) {
@@ -325,12 +329,12 @@ async function hashOf(res) {
 }
 
 /**
- * The shell files the newest shell cache with a readable record holds under this build's hash (res: null when that cache is this
- * build's own). None when there is no such cache (a first install), or this build's manifest can't be had. Never a page: its
+ * The shell files the newest shell cache with a readable record holds under this build's hash, and the catalogs (words) it holds
+ * unchanged (res: null when that cache is this build's own). None when there is no such cache (a first install), or this build's manifest can't be had. Never a page: its
  * headers carry the site's policy (CSP, Permissions-Policy), and a release may change that alone.
  * @returns {Promise<Map<string, { res: Response | null, hash: string }>>}
  */
-async function unchanged() {
+async function unchanged(words = /** @type {string[]} */ ([])) {
   const copies = new Map();
   for (const name of (await caches.keys()).reverse()) {
     if (!name.startsWith('annai-shell-')) continue;
@@ -344,6 +348,12 @@ async function unchanged() {
       const hash = want?.[path];
       const kept = typeof hash === 'string' && had[path] === hash ? await old.match(path) : null;
       if (kept) copies.set(path, { res: name === CACHE ? null : kept, hash });
+    }
+    // A catalog by its own bytes' hash: words kept since (cache-words) are in no record.
+    for (const path of want ? words : []) {
+      const hash = want?.[path];
+      const kept = typeof hash === 'string' ? await old.match(path) : null;
+      if (kept && (await hashOf(kept.clone())) === hash) copies.set(path, { res: name === CACHE ? null : new Response(await kept.arrayBuffer(), { headers: { 'Content-Type': 'application/json' } }), hash });
     }
     break;
   }
@@ -389,14 +399,14 @@ async function wordsToCache() {
   return tags;
 }
 
-/** The language the settings choose, else the phone's among the shipped ones; null: English. @param {any} app */
+/** The language the settings choose, else the first of the phone's that annai ships, English among them, as the page's start does; null: English. @param {any} app */
 function chosenWords(app) {
   const ui = app?.languages?.ui;
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = SHIPPED_LANGS.find((tag) => sameLanguage(wanted, tag));
-    if (found) return found;
+    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(wanted, tag));
+    if (found) return found === 'en' ? null : found;
   }
   return null;
 }

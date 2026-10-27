@@ -58,7 +58,7 @@ rm -f core.[0-9]*        # a browser crash dump, if one was left in the reposito
 `run` writes under `.superpowers/evidence/realtime-harness/<time>/` (or `--out <dir>`, a path inside the container): per scenario
 `<name>.timeline.txt` and `<name>.json`, and `report.txt` and `report.json`. Options: `--list` (the scenarios), `--only a,b`
 (some of them), `--kokoro stand-in|gemini`, `--room-db -60|off`, `--answer-timeout <s>` (default 40), `--max-sessions <n>` (default
-10: the harness stops before a scenario that would pass it), `--app <folder>` (serve another build of annai, for a control run:
+10: the harness stops before a scenario that would pass it), `--ui <tag>` (annai's screens in that language, `ja` or `zh-Hans`: chosen in Settings → Shiori once annai is set up in English, and the setup note then says the instructions name the screens in it), `--app <folder>` (serve another build of annai, for a control run:
 `git archive <commit> | tar -x -C <folder>` and mount it), `--port`. Exit status 0 when every scenario passes, 1 when one fails,
 2 when the harness itself broke. `report <folder>` makes the reports and timelines of a finished run again from its records,
 with no network, after the analysis changed.

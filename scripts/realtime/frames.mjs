@@ -21,8 +21,11 @@ export function framesOf(dir, payload, at) {
     if (m.setup) {
       // Which language hints went, and whether the instructions name the languages: a fact about the setup, never the instructions themselves.
       const codes = m.setup.inputAudioTranscription?.languageCodes;
-      const named = (m.setup.systemInstruction?.parts ?? []).some((/** @type {any} */ p) => /# Languages\n/.test(String(p?.text ?? '')));
-      add('setup', m.setup.inputAudioTranscription ? { text: `${Array.isArray(codes) ? `languageCodes ${codes.join(',')}` : 'no languageCodes'}; the instructions have ${named ? 'a' : 'no'} Languages section` } : {});
+      const parts = (m.setup.systemInstruction?.parts ?? []).map((/** @type {any} */ p) => String(p?.text ?? ''));
+      const named = parts.some((t) => /# Languages\n/.test(t));
+      // And whether it names the screens (localization L6): the language they are in, never the names.
+      const screens = parts.map((t) => /annai's screens are in ([A-Za-z ]+)\./.exec(t)?.[1]).find(Boolean);
+      add('setup', m.setup.inputAudioTranscription ? { text: `${Array.isArray(codes) ? `languageCodes ${codes.join(',')}` : 'no languageCodes'}; the instructions have ${named ? 'a' : 'no'} Languages section${screens ? `, naming the screens in ${screens}` : ''}` } : {});
     }
     const ri = m.realtimeInput;
     if (ri?.activityStart) add('activityStart');

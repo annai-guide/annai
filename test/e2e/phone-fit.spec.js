@@ -26,10 +26,13 @@ test.afterEach(async ({ page }) => {
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
   '#/about', '#/experimental', '#/welcome'];
 
-for (const width of [320, 420]) {
-  test(`every screen fits a phone ${width} px wide: nothing scrolls sideways`, async ({ page }) => {
+// In English, and in Japanese and Chinese (localization L6): short words, tall glyphs and no spaces to break at.
+for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 320], ['ja', 420], ['zh-Hans', 320], ['zh-Hans', 420]])) {
+  test(`every screen fits a phone ${width} px wide: nothing scrolls sideways${ui ? `, in ${ui}` : ''}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
+    if (ui) await page.addInitScript((tag) => { try { localStorage.setItem('annai.ui', tag); } catch { /* storage blocked */ } }, ui);
     await openApp(page);
+    if (ui) await expect(page.locator('html')).toHaveAttribute('lang', ui);
     /** @type {string[]} */
     const wide = [];
     for (const s of SCREENS) {
@@ -43,7 +46,9 @@ for (const width of [320, 420]) {
     }
     expect(wide).toEqual([]);
   });
+}
 
+for (const width of [320, 420]) {
   test(`a form row's boxes stay inside their row on a phone ${width} px wide`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await openApp(page);

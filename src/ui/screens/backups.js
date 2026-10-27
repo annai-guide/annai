@@ -1,4 +1,4 @@
-import { h, crumb, t, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
+import { h, crumb, t, tc, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
 import { placeStatus, holdNote, placeHref, newerText, relTime, when, size, numField, limitFromField, limitField, limitText, sentences } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
@@ -228,7 +228,7 @@ async function renderPlace(ctx, id) {
     h('section', { class: 'panel', 'aria-label': t`Where` },
       ...inputs.filter((/** @type {any} */ i) => !i.f.advanced).map((/** @type {any} */ i) => field(i.f.label, i.el)),
       ...secrets.map((/** @type {any} */ i) => field(i.f.label, i.el)),
-      more.length ? h('details', {}, h('summary', { text: t`More` }), ...more.map((/** @type {any} */ i) => field(i.f.label, i.el))) : null,
+      more.length ? h('details', {}, h('summary', { text: tc('advanced fields')`More` }), ...more.map((/** @type {any} */ i) => field(i.f.label, i.el))) : null,
       help,
       ...(file ? [
         h('div', { class: 'checks' }, encrypt.el),
