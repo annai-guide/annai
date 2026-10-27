@@ -15,6 +15,74 @@ openai-realtime:@name	draft	OpenAI Realtime	OpenAI Realtime	plugins-official/ope
 openai-realtime:@description	draft	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。	plugins-official/openai-realtime/annai-plugin.json:8	
 openai-responses:@name	draft	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	draft	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。	plugins-official/openai-responses/annai-plugin.json:8	
+provider-another-address:@name	draft	Custom provider	カスタムプロバイダー	plugins-official/provider-another-address/annai-plugin.json:3	
+provider-another-address:@description	draft	Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.	そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。	plugins-official/provider-another-address/annai-plugin.json:12	
+provider-another-address:@keywords.0	draft	OpenAI-compatible	OpenAI 互換	plugins-official/provider-another-address/annai-plugin.json:15	
+provider-another-address:@keywords.1	draft	router	ルーター	plugins-official/provider-another-address/annai-plugin.json:16	
+provider-another-address:@keywords.2	draft	custom	カスタム	plugins-official/provider-another-address/annai-plugin.json:17	
+provider-another-address:@keywords.3	draft	proxy	プロキシ	plugins-official/provider-another-address/annai-plugin.json:18	
+provider-another-address:@keywords.4	draft	self-hosted	セルフホスト	plugins-official/provider-another-address/annai-plugin.json:19	
+provider-another-address:@provider.note	draft	A server that never streams sends each answer whole, so annai sees nothing of it until all of it has come: if long answers stop with "No output started in time.", raise the role's "Wait for the first words" in Settings → Models, and Settings → Voice → "Wait for her first words".	ストリーミングしないサーバーは答えを丸ごと送るので、全部が届くまで annai には何も見えません。長い答えが「時間内に出力が始まりませんでした。」で止まるなら、設定 → モデルでその役割の「最初の言葉を待つ時間」と、設定 → 音声 →「Shiori の最初の言葉を待つ時間」を長くしてください。	plugins-official/provider-another-address/annai-plugin.json:25	
+provider-another-address:@provider.abilities.chat-completions.name	draft	Chat Completions	Chat Completions	plugins-official/provider-another-address/annai-plugin.json:30	
+provider-another-address:@provider.abilities.responses.name	draft	OpenAI Responses	OpenAI Responses	plugins-official/provider-another-address/annai-plugin.json:36	
+provider-another-address:@provider.abilities.responses.note	draft	For servers that speak OpenAI's Responses API. Keeping the conversation on the server, so each turn sends only what is new, is off here until you turn it on: a server that ignores previous_response_id would answer without the conversation. If one refuses requests, try "phase": false, "nowRole": "user" or "encryptedReasoning": false in the tunables. Give a reasoning model its Reasoning levels on its page; without them it thinks without showing progress, and may run past the time limit.	OpenAI の Responses API に対応したサーバー用です。会話をサーバーに保持して毎回新しい部分だけを送る機能は、オンにするまでここではオフです：previous_response_id を無視するサーバーは、会話なしで答えてしまうからです。リクエストを拒否されるなら、調整項目で "phase": false、"nowRole": "user"、"encryptedReasoning": false を試してください。推論モデルには、そのページで推論レベルを設定してください。設定しないと途中経過を見せずに考え、制限時間を超えることがあります。	plugins-official/provider-another-address/annai-plugin.json:38	
+provider-another-address:@provider.abilities.messages.name	draft	Anthropic Messages	Anthropic Messages	plugins-official/provider-another-address/annai-plugin.json:43	
+provider-another-address:@provider.abilities.messages.note	draft	Give the address without /v1: Anthropic Messages adds /v1/messages itself.	アドレスは /v1 を付けずに入力してください：Anthropic Messages が /v1/messages を自分で加えます。	plugins-official/provider-another-address/annai-plugin.json:51	
+provider-another-address:@provider.abilities.transcription.name	draft	Transcription	文字起こし	plugins-official/provider-another-address/annai-plugin.json:56	
+provider-another-address:@provider.abilities.voice.name	draft	Voice	声	plugins-official/provider-another-address/annai-plugin.json:62	
+provider-another-address:@provider.abilities.realtime.name	draft	Realtime voice	リアルタイム音声	plugins-official/provider-another-address/annai-plugin.json:68	
+provider-another-address:@provider.abilities.realtime.note	draft	For a server that speaks OpenAI's Realtime API over a WebSocket, at this address plus /realtime. Add its models by id. annai gives the key as the browser's subprotocol, as OpenAI's own does.	OpenAI の Realtime API を WebSocket で話すサーバー用で、このアドレスに /realtime を付けた場所につなぎます。モデルは ID で追加してください。annai は OpenAI 自身と同じく、キーをブラウザのサブプロトコルとして渡します。	plugins-official/provider-another-address/annai-plugin.json:70	
+provider-another-address:sp1muy	draft	{0}: {1}	{0}：{1}	plugins-official/provider-another-address/index.js:21	{0} = name; {1} = format.sentences(...parts)
+provider-another-address:1ltqbgc	draft	The path is there; Test says whether a model there can listen.	パスはあります。そこのモデルが聞き取れるかどうかは「テスト」でわかります。	plugins-official/provider-another-address/index.js:25	
+provider-another-address:1r7khyh	draft	The path is there; Test says whether a model there can speak.	パスはあります。そこのモデルが話せるかどうかは「テスト」でわかります。	plugins-official/provider-another-address/index.js:25	
+provider-another-address:1frqye2	draft	Its model list names no voice, so it's added switched off.	モデルの一覧に声のモデルがないため、オフの状態で追加します。	plugins-official/provider-another-address/index.js:26	
+provider-another-address:kcsd6z	draft	Its model list names no transcription model, so it's added switched off.	モデルの一覧に文字起こしのモデルがないため、オフの状態で追加します。	plugins-official/provider-another-address/index.js:26	
+provider-another-address:1yko1my#other	draft	# models.	モデル#個。	plugins-official/provider-another-address/index.js:28	plural; # = f.count; English: "# model." (one), "# models." (other)
+provider-another-address:d2l8ho	draft	Not found.	見つかりません。	plugins-official/provider-another-address/index.js:29	
+provider-another-address:is574e	draft	Blocked: it doesn't allow web apps (no CORS).	ブロックされています：Web アプリからの呼び出しを許可していません（CORS なし）。	plugins-official/provider-another-address/index.js:30	
+provider-another-address:1dvqwr4	draft	annai can't tell.	annai には判断できません。	plugins-official/provider-another-address/index.js:31	
+provider-another-address:10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} に接続できませんでした。アドレスと接続を確認してください。	plugins-official/provider-another-address/index.js:40	{0} = host
+provider-another-address:qq9rw9	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't use it from a browser. If it has a setting for the addresses allowed to call it (CORS), add annai's.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザから使えません。呼び出しを許可するアドレスの設定（CORS）があれば、annai のアドレスを加えてください。	plugins-official/provider-another-address/index.js:41	{0} = host
+provider-another-address:18dxdbo	draft	annai found nothing at {0} that it can use. Below is why.	annai は {0} で使えるものを見つけられませんでした。理由は下のとおりです。	plugins-official/provider-another-address/index.js:42	{0} = r.base
+provider-another-address:qglkb6	draft	What {0} offers:	{0} が提供しているもの：	plugins-official/provider-another-address/index.js:42	{0} = r.base
+provider-another-address:17ifucf	draft	Transcription	文字起こし	plugins-official/provider-another-address/index.js:55	
+provider-another-address:b1qn4p	draft	Voice	声	plugins-official/provider-another-address/index.js:55	
+provider-another-address:1gcpjp1	draft	The address changed: look again.	アドレスが変わりました：もう一度調べてください。	plugins-official/provider-another-address/index.js:70	
+provider-another-address:1qajjqs	draft	The key changed: look again.	キーが変わりました：もう一度調べてください。	plugins-official/provider-another-address/index.js:70	
+provider-another-address:13w233y	draft	if it needs one	必要な場合	plugins-official/provider-another-address/index.js:73	
+provider-another-address:qhceg5	draft	Adding it, with what it needs…	必要なものと一緒に追加しています…	plugins-official/provider-another-address/index.js:84	
+provider-another-address:1b3gwv	draft	Added {0}.	{0} を追加しました。	plugins-official/provider-another-address/index.js:91	{0} = host
+provider-another-address:1s1tzpf	draft	Add with these	これで追加	plugins-official/provider-another-address/index.js:97	
+provider-another-address:1aqh9si	draft	Found, at no cost	見つかったもの（無料で調べました）	plugins-official/provider-another-address/index.js:100	
+provider-another-address:d7sanu	draft	Model list	モデルの一覧	plugins-official/provider-another-address/index.js:102	
+provider-another-address:1ewt4mk	draft	annai only asked for the model list and sent an empty request to each known path. Nothing here costs money; Test sends real requests.	annai はモデルの一覧を求め、既知の各パスに空のリクエストを送っただけです。ここでは費用はかかりません。「テスト」は実際のリクエストを送ります。	plugins-official/provider-another-address/index.js:107	
+provider-another-address:xwbzr0	draft	Looking: the model list, then an empty request to each known path…	調べています：モデルの一覧、次に既知の各パスへの空のリクエスト…	plugins-official/provider-another-address/index.js:117	
+provider-another-address:o496zp	draft	Look for what it offers	提供内容を調べる	plugins-official/provider-another-address/index.js:128	
+provider-another-address:huqkih	draft	Give its address, and its key if it needs one. annai looks for what it offers, at no cost, then adds it with what it found.	アドレスと、必要ならキーを入力してください。annai が提供内容を無料で調べ、見つかったものと一緒に追加します。	plugins-official/provider-another-address/index.js:132	
+provider-another-address:v2y2ur	draft	Address	アドレス	plugins-official/provider-another-address/index.js:133	
+provider-another-address:o4uef7	draft	API key (optional)	API キー（任意）	plugins-official/provider-another-address/index.js:134	
+provider-another-address:1a80tgf	draft	Give the server's address first, with https:// in front.	まずサーバーのアドレスを、先頭に https:// を付けて入力してください。	plugins-official/provider-another-address/probe.js:55	
+provider-another-address:1e7ru4g	draft	What you typed	入力した内容	plugins-official/provider-another-address/probe.js:58	
+provider-another-address:1alhcu6	draft	Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.	アドレスだけを入力してください。名前やパスワード、「?…」や「#…」は付けないでください：キーは専用の欄に入れます。	plugins-official/provider-another-address/probe.js:60	
+provider-another-address:1woruwo	draft	The key has a character no key has, such as a space or a line break: paste it again.	キーに、キーには含まれない文字（スペースや改行など）があります：もう一度貼り付けてください。	plugins-official/provider-another-address/probe.js:70	
+provider-another-address:1s6f4xu#other	draft	It didn't answer within # seconds.	#秒以内に応答がありませんでした。	plugins-official/provider-another-address/probe.js:138	plural; # = WAIT_MS / 1000; English: "It didn't answer within # second." (one), "It didn't answer within # seconds." (other)
+provider-another-address:1kvhiso	draft	It doesn't allow web apps like annai to call it (no CORS).	annai のような Web アプリからの呼び出しを許可していません（CORS なし）。	plugins-official/provider-another-address/probe.js:140	
+provider-another-address:8orynu	draft	annai couldn't reach it.	annai は接続できませんでした。	plugins-official/provider-another-address/probe.js:140	
+provider-another-address:1inj5x1	draft	It answered with a redirect, which annai doesn't follow.	リダイレクトで応答しました。annai はリダイレクトをたどりません。	plugins-official/provider-another-address/probe.js:184	
+provider-another-address:1sunb46	draft	A web page answered, not an API.	API ではなく Web ページが応答しました。	plugins-official/provider-another-address/probe.js:189	
+provider-another-address:1yyt9ki	draft	It answers this way at any address, even one that can't exist, so annai can't tell from it.	存在しえないアドレスも含めどのアドレスにもこう応答するので、annai にはこの応答から判断できません。	plugins-official/provider-another-address/probe.js:196	
+provider-another-address:j1s60j	draft	It answered, but not with a list of models.	応答はありましたが、モデルの一覧ではありませんでした。	plugins-official/provider-another-address/probe.js:197	
+provider-another-address:lw74rj	draft	The server says it doesn't do this.	サーバーは、これには対応していないと答えました。	plugins-official/provider-another-address/probe.js:200	
+provider-another-address:gte9jb	draft	It asks for a key before it says what it has: give the key, then look again.	提供内容を答える前にキーを求めています：キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:203	
+provider-another-address:i6mb21	draft	It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.	存在しえないアドレスも含めどのアドレスでもキーを拒否するので、annai にはこの応答から判断できません。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:203	
+provider-another-address:1hf77o7	draft	It answers HTTP {0} at any address, even one that can't exist, so annai can't tell from it.	存在しえないアドレスも含めどのアドレスにも HTTP {0} で応答するので、annai にはこの応答から判断できません。	plugins-official/provider-another-address/probe.js:204	{0} = s
+provider-another-address:1ep83z8	draft	It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.	キーを求めています。どのアドレスでも求めるのかは annai が確認できませんでした：キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:205	
+provider-another-address:58psr2	draft	It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.	キーを拒否しました。存在しえないアドレスにどう応答するかも annai は確認できませんでした。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:205	
+provider-another-address:13zfqol	draft	It asks for a key.	キーを求めています。	plugins-official/provider-another-address/probe.js:206	
+provider-another-address:5qskj0	draft	It didn't take the key: check it.	キーを受け付けませんでした：確認してください。	plugins-official/provider-another-address/probe.js:206	
+provider-another-address:10ezguq	draft	It is busy (too many requests): look again in a minute.	混み合っています（リクエストが多すぎます）：1分ほどしてからもう一度調べてください。	plugins-official/provider-another-address/probe.js:208	
+provider-another-address:1whnma8	draft	It had a problem of its own (HTTP {0}): look again later.	サーバー側で問題が起きました（HTTP {0}）：あとでもう一度調べてください。	plugins-official/provider-another-address/probe.js:209	{0} = s
+provider-another-address:1u4njkw	draft	It answered HTTP {0}, which says neither yes nor no.	HTTP {0} で応答しました。これではあるともないとも言えません。	plugins-official/provider-another-address/probe.js:210	{0} = s
 provider-anthropic:@name	draft	Anthropic	Anthropic	plugins-official/provider-anthropic/annai-plugin.json:3	
 provider-anthropic:@description	draft	Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.	Anthropic の Messages API を通じた Claude のモデル。Web 検索と、最長1時間もつキャッシュ付き。	plugins-official/provider-anthropic/annai-plugin.json:7	
 provider-deepseek:@name	draft	DeepSeek	DeepSeek	plugins-official/provider-deepseek/annai-plugin.json:3	

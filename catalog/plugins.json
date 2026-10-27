@@ -162,7 +162,7 @@
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.1.4",
+      "version": "2.2.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -181,14 +181,16 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24707,
+      "size": 39228,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "85d6c758abb98336da5d3c7c2c1f556186dd0501edc30393f7c6e644f7ee581c",
-        "index.js": "f17b0e95caa9396f8394859b06515a3c4f27705852bf2535106d3d5962b3f0c9",
-        "probe.js": "3dd2da5ad8350f8d6eb43c003658f7dcf90deb6811116a358f94e6f2f64c4150"
+        "annai-plugin.json": "7e30980b6a32c909afd98d3123ffd531f845bd5db011cce1bd623fe7d28cc821",
+        "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
+        "l10n/ja.json": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
+        "l10n/zh-Hans.json": "fa8925d85805230ce0cf7243b3997b2847b8e692645051ef01fa41b6ab029c3d",
+        "probe.js": "2ee480d300a84e152a42f1cf6fbbfdcd561ac9f102e7526fe53763edc4661b6d"
       }
     },
     {

@@ -22,7 +22,7 @@ test('a router that never streams, with a key: the list, Chat Completions and Re
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByLabel('API key (optional)').fill(KEY);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
-    await expect(found(page)).toHaveText(['✓ Model list: 1 model', '✓ Chat Completions', '✓ OpenAI Responses', '✗ Anthropic Messages: not found', '✗ Transcription: not found', '✗ Voice: not found'], { timeout: 30_000 });
+    await expect(found(page)).toHaveText(['✓ Model list: 1 model.', '✓ Chat Completions', '✓ OpenAI Responses', '✗ Anthropic Messages: Not found.', '✗ Transcription: Not found.', '✗ Voice: Not found.'], { timeout: 30_000 });
     await expect(page.getByText('Nothing here costs money; Test sends real requests.')).toBeVisible();
     // Nothing that could generate was sent: no request carried a model or an input.
     expect(s.requests.filter((q) => q.method === 'POST').every((q) => !['model', 'messages', 'input'].some((f) => f in q.body))).toBe(true);
@@ -60,7 +60,7 @@ test("a server that doesn't allow web apps is said to be blocked, in words, and 
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
     await expect(page.getByText(/doesn't allow web apps like annai to call it \(no CORS headers\)/)).toBeVisible({ timeout: 30_000 });
-    await expect(found(page).nth(1)).toHaveText("✗ Chat Completions: blocked: it doesn't allow web apps (no CORS)");
+    await expect(found(page).nth(1)).toHaveText("✗ Chat Completions: Blocked: it doesn't allow web apps (no CORS).");
     await expect(page.getByRole('button', { name: 'Add with these' })).toHaveCount(0);
   } finally {
     await s.stop();
@@ -75,7 +75,7 @@ test('a server behind a key on every path, looked at without the key: no telling
     await tapAdd(page, 'Custom provider');
     await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
     await page.getByRole('button', { name: 'Look for what it offers' }).click();
-    await expect(found(page).nth(1)).toHaveText('? Chat Completions: it asks for a key before it says what it has: give the key, then look again.', { timeout: 30_000 });
+    await expect(found(page).nth(1)).toHaveText('? Chat Completions: It asks for a key before it says what it has: give the key, then look again.', { timeout: 30_000 });
     await expect(found(page).filter({ hasText: '✓' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Add with these' })).toHaveCount(0);
     // A look is for the address and key it looked with.

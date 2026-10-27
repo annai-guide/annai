@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { probe } from '../../plugins-official/provider-another-address/probe.js';
-import { addressProblem } from '../../src/core/llm/provider-desc.js';
+import { addressProblem, addressShown } from '../../src/core/llm/provider-desc.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { SYS } from '../../src/core/scopes.js';
 import { startFakeServer } from '../fakes/model-server.js';
@@ -14,6 +14,7 @@ import { readConfig, getKey, providerOf } from '../../src/core/llm/config.js';
 import { setupUi } from '../../src/ui/provider-setup.js';
 import { setupOf } from '../../src/core/llm/setup.js';
 import { PluginHost } from '../../src/core/plugins.js';
+import { pluginWords } from './l10n-kit.js';
 
 // Custom provider looks for what a server offers, at no cost (milestone 5 of providers as plugins,
 // decision 18): its model list, and an empty request to each path annai knows, read against a control
@@ -27,7 +28,8 @@ const KEY = 'sk-test-probe-0123456789';
 const io = (o = {}) => ({
   fetch: o.fetch ?? browserFetch(ANNAI),
   reach: o.reach ?? ((/** @type {string} */ url) => fetch(url).then(() => true, () => false)),
-  problem: addressProblem,
+  problem: addressShown,
+  l10n: pluginWords(),
 });
 /** Each finding's state, by what was looked for. @param {any} r */
 const states = (r) => ({ list: r.list.state, ...Object.fromEntries(Object.entries(r.abilities).map(([id, f]) => [id, /** @type {any} */ (f).state])) });
@@ -355,7 +357,7 @@ test('Add with these turns on what was found, Messages at the root address, and 
     all(panel).find((x) => x.attrs.id === 'probe-key').value = KEY;
     await buttonOf(panel, 'Look for what it offers').attrs.onclick();
     const shown = textOf(panel);
-    for (const line of ['✓ Model list: 1 model', '✓ Chat Completions', '✓ OpenAI Responses', '✓ Anthropic Messages', '✗ Transcription: not found', '✗ Voice: not found']) assert.ok(shown.includes(line), `${line} in: ${shown}`);
+    for (const line of ['✓ Model list: 1 model.', '✓ Chat Completions', '✓ OpenAI Responses', '✓ Anthropic Messages', '✗ Transcription: Not found.', '✗ Voice: Not found.']) assert.ok(shown.includes(line), `${line} in: ${shown}`);
     assert.match(shown, /Nothing here costs money; Test sends real requests/);
     assert.ok(s.requests.filter((q) => q.method === 'POST').every((q) => !['model', 'messages', 'input', 'prompt'].some((f) => f in q.body)), 'only empty requests');
 
@@ -424,7 +426,8 @@ test("the plugin asks whether a server is there at all as the Test button does: 
   const sent = [];
   const annai = {
     net: { fetch: async (/** @type {string} */ url, /** @type {any} */ init = {}) => { sent.push([url, init]); throw new TypeError('Failed to fetch'); } },
-    helpers: { addressProblem },
+    helpers: { addressProblem, addressShown },
+    l10n: pluginWords(),
     providers: { setup: (/** @type {any} */ s) => s },
   };
   const setup = activate(annai);
@@ -452,8 +455,8 @@ test("a speech path a server answers is there, but Test says whether a model the
     all(panel).find((x) => x.attrs.id === 'probe-address').value = `${s.origin}/v1`;
     await buttonOf(panel, 'Look for what it offers').attrs.onclick();
     const shown = textOf(panel);
-    assert.ok(shown.includes('✓ Transcription: the path is there; Test says whether a model there can listen'), shown);
-    assert.ok(shown.includes("✓ Voice: the path is there; Test says whether a model there can speak. Its model list names no voice, so it's added switched off."), shown);
+    assert.ok(shown.includes('✓ Transcription: The path is there; Test says whether a model there can listen.'), shown);
+    assert.ok(shown.includes("✓ Voice: The path is there; Test says whether a model there can speak. Its model list names no voice, so it's added switched off."), shown);
     await buttonOf(panel, 'Add with these').attrs.onclick();
     const p = providerOf((await readConfig(d.ws)).providers[d.added[0]]);
     assert.deepEqual(Object.fromEntries(Object.entries(p.abilities).map(([id, a]) => [id, a.on])), { 'chat-completions': true, responses: false, messages: false, transcription: true, voice: false, realtime: false });
