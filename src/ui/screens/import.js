@@ -92,7 +92,7 @@ async function step(ctx, body, source, passphrase) {
     opened = await peekArchive(source.blob, passphrase);
   } catch (e) {
     if (e instanceof NeedsPassphraseError || e instanceof PassphraseError) {
-      body.replaceChildren(passphraseForm(ctx, body, source, e instanceof PassphraseError ? e.message : null));
+      body.replaceChildren(passphraseForm(ctx, body, source, e instanceof PassphraseError ? messageOf(e) : null));
       return;
     }
     body.replaceChildren(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose another file`));

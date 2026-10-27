@@ -75,7 +75,7 @@ const hello = () => t`Notifications are on. Reminders come like this while annai
 const helloAgain = () => t`Notifications are on again: reminders come like this while annai is closed.`;
 /** @type {import('./relay-client.js').Said} */
 const NO_CONNECTION = { code: 'offline', why: 'connection' };
-const offByPhone = () => new RelayError({ code: 'refused', why: 'off', en: /* en */ "The phone's notifications for annai are off." });
+const offByPhone = () => new RelayError({ code: 'refused', why: 'off', message: /* en */ "The phone's notifications for annai are off." });
 
 /** The words sw.js needs, in the screens' language; {0} and {1} stay for it to fill. @returns {Words} */
 export const pushWords = () => ({
@@ -143,7 +143,7 @@ export async function subscriptionName(endpoint) {
  */
 function turnOnError(e) {
   if (!(e instanceof RelayError)) return e;
-  e.message = sentences(e.message, e.passing ? t`Nothing was turned on: check the connection, then tap Turn on notifications again.` : t`Nothing was turned on: tap Turn on notifications again once that is fixed.`);
+  e.shown = sentences(e.shown, e.passing ? t`Nothing was turned on: check the connection, then tap Turn on notifications again.` : t`Nothing was turned on: tap Turn on notifications again once that is fixed.`);
   return e;
 }
 
@@ -466,7 +466,7 @@ export class PushMirror {
       sub = await this.source.get();
     } catch (e) {
       // It can't be asked yet (annai's offline service starting): later, not "off".
-      throw new RelayError({ code: 'offline', why: 'service', en: /* en */ `The phone's push subscription can't be read yet: ${String(/** @type {any} */ (e)?.message ?? e)}` });
+      throw new RelayError({ code: 'offline', why: 'service', message: /* en */ `The phone's push subscription can't be read yet: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     }
     if (sub) {
       if (sub.endpoint !== st.endpoint) this.#renewed(st, sub);
@@ -483,10 +483,10 @@ export class PushMirror {
     }
     this.#moveAll(st);
     const off = offByPhone();
-    st.problem = { message: off.en, said: off.said, at: this.clock.now(), needsYou: true };
+    st.problem = { message: off.message, said: off.said, at: this.clock.now(), needsYou: true };
     if (!this.#warned) {
       this.#warned = true;
-      this.notice({ title: t`Notifications are off`, body: off.message });
+      this.notice({ title: t`Notifications are off`, body: off.shown });
     }
     return null;
   }
@@ -610,7 +610,7 @@ export class PushMirror {
   #offFailure(st, f) {
     if (f.relay === st.relay) return f.error;
     const host = new URL(f.relay).host;
-    return new RelayError({ code: 'relay', why: 'old', host, count: f.count, en: /* en */ `${f.count} at the old relay, ${host}, couldn't be called off yet: ${f.error.en}` });
+    return new RelayError({ code: 'relay', why: 'old', host, count: f.count, message: /* en */ `${f.count} at the old relay, ${host}, couldn't be called off yet: ${f.error.message}` });
   }
 
   /**
@@ -643,7 +643,7 @@ export class PushMirror {
         // This one, for good: noted, and the others go on.
         delete st.items[w.m.key];
         delete tokens[item.id];
-        st.problem = { message: await withoutSecrets(this.store, e.en), said: e.said, at: this.clock.now(), needsYou: false };
+        st.problem = { message: await withoutSecrets(this.store, e.message), said: e.said, at: this.clock.now(), needsYou: false };
       }
     }
     return n;
@@ -691,7 +691,7 @@ export class PushMirror {
     }
     // The "notifications are on" never arrived (the relay forgot this phone): another, next time.
     if (e.code === 'unconfirmed' && st.hello && now - st.hello.at > MIN) st.hello = null;
-    const message = await withoutSecrets(this.store, e.en);
+    const message = await withoutSecrets(this.store, e.message);
     if (e.passing) {
       // In the background, there is nothing for the user to do (fix pass N5); one at an old relay says it keeps trying itself.
       st.problem = { message, said: e.said, at: now, needsYou: false, ...(e.said.why === 'old' ? {} : { again: true }) };

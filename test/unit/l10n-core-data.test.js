@@ -29,11 +29,12 @@ test("a relay's failure: the screens' words from its code, the log's English wit
   const fetch = async () => new Response(JSON.stringify({ error: 'rate', message: 'Too many requests from this address. annai tries again in a minute.' }), { status: 429 });
   const e = await relayClient({ base: 'https://push.example.com', fetch }).cancel('x', 'token-0123456789012345678901').then(() => null, (x) => x);
   assert.ok(e instanceof RelayError);
-  assert.equal(e.message, 'push.example.com の中継は混み合っています。');
-  assert.equal(e.en, 'The relay at push.example.com answered 429 rate: Too many requests from this address. annai tries again in a minute.');
+  // The shown rule: the screens' words in shown, the log's English in message.
+  assert.equal(e.shown, 'push.example.com の中継は混み合っています。');
+  assert.equal(e.message, 'The relay at push.example.com answered 429 rate: Too many requests from this address. annai tries again in a minute.');
   assert.deepEqual(e.said, { code: 'rate', host: 'push.example.com', status: 429 });
   // A problem kept: English for the log, and the screen's words made again from what it was.
-  assert.equal(problemWords({ message: e.en, at: 1, needsYou: false, said: e.said, again: true }), 'push.example.com の中継は混み合っています。annai が自動でもう一度試します。');
+  assert.equal(problemWords({ message: e.message, at: 1, needsYou: false, said: e.said, again: true }), 'push.example.com の中継は混み合っています。annai が自動でもう一度試します。');
   assert.equal(relayWords({ code: 'relay', why: 'old', host: 'old.example.com', count: 3 }),
     '古い中継 old.example.com にある3件のリマインダーをまだ取り消せていません。時刻が過ぎるまで annai は試し続けます。その間も新しい中継は使えます。');
   // One kept before its words were data is shown as it was written, in English (the screen marks it lang="en").
@@ -58,7 +59,8 @@ test("a backup that fails offline: its card and status in Japanese, made from wh
   online = false;
   place.failNext(new TypeError('Failed to fetch'));
   const e = await d.backups.backUp(id).then(() => null, (x) => x);
-  assert.equal(e?.message, 'この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。');
+  assert.equal(e?.shown, 'この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。');
+  assert.equal(e?.message, 'This phone is offline.');
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, 'This phone is offline.');
   assert.equal(holdWords(hold), 'この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。オンラインに戻ると、annai はもう一度試します。');
@@ -72,12 +74,13 @@ test("an archive's errors in Japanese on the screens, with English where a backu
   const check = /** @type {(m: unknown) => void} */ (checkManifest);
   const newer = /** @type {any} */ (() => { try { check({ format: 99 }); } catch (x) { return x; } return null; })();
   assert.ok(newer instanceof ArchiveError && newer.newer);
-  assert.match(newer.message, JA);
-  assert.equal(newer.en, 'This file was made by a newer version of annai.');
+  assert.match(String(newer.shown), JA);
+  assert.equal(newer.message, 'This file was made by a newer version of annai.');
   const damaged = await peekArchive(new Uint8Array([1, 2, 3])).then(() => null, (x) => x);
   assert.ok(damaged instanceof ArchiveError);
   // The zip's own detail is a developer's, in English, inside the Japanese sentence.
-  assert.equal(damaged.message, 'このファイルは annai のファイルではないか、壊れています（this is not a zip archive）。');
+  assert.equal(damaged.shown, 'このファイルは annai のファイルではないか、壊れています（this is not a zip archive）。');
+  assert.equal(damaged.message, "This file isn't an annai file, or it is damaged (this is not a zip archive).");
 });
 
 test("the recap: what the model is told stays English; what the screen says it sends, and why it failed, are Japanese", () => {
@@ -100,4 +103,18 @@ test("the replay's lines and speeds, and the sun's chips, are Japanese; the plan
   assert.equal(item.item.title, 'Untitled event');
   assert.doesNotMatch(String(item.item.notes), JA);
   assert.match(String(item.item.notes), /This repeats in the calendar/);
+});
+
+test("an annai error a backup meets keeps its English in the hold and the log, whatever the screens show (the shown rule)", async () => {
+  const place = memoryPlace();
+  const d = await device(place, 'iPhone');
+  const id = await placeOn(d);
+  await d.backups.check(id);
+  place.failNext(new ArchiveError('The content of /files/a.jpg is missing from storage.', { shown: 'このファイルの内容がありません。' }));
+  const e = await d.backups.backUp(id).then(() => null, (x) => x);
+  assert.equal(e?.shown, 'このファイルの内容がありません。');
+  const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
+  assert.equal(hold.message, 'The content of /files/a.jpg is missing from storage.');
+  const logged = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.error'] }));
+  assert.doesNotMatch(JSON.stringify([hold, logged]), JA);
 });

@@ -334,7 +334,7 @@ test("a backup that fails while this phone is offline says it is offline, not th
   place.failNext(new TypeError('Failed to fetch'));
   await assert.rejects(d.backups.backUp(id), /offline/);
   // Save and test says it too.
-  await assert.rejects(d.backups.check(id), { message: "This phone is offline, so annai couldn't reach this place." });
+  await assert.rejects(d.backups.check(id), (/** @type {any} */ e) => e.shown === "This phone is offline, so annai couldn't reach this place." && e.message === 'This phone is offline.');
   const rec = (await d.backups.list()).find((t) => t.id === id);
   assert.equal(rec?.hold?.kind, 'error');
   const hold = /** @type {any} */ (rec?.hold);

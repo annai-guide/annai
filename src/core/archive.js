@@ -53,21 +53,20 @@ export function isFullBackup(include, share) {
 
 export class ArchiveError extends Error {
   /**
-   * @param {string} message in the screens' words
-   * @param {{ en?: string, newer?: boolean }} [o] en: in English, where the error can reach a log (a backup's, backup.js); newer: the
-   *   file was made by a newer annai
+   * @param {string} message in annai's English, as a log (a backup's, backup.js) or a model may read it
+   * @param {{ shown?: string, newer?: boolean }} [o] shown: the screens' words (the shown rule); newer: the file was made by a newer annai
    */
-  constructor(message, { en, newer = false } = {}) {
+  constructor(message, { shown, newer = false } = {}) {
     super(message);
     this.name = /* en */ 'ArchiveError';
-    this.en = en;
+    this.shown = shown;
     this.newer = newer;
   }
 }
 
 export class NeedsPassphraseError extends ArchiveError {
   constructor() {
-    super(t`This file is encrypted. Enter its passphrase to open it.`);
+    super(/* en */ 'This file is encrypted. Enter its passphrase to open it.', { shown: t`This file is encrypted. Enter its passphrase to open it.` });
     this.name = /* en */ 'NeedsPassphraseError';
   }
 }
@@ -157,14 +156,14 @@ const EVENT_SCHEMA = {
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
   if (opts.secrets && (opts.kind !== 'everything' || !opts.passphrase)) {
-    throw new ArchiveError(t`API keys can only be included in an encrypted backup of everything.`);
+    throw new ArchiveError(/* en */ `API keys can only be included in an encrypted backup of everything.`, { shown: t`API keys can only be included in an encrypted backup of everything.` });
   }
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
     // This device's own scope never travels (spec §12.4); the system log goes only with history.
     : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
-  if (!scopes.length) throw new ArchiveError(t`There is nothing to export.`);
+  if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { shown: t`There is nothing to export.` });
 
   /** @type {Manifest} */
   const manifest = {
@@ -264,7 +263,7 @@ export async function exportArchive(store, opts) {
   const problems = validate(MANIFEST_SCHEMA, manifest);
   if (problems.length) {
     const why = problems.join('; ');
-    throw new ArchiveError(t`annai couldn't build a file it could open again: ${why}`, { en: /* en */ `annai couldn't build a file it could open again: ${why}` });
+    throw new ArchiveError(/* en */ `annai couldn't build a file it could open again: ${why}`, { shown: t`annai couldn't build a file it could open again: ${why}` });
   }
   let blob = zip.finish();
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
@@ -338,7 +337,7 @@ async function sharePhoto(f, bytes, share) {
 async function readBlob(store, hash, path) {
   const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
   if (!(rec?.data instanceof ArrayBuffer)) {
-    throw new ArchiveError(t`The content of ${path} is missing from storage, so it can't be exported.`, { en: /* en */ `The content of ${path} is missing from storage.` });
+    throw new ArchiveError(/* en */ `The content of ${path} is missing from storage.`, { shown: t`The content of ${path} is missing from storage, so it can't be exported.` });
   }
   return new Uint8Array(rec.data);
 }
@@ -352,14 +351,14 @@ export function checkManifest(manifest) {
   const newer = (/** @type {unknown} */ f) => typeof f === 'number' && f > FORMAT;
   if ((typeof manifest?.format === 'number' && manifest.format > ARCHIVE_FORMAT)
     || (Array.isArray(manifest?.scopes) && manifest.scopes.some((/** @type {any} */ s) => newer(s?.record?.format)))) {
-    throw new ArchiveError(t`This file was made by a newer version of annai. Update annai, then open it again.`, { newer: true, en: /* en */ 'This file was made by a newer version of annai.' });
+    throw new ArchiveError(/* en */ 'This file was made by a newer version of annai.', { shown: t`This file was made by a newer version of annai. Update annai, then open it again.`, newer: true });
   }
   // The English goes to a backup's log when a place sends a bad manifest (backup.js peek); the details are a developer's.
   const errors = validate(MANIFEST_SCHEMA, manifest).join('; ');
-  if (errors) throw new ArchiveError(t`This file is damaged: ${errors}`, { en: /* en */ `This file is damaged: ${errors}` });
+  if (errors) throw new ArchiveError(/* en */ `This file is damaged: ${errors}`, { shown: t`This file is damaged: ${errors}` });
   for (const f of manifest.files) {
     const path = JSON.stringify(f.path);
-    if (!isSafePath(f.path)) throw new ArchiveError(t`This file contains an unsafe file path (${path}), so annai won't open it.`, { en: /* en */ `This file contains an unsafe file path (${path}).` });
+    if (!isSafePath(f.path)) throw new ArchiveError(/* en */ `This file contains an unsafe file path (${path}).`, { shown: t`This file contains an unsafe file path (${path}), so annai won't open it.` });
   }
 }
 
@@ -384,22 +383,22 @@ export async function peekArchive(file, passphrase) {
     zip = await ZipReader.open(blob);
   } catch (e) {
     // What is wrong with the zip is a developer's detail, in English (zip.js).
-    throw new ArchiveError(t`This file isn't an annai file, or it is damaged (${/** @type {Error} */ (e).message}).`);
+    throw new ArchiveError(/* en */ `This file isn't an annai file, or it is damaged (${/** @type {Error} */ (e).message}).`, { shown: t`This file isn't an annai file, or it is damaged (${/** @type {Error} */ (e).message}).` });
   }
-  if (!zip.has(MANIFEST_NAME)) throw new ArchiveError(t`This zip isn't an annai file: it has no annai-archive.json.`);
+  if (!zip.has(MANIFEST_NAME)) throw new ArchiveError(/* en */ `This zip isn't an annai file: it has no annai-archive.json.`, { shown: t`This zip isn't an annai file: it has no annai-archive.json.` });
   /** @type {any} */
   let manifest;
   try {
     manifest = JSON.parse(text(await readEntry(zip, MANIFEST_NAME)));
   } catch (e) {
     if (e instanceof ArchiveError) throw e;
-    throw new ArchiveError(t`This file is damaged: its manifest is not readable.`);
+    throw new ArchiveError(/* en */ `This file is damaged: its manifest is not readable.`, { shown: t`This file is damaged: its manifest is not readable.` });
   }
   checkManifest(manifest);
   /** @type {string[]} */
   const missing = [];
   for (const f of [...manifest.files, ...manifest.blobs, ...manifest.extras]) if (!zip.has(f.name)) missing.push(f.name);
-  if (missing.length) throw new ArchiveError(plural(missing.length, 'This file is damaged: {0} is missing.', 'This file is damaged: {0} are missing.', list(missing)));
+  if (missing.length) throw new ArchiveError(/* en */ `This file is damaged: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} missing.`, { shown: plural(missing.length, 'This file is damaged: {0} is missing.', 'This file is damaged: {0} are missing.', list(missing)) });
   return { manifest, zip, events: new Map() };
 }
 
@@ -415,7 +414,7 @@ function keysOf(body) {
   try {
     return JSON.parse(body);
   } catch {
-    throw new ArchiveError(t`This file is damaged: its keys are not readable.`);
+    throw new ArchiveError(/* en */ `This file is damaged: its keys are not readable.`, { shown: t`This file is damaged: its keys are not readable.` });
   }
 }
 
@@ -427,12 +426,12 @@ async function readEntry(zip, name) {
   try {
     return await zip.read(name);
   } catch (e) {
-    throw new ArchiveError(t`This file is damaged (${/** @type {Error} */ (e).message}).`);
+    throw new ArchiveError(/* en */ `This file is damaged (${/** @type {Error} */ (e).message}).`, { shown: t`This file is damaged (${/** @type {Error} */ (e).message}).` });
   }
 }
 
 /** An entry of the file changed after it was opened, or doesn't match the manifest. @param {string} name */
-const changed = (name) => new ArchiveError(t`This file is damaged: ${name} was changed.`);
+const changed = (name) => new ArchiveError(/* en */ `This file is damaged: ${name} was changed.`, { shown: t`This file is damaged: ${name} was changed.` });
 
 /** An entry whose content must still be what the manifest says (the file may have changed since it was opened). @param {ZipReader} zip @param {string} name @param {string} hash */
 async function readChecked(zip, name, hash) {
@@ -447,7 +446,7 @@ async function readChecked(zip, name, hash) {
  * @returns {EventRecord[]}
  */
 function readLog(name, bytes) {
-  if (!bytes) throw new ArchiveError(plural(1, 'This file is damaged: {0} is missing.', 'This file is damaged: {0} are missing.', name));
+  if (!bytes) throw new ArchiveError(/* en */ `This file is damaged: ${name} is missing.`, { shown: plural(1, 'This file is damaged: {0} is missing.', 'This file is damaged: {0} are missing.', name) });
   /** @type {EventRecord[]} */
   const out = [];
   let last = 0;
@@ -458,11 +457,11 @@ function readLog(name, bytes) {
     try {
       e = JSON.parse(line);
     } catch {
-      throw new ArchiveError(t`This file is damaged: line ${i + 1} of ${name} is not readable.`);
+      throw new ArchiveError(/* en */ `This file is damaged: line ${i + 1} of ${name} is not readable.`, { shown: t`This file is damaged: line ${i + 1} of ${name} is not readable.` });
     }
     const errors = validate(EVENT_SCHEMA, e);
     if (!errors.length && e.seq <= last) errors.push(/* en */ `$.seq: ${e.seq} comes after ${last}`);
-    if (errors.length) throw new ArchiveError(t`This file is damaged: line ${i + 1} of ${name}: ${errors.join('; ')}`);
+    if (errors.length) throw new ArchiveError(/* en */ `This file is damaged: line ${i + 1} of ${name}: ${errors.join('; ')}`, { shown: t`This file is damaged: line ${i + 1} of ${name}: ${errors.join('; ')}` });
     last = e.seq;
     out.push(e);
   }
@@ -542,7 +541,7 @@ export async function importArchive(store, opened, choices = {}) {
         /** @type {Record<string, any>} */
         let state = {};
         const body = text(await readChecked(zip, f.name, f.hash));
-        try { state = JSON.parse(body); } catch { throw new ArchiveError(t`This file is damaged: its plugin list is not readable.`); }
+        try { state = JSON.parse(body); } catch { throw new ArchiveError(/* en */ `This file is damaged: its plugin list is not readable.`, { shown: t`This file is damaged: its plugin list is not readable.` }); }
         const off = Object.fromEntries(Object.entries(state ?? {}).map(([id, s]) => [id, { ...s, enabled: false }]));
         const bytes = utf8(JSON.stringify(off, null, 2) + '\n');
         overrides.set(f.name, { bytes, hash: await sha256Hex(bytes) });
@@ -646,8 +645,8 @@ export async function importArchive(store, opened, choices = {}) {
  */
 
 /** What an import says when what it relies on changed on this device meanwhile. */
-const goneMeanwhile = () => new ArchiveError(t`Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.`);
-const changedMeanwhile = () => new ArchiveError(t`What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.`);
+const goneMeanwhile = () => new ArchiveError(/* en */ `Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.`, { shown: t`Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.` });
+const changedMeanwhile = () => new ArchiveError(/* en */ `What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.`, { shown: t`What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.` });
 
 /**
  * The last step of an import, in one transaction: scopes, files, history and keys appear together or not at all.
