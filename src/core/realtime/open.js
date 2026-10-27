@@ -169,7 +169,8 @@ export function openLive(c) {
         bug(what, e);
         st.broken = true;
         // A refusal the protocol read (K6): the session ends with its kind and words.
-        if (e instanceof ProviderError) down(new ProviderError(e.kind, blank(e.message)), 1000, e.message);
+        // Its words go with it: what it was (said), or the words it carries (shown), keys blanked.
+        if (e instanceof ProviderError) down(Object.assign(new ProviderError(e.kind, blank(e.message), { said: e.said, provider: e.provider }), e.shown === undefined ? {} : { shown: blank(e.shown) }), 1000, e.message);
         s.close(1000);
       };
       s.addEventListener('open', () => {

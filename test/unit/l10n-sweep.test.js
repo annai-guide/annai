@@ -148,3 +148,18 @@ test("review 2: an ability its description doesn't name keeps the kind's English
   assert.equal(abilityName(chat), 'チャット');
   assert.equal(abilityName(talk), 'Talk', "a description's own name, as written");
 });
+
+test("review 3 and 4: a failed attempt's words come from what it was, in the Try panel's line, explain, and the Conversation's line", async () => {
+  const { explain } = await import('../../src/core/llm/contract.js');
+  const { attemptWhy } = await import('../../src/core/llm/fallback.js');
+  const late = new ProviderError('timeout', 'No output started in time.', { said: { code: 'late' } });
+  assert.equal(attemptWhy({ name: 'Haiku', outcome: late.kind, error: late.message, said: late.said }), '時間内に出力が始まりませんでした。');
+  assert.equal(explain(late), '時間内に出力が始まりませんでした。');
+  // A said set with no shown (resolve.js's, voice.js's): its own words, not a generic line.
+  const formats = Object.assign(new ProviderError('bad-request', 'Haiku takes no audio format this phone makes (wav).'), { said: /** @type {any} */ ({ code: 'formats', name: 'Haiku', formats: ['wav'] }), shown: undefined });
+  assert.equal(explain(formats), 'Haiku はこのスマートフォンで作れる音声形式を受け付けません（wav）。');
+  const why = whyOf(late);
+  assert.deepEqual(why.said, { code: 'late' }, 'the error event keeps what it was');
+  assert.equal(whyWords(why), '時間内に出力が始まりませんでした。');
+  assert.equal(whyWords(why, true), 'The model took too long to start answering.');
+});

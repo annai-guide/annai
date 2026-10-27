@@ -114,32 +114,40 @@ function passedShown(outcome) {
 }
 
 /**
+ * Why one model failed, in words: a provider's own as it gave them; annai's by kind, or from what one of its own was (said), in the screens'
+ * language unless a model reads them (plain). The "Try this model" panel says it too.
+ * @param {{ name: string, outcome: string, error?: string, said?: import('./contract.js').Said, restsUntil?: number, [k: string]: unknown }} a
+ * @param {{ now?: number, plain?: boolean }} [o] @returns {string}
+ */
+export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
+  const said = a.outcome === 'unreachable' ? '' : !plain && a.said ? saidWords(a.said, a.outcome) : a.error ?? '';
+  const kind = new ProviderError(/** @type {any} */ (a.outcome), a.outcome);
+  let why = said || (plain ? /** @type {Record<string, string>} */ (PASSED)[a.outcome] ?? explainPlain(kind) : passedShown(a.outcome) ?? explain(kind));
+  if (a.restsUntil && !plain) {
+    // A day limit: the user's sentence is a whole message, with the time as their phone writes it.
+    const clock = when(a.restsUntil, undefined, { hour: '2-digit', minute: '2-digit' });
+    const at = dayIn(a.restsUntil, deviceZone()) === dayIn(now, deviceZone()) ? clock : `${when(a.restsUntil, undefined, { weekday: 'long' })} ${clock}`;
+    why = t`Its daily limit is used up; it rests until ${at}.`;
+  } else if (said) {
+    // A provider's words as a sentence, though annai's name stays lower case.
+    if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1);
+    if (!/[.!?。！？]$/u.test(why)) why += '.';
+  }
+  return why;
+}
+
+/**
  * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
- * @param {{ name: string, outcome: string, error?: string, said?: import('./contract.js').Said, restsUntil?: number, [k: string]: unknown }[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
+ * @param {Parameters<typeof attemptWhy>[0][]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
  */
 export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
   for (const a of attempts) {
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
-    // A provider's own words are shown as it gave them; annai's are by kind, or from what one of its own was (said), in the screens'
-    // language unless a model reads them.
-    const said = a.outcome === 'unreachable' ? '' : !plain && a.said ? saidWords(a.said, a.outcome) : a.error ?? '';
-    const kind = new ProviderError(/** @type {any} */ (a.outcome), a.outcome);
-    let why = said || (plain ? /** @type {Record<string, string>} */ (PASSED)[a.outcome] ?? explainPlain(kind) : passedShown(a.outcome) ?? explain(kind));
-    if (a.restsUntil && !plain) {
-      // A day limit: the user's sentence is a whole message, with the time as their phone writes it.
-      const clock = when(a.restsUntil, undefined, { hour: '2-digit', minute: '2-digit' });
-      const at = dayIn(a.restsUntil, deviceZone()) === dayIn(now, deviceZone()) ? clock : `${when(a.restsUntil, undefined, { weekday: 'long' })} ${clock}`;
-      why = t`Its daily limit is used up; it rests until ${at}.`;
-    } else if (said) {
-      // A provider's words as a sentence, though annai's name stays lower case.
-      if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1);
-      if (!/[.!?。！？]$/u.test(why)) why += '.';
-    }
     if (!lines.has(a.name)) lines.set(a.name, new Set());
-    lines.get(a.name)?.add(why);
+    lines.get(a.name)?.add(attemptWhy(a, { now, plain }));
   }
   /* en */
   const offlineLine = plain ? 'This device is offline.' : t`This device is offline.`;
@@ -154,7 +162,7 @@ const named = (name, words, plain) => (plain ? `${name}: ${words}` : t`${name}: 
  * how each model failed (attempts), that no model is set for a role, an error's kind, or another error's own message; halves: both of
  * Shiori's halves are down, each for its reasons.
  * @typedef {{ attempts?: Pick<Attempt, 'name' | 'outcome' | 'error' | 'said' | 'restsUntil'>[], offline?: boolean, role?: string, kind?: string, message?: string,
- *   provider?: string, name?: string, halves?: { koe: Why, kokoro: Why } }} Why  name: an error annai has words for (errors.js shownFor)
+ *   provider?: string, said?: import('./contract.js').Said, name?: string, halves?: { koe: Why, kokoro: Why } }} Why  name: an error annai has words for (errors.js shownFor)
  */
 
 /** @param {unknown} e @param {{ role?: string, online?: boolean }} [o] @returns {Why} */
@@ -163,7 +171,7 @@ export function whyOf(e, { role = 'main', online = true } = {}) {
     if (!e.attempts.length) return { role };
     return { attempts: e.attempts.map((a) => ({ name: a.name, outcome: a.outcome, ...(a.error ? { error: a.error } : {}), ...(a.said ? { said: a.said } : {}), ...(a.restsUntil ? { restsUntil: a.restsUntil } : {}) })), ...(online ? {} : { offline: true }) };
   }
-  if (e instanceof ProviderError) return { kind: e.kind, message: e.message, ...(e.provider ? { provider: e.provider } : {}) };
+  if (e instanceof ProviderError) return { kind: e.kind, message: e.message, ...(e.provider ? { provider: e.provider } : {}), ...(e.said ? { said: e.said } : {}) };
   // An error annai names keeps its name, from which a screen makes its words; any other, its message as it was.
   const name = /** @type {any} */ (e)?.name;
   return { message: String(/** @type {any} */ (e)?.message ?? e), ...(typeof name === 'string' && shownFor(name) ? { name } : {}) };
@@ -181,7 +189,7 @@ export function whyWords(why, plain = false) {
   if (why.attempts) return failedText(why.attempts, { offline: why.offline, plain });
   if (why.role !== undefined) return noModel(why.role, plain);
   if (why.kind) {
-    const e = new ProviderError(/** @type {any} */ (why.kind), String(why.message ?? ''), { provider: why.provider });
+    const e = new ProviderError(/** @type {any} */ (why.kind), String(why.message ?? ''), { provider: why.provider, said: why.said });
     return plain ? explainPlain(e) : explain(e);
   }
   return String((!plain && why.name ? shownFor(why.name) : undefined) ?? why.message ?? '');
