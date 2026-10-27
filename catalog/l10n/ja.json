@@ -29,6 +29,10 @@
       "name": "DeepSeek",
       "description": "DeepSeek のモデル。考えている途中の推論を表示します。"
     },
+    "provider-groq": {
+      "name": "Groq",
+      "description": "高速なオープンモデルと、高速な Whisper の文字起こし。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
