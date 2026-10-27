@@ -1,4 +1,4 @@
-import { h, t, plural, field } from '../dom.js';
+import { h, t, plural, field, linkIn } from '../dom.js';
 import { formatCost, size, duration, num, when, list } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
@@ -97,10 +97,43 @@ function row(ctx, e, titles, perWake) {
       // Its type and who wrote it are codes, as the log keeps them (decision 11).
       h('span', { class: 'k', lang: 'en', text: e.type }),
       h('span', { class: 'sub' }, titles.get(e.scope) ?? e.scope, ' · ', h('span', { lang: 'en', text: e.actor })),
-      h('span', { class: 'd', text: traceSummary(e, { costs: perWake }) })),
+      h('span', { class: 'd' }, ...summaryShown(e, perWake))),
     // The entry as it is stored, a developer's words.
     h('pre', { lang: 'en', text: JSON.stringify(e, null, 2) }),
     e.refs?.length ? storedText(ctx, e) : null));
+}
+
+/**
+ * The words an entry keeps as they were written, which its line shows: a model's wake reasons and notes, errors, reasons, tools'
+ * results. They are English (a model's, or annai's for the log), so the line marks them so (decision 11); the user's own words are
+ * not among them. Cut as the line cuts them. @param {any} e @returns {string[]}
+ */
+export function traceStored(e) {
+  const d = e.data ?? {};
+  const cut = (/** @type {unknown} */ x, n = 100) => {
+    const text = String(x ?? '');
+    return text.length > n ? `${text.slice(0, n)}…` : text;
+  };
+  /** @type {unknown[]} */
+  let kept = [];
+  if (e.type === 'wake') kept = (d.reasons ?? []).filter((/** @type {any} */ r) => r.kind !== 'user' && r.kind !== 'choice').map((/** @type {any} */ r) => r.text);
+  else if (e.type === 'note' || e.type === 'halves' || e.type === 'trigger.fired') kept = [cut(d.text)];
+  else if (e.type === 'tool.result') kept = [d.content ? cut(d.content) : ''];
+  else if (e.type === 'net.request' || e.type === 'push.sync') kept = [d.error ? cut(d.error) : ''];
+  else if (e.type === 'live.session') kept = [d.why ? cut(d.why) : ''];
+  else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`];
+  else if (e.type === 'backup.error') kept = [cut(d.message)];
+  else if (e.type === 'backup.peek') kept = [cut(d.problem)];
+  else if (e.type === 'state') kept = [d.why];
+  else kept = [d.message ?? d.title];
+  return kept.filter((x) => typeof x === 'string' && x.trim() !== '').map(String);
+}
+
+/** An entry's line, with the words it keeps as written marked English where they show. @param {any} e @param {Map<string, number>} [perWake] */
+function summaryShown(e, perWake) {
+  const line = traceSummary(e, { costs: perWake });
+  const kept = [...new Set(traceStored(e))].filter((x) => line.includes(x));
+  return linkIn(line, ...kept.map((x) => h('span', { lang: 'en', text: x })));
 }
 
 /** Which half wrote an entry, when Shiori is two: their names, the same in every language. @param {any} d */
@@ -241,21 +274,23 @@ export function traceSummary(e, { costs: perWake } = {}) {
  * @param {any} ctx @param {any} e an event with refs; data.stored names them, when it is there
  */
 function storedText(ctx, e) {
-  // What was sent and read, as it was kept: a developer's words (decision 11).
-  const out = h('pre', { hidden: true, lang: 'en' });
+  // What was sent and read, as it was kept, is a developer's words, marked English (decision 11); annai's notes on it are the screens'.
+  const out = h('div', { hidden: true });
   const btn = h('button', {
     class: 'btn ghost', type: 'button',
     onclick: async () => {
-      /** @type {string[]} */
-      const texts = [];
       for (const [i, hash] of e.refs.entries()) {
         // The entry's own names, read for its scope (reach.js).
         const b = await readBlob(ctx.store, e.scope, hash, { named: e });
+        const label = e.data?.stored?.[i];
+        if (label) out.append(h('p', { class: 'sub', lang: 'en', text: `${label}:` }));
+        if (b && /^text\/|json/.test(b.type)) out.append(h('pre', { lang: 'en', text: new TextDecoder().decode(new Uint8Array(b.data).subarray(0, 200_000)) }));
+        else out.append(h('p', { class: 'sub', text: b ? plural(b.size, '({0}, # byte)', '({0}, # bytes)', b.type) : t`(no longer stored)` }));
         // A kept voice clip plays here, as it was kept (spec §10.2); its address goes with the player.
         if (b?.type.startsWith('audio/')) {
           const src = URL.createObjectURL(new Blob([b.data], { type: b.type }));
           const player = h('audio', { controls: true, src });
-          out.after(player);
+          out.append(player);
           const gone = new MutationObserver(() => {
             if (player.isConnected) return;
             gone.disconnect();
@@ -263,13 +298,7 @@ function storedText(ctx, e) {
           });
           gone.observe(document.body, { childList: true, subtree: true });
         }
-        const body = !b ? t`(no longer stored)`
-          : /^text\/|json/.test(b.type) ? new TextDecoder().decode(new Uint8Array(b.data).subarray(0, 200_000))
-            : plural(b.size, '({0}, # byte)', '({0}, # bytes)', b.type);
-        const label = e.data?.stored?.[i];
-        texts.push(label ? `${label}:\n${body}` : body);
       }
-      out.textContent = texts.join('\n\n');
       out.hidden = false;
       btn.hidden = true;
     },
