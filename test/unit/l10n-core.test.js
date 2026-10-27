@@ -77,7 +77,7 @@ test("the dock's states and the voice chip's line are the screens' words", () =>
   const way = { mode: 'realtime', using: 'classic', why: 'resting', koe: true, split: true, path: 'text' };
   const koe = koeWords(way, true);
   assert.deepEqual(koe, { text: 'クラシック', reason: '（リアルタイム休止中）', note: 'リアルタイムはエラーの後で休んでいます。使えるようになるまで、クラシックが話します。' });
-  assert.equal(chipText({ setting: 'auto', on: true, why: 'car audio' }, koe.text), '音声オン · 車のオーディオ · クラシック');
+  assert.equal(chipText({ setting: 'auto', on: true, why: 'car audio' }, koe.text), '音声オン · カーオーディオ · クラシック');
   assert.equal(chipText({ setting: 'auto', on: false, why: 'not sure' }), '音声自動 · オフ');
 });
 
