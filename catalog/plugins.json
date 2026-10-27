@@ -192,7 +192,7 @@
     {
       "id": "provider-anthropic",
       "name": "Anthropic",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
       "category": "providers",
       "keywords": [],
@@ -202,7 +202,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 9286,
+      "size": 9725,
       "requires": [
         {
           "id": "anthropic-messages",
@@ -211,7 +211,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "19baff782181ae19d18e790a475fc9b941573eb59b3b45b9af90f978c64c7de9"
+        "annai-plugin.json": "18746b1a2e8ea80a4b1caad209da1d913683716416b54e146b4fe232704e056a",
+        "l10n/ja.json": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
+        "l10n/zh-Hans.json": "97c82307fc7cb7fc51a42bf58fb7b8f746e304379aa720f5774b195878cd9229"
       }
     },
     {

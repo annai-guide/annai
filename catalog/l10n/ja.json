@@ -21,6 +21,10 @@
       "name": "OpenAI Responses",
       "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
     },
+    "provider-anthropic": {
+      "name": "Anthropic",
+      "description": "Anthropic の Messages API を通じた Claude のモデル。Web 検索と、最長1時間もつキャッシュ付き。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"

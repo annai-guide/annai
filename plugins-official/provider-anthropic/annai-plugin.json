@@ -1,8 +1,9 @@
 {
   "id": "provider-anthropic",
   "name": "Anthropic",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
   "category": "providers",
   "requires": [
