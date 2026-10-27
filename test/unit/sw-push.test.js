@@ -235,10 +235,11 @@ test('under Japanese screens a "coming up" push is Japanese end to end: live mod
   try {
     const k = await liveKit({ plan: { tea: { title: 'Tea at the inn', fixed: true, start: { at: iso('16:00'), tz: LA } } } });
     const r = (await k.live.reminders())?.find((x) => x.watch === 'plan:tea:coming-up');
-    assert.equal(r?.text, 'あと15分：Tea at the inn（16:00）。');
+    assert.equal(r?.shown, 'あと15分：Tea at the inn（16:00）。');
+    assert.equal(r?.text, 'In 15 min: Tea at the inn at 16:00.', 'what Koe\'s view reads');
     assert.equal(r?.what, 'Tea at the inn（16:00）');
     // As the mirror sends it: the body its words, the item apart with its start.
-    const push = { ...REMINDER, key: String(r?.key), watch: String(r?.watch), body: String(r?.text), what: r?.what };
+    const push = { ...REMINDER, key: String(r?.key), watch: String(r?.watch), body: String(r?.shown), what: r?.what };
     const sw = await swKit({ device: { '/push.json': JSON.stringify({ on: true, words: pushWords() }) } });
     await sw.fire('push', { data: { json: () => ({ ...push, start: Date.now() + 11 * 60_000 + 20_000 }) } });
     await sw.fire('push', { data: { json: () => ({ ...push, start: Date.now() + 20_000 }) } });
