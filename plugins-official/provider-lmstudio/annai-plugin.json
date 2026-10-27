@@ -1,8 +1,9 @@
 {
   "id": "provider-lmstudio",
   "name": "LM Studio",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Models on LM Studio's server.",
   "category": "providers",

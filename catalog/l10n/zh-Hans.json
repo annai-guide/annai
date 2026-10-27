@@ -42,6 +42,10 @@
         "KoboldCpp"
       ]
     },
+    "provider-lmstudio": {
+      "name": "LM Studio",
+      "description": "LM Studio 服务器上的模型。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"

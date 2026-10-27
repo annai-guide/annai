@@ -42,6 +42,10 @@
         "KoboldCpp"
       ]
     },
+    "provider-lmstudio": {
+      "name": "LM Studio",
+      "description": "LM Studio のサーバーのモデル。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
