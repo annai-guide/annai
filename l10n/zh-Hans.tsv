@@ -253,7 +253,7 @@ storage-forgejo:17nk9ra	ok	The repository's own	仓库自己的默认分支	plug
 storage-forgejo:19gzx45	ok	Branch	分支	plugins-official/storage-forgejo/index.js:117	
 storage-forgejo:z1mfie	ok	Access token	访问令牌	plugins-official/storage-forgejo/index.js:119	
 storage-forgejo:1jg6jh4	ok	First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.	请先在服务器上为 annai 的备份新建一个私有仓库：annai 不会自己创建。然后为它创建一个具有 Repository: Read and write 权限的访问令牌（在你的 Settings → Applications 中），并粘贴到这里。把“所有者”和“仓库”留空，annai 会找到令牌能修改的私有仓库。令牌只保存在本设备上，绝不会进入备份。Codeberg 的服务器地址是 https://codeberg.org。	plugins-official/storage-forgejo/index.js:120	Note: Settings → Applications and Repository: Read and write are Forgejo's own English names, kept as written.
-storage-forgejo:zrv4ev	draft	the server	服务器	plugins-official/storage-forgejo/index.js:124	
+storage-forgejo:zrv4ev	ok	the server	服务器	plugins-official/storage-forgejo/index.js:124	
 storage-forgejo:12zsu7y	ok	The server must let web apps at {0} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.	服务器必须允许 {0} 上的网页应用使用它的 API。请把以下几行加到它的 app.ini 中，然后重启服务器。Codeberg 已经允许了。	plugins-official/storage-forgejo/index.js:127	{0} = origin; Note: "Add these lines" is 加到 its app.ini; not the Add screen.
 storage-forgejo:js7fdy	ok	{0} answered something annai can't read. annai tries again later.	{0} 返回了 annai 无法读取的内容。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:152	{0} = g.host
 storage-forgejo:1479rne	ok	annai couldn't reach {0}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.	annai 无法连接 {0}。如果本设备在线，可能是服务器还不允许网页应用使用它的 API：请查看此备份位置页面上的“浏览器访问”。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:155	{0} = g.host; Note: Quotes the place screen's section, 浏览器访问.
@@ -339,7 +339,7 @@ storage-github:9mtyxq	ok	That commit isn't an annai backup.	这个提交不是 a
 storage-github:1n7ook3	ok	This backup is damaged: {0} is missing from GitHub.	此备份已损坏：GitHub 上缺少 {0}。	plugins-official/storage-github/index.js:429	{0} = shown(name)
 storage-s3:@name	ok	S3-compatible storage	S3 兼容存储	plugins-official/storage-s3/annai-plugin.json:3	
 storage-s3:@description	ok	Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.	把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。	plugins-official/storage-s3/annai-plugin.json:8	
-storage-s3:1viru9x	draft	S3-compatible storage	S3 兼容存储	plugins-official/storage-s3/index.js:55	
+storage-s3:1viru9x	ok	S3-compatible storage	S3 兼容存储	plugins-official/storage-s3/index.js:55	
 storage-s3:8yhmg7	ok	S3 address	S3 地址	plugins-official/storage-s3/index.js:58	
 storage-s3:kazmvx	ok	Region	区域	plugins-official/storage-s3/index.js:59	
 storage-s3:1r2hopj	ok	Bucket	存储桶	plugins-official/storage-s3/index.js:60	
