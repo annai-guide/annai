@@ -1,4 +1,4 @@
-export { t, tc, plural } from '../core/l10n.js';
+export { t, tc, plural, asUser } from '../core/l10n.js';
 import { t } from '../core/l10n.js';
 import { parseNum } from '../core/intl.js';
 

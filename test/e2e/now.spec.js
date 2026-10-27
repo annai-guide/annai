@@ -78,6 +78,6 @@ test('a trip with thousands of location points: Now, the Plan and the conversati
   await page.goto('/#/plan');
   await expect(page.locator('.plan-row', { hasText: 'Lunch at Nepenthe' })).toBeVisible();
   await page.goto('/#/talk');
-  await expect(page.locator('.convo .system-line', { hasText: 'Reminder' })).toContainText('Leave soon: Lunch at Nepenthe.');
+  await expect(page.locator('.convo .system-line', { hasText: 'Reminder:' })).toContainText('Leave soon: Lunch at Nepenthe.');
   await expect(page.locator('.notice', { hasText: 'Something went wrong' })).toHaveCount(0);
 });
