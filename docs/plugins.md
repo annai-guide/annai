@@ -45,6 +45,8 @@ A plugin's manifest:
   - `templates` (endpoint templates, before providers) is refused: "Endpoint templates were replaced by `provider`".
   - `files`: every other file of the package, such as modules your entry imports. annai needs it only to install the package from an address (see "Installing"). A module you leave out isn't there once installed from an address, and the plugin won't start; the error is the browser's own, and it names your entry file, not the missing module (Chrome: "Failed to fetch dynamically imported module: …/index.js"; Safari names no file at all: "Importing a module script failed.").
   - `settings`: a JSON Schema object; annai draws a form from it on your plugin's page in Settings → Plugins. See "Settings" below.
+  - `language`: the language your plugin's own words are written in, as a language tag (`ja`); English when absent.
+  - `l10n`: the translations your package has, by tag (`["ja", "zh-Hans"]`), each a file `l10n/<tag>.json`. See "Translations" below.
 - **Size:** a package may unpack to at most 64 MiB.
 
 annai copies the package into its own storage, so the plugin works offline, and serves its files at `/plugins/<id>/…`. Relative imports between a plugin's own modules therefore just work. A package's files keep no history: installing it again replaces them.
@@ -78,14 +80,15 @@ export function activate(annai) {
 | `annai.providers.register(type)` | an endpoint type (spec §9.1): `build()` and `read()` for an HTTP protocol, or `run()` for one that needs no network; see "Protocols (endpoint types)" below |
 | `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`), `base64` (`encode(bytes)`, `decode(text)`), `g711` (`pcmToUlaw`, `ulawToPcm`, `pcmToAlaw`, `alawToPcm`: 16-bit PCM in an `Int16Array` to and from G.711's bytes), `wav` (`encode(pcm, rate)`: 16-bit mono PCM as a WAV file; `decode(bytes)`: a 16-bit WAV file's first channel, `{ pcm, rate }`) |
+| `annai.l10n` | your words in the screens' language: `t`, `tc`, `plural`, `both`, `lang`, `dir` and annai's formats. See "Translations" below. |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`; in English, for a model and the log), `addressShown(url)` (the same in the screens' words), `base64` (`encode(bytes)`, `decode(text)`), `g711` (`pcmToUlaw`, `ulawToPcm`, `pcmToAlaw`, `alawToPcm`: 16-bit PCM in an `Int16Array` to and from G.711's bytes), `wav` (`encode(pcm, rate)`: 16-bit mono PCM as a WAV file; `decode(bytes)`: a 16-bit WAV file's first channel, `{ pcm, rate }`) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
 | `annai.llm.decide({ prompt, options, threshold? })` | a quick decision (spec §9.7): `{ optionId: probability }` |
 | `annai.wake(reason)` | wakes Shiori, with the reason she sees. Quiet hours and the per-hour limit apply (spec §6.6). |
 | `annai.net.fetch(url, init?)` | a web request, recorded in the trace without any secret annai keeps |
-| `annai.ui.card({ title, body, tone?, actions? })`, `annai.ui.toast(text)` | a system card or a toast. These are never in Shiori's voice. |
+| `annai.ui.card({ title, body, tone?, actions? })`, `annai.ui.toast(text)` | a system card or a toast. These are never in Shiori's voice. They carry your words' language when it isn't the screens'. |
 | `annai.ui.slot(slot, item)`, `annai.ui.cardType(item)`, `annai.ui.component(name, impl)`, `annai.ui.screen(item)`, `annai.ui.theme(file)` | what your plugin adds to annai's screens: see "The UI" below. Each returns a function that removes it. |
 | `annai.hooks.on(fn, { types? })` | follows the log: see "Following the log" below |
 | `annai.cache.state()` | the prefix cache of the model Shiori used last: `{ modelId, ttlMs, expiresAt, warm }`, or null (spec §6.4) |
@@ -197,7 +200,7 @@ To change what a chip or a section shows, keep the element it was given and chan
 
 A manifest's `settings` is a JSON Schema object. annai draws a form from its top-level properties on your plugin's page:
 
-- `string` as a text field, a choice when it has `enum`, a password field when it has `writeOnly: true`;
+- `string` as a text field, a password field when it has `writeOnly: true`, a choice when it has `enum` (its values shown as they are) or `oneOf` of `{ "const", "title" }` (each one's `title` shown, and translatable: `oneOf: [{ "const": "basic", "title": "Basic" }]`);
 - `number` and `integer` (with `minimum` and `maximum`), `boolean` as a switch;
 - `title` labels a field, `description` explains it, `default` fills it when nothing is saved.
 
@@ -571,7 +574,7 @@ export function activate(annai) {
 - **`delete(c, id)`**, optional, removes one backup.
 - **`browserAccess(origin)`**, optional, returns `{ text, code }`: what the place must allow for annai at that origin (CORS rules, server headers). The place's screen shows it, with a Copy button.
 - **Read every answer with `annai.helpers.readAnswer(res, 'json' | 'text' | 'blob' | 'arrayBuffer', where)`.** Whatever is wrong with an answer (not JSON, cut off, over 8 MB of text) becomes a `TargetError`, so a broken or hostile server never counts as a bug in your plugin. `annai.helpers.xml.elements(xml, name)` and `.text(xml, name)` read XML answers in one pass, and never throw.
-- **Errors are answers:** throw a `TargetError` with a kind and plain words:
+- **Errors are answers:** throw a `TargetError` with a kind and plain words, in English (a hold and the log keep them), with the screens' words as `shown` when you have them (`new TargetError('auth', message, { shown })`; see "Translations"). A hold keeps your `shown` with its language, and shows it only on screens in that language:
   - `auth`, `refused`, `missing` and `setup` need the user, so annai shows a card once.
   - `rate` (with `retryAt`) and `other` are tried again later.
   - A `TypeError` and the like count as a bug in your plugin.
@@ -691,6 +694,102 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
 - take the POST;
 - answer 2xx;
 - allow annai's origin for CORS, with the `Authorization` and `Content-Type` headers, on its error answers too, so the plugin can tell a refused token from a server it can't reach.
+
+## Translations
+
+annai's screens speak the user's language (English, Japanese, Chinese (Simplified) now; see [translating](translating.md)). A plugin
+can speak it too: its description, its settings form, its provider's notes, and the words its code shows.
+
+### What a plugin ships
+
+The manifest names the language its own words are written in (`language`, English when absent) and the translations it has
+(`l10n`). Each is a file of the package, `l10n/<tag>.json`:
+
+```json
+{ "id": "acme-tides", "name": "Acme Tides", "language": "en", "l10n": ["ja", "zh-Hans"], "description": "Tide tables for the coast you are on." }
+```
+
+```json
+{
+  "manifest": {
+    "description": "今いる海岸の潮汐表。",
+    "keywords": ["潮汐"],
+    "settings.properties.station.title": "観測地点",
+    "settings.properties.depth.oneOf.0.title": "基本"
+  },
+  "messages": {
+    "13pcmq4": "{0}に干潮。",
+    "1tto9rq": { "other": "潮 #回" }
+  }
+}
+```
+
+- **`manifest`** gives the fields the screens show, by their path in your manifest: `description`; `keywords` (added to the
+  English ones, so a search in the user's language finds you); a provider's `provider.note`, and each ability's `name`, `note` and
+  `noWindowNote` (`provider.abilities.chat.note`); `search.key.note`; a setting's `title` and `description`, and the `title` of each of its
+  choices (`settings.properties.depth.oneOf.0.title`); and `featured`. **`name` is not one:** the install screen names the plugin the
+  user trusts the same way in every language. annai translates only its own plugins' descriptive names ("Custom provider").
+- **`messages`** are your code's words, by key: the FNV-1a hash (32 bits) of the English as you write it in the code, in base 36,
+  `{0}`, `{1}` … in place of its values. A plural's key is the hash of its two forms joined by `\0` (`"# tide\0# tides"`), and its
+  translation an object of the language's plural categories (Japanese and Chinese have only `other`; English `one` and `other`).
+  `npm run strings` in annai's repository makes the keys for its official plugins; read `key()` in `src/core/l10n.js` to make your own.
+- **Choices with words:** a setting's `enum` shows its values as they are. To show words, use JSON Schema's own
+  `oneOf: [{ "const": "basic", "title": "Basic" }, { "const": "advanced", "title": "Advanced" }]`; its titles can be translated.
+- A plugin written in another language sets `language` (`"ja"`), and may list `en` among its translations.
+
+### What annai checks
+
+At install, as the rest of the manifest, and refused with the reason:
+
+- `language` and each tag in `l10n` are language tags as written canonically (`ja`, `zh-Hans`, `pt-BR`; never `ja_JP` or `EN`), at most
+  50, none twice;
+- each listed file is there (an install from an address fetches them itself), JSON, at most 256 KiB, an object with only `manifest`
+  and `messages`;
+- every `manifest` key is a field a translation may give that your manifest has, within that field's own limit (500 characters for a
+  description, 1,000 for a note, 200 for a title, 40 for a keyword, up to 20 more keywords);
+- every message is text, or the language's plural forms, each at most 2,000 characters.
+
+At use, a translation whose placeholders aren't its English's is skipped, and the English shows. A translation is text: it reaches
+the page as text, never as HTML. The install screen's warnings (full access, whose keys it could read, where searches and keys go) are
+annai's own words, never yours, in every language.
+
+### `annai.l10n`
+
+| | |
+|---|---|
+| `annai.l10n.lang`, `.dir` | the screens' language tag (`ja`) and direction (`ltr`) |
+| `` annai.l10n.t`Low tide at ${time}.` `` | your words in the screens' language: your translation for it, else your own words |
+| `` annai.l10n.tc('verb')`Open` `` | the same, for English that means two things (the context is part of the key) |
+| `annai.l10n.plural(n, '# tide', '# tides', ...values)` | a count: `#` is `n`, formatted for the language |
+| `` annai.l10n.both`GitHub refused the token.` `` | `{ message, shown }`: the English, and the screens' words |
+| `annai.l10n.format` | annai's formats, in the screens' language with the phone's region: `num`, `money`, `size`, `distance`, `duration`, `relTime`, `when`, `day`, `list`, `sentences` (sentences side by side, as the language writes them) |
+
+**Three kinds of words.** Words the user reads on a screen go through `annai.l10n`. Words a model reads stay English: a tool's
+description, its results and errors, a search provider's `name` and `why`. Words a developer reads stay English too: your manifest's
+checks, a protocol's raw errors.
+
+**Plain fields are English; `shown` holds the screen's words.** What annai keeps (a backup place's refusal, in its hold and the log)
+or a model reads takes the English, and the screen shows `shown` beside it. A plugin that forgets `shown` shows English on screen,
+never a translation to a model:
+
+```js
+const { both } = annai.l10n;
+const refuse = (kind, w, extra = {}) => new TargetError(kind, w.message, { ...extra, shown: w.shown });
+throw refuse('auth', both`GitHub didn't accept the access token. Make a new one, paste it here, and save.`);
+
+return { ok: false, why: message, shown };  // a search provider's ready(), from const { message, shown } = both`needs a key`
+```
+
+A hold keeps your words with their language, and shows them only on screens in that language: a backup taken to a device in another
+shows your English.
+
+**Where annai shows your words** (your description, notes, settings, cards, toasts, pages and the drawings in its slots), the
+element carries your words' language when it isn't the screens', so a screen reader reads them right: an untranslated plugin's
+English is marked `lang="en"`.
+
+**Make whole sentences.** Write each message as one sentence or more, with its values as `${…}`; never glue fragments, never change a
+word's case in code, and join sentences with `annai.l10n.format.sentences(a, b)`, as Chinese and Japanese join them without a space.
+A language change restarts annai, so words made in `activate` are right.
 
 ## Rules
 
