@@ -41,7 +41,8 @@ import { anySignal } from '../signals.js';
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
- *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean }} Wake
+ *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[] }} Wake
+ *   files, titles: a file wake's paths, and what a trigger's watches are for: the screens' data for its line
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
@@ -1458,11 +1459,12 @@ export class Agent {
    * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log] @param {string | null} [trip] the trip paths in photos refer to
    */
   async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
-    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map((w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}) })) } });
+    const reasonOf = (/** @type {Wake} */ w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}) });
+    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map(reasonOf) } });
     else {
       // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
       const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice' && w.kind !== 'heard' && (!w.logged || w.kind === 'cue'));
-      if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map((w) => ({ kind: w.kind, text: w.text })) } });
+      if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
     }
     for (const w of wakes) {
       if (w.logged) continue;

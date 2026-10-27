@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, t } from './dom.js';
 import { platform } from './platform.js';
 
 let n = 0;
@@ -18,7 +18,7 @@ const page = Math.random().toString(36).slice(2, 8);
  * @param {{ title: string, body: string, yes: string, no?: string }} q
  * @returns {Promise<boolean>}
  */
-export function ask({ title, body, yes, no = 'Cancel' }) {
+export function ask({ title, body, yes, no = t`Cancel` }) {
   const id = `ask-${page}-${n++}`;
   return new Promise((resolve) => {
     /** @type {HTMLDialogElement} */

@@ -1,23 +1,24 @@
-import { h, field } from './dom.js';
+import { h, field, t, plural } from './dom.js';
 import { AllFailedError } from '../core/llm/fallback.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { withoutSecrets } from '../core/agent/net.js';
 import { formatCost, outcomeText } from './format.js';
 
-const SYSTEM = 'You are a helpful travel assistant inside the annai app. This conversation only checks that the model works, so keep your replies short.';
+/** The test conversation's instructions: a model's words, so English (localization design, section 7). */
+export const SYSTEM = /* en */ 'You are a helpful travel assistant inside the annai app. This conversation only checks that the model works, so keep your replies short.';
 
 /** The line under a reply: its tokens, audio and images too, and its cost. @param {any} result */
 export function metaLine(result) {
   const u = result.usage;
   const n = ['input', 'cacheRead', 'cacheWrite', 'cacheWrite1h', 'output', 'audioIn', 'audioOut', 'image', 'cacheReadAudio', 'cacheReadImage'].reduce((sum, k) => sum + (u[k] ?? 0), 0);
-  return `${n} tokens · ${formatCost(result.cost)}`;
+  return plural(n, '# token · {0}', '# tokens · {0}', formatCost(result.cost));
 }
 
 /** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */
 function failure(ctx, err, name) {
   const a = err instanceof AllFailedError ? err.attempts[0] : null;
-  const why = a ? `${outcomeText(a.outcome)}${a.error ? ` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : String(/** @type {any} */ (err)?.message ?? err);
-  return withoutSecrets(ctx.store, `${name} didn't answer: ${why}. No other model was asked.`);
+  const why = a ? `${outcomeText(a.outcome)}${a.error ? t` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : String(/** @type {any} */ (err)?.message ?? err);
+  return withoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
 }
 
 /**
@@ -33,8 +34,8 @@ export function tryPanel(ctx, model) {
   const input = h('textarea', { id: 'talk-input', rows: 2 });
   /** @type {AbortController | null} */
   let running = null;
-  const send = h('button', { class: 'btn pri', type: 'submit' }, 'Send');
-  const stop = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => running?.abort() }, 'Stop');
+  const send = h('button', { class: 'btn pri', type: 'submit' }, t`Send`);
+  const stop = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => running?.abort() }, t`Stop`);
   const form = h('form', {
     class: 'talk-form',
     onsubmit: async (/** @type {Event} */ e) => {
@@ -68,10 +69,10 @@ export function tryPanel(ctx, model) {
         stop.hidden = true;
       }
     },
-  }, field('Message', input), h('div', { class: 'acts' }, send, stop));
-  return h('section', { class: 'panel', 'aria-label': 'Try this model' },
-    h('h2', { class: 'section', text: 'Try this model' }),
-    h('p', { class: 'sub', text: 'A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.' }),
+  }, field(t`Message`, input), h('div', { class: 'acts' }, send, stop));
+  return h('section', { class: 'panel', 'aria-label': t`Try this model` },
+    h('h2', { class: 'section', text: t`Try this model` }),
+    h('p', { class: 'sub', text: t`A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.` }),
     log,
     form);
 }

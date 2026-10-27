@@ -1,10 +1,10 @@
-import { h, crumb, t, field, twoStep } from '../dom.js';
+import { h, crumb, t, plural, field, twoStep, linkIn } from '../dom.js';
 import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, dateRange, fileHref, pathParts } from '../format.js';
+import { relTime, size, num, list, sentences, dateRange, fileHref, pathParts, authorName } from '../format.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -20,7 +20,7 @@ export async function renderTrip(ctx, route) {
   const id = route.parts[1];
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
   if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: "This trip isn't on this device" }), h('p', {}, h('a', { href: '#/trips' }, 'Back to Trips')));
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
   if (ctx.agent && ctx.agent.target !== id) {
@@ -35,20 +35,20 @@ export async function renderTrip(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
     h('h1', { class: 'title', dir: 'auto', text: scope.title }),
-    h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? 'Archived' : null, `${files.length} files`, stamps.length ? { stamps: stampCount(stamps.length) } : null])),
+    h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     h('div', { class: 'acts' },
-      h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, 'Plan'),
-      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, 'Recap'),
-      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, 'Replay'),
+      h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Plan`),
+      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`),
+      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`),
       // Plugins' trip tabs (spec §16.4), each a page of its own.
       ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),
       archived
-        ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged().catch(() => {}); ctx.render(); } }, 'Unarchive')
+        ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged().catch(() => {}); ctx.render(); } }, t`Unarchive`)
         // Archived, its reminders leave live mode and the push relay at once.
-        : twoStep('Archive trip', 'Tap again to archive', async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
-      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, 'Remove trip')),
+        : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
+      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
     extra,
     await packPanel(ctx, id),
     fileList(id, files),
@@ -60,7 +60,7 @@ function tripActions(ctx, id, scope, slot) {
   return [h('button', {
     class: 'btn', type: 'button',
     onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scope.title })])),
-  }, 'Export trip')];
+  }, t`Export trip`)];
 }
 
 /**
@@ -82,11 +82,15 @@ async function askAndRemove(ctx, id, scope) {
   // What a provider keeps of its conversations goes too, said before the tap (G2).
   const k = await ctx.llm?.keptCount({ scope: id }).catch(() => null);
   const n = k?.turns;
-  const kept = n ? ` ${k.who.join(' and ')} keeps ${n} turn${n === 1 ? '' : 's'} of its conversations: annai asks for ${n === 1 ? 'it' : 'them'} to be deleted${navigator.onLine === false ? ", once you're back online" : ''}.` : '';
-  const sure = await ask({ title: scope.title, body: `This removes everything in this trip from this device: its files, photos, notes and history.${kept} Remove it?`, yes: 'Remove' });
+  const who = n ? list(k.who) : '';
+  const kept = !n ? ''
+    : navigator.onLine === false
+      ? plural(n, "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online.", "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.", who)
+      : plural(n, '{0} keeps # turn of its conversations: annai asks for it to be deleted.', '{0} keeps # turns of its conversations: annai asks for them to be deleted.', who);
+  const sure = await ask({ title: scope.title, body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
   if (!sure) return;
   if ((await backupState(ctx.store, id)).changed) {
-    const anyway = await ask({ title: 'Not backed up', body: "This trip hasn't been backed up since it last changed. Remove it anyway?", yes: 'Remove anyway' });
+    const anyway = await ask({ title: t`Not backed up`, body: t`This trip hasn't been backed up since it last changed. Remove it anyway?`, yes: t`Remove anyway` });
     if (!anyway) return;
   }
   try {
@@ -99,26 +103,26 @@ async function askAndRemove(ctx, id, scope) {
     if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
     const { bytes: freed } = await removeTrip(ctx.store, id);
     // What a provider keeps of its conversations is deleted too, when a connection allows (G2).
-    await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn("a removed trip's kept turns couldn't be queued for deletion", e));
+    await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn(/* en */ "a removed trip's kept turns couldn't be queued for deletion", e));
     // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
     await ctx.live?.forget(id);
     ctx.agent?.voice?.memory.forget(id);
-    ctx.notices.toast(`Removed ${scope.title}. ${size(freed)} freed.`);
+    ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {
     if (e instanceof NotFoundError) {
-      ctx.notices.toast('That trip was already removed.');
+      ctx.notices.toast(t`That trip was already removed.`);
       ctx.go('#/trips');
     } else if (!explainStorageFull(ctx, e)) {
       const why = String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]?$/, '.');
-      ctx.notices.card({ tone: 'warn', title: "That trip wasn't removed", body: `${why} Nothing was removed. Try again.` });
+      ctx.notices.card({ tone: 'warn', title: t`That trip wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
     }
   }
 }
 
 /** @param {string} id @param {any[]} files */
 function fileList(id, files) {
-  if (!files.length) return h('p', { class: 'empty', text: 'No files yet.' });
+  if (!files.length) return h('p', { class: 'empty', text: t`No files yet.` });
   /** @type {Map<string, any[]>} */
   const groups = new Map();
   for (const f of files) {
@@ -127,12 +131,12 @@ function fileList(id, files) {
     if (!groups.has(folder)) groups.set(folder, []);
     groups.get(folder)?.push(f);
   }
-  return h('section', { class: 'files', 'aria-label': 'Files' },
+  return h('section', { class: 'files', 'aria-label': t`Files` },
     ...[...groups].map(([folder, list]) => h('div', {},
-      h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : 'Trip' }),
+      h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : t`Trip` }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },
         h('span', { class: 'path', dir: 'ltr' }, ...pathParts(f.path)),
-        h('span', { class: 'sub', text: `${size(f.size)} · ${f.author} · ${relTime(f.modified)}` }))))))));
+        h('span', { class: 'sub', text: [size(f.size), authorName(f.author), relTime(f.modified)].join(' · ') }))))))));
 }
 
 /** Starting content for a new file, valid for the core schemas. @param {string} path */
@@ -151,7 +155,9 @@ function newFile(ctx, id) {
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   const show = (/** @type {any} */ e) => {
     explainStorageFull(ctx, e);
-    error.textContent = e instanceof ValidationError ? `That file doesn't match its format: ${e.errors.join('; ')}` : String(e?.message ?? e);
+    // A schema's refusal is its English (decision 11), marked so.
+    const why = e instanceof ValidationError ? e.errors.join('; ') : '';
+    error.replaceChildren(...(why ? linkIn(t`That file doesn't match its format: ${why}`, h('span', { lang: 'en', text: why })) : [String(e?.message ?? e)]));
     error.hidden = false;
   };
   const status = h('p', { class: 'sub', role: 'status' });
@@ -163,13 +169,14 @@ function newFile(ctx, id) {
     error.hidden = true;
     try {
       const { paths, notes, problems, planned } = await bringIn(ctx, id, files, (done, total) => {
-        status.textContent = total > 1 && done < total ? `Adding ${done + 1} of ${total}…` : '';
+        status.textContent = total > 1 && done < total ? t`Adding ${num(done + 1)} of ${num(total)}…` : '';
       });
       await ctx.render();
-      for (const note of notes) ctx.notices.card({ tone: 'warn', title: 'A photo was kept as it is', body: note });
-      for (const problem of problems) ctx.notices.card({ tone: 'warn', title: "A calendar file couldn't be read", body: problem });
-      const added = paths.length === 1 ? `Added ${paths[0]}` : `Added ${paths.length} files`;
-      ctx.notices.toast(planned.length ? `${added}, and ${planned.length} plan ${planned.length === 1 ? 'item' : 'items'} from the calendar` : added);
+      for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
+      for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
+      const what = paths.length === 1 ? paths[0] : plural(paths.length, '# file', '# files');
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # plan item from the calendar', 'Added {0}, and # plan items from the calendar', what)
+        : paths.length === 1 ? t`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
     } catch (e) {
       status.textContent = '';
       show(e);
@@ -186,7 +193,7 @@ function newFile(ctx, id) {
       error.hidden = true;
       try {
         const p = normPath(path.value);
-        if (await ctx.ws.read(id, p)) throw new Error(`${p} already exists. Open it from the list to edit it.`);
+        if (await ctx.ws.read(id, p)) throw new Error(t`${p} already exists. Open it from the list to edit it.`);
         await ctx.ws.write(id, p, starter(p), { author: 'user' });
         ctx.go(fileHref(id, p));
       } catch (err) {
@@ -194,12 +201,12 @@ function newFile(ctx, id) {
       }
     },
   },
-  h('h2', { class: 'section', text: 'Add a file' }),
-  field('File path', path),
+  h('h2', { class: 'section', text: t`Add a file` }),
+  field(t`File path`, path),
   error,
   h('div', { class: 'acts' },
-    h('button', { class: 'btn pri', type: 'submit' }, 'Create'),
-    h('label', { class: 'btn', for: 'upload-file' }, 'Add photos or files'), upload,
-    h('label', { class: 'btn', for: 'take-photo' }, 'Take a photo'), camera),
+    h('button', { class: 'btn pri', type: 'submit' }, t`Create`),
+    h('label', { class: 'btn', for: 'upload-file' }, t`Add photos or files`), upload,
+    h('label', { class: 'btn', for: 'take-photo' }, t`Take a photo`), camera),
   status);
 }
