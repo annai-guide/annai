@@ -472,7 +472,8 @@ test('a day limit\'s sentence is for models and code, so no language changes it;
     assert.equal(rested.restsUntil, r.attempts[0].restsUntil, 'a later turn, skipping the resting model, still says when');
     // The card says it in the screens\' words, whole, without changing any case.
     assert.match(failedText([rested], { now: 1_000_000, plain: true }), /^.+: Its daily limit is used up; it rests until [^⟦⟧]+\.$/, 'a model that reads it (a photo\'s stand-in) gets the English');
-    assert.match(failedText([rested], { now: 1_000_000 }), /^.+: ⟦Its daily limit is used up; it rests until .+\.⟧$/);
+    // The model's name and its line are a label and its words: a message of their own ("{0}: {1}").
+    assert.match(failedText([rested], { now: 1_000_000 }), /^⟦.+: ⟦Its daily limit is used up; it rests until .+\.⟧⟧$/);
   } finally {
     setWords('en', null);
   }

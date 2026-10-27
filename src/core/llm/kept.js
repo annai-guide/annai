@@ -57,15 +57,17 @@ export const keyPrint = async (secret, baseUrl, headers = {}) => {
 /**
  * Who keeps a provider's turns, in the words the provider page and the warnings use: the protocol's own (keeps.name, holds, note)
  * for the provider it names (keeps.provider), else the provider's own name and no claim about how long, as a server that only
- * speaks the protocol may keep nothing. holds: null where the page says it by key (Gemini's free and paid).
+ * speaks the protocol may keep nothing. holds: null where the page says it by key (Gemini's free and paid); server: another
+ * server that speaks the protocol, which keeps them as long as it does (the page says so in its own words).
  * @param {{ name?: string, days?: number, hours?: number, provider?: string, holds?: string, note?: string } | undefined} keeps @param {string} plugin the provider's plugin @param {string} providerName
- * @returns {{ name: string, holds: string | null, note: string }}
+ * @returns {{ name: string, holds: string | null, server: boolean, note: string }}
  */
 export function keeperOf(keeps, plugin, providerName) {
   const own = Boolean(keeps) && (!keeps?.provider || keeps.provider === plugin);
   return {
     name: own ? keeps?.name ?? providerName : providerName,
-    holds: keeps?.holds ? (own ? keeps.holds : 'as long as that server keeps them') : null,
+    holds: keeps?.holds && own ? keeps.holds : null,
+    server: Boolean(keeps?.holds) && !own,
     note: own ? keeps?.note ?? '' : '',
   };
 }

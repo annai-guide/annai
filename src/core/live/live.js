@@ -1,7 +1,7 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker, STILL_BELOW } from './activity.js';
 import { TRIGGERS } from './triggers.js';
-import { PLAN, planWatches } from './plan-watches.js';
+import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
@@ -14,6 +14,7 @@ import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
 import { isArrival } from '../after/stamps.js';
 import { SIMULATION } from './simulate.js';
+import { t } from '../l10n.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -25,17 +26,19 @@ import { SIMULATION } from './simulate.js';
  * @typedef {import('./triggers.js').Moment} Moment
  * @typedef {import('./triggers.js').Firing} Firing
  * @typedef {import('./watches.js').Watch} Watch
- * @typedef {{ scope: string, watch: Watch, type: TriggerType, firing: Firing, late: number, away?: 'start' | 'shown', fallback: string }} Fired
+ * @typedef {{ scope: string, watch: Watch, type: TriggerType, firing: Firing, late: number, away?: 'start' | 'shown', fallback: string, say?: import('./plan-watches.js').PlanSay }} Fired
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
- * @typedef {{ watch: string, text: string, cue?: boolean }} Reminder
+ * @typedef {{ watch: string, text: string, cue?: boolean, plan?: import('./plan-watches.js').PlanSay }} Reminder  plan: a plan watch's, its data for the user's words
  * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
  *   on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
- * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number }} Mirrored
+ * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, shown?: string, start?: number, what?: string }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
- *   start: a "coming up" item's, for the minutes left
+ *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown a plan's in the screens' words, made
+ *   from its data, for the push (the shown rule); start and what: a "coming up" item's, for the minutes left and the item in the screens'
+ *   words, which the service worker words (sw.js)
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
@@ -238,7 +241,7 @@ export class Live {
    */
   async simulate({ clock, timeZone, trip }) {
     await this.#run(async () => {
-      if (this.#sim) throw new Error('A simulation is already running.');
+      if (this.#sim) throw new Error(t`A simulation is already running.`);
       this.#gpsStop();
       this.#quiet();
       this.#sim = { clock: this.clock, timeZone: this.timeZone, trip };
@@ -331,7 +334,7 @@ export class Live {
       return true;
     });
     if (changed && on) {
-      await this.agent.wake({ kind: 'live', text: 'The user turned GPS on: annai now follows where they are, and your location watches run. If they may drive or ride, load the driving-companion skill.' });
+      await this.agent.wake({ kind: 'live', text: /* en */ 'The user turned GPS on: annai now follows where they are, and your location watches run. If they may drive or ride, load the driving-companion skill.' });
     }
   }
 
@@ -392,21 +395,21 @@ export class Live {
     const types = this.types();
     const when = i?.when;
     const type = typeof when?.type === 'string' ? types.get(when.type) : undefined;
-    if (!type) throw new Error(`when.type must be one of: ${[...types.keys()].join(', ')}.`);
+    if (!type) throw new Error(/* en */ `when.type must be one of: ${[...types.keys()].join(', ')}.`);
     /** @type {string | null} */
     let wrong;
     try {
       wrong = type.validate(when);
     } catch (e) {
-      throw new Error(`The ${type.type} trigger couldn't check this watch (${String(/** @type {any} */ (e)?.message ?? e).replace(/\.$/, '')}). Try another kind of watch.`);
+      throw new Error(/* en */ `The ${type.type} trigger couldn't check this watch (${String(/** @type {any} */ (e)?.message ?? e).replace(/\.$/, '')}). Try another kind of watch.`);
     }
-    if (wrong) throw new Error(`A ${type.type} watch: ${wrong}.`);
+    if (wrong) throw new Error(/* en */ `A ${type.type} watch: ${wrong}.`);
     const fallback = typeof i.fallback === 'string' ? i.fallback.trim() : '';
-    if (!fallback) throw new Error("Every watch needs a fallback: the words annai shows, and says with voice on, by itself when it fires and you can't be reached.");
+    if (!fallback) throw new Error(/* en */ "Every watch needs a fallback: the words annai shows, and says with voice on, by itself when it fires and you can't be reached.");
     const now = this.clock.now();
-    if (i.expires !== undefined && validate({ type: 'string', format: 'date-time' }, i.expires).length) throw new Error('expires must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00.');
-    if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(`expires ${i.expires} has already passed.`);
-    if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(`${when.at} has already passed. Give a time ahead.`);
+    if (i.expires !== undefined && validate({ type: 'string', format: 'date-time' }, i.expires).length) throw new Error(/* en */ 'expires must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00.');
+    if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(/* en */ `expires ${i.expires} has already passed.`);
+    if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${when.at} has already passed. Give a time ahead.`);
     /** @type {Watch} */
     const w = {
       id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true),
@@ -427,10 +430,10 @@ export class Live {
   /** watch_set's result: what was set, and how things stand. @param {Watch} w */
   watchText(w) {
     const type = this.types().get(w.when.type);
-    const parts = [`Set ${w.id}: ${this.#describe(type, w)}${w.repeat ? ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
-    if (type?.gps && !this.on) parts.push('GPS is off, so it waits until the user turns it on.');
+    const parts = [/* en */ `Set ${w.id}: ${this.#describe(type, w)}${w.repeat ? /* en */ ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
+    if (type?.gps && !this.on) parts.push(/* en */ 'GPS is off, so it waits until the user turns it on.');
     const here = this.nowInfo();
-    parts.push(`Now: ${here.activity}; ${here.place}.`);
+    parts.push(/* en */ `Now: ${here.activity}; ${here.place}.`);
     return parts.join(' ');
   }
 
@@ -443,17 +446,17 @@ export class Live {
       rows.push([w.id, w.owner, this.#describe(types.get(w.when?.type), w), w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
     }
     if (scope === this.#scope()) for (const w of this.#plan) rows.push([w.id, 'system', PLAN.describe(w.when), w.repeat ? 'yes' : 'no', w.fallback, '', this.#lastFired(scope, w.id)]);
-    return rows.length ? tsv(['id', 'owner', 'when', 'repeat', 'reminder', 'expires', 'last_fired'], rows) : 'No watches.';
+    return rows.length ? tsv(['id', 'owner', 'when', 'repeat', 'reminder', 'expires', 'last_fired'], rows) : /* en */ 'No watches.';
   }
 
   /** Cancels one of her watches (spec §7.2 watch.cancel). @param {string} scope @param {string} id @returns {Promise<string>} */
   async cancelWatch(scope, id) {
-    if (String(id).startsWith('plan:')) throw new Error(`${id} is one of the plan's own reminders: it follows the plan. Change or remove the plan item instead.`);
+    if (String(id).startsWith('plan:')) throw new Error(/* en */ `${id} is one of the plan's own reminders: it follows the plan. Change or remove the plan item instead.`);
     return this.#run(async () => {
       const w = (this.#watches.get(scope) ?? []).find((x) => x.id === id);
-      if (!w) throw new Error(`There is no watch ${id} here. watch_list shows them.`);
+      if (!w) throw new Error(/* en */ `There is no watch ${id} here. watch_list shows them.`);
       await this.#drop(scope, w, 'shiori');
-      return `Cancelled ${id}.`;
+      return /* en */ `Cancelled ${id}.`;
     });
   }
 
@@ -494,7 +497,8 @@ export class Live {
         } catch {
           due = null;
         }
-        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined } : {}) });
+        const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
+        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
       }
       return out.sort((a, b) => a.due - b.due);
     });
@@ -565,17 +569,17 @@ export class Live {
 
   /** The now block's place and activity (spec §6.3). Nothing is sent anywhere to name a place (choice 14). */
   nowInfo() {
-    if (!this.on) return { place: 'unknown (GPS is off, so annai has none)', activity: 'unknown (GPS is off)' };
+    if (!this.on) return { place: /* en */ 'unknown (GPS is off, so annai has none)', activity: /* en */ 'unknown (GPS is off)' };
     const activity = this.#activityText();
     const f = this.fix;
     if (!f) {
-      const why = this.gps === 'denied' ? 'location permission is off' : this.gps === 'unavailable' ? 'no GPS signal' : 'waiting for GPS';
+      const why = this.gps === 'denied' ? /* en */ 'location permission is off' : this.gps === 'unavailable' ? /* en */ 'no GPS signal' : /* en */ 'waiting for GPS';
       return { place: `unknown (${why})`, activity };
     }
     const near = this.near(f);
     const age = this.clock.now() - f.at;
-    const how = [`±${Math.round(f.accuracy)} m`, f.source === 'manual' ? 'set by the user' : age >= 2 * MIN ? `${Math.round(age / MIN)} min ago` : ''].filter(Boolean).join(', ');
-    return { place: `${near ? `near ${near.name} (${kmText(near.m)})` : 'no plan place nearby'} · ${f.lat.toFixed(5)}, ${f.lng.toFixed(5)} (${how})`, activity };
+    const how = [`±${Math.round(f.accuracy)} m`, f.source === 'manual' ? /* en */ 'set by the user' : age >= 2 * MIN ? /* en */ `${Math.round(age / MIN)} min ago` : ''].filter(Boolean).join(', ');
+    return { place: `${near ? `near ${near.name} (${kmText(near.m)})` : /* en */ 'no plan place nearby'} · ${f.lat.toFixed(5)}, ${f.lng.toFixed(5)} (${how})`, activity };
   }
 
   /** The nearest named place within reach of p: the plan's, or a namer's. @param {{ lat: number, lng: number }} p */
@@ -599,9 +603,9 @@ export class Live {
 
   /** @returns {string} */
   #activityText() {
-    const a = this.activity === 'moving-fast' ? 'moving fast' : this.activity;
+    const a = this.activity === 'moving-fast' ? /* en */ 'moving fast' : this.activity;
     const v = this.#tracker.speed;
-    return (this.activity === 'walking' || this.activity === 'moving-fast') && v !== null ? `${a}, about ${Math.round(v * 3.6)} km/h` : a;
+    return (this.activity === 'walking' || this.activity === 'moving-fast') && v !== null ? /* en */ `${a}, about ${Math.round(v * 3.6)} km/h` : a;
   }
 
   /** The conversation open now: the trip's, or "me". */
@@ -639,7 +643,7 @@ export class Live {
     if (this.#told.has(key)) return;
     if (this.#told.size >= 50) this.#told.clear();
     this.#told.add(key);
-    console.warn('live mode: a check failed', e);
+    console.warn(/* en */ 'live mode: a check failed', e);
     try {
       this.problem(e);
     } catch {
@@ -652,7 +656,7 @@ export class Live {
       try {
         fn();
       } catch (e) {
-        console.warn('a live mode listener failed', e);
+        console.warn(/* en */ 'a live mode listener failed', e);
       }
     }
   }
@@ -662,7 +666,7 @@ export class Live {
       try {
         fn();
       } catch (e) {
-        console.warn('an activity listener failed', e);
+        console.warn(/* en */ 'an activity listener failed', e);
       }
     }
   }
@@ -676,7 +680,7 @@ export class Live {
       try {
         fn(level);
       } catch (e) {
-        console.warn('a reminders listener failed', e);
+        console.warn(/* en */ 'a reminders listener failed', e);
       }
     }
   }
@@ -720,8 +724,11 @@ export class Live {
         if (!n.stale) this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
-        const words = String(n.body ?? '').trim().slice(0, 300);
-        this.#openedNews.push({ scope: n.scope, text: `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
+        // A plan reminder's notification says it in the screens' words: Shiori is quoted its English (the plan's own, when it is
+        // still planned here). Anyone else's reminder is quoted as it was written.
+        const plan = String(n.watch ?? '').startsWith('plan:');
+        const words = (plan ? this.#plan.find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
+        this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? /* en */ 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
       }
       await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);
     }
@@ -734,7 +741,7 @@ export class Live {
     const by = new Map();
     for (const o of this.#openedNews.splice(0)) by.set(o.scope, [...(by.get(o.scope) ?? []), o.text]);
     for (const [scope, lines] of by) {
-      const text = `Catch-up: ${lines.join(' ').replace(/^The user/, 'the user')}`;
+      const text = /* en */ `Catch-up: ${lines.join(' ').replace(/^The user/, /* en */ 'the user')}`;
       await this.agent.wake({ kind: 'catch-up', text, ...(scope === this.#scope() ? {} : { scope }) });
     }
   }
@@ -753,7 +760,7 @@ export class Live {
         });
         if (typeof off === 'function') this.#offs.push(off);
       } catch (e) {
-        console.warn('a sensor did not start', e);
+        console.warn(/* en */ 'a sensor did not start', e);
       }
     }
     if (this.on && this.shown) this.#gpsStart();
@@ -906,7 +913,7 @@ export class Live {
     const by = new Map();
     for (const h of held) by.set(h.scope, [...(by.get(h.scope) ?? []), h.text]);
     for (const [scope, texts] of by) {
-      const text = `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai showed their reminders by itself: ${texts.join(' ')}`;
+      const text = /* en */ `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai showed their reminders by itself: ${texts.join(' ')}`;
       await this.agent.wake({ kind: 'trigger', text, fallbacks: [], ...(scope === this.#scope() ? {} : { scope }) });
     }
   }
@@ -962,13 +969,13 @@ export class Live {
   /** "Catch-up: annai was off screen for 47 min (since 15:18), and the user moved 17.0 km from near … to near …." @param {{ how: 'start' | 'shown', since: number | null, from: Fix | null }} c */
   #catchUpHeader(c) {
     const now = this.clock.now();
-    const was = c.how === 'start' ? 'closed' : 'off screen';
-    const head = c.since === null ? 'Catch-up: annai has just started' : `Catch-up: annai was ${was} for ${span(now - c.since)} (since ${timeIn(c.since, this.timeZone())})`;
+    const was = c.how === 'start' ? 'closed' : /* en */ 'off screen';
+    const head = c.since === null ? /* en */ 'Catch-up: annai has just started' : /* en */ `Catch-up: annai was ${was} for ${span(now - c.since)} (since ${timeIn(c.since, this.timeZone())})`;
     const moved = c.from && this.fix && this.fix !== c.from ? meters(c.from, this.fix) : 0;
     if (moved < 500 || !c.from || !this.fix) return `${head}.`;
     const a = this.near(c.from);
     const b = this.near(this.fix);
-    return `${head}, and the user moved ${kmText(moved)}${a ? ` from near ${a.name}` : ''}${b ? ` to near ${b.name}` : ''}.`;
+    return /* en */ `${head}, and the user moved ${kmText(moved)}${a ? /* en */ ` from near ${a.name}` : ''}${b ? /* en */ ` to near ${b.name}` : ''}.`;
   }
 
   /** A wake of hers: moved counts again from here (spec §11.3: "X km travelled since the last wake"). @param {any} e */
@@ -1078,7 +1085,7 @@ export class Live {
     if (ids.size) await this.#recall(trip, ids);
     for (const { item } of items) {
       const p = item.place;
-      if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? 'a plan place'), lat: p.lat, lng: p.lng });
+      if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? /* en */ 'a plan place'), lat: p.lat, lng: p.lng });
     }
     this.#prune();
   }
@@ -1133,18 +1140,24 @@ export class Live {
       return type.check(w.when, m, mem) ?? null;
     } catch (e) {
       if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
-      else this.#noteOnce(scope, `The ${type.type} watch ${w.id} can't be checked: ${String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]$/, '')}.`);
+      else this.#noteOnce(scope, { type: type.type, watch: w.id, reminder: w.fallback, why: String(/** @type {any} */ (e)?.message ?? e) });
       return null;
     }
   }
 
-  /** Notes a problem in a conversation's log, once. @param {string} scope @param {string} message */
-  #noteOnce(scope, message) {
+  /**
+   * Notes a watch that can't be checked in its conversation's log, once: as data, from which the Conversation makes its line, with
+   * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, reminder: string, why: string }} d reminder: the
+   *   watch's own words, which the Conversation names it by; why: the trigger's own words
+   */
+  #noteOnce(scope, d) {
+    /* en */
+    const message = `The ${d.type} watch ${d.watch} can't be checked: ${d.why.replace(/[.!?]$/, '')}.`;
     const key = `${scope}\n${message}`;
     if (this.#noted.has(key)) return;
     this.#noted.add(key);
     this.#bg(async () => {
-      if (await this.#exists(scope)) await logEvent(this.store, scope, { type: 'error', actor: 'system', data: { kind: 'trigger', message } });
+      if (await this.#exists(scope)) await logEvent(this.store, scope, { type: 'error', actor: 'system', data: { kind: 'trigger', ...d, message } });
     });
   }
 
@@ -1197,7 +1210,8 @@ export class Live {
   /** @param {string} scope @param {Watch} watch @param {TriggerType} type @param {Firing} firing @param {number} now @returns {Fired} */
   #firedOf(scope, watch, type, firing, now) {
     const late = this.#catch && firing.at !== undefined && now - firing.at >= LATE_MS ? Math.round((now - firing.at) / MIN) : 0;
-    return { scope, watch, type, firing, late, ...(this.#catch ? { away: this.#catch.how } : {}), fallback: firing.fallback ?? watch.fallback };
+    const say = firing.say ?? watch.say;
+    return { scope, watch, type, firing, late, ...(this.#catch ? { away: this.#catch.how } : {}), fallback: firing.fallback ?? watch.fallback, ...(say ? { say } : {}) };
   }
 
   /** Logs each firing, then wakes Shiori: one wake a conversation (spec §6.1). @param {Fired[]} list @param {number} now */
@@ -1263,7 +1277,7 @@ export class Live {
       // watch's, or the plan's leave, late and coming up) stays owed until she tells the user; a cue's (a place, the road,
       // an arrival, a stop off the plan) only until a model answers (emulator pass).
       const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
-        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(reminds(x.watch) ? {} : { cue: true }) }));
+        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
       // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
       const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
@@ -1301,13 +1315,13 @@ export class Live {
     const shown = this.#shownFor(x);
     this.#notified.delete(key);
     const notes = [
-      x.late ? `late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : 'off screen'}` : '',
-      shown !== undefined ? `its notification was shown at ${timeIn(shown, this.timeZone())}` : '',
+      x.late ? /* en */ `late by ${x.late} min: annai was ${x.away === 'start' ? 'closed' : /* en */ 'off screen'}` : '',
+      shown !== undefined ? /* en */ `its notification was shown at ${timeIn(shown, this.timeZone())}` : '',
     ].filter(Boolean);
     const late = notes.length ? ` (${notes.join('; ')})` : '';
     if (x.watch.owner === 'system') return `${x.firing.text}${late}.`;
-    const whose = x.watch.owner === 'shiori' ? 'Your watch' : `The watch of ${x.watch.owner}`;
-    return `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
+    const whose = x.watch.owner === 'shiori' ? /* en */ 'Your watch' : /* en */ `The watch of ${x.watch.owner}`;
+    return /* en */ `${whose} ${x.watch.id} (${this.#describe(x.type, x.watch)}) fired: ${x.firing.text}${late}. Its reminder: "${x.watch.fallback}"`;
   }
 
   /**
@@ -1359,16 +1373,16 @@ export class Live {
       const wrong = type.validate(w.when);
       return typeof wrong === 'string' && wrong ? wrong : null;
     } catch {
-      return `its ${type.type} trigger can't read it`;
+      return /* en */ `its ${type.type} trigger can't read it`;
     }
   }
 
   /** A watch's when, in words, whatever is in it; never throws. @param {TriggerType | undefined} type @param {Watch} w */
   #describe(type, w) {
-    if (!type) return `${String(w.when?.type)} (its trigger type isn't installed)`;
+    if (!type) return /* en */ `${String(w.when?.type)} (its trigger type isn't installed)`;
     const a = `${/^[aeiou]/i.test(type.type) ? 'an' : 'a'} ${type.type} watch`;
     const wrong = this.#broken(type, w);
-    if (wrong) return `${a}, broken: ${wrong}, so it won't fire`;
+    if (wrong) return /* en */ `${a}, broken: ${wrong}, so it won't fire`;
     try {
       return String(type.describe(w.when));
     } catch {

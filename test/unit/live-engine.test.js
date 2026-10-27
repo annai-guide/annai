@@ -6,6 +6,7 @@ import { readWatches } from '../../src/core/live/watches.js';
 import { createTrip, removeTrip, ME } from '../../src/core/scopes.js';
 import { ManualClock, scaledClock, realClock } from '../../src/core/live/clock.js';
 import { Live } from '../../src/core/live/live.js';
+import { planWords } from '../../src/core/live/plan-watches.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, end: { at: iso('13:15'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
@@ -148,7 +149,9 @@ test("the plan's leave reminder comes by the clock with live mode off, from the 
   await k.to(at('11:09'));
   assert.equal(k.agent.wakes.length, 1);
   assert.equal(k.agent.wakes[0].text, 'Plan: time to leave soon for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away in a straight line, about 36 min by car.');
-  assert.deepEqual(k.agent.wakes[0].fallbacks, [{ watch: 'plan:nepenthe:leave', text: 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 36 min by car.' }]);
+  // Shiori reads the English; the user's words are made from its data, the same in English.
+  const leave = 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 36 min by car.';
+  assert.deepEqual(k.agent.wakes[0].fallbacks.map((/** @type {any} */ f) => [f.watch, f.text, planWords(f.plan)]), [['plan:nepenthe:leave', leave, leave]]);
   assert.equal((await k.events(['trigger.fired']))[0].data.event, 'leave');
   await k.to(at('12:00'));
   assert.equal(k.agent.wakes.length, 1);
@@ -186,7 +189,8 @@ test('running late for a fixed item, from where the user is (spec §11.3)', asyn
   assert.equal(k.agent.wakes.length, 2);
   assert.match(k.agent.wakes[0].text, /^Plan: time to leave soon for "Lunch at Nepenthe"/);
   assert.equal(k.agent.wakes[1].text, 'Plan: running late for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away, about 36 min by car, so about 5 min late.');
-  assert.deepEqual(k.agent.wakes[1].fallbacks, [{ watch: 'plan:nepenthe:late', text: 'Running late: Lunch at Nepenthe at 12:00. About 36 min away.' }]);
+  const late = 'Running late: Lunch at Nepenthe at 12:00. About 36 min away.';
+  assert.deepEqual(k.agent.wakes[1].fallbacks.map((/** @type {any} */ f) => [f.watch, f.text, planWords(f.plan)]), [['plan:nepenthe:late', late, late]]);
 });
 
 test('another trip opened: its watches and its log; a time watch of the first still reminds; nothing goes into a removed trip', async () => {

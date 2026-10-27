@@ -10,7 +10,7 @@ import { PluginHost } from '../../src/core/plugins.js';
 import { peekArchive, importArchive } from '../../src/core/archive.js';
 import { TargetError } from '../../src/core/storage-types.js';
 import { addTarget } from '../../src/core/backup-targets.js';
-import { createBackups, retryDelay } from '../../src/core/backup.js';
+import { createBackups, retryDelay, holdWords } from '../../src/core/backup.js';
 import { startGitHub } from '../fakes/github.js';
 import { TOKEN, memoryPlace, device, placeOn, everything, until } from './backup-kit.js';
 
@@ -99,7 +99,7 @@ test('a failure waits longer each time; one only the user can fix says so; a suc
   const hold = async () => /** @type {any} */ ((await d.backups.get(id))?.hold);
   place.failNext(new TargetError('other', 'The place had a problem.'));
   await assert.rejects(d.backups.backUp(id));
-  assert.deepEqual(await hold(), { kind: 'error', message: 'The place had a problem.', at: d.now(), count: 1, retryAt: d.now() + 15 * 60_000, needsYou: false });
+  assert.deepEqual(await hold(), { kind: 'error', message: 'The place had a problem.', said: null, at: d.now(), count: 1, retryAt: d.now() + 15 * 60_000, needsYou: false });
   place.failNext(new Error('offline'));
   await assert.rejects(d.backups.backUp(id));
   assert.deepEqual([(await hold()).count, (await hold()).retryAt - d.now()], [2, 30 * 60_000]);
@@ -334,11 +334,14 @@ test("a backup that fails while this phone is offline says it is offline, not th
   place.failNext(new TypeError('Failed to fetch'));
   await assert.rejects(d.backups.backUp(id), /offline/);
   // Save and test says it too.
-  await assert.rejects(d.backups.check(id), { message: "This phone is offline, so annai couldn't reach this place." });
+  await assert.rejects(d.backups.check(id), (/** @type {any} */ e) => e.shown === "This phone is offline, so annai couldn't reach this place." && e.message === 'This phone is offline.');
   const rec = (await d.backups.list()).find((t) => t.id === id);
   assert.equal(rec?.hold?.kind, 'error');
   const hold = /** @type {any} */ (rec?.hold);
-  assert.equal(hold.message, "This phone is offline, so annai couldn't reach this place. annai tries again once it's back online.");
+  // Kept as data, its words made where it is shown (localization L5f); the log and the hold keep English.
+  assert.equal(holdWords(hold), "This phone is offline, so annai couldn't reach this place. annai tries again once it's back online.");
+  assert.equal(hold.message, 'This phone is offline.');
+  assert.deepEqual([hold.said, hold.offline], [{ code: 'offline', noun: 'phone' }, true]);
   assert.equal(hold.needsYou, false);
   assert.equal(hold.retryAt, d.now(), 'no 15-minute wait: due again as soon as the connection is');
   // Review R12: failing offline again and again counts as no failure of the place's: the wait after a real one stays short.

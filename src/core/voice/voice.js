@@ -19,6 +19,7 @@ import { record as logEvent } from '../agent/log.js';
 import { readBlob } from '../reach.js';
 import { encodeWav } from './pcm.js';
 import { sha256Hex } from '../hash.js';
+import { t } from '../l10n.js';
 
 /**
  * Voice (spec §10): annai's speaking and hearing, for the screens, and in milestone 3b for
@@ -48,7 +49,7 @@ export function audioIn(cfg, types, id) {
 }
 
 /** What the model that heard a segment as audio is asked, to write it down (spec §10.3). */
-export const WRITE_DOWN = 'Write down exactly what is said in this audio, in the language it is spoken. Reply with the words only, nothing else. If nothing clear is said, reply with nothing.';
+export const WRITE_DOWN = /* en */ 'Write down exactly what is said in this audio, in the language it is spoken. Reply with the words only, nothing else. If nothing clear is said, reply with nothing.';
 
 export class Voice {
   /** The conversation speech requests are traced in. */
@@ -68,7 +69,7 @@ export class Voice {
   /** The transcription models that answered a 400 naming language: asked without the user's languages from then on (until annai restarts). @type {Set<string>} */
   unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
-  mode = { setting: 'auto', on: false, why: 'not sure' };
+  mode = { setting: 'auto', on: false, why: /* en */ 'not sure' };
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
@@ -118,8 +119,8 @@ export class Voice {
       onVoice: (entry, system) => {
         if (entry.kind !== 'browser' || system?.local) return;
         // The browser sends her words to the voice's service itself: the trace says so (spec §11.7), without the words.
-        const named = system ? `The browser voice ${system.name} spoke` : "The browser voice spoke, with the browser's choice of voice";
-        this.#trace(this.scope, { kind: 'voice', voice: system?.name ?? null, local: false, message: `${named}: the browser sends her words to that voice's service; annai can't see that request.` });
+        const named = system ? /* en */ `The browser voice ${system.name} spoke` : /* en */ "The browser voice spoke, with the browser's choice of voice";
+        this.#trace(this.scope, { kind: 'voice', voice: system?.name ?? null, local: false, message: /* en */ `${named}: the browser sends her words to that voice's service; annai can't see that request.` });
       },
     });
   }
@@ -283,7 +284,7 @@ export class Voice {
       try {
         fn(x, who);
       } catch (e) {
-        console.warn('a level listener failed', e);
+        console.warn(/* en */ 'a level listener failed', e);
       }
     }
   }
@@ -310,7 +311,7 @@ export class Voice {
   /** One voice's clip of a text, or its stream, played: that voice's Test. @param {string} modelId @param {string} text */
   async sample(modelId, text) {
     const platform = this.platform;
-    if (!platform) throw new Error("This browser can't play sound here.");
+    if (!platform) throw new Error(t`This browser can't play sound here.`);
     platform.session('playback');
     const got = await this.#clip(modelId, text);
     const o = { signal: new AbortController().signal, onLevel: (/** @type {number} */ x) => this.#level(x, 'her') };
@@ -355,7 +356,7 @@ export class Voice {
    */
   async listenOnce({ seconds = 15, onSpeech, signal } = {}) {
     const platform = this.platform;
-    if (!platform) throw new Error("This browser can't use the microphone here.");
+    if (!platform) throw new Error(t`This browser can't use the microphone here.`);
     const { pauseMs } = voiceSettings(await readAppSettings(this.ws));
     const recording = await this.#recordWith();
     return new Promise((resolve, reject) => {
@@ -399,7 +400,7 @@ export class Voice {
     const cfg = await this.llm.config();
     const accepts = plain ? ['wav'] : audioIn(cfg, this.llm.types(), id);
     const audio = await audioFor(kept, accepts, this.platform?.encoder);
-    if (!audio) throw new ProviderError('bad-request', `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
+    if (!audio) throw new ProviderError('bad-request', /* en */ `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
     for (let retry = 0; ; retry++) {
       try {
         const hints = modelLanguages(await this.languages());
@@ -451,7 +452,7 @@ export class Voice {
         try {
           fn(next, first);
         } catch (e) {
-          console.warn('a voice listener failed', e);
+          console.warn(/* en */ 'a voice listener failed', e);
         }
       }
     }
@@ -558,7 +559,7 @@ export class Voice {
    */
   async open({ kind, onSegment, onSpeech, onQuiet, onError, scope = this.scope }) {
     const platform = this.platform;
-    if (!platform) throw new Error("This browser can't use the microphone here.");
+    if (!platform) throw new Error(t`This browser can't use the microphone here.`);
     const { pauseMs } = await this.settings();
     const local = kind === 'dictation' && (await this.dictationLocal());
     const recording = kind === 'record' ? await this.#recordWith() : undefined;
@@ -576,7 +577,7 @@ export class Voice {
         onSwitch: () => { this.dictationFailed = true; },
       });
       if (session.kind === 'dictation') {
-        this.#trace(scope, { kind: 'dictation', local, message: local ? 'Phone dictation listened, on this phone only.' : "Phone dictation listened: the browser sends the audio to its own speech service; annai can't see that request." });
+        this.#trace(scope, { kind: 'dictation', local, message: local ? /* en */ 'Phone dictation listened, on this phone only.' : /* en */ "Phone dictation listened: the browser sends the audio to its own speech service; annai can't see that request." });
       }
       return session;
     } catch (e) {

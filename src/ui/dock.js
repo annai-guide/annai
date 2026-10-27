@@ -1,4 +1,4 @@
-import { h, t } from './dom.js';
+import { h, t, messageOf } from './dom.js';
 import { createAvatar } from './avatar.js';
 import { addFiles } from './add-files.js';
 import { voiceChip } from './voice-chip.js';
@@ -117,7 +117,7 @@ export function createDock(ctx) {
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
       ctx.go('#/talk');
     } catch (e) {
-      ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: String(/** @type {any} */ (e)?.message ?? e) });
+      ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: messageOf(e) });
     } finally {
       ctx.agent.photoComing?.(false);
     }

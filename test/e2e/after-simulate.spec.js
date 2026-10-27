@@ -88,7 +88,7 @@ test('the Big Sur trip, simulated through the app, is replayed and recapped, and
     await expect(timeline).toContainText('Shiori: Highway 1 today');
     await expect(timeline).toContainText('partly unseen: the phone was locked');
     await expect(page.getByRole('img', { name: '5 stamps: Bixby Creek Bridge, Nepenthe, McWay Falls, Hearst Castle, Cambria Pines Lodge' }).first()).toBeVisible();
-    await expect(page.getByRole('img', { name: /^The route: \d+\.\d km on the road, from Bixby Creek Bridge to Cambria Pines Lodge, with \d+ stops and 5 stamps\.$/ })).toBeVisible();
+    await expect(page.getByRole('img', { name: /^The route: \d+(\.\d)? mi on the road, from Bixby Creek Bridge to Cambria Pines Lodge, with \d+ stops and 5 stamps\.$/ })).toBeVisible();
     // The sample's road is straight between its route points, so thinning keeps their corners: a dozen or so, not thousands.
     expect((await page.locator('svg.route-map polyline.route-all').first().getAttribute('points'))?.split(' ').length).toBeGreaterThan(10);
     await expect(page.locator('svg.route-map polyline.route-all')).toHaveCount(2); // the phone was locked once

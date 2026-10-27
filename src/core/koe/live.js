@@ -9,6 +9,7 @@ import { definitions } from '../agent/tools.js';
 import { modelOf } from '../llm/config.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
 import { strayLanguage } from '../languages.js';
+import { t } from '../l10n.js';
 
 /**
  * Koe live (the Koe and Kokoro design, "Realtime sessions"; spec §10.8): Koe as a realtime voice model, a session at a time,
@@ -401,7 +402,7 @@ export class LiveKoe {
     this.#hinted = true;
     const ws = this.c.ws;
     if (ws && (await ws.readJSON(SYS_DEVICE, HINTS).catch(() => null))?.talkOver) return;
-    this.c.notice({ tone: 'info', title: 'Tap Shiori to talk over her', body: "On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens." });
+    this.c.notice({ tone: 'info', title: t`Tap Shiori to talk over her`, body: t`On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.` });
     if (!ws) return;
     await ensureDeviceScope(ws.store, ws.now());
     await ws.write(SYS_DEVICE, HINTS, { talkOver: true }, { author: 'system' });
@@ -416,7 +417,7 @@ export class LiveKoe {
     this.#input = null;
     this.listening = false;
     this.c.voice?.platform?.session('playback');
-    const p = this.c.voice?.problem(e) ?? { title: 'Listening stopped', body: String(e) };
+    const p = this.c.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e) };
     this.c.notice({ tone: 'warn', title: p.title, body: p.body });
     this.#changed();
     this.#idle();

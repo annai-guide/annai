@@ -1,4 +1,6 @@
 import { toBase64 } from '../bytes.js';
+import { t } from '../l10n.js';
+import { sentences } from '../intl.js';
 import { pickFormat, formatOf, mediaTypeOf, rankOf } from './formats.js';
 import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
 
@@ -137,9 +139,10 @@ async function pcmOf(audio, encoder) {
 /**
  * How to listen (spec §10.3): the first usable entry of the speech-in list, judged against the
  * model expected to hear it, chooses recording or phone dictation. Dictation is exclusive: when it
- * comes first, segments arrive as text only. With nothing usable, the reason says what to add.
+ * comes first, segments arrive as text only. With nothing usable, the reason says what to add: why, for a model to read, in annai's
+ * English; words, for the user's card, in the screens' language.
  * @param {{ list: string[], model: Hearer | null, asr: (id: string) => boolean, dictation: boolean }} c  dictation: this browser has it, and it hasn't failed
- * @returns {{ kind: 'record' | 'dictation' } | { kind: null, why: string }}
+ * @returns {{ kind: 'record' | 'dictation' } | { kind: null, why: string, words: string }}
  */
 export function listenKind({ list, model, asr, dictation }) {
   for (const id of list) {
@@ -151,12 +154,16 @@ export function listenKind({ list, model, asr, dictation }) {
       return { kind: 'record' };
     }
   }
-  if (!list.length) return { kind: null, why: "Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in." };
+  if (!list.length) return { kind: null, why: /* en */ "Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.", words: t`Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.` };
+  /* en */
   const hearing = model ? `${model.name} doesn't take audio` : 'no main model is set';
-  return {
-    kind: null,
-    why: `Shiori can't hear you yet: ${hearing}, and the speech-in list has no transcription model that works${dictation ? '' : ' (and this browser has no phone dictation)'}. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`,
-  };
+  /* en */
+  const why = `Shiori can't hear you yet: ${hearing}, and the speech-in list has no transcription model that works${dictation ? '' : ' (and this browser has no phone dictation)'}. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`;
+  // The user's card: the same words, each part a sentence of its own.
+  const lacks = model ? t`Shiori can't hear you yet: ${model.name} doesn't take audio, and the speech-in list has no transcription model that works.`
+    : t`Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.`;
+  const words = sentences(lacks, dictation ? '' : t`This browser has no phone dictation either.`, t`Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`);
+  return { kind: null, why, words };
 }
 
 /**

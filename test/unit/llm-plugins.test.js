@@ -82,7 +82,7 @@ test("security review: keepOff: a type whose plugin the user turned off isn't sw
   await assert.rejects(ensureType(host, 'scripted', { fetch: repoFetch().get, keepOff: true }), /you turned off.*Turn it on in Settings → Plugins/s);
   assert.equal((await host.installed())['scripted-model'].enabled, false);
   await host.setEnabled('scripted-model', true);
-  registry.disable('scripted-model', 'failed 3 times in a row');
+  registry.disable('scripted-model', { kind: 'failed', count: 3 });
   await ensureType(host, 'scripted', { fetch: repoFetch().get, keepOff: true });
   assert.ok(endpointTypes(registry).has('scripted'));
 });

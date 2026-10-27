@@ -1,5 +1,5 @@
 import { h, crumb, t, field, checkbox, twoStep, savedField, savedCheck, savedRadios, messageOf, numberIn } from '../dom.js';
-import { placeStatus, placeHref, newerText, relTime, when, size, numField, limitFromField, limitField, limitText, sentences } from '../format.js';
+import { placeStatus, holdNote, placeHref, newerText, relTime, when, size, numField, limitFromField, limitField, limitText, sentences } from '../format.js';
 import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf, thisDevice } from '../auto-backup.js';
@@ -52,7 +52,8 @@ export async function renderBackups(ctx, route) {
     places.length
       ? h('ul', { class: 'cards' }, ...places.map((/** @type {any} */ p) => h('li', {}, h('a', { class: 'card', href: placeHref(p.id) },
         h('span', { class: 'name', text: `${p.name} · ${whereOf(ctx, p)}` }),
-        h('span', { class: 'sub', text: placeStatus(p, ctx.backups.progress(p.id)) })))))
+        h('span', { class: 'sub', text: placeStatus(p, ctx.backups.progress(p.id)) }),
+        holdNote(p) ? h('span', { class: 'sub', lang: 'en', text: holdNote(p) }) : null))))
       : h('p', { class: 'empty', text: t`No backup places yet.` }),
     kinds.size
       ? h('section', { class: 'panel', 'aria-label': t`Add a place` }, field(t`Add a place to back up to`, pick), h('div', { class: 'acts' }, add), status)
@@ -72,6 +73,8 @@ async function renderPlace(ctx, id) {
   // A backup opened from here stops if the user leaves this screen before it has opened (the import screen takes over from there).
   const leaving = leaveSignal();
   const live = h('p', { class: 'sub', text: placeStatus(target, ctx.backups.progress(id)) });
+  // An older hold's English, under it.
+  const note = h('p', { class: 'sub', lang: 'en', text: holdNote(target), hidden: !holdNote(target) });
   const stop = h('button', { class: 'btn', type: 'button', hidden: !ctx.backups.progress(id), onclick: () => ctx.backups.stop(id) }, t`Stop`);
   const off = ctx.backups.on(async () => {
     if (!live.isConnected) {
@@ -79,7 +82,11 @@ async function renderPlace(ctx, id) {
       return;
     }
     const now = await ctx.backups.get(id);
-    if (now) live.textContent = placeStatus(now, ctx.backups.progress(id));
+    if (now) {
+      live.textContent = placeStatus(now, ctx.backups.progress(id));
+      note.textContent = holdNote(now);
+      note.hidden = !note.textContent;
+    }
     stop.hidden = !ctx.backups.progress(id);
   });
   const top = [
@@ -87,6 +94,7 @@ async function renderPlace(ctx, id) {
     h('h1', { class: 'title', text: target.name }),
     h('p', { class: 'sub', text: whereOf(ctx, target) }),
     live,
+    note,
   ];
   if (!type) {
     const on = h('button', {

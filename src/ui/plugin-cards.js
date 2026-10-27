@@ -1,17 +1,17 @@
-import { t, plural } from './dom.js';
-import { list, sentences } from './format.js';
+import { t, plural, messageOf } from './dom.js';
+import { list, sentences, num } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
  * never in Shiori's voice; the message has any key annai keeps blanked before it gets here.
- * @param {{ name: string, reason: string, message: string }} d
+ * @param {{ name: string, why: import('../core/registry.js').DisabledWhy, message: string }} d why: core's data, made into words here
  */
-export function disabledCard({ name, reason, message }) {
+export function disabledCard({ name, why, message }) {
   return {
     tone: /** @type {const} */ ('warn'),
     title: t`The plugin "${name}" was turned off`,
-    // The reason is core's words (registry.js, hooks.js), in English for now.
-    body: sentences(t`It ${reason}.`, t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
+    body: sentences(why.kind === 'loop' ? t`Its hooks were handed more than ${num(why.entries)} log entries in ${num(why.seconds)} seconds, which looks like a loop.`
+      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
   };
 }
 
@@ -43,7 +43,7 @@ export function startCards(failures, { name, taken }) {
   const cards = [];
   const unloaded = [];
   for (const f of failures) {
-    const why = String(/** @type {any} */ (f.error)?.message ?? f.error);
+    const why = messageOf(f.error);
     const it = name(f.id);
     if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened: ${why}`, t`You can turn it back on in Settings → Plugins.`) });
     else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`) });

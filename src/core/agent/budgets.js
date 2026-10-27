@@ -5,7 +5,7 @@
  * @typedef {import('./loop.js').Budgets} Budgets
  */
 import { t } from '../l10n.js';
-import { money } from '../intl.js';
+import { money, num } from '../intl.js';
 
 /** Whether an entry carries a call's cost: a role call's model.turn, or a speech request or a live session's turn (their costs aren't in any model.turn). @param {any} e */
 const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && /^(speech-|realtime$)/.test(String(e.data?.kind ?? '')));
@@ -88,19 +88,40 @@ export const UNWATCHED_STEPS = 50;
 
 /**
  * Whether a budget ends the turn before the next model call. watched: the user started the turn or joined it (isWatched); only
- * a turn nobody watches has annai's own step limit, and only while Steps per wake is empty.
+ * a turn nobody watches has annai's own step limit, and only while Steps per wake is empty. What stopped it is data (which, the
+ * steps, whether annai's own limit, the spend), kept in the log, with the card's words made from it.
  * @param {{ budgets: Budgets, steps: number, spent: number, watched?: boolean }} c
- * @returns {{ which: 'steps' | 'spend', title: string, body: string } | null}
+ * @returns {(BudgetStop & { title: string, body: string }) | null}
  */
 export function budgetStop({ budgets, steps, spent, watched = true }) {
-  if (budgets.stepsPerWake && steps >= budgets.stepsPerWake) {
-    return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took the ${budgets.stepsPerWake} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
+  /** @type {BudgetStop | null} */
+  let over = null;
+  if (budgets.stepsPerWake && steps >= budgets.stepsPerWake) over = { which: 'steps', steps: budgets.stepsPerWake };
+  else if (!budgets.stepsPerWake && !watched && steps >= UNWATCHED_STEPS) over = { which: 'steps', steps: UNWATCHED_STEPS, own: true };
+  else if (budgets.spendPerDay && spent >= budgets.spendPerDay) over = { which: 'spend', spent, perDay: budgets.spendPerDay };
+  return over && { ...over, ...budgetWords(over) };
+}
+
+/**
+ * @typedef {{ which: 'steps', steps: number, own?: boolean } | { which: 'spend', spent: number, perDay: number }} BudgetStop
+ *   own: annai's own limit on a turn nobody watches
+ */
+
+/**
+ * A budget's card, from what stopped the turn: in the screens' language, or (plain) annai's English for the log.
+ * @param {BudgetStop} over @param {boolean} [plain] @returns {{ title: string, body: string }}
+ */
+export function budgetWords(over, plain = false) {
+  if (over.which === 'spend') {
+    /* en */
+    if (plain) return { title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${over.spent.toFixed(2)} of the $${over.perDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    return { title: t`Shiori stopped: today's budget is spent`, body: t`Today's model calls cost ${money(over.spent)} of the ${money(over.perDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
   }
-  if (!budgets.stepsPerWake && !watched && steps >= UNWATCHED_STEPS) {
-    return { which: 'steps', title: 'Shiori stopped: step limit', body: `She took ${UNWATCHED_STEPS} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` };
-  }
-  if (budgets.spendPerDay && spent >= budgets.spendPerDay) {
-    return { which: 'spend', title: "Shiori stopped: today's budget is spent", body: t`Today's model calls cost ${money(spent)} of the ${money(budgets.spendPerDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
-  }
-  return null;
+  /* en */
+  if (plain) return { title: 'Shiori stopped: step limit', body: over.own ? `She took ${over.steps} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` : `She took the ${over.steps} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
+  return {
+    title: t`Shiori stopped: step limit`,
+    body: over.own ? t`She took ${num(over.steps)} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.`
+      : t`She took the ${num(over.steps)} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.`,
+  };
 }

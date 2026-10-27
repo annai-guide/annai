@@ -628,7 +628,7 @@ test("Start fresh in Koe · Classic shows Kokoro's words for the user that Koe s
     if (when === 'in its turn') await until(() => k.sent['model-koe'].length > asked);
     assert.equal(await k.agent.startFresh(), 'done', when);
     await k.agent.idle();
-    const all = (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, e.data.title ?? e.data.mode, e.data.text ?? '']);
+    const all = (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, (e.data.answer && "Shiori's answer") ?? e.data.mode, e.data.text ?? '']);
     assert.deepEqual(all, [['reminder', "Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.'], ['compaction', 'fresh', '']], when);
     assert.ok(!(await shown(k)).some(([, , text]) => text === 'Good news.'), when);
     assert.equal(JSON.stringify(k.agent.koe.transcript.messages).includes('Highway'), false, when);
@@ -636,7 +636,7 @@ test("Start fresh in Koe · Classic shows Kokoro's words for the user that Koe s
 });
 
 // Fix pass 3: what the verification's probes found in Start fresh, Koe · Classic.
-const reminders = async (/** @type {any} */ k) => (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, e.data.title ?? e.data.mode, e.data.text ?? '']);
+const reminders = async (/** @type {any} */ k) => (await k.events(['reminder', 'compaction'])).map((/** @type {any} */ e) => [e.type, (e.data.answer && "Shiori's answer") ?? e.data.mode, e.data.text ?? '']);
 const HIGHWAY = 'Highway 1 took from 1919 to 1937 to build.';
 const noteForUser = (/** @type {any} */ k) => k.agent.channel.send('kokoro', 'Tell them about Highway 1.', 'append', 'tool', undefined, undefined, false, HIGHWAY);
 
@@ -672,7 +672,7 @@ test("Start fresh while annai shows Kokoro's note Koe never passed on: shown onc
   /** @type {Promise<any> | null} */
   let fresh = null;
   const off = k.agent.on('event', (/** @type {any} */ e) => {
-    if (!fresh && e.type === 'reminder' && e.data?.title === "Shiori's answer") fresh = k.agent.startFresh();
+    if (!fresh && e.type === 'reminder' && e.data?.answer === true) fresh = k.agent.startFresh();
   });
   await noteForUser(k);
   await until(() => fresh !== null);

@@ -1,7 +1,8 @@
 import { segmentsOf, thin, positionAt, fractionAt, fit } from './route.js';
 import { stampCount } from './stamps.js';
 import { instantOf, timeIn } from '../time.js';
-import { kmText, span } from '../live/geo.js';
+import { t, plural } from '../l10n.js';
+import { distance, duration } from '../intl.js';
 
 /**
  * The replay (spec §13) of a journey or one of its days, for the screen to draw: the route as drawn
@@ -18,7 +19,10 @@ import { kmText, span } from '../live/geo.js';
  */
 
 /** Playback speeds: trip time a second, and their words (choice 5). */
-export const PLAY_SPEEDS = Object.freeze(/** @type {[number, string][]} */ ([[60, '1 minute a second'], [600, '10 minutes a second'], [3600, '1 hour a second']]));
+export const PLAY_SPEEDS = Object.freeze(/** @type {[number, string][]} */ ([[60, t`1 minute a second`], [600, t`10 minutes a second`], [3600, t`1 hour a second`]]));
+
+/** A stay's or a move's length, to the minute: "25 min", "1 hr, 35 min". @param {number} ms */
+const span = (ms) => (ms < 60_000 ? t`less than a minute` : duration(Math.round(ms / 60_000) * 60_000));
 
 /** When a day begins and ends in a zone. @param {string} day "YYYY-MM-DD" @param {string} tz */
 export function dayBounds(day, tz) {
@@ -63,35 +67,41 @@ export function routeWords({ entries, km, stamps }) {
   const named = stays.filter((e) => e.name);
   const first = named[0]?.name;
   const last = named[named.length - 1]?.name;
-  const tail = `with ${stays.length} ${stays.length === 1 ? 'stop' : 'stops'} and ${stampCount(stamps.length)}.`;
-  if (!km) return `No road was recorded, ${tail}`;
-  return `${kmText(km * 1000)} on the road${first ? `, from ${first}` : ''}${last && last !== first ? ` to ${last}` : ''}, ${tail}`;
+  // The stamps are a count of their own, "# stamps", inside the sentence that counts the stops.
+  const n = stays.length;
+  const marks = stampCount(stamps.length);
+  if (!km) return plural(n, 'No road was recorded, with # stop and {0}.', 'No road was recorded, with # stops and {0}.', marks);
+  const road = distance(km);
+  if (!first) return plural(n, '{0} on the road, with # stop and {1}.', '{0} on the road, with # stops and {1}.', road, marks);
+  if (!last || last === first) return plural(n, '{0} on the road, from {1}, with # stop and {2}.', '{0} on the road, from {1}, with # stops and {2}.', road, first, marks);
+  return plural(n, '{0} on the road, from {1} to {2}, with # stop and {3}.', '{0} on the road, from {1} to {2}, with # stops and {3}.', road, first, last, marks);
 }
 
-/** What was so at t. @param {Replay} r @param {number} t @returns {Moment} */
-export function momentAt(r, t) {
+/** What was so at a moment. @param {Replay} r @param {number} at @returns {Moment} */
+export function momentAt(r, at) {
   let index = -1;
   for (let lo = 0, hi = r.entries.length - 1; lo <= hi;) {
     const mid = (lo + hi) >> 1;
-    if (r.entries[mid].at <= t) {
+    if (r.entries[mid].at <= at) {
       index = mid;
       lo = mid + 1;
     } else hi = mid - 1;
   }
   /** @type {any} */
-  const stay = r.entries.find((e) => e.kind === 'stay' && t >= e.at && t <= e.to);
+  const stay = r.entries.find((e) => e.kind === 'stay' && at >= e.at && at <= e.to);
   /** @type {any} */
-  const move = stay ? null : r.entries.find((e) => e.kind === 'move' && t >= e.at && t <= e.to);
+  const move = stay ? null : r.entries.find((e) => e.kind === 'move' && at >= e.at && at <= e.to);
   /** @type {any} */
   let prev = null;
   for (let i = index; i >= 0 && !prev; i--) if (r.entries[i].kind === 'stay' && /** @type {any} */ (r.entries[i]).name) prev = r.entries[i];
-  const where = stay ? (stay.name ? `At ${stay.name}` : 'Stopped')
-    : move ? `${move.mode === 'walk' ? 'Walking' : 'Driving'}${prev ? ` from ${prev.name}` : ''}`
-      : t < r.from || index < 0 ? 'Not started yet'
-        : prev ? `After ${prev.name}` : 'On the way';
-  const pos = positionAt(r.segments, t);
+  const walk = move?.mode === 'walk';
+  const where = stay ? (stay.name ? t`At ${stay.name}` : t`Stopped`)
+    : move ? (prev ? (walk ? t`Walking from ${prev.name}` : t`Driving from ${prev.name}`) : walk ? t`Walking` : t`Driving`)
+      : at < r.from || index < 0 ? t`Not started yet`
+        : prev ? t`After ${prev.name}` : t`On the way`;
+  const pos = positionAt(r.segments, at);
   const dist = onMap(r.map);
-  return { xy: pos ? r.map.xy(pos) : null, index, where, stamps: r.stamps.filter((s) => s.at <= t).length, done: r.segments.map((s, i) => fractionAt(s, t, dist) * r.lengths[i]) };
+  return { xy: pos ? r.map.xy(pos) : null, index, where, stamps: r.stamps.filter((s) => s.at <= at).length, done: r.segments.map((s, i) => fractionAt(s, at, dist) * r.lengths[i]) };
 }
 
 /** @param {string} s @param {number} n */
@@ -104,17 +114,22 @@ const cut = (s, n) => {
 export function entryLine(e, tz) {
   const at = String(timeIn(e.at, tz));
   if (e.kind === 'stay') {
-    const stamp = e.stamp ? ' · stamp' : '';
+    const name = e.name ?? t`A stop`;
     // An arrival the road shows no stay for (the track ended there): when it came.
-    if (e.to <= e.at) return { when: at, text: `${e.name ?? 'A stop'} · arrived${stamp}` };
-    return { when: `${at}–${timeIn(e.to, tz)}`, text: `${e.name ?? 'A stop'} · ${span(e.to - e.at)}${stamp}` };
+    if (e.to <= e.at) return { when: at, text: e.stamp ? t`${name} · arrived · stamp` : t`${name} · arrived` };
+    const long = span(e.to - e.at);
+    return { when: `${at}–${timeIn(e.to, tz)}`, text: e.stamp ? t`${name} · ${long} · stamp` : `${name} · ${long}` };
   }
-  if (e.kind === 'move') return { when: at, text: `${e.mode === 'walk' ? 'Walked' : 'Drove'} ${kmText(e.km * 1000)} · ${span(e.to - e.at)}${e.gap ? ' (partly unseen: the phone was locked)' : ''}` };
+  if (e.kind === 'move') {
+    const [far, long] = [distance(e.km), span(e.to - e.at)];
+    if (e.mode === 'walk') return { when: at, text: e.gap ? t`Walked ${far} · ${long} (partly unseen: the phone was locked)` : t`Walked ${far} · ${long}` };
+    return { when: at, text: e.gap ? t`Drove ${far} · ${long} (partly unseen: the phone was locked)` : t`Drove ${far} · ${long}` };
+  }
   if (e.kind === 'card') {
     const c = e.card ?? {};
     const words = [c.title, c.text, c.place?.name].find((x) => typeof x === 'string' && x.trim());
-    return { when: at, text: `Shiori: ${cut(String(words ?? 'a card'), 120)}` };
+    return { when: at, text: t`Shiori: ${words ? cut(String(words), 120) : t`a card`}` };
   }
-  if (e.kind === 'said') return { when: at, text: `You${e.spoken ? ' said' : ''}: ${cut(e.text, 120)}` };
-  return { when: at, text: `Photo ${e.path.split('/').pop()}` };
+  if (e.kind === 'said') return { when: at, text: e.spoken ? t`You said: ${cut(e.text, 120)}` : t`You: ${cut(e.text, 120)}` };
+  return { when: at, text: t`Photo ${e.path.split('/').pop()}` };
 }

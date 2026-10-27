@@ -25,7 +25,7 @@ test('the whole trip, or a day of it: the drawn route, its entries and stamps, a
   assert.equal(all.from, MORNING[0].at);
   assert.equal(all.to, at('08:00', '2026-11-28'));
   assert.ok(all.lengths.every((n) => n >= 0) && all.lengths[0] > 100);
-  assert.match(all.words, /^\d+\.\d km on the road, from Bixby Creek Bridge to Hearst Castle, with 2 stops and 1 stamp\.$/);
+  assert.match(all.words, /^\d+(\.\d)? mi on the road, from Bixby Creek Bridge to Hearst Castle, with 2 stops and 1 stamp\.$/);
   const friday = /** @type {any} */ (replayOf(j, '2026-11-27'));
   assert.equal(friday.entries.some((/** @type {any} */ e) => e.text === 'Good morning!'), false);
   const saturday = /** @type {any} */ (replayOf(j, '2026-11-28'));
@@ -56,12 +56,12 @@ test('what was so at a moment: where, the last entry reached, the stamps so far,
 test('each timeline entry in a few words', async () => {
   const r = /** @type {import('../../src/core/after/replay.js').Replay} */ (replayOf(await morning(), '2026-11-27'));
   const lines = r.entries.map((e) => entryLine(e, LA));
-  assert.match(lines[0].text, /^Drove \d+\.\d km · 30 min$/);
+  assert.match(lines[0].text, /^Drove \d+(\.\d)? mi · 30 min$/);
   assert.match(lines[1].when, /^09:29–09:5\d$/);
   assert.equal(lines[1].text, 'Bixby Creek Bridge · 20 min · stamp');
   assert.deepEqual(lines[2], { when: '09:35', text: 'Shiori: Bixby Creek Bridge' });
   assert.deepEqual(lines[3], { when: '09:36', text: 'You said: Can we stop at Nepenthe?' });
-  assert.match(lines[4].text, /^Drove \d+\.\d km · 6 h \d+ min \(partly unseen: the phone was locked\)$/);
+  assert.match(lines[4].text, /^Drove \d+(\.\d)? mi · 6 hr, \d+ min \(partly unseen: the phone was locked\)$/);
   assert.equal(entryLine({ kind: 'photo', at: at('10:00'), path: '/files/2026-11-27-1000.webp', hash: 'h', type: 'image/webp', size: 1, width: null, height: null, place: null }, LA).text, 'Photo 2026-11-27-1000.webp');
   assert.equal(entryLine({ kind: 'stay', at: at('10:00'), to: at('10:30'), lat: 1, lng: 1, name: null, stamp: null }, LA).text, 'A stop · 30 min');
   assert.equal(routeWords({ entries: [], km: 0, stamps: [] }), 'No road was recorded, with 0 stops and 0 stamps.');

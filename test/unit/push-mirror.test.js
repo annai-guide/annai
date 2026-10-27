@@ -180,6 +180,13 @@ test('no connection: nothing is lost; what failed goes when it is back; a restar
     assert.deepEqual(await k.waiting(), []);
     const st = await k.mirror.status();
     assert.match(String(st.problem?.message), /couldn't reach the relay/);
+    // Kept as data and the log's English; the words are made when the screen asks (localization L5f), with the service worker's.
+    const kept = await k.ws.readJSON(SYS_DEVICE, FILE);
+    assert.deepEqual(kept.problem.said, { code: 'offline', host: 'push.annai.guide' });
+    assert.equal(kept.problem.message, "annai couldn't reach the relay at push.annai.guide.");
+    assert.equal(kept.words.soon, 'In {0} min: {1}.');
+    const logged = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS_DEVICE, { types: ['push.sync'] }));
+    assert.equal(logged.at(-1)?.data.error, "annai couldn't reach the relay at push.annai.guide.");
     k.net.offline = false;
     await k.mirror.sync();
     assert.equal((await k.waiting()).length, 1);
@@ -547,8 +554,8 @@ test('relay errors say what to do next (§17 rule 3): at turn-on, tap again; in 
   const k = await pushKit({ live: false });
   try {
     k.net.offline = true;
-    await assert.rejects(k.mirror.turnOn(RELAY), (/** @type {any} */ e) => /couldn't reach the relay at push\.annai\.guide/.test(e.message)
-      && /Nothing was turned on/.test(e.message) && /tap Turn on notifications again/.test(e.message) && !/tries again by itself/.test(e.message));
+    await assert.rejects(k.mirror.turnOn(RELAY), (/** @type {any} */ e) => /couldn't reach the relay at push\.annai\.guide/.test(e.shown)
+      && /Nothing was turned on/.test(e.shown) && /tap Turn on notifications again/.test(e.shown) && !/tries again by itself/.test(e.shown) && !/Nothing was turned on/.test(e.message));
     k.net.offline = false;
     await k.mirror.turnOn(RELAY);
     await k.flush();
@@ -559,7 +566,7 @@ test('relay errors say what to do next (§17 rule 3): at turn-on, tap again; in 
     assert.match(bg, /couldn't reach the relay at push\.annai\.guide/);
     assert.match(bg, /annai tries again by itself/);
     const wrong = relayClient({ base: 'https://example.com', fetch: async () => new Response('<html>Not Found</html>', { status: 404 }) });
-    await assert.rejects(wrong.vapid(), (e) => e instanceof RelayError && /no annai push relay at example\.com/.test(e.message) && /Check the relay address/.test(e.message));
+    await assert.rejects(wrong.vapid(), (e) => e instanceof RelayError && /no annai push relay at example\.com/.test(String(e.shown)) && /Check the relay address/.test(String(e.shown)));
   } finally {
     await k.stop();
   }
@@ -623,6 +630,8 @@ test('a "coming up" reminder at the relay carries its item\'s start, for the pho
     const tea = k.pushed().find((p) => p.watch === 'plan:tea:coming-up');
     assert.equal(tea?.body, 'In 15 min: Tea at the inn at 16:00.');
     assert.equal(tea?.start, at('16:00'));
+    // …and its item apart, which the service worker puts in its words for the minutes left (localization L5f).
+    assert.equal(tea?.what, 'Tea at the inn at 16:00');
   } finally {
     await k.stop();
   }
