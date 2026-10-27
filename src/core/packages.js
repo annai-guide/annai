@@ -448,6 +448,9 @@ export function rawAddress(address) {
 /** Whether a name stays inside the package (see plainPath). @param {string} name */
 const fileName = (name) => plainPath(name);
 
+/** The answers that say a file isn't there: S3 answers 403 for a missing object it won't list. */
+const MISSING = new Set([403, 404, 410]);
+
 /**
  * A package's files from an address (choice 6): a zip, whatever the address ends with; an
  * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
@@ -479,7 +482,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint));
+      throw Object.assign(new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint)), { unreachable: true });
     }
     const bytes = await answerBytes(res, u.host, max - used);
     used += bytes.byteLength;
@@ -511,7 +514,20 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   const tooMany = () => new Error(t`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
-  /** The files a SKILL.md links to, in its folder; one that can't be downloaded is left out. @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
+  /**
+   * Why a file of the package couldn't be had, naming it; null when it may be left out (optional) and the site answers it hasn't it: a
+   * 404, a 410, or a 403 as S3 answers for a missing object. A busy site (503, 429) or no answer is no answer that it isn't there, and
+   * fails. No answer names the file: a 404 without CORS headers looks the same, and annai has just read the package from that site.
+   * @param {unknown} e @param {string} name @param {URL} u @param {string} from the file that names it @param {boolean} optional
+   */
+  const failed = (e, name, u, from, optional) => {
+    const status = /** @type {any} */ (e)?.status;
+    if (optional && MISSING.has(status)) return null;
+    if (status) return new Error(t`${u.host} answered ${status} for ${name}, a file its ${from} names.`);
+    if (/** @type {any} */ (e)?.unreachable) return new Error(t`annai couldn't read ${name} from ${u.host}, a file its ${from} names. Check that it is there, and that the site lets web apps read it.`);
+    return e;
+  };
+  /** The files a SKILL.md links to, in its folder; one the site answers it hasn't is left out (failed). @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
   const linked = async (folder, skill) => {
     let links = skillLinks(text(skill));
     try {
@@ -527,7 +543,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(at));
       } catch (e) {
-        if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+        const why = failed(e, name, at, SKILL_FILE, true);
+        if (why) throw why;
       }
     }
   };
@@ -564,10 +581,9 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(u));
       } catch (e) {
-        // Which file the site lacks (minors 21). A translation it answers it hasn't (a 404) is left out; no answer at all fails.
-        const status = /** @type {any} */ (e)?.status;
-        if (status && l10n.has(name)) continue;
-        throw status ? new Error(t`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
+        // Which file the site lacks (minors 21); a translation it answers it hasn't is left out.
+        const why = failed(e, name, u, MANIFEST_FILE, l10n.has(name));
+        if (why) throw why;
       }
     }
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
