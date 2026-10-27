@@ -85,7 +85,7 @@
     {
       "id": "gemini-live",
       "name": "Gemini Live",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -93,7 +93,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 10943,
+      "size": 11360,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -101,8 +101,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "d096677ac2b2ae5457b74927ddff6fa61bf3477116d4d2c12a00ccf9175f91ae",
-        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7"
+        "annai-plugin.json": "5aac0880d6b48157b2f2d69d9e21f57f9d66c521aba52c1496b94a7b8c56e801",
+        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7",
+        "l10n/ja.json": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
+        "l10n/zh-Hans.json": "88b849b7e5d9e9315e869ab128fbcda96b4af38607db016fcdd1a7774d6425d3"
       }
     },
     {

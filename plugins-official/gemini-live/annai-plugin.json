@@ -1,8 +1,9 @@
 {
   "id": "gemini-live",
   "name": "Gemini Live",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
   "provides": { "endpoint-type": ["gemini-live"] }

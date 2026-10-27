@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。",
+    "name": "Gemini Live"
+  },
+  "messages": {}
+}

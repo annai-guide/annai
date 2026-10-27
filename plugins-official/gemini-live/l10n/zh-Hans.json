@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。",
+    "name": "Gemini Live"
+  },
+  "messages": {}
+}
