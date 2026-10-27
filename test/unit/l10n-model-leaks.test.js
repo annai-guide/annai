@@ -8,6 +8,7 @@ import { agentKit, until } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { createTrip } from '../../src/core/scopes.js';
+import { PLAN } from '../../src/core/live/plan-watches.js';
 
 // What reaches a model stays annai's English under Japanese screens (the L5f review's probes, made tests): the next plan reminder
 // in Koe's view, an opened notification in Shiori's catch-up, and why the microphone stopped while she listened.
@@ -60,6 +61,21 @@ test("a plan reminder of a trip that isn't open, opened from its notification: i
   assert.doesNotMatch(woke, /plan:gone/);
   assert.doesNotMatch(woke, KANA);
   again.dispose();
+});
+
+test("a plan watch that can't be checked is kept as its plan item's title, for the Conversation to name it by, never its English fallback", async () => {
+  const check = PLAN.check;
+  PLAN.check = () => { throw new Error('the plan item has no time'); };
+  try {
+    const k = await liveKit({ plan: { tea: TEA } });
+    await k.to(at('15:50'));
+    const [e] = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(k.trip, { types: ['error'] }));
+    assert.equal(e?.data.title, 'Tea at the inn');
+    assert.equal(e?.data.reminder, undefined);
+    k.live.dispose();
+  } finally {
+    PLAN.check = check;
+  }
 });
 
 test('the microphone stops while speak listens: the card in Japanese, the tool result in English', async (t) => {

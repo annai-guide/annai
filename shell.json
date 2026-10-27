@@ -1,5 +1,5 @@
 {
-  "build": "81f92fc9867b",
+  "build": "82905014e0dc",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -92,7 +92,7 @@
     "/src/core/live/activity.js": "d8245a391342",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "6d220b35914a",
+    "/src/core/live/live.js": "695b14b36f8b",
     "/src/core/live/plan-watches.js": "e96b2f1ddfe0",
     "/src/core/live/sim-run.js": "7f9a358ce98c",
     "/src/core/live/simulate.js": "1324564ac4e4",
@@ -252,7 +252,7 @@
     "/src/ui/screens/settings.js": "743ac37f29d3",
     "/src/ui/screens/simulate.js": "948c5df8c856",
     "/src/ui/screens/shiori.js": "339bbf1d1193",
-    "/src/ui/screens/talk.js": "46797f886d94",
+    "/src/ui/screens/talk.js": "3118a828280d",
     "/src/ui/screens/tools.js": "a820f3ddec27",
     "/src/ui/screens/trace.js": "232ff7af2307",
     "/src/ui/screens/trip.js": "2ac01ae1599e",
