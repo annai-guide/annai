@@ -5,14 +5,19 @@ import { anySignal } from '../../core/signals.js';
 import { readAppSettings } from '../../core/settings.js';
 import { normalizeRows, restsOn, cooldowns, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
 import { FREE_PROVIDERS, KNOWLEDGE, exaRead } from './free.js';
+import { t } from '../../core/l10n.js';
 
 export const manifest = {
   id: 'web',
-  name: 'Web tools',
+  name: t`Web tools`,
   version: VERSION,
   api: 1,
-  description: 'fetch reads any web page, through Jina Reader or Exa when a site doesn\'t let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.',
+  description: t`fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.`,
 };
+
+// Below, Shiori's words: English (localization design, section 7). A search provider's name and why are the screen's; en, their English.
+/** What Shiori is told a provider is called. @param {any} p */
+const told = (p) => String(p.en ?? p.name);
 
 const READER = 'https://r.jina.ai/';
 const SEARCH = 'https://s.jina.ai/';
@@ -62,33 +67,43 @@ export function activate(annai) {
     const start = Math.max(0, from);
     const part = text.slice(start, start + TEXT_MAX);
     const rest = text.length - start - part.length;
+    /* en */
     return `${head}\n\n${part}${rest > 0 ? `\n… ${rest} more characters; fetch again with from: ${start + part.length}` : ''}`;
   };
   /** A response as what the model reads. @param {Response} res @param {string} url @param {any} call @param {number} from @param {string} how */
   const readResponse = async (res, url, call, from, how) => {
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+    /* en */
     const name = new URL(url).pathname.split('/').pop() || 'document';
     if (type === 'application/pdf' || type.startsWith('image/')) {
       const bytes = new Uint8Array(await res.arrayBuffer());
+      /* en */
       if (bytes.byteLength > FILE_MAX) return `Source: ${url} (${how})\n\nThis ${type} is over 10 MB, too big to read here.`;
       const input = call.model?.input ?? ['text'];
       if (type === 'application/pdf') {
+        /* en */
         return { content: `Source: ${url} (${how}): a PDF.`, document: { mediaType: 'application/pdf', data: toBase64(bytes), name } };
       }
+      /* en */
       if (!input.includes('image')) return `Source: ${url} (${how})\n\nIt's an image, and this model can't see images.`;
+      /* en */
       return { content: `Source: ${url} (${how}): an image.`, images: [{ mediaType: type, data: toBase64(bytes) }] };
     }
     const raw = await res.text();
     if (type.includes('html')) {
       const { title, text } = htmlToText(raw, url);
+      /* en */
       return piece(text, from, `Source: ${url} (${how})${title ? `\nTitle: ${title}` : ''}`);
     }
     if (type && !type.startsWith('text/') && !type.includes('json') && !type.includes('xml')) {
+      /* en */
       return `Source: ${url} (${how})\n\nIt's a ${type} file, which fetch can't read. It reads web pages, text, PDFs and images.`;
     }
+    /* en */
     return piece(raw, from, `Source: ${url} (${how})`);
   };
 
+  /* en */
   const fetchTool = {
     name: 'fetch', group: 'Web',
     description: 'Read a web page (or text, a PDF, or an image) at an address. Long pages come in pieces; fetch again with from.',
@@ -170,13 +185,15 @@ export function activate(annai) {
   };
 
   const jina = {
-    id: 'jina', name: 'Jina Search', kind: /** @type {const} */ ('web'),
+    id: 'jina', name: /* en */ 'Jina Search', kind: /** @type {const} */ ('web'),
     async ready() {
-      return (await key()) ? { ok: true } : { ok: false, why: 'needs a key (Settings → Tools)' };
+      return (await key()) ? { ok: true } : { ok: false, why: t`needs a key (Settings → Tools)`, en: /* en */ 'needs a key (Settings → Tools)' };
     },
     /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
     async search(query, { fetch: get, signal }) {
+      /* en */
       const res = await get(`${SEARCH}?q=${encodeURIComponent(query)}`, { signal, headers: { accept: 'application/json', authorization: `Bearer ${await key()}`, 'x-respond-with': 'no-content' } });
+      /* en */
       if (!res.ok) throw Object.assign(new Error(res.status === 401 || res.status === 403 ? 'Jina Search refused the key' : `Jina Search answered ${res.status}`), { status: res.status });
       const body = await res.json();
       return (body?.data ?? []).map((/** @type {any} */ d) => ({ title: d.title, url: d.url, snippet: d.description ?? d.content }));
@@ -191,6 +208,7 @@ export function activate(annai) {
     return session.id;
   };
 
+  /* en */
   const searchTool = {
     name: 'web_search', group: 'Web',
     description: 'Search the web. Answers as TSV: title, url, snippet. fetch a result to read it.',
@@ -217,7 +235,7 @@ export function activate(annai) {
       const ask = async (p, reserve = 0) => {
         const room = deadline - Date.now() - reserve;
         if (room < 100) {
-          passed.push(`${p.name} was left out: the search ran out of time`);
+          passed.push(`${told(p)} was left out: the search ran out of time`);
           return null;
         }
         try {
@@ -228,7 +246,7 @@ export function activate(annai) {
         } catch (e) {
           if (call.signal.aborted) throw e;
           failed.push({ p, e });
-          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
+          why.push(/** @type {any} */ (e)?.late ? `${told(p)} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
         }
         return null;
       };
@@ -256,18 +274,18 @@ export function activate(annai) {
         const rest = cooldowns.left(p.id);
         if (rest > 0) {
           resting.push(p);
-          passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
+          passed.push(`${told(p)} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
           continue;
         }
         const reserve = reserveFor(p, k);
         const room = deadline - Date.now() - reserve;
         if (room < 100) {
-          passed.push(`${p.name} was left out: the search ran out of time`);
+          passed.push(`${told(p)} was left out: the search ran out of time`);
           continue;
         }
         const r = await ready(p, room);
         if (!r.ok) {
-          passed.push(`${p.name} ${r.why ?? "isn't ready"}`);
+          passed.push(`${told(p)} ${r.en ?? r.why ?? "isn't ready"}`);
           continue;
         }
         const out = await ask(p, reserve);

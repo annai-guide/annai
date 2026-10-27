@@ -1,11 +1,12 @@
 import { VERSION } from '../../app/version.js';
+import { t } from '../../core/l10n.js';
 
 export const manifest = {
   id: 'sensors',
-  name: 'Sensors',
+  name: t`Sensors`,
   version: VERSION,
   api: 1,
-  description: 'Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.',
+  description: t`Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.`,
 };
 
 /** A number the phone gave, or null. @param {unknown} v */
@@ -24,7 +25,8 @@ export function sensors({ geolocation, document: doc, window: win, navigator: na
       /** @param {(x: any) => void} emit */
       start(emit) {
         if (!geolocation?.watchPosition) {
-          emit({ error: 'unavailable', message: "This browser can't tell where it is." });
+          // Kept with the state, never shown: a developer's words.
+          emit({ error: 'unavailable', message: /* en */ "This browser can't tell where it is." });
           return () => {};
         }
         const id = geolocation.watchPosition(

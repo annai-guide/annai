@@ -6,16 +6,20 @@ import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking } from '../../core/bookings.js';
+import { t } from '../../core/l10n.js';
 
 export const manifest = {
   id: 'files',
-  name: 'File tools',
+  name: t`File tools`,
   version: VERSION,
   api: 1,
-  description: "Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.",
+  description: t`Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.`,
 };
 
+// Below, Shiori's words: English (localization design, section 7).
+
 const TEXT_MAX = 40_000;
+/* en */
 const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes).' };
 
 /** @param {any} annai */
@@ -26,6 +30,7 @@ export function activate(annai) {
   const where = (path, call) => resolvePath(path, call.trip);
   /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
   const writable = (scope, path) => {
+    /* en */
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
   };
   /**
@@ -34,13 +39,16 @@ export function activate(annai) {
    */
   const recordPlace = (scope, path) => {
     if (kindOf(scope) === 'trip' && /^\/(plan|bookings)\/.+\/[^/]+\.json$/i.test(path)) {
+      /* en */
       throw new Error('Plan items and bookings go directly in /trip/plan/ and /trip/bookings/, one file each: no subfolders.');
     }
   };
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
     // Said plainly, so she never tells the user it was done (emulator pass).
+    /* en */
     if (e instanceof ValidationError) return new Error(`${path} doesn't match its format, so it wasn't written: ${e.errors.join('; ')}`);
+    /* en */
     if (e instanceof NotFoundError) return new Error(`No file at ${path}, so nothing was changed.`);
     return e;
   };
@@ -76,6 +84,7 @@ export function activate(annai) {
     // The offline pack is for the places tools (spec §11.5): it stays out unless asked for.
     return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
   };
+  /* en */
   const tools = [
     {
       name: 'list', group: 'Files',

@@ -54,6 +54,55 @@ bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她
 k4u05v	draft	The language you speak to her	你对她说的语言	src/core/languages.js:328	
 au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+1izzjz4	draft	Trip record checks	旅行记录检查	src/plugins/core-schemas/index.js:7	
+1y0f0hr	draft	Checks trip.json, plan items, bookings and watches when they are saved.	保存时检查旅行的 trip.json、行程项目、预订和监测项。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
+6t16a0	draft	File tools	文件工具	src/plugins/files/index.js:13	
+1dyo7ln	draft	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 处理旅行文件和你自己文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+jh5a9s	draft	Go tools	出行工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
+1xge7qy	draft	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：路线，以及预先填好的航班、酒店和租车搜索，供你预订。	src/plugins/go/index.js:10	
+13a1ine	draft	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用的 MCP 版本未知；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
+h6sxxb	draft	The MCP server {0} speaks MCP {1}; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用 MCP {1}；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; {1} = v
+x0tv1f	draft	The MCP server {0} answered {1}.	MCP 服务器“{0}”返回了 {1}。	src/plugins/mcp/client.js:173	{0} = this.server; {1} = code; Note: {1} is an HTTP status, such as 503.
+g27u66	draft	The MCP server {0} was removed.	MCP 服务器“{0}”已被移除。	src/plugins/mcp/client.js:178	{0} = this.server
+3qa9yv	draft	The MCP server {0} said: {1}	MCP 服务器“{0}”回复：{1}	src/plugins/mcp/client.js:228	{0} = this.server; {1} = String(said); Note: {1} is the server's own words, as it sent them.
+kslyd9	draft	The MCP server {0} answered with an error.	MCP 服务器“{0}”返回了错误。	src/plugins/mcp/client.js:228	{0} = this.server
+3m1fxi	draft	annai couldn't reach the MCP server {0}: this device is offline. Try again once it is online.	annai 无法连接 MCP 服务器“{0}”：此设备处于离线状态。请在联网后重试。	src/plugins/mcp/client.js:251	{0} = this.server
+5hoep6	draft	annai couldn't reach the MCP server {0}. Check its address, that it is running, and that it lets web apps call it (CORS).	annai 无法连接 MCP 服务器“{0}”。请检查它的地址、它是否在运行，以及它是否允许网页应用调用（CORS）。	src/plugins/mcp/client.js:254	{0} = this.server
+w6u4rv	draft	The MCP server {0} doesn't take requests from annai at {1}: it checks the Origin they come from. Add {2} to the origins it allows.	MCP 服务器“{0}”不接受来自 {1} 的 annai 的请求：它会检查请求的来源（Origin）。请把 {2} 添加到它允许的来源中。	src/plugins/mcp/client.js:261	{0} = this.server; {1} = here; {2} = here; Note: {1} and {2} are both annai's own address, such as https://annai.guide.
+1e1o93i	draft	The MCP server {0} doesn't take requests from annai's address: it checks the Origin they come from. Add annai's address to the origins it allows.	MCP 服务器“{0}”不接受来自 annai 地址的请求：它会检查请求的来源（Origin）。请把 annai 的地址添加到它允许的来源中。	src/plugins/mcp/client.js:262	{0} = this.server
+igm0pc	draft	The MCP server {0} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.	MCP 服务器“{0}”拒绝了 annai 的密钥。请在设置 → 工具 → MCP 服务器中检查它的令牌或请求头。	src/plugins/mcp/client.js:266	{0} = this.server
+1n9ii8g	draft	The MCP server {0} ended annai's session.	MCP 服务器“{0}”结束了 annai 的会话。	src/plugins/mcp/client.js:270	{0} = this.server
+25n9uk	draft	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCP 服务器“{0}”开启了一个 annai 看不到的会话。它必须在 Access-Control-Expose-Headers 中列出 Mcp-Session-Id。	src/plugins/mcp/client.js:277	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
+lzl064	draft	The MCP server {0} sent an answer annai can't read.	MCP 服务器“{0}”发来了 annai 无法读取的回复。	src/plugins/mcp/client.js:291	{0} = this.server
+1kq4f3c	draft	The MCP server {0} sent more than annai reads ({1} MB).	MCP 服务器“{0}”发来的内容超过了 annai 能读取的上限（{1} MB）。	src/plugins/mcp/client.js:296	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
+195b0jb	draft	MCP servers	MCP 服务器	src/plugins/mcp/index.js:27	Note: The glossary's screen name.
+pnu9f5	draft	Tools from MCP servers you add in Settings → Tools.	来自你在设置 → 工具中添加的 MCP 服务器的工具。	src/plugins/mcp/index.js:30	
+hs6d0h	draft	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	令牌中有网页请求无法携带的字符：U+{0}（第 {1} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:57	{0} = code; {1} = n
+1akzgkh	draft	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	请求头 {0} 中有网页请求无法携带的字符：U+{1}（第 {2} 个字符）。请去掉它后重新复制。	src/plugins/mcp/index.js:58	{0} = header; {1} = code; {2} = n
+zgh0se	draft	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	地址必须以 https:// 开头（在本设备上也可以用 http://localhost 或 http://127.0.0.1）。	src/plugins/mcp/index.js:79	
+1xt26lz	draft	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	这个地址在 @ 前面包含用户名或密码。请去掉它，并把密钥填入令牌或请求头一栏。	src/plugins/mcp/index.js:81	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
+1v5ab85	draft	Each header is one line: Name: value.	每个请求头占一行，格式为“Name: value”。	src/plugins/mcp/index.js:92	Note: "Name: value" stays English: it is the form of what is typed.
+z6ass1	draft	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	annai 会自己发送 {0}，所以它不能作为这里的请求头。请删掉那一行。	src/plugins/mcp/index.js:93	{0} = m[1]
+1wffyf4#other	draft	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCP 服务器在 # 秒内没有回应。请确认它正在运行，然后重试。	src/plugins/mcp/index.js:265	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
+129gp7y	draft	There is no MCP server called {0}.	没有名为“{0}”的 MCP 服务器。	src/plugins/mcp/index.js:281	{0} = name
+i69zke	draft	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	服务器名称由 1 到 20 个小写字母、数字和连字符组成，例如 trail。	src/plugins/mcp/index.js:320	Note: trail is an example name, as the form's placeholder; kept as written.
+ku5jlk	draft	There is a server called {0} already.	已经有名为“{0}”的服务器了。	src/plugins/mcp/index.js:321	{0} = n
+126nbeu	draft	Places tools	地点工具	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	draft	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，数据来自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:18	
+143ff3s	draft	Sensors	传感器	src/plugins/sensors/index.js:6	
+3mo7sf	draft	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手机的位置（GPS，仅在 annai 中开启 GPS 且 annai 显示在屏幕上时）、annai 是否显示在屏幕上，以及是否有网络连接。	src/plugins/sensors/index.js:9	
+gec6zp	draft	Built-in skills	内置技能	src/plugins/skills/index.js:15	
+1t0u9tp	draft	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
+fsfyxb	draft	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:68	
+wp5yx4	draft	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
+elkw42	draft	The voice's audio couldn't be played.	无法播放该声音的音频。	src/plugins/voice-browser/index.js:456	Note: The voice is one in Settings → Models → Speech out: 声音, as the glossary's voice.
+9gdjo3	draft	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	draft	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:579	
+1l4zitw	draft	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:120	
+scnz2y	draft	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
+eob60g	draft	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	
+b4g7z9	draft	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:192	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	draft	Open in Maps	在地图中打开	src/ui/cards.js:68	
@@ -259,7 +308,6 @@ xb1ny3	draft	Trips	旅行	src/ui/screens/ext.js:54
 e9m35h	draft	No key	无密钥	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer 令牌，保存在此设备上	src/ui/screens/mcp.js:5	
 15cdqf0	draft	Tools	工具	src/ui/screens/mcp.js:15	
-195b0jb	draft	MCP servers	MCP 服务器	src/ui/screens/mcp.js:17	Note: The glossary's screen name.
 14uki6b	draft	annai's MCP client isn't running. Reload annai and try again.	annai 的 MCP 客户端没有运行。请重新加载 annai 后再试。	src/ui/screens/mcp.js:18	
 wu0283	draft	trail	trail	src/ui/screens/mcp.js:21	Note: an example server name typed by the user; kept as a short Latin word, as names are typed.
 19kawat	draft	Bearer token	Bearer 令牌	src/ui/screens/mcp.js:24	

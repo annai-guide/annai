@@ -54,6 +54,55 @@ bgn4sv	draft	Shiori answers in the language you speak to her	Shiori は話しか
 k4u05v	draft	The language you speak to her	話しかけた言語	src/core/languages.js:328	
 au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未選択：annai はブラウザの言語を使います。よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:329	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:111	{0} = at; Note: {0} is a time, or a weekday and a time.
+1izzjz4	draft	Trip record checks	旅の記録チェック	src/plugins/core-schemas/index.js:7	
+1y0f0hr	draft	Checks trip.json, plan items, bookings and watches when they are saved.	旅の trip.json、予定の項目、予約、ウォッチを保存するときにチェックします。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
+6t16a0	draft	File tools	ファイルツール	src/plugins/files/index.js:13	
+1dyo7ln	draft	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅のファイルとあなたのファイルを扱う Shiori のツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+jh5a9s	draft	Go tools	移動ツール	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
+1xge7qy	draft	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link と search_link：道順と、あなたが予約するための入力済みのフライト・ホテル・レンタカー検索。	src/plugins/go/index.js:10	
+13a1ine	draft	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCPサーバー「{0}」の MCP のバージョンが不明です。annai が対応するのは 2025-03-26 から 2025-11-25 までです。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
+h6sxxb	draft	The MCP server {0} speaks MCP {1}; annai speaks 2025-03-26 to 2025-11-25.	MCPサーバー「{0}」は MCP {1} を使っています。annai が対応するのは 2025-03-26 から 2025-11-25 までです。	src/plugins/mcp/client.js:88	{0} = this.server; {1} = v
+x0tv1f	draft	The MCP server {0} answered {1}.	MCPサーバー「{0}」が {1} を返しました。	src/plugins/mcp/client.js:173	{0} = this.server; {1} = code; Note: {1} is an HTTP status, such as 503.
+g27u66	draft	The MCP server {0} was removed.	MCPサーバー「{0}」は削除されました。	src/plugins/mcp/client.js:178	{0} = this.server
+3qa9yv	draft	The MCP server {0} said: {1}	MCPサーバー「{0}」からのメッセージ：{1}	src/plugins/mcp/client.js:228	{0} = this.server; {1} = String(said); Note: {1} is the server's own words, as it sent them.
+kslyd9	draft	The MCP server {0} answered with an error.	MCPサーバー「{0}」がエラーを返しました。	src/plugins/mcp/client.js:228	{0} = this.server
+3m1fxi	draft	annai couldn't reach the MCP server {0}: this device is offline. Try again once it is online.	annai は MCPサーバー「{0}」に接続できませんでした。この端末はオフラインです。オンラインになってから、もう一度お試しください。	src/plugins/mcp/client.js:251	{0} = this.server
+5hoep6	draft	annai couldn't reach the MCP server {0}. Check its address, that it is running, and that it lets web apps call it (CORS).	annai は MCPサーバー「{0}」に接続できませんでした。アドレス、サーバーが動いているか、Web アプリからの呼び出しを許可しているか（CORS）を確認してください。	src/plugins/mcp/client.js:254	{0} = this.server
+w6u4rv	draft	The MCP server {0} doesn't take requests from annai at {1}: it checks the Origin they come from. Add {2} to the origins it allows.	MCPサーバー「{0}」は {1} の annai からのリクエストを受け付けません。リクエストの送信元（Origin）を確認しているためです。許可する送信元に {2} を追加してください。	src/plugins/mcp/client.js:261	{0} = this.server; {1} = here; {2} = here; Note: {1} and {2} are both annai's own address, such as https://annai.guide.
+1e1o93i	draft	The MCP server {0} doesn't take requests from annai's address: it checks the Origin they come from. Add annai's address to the origins it allows.	MCPサーバー「{0}」は annai のアドレスからのリクエストを受け付けません。リクエストの送信元（Origin）を確認しているためです。許可する送信元に annai のアドレスを追加してください。	src/plugins/mcp/client.js:262	{0} = this.server
+igm0pc	draft	The MCP server {0} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.	MCPサーバー「{0}」が annai のキーを拒否しました。設定 → ツール → MCPサーバーで、トークンまたはヘッダーを確認してください。	src/plugins/mcp/client.js:266	{0} = this.server
+1n9ii8g	draft	The MCP server {0} ended annai's session.	MCPサーバー「{0}」が annai のセッションを終了しました。	src/plugins/mcp/client.js:270	{0} = this.server
+25n9uk	draft	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCPサーバー「{0}」が開始したセッションを annai から確認できません。Access-Control-Expose-Headers に Mcp-Session-Id を含める必要があります。	src/plugins/mcp/client.js:277	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
+lzl064	draft	The MCP server {0} sent an answer annai can't read.	MCPサーバー「{0}」から、annai が読めない応答が届きました。	src/plugins/mcp/client.js:291	{0} = this.server
+1kq4f3c	draft	The MCP server {0} sent more than annai reads ({1} MB).	MCPサーバー「{0}」から、annai が読める量（{1} MB）を超えるデータが届きました。	src/plugins/mcp/client.js:296	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
+195b0jb	draft	MCP servers	MCPサーバー	src/plugins/mcp/index.js:27	Note: The glossary's screen name.
+pnu9f5	draft	Tools from MCP servers you add in Settings → Tools.	設定 → ツールで追加した MCPサーバーのツール。	src/plugins/mcp/index.js:30	
+hs6d0h	draft	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	トークンに、Web リクエストで送れない文字があります：U+{0}（{1}文字目）。その文字を除いて、もう一度コピーしてください。	src/plugins/mcp/index.js:57	{0} = code; {1} = n
+1akzgkh	draft	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	ヘッダー {0} に、Web リクエストで送れない文字があります：U+{1}（{2}文字目）。その文字を除いて、もう一度コピーしてください。	src/plugins/mcp/index.js:58	{0} = header; {1} = code; {2} = n
+zgh0se	draft	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	アドレスは https:// で始まる必要があります（この端末上なら http://localhost または http://127.0.0.1 も使えます）。	src/plugins/mcp/index.js:79	
+1xt26lz	draft	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	このアドレスには、@ の前に名前かパスワードが含まれています。それを除いて、キーはトークンかヘッダーの欄に入れてください。	src/plugins/mcp/index.js:81	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
+1v5ab85	draft	Each header is one line: Name: value.	ヘッダーは 1 行に 1 つ、「Name: value」の形で書いてください。	src/plugins/mcp/index.js:92	Note: "Name: value" stays English: it is the form of what is typed.
+z6ass1	draft	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	{0} は annai が自分で送るため、ここのヘッダーには使えません。その行を削除してください。	src/plugins/mcp/index.js:93	{0} = m[1]
+1wffyf4#other	draft	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCPサーバーが #秒以内に応答しませんでした。動いているか確認してから、もう一度お試しください。	src/plugins/mcp/index.js:265	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
+129gp7y	draft	There is no MCP server called {0}.	「{0}」という MCPサーバーはありません。	src/plugins/mcp/index.js:281	{0} = name
+i69zke	draft	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	サーバーの名前は、英小文字・数字・ハイフンで 1〜20 文字です（例：trail）。	src/plugins/mcp/index.js:320	Note: trail is an example name, as the form's placeholder; kept as written.
+ku5jlk	draft	There is a server called {0} already.	「{0}」というサーバーはすでにあります。	src/plugins/mcp/index.js:321	{0} = n
+126nbeu	draft	Places tools	場所ツール	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	draft	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyage のデータを使います。	src/plugins/places/index.js:18	
+143ff3s	draft	Sensors	センサー	src/plugins/sensors/index.js:6	
+3mo7sf	draft	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	端末の位置（GPS。annai で GPS がオンで、annai が画面に表示されている間だけ）、annai が画面に表示されているか、通信できるか。	src/plugins/sensors/index.js:9	
+gec6zp	draft	Built-in skills	内蔵スキル	src/plugins/skills/index.js:15	
+1t0u9tp	draft	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自身のスキル：運転のお供、予定の組み直し、旅の計画。	src/plugins/skills/index.js:18	
+fsfyxb	draft	The phone's speaker, microphone, voice and dictation.	端末のスピーカー、マイク、声、音声入力。	src/plugins/voice-browser/index.js:68	
+wp5yx4	draft	Voice on this device	この端末の音声	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
+elkw42	draft	The voice's audio couldn't be played.	読み上げの音声を再生できませんでした。	src/plugins/voice-browser/index.js:456	Note: The voice is a Speech out voice: the glossary's 読み上げ / 朗读.
+9gdjo3	draft	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	draft	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:579	
+1l4zitw	draft	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:120	
+scnz2y	draft	Web tools	Web ツール	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
+eob60g	draft	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch は Web ページを読みます。サイトが Web アプリからの読み込みを許可しないときは、Jina Reader か Exa を通します。web_search は検索プロバイダーで検索します。順番は設定 → ツールで決まり、最初は無料のものです。	src/plugins/web/index.js:15	
+b4g7z9	draft	needs a key (Settings → Tools)	キーが必要（設定 → ツール）	src/plugins/web/index.js:192	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	draft	Open in Maps	マップで開く	src/ui/cards.js:68	
@@ -259,7 +308,6 @@ xb1ny3	draft	Trips	旅	src/ui/screens/ext.js:54
 e9m35h	draft	No key	キーなし	src/ui/screens/mcp.js:5	
 il2bb	draft	A bearer token, kept on this device	Bearer トークン（この端末に保存）	src/ui/screens/mcp.js:5	
 15cdqf0	draft	Tools	ツール	src/ui/screens/mcp.js:15	
-195b0jb	draft	MCP servers	MCPサーバー	src/ui/screens/mcp.js:17	Note: The glossary's screen name.
 14uki6b	draft	annai's MCP client isn't running. Reload annai and try again.	annai の MCP クライアントが動いていません。annai を再読み込みして、もう一度試してください。	src/ui/screens/mcp.js:18	
 wu0283	draft	trail	trail	src/ui/screens/mcp.js:21	Note: an example server name typed by the user; kept as a short Latin word, as names are typed.
 19kawat	draft	Bearer token	Bearer トークン	src/ui/screens/mcp.js:24	
