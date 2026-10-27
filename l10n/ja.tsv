@@ -173,6 +173,31 @@ storage-github:1ljvup9	draft	This backup is damaged: its annai-archive.json is n
 storage-github:12lsnri	draft	That backup isn't in {0} on GitHub.	そのバックアップは GitHub の {0} にありません。	plugins-official/storage-github/index.js:406	{0} = g.repo
 storage-github:9mtyxq	draft	That commit isn't an annai backup.	そのコミットは annai のバックアップではありません。	plugins-official/storage-github/index.js:408	
 storage-github:1n7ook3	draft	This backup is damaged: {0} is missing from GitHub.	このバックアップは壊れています：GitHub に {0} がありません。	plugins-official/storage-github/index.js:429	{0} = shown(name)
+storage-s3:@name	draft	S3-compatible storage	S3 互換ストレージ	plugins-official/storage-s3/annai-plugin.json:3	
+storage-s3:@description	draft	Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.	AWS S3、Cloudflare R2、Backblaze B2 など、S3 互換のストレージのバケットにすべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。	plugins-official/storage-s3/annai-plugin.json:8	
+storage-s3:8yhmg7	draft	S3 address	S3 のアドレス	plugins-official/storage-s3/index.js:57	
+storage-s3:kazmvx	draft	Region	リージョン	plugins-official/storage-s3/index.js:58	
+storage-s3:1r2hopj	draft	Bucket	バケット	plugins-official/storage-s3/index.js:59	
+storage-s3:l5m77r	draft	Folder in the bucket	バケット内のフォルダー	plugins-official/storage-s3/index.js:60	
+storage-s3:1qn3pnm	draft	Secret access key	シークレットアクセスキー	plugins-official/storage-s3/index.js:62	
+storage-s3:1x5pkl1	draft	Access key ID	アクセスキー ID	plugins-official/storage-s3/index.js:62	
+storage-s3:108gcn6	draft	Use a bucket of its own for annai's backups, and an access key that may only list, read, write and delete in it. The bucket must allow browser access: paste the rules below into its CORS settings.	annai のバックアップ専用のバケットと、そのバケット内での一覧・読み取り・書き込み・削除だけができるアクセスキーを使ってください。バケットはブラウザからのアクセスを許可する必要があります：下のルールをバケットの CORS 設定に貼り付けてください。	plugins-official/storage-s3/index.js:63	
+storage-s3:57z8dw	draft	Paste these rules into the bucket's CORS settings. On AWS: the bucket → Permissions → Cross-origin resource sharing (CORS) → Edit. On Cloudflare R2: the bucket → Settings → CORS policy → Edit.	これらのルールをバケットの CORS 設定に貼り付けてください。AWS では：バケット → Permissions → Cross-origin resource sharing (CORS) → Edit。Cloudflare R2 では：バケット → Settings → CORS policy → Edit。	plugins-official/storage-s3/index.js:66	
+storage-s3:8661z	draft	Check the S3 address: it must be a web address that starts with https://.	S3 のアドレスを確認してください：https:// で始まる Web アドレスである必要があります。	plugins-official/storage-s3/index.js:90	
+storage-s3:10a1q42	draft	Check the bucket's name: lowercase letters, digits, dots and dashes.	バケットの名前を確認してください：使えるのは小文字、数字、ドット、ハイフンです。	plugins-official/storage-s3/index.js:91	
+storage-s3:mr2ov4	draft	Paste the access key ID and the secret access key, then save.	アクセスキー ID とシークレットアクセスキーを貼り付けて、保存してください。	plugins-official/storage-s3/index.js:92	
+storage-s3:1p9jl62	draft	{0} didn't accept the access key. Check the key ID and the secret, then save.	{0} がアクセスキーを受け付けませんでした。キー ID とシークレットを確認して、保存してください。	plugins-official/storage-s3/index.js:129	{0} = s.bucket
+storage-s3:9x4rxt	draft	{0} is in the region {1}. Set Region to {2}, then save.	{0} はリージョン {1} にあります。「リージョン」を {2} にして、保存してください。	plugins-official/storage-s3/index.js:132	{0} = s.bucket; {1} = region; {2} = region
+storage-s3:lemzpr	draft	{0} is in another region. Set Region to the bucket's region, then save.	{0} は別のリージョンにあります。「リージョン」をバケットのリージョンにして、保存してください。	plugins-official/storage-s3/index.js:132	{0} = s.bucket
+storage-s3:15c84vt	draft	This device's clock is more than 15 minutes off, so the bucket refused it. Set the clock to the network's time, then try again.	この端末の時計が15分以上ずれているため、バケットに拒否されました。時計をネットワークの時刻に合わせてから、もう一度お試しください。	plugins-official/storage-s3/index.js:134	
+storage-s3:j42moo	draft	There is no bucket {0} at {1}. Check the name and the address.	{1} にはバケット {0} がありません。名前とアドレスを確認してください。	plugins-official/storage-s3/index.js:135	{0} = s.bucket; {1} = new URL(s.endpoint).host
+storage-s3:1svwfg6	draft	That backup is no longer in the bucket.	そのバックアップはもうバケットにありません。	plugins-official/storage-s3/index.js:136	
+storage-s3:jz3aga	draft	The access key isn't allowed to do this in {0}. Give it permission to list, read, write and delete objects there.	アクセスキーには {0} でこの操作をする権限がありません。そこでのオブジェクトの一覧・読み取り・書き込み・削除の権限を与えてください。	plugins-official/storage-s3/index.js:137	{0} = s.bucket
+storage-s3:1ytxnj0	draft	The bucket asked annai to slow down. annai tries again in a few minutes.	バケットから間隔をあけるよう求められました。annai は数分後にもう一度試します。	plugins-official/storage-s3/index.js:138	
+storage-s3:1oijivd	draft	The bucket refused this (HTTP {0}). annai tries again later.	バケットがこれを拒否しました（HTTP {0}）。annai はあとでもう一度試します。	plugins-official/storage-s3/index.js:140	{0} = res.status
+storage-s3:1yhneka	draft	The bucket refused this (HTTP {0}: {1}). annai tries again later.	バケットがこれを拒否しました（HTTP {0}：{1}）。annai はあとでもう一度試します。	plugins-official/storage-s3/index.js:140	{0} = res.status; {1} = code
+storage-s3:14d0hy0	draft	annai couldn't reach {0}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.	annai は {0} に接続できませんでした。この端末がオンラインなら、バケットがまだブラウザからのアクセスを許可していません：下のルールをバケットの CORS 設定に貼り付けてから、もう一度テストしてください。	plugins-official/storage-s3/index.js:153	{0} = s.bucket
+storage-s3:3rdj3o	draft	Works: annai can reach {0} and keep its backups in {1}.	動作しています：annai は {0} に接続でき、{1} にバックアップを保存できます。	plugins-official/storage-s3/index.js:156	{0} = s.bucket; {1} = s.prefix
 1aajvdy	ok	Opening annai…	annai を開いています…	src/app/boot.js:32	
 1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:62	
 cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:63	
