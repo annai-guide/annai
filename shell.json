@@ -1,5 +1,5 @@
 {
-  "build": "8e5449e91b82",
+  "build": "b8dbe3fd3511",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -30,7 +30,7 @@
     "/src/app/main.js": "1fd53f7a130a",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "85a3fceb2ea8",
-    "/src/core/after/recap.js": "fe73f99c82b7",
+    "/src/core/after/recap.js": "6238f6093ac3",
     "/src/core/after/replay.js": "97946c3216c6",
     "/src/core/after/route.js": "a027e73d89e3",
     "/src/core/after/stamps.js": "aa5cc17c3ee3",
