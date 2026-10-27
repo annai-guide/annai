@@ -16,3 +16,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** such dips make a young floor a guess, and the first dipped frame (filter ringing, about -66 dB) counts as the room. No device is known to do this. The iPhone trace's gate gives exact zeros, which are handled, and the version before this change breaks the same way with such a gate from the start. A proper fix, treating a frame far under the run's own frames as a gate, is not cheap.
 - **Revisit when:** a phone trace shows a device that gates this way.
 - **Approved:** 2026-10-23, the user: "Accept".
+
+### Official plugin downloads carry every language's translation
+- **Kind:** deferred.
+- **What the user sees:** nothing on screen. Each official plugin download includes its Japanese and its Chinese translation, whatever language the screens are in. For a typical OpenRouter user's three plugins that is about 4 KB of 20 KB compressed. Across all 31 official plugins, translations are about a quarter of the bytes, and each added language adds about 12%.
+- **Why:** annai verifies an official plugin by every file the catalog lists. A plugin downloaded with only the screens' language would look like a changed copy and be offered as an update forever. A language change would also need a fetch. For two languages the cost is small.
+- **Revisit when:** a third language ships. Then move official plugins' translations to a per-language fetch, as `catalog/l10n/<tag>.json` already does for the catalog's own words.
+- **Approved:** 2026-10-27, the user: "Defer to a 3rd language".
