@@ -302,3 +302,11 @@ test('sentences side by side: a space in English, as the language joins them in 
   assert.equal(sentences('まだです。', '入れてください。', '以上です。'), 'まだです。入れてください。以上です。');
   assert.equal(sentenceGap(), '');
 });
+
+test('sentences: a part with no full stop of its own (a plugin\'s error, say) keeps a space after it, so the next sentence never runs into it', () => {
+  assert.equal(sentences('annai.foo is not a function', 'Try again.'), 'annai.foo is not a function Try again.');
+  setWords('ja', { [key('{0} {1}', 'sentences')]: '{0}{1}' });
+  assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function 設定 → プラグインでオフにできます。');
+  assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
+  assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
+});
