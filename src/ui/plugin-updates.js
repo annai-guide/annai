@@ -92,6 +92,8 @@ export async function applyUpdates(ctx, updates, env = {}) {
   const waiting = [];
   /** @type {string[]} */
   const failed = [];
+  /** @type {unknown[]} the errors in failed */
+  const errors = [];
   let applied = 0;
   for (const u of updates) {
     // Official plugins are annai's own, checked against its catalog's hashes: they update as they are (ruling).
@@ -108,9 +110,10 @@ export async function applyUpdates(ctx, updates, env = {}) {
       if (how === 'restart') waiting.push(nameOf(u));
     } catch (e) {
       failed.push(t`${nameOf(u)}: ${messageOf(e)}`);
+      errors.push(e);
     }
   }
-  if (failed.length) ctx.notices.card({ tone: 'warn', title: t`Some plugins weren't updated`, body: sentences(...failed) });
+  if (failed.length) ctx.notices.card({ tone: 'warn', title: t`Some plugins weren't updated`, body: sentences(...failed), errors });
   if (waiting.length) {
     ctx.notices.card({
       tone: 'warn',
