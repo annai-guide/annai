@@ -1,4 +1,6 @@
 key	state	en	text	where	note
+anthropic-messages:@name	draft	Anthropic Messages	Anthropic Messages	plugins-official/anthropic-messages/annai-plugin.json:3	
+anthropic-messages:@description	draft	Talks to Anthropic's Messages API and to endpoints that speak it.	连接 Anthropic 的 Messages API，以及支持它的端点。	plugins-official/anthropic-messages/annai-plugin.json:8	
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	

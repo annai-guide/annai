@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "连接 Anthropic 的 Messages API，以及支持它的端点。",
+    "name": "Anthropic Messages"
+  },
+  "messages": {}
+}

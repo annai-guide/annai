@@ -1,6 +1,10 @@
 {
   "format": 1,
   "plugins": {
+    "anthropic-messages": {
+      "name": "Anthropic Messages",
+      "description": "连接 Anthropic 的 Messages API，以及支持它的端点。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
