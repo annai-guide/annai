@@ -25,6 +25,10 @@
       "name": "Mistral",
       "description": "Mistral 的模型。"
     },
+    "provider-scripted": {
+      "name": "按脚本回复的模型（测试用）",
+      "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
+    },
     "scripted-model": {
       "name": "按脚本回复的模型",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
