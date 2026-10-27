@@ -1,8 +1,9 @@
 {
   "id": "provider-deepseek",
   "name": "DeepSeek",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "description": "DeepSeek's models, with their reasoning shown as they think.",
   "category": "providers",
   "requires": [

@@ -1,0 +1,8 @@
+{
+  "manifest": {
+    "description": "DeepSeek 的模型，思考时会显示推理过程。",
+    "name": "DeepSeek",
+    "provider.abilities.chat.note": "用“获取模型列表”添加模型。"
+  },
+  "messages": {}
+}

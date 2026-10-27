@@ -219,7 +219,7 @@
     {
       "id": "provider-deepseek",
       "name": "DeepSeek",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "DeepSeek's models, with their reasoning shown as they think.",
       "category": "providers",
       "keywords": [],
@@ -229,7 +229,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 668,
+      "size": 1190,
       "requires": [
         {
           "id": "chat-completions",
@@ -238,7 +238,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "668d5b5f52aa3be1f67307f775b15b08617100446424a45860cefbdc151230a9"
+        "annai-plugin.json": "48093129ca823c6f9d2ed4b66e4737d8983e993d67a05bc58f7feade7e80e12f",
+        "l10n/ja.json": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
+        "l10n/zh-Hans.json": "4c2832c8b0fc818f22493bdc61a0457ac94b30454f1968d176906a09a700970a"
       }
     },
     {
