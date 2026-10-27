@@ -249,8 +249,10 @@ export function filledWords(name, filled, costs = {}, freeTier = false) {
 }
 
 /** Says what an add did to the roles, if anything. @param {any} ctx @param {string} plugin @param {string[]} filled @param {Record<string, string>} [costs] */
-export function sayFilled(ctx, plugin, filled, costs = {}) {
+export async function sayFilled(ctx, plugin, filled, costs = {}) {
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === plugin);
-  const words = filledWords(src?.name ?? t`The provider`, filled, costs, Boolean(src?.provider.freeTier));
+  // Its plugin by name: annai's own in the screens' words (decision 10).
+  const name = src ? pluginName((await ctx.plugins.installed())[plugin], plugin, src.name) : t`The provider`;
+  const words = filledWords(name, filled, costs, Boolean(src?.provider.freeTier));
   if (words) ctx.notices.toast(words);
 }
