@@ -16,6 +16,8 @@ let rules = null;
 /** Sets the language and words, at the start and in tests. @param {string} next @param {Record<string, any> | null} words @param {(english: string) => string} [transform] */
 export function setWords(next, words, transform) { tag = next; table = words; pseudo = transform ?? null; seen = new WeakMap(); rules = null; }
 export const lang = () => tag;
+/** The screens' names for Shiori, from the catalog (l10n/glossary.tsv); '' in English. */
+export const glossary = () => { const g = table?.['@glossary']; return typeof g === 'string' ? g : ''; };
 
 let phoneSeen = '';
 let current = 'en-US';

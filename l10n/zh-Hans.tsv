@@ -1,28 +1,28 @@
 key	state	en	text	where	note
 1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:32	
-1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:61	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:62	
-u0vojx	ok	Use it here	在这里使用	src/app/main.js:63	
-p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:68	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:69	
-1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:70	
-fki4un	ok	Notifications	通知	src/app/main.js:204	
-1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:207	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:208	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	打开模型	src/app/main.js:209	
-10renyj	ok	Plugins	插件	src/app/main.js:220	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:309	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:310	
-1n8cxuc	ok	Compare	比较	src/app/main.js:312	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:313	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:314	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:366	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:367	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:367	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:368	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:379	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:381	
-982hh6	ok	Try again	重试	src/app/main.js:382	
+1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:62	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:63	
+u0vojx	ok	Use it here	在这里使用	src/app/main.js:64	
+p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:69	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:70	
+1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:71	
+fki4un	ok	Notifications	通知	src/app/main.js:208	
+1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:211	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:212	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	打开模型	src/app/main.js:213	
+10renyj	ok	Plugins	插件	src/app/main.js:224	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:313	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:314	
+1n8cxuc	ok	Compare	比较	src/app/main.js:316	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:317	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:318	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:370	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:371	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:371	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:372	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:383	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:385	
+982hh6	ok	Try again	重试	src/app/main.js:386	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:70	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:53	
 7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:54	
@@ -183,35 +183,35 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	ok	just now	刚刚	src/core/intl.js:126	
+1acz027	ok	just now	刚刚	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:405	Note: The dock's Shiori button: tap it to talk over her.
-3fqfy0	ok	Languages	语言	src/core/languages.js:304	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:305	
-1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:306	
-krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:307	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
-5h4ntn	ok	Add a language	添加语言	src/core/languages.js:308	
-17rv3f8	ok	Add	添加	src/core/languages.js:309	
-9c35st	ok	Remove	移除	src/core/languages.js:310	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:313	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
-1u9ac5b	ok	Move {0} up	上移{0}	src/core/languages.js:314	{0} = name
-9v00pm	ok	Move {0} down	下移{0}	src/core/languages.js:315	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:317	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:318	{0} = name
-zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:318	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:319	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:319	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:320	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:320	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:322	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:323	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:325	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:325	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:326	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:326	
-1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:327	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:328	
-au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
+3fqfy0	ok	Languages	语言	src/core/languages.js:311	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:312	
+1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:313	
+krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:314	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
+5h4ntn	ok	Add a language	添加语言	src/core/languages.js:315	
+17rv3f8	ok	Add	添加	src/core/languages.js:316	
+9c35st	ok	Remove	移除	src/core/languages.js:317	Note: 移除 (take off the list) over 删除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:320	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+1u9ac5b	ok	Move {0} up	上移{0}	src/core/languages.js:321	{0} = name
+9v00pm	ok	Move {0} down	下移{0}	src/core/languages.js:322	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:324	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:325	{0} = name
+zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:325	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:326	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:326	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:327	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:327	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:329	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:330	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:332	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:332	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:333	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:333	
+1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:334	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:335	
+au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:336	
 1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
@@ -739,17 +739,21 @@ uqmge3	ok	Open the browser menu (⋮).	打开浏览器菜单（⋮）。	src/ui/
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 浏览器可能会在 7 天未访问后清除你的旅行，而且主屏幕上的 App 会另外保存旅行：在这里开始的旅行不会出现在那里。请将 annai 添加到主屏幕，并在那里开始旅行。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空间不足时，浏览器可能会清除你的旅行。请安装 annai，让旅行安全保存。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	查看步骤	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	ok	Getting {0}…	正在获取{0}…	src/ui/languages.js:198	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:199	{0} = name
-1t9l1f1	ok	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:214	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:219	
-v4uyh0	ok	annai's screens in	annai 界面语言	src/ui/languages.js:222	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
-15go2in	ok	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:235	{0} = name
-dc30do	ok	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:235	
-8rqn0k	ok	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:242	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:243	{0} = name
-1of7r8x	ok	Restart annai	重启 annai	src/ui/languages.js:244	
+n3y7d4	ok	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:186	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在获取{0}…	src/ui/languages.js:200	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:201	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:216	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:221	
+v4uyh0	ok	annai's screens in	annai 界面语言	src/ui/languages.js:224	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:233	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:233	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自动	src/ui/languages.js:233	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自动).
+v4r0ir	ok	Distances	距离单位	src/ui/languages.js:249	Note: The setting beside the screens' language: which unit distances are shown in; 距离 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:262	{0} = name
+dc30do	ok	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:262	
+8rqn0k	ok	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:269	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:270	{0} = name
+1of7r8x	ok	Restart annai	重启 annai	src/ui/languages.js:271	
 15kmah9	ok	Simulation · moving fast	模拟 · 快速移动中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模拟 · 已停下	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	模拟 · 步行中	src/ui/live-chip.js:22	
@@ -2080,55 +2084,57 @@ rfzxba	ok	What you say goes to the first of these that can hear it; what she say
 283rev	ok	What you say	你说的话	src/ui/screens/voice.js:175	
 127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	要让你的声音留在手机上，请用键盘上的麦克风键输入：iPhone 和大多数 Android 键盘都能在手机上听写。	src/ui/screens/voice.js:177	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
 bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:178	
-12fg67m	ok	Searching the web	搜索网络	src/ui/screens/welcome.js:20	
-13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:20	
-1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:20	
-1sfqzn2	ok	Get started	开始使用	src/ui/screens/welcome.js:20	
-9dx265	ok	Welcome to annai	欢迎使用 annai	src/ui/screens/welcome.js:20	
-1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手机里的免费开源旅行向导。	src/ui/screens/welcome.js:42	
-119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的向导是 Shiori。她和你一起规划旅行，保管你的预订和笔记，在合适的时间和地点提醒你，在路上和你聊天，旅行结束后为你做回顾。	src/ui/screens/welcome.js:43	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每个屏幕的底部：轻点她来说话，或者打字。	src/ui/screens/welcome.js:44	
-1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日语，意思是“引导；带人四处看看”。	src/ui/screens/welcome.js:45	
-u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的向导。她有两个协同工作的分身。	src/ui/screens/welcome.js:51	
-5swud	ok	Koe ({0}, voice)	Koe（{0}，声音）	src/ui/screens/welcome.js:53	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
-qhkarb	ok	talks with you and answers at once.	和你说话，马上回答。	src/ui/screens/welcome.js:53	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
-ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}，心与思考）	src/ui/screens/welcome.js:54	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
-vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	仔细思考并完成工作：规划、搜索、读取你的预订。	src/ui/screens/welcome.js:54	Note: follows Kokoro's name in bold.
-1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	你只需要和 Shiori 说话。Kokoro 工作时，Koe 陪着你，并在 Kokoro 有答案时告诉你。它们之间的交流会显示在对话中；可以在设置 → Shiori 中隐藏。	src/ui/screens/welcome.js:55	
-1px4lo	ok	Plans and bookings.	行程和预订。	src/ui/screens/welcome.js:60	
-syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起按天规划旅行，并添加你的确认信息：PDF、钱包卡券、截图。预订由你来做；annai 从不替你预订。	src/ui/screens/welcome.js:60	
-1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:61	
-pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	开启 GPS 后，annai 会跟随你的位置，在合适的时间和地点提醒你：该出发了、已经到了、快要迟到了。	src/ui/screens/welcome.js:61	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车里或步道上，免提和 Shiori 对话。	src/ui/screens/welcome.js:62	
-sb3fh1	ok	Voice.	语音。	src/ui/screens/welcome.js:62	
-1f1esb6	ok	Offline places.	离线地点。	src/ui/screens/welcome.js:63	
-q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	沿着行程的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南，供没有信号时使用。	src/ui/screens/welcome.js:63	
-1nibb44	ok	Show Shiori what you see, and ask about it.	把你看到的给 Shiori 看，然后问她。	src/ui/screens/welcome.js:64	
-8buk0q	ok	Photos.	照片。	src/ui/screens/welcome.js:64	
-oet5z2	ok	Backups.	备份。	src/ui/screens/welcome.js:65	
-wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	导出一个文件，或自动备份到 GitHub、Forgejo 或 Gitea 服务器、S3 存储桶或 WebDAV 文件夹。	src/ui/screens/welcome.js:65	
-1gocoxs	ok	Plugins and MCP servers.	插件和 MCP 服务器。	src/ui/screens/welcome.js:66	
-rokix6	ok	Skills, tools and screens that others make.	别人制作的技能、工具和界面。	src/ui/screens/welcome.js:66	
-1ab3kpy	ok	Recap and replay.	回顾和回放。	src/ui/screens/welcome.js:67	
-1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅行结束后，有旅行回顾，还能回放路线。	src/ui/screens/welcome.js:67	
-lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai 的设计让你的密钥和数据始终归你所有。下面详细说明怎么做到的，以及它的边界在哪里。	src/ui/screens/welcome.js:69	
-13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	从一开始，Shiori 就能通过免费服务搜索网络。不需要密钥，也不用设置。	src/ui/screens/welcome.js:73	
-1yy7iex	ok	These are on. Untick any you would rather not use.	这些已开启。不想用的可以取消勾选。	src/ui/screens/welcome.js:74	
-10sp6fm	ok	A model set up here, in Safari, stays in Safari.	在这里（Safari 浏览器中）设置的模型只留在 Safari 浏览器中。	src/ui/screens/welcome.js:95	
-1dr4k8j	ok	Connect a model, so Shiori can think.	连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:95	
-uy1icp	ok	Connect a model there, so Shiori can think.	在那里连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:95	
-f7oh8p	ok	You can also install annai as an app from your browser's menu.	你也可以从浏览器菜单把 annai 安装为应用。	src/ui/screens/welcome.js:105	
-u8au6d	ok	First, install annai	首先，安装 annai	src/ui/screens/welcome.js:109	
-fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari 浏览器可能会在 7 天没有访问后清除 annai 保存的内容，而主屏幕上的 App 有自己的数据。请把 annai 添加到主屏幕，并在那里设置你的模型。	src/ui/screens/welcome.js:112	
-1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空间不足时，浏览器可能会清除 annai 保存的内容。安装 annai，保护好你的旅行。	src/ui/screens/welcome.js:113	
-hophvo	ok	Then, in the Home Screen app	然后，在主屏幕上的 App 中	src/ui/screens/welcome.js:118	
-s3y93q	ok	Then	然后	src/ui/screens/welcome.js:118	
-1padbm0	ok	Next	下一步	src/ui/screens/welcome.js:132	
-1hzmxtu	ok	Back	返回	src/ui/screens/welcome.js:133	
-1hpqu3m	ok	Skip	跳过	src/ui/screens/welcome.js:134	
-186hb75	ok	Look around first	先随便看看	src/ui/screens/welcome.js:139	
-zzldle	ok	Set up a model	设置模型	src/ui/screens/welcome.js:140	
-dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:146	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
+12fg67m	ok	Searching the web	搜索网络	src/ui/screens/welcome.js:23	
+13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:23	
+1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:23	
+1sfqzn2	ok	Get started	开始使用	src/ui/screens/welcome.js:23	
+9dx265	ok	Welcome to annai	欢迎使用 annai	src/ui/screens/welcome.js:23	
+18wuq59	ok	Change	更改	src/ui/screens/welcome.js:43	Note: The welcome's link to Settings → Shiori → Languages, after the screens' language.
+pxr3y5	ok	annai's screens: {0} · {1}	annai 界面语言：{0} · {1}	src/ui/screens/welcome.js:44	{0} = name; {1} = change; Note: {0} is the screens' language by its own name (简体中文), {1} the link 更改; worded as the setting it opens (annai 界面语言).
+1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手机里的免费开源旅行向导。	src/ui/screens/welcome.js:52	
+119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的向导是 Shiori。她和你一起规划旅行，保管你的预订和笔记，在合适的时间和地点提醒你，在路上和你聊天，旅行结束后为你做回顾。	src/ui/screens/welcome.js:53	
+1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每个屏幕的底部：轻点她来说话，或者打字。	src/ui/screens/welcome.js:54	
+1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日语，意思是“引导；带人四处看看”。	src/ui/screens/welcome.js:55	
+u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的向导。她有两个协同工作的分身。	src/ui/screens/welcome.js:62	
+5swud	ok	Koe ({0}, voice)	Koe（{0}，声音）	src/ui/screens/welcome.js:64	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
+qhkarb	ok	talks with you and answers at once.	和你说话，马上回答。	src/ui/screens/welcome.js:64	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
+ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}，心与思考）	src/ui/screens/welcome.js:65	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
+vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	仔细思考并完成工作：规划、搜索、读取你的预订。	src/ui/screens/welcome.js:65	Note: follows Kokoro's name in bold.
+1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	你只需要和 Shiori 说话。Kokoro 工作时，Koe 陪着你，并在 Kokoro 有答案时告诉你。它们之间的交流会显示在对话中；可以在设置 → Shiori 中隐藏。	src/ui/screens/welcome.js:66	
+1px4lo	ok	Plans and bookings.	行程和预订。	src/ui/screens/welcome.js:71	
+syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起按天规划旅行，并添加你的确认信息：PDF、钱包卡券、截图。预订由你来做；annai 从不替你预订。	src/ui/screens/welcome.js:71	
+1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:72	
+pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	开启 GPS 后，annai 会跟随你的位置，在合适的时间和地点提醒你：该出发了、已经到了、快要迟到了。	src/ui/screens/welcome.js:72	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车里或步道上，免提和 Shiori 对话。	src/ui/screens/welcome.js:73	
+sb3fh1	ok	Voice.	语音。	src/ui/screens/welcome.js:73	
+1f1esb6	ok	Offline places.	离线地点。	src/ui/screens/welcome.js:74	
+q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	沿着行程的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南，供没有信号时使用。	src/ui/screens/welcome.js:74	
+1nibb44	ok	Show Shiori what you see, and ask about it.	把你看到的给 Shiori 看，然后问她。	src/ui/screens/welcome.js:75	
+8buk0q	ok	Photos.	照片。	src/ui/screens/welcome.js:75	
+oet5z2	ok	Backups.	备份。	src/ui/screens/welcome.js:76	
+wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	导出一个文件，或自动备份到 GitHub、Forgejo 或 Gitea 服务器、S3 存储桶或 WebDAV 文件夹。	src/ui/screens/welcome.js:76	
+1gocoxs	ok	Plugins and MCP servers.	插件和 MCP 服务器。	src/ui/screens/welcome.js:77	
+rokix6	ok	Skills, tools and screens that others make.	别人制作的技能、工具和界面。	src/ui/screens/welcome.js:77	
+1ab3kpy	ok	Recap and replay.	回顾和回放。	src/ui/screens/welcome.js:78	
+1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅行结束后，有旅行回顾，还能回放路线。	src/ui/screens/welcome.js:78	
+lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai 的设计让你的密钥和数据始终归你所有。下面详细说明怎么做到的，以及它的边界在哪里。	src/ui/screens/welcome.js:80	
+13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	从一开始，Shiori 就能通过免费服务搜索网络。不需要密钥，也不用设置。	src/ui/screens/welcome.js:84	
+1yy7iex	ok	These are on. Untick any you would rather not use.	这些已开启。不想用的可以取消勾选。	src/ui/screens/welcome.js:85	
+10sp6fm	ok	A model set up here, in Safari, stays in Safari.	在这里（Safari 浏览器中）设置的模型只留在 Safari 浏览器中。	src/ui/screens/welcome.js:106	
+1dr4k8j	ok	Connect a model, so Shiori can think.	连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:106	
+uy1icp	ok	Connect a model there, so Shiori can think.	在那里连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:106	
+f7oh8p	ok	You can also install annai as an app from your browser's menu.	你也可以从浏览器菜单把 annai 安装为应用。	src/ui/screens/welcome.js:116	
+u8au6d	ok	First, install annai	首先，安装 annai	src/ui/screens/welcome.js:120	
+fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari 浏览器可能会在 7 天没有访问后清除 annai 保存的内容，而主屏幕上的 App 有自己的数据。请把 annai 添加到主屏幕，并在那里设置你的模型。	src/ui/screens/welcome.js:123	
+1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空间不足时，浏览器可能会清除 annai 保存的内容。安装 annai，保护好你的旅行。	src/ui/screens/welcome.js:124	
+hophvo	ok	Then, in the Home Screen app	然后，在主屏幕上的 App 中	src/ui/screens/welcome.js:129	
+s3y93q	ok	Then	然后	src/ui/screens/welcome.js:129	
+1padbm0	ok	Next	下一步	src/ui/screens/welcome.js:143	
+1hzmxtu	ok	Back	返回	src/ui/screens/welcome.js:144	
+1hpqu3m	ok	Skip	跳过	src/ui/screens/welcome.js:145	
+186hb75	ok	Look around first	先随便看看	src/ui/screens/welcome.js:150	
+zzldle	ok	Set up a model	设置模型	src/ui/screens/welcome.js:151	
+dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:157	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
 1jrfsn4	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免费搜索会把你的搜索发送给 Exa、Parallel 或 Firecrawl：只发送搜索的词，不发送你的文件或位置。Exa 还会读取其他方式读不了的网页，因此也会收到该网页的地址。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索内容训练模型，所以请不要在搜索中写名字和地址。在它们之后，还有一个始终开启的最后手段，会用同样的词询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有“搜索方式：关闭”能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜索的词会发送给你保留勾选的服务，Exa 还会收到它为她读取的网页地址：不发送你的文件或位置。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索训练模型，所以请不要在搜索中写名字和地址。在它们之后，作为最后手段，始终会询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有设置 → 工具 → 搜索方式：关闭能停止它。这些都可以在那里更改。	src/ui/search-panel.js:15	
 1fn0bdg	ok	Use	使用	src/ui/search-panel.js:31	

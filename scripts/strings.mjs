@@ -272,8 +272,11 @@ export function updateRows(old, messages, tag) {
   });
 }
 
-/** What ships for a language: { key: text } and, for plurals, { key: { category: text } }. @param {Omit<Row, 'line'>[]} rows */
-export function shippedJson(rows) {
+/**
+ * What ships for a language: { key: text } and, for plurals, { key: { category: text } }; and the screens' names Shiori is told, under
+ * "@glossary", a key no message's can be (keys are base 36). @param {Omit<Row, 'line'>[]} rows @param {string} [names] glossaryNames'
+ */
+export function shippedJson(rows, names = '') {
   /** @type {Record<string, any>} */
   const out = {};
   for (const r of [...rows].sort((a, b) => (a.key < b.key ? -1 : 1))) {
@@ -282,6 +285,7 @@ export function shippedJson(rows) {
     if (c) (out[k] ??= {})[c] = r.text;
     else out[k] = r.text;
   }
+  if (names) out['@glossary'] = names;
   return `${JSON.stringify(out)}\n`;
 }
 
@@ -315,6 +319,7 @@ export async function update(root) {
   if (problems.length) throw new Error(problems.map((p) => `${p.file}:${p.line}: ${p.message}`).join('\n'));
   const list = await languages(root);
   const tags = [...new Set([...list.map((l) => l.tag), ...(await tsvTags(root))])].sort();
+  const glossary = await glossaryOf(root);
   /** @type {string[]} */
   const written = [];
   const put = async (/** @type {string} */ path, /** @type {string} */ text) => {
@@ -329,7 +334,7 @@ export async function update(root) {
     const old = existsSync(`${root}/${file}`) ? readTsv(await readFile(`${root}/${file}`, 'utf8')) : [];
     const rows = updateRows(old, messages, tag);
     await put(file, writeTsv(rows));
-    await put(`l10n/${tag}.json`, shippedJson(rows));
+    await put(`l10n/${tag}.json`, shippedJson(rows, glossaryNames(glossary, tag)));
   }
   await put('src/core/l10n-list.js', listFile(list));
   if (existsSync(`${root}/sw.js`)) {
@@ -364,6 +369,17 @@ export function readGlossary(text) {
   }
   return out;
 }
+/** The glossary, or none. @param {string} root */
+const glossaryOf = async (root) => (existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : []);
+
+/**
+ * The names Shiori is told when the screens are in a language (localization decision 7): the glossary's screens, modes, and things
+ * named with a capital as a label shows them ("Speech in", "Start fresh"), "Settings (設定), Models (モデル), …", in the glossary's order.
+ * @param {Term[]} glossary @param {string} tag
+ */
+export const glossaryNames = (glossary, tag) => glossary
+  .filter((g) => g.terms[tag] && (g.kind === 'screen' || g.kind === 'mode' || (g.kind === 'thing' && /^\p{Lu}/u.test(g.en))))
+  .map((g) => `${g.en} (${g.terms[tag]})`).join(', ');
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
  * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
@@ -490,7 +506,7 @@ export async function check(root, files = EXTRACTED) {
   const drafts = {};
   const list = await languages(root);
   // Once the glossary is there, a message that names one of its terms is held to the language's word for it (a warning).
-  const glossary = existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : [];
+  const glossary = await glossaryOf(root);
   for (const tag of [...new Set([...list.map((l) => l.tag), ...(await tsvTags(root))])].sort()) {
     const file = `l10n/${tag}.tsv`;
     const listed = list.some((l) => l.tag === tag);
@@ -523,7 +539,7 @@ export async function check(root, files = EXTRACTED) {
     warnings.push(...glossaryWarnings(glossary, tag, rows));
     if (listed) {
       const json = `l10n/${tag}.json`;
-      if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows)) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
+      if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows, glossaryNames(glossary, tag))) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
     }
   }
   const listPath = 'src/core/l10n-list.js';

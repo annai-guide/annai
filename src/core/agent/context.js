@@ -4,7 +4,8 @@ import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
 import { readAppSettings } from '../settings.js';
-import { languageSettings, languagesText } from '../languages.js';
+import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
+import { lang, glossary } from '../l10n.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -26,6 +27,7 @@ import { languageSettings, languagesText } from '../languages.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
+  const app = await readAppSettings(ws);
   /* en */ return {
     trip,
     personalityName,
@@ -35,7 +37,8 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     tripMemory: trip ? await read(trip, '/memory.md') : '',
     skills: skillIndex(registry),
-    languages: languagesText(languageSettings(await readAppSettings(ws), locale)),
+    // Then the screens' names and a Distances choice (localization L6).
+    languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
   };
 }
 

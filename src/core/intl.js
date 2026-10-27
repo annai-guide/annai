@@ -88,9 +88,13 @@ export function size(n) {
 }
 
 const MILES = new Set(['US', 'GB', 'LR', 'MM']);
-/** "26 mi" or "42 km": miles where the locale's region uses them. @param {number} km */
+/** @type {'km' | 'mi' | null} the Distances choice; null: by region */
+let chosen = null;
+/** Sets the Distances choice: 'km', 'mi', else Automatic. @param {unknown} unit */
+export function setDistances(unit) { chosen = unit === 'km' || unit === 'mi' ? unit : null; }
+/** "26 mi" or "42 km": the Distances choice, else miles where the locale's region uses them. @param {number} km */
 export function distance(km) {
-  const miles = MILES.has(new Intl.Locale(locale()).maximize().region ?? '');
+  const miles = chosen ? chosen === 'mi' : MILES.has(new Intl.Locale(locale()).maximize().region ?? '');
   const n = miles ? km / 1.609344 : km;
   return num(n, { style: 'unit', unit: miles ? 'mile' : 'kilometer', unitDisplay: 'short', maximumFractionDigits: n < 10 ? 1 : 0 });
 }

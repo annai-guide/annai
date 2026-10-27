@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
+  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -137,6 +137,23 @@ test('size: by 1024s, a tenth below ten', () => {
   assert.equal(size(1536), '1,5 kB');
   as('zh-Hans', 'zh-CN');
   assert.equal(size(5 * 1024 * 1024), new Intl.NumberFormat('zh-Hans-CN', { style: 'unit', unit: 'megabyte', unitDisplay: 'short', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(5));
+});
+
+test('distance: the Distances choice wins over the region, and Automatic is the region again (localization L6)', () => {
+  try {
+    as('en', 'en-US');
+    setDistances('km');
+    assert.equal(distance(42.3), '42 km');
+    as('en', 'de-DE');
+    setDistances('mi');
+    assert.equal(distance(42.3), '26 mi');
+    setDistances(null);
+    assert.equal(distance(42.3), '42 km');
+    setDistances('furlongs');
+    assert.equal(distance(42.3), '42 km', 'what it doesn\'t know is Automatic');
+  } finally {
+    setDistances(null);
+  }
 });
 
 test('distance: miles where the region uses them, kilometres elsewhere', () => {
