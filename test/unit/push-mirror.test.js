@@ -554,8 +554,8 @@ test('relay errors say what to do next (§17 rule 3): at turn-on, tap again; in 
   const k = await pushKit({ live: false });
   try {
     k.net.offline = true;
-    await assert.rejects(k.mirror.turnOn(RELAY), (/** @type {any} */ e) => /couldn't reach the relay at push\.annai\.guide/.test(e.message)
-      && /Nothing was turned on/.test(e.message) && /tap Turn on notifications again/.test(e.message) && !/tries again by itself/.test(e.message));
+    await assert.rejects(k.mirror.turnOn(RELAY), (/** @type {any} */ e) => /couldn't reach the relay at push\.annai\.guide/.test(e.shown)
+      && /Nothing was turned on/.test(e.shown) && /tap Turn on notifications again/.test(e.shown) && !/tries again by itself/.test(e.shown) && !/Nothing was turned on/.test(e.message));
     k.net.offline = false;
     await k.mirror.turnOn(RELAY);
     await k.flush();
@@ -566,7 +566,7 @@ test('relay errors say what to do next (§17 rule 3): at turn-on, tap again; in 
     assert.match(bg, /couldn't reach the relay at push\.annai\.guide/);
     assert.match(bg, /annai tries again by itself/);
     const wrong = relayClient({ base: 'https://example.com', fetch: async () => new Response('<html>Not Found</html>', { status: 404 }) });
-    await assert.rejects(wrong.vapid(), (e) => e instanceof RelayError && /no annai push relay at example\.com/.test(e.message) && /Check the relay address/.test(e.message));
+    await assert.rejects(wrong.vapid(), (e) => e instanceof RelayError && /no annai push relay at example\.com/.test(String(e.shown)) && /Check the relay address/.test(String(e.shown)));
   } finally {
     await k.stop();
   }

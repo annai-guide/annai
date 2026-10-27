@@ -45,18 +45,20 @@ export function relayWords({ code, host = '', status = 0, why, count = 1 }) {
 
 export class RelayError extends Error {
   /**
-   * @param {Said & { en: string, retryAfter?: number }} o
-   *   en: the failure in English, with what the relay said, for the log; retryAfter: seconds the relay asked annai to wait
+   * @param {Said & { message: string, retryAfter?: number }} o
+   *   message: the failure in annai's English, with what the relay said, for the log (the screens show shown, made from what it was);
+   *   retryAfter: seconds the relay asked annai to wait
    */
-  constructor({ en, retryAfter = 0, ...said }) {
-    super(relayWords(said));
+  constructor({ message, retryAfter = 0, ...said }) {
+    super(message);
+    /** The screens' words (the shown rule). */
+    this.shown = relayWords(said);
     this.name = /* en */ 'RelayError';
     this.code = said.code;
     this.status = said.status ?? 0;
     this.retryAfter = retryAfter;
     /** @type {Said} */
     this.said = said;
-    this.en = en;
   }
 
   /** Worth trying again later by itself: no connection, the relay busy or down, the subscription not confirmed yet. */
@@ -89,7 +91,7 @@ export function relayClient({ base, fetch }) {
       res = await fetch(`${base}${path}`, init);
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new RelayError({ code: 'offline', host, en: /* en */ `annai couldn't reach the relay at ${host}.` });
+      throw new RelayError({ code: 'offline', host, message: /* en */ `annai couldn't reach the relay at ${host}.` });
     }
     let text = '';
     try {
@@ -115,21 +117,21 @@ export function relayClient({ base, fetch }) {
     // The log keeps what the relay said, in its English; the screens make their words from the code.
     const en = /* en */ `The relay at ${host} answered ${res.status}${code ? ` ${code}` : ''}${said ? `: ${said.replace(/[.\s]+$/, '')}` : ''}.`;
     const status = res.status;
-    if (status === 429 && code === 'unconfirmed') return new RelayError({ code: 'unconfirmed', host, status, en, retryAfter: retryAfter || 10 });
-    if (status === 429) return new RelayError({ code: code === 'full' ? 'full' : 'rate', host, status, en, retryAfter: code === 'full' ? 0 : retryAfter || 60 });
-    if (status === 409 && code === 'key') return new RelayError({ code: 'key', host, status, en });
-    if (status === 410) return new RelayError({ code: 'gone', host, status, en });
-    return new RelayError({ code: status >= 500 ? 'relay' : 'refused', host, status, en });
+    if (status === 429 && code === 'unconfirmed') return new RelayError({ code: 'unconfirmed', host, status, message: en, retryAfter: retryAfter || 10 });
+    if (status === 429) return new RelayError({ code: code === 'full' ? 'full' : 'rate', host, status, message: en, retryAfter: code === 'full' ? 0 : retryAfter || 60 });
+    if (status === 409 && code === 'key') return new RelayError({ code: 'key', host, status, message: en });
+    if (status === 410) return new RelayError({ code: 'gone', host, status, message: en });
+    return new RelayError({ code: status >= 500 ? 'relay' : 'refused', host, status, message: en });
   }
 
   return {
     /** The relay's VAPID public key, which the phone subscribes with. @returns {Promise<string>} */
     async vapid() {
       const { res, body } = await call('/v1/vapid', { method: 'GET' });
-      if (res.status === 404) throw new RelayError({ code: 'refused', why: 'none', host, status: 404, en: /* en */ `There's no annai push relay at ${host} (it answered 404).` });
+      if (res.status === 404) throw new RelayError({ code: 'refused', why: 'none', host, status: 404, message: /* en */ `There's no annai push relay at ${host} (it answered 404).` });
       if (!res.ok) throw failure(res, body);
       const raw = typeof body?.key === 'string' ? fromBase64Url(body.key) : null;
-      if (!raw || raw.length !== 65 || raw[0] !== 4) throw new RelayError({ code: 'refused', why: 'bad-key', host, status: res.status, en: /* en */ `The relay at ${host} sent a key annai can't use.` });
+      if (!raw || raw.length !== 65 || raw[0] !== 4) throw new RelayError({ code: 'refused', why: 'bad-key', host, status: res.status, message: /* en */ `The relay at ${host} sent a key annai can't use.` });
       return body.key;
     },
     /**

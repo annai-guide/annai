@@ -59,12 +59,11 @@ export function holdWords(h) {
 export const oldHold = (h) => h?.kind === 'error' && !h.said && !h.offline;
 
 /**
- * One of annai's own errors: the screens' words, with its English for the log and the hold, and what it was.
- * @param {ConstructorParameters<typeof TargetError>[0]} kind @param {string} en @param {Said} said @param {ConstructorParameters<typeof TargetError>[2]} [extra]
+ * One of annai's own errors, by the shown rule: its English for the log and the hold (message), the screens' words (shown), and what
+ * it was (said). @param {ConstructorParameters<typeof TargetError>[0]} kind @param {string} en @param {Said} said
+ * @param {ConstructorParameters<typeof TargetError>[2]} [extra]
  */
-const own = (kind, en, said, extra) => Object.assign(new TargetError(kind, backupWords(said), extra), { en, said });
-/** An error's English for the log and a hold: annai's own (own), else its words as given. @param {any} e @returns {string} */
-const english = (e) => String(e?.en ?? e?.message ?? e);
+const own = (kind, en, said, extra) => Object.assign(new TargetError(kind, en, extra), { shown: backupWords(said), said });
 
 /** The newest time of each device's backups in a listing, by that device's own clock (minors 23). @param {RemoteBackup[]} listed @returns {Record<string, number>} */
 function knownOf(listed) {
@@ -152,9 +151,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       ? await withoutSecretsIn(store, te.choices.slice(0, 20).map((c) => ({ label: String(c?.label ?? '').slice(0, 200), config: settingsOf(rec, c?.config) })))
       : undefined;
     const cleaned = new TargetError(te?.kind ?? 'other', message, { remote: te?.remote, bytes: te?.bytes, retryAt: te?.retryAt, ...(choices ? { choices } : {}) });
-    // An error with English of its own beside its words (annai's, an archive's) keeps it for the log.
-    const en = /** @type {any} */ (e)?.en;
-    return typeof en === 'string' ? Object.assign(cleaned, { en: await withoutSecrets(store, en), ...(/** @type {any} */ (e).said ? { said: /** @type {any} */ (e).said } : {}) }) : cleaned;
+    // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps.
+    const { shown, said } = /** @type {any} */ (e) ?? {};
+    return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await withoutSecrets(store, shown) } : {}), ...(said ? { said } : {}) });
   }
 
   /** What a place filled in for fields left empty, or offers: text values of its own fields. @param {Target} rec @param {unknown} config @returns {Record<string, string>} */
@@ -223,11 +222,11 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const was = rec.hold?.kind === 'error' ? rec.hold.count : 0;
       const count = online() ? was + 1 : was;
       const said = /** @type {any} */ (e).said;
-      h = { kind: 'error', message: english(e), ...(said ? { said } : {}), ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
+      h = { kind: 'error', message: e.message, ...(said ? { said } : {}), ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
     }
     await setTarget(ws, rec.id, { hold: h }).catch(() => {});
     if (h.kind === 'newer') await log('backup.newer', { target: rec.id, type: rec.type, remote: h.remote });
-    else await log('backup.error', { target: rec.id, type: rec.type, kind: e.kind, message: english(e), ...(h.kind === 'large' ? { bytes: h.bytes } : {}) });
+    else await log('backup.error', { target: rec.id, type: rec.type, kind: e.kind, message: e.message, ...(h.kind === 'large' ? { bytes: h.bytes } : {}) });
     return e;
   }
 
@@ -265,7 +264,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         await log('backup.prune', { target: rec.id, type: rec.type, backup: b.id });
       }
     } catch (e) {
-      await log('backup.error', { target: rec.id, type: rec.type, kind: 'prune', message: english(await clean(e)) });
+      await log('backup.error', { target: rec.id, type: rec.type, kind: 'prune', message: (await clean(e)).message });
     }
   }
 
@@ -464,7 +463,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         checkManifest(manifest);
       } catch (e) {
         // What is wrong with it goes to the Trace; the screen says it in a few plain words.
-        const why = english(e);
+        const why = String(/** @type {any} */ (e)?.message ?? e);
         await log('backup.peek', { target: id, type: rec.type, backup: backupId, problem: (await withoutSecrets(store, why)).slice(0, 500) });
         throw new TargetError('other', /** @type {any} */ (e)?.newer ? t`This backup was made by a newer annai: update annai first.` : t`This backup is damaged.`);
       }
