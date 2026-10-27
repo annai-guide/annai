@@ -3,6 +3,7 @@ import { formatCost, size, duration, num, when, list } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
 import { readBlob } from '../../core/reach.js';
+import { scopeTitle } from '../../core/scopes.js';
 
 /** The trace's time: numeric, to the second, as the phone writes it. */
 const STAMP = /** @type {Intl.DateTimeFormatOptions} */ ({ year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
@@ -44,7 +45,7 @@ export function newestFirst(events, limit) {
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderTrace(ctx, route) {
   const scopes = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
-  const titles = new Map(scopes.map((/** @type {any} */ s) => [s.id, s.kind === 'sys' ? t`System · ${s.title}` : s.title]));
+  const titles = new Map(scopes.map((/** @type {any} */ s) => [s.id, s.kind === 'sys' ? t`System · ${scopeTitle(s)}` : scopeTitle(s)]));
   const select = h('select', { id: 'trace-scope' }, h('option', { value: '', text: t`Everything` }),
     ...scopes.map((/** @type {any} */ s) => h('option', { value: s.id, text: titles.get(s.id) })));
   select.value = route.params.scope ?? '';

@@ -2,6 +2,7 @@ import { Sentences } from './sentences.js';
 import { readyToStart, estimateSeconds } from './stream-start.js';
 import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
 import { anySignal } from '../signals.js';
+import { STAND_IN_NAMES } from './where.js';
 
 /**
  * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete
@@ -42,7 +43,7 @@ export function speechOutEntries(cfg, { types, until, now, browser }) {
   for (const id of cfg.roles?.['speech-out']?.models ?? SPEECH_DEFAULTS['speech-out']) {
     if (until(id) > now) continue;
     if (id === 'browser-voice') {
-      if (browser) out.push({ id, name: 'Browser voice', kind: 'browser' });
+      if (browser) out.push({ id, name: STAND_IN_NAMES['browser-voice'], kind: 'browser' }); // its name in the screens' words: only they show it
       continue;
     }
     const rec = cfg.models[id];

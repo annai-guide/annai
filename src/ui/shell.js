@@ -1,4 +1,4 @@
-import { h, t } from './dom.js';
+import { h, t, messageOf } from './dom.js';
 import { parseHash } from './router.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
@@ -255,7 +255,7 @@ export function startShell(root, core) {
       if (my !== seq) return superseded(my);
       main.replaceChildren(h('div', { class: 'screen' },
         h('h1', { class: 'title', text: t`This screen couldn't open` }),
-        h('p', { text: String(/** @type {any} */ (e)?.message ?? e) }),
+        h('p', { text: messageOf(e) }),
         h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`))));
       land(my);
       dispatchEvent(new ErrorEvent('error', { error: e, message: String(e) }));

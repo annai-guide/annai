@@ -1,7 +1,8 @@
 import { startAutoBackup, TIMINGS } from '../core/backup-auto.js';
+import { holdWords, oldHold } from '../core/backup.js';
 import { connectionOf } from './platform.js';
 import { setPendingImport } from './import-state.js';
-import { t } from './dom.js';
+import { t, messageOf } from './dom.js';
 import { newerText, placeHref, size, localDay, gettingFiles, sentences } from './format.js';
 
 /**
@@ -94,7 +95,7 @@ function holdCard(ctx, target) {
   } else if (h?.kind === 'error') {
     const where = whereOf(ctx, target);
     ctx.notices.card({ tone: 'warn', title: where === target.name ? t`Backups to ${target.name} stopped` : t`Backups to ${target.name} (${where}) stopped`,
-      body: sentences(h.message, t`Open Backups to fix it.`), actions: [open] });
+      ...(oldHold(h) ? { body: t`Open Backups to fix it.`, en: String(h.message ?? '') } : { body: sentences(holdWords(h), t`Open Backups to fix it.`) }), actions: [open] });
   }
 }
 
@@ -104,7 +105,7 @@ function backUpFromCard(ctx, id, o) {
   ctx.backups.backUp(id, o).then(
     () => ctx.notices.toast(t`Backed up.`),
     (/** @type {any} */ e) => {
-      if (e?.name !== 'AbortError') ctx.notices.card({ tone: 'warn', title: t`The backup didn't finish`, body: String(e?.message ?? e) });
+      if (e?.name !== 'AbortError') ctx.notices.card({ tone: 'warn', title: t`The backup didn't finish`, body: messageOf(e) });
     },
   );
 }
@@ -129,7 +130,7 @@ export async function restoreFrom(ctx, target, remote, say, { signal } = {}) {
         return;
       }
     } catch (e) {
-      say(String(/** @type {any} */ (e)?.message ?? e));
+      say(messageOf(e));
       return;
     }
   }
@@ -146,7 +147,7 @@ export async function restoreFrom(ctx, target, remote, say, { signal } = {}) {
     setPendingImport([new File([blob], /* en */ `annai-backup-${day}.annai.zip`, { type: 'application/zip' })], { archive: true, from });
     ctx.go('#/import');
   } catch (e) {
-    say(String(/** @type {any} */ (e)?.message ?? e));
+    say(messageOf(e));
   } finally {
     off();
   }

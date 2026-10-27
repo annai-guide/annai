@@ -155,7 +155,8 @@ export function jsonField(label, id, value) {
  */
 export function messageOf(e) {
   if (!Array.isArray(e?.errors)) {
-    const m = String(e?.message ?? e);
+    // The screens' words where an error carries them (shown), else its message (LESSONS 2026-10-27).
+    const m = String(e?.shown ?? e?.message ?? e);
     return typeof e?.pluginId === 'string' && m.startsWith(`${e.pluginId}: `) ? m.slice(e.pluginId.length + 2) : m;
   }
   return e.errors.map((/** @type {string} */ x) => {

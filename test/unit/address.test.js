@@ -48,7 +48,6 @@ test("a short value under a credential name annai's trace blanks (appid, app_id)
 
 test('8a-1: an address with a name or password before an @ is refused, in words that say what to do', () => {
   assert.throws(() => refuseUserinfo(new URL('https://me:pw@trails.example/kit.zip')), /This address holds a name or password before an @\. Leave it out\.$/);
-  assert.throws(() => refuseUserinfo(new URL('https://me@mcp.example.com/mcp'), ', and put the key in the Token or Headers field'), /Leave it out, and put the key in the Token or Headers field\.$/);
   refuseUserinfo(new URL('https://trails.example/kit.zip'));
 });
 

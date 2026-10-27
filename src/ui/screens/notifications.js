@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, field } from '../dom.js';
+import { h, crumb, t, plural, field, messageOf } from '../dom.js';
 import { platform } from '../platform.js';
 
 /** @param {string} title @param {...any} children */
@@ -39,10 +39,12 @@ export async function renderNotifications(ctx) {
   const st = await push.status();
   const where = platform();
   const status = h('p', { class: 'sub', role: 'status', text: statusText(st) });
-  const alert = h('p', { class: 'error', role: 'alert', hidden: !st.problem, text: st.problem?.message ?? '' });
+  // A problem kept before its words were made at display is shown as it was kept, in English.
+  const alert = h('p', { class: 'error', role: 'alert', hidden: !st.problem, text: st.problem?.message ?? '', ...(st.problem?.lang ? { lang: st.problem.lang } : {}) });
   /** @param {string} text */
   const fail = (text) => {
     alert.textContent = text;
+    alert.removeAttribute('lang');
     alert.hidden = false;
   };
   const address = h('input', { id: 'push-relay', type: 'url', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: st.relay });
@@ -55,7 +57,7 @@ export async function renderNotifications(ctx) {
         ctx.notices.toast(t`Saved`);
         ctx.render();
       } catch (e) {
-        fail(String(/** @type {any} */ (e)?.message ?? e));
+        fail(messageOf(e));
       } finally {
         save.disabled = false;
       }
@@ -94,7 +96,7 @@ export async function renderNotifications(ctx) {
             ctx.render();
           } catch (e) {
             status.textContent = statusText(st);
-            fail(String(/** @type {any} */ (e)?.message ?? e));
+            fail(messageOf(e));
             on.disabled = false;
           }
         }, () => {
@@ -116,7 +118,7 @@ export async function renderNotifications(ctx) {
           ctx.notices.toast(t`Notifications are off.`);
           ctx.render();
         } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
+          fail(messageOf(e));
           off.disabled = false;
         }
       },
@@ -132,7 +134,7 @@ export async function renderNotifications(ctx) {
           await push.test();
           ctx.notices.toast(t`A test notification comes in about 15 seconds. Lock the phone to see it arrive.`);
         } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
+          fail(messageOf(e));
         } finally {
           trial.disabled = false;
         }

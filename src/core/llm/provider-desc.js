@@ -1,5 +1,6 @@
 import { validate } from '../schema.js';
 import { pricesProblem } from './cost.js';
+import { t } from '../l10n.js';
 
 /**
  * A provider description (spec §5.2, §9.1): what a provider plugin's annai-plugin.json says of one
@@ -118,7 +119,8 @@ export function localNote(baseUrl) {
   } catch {
     // no address of its own: a usual port
   }
-  return `On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run ${serve(port)} where the server is, then give annai https://<machine>.<tailnet>.ts.net:8443/v1. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.`;
+  const address = 'https://<machine>.<tailnet>.ts.net:8443/v1';
+  return t`On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run ${serve(port)} where the server is, then give annai ${address}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.`;
 }
 
 /**

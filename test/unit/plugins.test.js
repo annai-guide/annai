@@ -306,5 +306,5 @@ test('registry: switching a plugin off after repeated errors is told once, with 
   r.onDisabled((d) => told.push(d));
   const f = r.guard('flaky', 'tool x', () => { throw new TypeError('boom 3'); });
   for (let i = 0; i < 4; i++) await f().catch(() => {});
-  assert.deepEqual(told, [{ pluginId: 'flaky', reason: 'failed 3 times in a row', message: 'boom 3' }]);
+  assert.deepEqual(told, [{ pluginId: 'flaky', why: { kind: 'failed', count: 3 }, message: 'boom 3' }]);
 });

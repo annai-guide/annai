@@ -130,11 +130,12 @@ let lone = 0;
   /**
    * Cards of one kind (the same title and tone) fold into one card, "Reminder (3)", that shows each when opened, with one
    * Dismiss all, and each can still be dismissed alone.
-   * @param {{ title: string, body?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean }} n
+   * @param {{ title: string, body?: string, en?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean }} n
+   *   en: English kept from before the screens spoke other languages, a line of its own marked so
    * toast: said briefly, as a toast, with no card to dismiss
    * @returns {() => void} dismiss
    */
-  function card({ title, body, tone = 'info', actions = [], toast: brief }) {
+  function card({ title, body, en, tone = 'info', actions = [], toast: brief }) {
     if (brief) {
       toast(title);
       return () => {};
@@ -150,6 +151,7 @@ let lone = 0;
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title }),
       body ? h('p', { text: body }) : null,
+      en ? h('p', { lang: 'en', text: en }) : null,
       body ? more : null,
       h('div', { class: 'acts' },
         ...actions.map((a) => h('button', { class: ['btn', a.primary && 'pri'], type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),

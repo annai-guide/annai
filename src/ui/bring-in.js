@@ -1,3 +1,4 @@
+import { messageOf } from './dom.js';
 import { addFiles } from './add-files.js';
 import { importCalendar, newFilesText } from '../core/imports.js';
 import { validZone, deviceZone } from '../core/time.js';
@@ -23,7 +24,7 @@ export async function bringIn(ctx, scope, files, progress) {
     try {
       planned.push(...(await importCalendar(ctx.ws, scope, path, { defaultTz })));
     } catch (e) {
-      problems.push(`${path}: ${String(/** @type {any} */ (e)?.message ?? e)}`);
+      problems.push(`${path}: ${messageOf(e)}`);
     }
   }
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];

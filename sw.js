@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'c9ac96241c4f';
+const BUILD = '85e6bd077ca9';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -635,15 +635,21 @@ async function showReminder(data) {
   }
   const ok = m !== null && typeof m === 'object' && typeof m.body === 'string' && m.body.trim() !== '' && typeof m.key === 'string';
   const title = ok && typeof m.title === 'string' && m.title.trim() ? m.title.slice(0, 120) : 'annai';
-  // A held-back "coming up" says the minutes left now.
-  const left = ok && Number.isFinite(m.start) ? Math.round((m.start - Date.now()) / 60_000) : null;
-  const body = !ok ? 'annai has a reminder for you. Open annai to see it.'
-    : m.body.slice(0, 500).replace(/^In \d+ min: /, (was) => (left === null ? was : left > 0 ? `In ${left} min: ` : left === 0 ? 'Now: ' : `Started ${-left} min ago: `));
+  // The page keeps its words for these in the screens' language (push/mirror.js pushWords), with what it gave itself.
+  const kept = await readJson('sys:device', '/push.json');
+  /** @type {Record<string, string>} */
+  const words = kept?.words && typeof kept.words === 'object' ? kept.words : {};
+  // A "coming up" says the minutes left now, from its start: one the phone held back too.
+  const left = ok && Number.isFinite(m.start) && typeof m.what === 'string' ? Math.round((m.start - Date.now()) / 60_000) : null;
+  const soon = left === null ? null : left > 0 ? words.soon : left === 0 ? words.now : words.ago;
+  const body = !ok ? words.fallback || /* en */ 'annai has a reminder for you. Open annai to see it.'
+    : typeof soon === 'string' && left !== null ? soon.replace('{0}', () => Math.abs(left).toLocaleString(words.lang)).replace('{1}', () => m.what.slice(0, 500)) : m.body.slice(0, 500);
   /** @type {Record<string, unknown>} */
   const info = ok ? { key: m.key.slice(0, 300), scope: String(m.scope ?? ''), watch: String(m.watch ?? ''), at: Number(m.at) || 0, ...(m.test ? { test: true } : {}) } : {};
   // One annai gave already that the phone held back comes quietly, and annai on screen closes it: a push
   // must show a notification (Safari drops the subscription after a few that don't; Chrome holds up the ones after it).
-  const stale = ok && !m.test && (await handled(m.key));
+  const given = kept?.given;
+  const stale = ok && !m.test && Boolean(given && typeof given === 'object' && Object.hasOwn(given, m.key));
   await sw.registration.showNotification(title, { body, tag: typeof info.key === 'string' ? info.key : 'annai-reminder', data: info, icon: '/assets/icons/icon-192.png', ...(stale ? { silent: true } : {}) });
   await keepNews({ kind: 'shown', ...info, ...(stale ? { stale: true } : {}), t: Date.now() });
 }
@@ -661,12 +667,6 @@ async function readJson(scope, path) {
   } finally {
     db?.close();
   }
-}
-
-/** Whether annai gave a reminder itself, on screen or in a catch-up, as it wrote down in /push.json (given). @param {string} key */
-async function handled(key) {
-  const given = (await readJson('sys:device', '/push.json'))?.given;
-  return Boolean(given && typeof given === 'object' && Object.hasOwn(given, key));
 }
 
 // Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is

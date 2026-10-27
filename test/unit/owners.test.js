@@ -49,7 +49,7 @@ test("the user's choice owns the name while that plugin runs and registers it; s
   assert.deepEqual(owners(r, 'tool'), ['late:forecast']);
   assert.deepEqual(owners(r, 'skill'), ['late:tides']);
   // Switched off after errors: its choice waits, and the next by rank answers.
-  r.disable('late', 'broke');
+  r.disable('late', { kind: 'failed', count: 3 }, 'broke');
   assert.deepEqual(r.owner('tool', 'forecast'), { pluginId: 'web', chosen: false });
   assert.deepEqual(owners(r, 'skill'), ['early:tides']);
   r.enable('late');
@@ -150,7 +150,7 @@ test("M6 fix: a protocol or a kind of backup place annai's official plugin provi
   const by = (/** @type {string} */ kind) => r.list(kind).map((t) => `${t.type}:${t.by}`);
   assert.deepEqual([by('endpoint-type'), by('storage-type')], [['chat-completions:official', 'acme:evil'], ['webdav:official']]);
   // Switched off after errors, or stopped: nobody owns the name, and the third party's is still not used.
-  r.disable('chat-completions', 'failed 3 times in a row');
+  r.disable('chat-completions', { kind: 'failed', count: 3 });
   r.removePlugin('webdav');
   assert.deepEqual([by('endpoint-type'), by('storage-type')], [['acme:evil'], []]);
   assert.equal(r.owner('endpoint-type', 'chat-completions'), null);

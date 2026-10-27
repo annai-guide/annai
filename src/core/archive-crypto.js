@@ -1,4 +1,5 @@
 import { utf8, concat, ownBuffer } from './bytes.js';
+import { t } from './l10n.js';
 
 /**
  * File layout: MAGIC | iterations (u32, big-endian) | salt (16) | chunks.
@@ -18,10 +19,11 @@ const MIN_ITERATIONS = 100_000;
 const MAX_ITERATIONS = 10_000_000;
 
 export class PassphraseError extends Error {
-  /** @param {string} message */
-  constructor(message) {
+  /** @param {string} message annai's English, as a backup's log and hold keep it @param {string} shown the screens' words (the shown rule) */
+  constructor(message, shown) {
     super(message);
     this.name = 'PassphraseError';
+    this.shown = shown;
   }
 }
 
@@ -61,7 +63,7 @@ const bytesOf = async (b) => new Uint8Array(await b.arrayBuffer());
  * @returns {Promise<Blob>}
  */
 export async function encrypt(file, passphrase, iterations = ITERATIONS) {
-  if (!passphrase) throw new PassphraseError('Enter a passphrase to encrypt the file.');
+  if (!passphrase) throw new PassphraseError('Enter a passphrase to encrypt the file.', t`Enter a passphrase to encrypt the file.`);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const count = new Uint8Array(4);
   new DataView(count.buffer).setUint32(0, iterations);
@@ -85,10 +87,10 @@ export async function encrypt(file, passphrase, iterations = ITERATIONS) {
  */
 export async function decrypt(file, passphrase) {
   const header = await bytesOf(file.slice(0, HEADER));
-  if (!isEncrypted(header)) throw new PassphraseError('This file is not encrypted.');
-  if (file.size < HEADER + TAG) throw new PassphraseError('This file is damaged.');
+  if (!isEncrypted(header)) throw new PassphraseError('This file is not encrypted.', t`This file is not encrypted.`);
+  if (file.size < HEADER + TAG) throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
   const iterations = new DataView(header.buffer, header.byteOffset + MAGIC.length, 4).getUint32(0);
-  if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) throw new PassphraseError('This file is damaged.');
+  if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
   const key = await deriveKey(passphrase, header.slice(MAGIC.length + 4, HEADER), iterations);
   const size = CHUNK + TAG;
   const n = Math.max(1, Math.ceil((file.size - HEADER) / size));
@@ -99,7 +101,7 @@ export async function decrypt(file, passphrase) {
     try {
       parts.push(new Blob([await crypto.subtle.decrypt({ name: 'AES-GCM', iv: chunkIv(i, i === n - 1), additionalData: ownBuffer(header) }, key, ownBuffer(sealed))]));
     } catch {
-      throw new PassphraseError(i === 0 ? 'Wrong passphrase, or the file is damaged.' : 'This file is damaged.');
+      throw i === 0 ? new PassphraseError('Wrong passphrase, or the file is damaged.', t`Wrong passphrase, or the file is damaged.`) : new PassphraseError('This file is damaged.', t`This file is damaged.`);
     }
   }
   return new Blob(parts);

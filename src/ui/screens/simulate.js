@@ -1,4 +1,4 @@
-import { h, crumb, t, field } from '../dom.js';
+import { h, crumb, t, field, messageOf } from '../dom.js';
 import { SPEEDS } from '../../core/live/sim-run.js';
 import { listTrips } from '../../core/scopes.js';
 import { answerJSON } from '../../core/answer.js';
@@ -147,7 +147,7 @@ async function form(ctx) {
       }
       await ctx.sim.start(source, { speed: speed.value === 'fast' ? 'fast' : Number(speed.value) });
     } catch (e) {
-      error.textContent = String(/** @type {any} */ (e)?.message ?? e);
+      error.textContent = messageOf(e);
       error.hidden = false;
       start.disabled = false;
     }

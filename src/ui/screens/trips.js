@@ -1,4 +1,4 @@
-import { h, field, t } from '../dom.js';
+import { h, field, t, messageOf } from '../dom.js';
 import { listTrips, createTrip, backupState } from '../../core/scopes.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -75,7 +75,7 @@ function newTripForm(ctx) {
 
 /** @param {any} err */
 function explain(err) {
-  if (!(err instanceof ValidationError)) return String(err?.message ?? err);
+  if (!(err instanceof ValidationError)) return messageOf(err);
   if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give the trip a name.`;
   if (err.errors.some((m) => /date/.test(m))) return t`Use real dates for the start and end.`;
   return err.errors.join(' ');

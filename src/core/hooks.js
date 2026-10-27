@@ -1,3 +1,5 @@
+import { disabledReason } from './registry.js';
+
 /**
  * Hooks (spec §5.4: "subscribe to log appends; read-only in v1"). A watched store reports the log
  * entries each committed write appended; each running plugin's hooks get frozen copies of what the
@@ -104,9 +106,10 @@ export function deliverHooks(registry, events, now = () => Date.now()) {
           counts.set(pluginId, w);
         }
         if (++w.count > HOOK_LIMIT) {
-          const why = `its hooks were handed more than ${HOOK_LIMIT} log entries in ${HOOK_WINDOW_MS / 1000} seconds, which looks like a loop`;
+          const loop = /** @type {const} */ ({ kind: 'loop', entries: HOOK_LIMIT, seconds: HOOK_WINDOW_MS / 1000 });
+          const why = disabledReason(loop);
           registry.fail(pluginId, 'hook', new Error(why));
-          registry.disable(pluginId, why);
+          registry.disable(pluginId, loop, why);
           counts.delete(pluginId); // turned on again, it starts with a window of its own
           break;
         }

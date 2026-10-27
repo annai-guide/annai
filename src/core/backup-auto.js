@@ -59,6 +59,7 @@ export function changedSince(store, seqs, now = Date.now()) {
  * @param {{ now: number, visible: boolean, connection: Connection, changed: boolean, lastChangeAt: number | null }} env
  * @param {Timings} [timings]
  * @returns {{ run: true, maxUpload: number } | { run: false, why: string }}
+ *   why: a code for the log and tests, never shown
  */
 export function dueNow(t, stores, env, timings = TIMINGS) {
   /** @param {string} why @returns {{ run: false, why: string }} */

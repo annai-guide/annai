@@ -1,5 +1,6 @@
 import { readPhotoMeta, displaySize, stripMetadata } from './photo-meta.js';
 import { normPath, typeForPath } from './paths.js';
+import { t } from './l10n.js';
 
 /**
  * Photos coming in (spec §4.8, ingest): each one is stored once, as its original (Keep originals)
@@ -131,7 +132,7 @@ export async function ingestPhoto(ws, scope, file, { settings, codec, author = '
     else if (encoded) out = { ...encoded, original: false };
     else {
       out = { bytes, type, ...shown, original: true };
-      note = `This browser can't convert ${name}, so annai kept it as it is. It may show only in Safari.`;
+      note = t`This browser can't convert ${name}, so annai kept it as it is. It may show only in Safari.`;
     }
   }
   const path = await freePath(ws, scope, photoName(info.taken, name, out.type));
