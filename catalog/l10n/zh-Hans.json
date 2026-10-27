@@ -90,6 +90,14 @@
     "speech-openai": {
       "name": "OpenAI 兼容语音",
       "description": "通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。"
+    },
+    "storage-forgejo": {
+      "name": "Forgejo / Gitea",
+      "description": "把所有内容备份到 Forgejo 或 Gitea 服务器（比如你自己的或 Codeberg）上的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+    },
+    "storage-github": {
+      "name": "GitHub",
+      "description": "把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。"
     }
   }
 }

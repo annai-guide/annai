@@ -1,0 +1,45 @@
+{
+  "manifest": {
+    "description": "把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。",
+    "name": "GitHub"
+  },
+  "messages": {
+    "11dzsyr": "GitHub 保存的内容与 annai 发送的不同，所以 annai 没有保留这次备份。annai 稍后会再试。",
+    "12lsnri": "GitHub 上的 {0} 中没有这个备份。",
+    "12syvsv": "可以使用：annai 能访问私有仓库 {0}。",
+    "19v5czl": "git 无法保存“{0}”：其中任何部分都不能叫 .git。请在 annai 中改名后再备份。",
+    "1afchmy": {
+      "other": "GitHub 要求 annai 放慢速度。备份会在约 # 分钟后自动继续。"
+    },
+    "1arxyaq": "请在 GitHub 上为 annai 的备份新建一个私有仓库。然后只为这个仓库创建一个具有 Contents: Read and write 权限的 fine-grained 访问令牌，并粘贴到这里。令牌只保存在本设备上，绝不会进入备份。",
+    "1cm4kmv": "此次备份将上传 {0}。",
+    "1duy7cy": "annai 在 GitHub 上找不到 {0}。请检查名称，以及令牌是否有权访问它。",
+    "1f6pfhd": "GitHub 拒绝了此操作（HTTP {0}）。annai 稍后会再试。",
+    "1ffp47z": "请按“所有者/名称”的形式填写仓库，例如 you/annai-backup。",
+    "1gk4xqa": "GitHub 保存的 {0} 与 annai 发送的不同。annai 稍后会再试。",
+    "1j97ilg": "{0} 是公开的，任何人都能读到其中你的旅行。请在 GitHub 上把它设为私有（仓库的 Settings，然后 Change visibility），或选择一个私有仓库。",
+    "1jsrg21": "在 GitHub 上创建令牌",
+    "1ljvup9": "此备份已损坏：无法读取其 annai-archive.json。",
+    "1n7ook3": "此备份已损坏：GitHub 上缺少 {0}。",
+    "1nsr5as": "git 无法同时保存名为“{0}”的文件和文件夹。请在 annai 中改名后再备份。",
+    "1qqlp9q": "{0} 中有其他文件（{1}），所以 annai 不会备份到这里。请为 annai 的备份新建一个私有仓库。",
+    "1rjv5la": "GitHub API 地址",
+    "1s7ad9x": "仓库",
+    "1vg2u06": "GitHub 出了问题（HTTP {0}）。annai 稍后会再试。",
+    "1vrp0o9": "GitHub 返回了 annai 无法读取的内容。annai 稍后会再试。",
+    "1yf590i": "git 无法保存“{0}”：它含有空的、“.”或“..”的部分。请在 annai 中改名后再备份。",
+    "5ydf76": "GitHub 拒绝了此操作（HTTP {0}：{1}）。annai 稍后会再试。",
+    "998w7o": "{0} 中有更新的备份。",
+    "9mtyxq": "这个提交不是 annai 的备份。",
+    "9ozxm2": "这个访问令牌能读取 {0}，但不能修改它。请为它授予 Contents: Read and write 权限。",
+    "dcbxnt": "GitHub 不接受这个访问令牌。请新建一个，粘贴到这里并保存。",
+    "eqdmta": "另一台设备在同一时刻备份到了 {0}。",
+    "flhq1f": "{0} 中的文件多于 GitHub 一次能列出的数量，所以 annai 无法使用它。请选择一个新的私有仓库。",
+    "iahjh1": "请检查 GitHub API 地址：它必须是以 https:// 开头的网址。",
+    "iwos7u": "GitHub 无法保存超过 {0} 的文件，而 {1} 有 {2}。请把它从 annai 中删除，或者备份到另一种备份位置。",
+    "nb61qg": "请粘贴该仓库的访问令牌，然后保存。",
+    "ns1rz6": "这个访问令牌无权在 {0} 中执行此操作。请为它授予此仓库的 Contents: Read and write 权限。",
+    "s5vfq7": "“{0}”在备份中出现了两次。请在 annai 中改名后再备份。",
+    "z1mfie": "访问令牌"
+  }
+}

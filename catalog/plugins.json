@@ -751,7 +751,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -759,7 +759,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 45307,
+      "size": 65170,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -767,15 +767,17 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "63d66257deaae5acb87968e5a96184914b31c1a10c998af6cec50fc4a07d2b88",
-        "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "a2e4b7b5cbcfde6aec2901c112839e08937918e43ed98fe11d69c826429b69e4"
+        "annai-plugin.json": "76cb4ba46aaf877c78fd073cea15608f787a78d3215d815fe9974c10da0800d4",
+        "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
+        "index.js": "cd726eccbbdef49de3413195630851e65e76efa9412a354a615f0c02c6428e2c",
+        "l10n/ja.json": "0fda56ab6af7cf2e3abb3ab812868530abd950574511d7bf3c4ffb0dabc5cc50",
+        "l10n/zh-Hans.json": "43b857754dbd5e4caa2b215546dc6776b63c1579df88743cbf19a91553bf7aed"
       }
     },
     {
       "id": "storage-github",
       "name": "GitHub",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -783,7 +785,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 29359,
+      "size": 40205,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -791,9 +793,11 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "c061ad76e9782e9ac58d0813dbaf2a22825697cdeee4c73769653945a7594278",
-        "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "8ec7530a9665d4bbad7a7f59d4d71bbf11dbdf294eee65be0e0579cc56e25a89"
+        "annai-plugin.json": "d9dc79efe9a0d79a27aaac116e5181c43cf4c6de28b480db04552ad336ec9eed",
+        "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
+        "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190",
+        "l10n/ja.json": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
+        "l10n/zh-Hans.json": "8e25f6d6f3aabb1b75b6442b203bf6c22cd1c27f9df6c24d1d5b8ccc2854ffcb"
       }
     },
     {

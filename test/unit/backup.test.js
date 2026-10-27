@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -193,7 +195,8 @@ test('GitHub through annai: every request is in the trace, and the token is in n
     const dir = new URL('../../plugins-official/storage-github/', import.meta.url);
     /** @type {Map<string, Uint8Array>} */
     const files = new Map();
-    for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+    // Its files, its translations' folder too.
+  for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) if (e.isFile()) { const name = relative(fileURLToPath(dir), join(e.parentPath, e.name)); files.set(name, new Uint8Array(await readFile(new URL(name, dir)))); }
     // Installed from its files; loaded from this repository, since Node has no service worker to serve them.
     const served = '/plugins/storage-github/';
     const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
