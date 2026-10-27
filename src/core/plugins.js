@@ -14,7 +14,7 @@ import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
 import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
 import { t, plural, lang, dir, wordsOver } from './l10n.js';
-import { num, money, size, distance, duration, relTime, when, day, list, sentences } from './intl.js';
+import { num, size, list, sentences } from './intl.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -55,8 +55,8 @@ function defaultsOf(schema) {
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
   backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem, addressShown,
   base64: Object.freeze({ encode: toBase64, decode: fromBase64 }), g711, wav: Object.freeze({ encode: encodeWav, decode: pcm16 }) });
-/** annai.l10n's formats, as annai's own. */
-const FORMATS = Object.freeze({ num, money, size, distance, duration, relTime, when, day, list, sentences });
+/** annai.l10n's formats, as annai's own: those official plugins use (docs/plugins.md); more on request. */
+const FORMATS = Object.freeze({ num, size, list, sentences });
 
 /** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
 /* en */ const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',

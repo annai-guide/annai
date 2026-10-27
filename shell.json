@@ -1,5 +1,5 @@
 {
-  "build": "60ddf9a95f46",
+  "build": "5d38ec3dbb04",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -129,7 +129,7 @@
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b71b076bdd08",
     "/src/core/plan.js": "c20d69e5d251",
-    "/src/core/plugins.js": "92aa63cdfdbb",
+    "/src/core/plugins.js": "8086038924e4",
     "/src/core/push/mirror.js": "e8f1f106cd02",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
