@@ -227,15 +227,12 @@ dhnf3r	draft	It didn't see the red square (it said {0}).	它没有看到红色�
 d9hh16	draft	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:127	
 1u5s6ep	draft	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:129	
 1uj9pv4	draft	annai will send photos in each request instead.	annai 会改为在每次请求中发送照片。	src/core/llm/check.js:129	
-v1mado	draft	It also answers at Koe · Classic's level ({0}).	在 Koe · 经典的级别（{0}）下也能回答。	src/core/llm/check.js:135	{0} = level
-3yw8ae	draft	It also answers at Utility's level ({0}).	在辅助的级别（{0}）下也能回答。	src/core/llm/check.js:136	{0} = level
-uovis3	draft	It also answers at Main's level ({0}).	在主要的级别（{0}）下也能回答。	src/core/llm/check.js:137	{0} = level
-verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	在 Koe · 经典的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
-bw2yzp	draft	At Utility's level ({0}), this model refused: {1}	在辅助的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:142	{0} = level; {1} = said
-x22xp2	draft	At Main's level ({0}), this model refused: {1}	在主要的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:143	{0} = level; {1} = said
-1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低 Koe · 经典的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:147	
-s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低辅助的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:148	
-10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低主要的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:149	
+16s9khr	draft	Utility	辅助	src/core/llm/check.js:134	
+a5cd15	draft	Koe · Classic	Koe · 经典	src/core/llm/check.js:134	
+mlh3jc	draft	Main	主要	src/core/llm/check.js:134	
+1q9bibx	draft	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
+1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
 1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:96	
 1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:97	
 99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:98	
@@ -378,11 +375,11 @@ dra7tz	draft	moving	移动中	src/core/voice/mode.js:81	Note: why Auto turned vo
 bxwivy	draft	Voice auto · off	语音自动 · 关闭	src/core/voice/mode.js:94	
 46l9so	draft	Voice off	语音关闭	src/core/voice/mode.js:95	
 1o81qfq	draft	Voice on	语音开启	src/core/voice/mode.js:96	
-xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:156	
-et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:163	{0} = name
-1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:164	{0} = name
-1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
-dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:166	
+xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:157	
+1da2r7t	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:163	{0} = model.name
+1j6uoln	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:164	
+1oy92m8	draft	This browser has no phone dictation either.	这个浏览器也没有手机语音输入。	src/core/voice/resolve.js:165	
+l80ifa	draft	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
 jo5o9d	draft	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:314	
 ocv5zw	draft	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:359	
 pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
@@ -824,9 +821,7 @@ edml6o	draft	Getting the sign-in ready…	正在准备登录…	src/ui/provider-
 sv1qqk	draft	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:198	
 gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:212	{0} = name
 1fbojq2	draft	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:218	{0} = name
-16s9khr	draft	Utility	辅助	src/ui/provider-setup.js:226	
 1fm7mjz	draft	Speech out	朗读	src/ui/provider-setup.js:226	
-mlh3jc	draft	Main	主要	src/ui/provider-setup.js:226	
 v20s4a	draft	Quick decision	快速判断	src/ui/provider-setup.js:226	
 w8niry	draft	Speech in	语音识别	src/ui/provider-setup.js:226	
 eudybe#other	draft	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
@@ -1198,7 +1193,6 @@ dadv07	draft	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens
 1u27rxd	draft	decide	快速判断	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
 1u7wm22	draft	Koe · Realtime	Koe · 实时	src/ui/screens/models.js:22	
 a363wx	draft	speech-in	语音识别	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-a5cd15	draft	Koe · Classic	Koe · 经典	src/ui/screens/models.js:22	
 12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	语音开启且在语音按钮上选了实时时，Koe 使用它。这里没有能回答的，就由经典回答。	src/ui/screens/models.js:28	
 1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	选了经典、语音关闭，或实时无法回答时，Koe 使用它：语音识别听你说，朗读负责说话。	src/ui/screens/models.js:29	
 1htj30x	draft	the phone's own; usually goes to Google or Apple	手机自带；通常发送到 Google 或 Apple	src/ui/screens/models.js:32	
