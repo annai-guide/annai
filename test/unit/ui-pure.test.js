@@ -752,3 +752,17 @@ test('linkIn puts each link where the words say it, in the order the words have 
   assert.deepEqual(linkIn('OpenStreetMapのデータ、Get a keyで', a, b), ['', b, 'のデータ、', a, 'で']);
   assert.deepEqual(linkIn('Map data from OpenStreetMap.', b, c), ['Map data from ', b, '.', ' ', c]);
 });
+
+test("the Trace's line marks what an entry keeps as written (English) apart from annai's words: errors, reasons, a model's notes, tools' results; never the user's words", async () => {
+  const { traceStored, traceSummary } = await import('../../src/ui/screens/trace.js');
+  const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data });
+  assert.deepEqual(traceStored(e('error', { kind: 'budget', message: 'Steps used up.' })), ['budget: Steps used up.']);
+  assert.deepEqual(traceStored(e('live.session', { state: 'closed', why: 'the socket closed' })), ['the socket closed']);
+  assert.deepEqual(traceStored(e('net.request', { kind: 'web', tool: 'fetch', url: 'https://x.test/', error: 'Failed to fetch' })), ['Failed to fetch']);
+  assert.deepEqual(traceStored(e('wake', { reasons: [{ kind: 'user', text: 'typed' }, { kind: 'file', text: 'A new file' }] })), ['A new file']);
+  assert.deepEqual(traceStored(e('heard', { text: 'どこで食べる？', ms: 900 })), []);
+  // Each is in the line as the line shows it, so it can be marked where it is.
+  for (const x of [e('error', { kind: 'budget', message: 'x'.repeat(150) }), e('backup.peek', { type: 's3', backup: 'c2', problem: '$.files[0].hash: does not match' })]) {
+    for (const kept of traceStored(x)) assert.ok(traceSummary(x).includes(kept), kept);
+  }
+});

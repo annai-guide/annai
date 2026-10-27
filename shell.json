@@ -1,5 +1,5 @@
 {
-  "build": "85468c833b0f",
+  "build": "819937e39805",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -254,7 +254,7 @@
     "/src/ui/screens/shiori.js": "bbb4a140a273",
     "/src/ui/screens/talk.js": "04b598e4b5bf",
     "/src/ui/screens/tools.js": "a820f3ddec27",
-    "/src/ui/screens/trace.js": "96e205d94b00",
+    "/src/ui/screens/trace.js": "dddc32e83df0",
     "/src/ui/screens/trip.js": "0a08e6038ee0",
     "/src/ui/screens/trips.js": "239c15ac725a",
     "/src/ui/screens/updates.js": "61d9ab6e11e6",
