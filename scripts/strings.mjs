@@ -683,6 +683,8 @@ export function readsAsWords(s) {
   if (!/\p{L}/u.test(text)) return false;
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^[./#~@]?[\w.@-]*\/[\w./@{}-]*$/.test(text) || /[{};]\s*$|^[\d.]+(px|em|rem|%|s|ms)\b/.test(text)) return false;
   if (/^[A-Z0-9_]+$/.test(text)) return false;
+  // One word with a capital inside it is a name in code ("TimeoutError", "OpusHead") or a brand's, never a message's words.
+  if (/^\p{Lu}\p{Ll}+\p{Lu}\p{L}*$/u.test(text)) return false;
   // A hash link made of parts ("#/trip/ /replay"), and a CSS function ("translate( px,  px)").
   if (/^#\//.test(text) || /^[a-z][\w-]*\(.*\)$/s.test(text)) return false;
   if (!/\s/.test(text)) return /^\p{Lu}\p{Ll}/u.test(text) || /[^\x00-\x7f]/.test(text) && /\p{L}/u.test(text) || /[.…!?]$/.test(text) && /\p{L}{2}/u.test(text);
