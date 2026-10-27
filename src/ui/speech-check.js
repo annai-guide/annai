@@ -1,4 +1,4 @@
-import { h, settled, t, asUser } from './dom.js';
+import { h, settled, t, asUser, messageOf } from './dom.js';
 import { relTime, speaksScreens } from './format.js';
 import { readAppSettings } from '../core/settings.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
@@ -13,7 +13,7 @@ export const sample = (speaks) => asUser(speaks)`Hello! This is how I sound when
 export function speechProblem(e) {
   if (e instanceof ProviderError) return explain(e);
   const p = micProblem(e);
-  return /** @type {any} */ (e)?.name && /** @type {any} */ (e).name !== 'Error' ? t`${p.title}. ${p.body}` : String(/** @type {any} */ (e)?.message ?? e);
+  return /** @type {any} */ (e)?.name && /** @type {any} */ (e).name !== 'Error' ? t`${p.title}. ${p.body}` : messageOf(e);
 }
 
 /**

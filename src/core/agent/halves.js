@@ -631,7 +631,7 @@ export class Halves {
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
-      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.message ?? e)}` });
+      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
     });
   }
 

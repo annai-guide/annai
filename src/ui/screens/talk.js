@@ -1,4 +1,4 @@
-import { h, whenGone, t, plural, linkIn } from '../dom.js';
+import { h, whenGone, t, plural, linkIn, messageOf } from '../dom.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho, cardKind } from '../cards.js';
@@ -508,7 +508,7 @@ function tidyMenu(ctx) {
         r = await agent.startFresh();
       } catch (e) {
         working(false);
-        ctx.notices.toast(t`She couldn't start fresh: ${String(/** @type {any} */ (e)?.message ?? e)}`);
+        ctx.notices.toast(t`She couldn't start fresh: ${messageOf(e)}`);
         return void toggle.focus();
       }
       ctx.notices.toast({ done: t`Started fresh.`, nothing: t`There is nothing to start fresh from yet.`, already: t`Already fresh: nothing has been said since.`, opening: t`The conversation is still opening. Try again in a moment.` }[r]);
@@ -558,7 +558,7 @@ function tuneUndo(ctx, tune) {
         done();
       } catch (e) {
         button.disabled = false;
-        ctx.notices.toast(String(/** @type {any} */ (e)?.message ?? e));
+        ctx.notices.toast(messageOf(e));
       }
     },
   }, t`Undo`);

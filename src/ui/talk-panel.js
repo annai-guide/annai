@@ -1,4 +1,4 @@
-import { h, field, t, plural } from './dom.js';
+import { h, field, t, plural, messageOf } from './dom.js';
 import { AllFailedError } from '../core/llm/fallback.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
 import { withoutSecrets } from '../core/agent/net.js';
@@ -17,7 +17,7 @@ export function metaLine(result) {
 /** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */
 function failure(ctx, err, name) {
   const a = err instanceof AllFailedError ? err.attempts[0] : null;
-  const why = a ? `${outcomeText(a.outcome)}${a.error ? t` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : String(/** @type {any} */ (err)?.message ?? err);
+  const why = a ? `${outcomeText(a.outcome)}${a.error ? t` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : messageOf(err);
   return withoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
 }
 

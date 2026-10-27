@@ -1,4 +1,4 @@
-import { t, plural } from './dom.js';
+import { t, plural, messageOf } from './dom.js';
 import { list, sentences, num } from './format.js';
 
 /**
@@ -43,7 +43,7 @@ export function startCards(failures, { name, taken }) {
   const cards = [];
   const unloaded = [];
   for (const f of failures) {
-    const why = String(/** @type {any} */ (f.error)?.message ?? f.error);
+    const why = messageOf(f.error);
     const it = name(f.id);
     if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened: ${why}`, t`You can turn it back on in Settings → Plugins.`) });
     else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`) });

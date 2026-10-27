@@ -2,7 +2,7 @@ import { officialUpdates, updateOfficial } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
 import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
-import { t } from './dom.js';
+import { t, messageOf } from './dom.js';
 import { list, sentences } from './format.js';
 
 /**
@@ -41,7 +41,7 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
     for (const u of list) known.set(u.id, u);
   };
   if (official) {
-    const now = await officialUpdates(host, env).catch((e) => { failed.push(String(e?.message ?? e).replace(/^catalog: /, '')); return null; });
+    const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e).replace(/^catalog: /, '')); return null; });
     if (now && current()) keep(false, now);
   }
   if (address) {
@@ -103,7 +103,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
       knownOf(ctx.plugins).delete(u.id);
       if (how === 'restart') waiting.push(u.name);
     } catch (e) {
-      failed.push(t`${u.name}: ${/** @type {any} */ (e)?.message ?? e}`);
+      failed.push(t`${u.name}: ${messageOf(e)}`);
     }
   }
   if (failed.length) ctx.notices.card({ tone: 'warn', title: t`Some plugins weren't updated`, body: sentences(...failed) });

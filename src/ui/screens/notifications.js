@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, field } from '../dom.js';
+import { h, crumb, t, plural, field, messageOf } from '../dom.js';
 import { platform } from '../platform.js';
 
 /** @param {string} title @param {...any} children */
@@ -57,7 +57,7 @@ export async function renderNotifications(ctx) {
         ctx.notices.toast(t`Saved`);
         ctx.render();
       } catch (e) {
-        fail(String(/** @type {any} */ (e)?.message ?? e));
+        fail(messageOf(e));
       } finally {
         save.disabled = false;
       }
@@ -96,7 +96,7 @@ export async function renderNotifications(ctx) {
             ctx.render();
           } catch (e) {
             status.textContent = statusText(st);
-            fail(String(/** @type {any} */ (e)?.message ?? e));
+            fail(messageOf(e));
             on.disabled = false;
           }
         }, () => {
@@ -118,7 +118,7 @@ export async function renderNotifications(ctx) {
           ctx.notices.toast(t`Notifications are off.`);
           ctx.render();
         } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
+          fail(messageOf(e));
           off.disabled = false;
         }
       },
@@ -134,7 +134,7 @@ export async function renderNotifications(ctx) {
           await push.test();
           ctx.notices.toast(t`A test notification comes in about 15 seconds. Lock the phone to see it arrive.`);
         } catch (e) {
-          fail(String(/** @type {any} */ (e)?.message ?? e));
+          fail(messageOf(e));
         } finally {
           trial.disabled = false;
         }

@@ -1,4 +1,4 @@
-import { h, t, plural, linkIn } from './dom.js';
+import { h, t, plural, linkIn, messageOf } from './dom.js';
 import { size, relTime, num, list, sentences, sentenceGap } from './format.js';
 import { connectionOf } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
@@ -81,7 +81,7 @@ export async function packPanel(ctx, id) {
   const go = () => {
     keeper.download(id).catch((/** @type {unknown} */ e) => {
       if (explainStorageFull(ctx, e)) return;
-      const why = String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]?$/, '.');
+      const why = messageOf(e).replace(/[.!?]?$/, '.');
       ctx.notices.card({ tone: 'warn', title: t`The offline pack didn't download`, body: sentences(why, t`What came is kept. Try again in a moment.`) });
     });
   };

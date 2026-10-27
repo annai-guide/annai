@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, linkIn, field, checkbox, radios } from '../dom.js';
+import { h, crumb, t, plural, linkIn, field, checkbox, radios, messageOf } from '../dom.js';
 import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
@@ -36,7 +36,7 @@ export async function renderImport(ctx, route) {
     h('h1', { class: 'title', text: t`Open a trip` }), body);
   // A backup a git place told by its manifest alone shows at once; its files come when the user imports.
   if (pending?.peeked && from) {
-    openPeeked(ctx, body, pending.peeked, from).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(e?.message ?? e) }), openFileButton(ctx, t`Choose a file instead`)));
+    openPeeked(ctx, body, pending.peeked, from).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose a file instead`)));
     return screen;
   }
   /** @type {Source | null} */
@@ -45,7 +45,7 @@ export async function renderImport(ctx, route) {
     source = await pickSource(route.params, came.filter(archive));
     if (source && pending?.from) source = { ...source, from: pending.from };
   } catch (e) {
-    body.append(h('p', { class: 'error', role: 'alert', text: String(/** @type {any} */ (e)?.message ?? e) }), openFileButton(ctx, t`Choose a file instead`));
+    body.append(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose a file instead`));
     return screen;
   }
   if (!source) {
@@ -53,7 +53,7 @@ export async function renderImport(ctx, route) {
     return screen;
   }
   // The screen draws at once, saying what it is reading; the preview replaces that when the file's manifest is read.
-  step(ctx, body, source).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(e?.message ?? e) }), openFileButton(ctx, t`Choose another file`)));
+  step(ctx, body, source).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose another file`)));
   return screen;
 }
 
@@ -95,7 +95,7 @@ async function step(ctx, body, source, passphrase) {
       body.replaceChildren(passphraseForm(ctx, body, source, e instanceof PassphraseError ? e.message : null));
       return;
     }
-    body.replaceChildren(h('p', { class: 'error', role: 'alert', text: String(/** @type {any} */ (e)?.message ?? e) }), openFileButton(ctx, t`Choose another file`));
+    body.replaceChildren(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose another file`));
     return;
   }
   const { active, archived } = await listTrips(ctx.store);
@@ -222,7 +222,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
       } catch (e) {
         if (quit.signal.aborted) return; // the user is gone: nothing was imported, and there is no one to tell
         explainStorageFull(ctx, e);
-        status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+        status.textContent = messageOf(e);
         go.disabled = false;
       }
     },
@@ -258,7 +258,7 @@ function restartPanel(ctx) {
 }
 
 /** imported: the plugins came with it, switched off. @param {any} ctx @param {boolean} imported @returns {Promise<{ installed: string[], failed: string[] }>} */
-const restorePlugins = (ctx, imported) => ctx.llm.restorePlugins({ imported }).catch((/** @type {any} */ e) => ({ installed: [], failed: [String(e?.message ?? e)] }));
+const restorePlugins = (ctx, imported) => ctx.llm.restorePlugins({ imported }).catch((/** @type {any} */ e) => ({ installed: [], failed: [messageOf(e)] }));
 
 /** What the restore installed for its providers, and Try again for what it couldn't. @param {any} ctx @param {{ installed: string[], failed: string[] }} got @param {boolean} imported */
 function pluginsBrought(ctx, got, imported) {
@@ -324,7 +324,7 @@ function fileInbox(ctx, items, trips, archives) {
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # plan item from the calendar', 'Added {0}, and # plan items from the calendar', what) : t`Added ${what}`);
     } catch (e) {
       explainStorageFull(ctx, e);
-      status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+      status.textContent = messageOf(e);
       for (const b of buttons) b.disabled = false;
     }
   }
