@@ -1,5 +1,5 @@
 {
-  "build": "2902a00aa5ad",
+  "build": "1e58b5d55eec",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -129,7 +129,7 @@
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "3eae7e28354b",
     "/src/core/plan.js": "4e5867673851",
-    "/src/core/plugins.js": "4c0487016540",
+    "/src/core/plugins.js": "b61f3c6e8815",
     "/src/core/push/mirror.js": "282eaad8d45b",
     "/src/core/push/relay-client.js": "a75e4d59a666",
     "/src/core/push/webpush.js": "49ae9055f730",
@@ -243,7 +243,7 @@
     "/src/ui/screens/notifications.js": "e15411dc1223",
     "/src/ui/screens/now.js": "e38a26c5887d",
     "/src/ui/screens/plan.js": "e1a3c1b68b31",
-    "/src/ui/screens/plugin-install.js": "a748bc3e5766",
+    "/src/ui/screens/plugin-install.js": "6af4944e9261",
     "/src/ui/screens/plugin.js": "d4b7f4cddf47",
     "/src/ui/screens/plugins.js": "ad4600f598ce",
     "/src/ui/screens/provider.js": "1e090d27d845",
