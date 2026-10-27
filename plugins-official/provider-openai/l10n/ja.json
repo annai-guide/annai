@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のための Realtime の声も、1つのキーで使えます。",
+    "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのリアルタイム音声も、1つのキーで使えます。",
     "name": "OpenAI",
     "provider.abilities.chat-completions.name": "チャット（Chat Completions）",
     "provider.abilities.chat-completions.note": "「チャット（Responses）」のほうを使ってください：GPT-6 Astra と GPT-6.1 Sol はそちらでしかツールを呼びません。モデルは「モデルの一覧を取得」で追加します。",

@@ -84,7 +84,7 @@
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のための Realtime の声も、1つのキーで使えます。"
+      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのリアルタイム音声も、1つのキーで使えます。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
