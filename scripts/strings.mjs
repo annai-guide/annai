@@ -93,11 +93,15 @@ function markerOf(imports, n) {
   return null;
 }
 
-/** In a plugin, which of annai.l10n's t, tc, plural and both an expression names: l10n.t, or annai.l10n.t. @param {ts.Node} n */
+/**
+ * In an official plugin, which of annai.l10n's t, tc, plural and both an expression names: l10n.t or annai.l10n.t, or the name
+ * itself, as a plugin takes them out (const { t } = annai.l10n): in a plugin these four names are annai.l10n's alone. both is t's
+ * message, its English kept beside its words. @param {ts.Node} n
+ */
 function pluginMarker(n) {
-  if (!ts.isPropertyAccessExpression(n) || !['t', 'tc', 'plural', 'both'].includes(n.name.text)) return null;
-  const on = n.expression;
-  return (ts.isIdentifier(on) && on.text === 'l10n') || (ts.isPropertyAccessExpression(on) && on.name.text === 'l10n') ? (n.name.text === 'both' ? 't' : n.name.text) : null;
+  const on = ts.isPropertyAccessExpression(n) ? n.expression : null;
+  const name = ts.isIdentifier(n) ? n.text : on && ((ts.isIdentifier(on) && on.text === 'l10n') || (ts.isPropertyAccessExpression(on) && on.name.text === 'l10n')) ? /** @type {ts.PropertyAccessExpression} */ (n).name.text : '';
+  return ['t', 'tc', 'plural', 'both'].includes(name) ? (name === 'both' ? 't' : name) : null;
 }
 
 /**
