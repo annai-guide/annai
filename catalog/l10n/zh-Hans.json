@@ -46,6 +46,15 @@
       "name": "LM Studio",
       "description": "LM Studio 服务器上的模型。"
     },
+    "provider-local-speech": {
+      "name": "本地语音服务器",
+      "description": "由你自己运行的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ]
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
