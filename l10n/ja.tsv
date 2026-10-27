@@ -251,14 +251,10 @@ mlh3jc	ok	Main	メイン	src/core/llm/check.js:134
 1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:140	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-17ifucf	ok	Transcription	文字起こし	src/core/llm/config.js:97	
-9kdcjv	ok	Chat	チャット	src/core/llm/config.js:97	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	ok	Voice	声	src/core/llm/config.js:97	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.; Note: Settings' Voice section and its button (settings.js:49) use this same message, where the screen's name 音声 is meant: they show 声 until the code says tc('screen') there (proposed).
-su5wo1	ok	Live voice	ライブ音声	src/core/llm/config.js:97	
-1nuav0n	draft	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:380	
-1qjc2dh	draft	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:382	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:385	
-3i9i3z	draft	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:389	{0} = name
+1nuav0n	draft	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:381	
+1qjc2dh	draft	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:383	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:386	
+3i9i3z	draft	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:390	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:97	
 1do8abu	ok	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:98	
 99g6ol	ok	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:99	
@@ -279,24 +275,28 @@ r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Setti
 19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	プロバイダーには以前のターンがもう残っていません。annai は会話全体を送ります。	src/core/llm/contract.js:114	
 1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} はリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:115	{0} = provider
 sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:116	
-izfolc	draft	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:136	
-13fumpt	draft	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:137	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:138	
-b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:139	
-1e0qpon	draft	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:140	
-6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} には、動いていないプラグインが必要です。インストールするには設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:141	{0} = name; {1} = ability; {2} = name
-11neb14	draft	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:142	{0} = name
-akhc81	draft	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:143	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	draft	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:144	{0} = name
-x31pwm	draft	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:145	
-il3b75	draft	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:146	
-1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:148	{0} = host
-10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:149	{0} = host
-16osh89	draft	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:150	{0} = ability
-1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:151	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:152	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:153	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:154	{0} = name
+17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:134	
+9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:134	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	ok	Voice	声	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.; Note: Settings' Voice section and its button (settings.js:49) use this same message, where the screen's name 音声 is meant: they show 声 until the code says tc('screen') there (proposed).
+su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:134	
+izfolc	draft	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:144	
+13fumpt	draft	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:145	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:146	
+b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:147	
+1e0qpon	draft	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:148	
+6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} には、動いていないプラグインが必要です。インストールするには設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name
+11neb14	draft	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:150	{0} = name
+akhc81	draft	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	draft	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:152	{0} = name
+x31pwm	draft	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:153	
+il3b75	draft	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:154	
+1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:156	{0} = host
+10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:157	{0} = host
+16osh89	draft	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:158	{0} = ability
+1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:162	{0} = name
 g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	段階の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
 z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	予定の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
@@ -339,12 +339,12 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種�
 557vva	draft	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。	src/core/llm/provider-desc.js:166	
-ja1k8e	draft	is turned off.	オフになっています。	src/core/llm/service.js:242	Note: said of a plugin named before it on the screen.
-1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	動いていません。設定 → プラグインで確認してください。	src/core/llm/service.js:244	Note: said of a plugin named before it on the screen.
-sejc5h	draft	{0} was switched off after errors.	{0} はエラーが続いたためオフになりました。	src/core/llm/service.js:257	{0} = name
-sv2i3h	draft	didn't provide a model provider.	モデルのプロバイダーを提供しませんでした。	src/core/llm/service.js:258	Note: said of a plugin.
-b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	そのプラグインは annai 自身のものではありません。入手した場所から、もう一度インストールしてください。	src/core/llm/service.js:331	
-1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	名前の挙がったプラグインはモデルを提供しないため、インストールしませんでした。	src/core/llm/service.js:340	
+ja1k8e	draft	is turned off.	オフになっています。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
+1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	動いていません。設定 → プラグインで確認してください。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
+sejc5h	draft	{0} was switched off after errors.	{0} はエラーが続いたためオフになりました。	src/core/llm/service.js:263	{0} = name
+sv2i3h	draft	didn't provide a model provider.	モデルのプロバイダーを提供しませんでした。	src/core/llm/service.js:264	Note: said of a plugin.
+b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	そのプラグインは annai 自身のものではありません。入手した場所から、もう一度インストールしてください。	src/core/llm/service.js:337	
+1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	名前の挙がったプラグインはモデルを提供しないため、インストールしませんでした。	src/core/llm/service.js:346	
 3ds0qg	draft	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
 1rb0o7n	draft	OpenStreetMap around {0}	{0} 周辺の OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	draft	OpenStreetMap between {0} and {1}	{0} と {1} のあいだの OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b

@@ -123,15 +123,23 @@ function shown(kind, provider) {
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
  * @typedef {{ code: 'kind' | 'late' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
  *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
- *   name?: string, ability?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
+ *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
+ * ability: the ability's name where its description gives one; abilityKind: its kind, which the screens name otherwise.
  */
+
+/**
+ * What each kind of ability is called in the screens' words, when its description gives no name: annai's own descriptive name
+ * (decision 10), as the Add screen names them. @param {string | undefined} kind @returns {string | undefined}
+ */
+export const kindWords = (kind) => (/** @type {Record<string, string>} */ ({ chat: t`Chat`, transcription: t`Transcription`, voice: t`Voice`, realtime: t`Live voice` }))[kind ?? ''];
 
 /**
  * What one of annai's own provider errors says, in the screens' words, from its data. @param {Said} s @param {string} kind
  * @param {string} [provider] its name, for the words of a kind that names it @returns {string}
  */
 export function saidWords(s, kind, provider) {
-  const { name, ability, host, formats } = s;
+  const { name, host, formats } = s;
+  const ability = s.ability ?? kindWords(s.abilityKind) ?? s.abilityKind;
   switch (s.code) {
     case 'late': return t`No output started in time.`;
     case 'stalled': return t`The voice stopped arriving for longer than its wait.`;

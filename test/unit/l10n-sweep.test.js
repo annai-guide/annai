@@ -149,6 +149,15 @@ test("review 2: an ability its description doesn't name keeps the kind's English
   assert.equal(abilityName(talk), 'Talk', "a description's own name, as written");
 });
 
+test("an unnamed ability's missing plugin or model list is named in the screens' words: its said keeps the kind, not annai's English", async () => {
+  const { saidWords } = await import('../../src/core/llm/contract.js');
+  const noPlugin = saidWords({ code: 'no-plugin', name: 'X', abilityKind: 'chat' }, 'type-missing');
+  assert.match(noPlugin, /チャット/);
+  assert.doesNotMatch(noPlugin, /Chat/);
+  assert.match(saidWords({ code: 'no-list', abilityKind: 'voice' }, 'bad-request'), /^声/);
+  assert.match(saidWords({ code: 'no-plugin', name: 'X', ability: 'Talk' }, 'type-missing'), /Talk/, "a description's own name, as written");
+});
+
 test("review 3 and 4: a failed attempt's words come from what it was, in the Try panel's line, explain, and the Conversation's line", async () => {
   const { explain } = await import('../../src/core/llm/contract.js');
   const { attemptWhy } = await import('../../src/core/llm/fallback.js');
