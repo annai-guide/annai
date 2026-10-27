@@ -95,6 +95,14 @@
       "name": "按脚本回复的模型",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
     },
+    "search-searxng": {
+      "name": "SearXNG 搜索",
+      "description": "通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。",
+      "keywords": [
+        "SearXNG",
+        "自托管"
+      ]
+    },
     "search-serper": {
       "name": "Serper 搜索",
       "description": "通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。",

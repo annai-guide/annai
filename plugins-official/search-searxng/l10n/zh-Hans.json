@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。",
+    "name": "SearXNG 搜索",
+    "settings.properties.url.description": "形如 https://search.example.com。在实例的 settings.yml 中，把 json 加到 search: formats: 下，并让它的网页服务器为 annai 的地址发送 Access-Control-Allow-Origin。不加密的 http 只能用于 localhost。",
+    "settings.properties.url.title": "你的 SearXNG 地址",
+    "keywords": [
+      "SearXNG",
+      "自托管"
+    ]
+  },
+  "messages": {
+    "xli1co": "需要你的实例地址（设置 → 插件 → SearXNG 搜索）"
+  }
+}

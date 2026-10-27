@@ -113,6 +113,13 @@ remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the
 remote-trace:m3chyg	draft	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	draft	Scripted model	按脚本回复的模型	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:8	
+search-searxng:@name	draft	SearXNG Search	SearXNG 搜索	plugins-official/search-searxng/annai-plugin.json:3	
+search-searxng:@description	draft	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。	plugins-official/search-searxng/annai-plugin.json:8	
+search-searxng:@keywords.0	draft	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@keywords.1	draft	self-hosted	自托管	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@settings.properties.url.title	draft	Your SearXNG address	你的 SearXNG 地址	plugins-official/search-searxng/annai-plugin.json:23	
+search-searxng:@settings.properties.url.description	draft	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	形如 https://search.example.com。在实例的 settings.yml 中，把 json 加到 search: formats: 下，并让它的网页服务器为 annai 的地址发送 Access-Control-Allow-Origin。不加密的 http 只能用于 localhost。	plugins-official/search-searxng/annai-plugin.json:24	
+search-searxng:xli1co	draft	needs the address of your instance (Settings → Plugins → SearXNG Search)	需要你的实例地址（设置 → 插件 → SearXNG 搜索）	plugins-official/search-searxng/index.js:15	
 search-serper:@name	draft	Serper Search	Serper 搜索	plugins-official/search-serper/annai-plugin.json:3	
 search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:8	
 search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	

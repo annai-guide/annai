@@ -652,7 +652,7 @@
     {
       "id": "search-searxng",
       "name": "SearXNG Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
       "category": "tools",
       "keywords": [
@@ -663,7 +663,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3118,
+      "size": 5035,
       "requires": [],
       "provides": {
         "search": [
@@ -671,8 +671,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "1f1986e0712e81c4ec968de790c851e2a788605dcac0a6e968d53dc2e2241cb9",
-        "index.js": "ada51385e9898d4ab8ec2354eafb05543e0d1b2d425b1cfb7eaf4c3b1c3d2ac1"
+        "annai-plugin.json": "d086511197ecc0fc347ca34bf4f6f723921f3212f9b36085c34ae5f24208b859",
+        "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
+        "l10n/ja.json": "c2d95f59fa920da78042218d67c07f7ecfa80983c99e7b48f408cea690ab14cb",
+        "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2"
       }
     },
     {
