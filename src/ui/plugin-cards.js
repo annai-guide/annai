@@ -21,6 +21,8 @@ export const NEEDS_RELOAD = t`annai needs a reload: it opened without its offlin
 const NEEDS_RELOAD_EN = /* en */ "annai needs a reload: it opened without its offline service, so its plugins can't start.";
 /** Why plugins can't load on this page, for models and the logs: English, or undefined when they can. @param {boolean} gaveUp @param {boolean} controlled */
 export const pluginsHeld = (gaveUp, controlled) => (gaveUp && !controlled ? NEEDS_RELOAD_EN : undefined);
+/** An error's words as a screen shows them: the held reason (pluginsHeld's, and no other words) in the screens' language. @param {string} words */
+export const heldOnScreen = (words) => (words === NEEDS_RELOAD_EN ? NEEDS_RELOAD : words);
 
 /** That page's one card, naming the plugins that are on, if any; Reload now is the user's own tap, so it can't loop. @param {string[]} names @param {() => void} reload */
 export function reloadCard(names, reload) {

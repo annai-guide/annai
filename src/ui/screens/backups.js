@@ -4,9 +4,12 @@ import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf, thisDevice } from '../auto-backup.js';
 import { leaveSignal } from '../import-state.js';
+import { heldOnScreen } from '../plugin-cards.js';
 
 /** What a place's test said, shown once on its screen as it opens again. @type {Map<string, string>} */
 const notes = new Map();
+/** What went wrong, as this screen shows it: a place's plugin that can't load on this page says so in the screens' language. @param {unknown} e */
+const failed = (e) => heldOnScreen(messageOf(e));
 
 /** Which device a backup came from, by the label it was made with (platform.js's deviceName); another device for any other. */
 const FROM_DEVICE = /** @type {Record<string, string>} */ ({ iPhone: t`From an iPhone`, iPad: t`From an iPad`, 'Android phone': t`From an Android phone`, computer: t`From a computer` });
@@ -37,7 +40,7 @@ export async function renderBackups(ctx, route) {
       try {
         ctx.go(placeHref(await ctx.backups.add(pick.value)));
       } catch (e) {
-        status.textContent = messageOf(e);
+        status.textContent = failed(e);
         add.disabled = false;
       }
     },
@@ -94,7 +97,7 @@ async function renderPlace(ctx, id) {
           await ctx.backups.turnOn(id);
           ctx.render();
         } catch (e) {
-          say(messageOf(e));
+          say(failed(e));
         }
       },
     }, t`Turn it on`);
@@ -109,7 +112,7 @@ async function renderPlace(ctx, id) {
       await ctx.backups.backUp(id, o);
       notes.set(id, t`Backed up.`);
     } catch (e) {
-      if (/** @type {any} */ (e)?.name !== 'AbortError') notes.set(id, messageOf(e));
+      if (/** @type {any} */ (e)?.name !== 'AbortError') notes.set(id, failed(e));
     }
     if (live.isConnected) ctx.render();
   };
@@ -157,7 +160,7 @@ async function renderPlace(ctx, id) {
         notes.set(id, (await ctx.backups.check(id)).note);
         ctx.render();
       } catch (e) {
-        say(messageOf(e));
+        say(failed(e));
         offer(e);
         save.disabled = false;
       }
@@ -204,7 +207,7 @@ async function renderPlace(ctx, id) {
           h('span', { class: 'sub', text: [r.label ? fromDevice(r.label) : null, r.encrypted ? t`encrypted` : null, relTime(r.at)].filter(Boolean).join(' · ') }),
           h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => restoreFrom(ctx, target, r, say, { signal: leaving.signal }) }, t`Open`)))));
       } catch (e) {
-        say(messageOf(e));
+        say(failed(e));
       }
       show.disabled = false;
     },
