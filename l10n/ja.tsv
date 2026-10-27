@@ -113,6 +113,13 @@ remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the
 remote-trace:m3chyg	draft	Open Remote trace	リモート記録を開く	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	draft	Scripted model	台本どおりのモデル	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。	plugins-official/scripted-model/annai-plugin.json:8	
+search-searxng:@name	draft	SearXNG Search	SearXNG 検索	plugins-official/search-searxng/annai-plugin.json:3	
+search-searxng:@description	draft	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。	plugins-official/search-searxng/annai-plugin.json:8	
+search-searxng:@keywords.0	draft	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@keywords.1	draft	self-hosted	セルフホスト	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@settings.properties.url.title	draft	Your SearXNG address	SearXNG のアドレス	plugins-official/search-searxng/annai-plugin.json:23	
+search-searxng:@settings.properties.url.description	draft	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	https://search.example.com のようなアドレスです。インスタンスの settings.yml で search: formats: に json を加え、Web サーバーが annai のアドレスに対して Access-Control-Allow-Origin を送るようにしてください。暗号化しない http が使えるのは localhost だけです。	plugins-official/search-searxng/annai-plugin.json:24	
+search-searxng:xli1co	draft	needs the address of your instance (Settings → Plugins → SearXNG Search)	インスタンスのアドレスが必要です（設定 → プラグイン → SearXNG 検索）	plugins-official/search-searxng/index.js:15	
 search-serper:@name	draft	Serper Search	Serper 検索	plugins-official/search-serper/annai-plugin.json:3	
 search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:8	
 search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
