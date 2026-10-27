@@ -618,13 +618,13 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 28178,
+      "size": 28169,
       "requires": [],
       "provides": {},
       "files": {
         "annai-plugin.json": "afb9a2849511e48bf57b9b4b6f50ce0c777ffc67fdff4f11b9cd240d76b83cce",
         "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
-        "l10n/ja.json": "24e66333edf4188c8f4c87f71a0e18d76f6ad982a7c05b4e7ba035924a4671b9",
+        "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
         "l10n/zh-Hans.json": "0a4d314e5c0c2e7c16ab8e3a46779f1bb5d8180ea46c95557da87775af564d7d"
       }
     },
