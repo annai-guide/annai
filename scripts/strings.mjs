@@ -110,6 +110,20 @@ export const EXTRACTED = [
   'src/ui/ask.js',
   'src/ui/markdown.js',
   'src/ui/grounding.js',
+  // l10n-L5f1: core's words for the user (agent, models, voice, live). A model's words in them are marked /* en */.
+  'src/core/errors.js',
+  'src/core/scopes.js',
+  'src/core/llm/contract.js',
+  'src/core/llm/fallback.js',
+  'src/core/llm/check.js',
+  'src/core/live/plan-watches.js',
+  'src/core/live/live.js',
+  'src/core/voice/mode.js',
+  'src/core/voice/voice.js',
+  'src/core/voice/mic.js',
+  'src/core/agent/budgets.js',
+  'src/core/agent/loop.js',
+  'src/core/agent/halves.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];

@@ -77,7 +77,7 @@ export function voiceChip(ctx) {
     const words = koeWords(way, voice.mode.on);
     // The reason stays on one line: a narrow phone wraps before it, never inside its parentheses.
     if (live === 'listening') chip.textContent = t`Listening live`;
-    else chip.replaceChildren(`${chipText(voice.mode)}${words.text}`, ...(words.reason ? [' ', h('span', { class: 'voice-chip-why', text: words.reason })] : []));
+    else chip.replaceChildren(chipText(voice.mode, words.text), ...(words.reason ? [' ', h('span', { class: 'voice-chip-why', text: words.reason })] : []));
     chip.classList.toggle('listening', live === 'listening');
     if (!menu.hidden && what() !== drawn) draw();
   };

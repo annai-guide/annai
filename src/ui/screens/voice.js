@@ -8,9 +8,6 @@ import { sample, speechProblem } from '../speech-check.js';
 import { withoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
-/** A voice's name as the speaker gives it, the browser's own in the screens' words. @param {string} name */
-const voiceName = (name) => (name === /* en */ 'Browser voice' ? t`Browser voice` : name);
-
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
@@ -74,8 +71,8 @@ export async function renderVoice(ctx) {
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
           : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
             // A provider's own words may hold a key (spec §9.9), as in a model's Test.
-            : await withoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${voiceName(f.name)} couldn't speak: ${speechProblem(f.error)}`),
-              r.voices.length ? t`Spoken by ${r.voices.map(voiceName).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
+            : await withoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${f.name} couldn't speak: ${speechProblem(f.error)}`),
+              r.voices.length ? t`Spoken by ${r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
         sayStatus.textContent = speechProblem(e);
       } finally {
@@ -152,7 +149,7 @@ export async function renderVoice(ctx) {
       showWords.el,
       h('p', { class: 'sub', text: t`On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".` })),
     section(t`Shiori's voice`,
-      h('p', { class: 'sub', text: entries.length ? t`Voices, tried in order: ${list(entries.map((/** @type {any} */ e) => voiceName(e.name)), 'plain')}.` : t`Voices, tried in order: none.` }),
+      h('p', { class: 'sub', text: entries.length ? t`Voices, tried in order: ${list(entries.map((/** @type {any} */ e) => e.name), 'plain')}.` : t`Voices, tried in order: none.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),
     section(t`Browser voice`,
       h('p', { class: 'sub', text: synth?.available() ? t`The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.` : t`This browser has no voice of its own.` }),

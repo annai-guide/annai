@@ -66,7 +66,7 @@ test('Koe still says nothing after being asked: annai shows Kokoro\'s words for 
   const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep] } });
   k.agent.send('A sunset drink in Carmel');
   await k.agent.idle();
-  const shown = (await k.events(['reminder'])).map((e) => [e.data.title, e.data.text, e.data.unsaid]);
+  const shown = (await k.events(['reminder'])).map((e) => [(e.data.answer && "Shiori's answer"), e.data.text, e.data.unsaid]);
   assert.deepEqual(shown, [["Shiori's answer", FOR_USER, true]]);
   assert.ok(!k.notices.some((/** @type {any} */ n) => /didn't answer/.test(n.title)));
 });
@@ -110,7 +110,7 @@ test("after the user's Stop, Koe's tell_kokoro is refused in words until the use
 /** Kokoro calls one tool while Koe talks (gated), then sleeps. @param {string} name @param {any} input */
 const gated = (name, input) => [{ toolCalls: [{ name, input }, { name: 'sleep', input: {} }] }];
 /** What annai showed by itself: reminders, and the cards it put up. @param {any} k */
-const backstop = async (k) => (await k.events(['reminder'])).map((e) => [e.data.title, e.data.text]);
+const backstop = async (k) => (await k.events(['reminder'])).map((e) => [(e.data.answer && "Shiori's answer"), e.data.text]);
 
 test("Kokoro's list fails and Koe never tells the user so, asked once more: still no card (plan decision 21)", async () => {
   const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [CHECK, sleep, sleep] } });

@@ -1,8 +1,8 @@
 import { callOnce, enabledProviderTools } from './call.js';
 import { t } from '../l10n.js';
-import { when } from '../intl.js';
+import { when, sentences } from '../intl.js';
 import { dayIn, timeIn, deviceZone } from '../time.js';
-import { ProviderError, portable, explain } from './contract.js';
+import { ProviderError, portable, explain, explainPlain } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -71,52 +71,124 @@ export const LONG_REST_MS = 10 * 60_000;
 export function restText(until, now) {
   const tz = deviceZone();
   const day = dayIn(until, tz) === dayIn(now, tz) ? '' : `${new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(until)} `;
-  return `its daily limit is used up; it rests until ${day}${timeIn(until, tz)}`;
+  return /* en */ `its daily limit is used up; it rests until ${day}${timeIn(until, tz)}`;
 }
 
 /** Every model of a role failed. attempts says how; said is any text a reply had already given. */
 export class AllFailedError extends Error {
   /** @param {Attempt[]} attempts @param {string} [said] */
   constructor(attempts, said = '') {
-    super("Shiori can't reach her model.");
-    this.name = 'AllFailedError';
+    super(t`Shiori can't reach her model.`);
+    this.name = /* en */ 'AllFailedError';
     this.attempts = attempts;
     this.said = said;
   }
 }
 
-/** Why a model was passed over without being asked, in words (the codes stay in the Trace). */
+/** Why a model was passed over without being asked, in words a model reads (the codes stay in the Trace). */
+/* en */
 const PASSED = Object.freeze({
   benched: 'It is resting for a few minutes after an error.', 'no-images': "It doesn't take photos.", 'no-documents': "It doesn't read PDFs.", 'no-audio': "It doesn't take audio.",
   'no-tools': "It can't use tools.", 'too-long': 'The conversation is too long for it.', 'no-provider-tool': "It doesn't have the provider tool this needs.",
   'not-chat': "It isn't a chat model.", off: 'It is switched off.', removed: 'It was removed.', 'no-speech': "The speech couldn't be sent to it.",
 });
 
+/** The same, for the user, in the screens' language. @param {string} outcome */
+function passedShown(outcome) {
+  switch (outcome) {
+    case 'benched': return t`It is resting for a few minutes after an error.`;
+    case 'no-images': return t`It doesn't take photos.`;
+    case 'no-documents': return t`It doesn't read PDFs.`;
+    case 'no-audio': return t`It doesn't take audio.`;
+    case 'no-tools': return t`It can't use tools.`;
+    case 'too-long': return t`The conversation is too long for it.`;
+    case 'no-provider-tool': return t`It doesn't have the provider tool this needs.`;
+    case 'not-chat': return t`It isn't a chat model.`;
+    case 'off': return t`It is switched off.`;
+    case 'removed': return t`It was removed.`;
+    case 'no-speech': return t`The speech couldn't be sent to it.`;
+    default: return null;
+  }
+}
+
 /**
  * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
- * @param {Attempt[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
+ * @param {{ name: string, outcome: string, error?: string, restsUntil?: number, [k: string]: unknown }[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
  */
 export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
   for (const a of attempts) {
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
+    // A provider's own words are shown as it gave them; annai's are by kind, in the screens' language unless a model reads them.
     const said = a.outcome === 'unreachable' ? '' : a.error ?? '';
-    let why = said || /** @type {Record<string, string>} */ (PASSED)[a.outcome] || explain(new ProviderError(/** @type {any} */ (a.outcome), a.outcome));
+    const kind = new ProviderError(/** @type {any} */ (a.outcome), a.outcome);
+    let why = said || (plain ? /** @type {Record<string, string>} */ (PASSED)[a.outcome] ?? explainPlain(kind) : passedShown(a.outcome) ?? explain(kind));
     if (a.restsUntil && !plain) {
       // A day limit: the user's sentence is a whole message, with the time as their phone writes it.
       const clock = when(a.restsUntil, undefined, { hour: '2-digit', minute: '2-digit' });
       const at = dayIn(a.restsUntil, deviceZone()) === dayIn(now, deviceZone()) ? clock : `${when(a.restsUntil, undefined, { weekday: 'long' })} ${clock}`;
       why = t`Its daily limit is used up; it rests until ${at}.`;
-    } else {
-      if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1); // a sentence, though annai's name stays lower case
-      if (!/[.!?]$/.test(why)) why += '.';
+    } else if (said) {
+      // A provider's words as a sentence, though annai's name stays lower case.
+      if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1);
+      if (!/[.!?。！？]$/u.test(why)) why += '.';
     }
     if (!lines.has(a.name)) lines.set(a.name, new Set());
     lines.get(a.name)?.add(why);
   }
-  return [...(offline ? ['This device is offline.'] : []), ...[...lines].map(([name, why]) => `${name}: ${[...why].join(' ')}`)].join('\n');
+  /* en */
+  const offlineLine = plain ? 'This device is offline.' : t`This device is offline.`;
+  return [...(offline ? [offlineLine] : []), ...[...lines].map(([name, why]) => named(name, plain ? [...why].join(' ') : sentences(...why), plain))].join('\n');
+}
+
+/** "Name: words", a label and what it says: in the screens' punctuation, or annai's English for a model. @param {string} name @param {string} words @param {boolean} plain */
+const named = (name, words, plain) => (plain ? `${name}: ${words}` : t`${name}: ${words}`);
+
+/**
+ * Why a model call failed, as data a card, the log and a model each make their words from (the design, "Store data, not words"):
+ * how each model failed (attempts), that no model is set for a role, an error's kind, or another error's own message; halves: both of
+ * Shiori's halves are down, each for its reasons.
+ * @typedef {{ attempts?: Pick<Attempt, 'name' | 'outcome' | 'error' | 'restsUntil'>[], offline?: boolean, role?: string, kind?: string, message?: string,
+ *   provider?: string, halves?: { koe: Why, kokoro: Why } }} Why
+ */
+
+/** @param {unknown} e @param {{ role?: string, online?: boolean }} [o] @returns {Why} */
+export function whyOf(e, { role = 'main', online = true } = {}) {
+  if (e instanceof AllFailedError) {
+    if (!e.attempts.length) return { role };
+    return { attempts: e.attempts.map((a) => ({ name: a.name, outcome: a.outcome, ...(a.error ? { error: a.error } : {}), ...(a.restsUntil ? { restsUntil: a.restsUntil } : {}) })), ...(online ? {} : { offline: true }) };
+  }
+  if (e instanceof ProviderError) return { kind: e.kind, message: e.message, ...(e.provider ? { provider: e.provider } : {}) };
+  return { message: String(/** @type {any} */ (e)?.message ?? e) };
+}
+
+/**
+ * Why's words: for the user in the screens' language, or (plain) annai's English for a model and the log. @param {Why} why @param {boolean} [plain]
+ * @returns {string}
+ */
+export function whyWords(why, plain = false) {
+  if (why.halves) {
+    const lines = (/** @type {string} */ name, /** @type {Why} */ w) => whyWords(w, plain).split('\n').map((l) => named(name, l, plain));
+    return [...lines(/* en */ 'Koe', why.halves.koe), ...lines(/* en */ 'Kokoro', why.halves.kokoro)].join('\n');
+  }
+  if (why.attempts) return failedText(why.attempts, { offline: why.offline, plain });
+  if (why.role !== undefined) return noModel(why.role, plain);
+  if (why.kind) {
+    const e = new ProviderError(/** @type {any} */ (why.kind), String(why.message ?? ''), { provider: why.provider });
+    return plain ? explainPlain(e) : explain(e);
+  }
+  return String(why.message ?? '');
+}
+
+/** No model is set for a role. @param {string} role @param {boolean} plain */
+function noModel(role, plain) {
+  /* en */
+  if (plain) return `No model is set for the ${role} role. Add one in Settings → Models.`;
+  if (role === 'utility') return t`No model is set for the utility role. Add one in Settings → Models.`;
+  if (role === 'koe-classic') return t`No model is set for Koe · Classic. Add one in Settings → Models.`;
+  return t`No model is set for the main role. Add one in Settings → Models.`;
 }
 
 /**
@@ -164,7 +236,7 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
   if (live) return { mode, using: 'realtime', why: '', koe, split: true, path: { kind: 'live', modelId: live } };
   const rests = (/** @type {string} */ id) => { const a = abilityOf(cfg, id); return Boolean(cfg.models[id] && a?.on && a.kind === 'realtime' && types.get(a.type)?.realtime && until(id) > now); };
   /** @type {KoeWay['why']} */
-  const why = mode !== 'realtime' ? '' : !voiceOn ? 'voice off' : !realtime.length ? 'none' : realtime.some(rests) ? 'resting' : 'off';
+  const why = mode !== 'realtime' ? '' : !voiceOn ? /* en */ 'voice off' : !realtime.length ? 'none' : realtime.some(rests) ? 'resting' : 'off';
   const text = classic.some((id) => { const a = can(id); return a && a.kind !== 'realtime'; });
   return { mode, using: 'classic', why, koe, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }
@@ -214,6 +286,7 @@ function newestDocument(request) {
  */
 export function photosAsWords(request, { photos = true, documents = true } = {}) {
   /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part} */
+  /* en */
   const word = (p) => (photos && p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : documents && p.type === 'document' ? { type: 'text', text: `[a PDF${p.name ? `: ${p.name}` : ''}]` } : p);
   return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.map(word) })) };
 }
@@ -234,7 +307,7 @@ export function gap(model, request, provider) {
 
 /** The request again, telling the next model what the cut-off reply had said. @param {Request} request @param {string} said @returns {Request} */
 export function continueAfter(request, said) {
-  const note = `[annai: your reply was cut off by a connection problem. You had already said: "${said}✂". Continue exactly where it stops, without repeating any of it.]`;
+  const note = /* en */ `[annai: your reply was cut off by a connection problem. You had already said: "${said}✂". Continue exactly where it stops, without repeating any of it.]`;
   return { ...request, messages: [...request.messages, { role: 'user', parts: [{ type: 'text', text: note }] }] };
 }
 
@@ -432,7 +505,7 @@ export async function callRole(c) {
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
-          const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn('the photo repair failed', x); return null; });
+          const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
           if (fixed) {
             repairs++;
             request = fixed;

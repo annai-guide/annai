@@ -220,7 +220,7 @@ test("M6 fix: annai's own protocol, switched off after errors or by the user, is
   await host.startInstalled();
   const who = (r = registry) => /** @type {any} */ (endpointTypes(r).get('scripted'))?.by;
   assert.equal(who(), 'official');
-  registry.disable('official-proto', 'failed 3 times in a row');
+  registry.disable('official-proto', { kind: 'failed', count: 3 });
   assert.equal(who(), undefined);
   assert.deepEqual(registry.clashes('evil').map((c) => [c.owner, c.used, c.reserved]), [['official-proto', false, true]]);
   // Turned off by the user, with a record from before provides was kept: filled in at the next start, and still nobody's.

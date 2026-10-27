@@ -362,7 +362,7 @@ async function abilityBody(view, abilityId) {
   const uploads = type.uploadRequest ? savedCheck(t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false,
     async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
   // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
-  const { name: who, holds, note: keepNote } = keeperOf(type.keeps, rec.plugin, providerOf(rec).name);
+  const { name: who, holds, server, note: keepNote } = keeperOf(type.keeps, rec.plugin, providerOf(rec).name);
   const keyless = !(await ctx.llm.keyFor(id));
   const keep = type.keeps ? savedCheck(t`Let ${who} keep the conversation between turns: sends less each time.`, a.tunables?.keep !== false, async (on) => {
     tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, keep: on }) })).tunables);
@@ -393,7 +393,8 @@ async function abilityBody(view, abilityId) {
     addressWarn,
     uploads?.el ?? null,
     keep?.el ?? null,
-    keep ? h('p', { class: 'sub', text: sentences(holds ? t`${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: ${holds}.`
+    keep ? h('p', { class: 'sub', text: sentences(server ? t`${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.`
+      : holds ? t`${who} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: ${holds}.`
       : plural(type.keeps.days, '{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one.',
         '{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.', who),
     t`annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.`, t`Off, each turn sends the whole conversation.`,

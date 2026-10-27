@@ -1,16 +1,23 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone } from '../time.js';
 import { bookingRef } from '../plan.js';
+import { t } from '../l10n.js';
+import { sentences, num, when as clockAt } from '../intl.js';
 
 /**
  * The plan's own watches (spec §11.3: "Plan items create their own watches. The system sets
  * these, so they don't depend on Shiori remembering"): leave in X minutes, arrived, running late,
  * coming up; and off plan (§11.5). They are worked out from the plan whenever it changes and never
- * stored; the log's trigger.fired entries say which have fired. Their fallbacks come from the plan.
+ * stored; the log's trigger.fired entries say which have fired. Their fallbacks come from the plan: in annai's English for Shiori
+ * (fallback), and as data (say) the user's words are made from where they are shown (planWords).
  * @typedef {import('./watches.js').Watch} Watch
  * @typedef {import('./triggers.js').Moment} Moment
  * @typedef {import('./triggers.js').Firing} Firing
  * @typedef {{ name: string, lat: number, lng: number }} Place
+ * @typedef {{ title: string, at: number, tz: string, flight?: string, place?: string }} What  an item in a few words: a flight by its name
+ * @typedef {{ event: string, what?: What, title?: string, place?: string, notes?: string, minutes?: number, mode?: string,
+ *   next?: { title: string, at: number, tz: string } | null }} PlanSay  what a plan reminder says, as data: its event, the item, and for
+ *   one worked out as it fired, the minutes away and how (mode), or what is next on the plan (null: nothing)
  */
 
 /** The leave reminder comes this long before the estimated departure ("leave in X minutes"). */
@@ -66,30 +73,35 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const booking = bookings.get(bookingRef(it.booking) ?? '') ?? null;
     const flight = it.kind === 'flight' || booking?.kind === 'flight';
+    const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
-      what: what(title, booking, flight, x.at, tz, place?.name ?? ''),
+      what: whatText(short), short,
     };
-    /** @param {string} event @param {string} fallback @param {Record<string, any>} [extra] */
-    const add = (event, fallback, extra = {}) => out.push({ id: `plan:${base.item}:${event}`, owner: 'system', repeat: false, fallback, when: { ...base, event, ...extra } });
+    const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
+    /** @param {string} event @param {string} fallback @param {PlanSay} say @param {Record<string, any>} [extra] */
+    const add = (event, fallback, say, extra = {}) => out.push({ id: `plan:${base.item}:${event}`, owner: 'system', repeat: false, fallback, say, when: { ...base, event, ...extra } });
+    // fallback: annai's English, for Shiori; say: the data the user's words are made from.
+    /* en */
     if (place) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
       if (base.fixed) {
-        add('leave', `Leave soon: ${base.what}.`, { ...there, from: prev });
-        add('late', `Running late: ${base.what}.`, there);
+        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
+        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
       } else {
-        add('off-plan', `Planned now: ${title}, at ${place.name}.`, there);
+        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, there);
       }
-      add('arrived', `${place.name}: ${title}.${typeof it.notes === 'string' && it.notes.trim() ? ` ${it.notes.trim()}` : ''}`, there);
+      add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;
       places.push(place);
     } else if (base.fixed) {
-      add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`);
+      add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
     }
   }
+  /* en */
   if (places.length) {
     out.push({
-      id: 'plan:linger', owner: 'system', repeat: true, fallback: "You've stopped somewhere that isn't on the plan.",
+      id: 'plan:linger', owner: 'system', repeat: true, fallback: "You've stopped somewhere that isn't on the plan.", say: { event: 'linger' },
       when: {
         type: 'plan', event: 'linger', places, from: timed[0].at - 12 * 60 * MIN, to: /** @type {any} */ (timed.at(-1)).at + 12 * 60 * MIN,
         upcoming: timed.map((x) => ({ title: String(x.item.title ?? slug(x.path)), at: x.at, tz: zone(x.item) })),
@@ -100,16 +112,57 @@ export function planWatches(items, bookings, { fallbackTz }) {
 }
 
 /**
- * The item in a few words for a reminder (spec §11.3: "Flight UA123 departs 14:05, SFO T3").
- * @param {string} title @param {any} booking @param {boolean} flight @param {number} at @param {string} tz @param {string} placeName
+ * The item for a reminder, as data (spec §11.3: "Flight UA123 departs 14:05, SFO T3"): a flight by its name, the place where it
+ * says more than the title. @param {string} title @param {any} booking @param {boolean} flight @param {number} at @param {string} tz @param {string} placeName
+ * @returns {What}
  */
-function what(title, booking, flight, at, tz, placeName) {
-  const time = timeIn(at, tz);
+function whatOf(title, booking, flight, at, tz, placeName) {
   const terminal = typeof booking?.fields?.terminal === 'string' && booking.fields.terminal.trim() ? ` ${booking.fields.terminal.trim()}` : '';
-  if (flight) return `Flight ${String(booking?.title ?? title)} departs ${time}${placeName ? `, ${placeName}${terminal}` : ''}`;
-  const where = placeName && !title.toLowerCase().includes(placeName.toLowerCase()) ? `, ${placeName}` : '';
-  return `${title} at ${time}${where}`;
+  if (flight) return { title, at, tz, flight: String(booking?.title ?? title), ...(placeName ? { place: `${placeName}${terminal}` } : {}) };
+  return { title, at, tz, ...(placeName && !title.toLowerCase().includes(placeName.toLowerCase()) ? { place: placeName } : {}) };
 }
+
+/** The item in a few words, as Shiori reads it: annai's English. @param {What} w */
+function whatText(w) {
+  const time = timeIn(w.at, w.tz);
+  /* en */
+  if (w.flight) return `Flight ${w.flight} departs ${time}${w.place ? `, ${w.place}` : ''}`;
+  return `${w.title} at ${time}${w.place ? `, ${w.place}` : ''}`;
+}
+
+/** A plan time on a 24-hour clock, as the screens' language writes it. @param {number} at @param {string} tz */
+const clock = (at, tz) => clockAt(at, tz, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+/** The item in a few words, for the user. @param {What} w */
+function whatWords(w) {
+  const time = clock(w.at, w.tz);
+  if (w.flight) return w.place ? t`Flight ${w.flight} departs ${time}, ${w.place}` : t`Flight ${w.flight} departs ${time}`;
+  return w.place ? t`${w.title} at ${time}, ${w.place}` : t`${w.title} at ${time}`;
+}
+
+/**
+ * What a plan reminder says to the user, made from its data where it is shown (the Conversation, Now, its card, a push): in the
+ * screens' language. @param {PlanSay} say @returns {string}
+ */
+export function planWords(say) {
+  const what = say.what ? whatWords(say.what) : '';
+  switch (say.event) {
+    case 'leave':
+      if (say.minutes === undefined) return t`Leave soon: ${what}.`;
+      return sentences(t`Leave in about ${num(LEAVE_LEAD_MIN)} min: ${what}.`, say.mode === 'walk' ? t`About ${num(say.minutes)} min on foot.` : t`About ${num(say.minutes)} min by car.`);
+    case 'late': return say.minutes === undefined ? t`Running late: ${what}.` : sentences(t`Running late: ${what}.`, t`About ${num(say.minutes)} min away.`);
+    case 'off-plan': return t`Planned now: ${String(say.title)}, at ${String(say.place)}.`;
+    case 'arrived': return sentences(t`${String(say.place)}: ${String(say.title)}.`, say.notes ?? '');
+    case 'coming-up': return t`In ${num(COMING_UP_MIN)} min: ${what}.`;
+    case 'linger':
+      if (say.next === undefined) return t`You've stopped somewhere that isn't on the plan.`;
+      return say.next ? t`Next on the plan: ${say.next.title} at ${clock(say.next.at, say.next.tz)}.` : t`Nothing more is on the plan.`;
+    default: return '';
+  }
+}
+
+/** The item a coming-up reminder is about, for the user: a push that counts down to it says the minutes itself. @param {PlanSay} say */
+export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
@@ -130,14 +183,15 @@ const trip = (km, activity) => {
  */
 function leaving(w, m) {
   const from = m.fix ?? w.from ?? null;
-  if (!from) return { due: w.at - 30 * MIN, km: null, minutes: null, words: '' };
+  if (!from) return { due: w.at - 30 * MIN, km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
   if (km * 1000 <= w.radius) return null;
   const t = trip(km, m.activity);
-  return { due: w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, km, minutes: t.minutes, words: t.words };
+  return { due: w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, km, minutes: t.minutes, words: t.words, mode: t.mode };
 }
 
-/** @type {Record<string, (w: any, m: Moment, mem: Record<string, any>) => Firing | null>} */
+/** What fired, for Shiori, and its fallback: annai's English. @type {Record<string, (w: any, m: Moment, mem: Record<string, any>) => Firing | null>} */
+/* en */
 const CHECK = {
   leave(w, m) {
     const l = leaving(w, m);
@@ -146,6 +200,7 @@ const CHECK = {
     return {
       text: `Plan: time to leave soon for "${w.title}" (${kind(w)}, ${hhmm(w)})${how}`, at: l.due,
       fallback: l.km === null ? `Leave soon: ${w.what}.` : `Leave in about ${LEAVE_LEAD_MIN} min: ${w.what}. About ${l.minutes} min ${l.words}.`,
+      say: l.km === null ? { event: 'leave', what: w.short } : { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode },
     };
   },
   'coming-up'(w, m) {
@@ -182,6 +237,7 @@ const CHECK = {
     return {
       text: `Plan: running late for "${w.title}" (${kind(w)}, ${hhmm(w)}): ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.at) / MIN)} min late`,
       fallback: `Running late: ${w.what}. About ${t.minutes} min away.`,
+      say: { event: 'late', what: w.short, minutes: t.minutes },
     };
   },
   'off-plan'(w, m) {
@@ -206,6 +262,7 @@ const CHECK = {
       text: `Off plan: the user has been stopped for ${Math.round((m.now - s.since) / MIN)} min at a place that isn't on the plan (${s.lat.toFixed(4)}, ${s.lng.toFixed(4)})${next ? `; next on the plan: ${nextText}` : ''}. The replanning skill says what to do`,
       at: s.since + LINGER_MIN * MIN, place: { lat: s.lat, lng: s.lng },
       fallback: next ? `Next on the plan: ${next.title} at ${timeIn(next.at, next.tz)}.` : 'Nothing more is on the plan.',
+      say: { event: 'linger', next: next ? { title: next.title, at: next.at, tz: next.tz } : null },
     };
   },
 };
@@ -233,6 +290,7 @@ const NEXT = {
 };
 
 /** @type {Record<string, (w: any) => string>} */
+/* en */
 const DESCRIBE = {
   leave: (w) => `${LEAVE_LEAD_MIN} min before leaving for "${w.title}" at ${hhmm(w)}`,
   'coming-up': (w) => `${COMING_UP_MIN} min before "${w.title}" at ${hhmm(w)}`,
@@ -245,7 +303,7 @@ const DESCRIBE = {
 /** The plan's trigger type. It isn't for watch_set: the plan sets these itself. @type {import('./triggers.js').TriggerType} */
 export const PLAN = {
   type: 'plan', gps: false, summary: '',
-  validate: () => 'the plan sets its own watches',
+  validate: () => /* en */ 'the plan sets its own watches',
   describe: (w) => DESCRIBE[w.event]?.(w) ?? String(w.event),
   check: (w, m, mem) => CHECK[w.event]?.(w, m, mem) ?? null,
   next: (w, m, mem) => NEXT[w.event]?.(w, m, mem) ?? null,

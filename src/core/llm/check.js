@@ -2,16 +2,19 @@ import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
+import { t } from '../l10n.js';
+import { sentences } from '../intl.js';
 
 /** A 16×16 red PNG: the small image the Test button sends (spec §9.8). */
 export const TEST_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mO4IydHEmIY1TCqYfhqAACaMxgQdrf9VwAAAABJRU5ErkJggg==';
+/* en */
 const REPORT = {
   name: 'report_color',
   description: 'Report the color of the square in the picture.',
   input: { type: 'object', properties: { color: { type: 'string', description: 'one word' } }, required: ['color'] },
 };
 /** @type {import('./contract.js').Request} */
-const SAY_OK = { system: 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Reply with the word OK.' }] }] };
+const SAY_OK = { system: /* en */ 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: /* en */ 'Reply with the word OK.' }] }] };
 /**
  * Room for a model that thinks before it answers, which some can't turn off (the user, 2026-10-18),
  * or the model's own limit when it is lower. @param {import('./config.js').Model} model
@@ -23,7 +26,8 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  *   upload is advice: when it fails, photos still go in each request, so the model still passes; live: a realtime model answered aloud
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
- *   role?: { name: string, level: string } }} TestCase  role: a role asking this model at a level of its own
+ *   role?: { id: string, level: string } }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility)
+ *   detail: what the step found, in the screens' language
  */
 
 /** Whether a URL is at the endpoint's own address. @param {any} endpoint @param {string} url */
@@ -53,8 +57,8 @@ export async function testModel(c) {
   const steps = [];
   try {
     const r = await callOnce({ ...base, request: { ...SAY_OK, maxOutput: room(model) } });
-    steps.push({ step: 'access', ok: true, detail: 'annai can reach this address from the browser.' });
-    steps.push({ step: 'key', ok: true, detail: `The key works. The model said: "${r.text.trim().slice(0, 60)}".` });
+    steps.push({ step: 'access', ok: true, detail: t`annai can reach this address from the browser.` });
+    steps.push({ step: 'key', ok: true, detail: t`The key works. The model said: "${r.text.trim().slice(0, 60)}".` });
   } catch (e) {
     const err = asError(e);
     if (err.kind === 'unreachable' && probe && type.build) {
@@ -69,6 +73,7 @@ export async function testModel(c) {
   if (useImage || useTools) {
     // Without a picture there is no square to look at, so the question carries its answer: a model that
     // takes no photos is tested on the tool alone (the user's DeepSeek answered in words, 2026-10-18).
+    /* en */
     const ask = !useImage ? 'The square is red. Report its color by calling report_color.'
       : useTools ? 'What color is the square? Answer by calling report_color.' : 'What color is the square? Answer in one word.';
     /** @type {import('./contract.js').Part[]} */
@@ -80,13 +85,13 @@ export async function testModel(c) {
       if (useTools) {
         steps.push({
           step: 'tools', ok: Boolean(call),
-          detail: call ? 'Tool calls work.' : cut ? 'The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.' : "The model answered but didn't call the test tool.",
+          detail: call ? t`Tool calls work.` : cut ? t`The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.` : t`The model answered but didn't call the test tool.`,
         });
       }
       if (useImage) {
         const answer = call?.type === 'tool_call' ? JSON.stringify(call.input) : r.text;
         const red = /red/i.test(answer);
-        steps.push({ step: 'images', ok: red, detail: red ? 'Photos work: it saw the red square.' : `It didn't see the red square (it said ${answer.slice(0, 60)}).` });
+        steps.push({ step: 'images', ok: red, detail: red ? t`Photos work: it saw the red square.` : t`It didn't see the red square (it said ${answer.slice(0, 60)}).` });
       }
     } catch (e) {
       const err = asError(e);
@@ -96,13 +101,12 @@ export async function testModel(c) {
   // What the role will send, if not off's (fix pass).
   const { role } = c;
   if (role && nearestLevel(model.reasoning, role.level) !== nearestLevel(model.reasoning, 'off')) {
-    const at = `${role.name}'s level (${role.level})`;
     try {
       await callOnce({ ...base, level: role.level, request: { ...SAY_OK, maxOutput: room(model) } });
-      steps.push({ step: 'level', ok: true, detail: `It also answers at ${at}.` });
+      steps.push({ step: 'level', ok: true, detail: alsoAnswers(role) });
     } catch (e) {
       const err = asError(e);
-      steps.push({ step: 'level', ok: false, detail: `At ${at}, this model refused: ${err.message.replace(/[.\s]*$/, '.')} Lower ${role.name}'s level in Settings → Models, or change this model's Reasoning levels on its page.` });
+      steps.push({ step: 'level', ok: false, detail: sentences(refusedAt(role, err.message.replace(/[.\s]*$/, '.')), lowerLevel(role)) });
     }
   }
   if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
@@ -120,10 +124,29 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
     noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
-    return { step: 'upload', ok: true, detail: 'Photo uploads work: each photo is uploaded once, and expires after 48 hours.' };
+    return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and expires after 48 hours.` };
   } catch (e) {
-    return { step: 'upload', ok: false, detail: `${e instanceof ProviderError && e.kind === 'redirect' ? e.message : "Uploading photos didn't work with this key."} annai will send photos in each request instead.` };
+    return { step: 'upload', ok: false, detail: sentences(e instanceof ProviderError && e.kind === 'redirect' ? explain(e) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
+}
+
+/** A role's name and level in each sentence, whole (a role's name is no word to put into another sentence). @param {{ id: string, level: string }} role */
+function alsoAnswers({ id, level }) {
+  if (id === 'koe-classic') return t`It also answers at Koe · Classic's level (${level}).`;
+  if (id === 'utility') return t`It also answers at Utility's level (${level}).`;
+  return t`It also answers at Main's level (${level}).`;
+}
+/** @param {{ id: string, level: string }} role @param {string} said the model's refusal, as it gave it */
+function refusedAt({ id, level }, said) {
+  if (id === 'koe-classic') return t`At Koe · Classic's level (${level}), this model refused: ${said}`;
+  if (id === 'utility') return t`At Utility's level (${level}), this model refused: ${said}`;
+  return t`At Main's level (${level}), this model refused: ${said}`;
+}
+/** @param {{ id: string }} role */
+function lowerLevel({ id }) {
+  if (id === 'koe-classic') return t`Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.`;
+  if (id === 'utility') return t`Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.`;
+  return t`Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.`;
 }
 
 /**

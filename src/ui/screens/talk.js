@@ -2,7 +2,10 @@ import { h, whenGone, t, plural, linkIn } from '../dom.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho, cardKind } from '../cards.js';
-import { costs } from '../../core/agent/budgets.js';
+import { costs, budgetWords } from '../../core/agent/budgets.js';
+import { whyWords } from '../../core/llm/fallback.js';
+import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
+import { planWords } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
@@ -112,15 +115,32 @@ export function wokeText(reasons, nameOf = (id) => id) {
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
- * A reminder annai showed by itself, for the Conversation and Now, from its data. The one title annai gives one is "Shiori's answer"
- * (her note shown for her, halves.js); anything else is a reminder. Said aloud, it says so. Its words are marked: a plan watch's are
- * annai's English as stored, anyone else's carry their own language. @param {any} d the event's data
+ * A reminder annai showed by itself, for the Conversation and Now, from its data. Her note shown for her (halves.js) is "Shiori's
+ * answer": answer, or the title an older entry stored; anything else is a reminder. Said aloud, it says so. A plan watch's words are
+ * made from its data, in the screens' language (an older one's are annai's English as stored, so marked); anyone else's carry their
+ * own language. @param {any} d the event's data
  * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */
 export function reminderParts(d, mine, make = h) {
-  const words = String(d.text ?? '');
-  const message = d.title === /* en */ "Shiori's answer" ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
-  return around(message, make('span', { ...(String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words)), text: words }));
+  const words = d.plan ? planWords(d.plan) : String(d.text ?? '');
+  const answer = d.answer === true || d.title === /* en */ "Shiori's answer";
+  const message = answer ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
+  const marked = d.plan ? {} : String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words);
+  return around(message, make('span', { ...marked, text: words }));
+}
+
+/**
+ * An error's line in the Conversation, made from its data in the screens' language; null for one stored before it had any, which
+ * is shown as stored, in annai's English. @param {any} d the event's data
+ */
+export function errorWords(d) {
+  if (d.kind === 'model' && d.why) return whyWords(d.why);
+  if (d.kind === 'compaction' && d.why) return tidyFailed(d.why);
+  if (d.kind === 'budget' && (d.which === 'steps' ? typeof d.steps === 'number' : typeof d.perDay === 'number')) return budgetWords(d).body;
+  if (d.kind === 'silent') return t`Her model finished without saying anything to you.`;
+  if (d.kind === 'stuck') return t`Three identical tool calls in a row with identical results.`;
+  if (d.kind === 'trigger' && d.type && d.watch) return t`The ${String(d.type)} watch ${String(d.watch)} can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
+  return null;
 }
 
 /** Whose search grounded a reply: the name it gave, Google Search's by default. @param {any} d */
@@ -248,7 +268,11 @@ export async function renderTalk(ctx) {
   const item = async (e) => {
     const d = e.data ?? {};
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
-    if (e.type === 'msg.user') return h('li', { class: 'you' }, h('p', { ...mine(texts.text ?? ''), text: texts.text ?? '' }), ...(await sentPhotos(e)));
+    if (e.type === 'msg.user') {
+      // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words.
+      const said = d.images?.length && texts.text === PHOTO_ONLY ? t`(a photo)` : String(texts.text ?? '');
+      return h('li', { class: 'you' }, h('p', { ...(said === texts.text ? mine(said) : {}), text: said }), ...(await sentPhotos(e)));
+    }
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
       if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }));
@@ -320,8 +344,10 @@ export async function renderTalk(ctx) {
     if (e.type === 'error') {
       // Out of sight of the card at the page's top: the note itself offers Try again, until something newer is in the conversation.
       const again = d.kind === 'model' || d.kind === 'silent' ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
-      // Its message is as stored: annai's English, or a provider's own words.
-      const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }), h('p', { lang: 'en', text: String(d.message ?? '') }), again);
+      // Made from its data; an older entry's message is as stored, in annai's English.
+      const words = errorWords(d);
+      const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }),
+        h('p', words === null ? { lang: 'en', text: String(d.message ?? '') } : { text: words }), again);
       retry?.again.remove();
       retry = again ? { li, again } : null;
       return li;

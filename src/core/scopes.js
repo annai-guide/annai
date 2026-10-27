@@ -1,4 +1,5 @@
 import { ValidationError, NotFoundError } from './workspace.js';
+import { t } from './l10n.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -28,12 +29,29 @@ export function newId(prefix) {
   return `${prefix}-${Date.now().toString(36)}${r}`;
 }
 
+/* en */
 const PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
+
+/**
+ * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is
+ * annai's English, written once when the scope was made); a trip by the title its user gave it. @param {{ id: string, title: string }} rec
+ */
+export function scopeTitle(rec) {
+  switch (rec.id) {
+    case ME: return t`Me`;
+    case SYS: return t`System log`;
+    case SYS_SETTINGS: return t`Settings`;
+    case SYS_PLUGINS: return t`Plugins`;
+    case SYS_DEVICE: return t`This device`;
+    default: return rec.title;
+  }
+}
 
 /** Creates "me" and the system scopes if they are missing. @param {Workspace} ws */
 export async function ensureBaseScopes(ws) {
   const now = ws.now();
   /** @type {[string, ScopeRecord['kind'], string][]} */
+  /* en */
   const base = [[ME, 'me', 'Me'], [SYS, 'sys', 'System log'], [SYS_SETTINGS, 'sys', 'Settings'], [SYS_PLUGINS, 'sys', 'Plugins']];
   const made = await ws.store.tx(['scopes'], 'readwrite', async (t) => {
     /** @type {string[]} */
@@ -48,7 +66,7 @@ export async function ensureBaseScopes(ws) {
   });
   if (made.includes(ME)) {
     await ws.write(ME, '/profile.md', PROFILE, { author: 'user' });
-    await ws.write(ME, '/memory.md', '# Memory\n', { author: 'user' });
+    await ws.write(ME, '/memory.md', /* en */ '# Memory\n', { author: 'user' });
   }
 }
 
@@ -61,7 +79,7 @@ export async function ensureBaseScopes(ws) {
 export async function ensureDeviceScope(store, now = Date.now()) {
   await store.tx(['scopes'], 'readwrite', async (t) => {
     if (!(await t.getScope(SYS_DEVICE))) {
-      await t.putScope({ id: SYS_DEVICE, kind: 'sys', title: 'This device', status: 'active', created: now, updated: now, format: FORMAT });
+      await t.putScope({ id: SYS_DEVICE, kind: 'sys', title: /* en */ 'This device', status: 'active', created: now, updated: now, format: FORMAT });
     }
   });
 }
@@ -73,7 +91,7 @@ export async function ensureDeviceScope(store, now = Date.now()) {
  */
 export async function createTrip(ws, { title, start, end }) {
   const clean = (title ?? '').trim();
-  if (!clean) throw new ValidationError('/trip.json', ['$.title: is required']);
+  if (!clean) throw new ValidationError('/trip.json', [/* en */ '$.title: is required']);
   const now = ws.now();
   const id = newId('trip');
   const tripId = newId('t');
@@ -83,7 +101,7 @@ export async function createTrip(ws, { title, start, end }) {
   });
   try {
     await ws.write(id, '/trip.json', { id: tripId, title: clean, ...(start ? { start } : {}), ...(end ? { end } : {}), places: [], party: [] }, { author: 'user' });
-    await ws.write(id, '/memory.md', '# Trip memory\n', { author: 'user' });
+    await ws.write(id, '/memory.md', /* en */ '# Trip memory\n', { author: 'user' });
   } catch (e) {
     await ws.store.tx(['scopes', 'files', 'events'], 'readwrite', (t) => t.deleteScope(id));
     throw e;
@@ -102,7 +120,7 @@ export async function listTrips(store) {
 export async function setTripStatus(store, id, status, now = Date.now()) {
   await store.tx(['scopes', 'events'], 'readwrite', async (t) => {
     const rec = await t.getScope(id);
-    if (!rec || rec.kind !== 'trip') throw new Error(`trip ${id} doesn't exist`);
+    if (!rec || rec.kind !== 'trip') throw new Error(/* en */ `trip ${id} doesn't exist`);
     await t.putScope({ ...rec, status, updated: now });
     await t.appendEvent(id, { ts: now, type: status === 'archived' ? 'scope.archive' : 'scope.unarchive', actor: 'user' });
   });

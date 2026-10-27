@@ -568,7 +568,7 @@ test("a live Koe stays silent on Kokoro's note, asked once more too: annai shows
     await noted(k, 'Say: Nepenthe is open until 10 PM tonight.');
     await soon(async () => (await k.events(['reminder'])).length === 1);
     await settled(k);
-    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text, e.data.unsaid]), [["Shiori's answer", FOR_USER, true]]);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => [(e.data.answer && "Shiori's answer"), e.data.text, e.data.unsaid]), [["Shiori's answer", FOR_USER, true]]);
     assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1, 'one cue');
     assert.equal(texts(k).length, 3);
   } finally {
@@ -635,7 +635,7 @@ test("a live Koe that settles Kokoro's note with already_told: no cue, nothing s
 
 // The second fix pass (L1): a note is never lost to a close, a drop, a GoAway or Koe moving to text; it is passed on or shown once.
 /** What annai showed for Koe. @param {any} k */
-const answers = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text]);
+const answers = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => [(e.data.answer && "Shiori's answer"), e.data.text]);
 /** What the stand-in got, in order: setup, or a text turn's words. @param {any} k */
 const order = (k) => k.server.received().filter((/** @type {any} */ m) => m.setup || m.clientContent).map((/** @type {any} */ m) => (m.setup ? 'setup' : m.clientContent.turns[0].parts[0].text));
 const SHOWN = [["Shiori's answer", FOR_USER]];
@@ -834,7 +834,7 @@ test("review S4: switching to another trip with Kokoro's note still owed shows i
     const other = await createTrip(k.ws, { title: 'Carmel' });
     await k.agent.open(other);
     await k.agent.idle();
-    const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.title, e.data.text, e.data.unsaid, e.data.aloud]);
+    const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => [(e.data.answer && "Shiori's answer"), e.data.text, e.data.unsaid, e.data.aloud]);
     assert.deepEqual(shown, [["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]]);
     assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
   } finally {
@@ -916,7 +916,7 @@ test("Start fresh with Kokoro's note still owed shows its words for the user (fo
     assert.equal(await k.agent.startFresh(), 'done');
     const all = await k.events(['reminder', 'compaction']);
     assert.deepEqual(all.map((/** @type {any} */ e) => e.type), ['reminder', 'compaction'], 'the words come before the fresh start');
-    assert.deepEqual([all[0].data.title, all[0].data.text, all[0].data.unsaid, all[0].data.aloud], ["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]);
+    assert.deepEqual([(all[0].data.answer && "Shiori's answer"), all[0].data.text, all[0].data.unsaid, all[0].data.aloud], ["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]);
     assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
     assert.equal(k.agent.live.owing, false);
     assert.equal(JSON.stringify(k.agent.kokoro.transcript.messages).includes('Highway'), false);

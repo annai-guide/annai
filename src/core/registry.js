@@ -59,6 +59,15 @@ export class PluginError extends Error {
  * plugin.error event, and a plugin that fails maxFailures times in a row is
  * switched off until enable() is called (spec §5.5).
  */
+/**
+ * Why a plugin was switched off, as data: it failed count times in a row, or its hooks were handed more than entries log entries in
+ * seconds (a loop). The card makes its words from it. @typedef {{ kind: 'failed', count: number } | { kind: 'loop', entries: number, seconds: number }} DisabledWhy
+ */
+
+/** Why, in annai's English, as the log keeps it for the Trace. @param {DisabledWhy} why */
+/* en */
+const disabledReason = (why) => (why.kind === 'loop' ? `its hooks were handed more than ${why.entries} log entries in ${why.seconds} seconds, which looks like a loop` : `failed ${why.count} times in a row`);
+
 export class Registry {
   /** @type {Map<string, { pluginId: string, item: any, seq: number }[]>} */ #items = new Map();
   #seq = 0;
@@ -66,7 +75,7 @@ export class Registry {
   /** @type {Map<string, number>} */ #failures = new Map();
   /** @type {Set<string>} */ #disabled = new Set();
   /** @type {Set<() => void>} */ #listeners = new Set();
-  /** @type {Set<(info: { pluginId: string, reason: string, message: string }) => void>} */ #offs = new Set();
+  /** @type {Set<(info: { pluginId: string, why: DisabledWhy, message: string }) => void>} */ #offs = new Set();
 
   /** @param {{ log?: (ev: { type: string, actor: string, data: any }) => unknown, maxFailures?: number }} [opts] */
   constructor(opts = {}) {
@@ -204,7 +213,7 @@ export class Registry {
     };
   }
 
-  /** Told each time a plugin is switched off after repeated errors (spec §5.5: "with a card saying why"). @param {(info: { pluginId: string, reason: string, message: string }) => void} fn */
+  /** Told each time a plugin is switched off after repeated errors (spec §5.5: "with a card saying why"). @param {(info: { pluginId: string, why: DisabledWhy, message: string }) => void} fn */
   onDisabled(fn) {
     this.#offs.add(fn);
     return () => this.#offs.delete(fn);
@@ -221,20 +230,22 @@ export class Registry {
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
     this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(e?.message ?? e), count: n } });
-    if (n >= this.maxFailures) this.disable(pluginId, `failed ${n} times in a row`, String(e?.message ?? e));
+    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, String(e?.message ?? e));
   }
 
   /**
    * Switches a plugin off until enable() is called (spec §5.5), and says so once: in the log and to
-   * onDisabled's listeners. @param {string} pluginId @param {string} reason @param {string} [message] the last error
+   * onDisabled's listeners, who make the card's words from why. @param {string} pluginId @param {DisabledWhy} why
+   * @param {string} [message] the last error
    */
-  disable(pluginId, reason, message = reason) {
+  disable(pluginId, why, message) {
     if (this.#disabled.has(pluginId)) return;
     this.#disabled.add(pluginId);
-    this.#safeLog({ type: 'plugin.disabled', actor: 'system', data: { plugin: pluginId, reason } });
+    const reason = disabledReason(why);
+    this.#safeLog({ type: 'plugin.disabled', actor: 'system', data: { plugin: pluginId, reason, why } });
     for (const fn of this.#offs) {
       try {
-        fn({ pluginId, reason, message });
+        fn({ pluginId, why, message: message ?? reason });
       } catch (err) {
         console.warn('a registry listener failed', err);
       }

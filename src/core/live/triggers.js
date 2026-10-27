@@ -14,7 +14,7 @@ import { meters, kmText } from './geo.js';
  *   change: the activity just changed; odometer: km travelled while live; stop: where the user has stayed, while live;
  *   gap: annai was off screen, or closed, and is catching up; fired: whether a watch of this conversation has fired
  * @typedef {{ name?: string, lat: number, lng: number }} Place
- * @typedef {{ text: string, at?: number, place?: Place, fallback?: string }} Firing
+ * @typedef {{ text: string, at?: number, place?: Place, fallback?: string, say?: import('./plan-watches.js').PlanSay }} Firing
  *   text: what happened, for Shiori; at: when it came due (for "late by"); fallback: this firing's own words for the user
  * @typedef {{ type: string, gps: boolean, summary: string, validate: (when: any) => string | null, describe: (when: any) => string,
  *   start?: (when: any, m: Moment, mem: Record<string, any>) => void,

@@ -584,10 +584,13 @@ test("M6 fix: an owner that isn't annai's own (a built-in or an official plugin)
 
 test('the card when a plugin is switched off says which, why and where to turn it back on', async () => {
   const { disabledCard } = await import('../../src/ui/plugin-cards.js');
-  assert.deepEqual(disabledCard({ name: 'Tides', reason: 'failed 3 times in a row', message: 'boom' }), {
+  assert.deepEqual(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }), {
     tone: 'warn', title: 'The plugin "Tides" was turned off',
     body: 'It failed 3 times in a row. The last error: boom You can turn it back on in Settings → Plugins.',
   });
+  // A hook loop says so whole: once "It its hooks were handed…", glued (localization L5f).
+  assert.equal(disabledCard({ name: 'Tides', why: { kind: 'loop', entries: 1000, seconds: 10 }, message: 'boom' }).body,
+    'Its hooks were handed more than 1,000 log entries in 10 seconds, which looks like a loop. The last error: boom You can turn it back on in Settings → Plugins.');
 });
 
 test("routes for plugins' screens, settings pages and trip tabs", () => {
