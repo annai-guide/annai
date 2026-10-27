@@ -1703,44 +1703,44 @@ gofzl2	draft	Shiori woke for the plugin {0}.	プラグイン {0} により Shior
 n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:127	{0} = WORDS; Note: {0} is the reminder's words.
 y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori の答え（読み上げ）：{0}	src/ui/screens/talk.js:127	{0} = WORDS; Note: {0} is her answer, shown by annai.
 qjf670	draft	Three identical tool calls in a row with identical results.	同じ結果のツール呼び出しが同じ内容で3回続きました。	src/ui/screens/talk.js:141	
-1d61zj9	draft	The {0} watch {1} can't be checked: {2}.	{0} の見守り {1} を確認できません：{2}。	src/ui/screens/talk.js:142	{0} = String(d.type); {1} = String(d.watch); {2} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is "something she watches for" (見守り / 留意事项); {0} is the trigger's type (a code, such as time), {1} the watch's id, {2} the trigger's own words.
-6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:157	
-137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:228	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:228	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:234	{0} = formatCost(c.total)
-glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:234	{0} = formatCost(c.total)
-td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:261	
-9e5yo5	draft	(a photo)	（写真）	src/ui/screens/talk.js:273	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:328	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:328	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:340	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:341	
-1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:349	
-1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:349	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:364	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:418	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:437	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:467	
-bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:468	
-7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:482	
-12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:484	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:484	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:484	
-va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:484	
-mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:487	
-10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:492	
-va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:499	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:500	
-czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:501	
-1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:511	{0} = messageOf(e)
-1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:514	
-3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:514	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:514	
-p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:514	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:534	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:535	
-159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:550	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:557	
+10lkfvk	draft	The watch for "{0}" can't be checked: {1}.	見守り「{0}」を確認できません：{1}。	src/ui/screens/talk.js:143	{0} = d.reminder.replace(/[.!?。！？]+$/u, ''); {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); English was: The {0} watch {1} can't be checked: {2}.; Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
+6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:158	
+137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:229	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:229	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:235	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:235	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:262	
+9e5yo5	draft	(a photo)	（写真）	src/ui/screens/talk.js:274	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:329	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:329	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:341	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:342	
+1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:350	
+1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:350	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:365	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:419	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:438	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:468	
+bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:469	
+7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:483	
+12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:485	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:485	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:485	
+va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:485	
+mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:488	
+10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:493	
+va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:500	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:501	
+czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:502	
+1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:512	{0} = messageOf(e)
+1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:515	
+3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:515	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:515	
+p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:515	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:535	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:536	
+159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:551	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:558	
 11gkctr	draft	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

@@ -1140,14 +1140,15 @@ export class Live {
       return type.check(w.when, m, mem) ?? null;
     } catch (e) {
       if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
-      else this.#noteOnce(scope, { type: type.type, watch: w.id, why: String(/** @type {any} */ (e)?.message ?? e) });
+      else this.#noteOnce(scope, { type: type.type, watch: w.id, reminder: w.fallback, why: String(/** @type {any} */ (e)?.message ?? e) });
       return null;
     }
   }
 
   /**
    * Notes a watch that can't be checked in its conversation's log, once: as data, from which the Conversation makes its line, with
-   * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, why: string }} d why: the trigger's own words
+   * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, reminder: string, why: string }} d reminder: the
+   *   watch's own words, which the Conversation names it by; why: the trigger's own words
    */
   #noteOnce(scope, d) {
     /* en */
