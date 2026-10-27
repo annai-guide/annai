@@ -12,6 +12,8 @@ openai-responses:@description	draft	Talks to OpenAI's Responses API and to serve
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	
+scripted-model:@name	draft	Scripted model	按脚本回复的模型	plugins-official/scripted-model/annai-plugin.json:3	
+scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:8	
 speech-openai:@name	draft	OpenAI-compatible speech	OpenAI 兼容语音	plugins-official/speech-openai/annai-plugin.json:3	
 speech-openai:@description	draft	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。	plugins-official/speech-openai/annai-plugin.json:8	
 1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:32	
