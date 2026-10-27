@@ -86,11 +86,6 @@ export function bookingLines(b) {
   return lines;
 }
 
-/** "an iPhone", "an Android phone", "a computer". @param {string} label */
-export function withArticle(label) {
-  return `${/^(?:[aeiou]|iP)/i.test(label) ? 'an' : 'a'} ${label}`;
-}
-
 /** A day as YYYY-MM-DD in this device's own zone, not UTC's. @param {number} ms */
 export const localDay = (ms) => {
   const d = new Date(ms);
