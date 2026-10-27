@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -8,6 +10,7 @@ import { withoutSecretsIn } from '../../src/core/agent/net.js';
 import { SYS, SYS_SETTINGS, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { start, activate, serverProblem, shellBuild, BATCH_MS, BATCH_MAX, KEEP_MAX, KEEP_BYTES, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE } from '../../plugins-official/remote-trace/index.js';
 import { hostKit } from './package-kit.js';
+import { pluginWords } from './l10n-kit.js';
 
 const root = new URL('../../', import.meta.url);
 const T0 = 1_800_000_000_000;
@@ -114,6 +117,7 @@ async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, a
         return a;
       },
     },
+    l10n: pluginWords(),
     ui: {
       slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
         assert.equal(slot, 'status-chip');
@@ -228,7 +232,7 @@ test('offline, it keeps the newest 2,000 entries and says how many it dropped, t
   assert.ok(k.posts.length >= 1, 'it tried');
   assert.deepEqual(k.cards, [], "a phone that's offline gets no card");
   const chip = k.drawChip();
-  assert.match(chip.attrs.get('aria-label'), /^Sending trace: 2000 waiting, the server can't be reached$/);
+  assert.match(chip.attrs.get('aria-label'), /^Sending trace: 2,000 waiting\. The server can't be reached\.$/);
   k.give(...Array.from({ length: 10 }, (_, i) => entry(3000 + i)));
   offline = false;
   const tried = k.posts.length;
@@ -279,7 +283,7 @@ test('a server that keeps refusing gives one card in plain words, not one per ba
   assert.ok(k.posts.length > REFUSALS + 5);
   assert.equal(k.cards.length, 1, 'still one card');
   const chip = k.drawChip();
-  assert.equal(chip.attrs.get('aria-label'), 'Sending trace: 1 waiting, the server answered 401');
+  assert.equal(chip.attrs.get('aria-label'), 'Sending trace: 1 waiting. The server answered 401.');
   status = 200;
   await k.clock.advance(RETRY_MAX_MS);
   status = 500;
@@ -404,7 +408,7 @@ test('off until configured: no Send, no address, an address annai may not use, o
     await k.clock.advance(BATCH_MS + RETRY_MS + 6000 + 12_000);
     assert.deepEqual([k.posts.length, k.chips.size, k.cards.length], [0, 1, 1]);
     assert.equal(k.cards[0].body, "It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).");
-    assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting, it has no token');
+    assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting. It has no token.');
     // The form saves only the token: the settings file doesn't change, so no entry tells the plugin. The next try reads it.
     await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:remote-trace:token', TOKEN));
     await k.clock.advance(RETRY_MAX_MS);
@@ -416,7 +420,7 @@ test('off until configured: no Send, no address, an address annai may not use, o
 });
 
 test("a token or address a request can't carry gives one card and no request: a name and password in the address, a token with letters a header can't hold; a token's spaces are trimmed", async () => {
-  assert.match(String(serverProblem('https://me:secret@sink.example/trace')), /name or password/);
+  assert.match(String(serverProblem('https://me:secret@sink.example/trace', pluginWords())), /name or password/);
   const odd = await kit({ token: 'tökén-0123456789abcdef' });
   odd.give(entry(1));
   await odd.clock.advance(BATCH_MS + RETRY_MS + 6000 + 12_000);
@@ -456,7 +460,7 @@ test("while the browser says it is offline, it doesn't try; when it is back onli
   k.give(entry(1));
   await k.clock.advance(10 * RETRY_MAX_MS);
   assert.equal(k.posts.length, 0, 'no tries while offline');
-  assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting, the phone is offline');
+  assert.equal(k.drawChip().attrs.get('aria-label'), 'Sending trace: 1 waiting. The phone is offline.');
   fail = false;
   await k.goOnline();
   assert.equal(k.posts.length, 1, 'at once');
@@ -495,8 +499,8 @@ test('a server that answers 413 or 400 gets half the batch, and an entry it stil
 });
 
 test('the server address: https anywhere, http only on this device (annai\'s CSP)', () => {
-  for (const ok of ['https://sink.example', 'https://a.b.example:8443/trace?x=1', 'http://localhost:8798/', 'http://127.0.0.1:1', ' https://padded.example ']) assert.equal(serverProblem(ok), null, ok);
-  for (const bad of ['http://sink.example', 'http://192.168.1.5:8798', 'http://[::1]:8798', 'ws://localhost', 'sink.example', 'not an address', '']) assert.ok(serverProblem(bad), bad);
+  for (const ok of ['https://sink.example', 'https://a.b.example:8443/trace?x=1', 'http://localhost:8798/', 'http://127.0.0.1:1', ' https://padded.example ']) assert.equal(serverProblem(ok, pluginWords()), null, ok);
+  for (const bad of ['http://sink.example', 'http://192.168.1.5:8798', 'http://[::1]:8798', 'ws://localhost', 'sink.example', 'not an address', '']) assert.ok(serverProblem(bad, pluginWords()), bad);
 });
 
 test("annai's version and build come from its service worker's offline copy, the oldest one while an update waits; sw.js still names it so", async () => {
@@ -517,7 +521,8 @@ async function hosted({ answer = () => new Response('{}') } = {}) {
   const dir = new URL('plugins-official/remote-trace/', root);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
-  for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+  // Its files, its translations' folder too.
+  for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) if (e.isFile()) { const name = relative(fileURLToPath(dir), join(e.parentPath, e.name)); files.set(name, new Uint8Array(await readFile(new URL(name, dir)))); }
   /** @type {{ url: string, body: string }[]} */
   const posts = [];
   /** @type {any[]} */
@@ -678,6 +683,6 @@ test('the package: an official plugin with the settings form the brief asks for,
   assert.equal(typeof activate, 'function');
   const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
   const listed = catalog.plugins.find((/** @type {any} */ x) => x.id === 'remote-trace');
-  assert.deepEqual(Object.keys(listed.files).sort(), ['annai-plugin.json', 'index.js']);
+  assert.deepEqual(Object.keys(listed.files).sort(), ['annai-plugin.json', 'index.js', 'l10n/ja.json', 'l10n/zh-Hans.json']);
   assert.ok(utf8(JSON.stringify(manifest)).length < 4000);
 });
