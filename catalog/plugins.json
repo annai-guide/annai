@@ -62,7 +62,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 66004,
+      "size": 66010,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -76,7 +76,7 @@
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
-        "l10n/ja.json": "df2c5beb6ae3d89997c12e0a322152dff121438f38102f30b396c48c19ed76ac",
+        "l10n/ja.json": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
         "l10n/zh-Hans.json": "0d89919a47ffbecab71df86a8dd7f7a724aab4ad79b06b6a3276244776658c76",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
@@ -263,7 +263,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 16970,
+      "size": 16982,
       "requires": [
         {
           "id": "gemini-api",
@@ -273,7 +273,7 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "5e20f10d0741cd47bcf59153f013c1af42c427e4419f9e11b5450e0b106d679c",
-        "l10n/ja.json": "69d62c8eaf37bb1f1087ef24f95c4c45866779a49418752d4f761512396c28f5",
+        "l10n/ja.json": "90a1db1bc48832d39e9b4cb3301a2bf1811129d00740f40404751682e03bf081",
         "l10n/zh-Hans.json": "8cbff4a2f0c85500078c97072a16067e229ec5ee89c61539f17e38ee8030286d"
       }
     },
@@ -472,7 +472,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 18529,
+      "size": 18537,
       "requires": [
         {
           "id": "openai-responses",
@@ -486,7 +486,7 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "d40fbdf51eb0fe35eb29e70cab8d730622a01c5e774d1fb62b31d783fa3fcb43",
-        "l10n/ja.json": "ca591711ef32fd29a64411b259c5c3ec37b231163f8c985fdaa4a7a41061a5a8",
+        "l10n/ja.json": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
         "l10n/zh-Hans.json": "e77f978f9f62442401d9e96dcc7abc8932d71e2cbab650c2e507072853dea4db"
       }
     },
@@ -505,7 +505,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 41780,
+      "size": 41747,
       "requires": [
         {
           "id": "chat-completions",
@@ -521,7 +521,7 @@
       "files": {
         "annai-plugin.json": "d5f9696d00a92db1ca7d450098de43908599274f5eddaaa10d9eed59fad74e4c",
         "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
-        "l10n/ja.json": "605c15e212d5d82127fe5244bd8304970ec276bf8985f5297f9d73edb1f2a6c8",
+        "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
         "l10n/zh-Hans.json": "d30c1dba64c3ec0c7d136542ce3d77f113ea2c69735b6be93d63b02ee73edb1f"
       }
     },
