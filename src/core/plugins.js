@@ -567,7 +567,8 @@ export class PluginHost {
       const settings = had.keys.filter((k) => Object.hasOwn(props, k));
       const secrets = had.secrets.filter((k) => Object.hasOwn(props, k) && props[k]?.writeOnly);
       await logEvent(this.ws.store, SYS, { type: 'plugin.reset', actor: 'user', data: {
-        plugin: id, name: m?.name ?? (await this.installed())[id]?.name ?? id,
+        // A built-in's name is in the screens' words, which the log doesn't keep: its id says which it was.
+        plugin: id, ...(this.builtins.has(id) ? {} : { name: m?.name ?? (await this.installed())[id]?.name ?? id }),
         settings, otherSettings: had.keys.length - settings.length, secrets, otherSecrets: had.secrets.length - secrets.length, bytes,
       } }).catch(() => {});
     }

@@ -605,6 +605,8 @@ test("a Reset with nothing saved changes nothing and logs nothing; a built-in's 
   assert.deepEqual(await host.saved('web'), { file: false, keys: [], secrets: ['jina'] });
   assert.deepEqual((await host.reset('web')).secrets, ['jina']);
   assert.equal(await get('plugin:web:jina'), undefined);
+  // A built-in's name is in the screens' words: the entry keeps its id alone, which the Trace shows (localization L5g).
+  assert.deepEqual((await log()).filter((e) => e.type === 'plugin.reset').at(-1)?.data, { plugin: 'web', settings: [], otherSettings: 0, secrets: [], otherSecrets: 1, bytes: 0 });
   host.builtins.set('mcp', { id: 'mcp', name: 'MCP servers' });
   await put('plugin:mcp:docs', { token: 'mcp-token-123456' });
   assert.equal(await host.saved('mcp'), null);
