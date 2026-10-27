@@ -15,10 +15,10 @@ if (pseudo === 'en-XA' || pseudo === 'ar-XB') {
   setWords(tag, null, (await import('../core/l10n-pseudo.js')).pseudoFor(tag));
 } else if (tag !== 'en') {
   try {
-    const got = await fetch(`/l10n/${tag}.json`);
+    /* en */ const got = await fetch(`/l10n/${tag}.json`);
     if (!got.ok) throw new Error(String(got.status));
     const words = await got.json();
-    if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error('not a catalog');
+    if (!words || typeof words !== 'object' || Array.isArray(words)) throw new Error(/* en */ 'not a catalog');
     setWords(tag, words);
   } catch {
     html.dataset.l10nFailed = tag; // main.js says so on a card

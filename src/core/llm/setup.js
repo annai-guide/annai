@@ -11,9 +11,9 @@ import { KINDS } from './contract.js';
 
 /** What is wrong with a setup, or null. @param {any} item */
 export function checkSetup(item) {
-  if (!item || typeof item !== 'object') return 'providers.setup needs an object';
-  for (const p of ['panel', 'returned', 'classify', 'headers', 'list']) if (item[p] !== undefined && typeof item[p] !== 'function') return `providers.setup: ${p} must be a function`;
-  if (item.keyField !== undefined && typeof item.keyField !== 'boolean') return 'providers.setup: keyField must be true or false';
+  if (!item || typeof item !== 'object') /* en */ return 'providers.setup needs an object';
+  for (const p of ['panel', 'returned', 'classify', 'headers', 'list']) if (item[p] !== undefined && typeof item[p] !== 'function') /* en */ return `providers.setup: ${p} must be a function`;
+  if (item.keyField !== undefined && typeof item.keyField !== 'boolean') /* en */ return 'providers.setup: keyField must be true or false';
   return null;
 }
 
@@ -42,13 +42,13 @@ function guarded(registry, pluginId, what, fn) {
  */
 export function adjusted(registry, pluginId, type, endpoint, keyHeader = '') {
   const s = setupOf(registry, pluginId);
-  const own = s?.headers && guarded(registry, pluginId, 'provider headers', () => s.headers?.(endpoint.ability));
+  /* en */ const own = s?.headers && guarded(registry, pluginId, 'provider headers', () => s.headers?.(endpoint.ability));
   const keys = ['authorization', 'x-api-key', keyHeader.toLowerCase()];
   const headers = Object.fromEntries(Object.entries(own && typeof own === 'object' ? own : {}).filter(([k, v]) => typeof v === 'string' && !keys.includes(k.toLowerCase())));
   const classify = s?.classify;
   return {
     type: classify ? { ...type, classify: (/** @type {number} */ status, /** @type {string} */ body) => {
-      const kind = guarded(registry, pluginId, 'provider classify', () => classify(status, body, endpoint.ability));
+      /* en */ const kind = guarded(registry, pluginId, 'provider classify', () => classify(status, body, endpoint.ability));
       return KINDS.has(kind) ? kind : type.classify?.(status, body) ?? null; // only a kind annai knows
     } } : type,
     endpoint: Object.keys(headers).length ? { ...endpoint, headers: { ...endpoint.headers, ...headers } } : endpoint,

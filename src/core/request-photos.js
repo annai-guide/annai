@@ -39,8 +39,8 @@ export function fits(s, l) {
 
 /** "4032×3024, sent as 2000×1500". @param {Source} s @param {Copy} c */
 export function sizeLine(s, c) {
-  const from = s.width && s.height ? `${s.width}×${s.height}` : 'size unknown';
-  return c.made && c.width && c.height ? `${from}, sent as ${c.width}×${c.height}` : from;
+  /* en */ const from = s.width && s.height ? `${s.width}×${s.height}` : 'size unknown';
+  /* en */ return c.made && c.width && c.height ? `${from}, sent as ${c.width}×${c.height}` : from;
 }
 
 export class PhotoCopies {
@@ -65,7 +65,7 @@ export class PhotoCopies {
     if (had && (await this.read(had.hash, scope))) return { ...had, data: undefined };
     this.#made.delete(key);
     const bytes = await this.read(source.hash, scope);
-    if (!bytes) throw new Error('That photo is no longer stored.');
+    if (!bytes) /* en */ throw new Error('That photo is no longer stored.');
     const out = await this.codec.encode(new Blob([/** @type {BlobPart} */ (bytes)], { type: source.type }), {
       formats: limits.formats, quality: limits.quality, maxEdge: limits.maxEdge, maxBytes: limits.maxBytes, maxPixels: MAX_CANVAS_PIXELS, ...(crop ? { crop } : {}),
     });
@@ -93,17 +93,17 @@ export function healRegion(region, width, height) {
   /** @type {string[]} */
   const notes = [];
   let [l, t, r, b] = [0, 1, 2, 3].map((i) => Number(region?.[i]));
-  if ([l, t, r, b].some((v) => !Number.isFinite(v))) throw new Error('A region is four numbers: [left, top, right, bottom], as fractions of the photo from 0 to 1.');
+  if ([l, t, r, b].some((v) => !Number.isFinite(v))) /* en */ throw new Error('A region is four numbers: [left, top, right, bottom], as fractions of the photo from 0 to 1.');
   if ([l, t, r, b].some((v) => v > 1)) {
-    notes.push('values above 1 were read as pixels');
+    /* en */ notes.push('values above 1 were read as pixels');
     [l, r] = [l, r].map((v) => (v > 1 ? v / width : v));
     [t, b] = [t, b].map((v) => (v > 1 ? v / height : v));
   }
-  if (l > r || t > b) notes.push('reversed edges were swapped');
+  if (l > r || t > b) /* en */ notes.push('reversed edges were swapped');
   if (l > r) [l, r] = [r, l];
   if (t > b) [t, b] = [b, t];
   const clamp = (/** @type {number} */ v) => Math.min(1, Math.max(0, v));
-  if ([l, t, r, b].some((v) => v < 0 || v > 1)) notes.push('it was clamped to the photo');
+  if ([l, t, r, b].some((v) => v < 0 || v > 1)) /* en */ notes.push('it was clamped to the photo');
   [l, t, r, b] = [l, t, r, b].map(clamp);
   let x = Math.round(l * width);
   let y = Math.round(t * height);
@@ -116,7 +116,7 @@ export function healRegion(region, width, height) {
     const s = Math.min(max - need, Math.max(0, Math.round(centre - need / 2)));
     return [s, need];
   };
-  if (w < Math.min(MIN_CROP, width) || h < Math.min(MIN_CROP, height)) notes.push(`it was grown to at least ${MIN_CROP} pixels around its centre`);
+  if (w < Math.min(MIN_CROP, width) || h < Math.min(MIN_CROP, height)) /* en */ notes.push(`it was grown to at least ${MIN_CROP} pixels around its centre`);
   [x, w] = grow(x, w, width);
   [y, h] = grow(y, h, height);
   const round = (/** @type {number} */ v) => Math.round(v * 1000) / 1000;

@@ -60,6 +60,12 @@ test('bare English is found where a screen surely shows it, and /* en */ marks i
   assert.ok(has(problems, 'src/bare.mjs', 5, /bare English "Nothing here yet\."/));
 });
 
+test('a folder in EXTRACTED is every file under it (L5h: all of src/)', async () => {
+  const { problems } = await check(FIXTURE, ['src/']);
+  assert.ok(has(problems, 'src/bare.mjs', 5, /bare English "Nothing here yet\."/));
+  assert.ok(!problems.some((p) => /is listed in EXTRACTED/.test(p.message)));
+});
+
 test('a mark on the statement covers what is inside it', () => {
   const src = "import { h } from './dom.js';\n/* en: for a model */\nexport const a = [h('p', { text: 'Only for Shiori' })];\nexport const b = [h('p', { text: 'For you' })];\n";
   assert.deepEqual(bareEnglish('x.js', src).map((f) => f.line), [4]);

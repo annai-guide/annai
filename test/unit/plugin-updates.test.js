@@ -260,7 +260,8 @@ test('an update from an address whose provider sends keys to a new origin asks f
   const [ask] = notices.cards;
   assert.match(ask.body, /sends keys you give it to http:\/\/localhost:9931/);
   assert.doesNotMatch(ask.body, /full access/);
-  await assert.rejects(updateFromAddress(host, 'kit', { fetch: get }), /haven't agreed to: a provider that sends keys to http:\/\/localhost:9931/);
+  // The screen names what it adds (shown); the log's English says that it adds parts.
+  await assert.rejects(updateFromAddress(host, 'kit', { fetch: get }), (/** @type {any} */ e) => /haven't agreed to: a provider that sends keys to http:\/\/localhost:9931/.test(e.shown) && /haven't agreed to\. /.test(e.message));
   await ask.actions[0].run();
   assert.equal((await host.installed()).kit.version, '1.1.0');
   assert.deepEqual((await host.installed()).kit.origins, ['http://localhost:9931']);

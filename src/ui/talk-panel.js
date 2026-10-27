@@ -1,7 +1,7 @@
 import { h, field, t, plural, messageOf } from './dom.js';
 import { AllFailedError } from '../core/llm/fallback.js';
 import { ProviderError, explain } from '../core/llm/contract.js';
-import { withoutSecrets } from '../core/agent/net.js';
+import { shownWithoutSecrets } from '../core/agent/net.js';
 import { formatCost, outcomeText } from './format.js';
 
 /** The test conversation's instructions: a model's words, so English (localization design, section 7). */
@@ -18,7 +18,7 @@ export function metaLine(result) {
 function failure(ctx, err, name) {
   const a = err instanceof AllFailedError ? err.attempts[0] : null;
   const why = a ? `${outcomeText(a.outcome)}${a.error ? t` (${a.error})` : ''}` : err instanceof ProviderError ? explain(err) : messageOf(err);
-  return withoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
+  return shownWithoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
 }
 
 /**

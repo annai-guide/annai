@@ -1,6 +1,7 @@
 import { OVERPASS, overpassFilters, osmRow, KIND_NAMES } from './osm.js';
-import { planFor, guideTitles, hashId, MAX_GUIDES, WIKI_RADIUS_M } from './plan.js';
-import { answerJSON } from '../answer.js';
+import { planFor, guideTitles, hashId, labelOf, MAX_GUIDES, WIKI_RADIUS_M } from './plan.js';
+import { answerJSON, answerWords } from '../answer.js';
+import { t } from '../l10n.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
@@ -21,11 +22,20 @@ import { anySignal } from '../signals.js';
  *   download that brings the same bytes leaves the file as it was.
  * @typedef {{ title: string, asked: string[], path: string }} Guide
  *   asked: the names that led to it ("Hearst Castle" leads to San Simeon)
+ * @typedef {{ source: 'osm' | 'wikipedia', place: import('./plan.js').Place } | { source: 'wikivoyage', title?: string }} PartRef
+ *   which part, as data: a part of the plan by where it is, finding the guides, or one guide
+ * @typedef {import('../answer.js').AnswerSaid | { code: 'late', where: string } | { code: 'early', where: string, remark: string }
+ *   | { code: 'osm', inner: PackSaid | null, message: string } | { code: 'said', where: string, info: string } | { code: 'no-text', title: string }} PackSaid
+ *   one of annai's own failures, as data: a server's answer, its time running out, Overpass stopping early, no Overpass server answering
+ *   (inner: the last one's, or message, the browser's words), a service's own error (info, its words), a guide with no text
+ * @typedef {{ label: string, why: string, part?: PartRef, said?: PackSaid | null }} Failure
+ *   label and why: in annai's English, as the log keeps them; part and said: what the panel makes its words from. A failure kept since
+ *   (localization L5h) always has part, and said null where why is the browser's or a service's own words; one from before has neither.
  * @typedef {{ format: 1, key: string, at: string, files: PackFile[], guides: Guide[],
- *   failed: { label: string, why: string }[], full: boolean, stopped: boolean, bytes: number, places: number, summaries: number }} Manifest
+ *   failed: Failure[], full: boolean, stopped: boolean, bytes: number, places: number, summaries: number }} Manifest
  *   key: the plan's when it was downloaded; full: it reached its 20 MB; stopped: it was stopped, or gave up;
  *   places and summaries: each once, though the parts' areas overlap
- * @typedef {{ done: number, total: number, label: string }} Progress
+ * @typedef {{ done: number, total: number, label: string }} Progress  label: what it is downloading, in the screens' words
  * @typedef {(url: string, init: RequestInit, where: string) => Promise<any>} Ask
  */
 
@@ -52,12 +62,38 @@ const MAX_NAMES = 200;
 const isNum = (/** @type {unknown} */ x) => typeof x === 'number' && Number.isFinite(x);
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 
+/** Which part, in annai's English for the log. @param {PartRef} p */
+const partLabel = (p) => /* en */ ('place' in p ? `${p.source === 'osm' ? 'OpenStreetMap' : 'Wikipedia'} ${labelOf(p.place)}` : p.title ? `Wikivoyage: ${p.title}` : 'Wikivoyage');
+
+/** Which part, in the screens' words. @param {PartRef} p */
+export function partWords(p) {
+  if (!('place' in p)) return p.title ? t`Wikivoyage: ${p.title}` : /* en */ 'Wikivoyage';
+  const [a, b] = p.place.names;
+  if (p.source === 'osm') return p.place.how === 'between' ? t`OpenStreetMap between ${a} and ${b}` : t`OpenStreetMap around ${a}`;
+  return p.place.how === 'between' ? t`Wikipedia between ${a} and ${b}` : t`Wikipedia near ${a}`;
+}
+
+/** One of annai's own failures in the screens' words, from its data. @param {PackSaid} s @returns {string} */
+export function failWords(s) {
+  switch (s.code) {
+    case 'late': return t`${s.where} didn't answer in time.`;
+    case 'early': return t`${s.where} stopped early: ${s.remark}.`;
+    case 'osm': return t`OpenStreetMap didn't answer (${(s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')}).`;
+    case 'said': return t`${s.where} said: ${s.info}.`;
+    case 'no-text': return t`Wikivoyage sent no text for ${s.title}.`;
+    default: return answerWords(s);
+  }
+}
+
+/** An error by the shown rule: message in annai's English, said its data. @param {string} en @param {PackSaid} said */
+const fault = (en, said) => Object.assign(new Error(en), { said });
+
 /** Where a part is kept. @param {Part} p */
 export const pathOf = (p) => `${DIR}${p.kind}/${p.id}.json`;
 /** Where a guide is kept. @param {string} title */
 export function guideFile(title) {
   const id = `g${hashId(title)}`;
-  return { id, path: `${DIR}wikivoyage/${id}.json` };
+  /* en */ return { id, path: `${DIR}wikivoyage/${id}.json` };
 }
 
 /** The pack's manifest, or null when there is none or it is broken. @param {Workspace} ws @param {string} scope @returns {Promise<Manifest | null>} */
@@ -70,7 +106,7 @@ export async function readManifest(ws, scope) {
       .map((f) => ({ id: f.id, kind: f.kind, path: f.path, bytes: Number(f.bytes) || 0, items: Number(f.items) || 0, at: Number(f.at) || 0 })),
     guides: m.guides.filter((g) => typeof g?.title === 'string' && typeof g.path === 'string')
       .map((g) => ({ title: g.title, asked: Array.isArray(g.asked) ? g.asked.filter((a) => typeof a === 'string') : [], path: g.path })),
-    failed: m.failed.filter((f) => typeof f?.label === 'string').map((f) => ({ label: f.label, why: String(f.why ?? '') })),
+    failed: m.failed.filter((f) => typeof f?.label === 'string').map((f) => ({ label: f.label, why: String(f.why ?? ''), ...('part' in f ? { part: f.part, said: f.said ?? null } : {}) })),
     full: m.full === true, stopped: m.stopped === true, bytes: Number(m.bytes) || 0, places: Number(m.places) || 0, summaries: Number(m.summaries) || 0,
   };
 }
@@ -107,27 +143,27 @@ export async function downloadPack(o) {
   };
   /** @type {Map<string, PackFile>} */
   const files = new Map();
-  /** @type {{ label: string, why: string }[]} */
+  /** @type {Failure[]} */
   const failed = [];
   let bytes = 0;
   let full = false;
   let fails = 0;
   let asked = 0;
-  const headers = { 'Api-User-Agent': `annai/${o.version} (https://annai.guide)` };
+  const headers = { 'Api-User-Agent': /* en */ `annai/${o.version} (https://annai.guide)` };
   /** @type {Ask} */
   const ask = async (url, init, where) => {
     if (asked++) await pause(o.gapMs ?? GAP_MS, signal);
-    if (signal.aborted) throw new DOMException('The download was stopped.', 'AbortError');
+    if (signal.aborted) throw new DOMException(/* en */ 'The download was stopped.', 'AbortError');
     // A request that never answers would hold the download forever: each has its time.
     const late = new AbortController();
-    const t = setTimeout(() => late.abort(new DOMException('No answer in time.', 'TimeoutError')), o.answerMs ?? ANSWER_MS);
+    const timer = setTimeout(() => late.abort(new DOMException(/* en */ 'No answer in time.', 'TimeoutError')), o.answerMs ?? ANSWER_MS);
     try {
       return await answerJSON(await o.fetch(url, { ...init, signal: anySignal([signal, late.signal]) }), where);
     } catch (e) {
-      if (late.signal.aborted && !signal.aborted) throw new Error(`${where} didn't answer in time.`);
+      if (late.signal.aborted && !signal.aborted) throw fault(/* en */ `${where} didn't answer in time.`, { code: 'late', where });
       throw e;
     } finally {
-      clearTimeout(t);
+      clearTimeout(timer);
     }
   };
   /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] */
@@ -150,29 +186,30 @@ export async function downloadPack(o) {
     return true;
   };
   const over = () => signal.aborted || fails >= GIVE_UP || full;
-  /** @param {string} label @param {unknown} e */
-  const failure = (label, e) => {
+  /** @param {PartRef} part @param {unknown} e */
+  const failure = (part, e) => {
     if (e instanceof StorageFullError) throw e; // the panel's storage-full card says what to do
     fails++;
-    failed.push({ label, why: String(/** @type {any} */ (e)?.message ?? e) });
+    failed.push({ label: partLabel(part), why: String(/** @type {any} */ (e)?.message ?? e), part, said: /** @type {any} */ (e)?.said ?? null });
   };
 
   for (const p of plan.parts) if (fresh(pathOf(p))) keepOld({ id: p.id, kind: p.kind, path: pathOf(p) });
   const todo = plan.parts.filter((p) => !files.has(pathOf(p)));
   let total = todo.length + 1; // and finding the guides
   let done = 0;
-  const progress = (/** @type {string} */ label) => o.onProgress?.({ done, total, label });
+  const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
   for (const p of todo) {
     if (over()) break;
-    const label = `${p.kind === 'osm' ? 'OpenStreetMap' : 'Wikipedia'} ${p.label}`;
-    progress(label);
+    /** @type {PartRef} */
+    const part = { source: p.kind, place: p.place };
+    progress(part);
     try {
       const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal)) : await wikipedia(p, ask, headers);
       if (!(await save({ id: p.id, kind: p.kind, path: pathOf(p), items: got.count }, got.content))) break;
       fails = 0;
     } catch (e) {
       if (signal.aborted) break;
-      failure(label, e);
+      failure(part, e);
     }
     done++;
   }
@@ -183,7 +220,7 @@ export async function downloadPack(o) {
   const guides = [];
   let guidesDone = false;
   if (!over()) {
-    progress('Wikivoyage');
+    progress({ source: 'wikivoyage' });
     try {
       const found = await findGuides(await namesFor(ws, scope, plan, files), ask, headers);
       done++;
@@ -193,13 +230,13 @@ export async function downloadPack(o) {
         const { id, path } = guideFile(g.title);
         if (fresh(path)) keepOld({ id, kind: 'wikivoyage', path }, 1);
         else {
-          progress(`Wikivoyage: ${g.title}`);
+          progress({ source: 'wikivoyage', title: g.title });
           try {
             if (!(await save({ id, kind: 'wikivoyage', path, items: 1 }, { title: g.title, text: await article(g.title, ask, headers) }))) break;
             fails = 0;
           } catch (e) {
             if (signal.aborted) break;
-            failure(`Wikivoyage: ${g.title}`, e);
+            failure({ source: 'wikivoyage', title: g.title }, e);
             if (have.has(path)) keepOld({ id, kind: 'wikivoyage', path }, 1);
           }
         }
@@ -208,7 +245,7 @@ export async function downloadPack(o) {
       }
       guidesDone = !over();
     } catch (e) {
-      if (!signal.aborted) failure('Wikivoyage', e);
+      if (!signal.aborted) failure({ source: 'wikivoyage' }, e);
     }
   }
   if (!guidesDone) {
@@ -255,9 +292,10 @@ async function osm(p, ask, busy) {
     const host = new URL(server).hostname;
     for (let tries = 0; tries < 2; tries++) {
       try {
-        const data = await ask(server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` }, host);
-        if (!Array.isArray(data?.elements)) throw new Error(`${host} sent an answer annai can't read.`);
-        if (typeof data.remark === 'string' && /error/i.test(data.remark)) throw new Error(`${host} stopped early: ${data.remark.trim().replace(/\.$/, '')}.`);
+        const data = await ask(server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: /* en */ `data=${encodeURIComponent(query)}` }, host);
+        if (!Array.isArray(data?.elements)) throw fault(/* en */ `${host} sent an answer annai can't read.`, { code: 'unreadable', where: host });
+        const remark = typeof data.remark === 'string' && /error/i.test(data.remark) ? data.remark.trim().replace(/\.$/, '') : '';
+        if (remark) throw fault(/* en */ `${host} stopped early: ${remark}.`, { code: 'early', where: host, remark });
         const seen = new Set();
         /** @type {import('./osm.js').OsmRow[]} */
         const rows = [];
@@ -280,15 +318,17 @@ async function osm(p, ask, busy) {
       }
     }
   }
-  throw new Error(`OpenStreetMap didn't answer (${String(/** @type {any} */ (last)?.message ?? last).replace(/\.$/, '')}).`);
+  const message = String(/** @type {any} */ (last)?.message ?? last).replace(/\.$/, '');
+  throw fault(/* en */ `OpenStreetMap didn't answer (${message}).`, { code: 'osm', inner: /** @type {any} */ (last)?.said ?? null, message });
 }
 
 /** Wikipedia's summaries near a part's point. @param {import('./plan.js').WikiPart} p @param {Ask} ask @param {Record<string, string>} headers */
 async function wikipedia(p, ask, headers) {
   const [lat, lng] = p.at;
-  const r = await ask(`${WIKIPEDIA}?action=query&format=json&formatversion=2&origin=*&generator=geosearch&ggscoord=${lat}%7C${lng}&ggsradius=${WIKI_RADIUS_M}&ggslimit=20`
+  /* en */ const r = await ask(`${WIKIPEDIA}?action=query&format=json&formatversion=2&origin=*&generator=geosearch&ggscoord=${lat}%7C${lng}&ggsradius=${WIKI_RADIUS_M}&ggslimit=20`
     + '&prop=extracts%7Ccoordinates&exintro=1&explaintext=1&exlimit=20&exchars=400&colimit=20', { headers }, 'Wikipedia');
-  if (r?.error) throw new Error(`Wikipedia said: ${String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '')}.`);
+  const info = r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '';
+  if (info) throw fault(/* en */ `Wikipedia said: ${info}.`, { code: 'said', where: /* en */ 'Wikipedia', info });
   /** @type {[string, number, number, string][]} */
   const pages = [];
   for (const g of Array.isArray(r?.query?.pages) ? r.query.pages : []) {
@@ -331,8 +371,9 @@ async function findGuides(names, ask, headers) {
   const resolved = new Map();
   for (let i = 0; i < candidates.length; i += TITLES_PER_ASK) {
     const batch = candidates.slice(i, i + TITLES_PER_ASK);
-    const r = await ask(`${WIKIVOYAGE}?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageprops&ppprop=disambiguation&titles=${encodeURIComponent(batch.join('|'))}`, { headers }, 'Wikivoyage');
-    if (r?.error) throw new Error(`Wikivoyage said: ${String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '')}.`);
+    /* en */ const r = await ask(`${WIKIVOYAGE}?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageprops&ppprop=disambiguation&titles=${encodeURIComponent(batch.join('|'))}`, { headers }, 'Wikivoyage');
+    const info = r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '';
+    if (info) throw fault(/* en */ `Wikivoyage said: ${info}.`, { code: 'said', where: /* en */ 'Wikivoyage', info });
     const q = r?.query ?? {};
     const steps = new Map([...(Array.isArray(q.normalized) ? q.normalized : []), ...(Array.isArray(q.redirects) ? q.redirects : [])]
       .filter((x) => typeof x?.from === 'string' && typeof x?.to === 'string').map((x) => [x.from, x.to]));
@@ -358,8 +399,8 @@ async function findGuides(names, ask, headers) {
 
 /** A Wikivoyage guide's text, with its sections marked "== See ==". @param {string} title @param {Ask} ask @param {Record<string, string>} headers */
 async function article(title, ask, headers) {
-  const r = await ask(`${WIKIVOYAGE}?action=query&format=json&formatversion=2&origin=*&prop=extracts&explaintext=1&exsectionformat=wiki&titles=${encodeURIComponent(title)}`, { headers }, 'Wikivoyage');
+  /* en */ const r = await ask(`${WIKIVOYAGE}?action=query&format=json&formatversion=2&origin=*&prop=extracts&explaintext=1&exsectionformat=wiki&titles=${encodeURIComponent(title)}`, { headers }, 'Wikivoyage');
   const text = Array.isArray(r?.query?.pages) ? r.query.pages[0]?.extract : undefined;
-  if (typeof text !== 'string' || !text.trim()) throw new Error(`Wikivoyage sent no text for ${title}.`);
+  if (typeof text !== 'string' || !text.trim()) throw fault(/* en */ `Wikivoyage sent no text for ${title}.`, { code: 'no-text', title });
   return text;
 }

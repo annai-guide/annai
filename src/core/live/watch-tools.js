@@ -6,13 +6,13 @@
  */
 export function watchTools(live) {
   const core = /** @type {const} */ ('core');
-  return [
+  /* en */ return [
     {
       name: 'watch_set', pluginId: core, group: 'Time',
       // Read each time the tools are sent: a plugin may have added a trigger type (spec §11.3).
       get description() {
         const lines = [...live.types().values()].map((t) => `- ${t.summary}`).join('\n');
-        return `Set a watch: annai wakes you when it fires, and says why. when.type is one of:\n${lines}\nfallback (required): what annai shows, and says with voice on, by itself if you can't be reached when it fires, such as "Low tide at Pfeiffer Beach in 30 minutes." repeat: fire every time, not just once (every always repeats; time never does). expires: an ISO date-time after which it is dropped. Location, distance and activity watches need GPS on; time and every watches work whenever annai is on screen. The plan already sets its own reminders (leave, arrived, running late, off plan): don't add those.`;
+        /* en */ return `Set a watch: annai wakes you when it fires, and says why. when.type is one of:\n${lines}\nfallback (required): what annai shows, and says with voice on, by itself if you can't be reached when it fires, such as "Low tide at Pfeiffer Beach in 30 minutes." repeat: fire every time, not just once (every always repeats; time never does). expires: an ISO date-time after which it is dropped. Location, distance and activity watches need GPS on; time and every watches work whenever annai is on screen. The plan already sets its own reminders (leave, arrived, running late, off plan): don't add those.`;
       },
       get input() {
         return {

@@ -24,38 +24,38 @@ function check(s, v, at, errors) {
   if (s.type !== undefined) {
     const types = Array.isArray(s.type) ? s.type : [s.type];
     if (!types.some((/** @type {string} */ t) => is(t, v))) {
-      errors.push(`${at}: expected ${types.join(' or ')}, got ${kind(v)}`);
+      /* en */ errors.push(`${at}: expected ${types.join(' or ')}, got ${kind(v)}`);
       return;
     }
   }
-  if (s.const !== undefined && !same(s.const, v)) errors.push(`${at}: must be ${JSON.stringify(s.const)}`);
+  if (s.const !== undefined && !same(s.const, v)) /* en */ errors.push(`${at}: must be ${JSON.stringify(s.const)}`);
   if (Array.isArray(s.enum) && !s.enum.some((/** @type {any} */ e) => same(e, v))) {
-    errors.push(`${at}: must be one of ${s.enum.map((/** @type {any} */ e) => JSON.stringify(e)).join(', ')}`);
+    /* en */ errors.push(`${at}: must be one of ${s.enum.map((/** @type {any} */ e) => JSON.stringify(e)).join(', ')}`);
   }
   if (typeof v === 'string') {
     const length = [...v].length;
-    if (s.minLength !== undefined && length < s.minLength) errors.push(`${at}: must be at least ${s.minLength} characters`);
-    if (s.maxLength !== undefined && length > s.maxLength) errors.push(`${at}: must be at most ${s.maxLength} characters`);
-    if (s.pattern && !new RegExp(s.pattern, 'u').test(v)) errors.push(`${at}: does not match ${s.pattern}`);
-    if (s.format === 'date' && !isDate(v)) errors.push(`${at}: must be a date like 2026-11-26`);
-    if (s.format === 'date-time' && !isDateTime(v)) errors.push(`${at}: must be a date-time like 2026-11-26T14:05:00-08:00`);
+    if (s.minLength !== undefined && length < s.minLength) /* en */ errors.push(`${at}: must be at least ${s.minLength} characters`);
+    if (s.maxLength !== undefined && length > s.maxLength) /* en */ errors.push(`${at}: must be at most ${s.maxLength} characters`);
+    if (s.pattern && !new RegExp(s.pattern, 'u').test(v)) /* en */ errors.push(`${at}: does not match ${s.pattern}`);
+    if (s.format === 'date' && !isDate(v)) /* en */ errors.push(`${at}: must be a date like 2026-11-26`);
+    if (s.format === 'date-time' && !isDateTime(v)) /* en */ errors.push(`${at}: must be a date-time like 2026-11-26T14:05:00-08:00`);
   }
   if (typeof v === 'number') {
-    if (s.minimum !== undefined && v < s.minimum) errors.push(`${at}: must be at least ${s.minimum}`);
-    if (s.maximum !== undefined && v > s.maximum) errors.push(`${at}: must be at most ${s.maximum}`);
+    if (s.minimum !== undefined && v < s.minimum) /* en */ errors.push(`${at}: must be at least ${s.minimum}`);
+    if (s.maximum !== undefined && v > s.maximum) /* en */ errors.push(`${at}: must be at most ${s.maximum}`);
   }
   if (Array.isArray(v)) {
-    if (s.minItems !== undefined && v.length < s.minItems) errors.push(`${at}: must have at least ${s.minItems} items`);
-    if (s.maxItems !== undefined && v.length > s.maxItems) errors.push(`${at}: must have at most ${s.maxItems} items`);
+    if (s.minItems !== undefined && v.length < s.minItems) /* en */ errors.push(`${at}: must have at least ${s.minItems} items`);
+    if (s.maxItems !== undefined && v.length > s.maxItems) /* en */ errors.push(`${at}: must have at most ${s.maxItems} items`);
     if (s.items) v.forEach((item, i) => check(s.items, item, `${at}[${i}]`, errors));
   }
   if (is('object', v)) {
     // Own properties only: inherited names like "constructor" must not count as present or declared.
-    for (const r of s.required ?? []) if (!Object.hasOwn(v, r)) errors.push(`${at}.${r}: is required`);
+    for (const r of s.required ?? []) if (!Object.hasOwn(v, r)) /* en */ errors.push(`${at}.${r}: is required`);
     const props = s.properties ?? {};
     for (const [k, val] of Object.entries(v)) {
       if (Object.hasOwn(props, k)) check(props[k], val, `${at}.${k}`, errors);
-      else if (s.additionalProperties === false) errors.push(`${at}.${k}: is not allowed`);
+      else if (s.additionalProperties === false) /* en */ errors.push(`${at}.${k}: is not allowed`);
       else if (s.additionalProperties && typeof s.additionalProperties === 'object') check(s.additionalProperties, val, `${at}.${k}`, errors);
     }
   }

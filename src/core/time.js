@@ -57,7 +57,7 @@ function offsetText(minutes) {
 /** An instant as ISO 8601 with tz's offset, to the second. @param {number} ms @param {string} tz */
 export function isoInZone(ms, tz) {
   const w = wallClock(ms, tz);
-  return `${w.year}-${pad(w.month)}-${pad(w.day)}T${pad(w.hour)}:${pad(w.minute)}:${pad(w.second)}${offsetText(offsetMinutes(ms, tz))}`;
+  /* en */ return `${w.year}-${pad(w.month)}-${pad(w.day)}T${pad(w.hour)}:${pad(w.minute)}:${pad(w.second)}${offsetText(offsetMinutes(ms, tz))}`;
 }
 
 /**

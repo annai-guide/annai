@@ -1,4 +1,5 @@
 import { meters } from './geo.js';
+import { t } from '../l10n.js';
 
 /**
  * Trip simulation (spec §13, §18): a GPS track and a fake clock fed through the same machinery as
@@ -48,14 +49,14 @@ const byTime = (a, b) => a.at - b.at || (a.kind === 'fix' ? 1 : 0) - (b.kind ===
 export function trackFrom(it) {
   const start = Date.parse(it?.start ?? '');
   const offset = /([zZ]|[+-]\d\d:\d\d)$/.exec(String(it?.start ?? ''))?.[1];
-  if (!Number.isFinite(start) || !offset || !/^\d{4}-\d{2}-\d{2}T/.test(it.start)) throw new Error('An itinerary needs a start: an ISO date-time with an offset, like 2026-11-27T08:30:00-08:00.');
+  if (!Number.isFinite(start) || !offset || !/^\d{4}-\d{2}-\d{2}T/.test(it.start)) /* en */ throw new Error('An itinerary needs a start: an ISO date-time with an offset, like 2026-11-27T08:30:00-08:00.');
   const route = Array.isArray(it.route) ? it.route : [];
-  if (route.length < 2) throw new Error('An itinerary needs a route of at least two places.');
+  if (route.length < 2) /* en */ throw new Error('An itinerary needs a route of at least two places.');
   const day = it.start.slice(0, 10);
   /** @param {string | undefined} hhmm @param {string} what */
   const time = (hhmm, what) => {
-    const t = Date.parse(`${day}T${hhmm}:00${offset}`);
-    if (!/^\d\d:\d\d$/.test(String(hhmm)) || !Number.isFinite(t)) throw new Error(`${what} needs a time like 09:30, not ${JSON.stringify(hhmm)}.`);
+    /* en */ const t = Date.parse(`${day}T${hhmm}:00${offset}`);
+    if (!/^\d\d:\d\d$/.test(String(hhmm)) || !Number.isFinite(t)) /* en */ throw new Error(`${what} needs a time like 09:30, not ${JSON.stringify(hhmm)}.`);
     return t;
   };
   const every = (it.everySec ?? 5) * 1000;
@@ -77,24 +78,24 @@ export function trackFrom(it) {
   let reached = start;
   for (let s = 0; s < stops.length; s++) {
     const { p, i } = stops[s];
-    const name = p.name ?? `Stop ${s + 1}`;
-    const arrive = s === 0 ? start : time(p.arrive, `${name}'s arrive`);
-    if (arrive < reached) throw new Error(`${name} is reached before the drive there ends: check its times.`);
+    /* en */ const name = p.name ?? `Stop ${s + 1}`;
+    /* en */ const arrive = s === 0 ? start : time(p.arrive, `${name}'s arrive`);
+    if (arrive < reached) /* en */ throw new Error(`${name} is reached before the drive there ends: check its times.`);
     const last = s === stops.length - 1;
-    const leave = last ? arrive + (it.endMin ?? 30) * 60_000 : time(p.leave, `${name}'s leave`);
-    if (leave < arrive) throw new Error(`${name} is left before it is reached: check its times.`);
+    /* en */ const leave = last ? arrive + (it.endMin ?? 30) * 60_000 : time(p.leave, `${name}'s leave`);
+    if (leave < arrive) /* en */ throw new Error(`${name} is left before it is reached: check its times.`);
     stay(p, arrive, last ? leave + 1 : leave);
     if (last) break;
     const next = stops[s + 1];
-    const reach = time(next.p.arrive, `${next.p.name ?? `Stop ${s + 2}`}'s arrive`);
-    if (reach <= leave) throw new Error(`${next.p.name ?? `Stop ${s + 2}`} is reached before the drive there ends: check its times.`);
+    /* en */ const reach = time(next.p.arrive, `${next.p.name ?? `Stop ${s + 2}`}'s arrive`);
+    if (reach <= leave) /* en */ throw new Error(`${next.p.name ?? `Stop ${s + 2}`} is reached before the drive there ends: check its times.`);
     const path = route.slice(i, next.i + 1);
     const length = path.slice(1).reduce((sum, q, k) => sum + meters(path[k], q), 0);
     const speed = length / ((reach - leave) / 1000);
     for (let t = leave; t < reach; t += every) out.push({ at: t, kind: 'fix', fix: { ...along(path, speed * ((t - leave) / 1000)), accuracy, speed } });
     reached = reach;
   }
-  for (const m of it.marks ?? []) out.push({ at: time(m.at, `The mark ${m.kind}`), kind: m.kind });
+  for (const m of it.marks ?? []) /* en */ out.push({ at: time(m.at, `The mark ${m.kind}`), kind: m.kind });
   return out.sort(byTime);
 }
 
@@ -108,7 +109,7 @@ export function trackFrom(it) {
  * @param {{ stillSec?: number, end?: number }} [o] @returns {TrackEvent[]}
  */
 export function trackFromLog(points, { stillSec = 10, end } = {}) {
-  if (points.length < 2) throw new Error('That trip has no recorded track yet: GPS records one while it is on.');
+  if (points.length < 2) throw Object.assign(new Error(/* en */ 'That trip has no recorded track yet: GPS records one while it is on.'), { shown: t`That trip has no recorded track yet: GPS records one while it is on.` });
   const still = stillSec * 1000;
   /** @type {TrackEvent[]} */
   const out = [];

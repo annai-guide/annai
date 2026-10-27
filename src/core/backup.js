@@ -1,7 +1,7 @@
 import { exportArchive, checkManifest, PRESETS } from './archive.js';
 import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
-import { withoutSecrets, withoutSecretsIn } from './agent/net.js';
+import { withoutSecrets, withoutSecretsIn, shownWithoutSecrets } from './agent/net.js';
 import { isPluginBug } from './plugins.js';
 import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-types.js';
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
@@ -24,8 +24,9 @@ import { sentences, size } from './intl.js';
  * @typedef {import('./storage-types.js').TargetContext} TargetContext
  * @typedef {import('./storage-types.js').Progress} Progress
  * @typedef {ReturnType<typeof createBackups>} Backups
- * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer', name?: string, noun?: string, bytes?: number }} Said
- *   one of annai's own errors, as data (a hold keeps it): the place's name, this device's noun, the upload's size
+ * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer' | 'answer-large' | 'unreadable' | 'broke', name?: string, noun?: string, bytes?: number }} Said
+ *   one of annai's own errors, as data (a hold keeps it): the place's name (or the server's, as a storage plugin names it for readAnswer), this
+ *   device's noun, the upload's size (or the most annai reads of an answer)
  */
 
 /**
@@ -37,6 +38,9 @@ export function backupWords(s) {
   if (s.code === 'passphrase') return t`Type the passphrase for the encrypted backups at ${s.name}, then save.`;
   if (s.code === 'large') return t`This backup would upload ${size(s.bytes ?? 0)}.`;
   if (s.code === 'newer') return t`There is a newer backup at ${s.name}.`;
+  if (s.code === 'answer-large') return t`${s.name} sent an answer larger than annai reads (${size(s.bytes ?? 0)}). annai tries again later.`;
+  if (s.code === 'unreadable') return t`${s.name} answered something annai can't read. annai tries again later.`;
+  if (s.code === 'broke') return t`The connection to ${s.name} broke while annai read its answer. annai tries again later.`;
   if (s.noun === 'phone') return t`This phone is offline, so annai couldn't reach this place.`;
   if (s.noun === 'iPad') return t`This iPad is offline, so annai couldn't reach this place.`;
   if (s.noun === 'computer') return t`This computer is offline, so annai couldn't reach this place.`;
@@ -136,7 +140,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   /** @param {string} id */
   async function target(id) {
     const rec = await getTarget(ws, id);
-    if (!rec) throw new TargetError('missing', t`That backup place was removed.`);
+    if (!rec) throw Object.assign(new TargetError('missing', /* en */ "That backup place was removed."), { shown: t`That backup place was removed.` });
     return rec;
   }
 
@@ -153,8 +157,9 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       : undefined;
     const cleaned = new TargetError(te?.kind ?? 'other', message, { remote: te?.remote, bytes: te?.bytes, retryAt: te?.retryAt, ...(choices ? { choices } : {}) });
     // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps.
-    const { shown, said } = /** @type {any} */ (e) ?? {};
-    return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await withoutSecrets(store, shown) } : {}), ...(said ? { said } : {}) });
+    const { said } = /** @type {any} */ (e) ?? {};
+    const shown = /** @type {any} */ (e)?.shown ?? (said ? backupWords(said) : undefined);
+    return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await shownWithoutSecrets(store, shown) } : {}), ...(said ? { said } : {}) });
   }
 
   /** What a place filled in for fields left empty, or offers: text values of its own fields. @param {Target} rec @param {unknown} config @returns {Record<string, string>} */
@@ -334,7 +339,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         throw await clean(e);
       }
       const kind = typeOf(type);
-      if (!kind) throw new TargetError('setup', t`annai couldn't start the plugin for this kind of backup place. Try again.`);
+      if (!kind) throw Object.assign(new TargetError('setup', /* en */ "annai couldn't start the plugin for this kind of backup place. Try again."), { shown: t`annai couldn't start the plugin for this kind of backup place. Try again.` });
       const id = await addTarget(ws, { type, name: kind.name });
       emit();
       return id;
@@ -351,7 +356,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     async update(id, { config, secret, auto, mobileData, encrypt, keys, keep, passphrase, askAbove }) {
       const rec = await target(id);
       if (askAbove !== undefined && askAbove !== null && !(Number.isFinite(askAbove) && askAbove >= 0)) {
-        throw new TargetError('setup', t`Type a number of megabytes, or leave it empty for no limit.`);
+        throw Object.assign(new TargetError('setup', /* en */ "Type a number of megabytes, or leave it empty for no limit."), { shown: t`Type a number of megabytes, or leave it empty for no limit.` });
       }
       // An address with a user name and password in it would keep them in the place's record.
       for (const v of Object.values(config ?? {})) {
@@ -362,7 +367,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         } catch {
           // not an address
         }
-        if (u && (u.username || u.password)) throw new TargetError('setup', t`Put the user name and the password in their own fields, not in the address.`);
+        if (u && (u.username || u.password)) throw Object.assign(new TargetError('setup', /* en */ "Put the user name and the password in their own fields, not in the address."), { shown: t`Put the user name and the password in their own fields, not in the address.` });
       }
       const signIn = Boolean(secret && Object.keys(secret).length);
       const encrypting = encrypt ?? rec.encrypt ?? false;
@@ -370,8 +375,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       // Checked before anything is kept: a change that fails keeps no new sign-in or passphrase (minors 25).
       if (encrypt !== undefined || keys !== undefined || passphrase !== undefined) {
         const hasPassphrase = passphrase !== undefined ? Boolean(passphrase) : Boolean((await targetSecret(store, id)).passphrase);
-        if (encrypting && !hasPassphrase) throw new TargetError('setup', t`Type a passphrase for the encrypted backups, then save.`);
-        if (withKeys && !encrypting) throw new TargetError('setup', t`API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.`);
+        if (encrypting && !hasPassphrase) throw Object.assign(new TargetError('setup', /* en */ "Type a passphrase for the encrypted backups, then save."), { shown: t`Type a passphrase for the encrypted backups, then save.` });
+        if (withKeys && !encrypting) throw Object.assign(new TargetError('setup', /* en */ 'API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.'), { shown: t`API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.` });
       }
       if (signIn) await setTargetSecret(store, id, /** @type {Record<string, string>} */ (secret));
       if (passphrase !== undefined) await setTargetSecret(store, id, { passphrase });
@@ -415,7 +420,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     async check(id) {
       let rec = await target(id);
       const said = await call(rec, 'check', (t, c) => t.check(c));
-      const note = await withoutSecrets(store, String(said?.note ?? t`Works.`));
+      const note = await shownWithoutSecrets(store, String(said?.note ?? t`Works.`));
       // What the place filled in for fields left empty is the place's own from now on: later backups don't look again.
       const filled = settingsOf(rec, said?.config);
       if (Object.keys(filled).length) rec = await setTarget(ws, id, { config: { ...rec.config, ...filled } });
@@ -466,7 +471,8 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
         // What is wrong with it goes to the Trace; the screen says it in a few plain words.
         const why = String(/** @type {any} */ (e)?.message ?? e);
         await log('backup.peek', { target: id, type: rec.type, backup: backupId, problem: (await withoutSecrets(store, why)).slice(0, 500) });
-        throw new TargetError('other', /** @type {any} */ (e)?.newer ? t`This backup was made by a newer annai: update annai first.` : t`This backup is damaged.`);
+        if (/** @type {any} */ (e)?.newer) throw Object.assign(new TargetError('other', /* en */ "This backup was made by a newer annai: update annai first."), { shown: t`This backup was made by a newer annai: update annai first.` });
+        throw Object.assign(new TargetError('other', /* en */ "This backup is damaged."), { shown: t`This backup is damaged.` });
       }
       return manifest;
     },

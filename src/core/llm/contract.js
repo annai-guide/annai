@@ -1,4 +1,5 @@
 import { t } from '../l10n.js';
+import { list } from '../intl.js';
 
 /**
  * The provider contract (spec §9.1): annai's own message format in and out, the events a
@@ -117,19 +118,58 @@ function shown(kind, provider) {
   }
 }
 
+/**
+ * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
+ * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
+ * @typedef {{ code: 'kind' | 'late' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
+ *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
+ *   name?: string, ability?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
+ */
+
+/**
+ * What one of annai's own provider errors says, in the screens' words, from its data. @param {Said} s @param {string} kind
+ * @param {string} [provider] its name, for the words of a kind that names it @returns {string}
+ */
+export function saidWords(s, kind, provider) {
+  const { name, ability, host, formats } = s;
+  switch (s.code) {
+    case 'late': return t`No output started in time.`;
+    case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;
+    case 'model-gone': return t`That model no longer exists.`;
+    case 'no-plugin': return t`${name}'s ${ability} needs its plugin, which isn't running. Open ${name} in Settings → Models to install it.`;
+    case 'not-in': return t`${name} isn't a transcription model.`;
+    case 'not-out': return t`${name} isn't a voice.`;
+    case 'not-live': return t`${name} isn't a live voice model.`;
+    case 'provider-gone': return t`That provider or ability no longer exists.`;
+    case 'provider-off': return t`That provider no longer exists, or its plugin isn't running.`;
+    case 'provider-removed': return t`That provider no longer exists.`;
+    case 'cors': return t`${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`;
+    case 'unreachable': return t`annai couldn't reach ${host}. Check the address and your connection.`;
+    case 'no-list': return t`${ability} can't list its models here. Add them by id.`;
+    case 'formats': return t`${name} takes no audio format this phone makes (${list(formats ?? [], 'plain')}).`;
+    case 'origin': return s.to ? t`${name}'s ${ability} built a request to ${s.to}, not its address ${s.want}. Check its tunables.`
+      : t`${name}'s ${ability} built a request to an address that isn't one, not its address ${s.want}. Check its tunables.`;
+    case 'not-heard': return t`Nothing in the speech-in list can hear it for ${name}.`;
+    default: return shown(kind, provider) ?? '';
+  }
+}
+
 /** Every error kind, for checking one a plugin gives. */
 export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
 
 export class ProviderError extends Error {
   /**
-   * @param {ErrorKind} kind @param {string} message
-   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean, provider?: string }} [more]
+   * @param {ErrorKind} kind @param {string} message the provider's own words, or annai's English for a model and the log
+   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean, provider?: string, said?: Said }} [more]
    *   retryAfter: ms the provider asked to wait; partial: what the reply had already said; noChain: the server ignored the kept turn it was told to continue;
-   *   provider: the provider's name, for the words of a kind that names it (redirect)
+   *   provider: the provider's name, for the words of a kind that names it (redirect); said: what one annai wrote was, as data (saidWords)
    */
   constructor(kind, message, more = {}) {
     super(message, more.cause === undefined ? undefined : { cause: more.cause });
     this.name = /* en */ 'ProviderError';
+    /** What one of annai's own was, which a call's attempt keeps; the screens' words are made from it (the shown rule). */
+    this.said = more.said;
+    this.shown = more.said ? saidWords(more.said, kind, more.provider) : undefined;
     /** @type {ErrorKind} */
     this.kind = kind;
     this.status = more.status;
@@ -165,13 +205,15 @@ export function sameOrigin(endpoint, url) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
-  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
+  const where = want || endpoint.baseUrl || /* en */ '(none)';
+  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${where}. Check its tunables.`,
+    { said: { code: 'origin', name: endpoint.name ?? '', ability: endpoint.ability ?? '', to: got, want: where } });
 }
 
 /** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere (fix pass). @param {Response} res @param {{ name?: string }} endpoint */
 export function noRedirect(res, endpoint) {
   if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
-    throw new ProviderError('redirect', /* en */ `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status, provider: endpoint.name });
+    throw new ProviderError('redirect', /* en */ `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status, provider: endpoint.name, said: { code: 'kind' } });
   }
 }
 

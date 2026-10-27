@@ -26,9 +26,9 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  */
 
 /** A segment nothing could write down (spec §10.3). */
-export const NOT_TRANSCRIBED = '[audio, not transcribed]';
-/** Providers refuse empty text. @param {string} t */
-const said = (t) => t.trim() || '(nothing clear was said)';
+export const NOT_TRANSCRIBED = /* en */ '[audio, not transcribed]';
+/** Providers refuse empty text. @param {string} s */
+const said = (s) => s.trim() || /* en */ '(nothing clear was said)';
 
 /** How much heard sound memory holds, in bytes: about 8 minutes of speech as it is sent. */
 export const HEARD_MAX_BYTES = 16 * 1024 * 1024;
@@ -123,14 +123,14 @@ async function make(kept, format, encoder) {
   kept.pcm ??= pcmOf(/** @type {NonNullable<Kept['audio']>} */ (kept.audio), encoder);
   const { pcm, rate } = await kept.pcm;
   if (format === 'wav') return encodeWav(pcm, rate);
-  if (!encoder) throw new Error(`annai can't make ${format} here.`);
+  if (!encoder) throw new Error(/* en */ `annai can't make ${format} here.`); // caught: the next format is tried
   return encoder.encode(pcm, rate, format);
 }
 
 /** @param {NonNullable<Kept['audio']>} audio @param {Encoder | null | undefined} encoder */
 async function pcmOf(audio, encoder) {
   if (formatOf(audio.mediaType) === 'wav') return pcm16(audio.data);
-  if (!encoder?.decode) throw new Error("This device can't read a kept clip back.");
+  if (!encoder?.decode) throw new Error(/* en */ "This device can't read a kept clip back."); // caught, as make's
   const { pcm, rate } = await encoder.decode(audio.data, audio.mediaType);
   const at = resample(pcm, rate, SEND_RATE);
   return { pcm: Int16Array.from(at, (x) => Math.max(-32768, Math.min(32767, Math.round(x * 32768)))), rate: SEND_RATE };
@@ -216,7 +216,8 @@ async function resolvePart(p, model, c) {
       c.onFail?.(id, e);
     }
   }
-  throw new Error(`nothing in the speech-in list can hear it for ${model.name}`);
+  // What it was goes with it, as data (contract.js's Said): the call's attempt keeps it, and a card makes the screens' words.
+  throw Object.assign(new Error(/* en */ `nothing in the speech-in list can hear it for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
 }
 
 /**

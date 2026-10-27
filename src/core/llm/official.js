@@ -1,5 +1,5 @@
 import { sha256Hex } from '../hash.js';
-import { PluginError, NOT_OWN } from '../registry.js';
+import { PluginError, NOT_OWN, TURN_ON, notOwnShown, turnOnShown } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
@@ -26,9 +26,9 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   try {
     res = await get(`${base}/catalog/plugins.json`, { cache: 'no-cache' });
   } catch {
-    throw new PluginError('catalog', t`annai's list of plugins couldn't be loaded. Check the connection and try again.`);
+    throw new PluginError('catalog', /* en */ "annai's list of plugins couldn't be loaded. Check the connection and try again.", { shown: t`annai's list of plugins couldn't be loaded. Check the connection and try again.` });
   }
-  if (!res.ok) throw new PluginError('catalog', t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`);
+  if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
   const json = await res.json();
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
@@ -48,11 +48,11 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
     try {
       res = await get(url, { cache: 'no-cache' });
     } catch {
-      throw new PluginError(entry.id, t`couldn't be downloaded. Check the connection and try again.`);
+      throw new PluginError(entry.id, /* en */ "couldn't be downloaded. Check the connection and try again.", { shown: t`couldn't be downloaded. Check the connection and try again.` });
     }
-    if (!res.ok) throw new PluginError(entry.id, t`couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`);
+    if (!res.ok) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, t`wasn't installed: ${name} doesn't match annai's catalog`);
+    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`wasn't installed: ${name} doesn't match annai's catalog` });
     files.set(name, bytes);
   }
   return files;
@@ -152,25 +152,32 @@ async function ensureNow(host, kind, type, opts) {
   const entry = (await officialPlugins(opts).catch((e) => { if (theirs) return []; throw e; })).find((p) => p.provides?.[kind]?.includes(type));
   if (!entry && theirs) return;
   if (!entry) {
-    throw new PluginError(type, kind === 'storage-type' ? t`isn't a kind of backup place annai knows. Install a plugin that provides it.`
-      : t`isn't an endpoint type annai knows. Install a plugin that provides it.`);
+    /* en */
+    if (kind === 'storage-type') throw new PluginError(type, "isn't a kind of backup place annai knows. Install a plugin that provides it.", { shown: t`isn't a kind of backup place annai knows. Install a plugin that provides it.` });
+    /* en */
+    throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.", { shown: t`isn't an endpoint type annai knows. Install a plugin that provides it.` });
   }
   const state = (await host.installed())[entry.id];
   // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
-  if (state && state.source !== 'official') throw new PluginError(entry.id, NOT_OWN);
+  if (state && state.source !== 'official') throw new PluginError(entry.id, NOT_OWN, { shown: notOwnShown() });
   // Only files that match the catalog run as an official plugin; anything else, such as a copy a
   // restored backup brought, is fetched again from annai and checked (spec §5.3).
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
     // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
-    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, t`Turn it on in Settings → Plugins, then try again.`));
+    if (!state.enabled && opts.keepOff) {
+      throw new PluginError(entry.id, /* en */ `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`, { shown: sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, turnOnShown()) });
+    }
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {
     await installOfficial(host, entry, opts);
   }
   if (!provided(host.registry, kind).has(type)) {
-    throw new PluginError(entry.id, kind === 'storage-type' ? t`didn't provide a kind of backup place ${type}` : t`didn't provide an endpoint type ${type}`);
+    /* en */
+    if (kind === 'storage-type') throw new PluginError(entry.id, `didn't provide a kind of backup place ${type}`, { shown: t`didn't provide a kind of backup place ${type}` });
+    /* en */
+    throw new PluginError(entry.id, `didn't provide an endpoint type ${type}`, { shown: t`didn't provide an endpoint type ${type}` });
   }
 }
 

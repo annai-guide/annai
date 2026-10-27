@@ -161,7 +161,7 @@ const RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12
 /** AAC-LC frames in ADTS (a 7-byte header each, no checksum); frames that are ADTS already stay. @param {Uint8Array[]} frames @param {{ rate: number, channels: number }} o */
 export function adts(frames, { rate, channels }) {
   const fi = RATES.indexOf(rate);
-  if (fi < 0) throw new Error(`ADTS has no sample rate ${rate}.`);
+  if (fi < 0) /* en */ throw new Error(`ADTS has no sample rate ${rate}.`);
   return cat(frames.flatMap((f) => {
     if (f[0] === 0xff && (f[1] & 0xf6) === 0xf0) return [f];
     const len = f.length + 7;
@@ -179,7 +179,7 @@ export function flacFile(description, frames) {
   const d = description ?? new Uint8Array();
   const at = d.findIndex((_, i) => marker(d, i));
   const head = frames[0] && marker(frames[0], 0) ? [] : at >= 0 ? [d.subarray(at)] : d.length === 34 ? [ascii('fLaC'), Uint8Array.of(0, 0, 0, 34), d] : null;
-  if (!head) throw new Error('The FLAC encoder gave no STREAMINFO.');
+  if (!head) /* en */ throw new Error('The FLAC encoder gave no STREAMINFO.');
   const file = cat([...head, ...frames]);
   for (let i = 4; i + 4 <= file.length && !(file[i] & 0x80);) {
     const next = i + 4 + ((file[i + 1] << 16) | (file[i + 2] << 8) | file[i + 3]);

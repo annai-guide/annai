@@ -39,7 +39,7 @@ export function limitImages(messages, maxCount) {
     parts: m.parts.map((p) => {
       if (p.type !== 'image' || drop <= 0) return p;
       drop--;
-      return { type: /** @type {const} */ ('text'), text: `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') };
+      /* en */ return { type: /** @type {const} */ ('text'), text: `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') };
     }),
   }));
 }

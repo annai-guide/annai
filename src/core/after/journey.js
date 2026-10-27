@@ -141,7 +141,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
   }
   const kept = entries.filter((e) => e.kind !== 'said' || e.text).sort((a, b) => a.at - b.at);
   const times = [...kept.flatMap((e) => ('to' in e ? [e.at, e.to] : [e.at])), ...(points.length ? [points[0].at, points[points.length - 1].at] : [])];
-  return {
+  /* en */ return {
     trip, title: scope?.title ?? String(info.title ?? 'Trip'), tz, info, points, legs, stamps, entries: kept,
     plan: items
       .map(({ slug, item }) => {

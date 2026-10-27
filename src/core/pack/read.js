@@ -123,7 +123,7 @@ export class Pack {
       const d = meters(p, { lat, lng });
       if (d > radius || seen.has(title)) continue;
       seen.add(title);
-      out.push([title, 'wikipedia article', Math.round(d), lat, lng, 'wikipedia', `${short(summary)} https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`.trim()]);
+      /* en */ out.push([title, 'wikipedia article', Math.round(d), lat, lng, 'wikipedia', `${short(summary)} https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`.trim()]);
     }
     return out;
   }

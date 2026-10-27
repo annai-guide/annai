@@ -26,7 +26,7 @@ import { languageSettings, languagesText } from '../languages.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
-  return {
+  /* en */ return {
     trip,
     personalityName,
     personality: (await read(ME, `/personalities/${personalityName}.md`)) || DEFAULT_PERSONALITY,
@@ -63,12 +63,12 @@ function skillIndex(registry) {
 /** The system text: core, personality, a half's own part (Kokoro's, while Shiori is two halves), the languages, then the snapshot. @param {Snapshot} s @param {string} [part] */
 export function systemText(s, part = '') {
   const parts = [CORE, s.personality.trim(), ...(part ? [part] : [])];
-  if (s.languages) parts.push(`# Languages\n${s.languages}`);
-  if (s.profile.trim()) parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
-  if (s.memory.trim()) parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);
-  if (s.skills.length) parts.push(`# Skills (load one with the skill tool)\n${s.skills.map((k) => `${k.name}: ${k.description}`).join('\n')}`);
-  if (s.trip) parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
-  else parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
+  if (s.languages) /* en */ parts.push(`# Languages\n${s.languages}`);
+  if (s.profile.trim()) /* en */ parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
+  if (s.memory.trim()) /* en */ parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);
+  if (s.skills.length) /* en */ parts.push(`# Skills (load one with the skill tool)\n${s.skills.map((k) => `${k.name}: ${k.description}`).join('\n')}`);
+  if (s.trip) /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
+  else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
 }
 
@@ -94,9 +94,9 @@ function localTime(now, timeZone) {
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}, ${timeZone} (${parts.timeZoneName})`;
 }
 
-const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
+/* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
 /** Koe's state, as Kokoro's now block says it (the Koe and Kokoro design). */
-const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the user (use tell_koe)', live: 'talking with the user live (use tell_koe)', down: "can't speak now: talk to the user directly" });
+/* en */ const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the user (use tell_koe)', live: 'talking with the user live (use tell_koe)', down: "can't speak now: talk to the user directly" });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
@@ -105,7 +105,7 @@ const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the use
  *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once; the fix pass)
  */
 export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {
-  const lines = [
+  /* en */ const lines = [
     `time: ${localTime(now, timeZone)}`,
     `place: ${place}`,
     `activity: ${activity}`,
@@ -115,7 +115,7 @@ export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 
     ...(reasons.length ? [`woke for: ${reasons.join('; ')}`] : []),
     ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing']),
   ];
-  return `<now>\n${lines.join('\n')}\n</now>`;
+  /* en */ return `<now>\n${lines.join('\n')}\n</now>`;
 }
 
 /**

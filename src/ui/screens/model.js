@@ -3,7 +3,7 @@ import { modelOf, modelBase, providerOf, endpointOf, updateModel, removeModel, d
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
-import { pricesProblem } from '../../core/llm/cost.js';
+import { pricesShown } from '../../core/llm/cost.js';
 import { numField } from '../format.js';
 import { NotFoundError } from '../../core/workspace.js';
 
@@ -48,7 +48,7 @@ export const fieldSaver = (ctx, id) => async (/** @type {string} */ key, /** @ty
 
 /** The Prices box's value to save: none when it is empty, and refused when something in it isn't a price. @param {any} p */
 export function pricesInto(p) {
-  const wrong = pricesProblem(p);
+  const wrong = pricesShown(p);
   if (wrong) throw new Error(wrong);
   return Object.keys(p).length ? p : null;
 }
