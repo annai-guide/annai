@@ -2084,57 +2084,55 @@ rfzxba	ok	What you say goes to the first of these that can hear it; what she say
 283rev	ok	What you say	你说的话	src/ui/screens/voice.js:175	
 127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	要让你的声音留在手机上，请用键盘上的麦克风键输入：iPhone 和大多数 Android 键盘都能在手机上听写。	src/ui/screens/voice.js:177	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
 bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:178	
-12fg67m	ok	Searching the web	搜索网络	src/ui/screens/welcome.js:23	
-13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:23	
-1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:23	
-1sfqzn2	ok	Get started	开始使用	src/ui/screens/welcome.js:23	
-9dx265	ok	Welcome to annai	欢迎使用 annai	src/ui/screens/welcome.js:23	
-18wuq59	ok	Change	更改	src/ui/screens/welcome.js:43	Note: The welcome's link to Settings → Shiori → Languages, after the screens' language.
-pxr3y5	ok	annai's screens: {0} · {1}	annai 界面语言：{0} · {1}	src/ui/screens/welcome.js:44	{0} = name; {1} = change; Note: {0} is the screens' language by its own name (简体中文), {1} the link 更改; worded as the setting it opens (annai 界面语言).
-1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手机里的免费开源旅行向导。	src/ui/screens/welcome.js:52	
-119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的向导是 Shiori。她和你一起规划旅行，保管你的预订和笔记，在合适的时间和地点提醒你，在路上和你聊天，旅行结束后为你做回顾。	src/ui/screens/welcome.js:53	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每个屏幕的底部：轻点她来说话，或者打字。	src/ui/screens/welcome.js:54	
-1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日语，意思是“引导；带人四处看看”。	src/ui/screens/welcome.js:55	
-u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的向导。她有两个协同工作的分身。	src/ui/screens/welcome.js:62	
-5swud	ok	Koe ({0}, voice)	Koe（{0}，声音）	src/ui/screens/welcome.js:64	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
-qhkarb	ok	talks with you and answers at once.	和你说话，马上回答。	src/ui/screens/welcome.js:64	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
-ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}，心与思考）	src/ui/screens/welcome.js:65	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
-vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	仔细思考并完成工作：规划、搜索、读取你的预订。	src/ui/screens/welcome.js:65	Note: follows Kokoro's name in bold.
-1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	你只需要和 Shiori 说话。Kokoro 工作时，Koe 陪着你，并在 Kokoro 有答案时告诉你。它们之间的交流会显示在对话中；可以在设置 → Shiori 中隐藏。	src/ui/screens/welcome.js:66	
-1px4lo	ok	Plans and bookings.	行程和预订。	src/ui/screens/welcome.js:71	
-syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起按天规划旅行，并添加你的确认信息：PDF、钱包卡券、截图。预订由你来做；annai 从不替你预订。	src/ui/screens/welcome.js:71	
-1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:72	
-pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	开启 GPS 后，annai 会跟随你的位置，在合适的时间和地点提醒你：该出发了、已经到了、快要迟到了。	src/ui/screens/welcome.js:72	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车里或步道上，免提和 Shiori 对话。	src/ui/screens/welcome.js:73	
-sb3fh1	ok	Voice.	语音。	src/ui/screens/welcome.js:73	
-1f1esb6	ok	Offline places.	离线地点。	src/ui/screens/welcome.js:74	
-q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	沿着行程的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南，供没有信号时使用。	src/ui/screens/welcome.js:74	
-1nibb44	ok	Show Shiori what you see, and ask about it.	把你看到的给 Shiori 看，然后问她。	src/ui/screens/welcome.js:75	
-8buk0q	ok	Photos.	照片。	src/ui/screens/welcome.js:75	
-oet5z2	ok	Backups.	备份。	src/ui/screens/welcome.js:76	
-wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	导出一个文件，或自动备份到 GitHub、Forgejo 或 Gitea 服务器、S3 存储桶或 WebDAV 文件夹。	src/ui/screens/welcome.js:76	
-1gocoxs	ok	Plugins and MCP servers.	插件和 MCP 服务器。	src/ui/screens/welcome.js:77	
-rokix6	ok	Skills, tools and screens that others make.	别人制作的技能、工具和界面。	src/ui/screens/welcome.js:77	
-1ab3kpy	ok	Recap and replay.	回顾和回放。	src/ui/screens/welcome.js:78	
-1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅行结束后，有旅行回顾，还能回放路线。	src/ui/screens/welcome.js:78	
-lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai 的设计让你的密钥和数据始终归你所有。下面详细说明怎么做到的，以及它的边界在哪里。	src/ui/screens/welcome.js:80	
-13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	从一开始，Shiori 就能通过免费服务搜索网络。不需要密钥，也不用设置。	src/ui/screens/welcome.js:84	
-1yy7iex	ok	These are on. Untick any you would rather not use.	这些已开启。不想用的可以取消勾选。	src/ui/screens/welcome.js:85	
-10sp6fm	ok	A model set up here, in Safari, stays in Safari.	在这里（Safari 浏览器中）设置的模型只留在 Safari 浏览器中。	src/ui/screens/welcome.js:106	
-1dr4k8j	ok	Connect a model, so Shiori can think.	连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:106	
-uy1icp	ok	Connect a model there, so Shiori can think.	在那里连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:106	
-f7oh8p	ok	You can also install annai as an app from your browser's menu.	你也可以从浏览器菜单把 annai 安装为应用。	src/ui/screens/welcome.js:116	
-u8au6d	ok	First, install annai	首先，安装 annai	src/ui/screens/welcome.js:120	
-fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari 浏览器可能会在 7 天没有访问后清除 annai 保存的内容，而主屏幕上的 App 有自己的数据。请把 annai 添加到主屏幕，并在那里设置你的模型。	src/ui/screens/welcome.js:123	
-1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空间不足时，浏览器可能会清除 annai 保存的内容。安装 annai，保护好你的旅行。	src/ui/screens/welcome.js:124	
-hophvo	ok	Then, in the Home Screen app	然后，在主屏幕上的 App 中	src/ui/screens/welcome.js:129	
-s3y93q	ok	Then	然后	src/ui/screens/welcome.js:129	
-1padbm0	ok	Next	下一步	src/ui/screens/welcome.js:143	
-1hzmxtu	ok	Back	返回	src/ui/screens/welcome.js:144	
-1hpqu3m	ok	Skip	跳过	src/ui/screens/welcome.js:145	
-186hb75	ok	Look around first	先随便看看	src/ui/screens/welcome.js:150	
-zzldle	ok	Set up a model	设置模型	src/ui/screens/welcome.js:151	
-dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:157	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
+12fg67m	ok	Searching the web	搜索网络	src/ui/screens/welcome.js:22	
+13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:22	
+1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:22	
+1sfqzn2	ok	Get started	开始使用	src/ui/screens/welcome.js:22	
+9dx265	ok	Welcome to annai	欢迎使用 annai	src/ui/screens/welcome.js:22	
+1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手机里的免费开源旅行向导。	src/ui/screens/welcome.js:47	
+119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的向导是 Shiori。她和你一起规划旅行，保管你的预订和笔记，在合适的时间和地点提醒你，在路上和你聊天，旅行结束后为你做回顾。	src/ui/screens/welcome.js:48	
+1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每个屏幕的底部：轻点她来说话，或者打字。	src/ui/screens/welcome.js:49	
+1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日语，意思是“引导；带人四处看看”。	src/ui/screens/welcome.js:50	
+u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的向导。她有两个协同工作的分身。	src/ui/screens/welcome.js:58	
+5swud	ok	Koe ({0}, voice)	Koe（{0}，声音）	src/ui/screens/welcome.js:60	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
+qhkarb	ok	talks with you and answers at once.	和你说话，马上回答。	src/ui/screens/welcome.js:60	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
+ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}，心与思考）	src/ui/screens/welcome.js:61	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
+vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	仔细思考并完成工作：规划、搜索、读取你的预订。	src/ui/screens/welcome.js:61	Note: follows Kokoro's name in bold.
+1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	你只需要和 Shiori 说话。Kokoro 工作时，Koe 陪着你，并在 Kokoro 有答案时告诉你。它们之间的交流会显示在对话中；可以在设置 → Shiori 中隐藏。	src/ui/screens/welcome.js:62	
+1px4lo	ok	Plans and bookings.	行程和预订。	src/ui/screens/welcome.js:67	
+syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起按天规划旅行，并添加你的确认信息：PDF、钱包卡券、截图。预订由你来做；annai 从不替你预订。	src/ui/screens/welcome.js:67	
+1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:68	
+pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	开启 GPS 后，annai 会跟随你的位置，在合适的时间和地点提醒你：该出发了、已经到了、快要迟到了。	src/ui/screens/welcome.js:68	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车里或步道上，免提和 Shiori 对话。	src/ui/screens/welcome.js:69	
+sb3fh1	ok	Voice.	语音。	src/ui/screens/welcome.js:69	
+1f1esb6	ok	Offline places.	离线地点。	src/ui/screens/welcome.js:70	
+q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	沿着行程的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南，供没有信号时使用。	src/ui/screens/welcome.js:70	
+1nibb44	ok	Show Shiori what you see, and ask about it.	把你看到的给 Shiori 看，然后问她。	src/ui/screens/welcome.js:71	
+8buk0q	ok	Photos.	照片。	src/ui/screens/welcome.js:71	
+oet5z2	ok	Backups.	备份。	src/ui/screens/welcome.js:72	
+wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	导出一个文件，或自动备份到 GitHub、Forgejo 或 Gitea 服务器、S3 存储桶或 WebDAV 文件夹。	src/ui/screens/welcome.js:72	
+1gocoxs	ok	Plugins and MCP servers.	插件和 MCP 服务器。	src/ui/screens/welcome.js:73	
+rokix6	ok	Skills, tools and screens that others make.	别人制作的技能、工具和界面。	src/ui/screens/welcome.js:73	
+1ab3kpy	ok	Recap and replay.	回顾和回放。	src/ui/screens/welcome.js:74	
+1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅行结束后，有旅行回顾，还能回放路线。	src/ui/screens/welcome.js:74	
+lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai 的设计让你的密钥和数据始终归你所有。下面详细说明怎么做到的，以及它的边界在哪里。	src/ui/screens/welcome.js:76	
+13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	从一开始，Shiori 就能通过免费服务搜索网络。不需要密钥，也不用设置。	src/ui/screens/welcome.js:80	
+1yy7iex	ok	These are on. Untick any you would rather not use.	这些已开启。不想用的可以取消勾选。	src/ui/screens/welcome.js:81	
+10sp6fm	ok	A model set up here, in Safari, stays in Safari.	在这里（Safari 浏览器中）设置的模型只留在 Safari 浏览器中。	src/ui/screens/welcome.js:102	
+1dr4k8j	ok	Connect a model, so Shiori can think.	连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:102	
+uy1icp	ok	Connect a model there, so Shiori can think.	在那里连接一个模型，让 Shiori 能够思考。	src/ui/screens/welcome.js:102	
+f7oh8p	ok	You can also install annai as an app from your browser's menu.	你也可以从浏览器菜单把 annai 安装为应用。	src/ui/screens/welcome.js:112	
+u8au6d	ok	First, install annai	首先，安装 annai	src/ui/screens/welcome.js:116	
+fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari 浏览器可能会在 7 天没有访问后清除 annai 保存的内容，而主屏幕上的 App 有自己的数据。请把 annai 添加到主屏幕，并在那里设置你的模型。	src/ui/screens/welcome.js:119	
+1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空间不足时，浏览器可能会清除 annai 保存的内容。安装 annai，保护好你的旅行。	src/ui/screens/welcome.js:120	
+hophvo	ok	Then, in the Home Screen app	然后，在主屏幕上的 App 中	src/ui/screens/welcome.js:125	
+s3y93q	ok	Then	然后	src/ui/screens/welcome.js:125	
+1padbm0	ok	Next	下一步	src/ui/screens/welcome.js:139	
+1hzmxtu	ok	Back	返回	src/ui/screens/welcome.js:140	
+1hpqu3m	ok	Skip	跳过	src/ui/screens/welcome.js:141	
+186hb75	ok	Look around first	先随便看看	src/ui/screens/welcome.js:146	
+zzldle	ok	Set up a model	设置模型	src/ui/screens/welcome.js:147	
+dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:153	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
 1jrfsn4	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免费搜索会把你的搜索发送给 Exa、Parallel 或 Firecrawl：只发送搜索的词，不发送你的文件或位置。Exa 还会读取其他方式读不了的网页，因此也会收到该网页的地址。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索内容训练模型，所以请不要在搜索中写名字和地址。在它们之后，还有一个始终开启的最后手段，会用同样的词询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有“搜索方式：关闭”能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜索的词会发送给你保留勾选的服务，Exa 还会收到它为她读取的网页地址：不发送你的文件或位置。它们都是可能变化或停止的免费额度，而且 Exa 和 Parallel 可能用搜索训练模型，所以请不要在搜索中写名字和地址。在它们之后，作为最后手段，始终会询问 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有设置 → 工具 → 搜索方式：关闭能停止它。这些都可以在那里更改。	src/ui/search-panel.js:15	
 1fn0bdg	ok	Use	使用	src/ui/search-panel.js:31	
