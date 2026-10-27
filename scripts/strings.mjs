@@ -139,6 +139,21 @@ export const EXTRACTED = [
   'src/core/sun.js',
   'src/core/plan.js',
   'src/core/photos.js',
+  // l10n-L5g: the built-in plugins. Tool descriptions and what tools answer are Shiori's, marked English.
+  'src/plugins/core-schemas/index.js',
+  'src/plugins/core-schemas/schemas.js',
+  'src/plugins/files/index.js',
+  'src/plugins/go/index.js',
+  'src/plugins/mcp/client.js',
+  'src/plugins/mcp/index.js',
+  'src/plugins/places/index.js',
+  'src/plugins/sensors/index.js',
+  'src/plugins/skills/index.js',
+  'src/plugins/voice-browser/capture-worklet.js',
+  'src/plugins/voice-browser/index.js',
+  'src/plugins/voice-browser/player-worklet.js',
+  'src/plugins/web/free.js',
+  'src/plugins/web/index.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];

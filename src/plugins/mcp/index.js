@@ -1,6 +1,6 @@
 import { VERSION } from '../../app/version.js';
 import { McpClient, McpError, mcpToolName, toolOutput } from './client.js';
-import { addressParts, fullAddress, refuseUserinfo } from '../../core/address.js';
+import { addressParts, fullAddress } from '../../core/address.js';
 import { SYS_SETTINGS, ME } from '../../core/scopes.js';
 import { forget } from '../../core/forget.js';
 import { withoutSecrets } from '../../core/agent/net.js';
@@ -10,20 +10,23 @@ import { freePath } from '../../core/photos.js';
 import { readPhotoMeta } from '../../core/photo-meta.js';
 import { fromBase64 } from '../../core/bytes.js';
 import { sha256Hex } from '../../core/hash.js';
+import { t, plural } from '../../core/l10n.js';
+import { num } from '../../core/intl.js';
 
 /**
  * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
  * as mcp_<server>_<tool> (milestone 8c, choice 1), under Settings → Tools with switches, every
  * request in the trace. A server is its file /mcp/<server>.json in sys:settings (name, its address as
  * shown, with any part that may be a key blanked; kind of auth; its tools) and its secret
- * plugin:mcp:<server> (the address's keys, and a token or headers); removing it forgets both.
+ * plugin:mcp:<server> (the address's keys, and a token or headers); removing it forgets both. The screen's words are translated;
+ * Shiori's stay English (localization design, section 7).
  */
 export const manifest = {
   id: 'mcp',
-  name: 'MCP servers',
+  name: t`MCP servers`,
   version: VERSION,
   api: 1,
-  description: 'Tools from MCP servers you add in Settings → Tools.',
+  description: t`Tools from MCP servers you add in Settings → Tools.`,
 };
 
 const DIR = '/mcp/';
@@ -40,19 +43,18 @@ const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
 /** Headers annai sends itself: one of the user's would break its answers, SSE ones first (minors 6). */
 const OWN = ['content-type', 'accept', 'mcp-protocol-version', 'mcp-session-id'];
 
-/** 1st, 2nd, 3rd, 4th, 11th, 21st. @param {number} n */
-const nth = (n) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
-
 /**
  * Refuses a value a web request can't carry in a header (minors 7), in words that say what is wrong:
  * fetch refuses any character past U+00FF, and NUL, CR and LF, and annai would only say it couldn't reach the server.
- * @param {string} value @param {string} what "The token"
+ * @param {string} value @param {string} [header] the header's name; none for the token
  */
-function sendable(value, what) {
+function sendable(value, header) {
   const at = value.search(/[^\x01-\x09\x0b\x0c\x0e-\xff]/);
   if (at < 0) return;
   const code = /** @type {number} */ (value.codePointAt(at)).toString(16).toUpperCase().padStart(4, '0');
-  throw new Error(`${what} has a character a web request can't carry: U+${code}, its ${nth([...value.slice(0, at)].length + 1)}. Copy it again without it.`);
+  const n = num([...value.slice(0, at)].length + 1);
+  throw new Error(header === undefined ? t`The token has a character a web request can't carry: U+${code}, at character ${n}. Copy it again without it.`
+    : t`The header ${header} has a character a web request can't carry: U+${code}, at character ${n}. Copy it again without it.`);
 }
 
 /**
@@ -73,8 +75,9 @@ function checkAddress(url) {
     u = /** @type {any} */ (null);
   }
   const local = u && u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
-  if (!u || (u.protocol !== 'https:' && !local)) throw new Error('The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).');
-  refuseUserinfo(u, ', and put the key in the Token or Headers field');
+  if (!u || (u.protocol !== 'https:' && !local)) throw new Error(t`The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).`);
+  // A name or password in the address would have nowhere safe to be kept.
+  if (u.username || u.password) throw new Error(t`This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.`);
   return u.href;
 }
 
@@ -85,16 +88,16 @@ function readHeaders(text) {
   for (const line of String(text).split(/\r?\n/)) {
     if (!line.trim()) continue;
     const m = HEADER.exec(line.trim());
-    if (!m) throw new Error('Each header is one line: Name: value.');
-    if (OWN.includes(m[1].toLowerCase())) throw new Error(`annai sends ${m[1]} itself, so it can't be one of these headers. Leave that line out.`);
-    sendable(m[2], `The header ${m[1]}`);
+    if (!m) throw new Error(t`Each header is one line: Name: value.`);
+    if (OWN.includes(m[1].toLowerCase())) throw new Error(t`annai sends ${m[1]} itself, so it can't be one of these headers. Leave that line out.`);
+    sendable(m[2], m[1]);
     out[m[1]] = m[2];
   }
   return out;
 }
 
 /** The headers a server's auth sends. @param {Auth | null | undefined} auth */
-const headersOf = (auth) => (auth?.token ? { Authorization: `Bearer ${auth.token}` } : { ...(auth?.headers ?? {}) });
+const headersOf = (auth) => (auth?.token ? { Authorization: /* en */ `Bearer ${auth.token}` } : { ...(auth?.headers ?? {}) });
 
 /** Where a schema's keys are names (of properties, definitions), not keywords. */
 const NAMED = new Set(['properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas']);
@@ -123,6 +126,7 @@ const inputOf = (s) => {
 const DESCRIPTION_MAX = 1024;
 /** A tool's description: what its server says, cut to fit, and where it is from. @param {string} said @param {string} server */
 const describe = (said, server) => {
+  /* en */
   const from = ` (from the MCP server ${server})`;
   const room = DESCRIPTION_MAX - from.length;
   return `${said.length > room ? `${said.slice(0, room - 1).trimEnd()}…` : said}${from}`;
@@ -136,11 +140,11 @@ export async function activate(annai) {
   const servers = new Map();
   /** @type {Set<string>} names being added now: a second add of one waits for nothing and is refused */
   const adding = new Set();
-  /** Words for the user with every secret annai keeps blanked, and the ones being added too. @param {unknown} e @param {string[]} [own] */
-  const words = async (e, own = []) => {
-    let t = String(/** @type {any} */ (e)?.message ?? e);
-    for (const s of own) if (s && s.length >= 4) t = t.split(s).join('«key»');
-    return withoutSecrets(store, t);
+  /** A failure's words, every secret blanked, the ones being added too: Shiori's, or the screen's (shown). @param {unknown} e @param {string[]} [own] @param {boolean} [shown] */
+  const words = async (e, own = [], shown = false) => {
+    let text = String((shown ? /** @type {any} */ (e)?.shown : undefined) ?? /** @type {any} */ (e)?.message ?? e);
+    for (const s of own) if (s && s.length >= 4) text = text.split(s).join(/* en */ '«key»');
+    return withoutSecrets(store, text);
   };
   const fileOf = (/** @type {string} */ name) => `${DIR}${name}.json`;
   /** A server's client: its full address and its auth read from its secret, each time. @param {{ name: string, shown: string }} config */
@@ -150,7 +154,7 @@ export async function activate(annai) {
     auth: async () => headersOf(await annai.secrets.get(config.name)),
   });
   /** @param {string} name */
-  const gone = (name) => new Error(`The MCP server ${name} was removed.`);
+  const gone = (name) => new Error(t`The MCP server ${name} was removed.`);
 
   /** Registers a server's tools, the first 100 (choice 5), replacing what it had. @param {Server} config @param {McpClient} [client] @param {Life} [life] */
   const register = (config, client, life) => {
@@ -167,9 +171,11 @@ export async function activate(annai) {
       const name = mcpToolName(config.name, t.name, taken);
       taken.add(name);
       names.push(name);
+      /* en */
       const said = String(t.description ?? t.title ?? '').trim() || `The tool ${t.name}.`;
       offs.push(annai.tools.register({
-        name, group: `MCP: ${config.name}`,
+        // The group is data: Settings → Tools names it.
+        name, group: /* en */ `MCP: ${config.name}`,
         description: describe(said, config.name),
         input: inputOf(t.inputSchema),
         run: (/** @type {any} */ input, /** @type {any} */ call) => runTool(config.name, String(t.name), input, call),
@@ -185,6 +191,7 @@ export async function activate(annai) {
    */
   const runTool = async (server, tool, input, call) => {
     const s = servers.get(server);
+    /* en */
     if (!s) throw new Error(`The MCP server ${server} was removed.`);
     const stop = call?.signal ?? new AbortController().signal;
     /** @type {any} */
@@ -194,6 +201,7 @@ export async function activate(annai) {
     } catch (e) {
       if (stop.aborted) throw e;
       const name = /** @type {any} */ (e)?.name;
+      /* en */
       if (name === 'TimeoutError' || name === 'AbortError') throw new Error(`The MCP server ${server} didn't answer within ${CALL_MS / 60_000} minutes. Try again later.`);
       if (e instanceof McpError && e.kind === 'server' && /unknown tool/i.test(e.message)) refresh(server).catch(() => {});
       throw new Error(await words(e));
@@ -208,13 +216,16 @@ export async function activate(annai) {
     const sees = !call?.model || call.model.input?.includes('image');
     const images = [];
     for (const im of out.images) {
+      /* en */
       const was = `An image (${im.mediaType}).`;
       try {
         const entry = await keepImage(scope, fromBase64(im.data), im.mediaType, server, tool);
         const shown = `/${scope === ME ? 'me' : 'trip'}${entry.path}`;
+        /* en */
         content = content.replace(was, `An image (${im.mediaType}), kept as ${shown}: show can show it.`);
         if (sees) images.push({ mediaType: im.mediaType, hash: entry.hash, path: shown });
       } catch (e) {
+        /* en */
         content = content.replace(was, `An image (${im.mediaType}), which annai couldn't keep: ${/** @type {any} */ (e)?.message ?? e}`);
       }
     }
@@ -240,14 +251,16 @@ export async function activate(annai) {
     return work;
   };
 
-  /** Asks a server for its tools, within the time limit, in words when it fails. @param {McpClient} client @param {string[]} [own] */
+  /** Asks a server for its tools, within the time limit, in the screen's words when it fails (only the screen asks). @param {McpClient} client @param {string[]} [own] */
   const listTools = async (client, own = []) => {
     try {
       return await client.listTools({ fetch: annai.net.fetch, signal: AbortSignal.timeout(LIST_MS) });
     } catch (e) {
       const name = /** @type {any} */ (e)?.name;
-      if (name === 'TimeoutError' || name === 'AbortError') throw new Error(`The MCP server didn't answer within ${LIST_MS / 1000} seconds. Check that it is running, then try again.`);
-      throw new Error(await words(e, own));
+      if (name === 'TimeoutError' || name === 'AbortError') {
+        throw new Error(plural(LIST_MS / 1000, "The MCP server didn't answer within # second. Check that it is running, then try again.", "The MCP server didn't answer within # seconds. Check that it is running, then try again."));
+      }
+      throw new Error(await words(e, own, true));
     }
   };
 
@@ -261,7 +274,7 @@ export async function activate(annai) {
    */
   const refresh = async (name) => {
     const s = servers.get(name);
-    if (!s) throw new Error(`There is no MCP server called ${name}.`);
+    if (!s) throw new Error(t`There is no MCP server called ${name}.`);
     const { life } = s;
     /** @type {any[]} */
     let tools;
@@ -300,13 +313,13 @@ export async function activate(annai) {
      */
     add: async ({ name, url, token, headers }) => {
       const n = String(name ?? '').trim();
-      if (!NAME.test(n)) throw new Error("A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.");
-      if (servers.has(n) || adding.has(n)) throw new Error(`There is a server called ${n} already.`);
+      if (!NAME.test(n)) throw new Error(t`A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.`);
+      if (servers.has(n) || adding.has(n)) throw new Error(t`There is a server called ${n} already.`);
       const address = checkAddress(url);
       /** @type {Auth | null} */
       let auth = null;
       if (token && String(token).trim()) {
-        sendable(String(token).trim(), 'The token');
+        sendable(String(token).trim());
         auth = { token: String(token).trim() };
       } else if (headers && String(headers).trim()) auth = { headers: readHeaders(String(headers)) };
       // A key in the address goes to secrets with the auth, before any request, so the trace blanks it too.
