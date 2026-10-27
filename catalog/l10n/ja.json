@@ -29,6 +29,10 @@
       "name": "DeepSeek",
       "description": "DeepSeek のモデル。考えている途中の推論を表示します。"
     },
+    "provider-gemini": {
+      "name": "Google Gemini",
+      "description": "Google 独自の API を通じた Gemini のモデル。有料キーでの Google 検索、Google の文字起こしと声、音声会話のための Gemini Live 付き。"
+    },
     "provider-groq": {
       "name": "Groq",
       "description": "高速なオープンモデルと、高速な Whisper の文字起こし。"
