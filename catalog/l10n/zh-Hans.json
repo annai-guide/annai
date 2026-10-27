@@ -17,6 +17,10 @@
       "name": "OpenAI Realtime",
       "description": "连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。"
     },
+    "openai-responses": {
+      "name": "OpenAI Responses",
+      "description": "连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"

@@ -135,7 +135,7 @@
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
       "category": "developer",
       "keywords": [],
@@ -143,7 +143,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 25753,
+      "size": 26417,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -151,8 +151,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "e9283a5785c656df094d84ea6841fa976de869de0a6122fee357ce4c158dc6ac",
-        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01"
+        "annai-plugin.json": "8d79ea8447df6626b08fc6314741d4e0ab275daeacbe9a20e4a18b0d5ba81fbb",
+        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01",
+        "l10n/ja.json": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
+        "l10n/zh-Hans.json": "8f17383d3a6e52efbef502a98b62e42c4ada3057783ad13b3c1b7f678f25bc39"
       }
     },
     {
