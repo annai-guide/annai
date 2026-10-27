@@ -4,7 +4,7 @@ import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
 import { descOrigins, addressShown } from '../core/llm/provider-desc.js';
-import { officialPlugins, makesProvider } from '../core/llm/official.js';
+import { officialPlugins, makesProvider, namesReady, pluginName } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
 import { list, sentences } from './format.js';
@@ -86,7 +86,8 @@ export function setupUi(ctx, pluginId, { added } = {}) {
     keep: async (providerId, key) => {
       const rec = (await ctx.llm.config()).providers[providerId];
       if (!rec) throw new Error(t`That provider no longer exists. Add it again in Settings → Models.`);
-      const mine = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId;
+      await namesReady();
+      const mine = pluginName((await ctx.plugins.installed())[pluginId], pluginId, ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId);
       if (rec.plugin !== pluginId) throw new Error(t`That provider isn't one of ${mine}'s, so it can't keep a key for it.`);
       await setKey(ctx.store, providerId, await take(key));
       await ctx.llm.unbench(providerId);

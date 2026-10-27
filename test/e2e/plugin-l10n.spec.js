@@ -66,6 +66,12 @@ test.describe('on Japanese screens', () => {
     // Its Japanese keywords find it too.
     await page.locator('.finder input[type="search"]').fill('セルフホスト');
     await expect(page.locator('li.card', { hasText: 'SearXNG 検索' })).toBeVisible();
+    // Custom provider's own Add page names it in Japanese too (the ja draft review found its English name there).
+    await waitForServiceWorker(page);
+    await page.locator('.finder input[type="search"]').fill('');
+    await custom.locator('.acts button').click();
+    await expect(page.getByRole('heading', { level: 1, name: 'カスタムプロバイダー' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Custom provider')).toHaveCount(0);
   });
 
   test("OpenRouter's sign-in on Models speaks Japanese (the draft review found it in English)", async ({ page, browserName }) => {

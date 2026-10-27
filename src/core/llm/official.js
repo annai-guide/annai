@@ -30,8 +30,23 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   }
   if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
   const json = await res.json();
+  await namesReady({ fetch: get, base }); // what the catalog's plugins are named on the screens, beside it
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
+
+/** @type {Awaited<ReturnType<typeof catalogWords>>} the catalog's words, once had in this run */
+let names = null;
+/** @type {Promise<unknown> | null} */
+let naming = null;
+/** The catalog's words for officialName, read once a run (tried again while they can't be had). @param {FetchOptions} [opts] */
+export const namesReady = (opts) => (naming ??= catalogWords(opts).then((w) => { names = w; if (!w) naming = null; }));
+/**
+ * An official plugin's name as the screens show it: annai's catalog's translation (decision 10), once read (namesReady, as reading the
+ * catalog does), else its English. Only for annai's own plugins: a third party's name is shown as written. @param {string} id @param {string} name
+ */
+export const officialName = (id, name) => names?.[id]?.name ?? name;
+/** An installed plugin's name as the screens show it: annai's own in their words, any other as written. @param {any} state its record @param {string} id @param {string} name */
+export const pluginName = (state, id, name) => (state?.source === 'official' ? officialName(id, name) : name);
 
 /**
  * The catalog's words for the screens (localization design, section 8): each official plugin's name, description, featured sentence and
