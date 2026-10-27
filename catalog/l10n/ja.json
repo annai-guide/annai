@@ -33,6 +33,15 @@
       "name": "Groq",
       "description": "高速なオープンモデルと、高速な Whisper の文字起こし。"
     },
+    "provider-llamacpp": {
+      "name": "llama.cpp",
+      "description": "自分で動かしている llama.cpp のサーバー（llama-server）、または Unsloth Studio や KoboldCpp などそれを土台にしたサーバーのモデル。クイック判定では思考をオフにします。",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ]
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
