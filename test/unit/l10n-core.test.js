@@ -166,6 +166,8 @@ test("a watch that can't be checked is named briefly: its reminder's first sente
   const emoji = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-3', reminder: `${'a'.repeat(78)}🌊🌊🌊`, why: 'x', message: 'x' }));
   assert.match(emoji, /a{78}🌊…/u);
   assert.doesNotMatch(emoji, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+  const family = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-4', reminder: `${'a'.repeat(78)}👨‍👩‍👧‍👦🇯🇵 and more`, why: 'x', message: 'x' }));
+  assert.match(family, /a{78}👨‍👩‍👧‍👦…/u, 'a family emoji at the cut is kept whole');
 });
 
 test("a wrong passphrase on Import, and an address with a name or password, say so in the screens' words", async () => {
