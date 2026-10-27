@@ -69,3 +69,8 @@ test('a oneOf that validates, not chooses (an entry without a const), stays the 
   assert.equal(formFields(schema)[0].kind, 'text');
   assert.equal(formFields(schema)[0].options, undefined);
 });
+
+test('a oneOf of plain values (not objects) is no choice with words, and never throws', () => {
+  const schema = { type: 'object', properties: { size: { type: 'string', oneOf: ['a', 'b'] }, n: { type: 'string', oneOf: [null, { const: 'x' }] } } };
+  assert.deepEqual(formFields(schema).map((f) => f.kind), ['text', 'text']);
+});
