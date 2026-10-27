@@ -344,6 +344,13 @@ test('a message that names a glossary term in English, whose translation does no
   assert.equal(w('ja', [row('Add to Home Screen', 'ホーム画面へ')]).length, 1);
 });
 
+test('a row a reviewer accepted is not warned about the glossary again: only drafts are (localization L6)', () => {
+  const g = readGlossary(GLOSSARY);
+  const row = (/** @type {string} */ state) => ({ key: 'k', state, en: 'Start a trip', text: '出発を始める', where: '', note: 'Note: 出発 reads better here.', line: 2 });
+  assert.equal(glossaryWarnings(g, 'ja', [row('draft')]).length, 1);
+  assert.equal(glossaryWarnings(g, 'ja', [row('ok')]).length, 0);
+});
+
 test('the check warns, and does not fail, for the glossary', async () => {
   await inCopy(async (dir) => {
     await writeFile(`${dir}/src/g.mjs`, "import { t } from './dom.js';\nexport const x = () => t`Start a trip`;\n");

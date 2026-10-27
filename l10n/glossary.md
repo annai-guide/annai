@@ -51,7 +51,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | card | カード | 卡片 |
 | catalog | カタログ | 目录 |
 | Check this | 要確認 | 请核对 |
-| chip | ボタン | 按钮 |
+| chip | ボタン (the dock's); 絞り込み (the Add screen's filters) | 按钮 (the dock's); 筛选条件 (the Add screen's filters) |
 | dock | ドック | 底栏 |
 | export | エクスポート | 导出 |
 | golden hour | ゴールデンアワー | 黄金时刻 |
