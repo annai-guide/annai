@@ -131,6 +131,10 @@ test('a push it cannot read still shows a notification: Safari takes the subscri
     assert.equal(k.shown[0].title, 'annai');
     assert.equal(k.shown[0].body, 'annai has a reminder for you. Open annai to see it.');
   }
+  // In the screens' language, as the page wrote it in /push.json (localization L5f).
+  const ja = await swKit({ device: { '/push.json': JSON.stringify({ on: true, words: { ...WORDS_JA } }) } });
+  await ja.fire('push', { data: null });
+  assert.equal(ja.shown[0].body, 'annai からリマインダーがあります。annai を開いて見てください。');
 });
 
 test("tapping it opens annai, after writing the tap down, so a launch that ignores the URL still catches up (spec §11.6)", async () => {
@@ -169,22 +173,34 @@ test("an open annai that can't be brought forward (focus refused): annai is open
   assert.deepEqual(k.opened, ['/']);
 });
 
-// The emulator pass (m6 #11): a "coming up" push held by the phone came 4 minutes late, still saying "In 15 min".
-test('a "coming up" reminder says the minutes left when it shows, counted from the start it carries', async () => {
-  const k = await swKit();
+// The emulator pass (m6 #11): a "coming up" push held by the phone came 4 minutes late, still saying "In 15 min". The minutes are
+// counted from the start it carries, and said in the words the page wrote in /push.json, never matched in the English (localization L5f).
+const WORDS_EN = { lang: 'en', fallback: 'annai has a reminder for you. Open annai to see it.', soon: 'In {0} min: {1}.', now: 'Now: {1}.', ago: 'Started {0} min ago: {1}.' };
+const WORDS_JA = { lang: 'ja', fallback: 'annai からリマインダーがあります。annai を開いて見てください。', soon: 'あと{0}分：{1}', now: '今：{1}', ago: '{0}分前に始まりました：{1}' };
+test('a "coming up" reminder says the minutes left when it shows, counted from the start it carries, in the screens\' words', async () => {
+  const k = await swKit({ device: { '/push.json': JSON.stringify({ on: true, words: WORDS_EN }) } });
   const start = Date.now() + 11 * 60_000 + 20_000;
-  const coming = { ...REMINDER, key: 'trip-1|plan:call:coming-up|1', watch: 'plan:call:coming-up', body: 'In 15 min: Call home at 05:35.', start };
+  const coming = { ...REMINDER, key: 'trip-1|plan:call:coming-up|1', watch: 'plan:call:coming-up', body: 'In 15 min: Call home at 05:35.', start, what: 'Call home at 05:35' };
   await k.fire('push', { data: { json: () => coming } });
   assert.equal(k.shown[0].body, 'In 11 min: Call home at 05:35.');
   await k.fire('push', { data: { json: () => ({ ...coming, start: Date.now() + 20_000 }) } });
   assert.equal(k.shown[1].body, 'Now: Call home at 05:35.');
   await k.fire('push', { data: { json: () => ({ ...coming, start: Date.now() - 9 * 60_000 }) } });
   assert.equal(k.shown[2].body, 'Started 9 min ago: Call home at 05:35.');
-  // Without a start, or with other words, the words stay as they came.
+  // Without a start, or without its item apart, the words stay as they came; an item's "$&" is its own text.
   await k.fire('push', { data: { json: () => ({ ...coming, start: undefined }) } });
   assert.equal(k.shown[3].body, 'In 15 min: Call home at 05:35.');
   await k.fire('push', { data: { json: () => ({ ...REMINDER, start }) } });
   assert.equal(k.shown[4].body, 'Tea time.');
+  await k.fire('push', { data: { json: () => ({ ...coming, what: 'Tea $& cake' }) } });
+  assert.equal(k.shown[5].body, 'In 11 min: Tea $& cake.');
+  // Japanese screens: Japanese words around the item; a page that wrote no words yet: the words as they came.
+  const ja = await swKit({ device: { '/push.json': JSON.stringify({ on: true, words: WORDS_JA }) } });
+  await ja.fire('push', { data: { json: () => coming } });
+  assert.equal(ja.shown[0].body, 'あと11分：Call home at 05:35');
+  const none = await swKit({ device: { '/push.json': JSON.stringify({ on: true }) } });
+  await none.fire('push', { data: { json: () => coming } });
+  assert.equal(none.shown[0].body, 'In 15 min: Call home at 05:35.');
 });
 
 // The emulator pass: a reminder annai had already given in its catch-up, held back by the phone, popped up 6 minutes later.

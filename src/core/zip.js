@@ -7,6 +7,7 @@ const CENTRAL = 0x02014b50;
 const END = 0x06054b50;
 const UTF8_FLAG = 0x0800;
 
+/** What is wrong with a zip, in a developer's English: the detail in annai's own message, and what Shiori reads of a Wallet pass. */
 export class ZipError extends Error {
   /** @param {string} message */
   constructor(message) {

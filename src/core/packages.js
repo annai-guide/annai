@@ -8,6 +8,8 @@ import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FI
 import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
 import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
+import { t } from './l10n.js';
+import { size, sentences } from './intl.js';
 
 /**
  * A package as annai reads it before installing (spec §5.2): a folder, zip or address holding
@@ -62,27 +64,30 @@ export const PLUGIN_MANIFEST_SCHEMA = {
   },
 };
 
-/** @param {any} manifest */
+/**
+ * What is wrong with a manifest, for the plugin's developer: in English, as schema errors are (localization design, section 1).
+ * @param {any} manifest
+ */
 export function checkManifest(manifest) {
   const id = typeof manifest?.id === 'string' ? manifest.id : 'plugin';
   const errors = validate(PLUGIN_MANIFEST_SCHEMA, manifest);
-  if (errors.length) throw new PluginError(id, `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
+  if (errors.length) throw new PluginError(id, /* en */ `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
   if (manifest.api !== API_VERSION) {
-    throw new PluginError(id, `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
+    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
   }
   if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
-    throw new PluginError(id, `its entry "${manifest.entry}" isn't a file inside the plugin`);
+    throw new PluginError(id, /* en */ `its entry "${manifest.entry}" isn't a file inside the plugin`);
   }
-  if (manifest.templates !== undefined) throw new PluginError(id, 'Endpoint templates were replaced by `provider` (see docs/plugins.md)');
-  if (manifest.requires?.some((/** @type {any} */ r) => r?.id === id)) throw new PluginError(id, 'requires itself: take its own id out of requires');
+  if (manifest.templates !== undefined) throw new PluginError(id, /* en */ 'Endpoint templates were replaced by `provider` (see docs/plugins.md)');
+  if (manifest.requires?.some((/** @type {any} */ r) => r?.id === id)) throw new PluginError(id, /* en */ 'requires itself: take its own id out of requires');
   if (manifest.provider !== undefined) {
     const wrong = checkProviderDesc(manifest.provider);
-    if (wrong.length) throw new PluginError(id, `its provider isn't valid: ${wrong.join('; ')}`);
+    if (wrong.length) throw new PluginError(id, /* en */ `its provider isn't valid: ${wrong.join('; ')}`);
   }
   if (manifest.search !== undefined) {
     const wrong = checkSearchDesc(manifest.search, manifest);
-    if (wrong.length) throw new PluginError(id, `its search isn't valid: ${wrong.join('; ')}`);
-    if (manifest.entry === undefined) throw new PluginError(id, 'describes a search provider but has no entry: a search provider is code that registers itself');
+    if (wrong.length) throw new PluginError(id, /* en */ `its search isn't valid: ${wrong.join('; ')}`);
+    if (manifest.entry === undefined) throw new PluginError(id, /* en */ 'describes a search provider but has no entry: a search provider is code that registers itself');
   }
 }
 
@@ -109,12 +114,12 @@ export function checkSearchDesc(search, manifest) {
   for (const o of search.origins) {
     try {
       const u = new URL(o);
-      if (u.protocol !== 'https:' || u.origin !== o) errors.push(`$.origins: ${o} must be an https origin: the scheme and host, nothing after`);
+      if (u.protocol !== 'https:' || u.origin !== o) errors.push(/* en */ `$.origins: ${o} must be an https origin: the scheme and host, nothing after`);
     } catch {
-      errors.push(`$.origins: ${o} isn't an address`);
+      errors.push(/* en */ `$.origins: ${o} isn't an address`);
     }
   }
-  if (search.key && manifest.settings?.properties?.[search.key.setting]?.writeOnly !== true) errors.push(`$.key.setting: ${search.key.setting} must be a writeOnly setting of the plugin`);
+  if (search.key && manifest.settings?.properties?.[search.key.setting]?.writeOnly !== true) errors.push(/* en */ `$.key.setting: ${search.key.setting} must be a writeOnly setting of the plugin`);
   return errors;
 }
 
@@ -157,7 +162,7 @@ export function insidePlugin(rel) {
 export function isJunk(name) {
   if (name.endsWith('/')) return true;
   const parts = name.split('/');
-  return parts.includes('__MACOSX') || ['.DS_Store', 'Thumbs.db', 'desktop.ini'].includes(parts[parts.length - 1]);
+  return parts.includes('__MACOSX') || /* en */ ['.DS_Store', 'Thumbs.db', 'desktop.ini'].includes(parts[parts.length - 1]);
 }
 
 /** The SHA-256 of every file and its name: two packages with the same files have the same one. @param {Map<string, Uint8Array>} files */
@@ -185,9 +190,6 @@ function rootOf(names, file) {
   return names.includes(`${top}/${file}`) ? `${top}/` : null;
 }
 
-/** @param {number} n */
-const sizeWords = (n) => (n >= 1048576 ? `${Math.floor(n / 1048576)} MB` : `${n} bytes`);
-
 /**
  * Reads a package from its files (e.g. an unzipped one) and checks everything a later step needs:
  * the manifest or the skill, the files it names, its skills, personalities and provider description.
@@ -208,20 +210,24 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       const [plugin] = deep(MANIFEST_FILE);
       const skills = deep(SKILL_FILE);
       if (!plugin && skills.length > 1) {
-        throw new PluginError('skill', 'this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.');
+        throw new PluginError('skill', t`this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.`);
       }
       const file = plugin ? MANIFEST_FILE : SKILL_FILE;
       const at = plugin ?? skills[0];
-      const why = at?.split('/').length > 2 ? 'nested too deep' : 'beside other files';
-      if (at) throw new PluginError(plugin ? 'plugin' : 'skill', `its ${file} is in ${at.slice(0, -file.length)}, ${why}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`);
-      throw new PluginError('plugin', `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`);
+      const folder = at?.slice(0, -file.length);
+      if (at) {
+        throw new PluginError(plugin ? 'plugin' : 'skill', at.split('/').length > 2
+          ? t`its ${file} is in ${folder}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`
+          : t`its ${file} is in ${folder}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`);
+      }
+      throw new PluginError('plugin', t`there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`);
     }
   }
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   for (const [n, b] of all) if (n.startsWith(root)) files.set(n.slice(root.length), b);
   const checkNames = (/** @type {string} */ id) => {
-    let size = 0;
+    let total = 0;
     for (const [name, b] of files) {
       let ok = false;
       try {
@@ -229,10 +235,10 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       } catch {
         ok = false;
       }
-      if (!ok) throw new PluginError(id, `the file name "${name}" isn't allowed`);
-      size += b.byteLength;
+      if (!ok) throw new PluginError(id, /* en */ `the file name "${name}" isn't allowed`);
+      total += b.byteLength;
     }
-    if (size > maxBytes) throw new PluginError(id, `is too large: it unpacks to more than ${sizeWords(maxBytes)}`);
+    if (total > maxBytes) throw new PluginError(id, t`is too large: it unpacks to more than ${size(maxBytes)}`);
   };
   return kind === 'skill' ? skillPackage(files, checkNames) : pluginPackage(files, checkNames);
 }
@@ -246,7 +252,7 @@ async function skillPackage(files, checkNames) {
   } catch (e) {
     throw new PluginError('skill', e instanceof SkillError ? e.message : String(e));
   }
-  if (skill.name.length < 2) throw new PluginError('skill', `A skill's name needs at least 2 characters to install: ${skill.name}`);
+  if (skill.name.length < 2) throw new PluginError('skill', /* en */ `A skill's name needs at least 2 characters to install: ${skill.name}`);
   checkNames(skill.name);
   const manifest = skillManifest(skill);
   return {
@@ -264,39 +270,39 @@ async function pluginPackage(files, checkNames) {
   try {
     manifest = JSON.parse(text(/** @type {Uint8Array} */ (files.get(MANIFEST_FILE))));
   } catch {
-    throw new PluginError('plugin', `its ${MANIFEST_FILE} is not valid JSON`);
+    throw new PluginError('plugin', /* en */ `its ${MANIFEST_FILE} is not valid JSON`);
   }
   checkManifest(manifest);
   const id = manifest.id;
-  if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, `its entry file ${manifest.entry} is missing`);
+  if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, /* en */ `its entry file ${manifest.entry} is missing`);
   checkNames(id);
-  for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, `its file ${f}, listed in files, is missing`);
+  for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, /* en */ `its file ${f}, listed in files, is missing`);
   const props = manifest.settings?.properties;
-  if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, 'its settings must be a JSON Schema object with properties');
+  if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, /* en */ 'its settings must be a JSON Schema object with properties');
   /** @type {SkillInfo[]} */
   const skills = [];
   for (const f of manifest.skills ?? []) {
     const folder = f === '.' ? '' : f.replace(/\/+$/, '');
-    if (folder && !insidePlugin(folder)) throw new PluginError(id, `its skill folder ${f} isn't a folder inside the package`);
+    if (folder && !insidePlugin(folder)) throw new PluginError(id, /* en */ `its skill folder ${f} isn't a folder inside the package`);
     const path = folder ? `${folder}/${SKILL_FILE}` : SKILL_FILE;
     const bytes = files.get(path);
-    if (!bytes) throw new PluginError(id, `its skill folder ${f} has no ${SKILL_FILE}`);
+    if (!bytes) throw new PluginError(id, /* en */ `its skill folder ${f} has no ${SKILL_FILE}`);
     /** @type {Skill} */
     let s;
     try {
       s = parseSkill(text(bytes));
     } catch (e) {
-      throw new PluginError(id, `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
+      throw new PluginError(id, /* en */ `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
     }
-    if (skills.some((x) => x.name === s.name)) throw new PluginError(id, `it has two skills called ${s.name}`);
+    if (skills.some((x) => x.name === s.name)) throw new PluginError(id, /* en */ `it has two skills called ${s.name}`);
     skills.push({ name: s.name, description: s.description, folder });
   }
   /** @type {{ name: string, path: string }[]} */
   const personalities = [];
   for (const p of manifest.personalities ?? []) {
-    if (!p.endsWith('.md') || !files.has(p)) throw new PluginError(id, `its personality ${p} must be a .md file in the package`);
+    if (!p.endsWith('.md') || !files.has(p)) throw new PluginError(id, /* en */ `its personality ${p} must be a .md file in the package`);
     const name = p.split('/').pop().slice(0, -3);
-    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new PluginError(id, `its personality's file name ${p} must be lowercase letters, digits and dashes, like ranger.md`);
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new PluginError(id, /* en */ `its personality's file name ${p} must be lowercase letters, digits and dashes, like ranger.md`);
     personalities.push({ name, path: p });
   }
   return {
@@ -312,7 +318,7 @@ async function pluginPackage(files, checkNames) {
 export const ADDRESS_MAX_FILES = 200;
 /** The most files a SKILL.md's links bring along from an address. */
 export const SKILL_MAX_LINKS = 50;
-const NOT_AN_ADDRESS = "That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.";
+const NOT_AN_ADDRESS = t`That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.`;
 
 /** A GitHub page's address as GitHub's raw files serve it, which web apps may read; any other as it is. @param {string} address */
 export function rawAddress(address) {
@@ -345,7 +351,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
   refuseUserinfo(url);
   // github.com's pages can't be read by web apps; its raw files can (minors 19).
-  const hint = url.hostname === 'github.com' ? ' For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.' : '';
+  const hint = url.hostname === 'github.com' ? t`For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.` : '';
   let used = 0;
   const download = async (/** @type {URL} */ u) => {
     /** @type {Response} */
@@ -354,7 +360,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new Error(`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.${hint}`);
+      throw new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint));
     }
     const bytes = await answerBytes(res, u.host, max - used);
     used += bytes.byteLength;
@@ -365,7 +371,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     try {
       return await readZip(first, { maxTotal: max });
     } catch (e) {
-      throw new Error(`${url.host} sent a zip annai can't open: ${/** @type {any} */ (e)?.message ?? e}`);
+      // What is wrong with the zip is a developer's detail, in English (zip.js).
+      throw new Error(t`${url.host} sent a zip annai can't open: ${/** @type {any} */ (e)?.message ?? e}`);
     }
   }
   const body = text(first).replace(/^﻿/, '');
@@ -381,7 +388,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     const u = new URL(name, base);
     return u.origin === home.origin && u.pathname.startsWith(home.pathname) ? u : null;
   };
-  const tooMany = () => new Error(`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
+  const tooMany = () => new Error(t`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   /** The files a SKILL.md links to, in its folder; one that can't be downloaded is left out. @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
@@ -427,7 +434,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     const at = new Map();
     for (const name of names) {
       const u = fileUrl(name);
-      if (!u) throw new Error(`The file name "${name}" isn't allowed.`);
+      if (!u) throw new Error(/* en */ `The file name "${name}" isn't allowed.`);
       at.set(name, u);
     }
     for (const [name, u] of at) {
@@ -436,7 +443,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       } catch (e) {
         // Which file the site lacks (minors 21).
         const status = /** @type {any} */ (e)?.status;
-        throw status ? new Error(`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
+        throw status ? new Error(t`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
       }
     }
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));
@@ -447,7 +454,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     await linked('', first);
     return files;
   }
-  throw new Error(`There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.${hint}`);
+  throw new Error(sentences(t`There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.`, hint));
 }
 
 /** The manifest an address holds: a path ending in annai-plugin.json, or a JSON object with an api. @param {URL} url @param {string} body */
@@ -457,7 +464,7 @@ function asManifest(url, body) {
     const json = JSON.parse(body);
     if (json && typeof json === 'object' && !Array.isArray(json) && ('api' in json || url.pathname.endsWith(`/${MANIFEST_FILE}`))) return json;
   } catch {
-    if (url.pathname.endsWith(`/${MANIFEST_FILE}`)) throw new Error(`The ${MANIFEST_FILE} at ${url.host} isn't valid JSON.`);
+    if (url.pathname.endsWith(`/${MANIFEST_FILE}`)) throw new Error(t`The ${MANIFEST_FILE} at ${url.host} isn't valid JSON.`);
   }
   return null;
 }
@@ -495,9 +502,9 @@ export function agreedTo(agreed, added) {
     && (added.origins ?? []).every((o) => (agreed.origins ?? []).includes(o));
 }
 
-/** What was added, in words. @param {Added} a */
+/** What was added, in words, for package-updates.js's sentence (its words are made in English there). @param {Added} a */
 export function addedWords(a) {
-  return [
+  return /* en */ [
     ...(a.code ? ['code that runs in annai'] : []),
     ...a.skills.map((s) => `the skill ${s.name}`),
     ...a.personalities.map((p) => `the personality ${p.name}`),

@@ -11,9 +11,11 @@ import { NotFoundError } from './workspace.js';
  * @typedef {{ id: string, at: number, device?: string, label?: string, encrypted?: boolean }} RemoteBackup
  *   a backup at a place: its id there, when it was made, and the device that made it, when known
  * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean, known?: Record<string, number> } | { kind: 'large', bytes: number, at: number }
- *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean }} Hold
+ *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean, said?: import('./backup.js').Said, offline?: boolean }} Hold
  *   why automatic backups to a place wait: a backup there this device hasn't taken in; an upload too
- *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it).
+ *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it). A failure's message
+ *   is the log's English, or a place's or plugin's own words; said: what one of annai's own was, which the screens' words are
+ *   made from (backup.js holdWords); offline: this device was offline, and annai tries again once it's back.
  *   seen: the user found the newer backup themselves, testing the place on its screen; known: as LastBackup's, what
  *   "Back up over it" covers
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number, known?: Record<string, number> }} LastBackup

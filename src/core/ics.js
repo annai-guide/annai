@@ -1,4 +1,6 @@
 import { validZone, instantOf, isoInZone, dayIn } from './time.js';
+import { t } from './l10n.js';
+import { num } from './intl.js';
 
 /**
  * Calendar files (spec §8): importing .ics creates plan items, and the plan exports as .ics.
@@ -62,7 +64,7 @@ function timeOf(line, defaultTz, zones) {
   if (named && !z) {
     const mapped = validZone(named) ? named : zones.get(named);
     if (mapped && validZone(mapped)) tz = mapped;
-    else note = `The calendar's time zone "${named}" isn't one annai knows, so ${defaultTz} was used.`;
+    else note = /* en */ `The calendar's time zone "${named}" isn't one annai knows, so ${defaultTz} was used.`;
   }
   const at = z ? Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second) : instantOf(w, tz);
   return { time: { at: isoInZone(at, tz), tz, ...(allDay ? { allDay: true } : {}) }, note };
@@ -110,7 +112,7 @@ export function parseIcs(text, { defaultTz }) {
         const { status, duration, ...done } = ev;
         if (!done.end && done.start && duration !== null) done.end = { at: isoInZone(Date.parse(done.start.at) + duration, done.start.tz), tz: done.start.tz };
         if (status !== 'CANCELLED') out.push(done);
-        if (out.length > MAX_EVENTS) throw new Error(`This calendar has more than ${MAX_EVENTS} events. Export only the trip's dates from your calendar, and add that file.`);
+        if (out.length > MAX_EVENTS) throw new Error(t`This calendar has more than ${num(MAX_EVENTS)} events. Export only the trip's dates from your calendar, and add that file.`);
         ev = null;
       }
       continue;
@@ -154,14 +156,15 @@ export function planItems(events) {
     const key = e.uid || `${e.summary}|${e.start?.at ?? i}`;
     const slug = key.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'event';
     const id = `ics-${slug}-${fnv(key)}`;
-    const notes = [e.description, ...(e.repeats ? ['This repeats in the calendar; only its first time is here.'] : []), ...e.notes].filter(Boolean).join('\n\n');
+    // What annai adds to an item is written in English: the plan is the trip's, kept, backed up and read by Shiori as written.
+    const notes = [e.description, ...(e.repeats ? [/* en */ 'This repeats in the calendar; only its first time is here.'] : []), ...e.notes].filter(Boolean).join('\n\n');
     /** @type {Record<string, any>} */
-    const item = { id, title: e.summary.trim() || 'Untitled event', kind: e.start?.allDay ? 'all-day' : 'event', fixed: true };
+    const item = { id, title: e.summary.trim() || /* en */ 'Untitled event', kind: e.start?.allDay ? 'all-day' : 'event', fixed: true };
     if (e.start) item.start = { at: e.start.at, tz: e.start.tz };
     if (e.end) item.end = { at: e.end.at, tz: e.end.tz };
-    if (e.location || e.geo) item.place = { name: e.location || 'Location', ...(e.geo ?? {}) };
+    if (e.location || e.geo) item.place = { name: e.location || /* en */ 'Location', ...(e.geo ?? {}) };
     if (notes) item.notes = notes;
-    return { path: `/plan/${id}.json`, item };
+    return { path: /* en */ `/plan/${id}.json`, item };
   });
 }
 
@@ -204,7 +207,7 @@ export function planToIcs(items, { name, tripId, now }) {
       left++;
       continue;
     }
-    lines.push('BEGIN:VEVENT', `UID:${escapeText(`${String(it.id ?? '')}.${tripId}`)}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
+    lines.push('BEGIN:VEVENT', /* en */ `UID:${escapeText(`${String(it.id ?? '')}.${tripId}`)}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
     if (it.kind === 'all-day') {
       const day = (/** @type {any} */ t) => String(dayIn(t.at, validZone(t.tz) ? t.tz : 'UTC')).replace(/-/g, '');
       lines.push(`DTSTART;VALUE=DATE:${day(it.start)}`);

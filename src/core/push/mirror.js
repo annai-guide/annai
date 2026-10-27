@@ -2,10 +2,12 @@ import { SYS_DEVICE, ensureDeviceScope, ME } from '../scopes.js';
 import { logEvent } from '../events.js';
 import { utf8, toBase64Url, hex, ownBuffer } from '../bytes.js';
 import { encryptPush } from './webpush.js';
-import { relayClient, relayAddress, RelayError, DEFAULT_RELAY, ADDRESS } from './relay-client.js';
+import { relayClient, relayAddress, relayWords, RelayError, DEFAULT_RELAY, ADDRESS } from './relay-client.js';
 import { tracedFetch, withoutSecrets } from '../agent/net.js';
 import { forget } from '../forget.js';
 import { realClock } from '../live/clock.js';
+import { t, lang } from '../l10n.js';
+import { sentences } from '../intl.js';
 
 /**
  * Reminders for a closed annai (spec §11.6): while notifications are on, the time reminders live
@@ -24,9 +26,16 @@ import { realClock } from '../live/clock.js';
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, sending?: boolean }} Item
  *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
  * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
+ * @typedef {{ message: string, at: number, needsYou: boolean, said?: import('./relay-client.js').Said, again?: boolean }} Problem
+ *   message: in English, for the log; said: what it was, as data, which the screen's words are made from (one kept before said
+ *   is shown as it was written, in English); again: annai tries again by itself
+ * @typedef {{ lang: string, fallback: string, soon: string, now: string, ago: string }} Words
+ *   the words sw.js shows a reminder with, in the screens' language: a reminder it can't read, and a "coming up" with the minutes
+ *   left ({0}) and the item ({1})
  * @typedef {{ on: boolean, relay: string, key: string | null, endpoint: string | null, hello: { endpoint: string, relay: string, at: number } | null,
- *   items: Record<string, Item>, cancels: Cancel[], problem: { message: string, at: number, needsYou: boolean } | null, given: Record<string, number> }} State
- *   given: the reminders annai gave itself, by key, with when, for GIVEN_MS: a push for one the phone held back comes quietly (sw.js)
+ *   items: Record<string, Item>, cancels: Cancel[], problem: Problem | null, given: Record<string, number>, words?: Words }} State
+ *   given: the reminders annai gave itself, by key, with when, for GIVEN_MS: a push for one the phone held back comes quietly (sw.js);
+ *   words: written while notifications are on (this device's own scope never travels in a backup)
  * @typedef {{ id: string, relay: string, sendAt: number }} Cancel  a reminder to call off at a relay; sendAt: when that relay would send it
  *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint, through that relay
  */
@@ -61,10 +70,24 @@ const GIVEN_MS = 2 * 3_600_000;
 const SOON_MS = 500;
 /** …and this long when only times may have moved (a new fix, each second while driving): one sync at most so often. */
 export const CALM_MS = 30_000;
-const HELLO = 'Notifications are on. Reminders come like this while annai is closed.';
-const AGAIN = 'Notifications are on again: reminders come like this while annai is closed.';
-const NO_CONNECTION = "This phone has no connection: annai sends its reminders to the relay once it's back.";
-const OFF_BY_PHONE = "The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. In Settings → Notifications, tap Turn on notifications.";
+/** Notifications the phone shows are in the screens' language, made as they are sent (localization design, section 7). */
+const hello = () => t`Notifications are on. Reminders come like this while annai is closed.`;
+const helloAgain = () => t`Notifications are on again: reminders come like this while annai is closed.`;
+/** @type {import('./relay-client.js').Said} */
+const NO_CONNECTION = { code: 'offline', why: 'connection' };
+const offByPhone = () => new RelayError({ code: 'refused', why: 'off', en: /* en */ "The phone's notifications for annai are off." });
+
+/** The words sw.js needs, in the screens' language; {0} and {1} stay for it to fill. @returns {Words} */
+export const pushWords = () => ({
+  lang: lang(), fallback: t`annai has a reminder for you. Open annai to see it.`,
+  soon: t`In ${'{0}'} min: ${'{1}'}.`, now: t`Now: ${'{1}'}.`, ago: t`Started ${'{0}'} min ago: ${'{1}'}.`,
+});
+
+/** A problem kept, in the screens' words: made from what it was, or as written when it was kept before that. @param {Problem} p */
+export function problemWords(p) {
+  if (!p.said) return p.message;
+  return p.again ? sentences(relayWords(p.said), t`annai tries again by itself.`) : relayWords(p.said);
+}
 
 /**
  * Whether a reminder's time moved enough to move it at the relay (choice 2): 5 minutes earlier (a
@@ -120,8 +143,8 @@ export async function subscriptionName(endpoint) {
  */
 function turnOnError(e) {
   if (!(e instanceof RelayError)) return e;
-  const next = e.passing ? 'check the connection, then tap Turn on notifications again.' : 'tap Turn on notifications again once that is fixed.';
-  return new RelayError(`${e.message.replace(/\s+$/, '')} Nothing was turned on: ${next}`, { code: e.code, status: e.status, retryAfter: e.retryAfter });
+  e.message = sentences(e.message, e.passing ? t`Nothing was turned on: check the connection, then tap Turn on notifications again.` : t`Nothing was turned on: tap Turn on notifications again once that is fixed.`);
+  return e;
 }
 
 /** @param {number} n */
@@ -148,8 +171,12 @@ function stateOf(v) {
     cancels: Array.isArray(o.cancels)
       ? o.cancels.filter((/** @type {any} */ c) => c && typeof c.id === 'string' && typeof c.relay === 'string').map((/** @type {any} */ c) => ({ id: c.id, relay: c.relay, sendAt: Number(c.sendAt) || 0 }))
       : [],
-    problem: o.problem && typeof o.problem.message === 'string' ? { message: o.problem.message, at: Number(o.problem.at) || 0, needsYou: o.problem.needsYou === true } : null,
+    problem: o.problem && typeof o.problem.message === 'string' ? {
+      message: o.problem.message, at: Number(o.problem.at) || 0, needsYou: o.problem.needsYou === true,
+      ...(o.problem.said && typeof o.problem.said.code === 'string' ? { said: o.problem.said } : {}), ...(o.problem.again === true ? { again: true } : {}),
+    } : null,
     given: o.given && typeof o.given === 'object' && !Array.isArray(o.given) ? Object.fromEntries(Object.entries(o.given).filter(([, t]) => Number.isFinite(t))) : {},
+    ...(o.words && typeof o.words === 'object' ? { words: o.words } : {}),
   };
 }
 
@@ -190,7 +217,7 @@ export class PushMirror {
     this.clock = clock;
     this.notice = notice;
     this.online = online;
-    this.fetch = fetch ?? tracedFetch(store, SYS_DEVICE, { tool: 'push relay' });
+    this.fetch = fetch ?? tracedFetch(store, SYS_DEVICE, { tool: /* en */ 'push relay' });
   }
 
   /** Follows live mode, and brings the relay into step. */
@@ -223,11 +250,12 @@ export class PushMirror {
     } while (t !== this.#turn);
   }
 
-  /** How things stand, for the Notifications screen. */
+  /** How things stand, for the Notifications screen: a problem in its words, marked English when it was kept as English words. */
   async status() {
     const st = await this.#read();
+    const p = st.problem;
     return {
-      on: st.on, relay: st.relay, problem: st.problem,
+      on: st.on, relay: st.relay, problem: p && { needsYou: p.needsYou, at: p.at, message: problemWords(p), ...(p.said ? {} : { lang: 'en' }) },
       waiting: Object.values(st.items).filter((i) => !i.sending).length,
       supported: this.source.supported(), permission: this.source.permission(),
     };
@@ -266,7 +294,7 @@ export class PushMirror {
     st.key = key;
     st.endpoint = sub.endpoint;
     st.problem = null;
-    if (!greeted(st, sub)) await this.#hello(st, sub, HELLO);
+    if (!greeted(st, sub)) await this.#hello(st, sub, hello());
     await this.#save(st, tokens);
     this.#tell();
   }
@@ -312,11 +340,11 @@ export class PushMirror {
   test() {
     return this.#run(async () => {
       const st = await this.#read();
-      if (!st.on || !st.key) throw new Error('Turn notifications on first.');
+      if (!st.on || !st.key) throw new Error(t`Turn notifications on first.`);
       const sub = await this.source.get();
-      if (!sub) throw new Error(OFF_BY_PHONE);
+      if (!sub) throw offByPhone();
       const rand = random(16);
-      const payload = await encryptPush(sub, utf8(JSON.stringify({ v: 1, key: `test|${rand}`, title: 'annai', body: 'A test: reminders reach this phone through the relay.', test: true })), { pad: PAD });
+      const payload = await encryptPush(sub, utf8(JSON.stringify({ v: 1, key: `test|${rand}`, title: /* en */ 'annai', body: t`A test: reminders reach this phone through the relay.`, test: true })), { pad: PAD });
       await this.#client(st.relay).schedule({ endpoint: sub.endpoint, key: st.key, id: rand, token: random(32), sendAt: this.clock.now() + TEST_IN_MS, ttl: 600, payload });
     });
   }
@@ -340,7 +368,7 @@ export class PushMirror {
         }
         await this.#save(st, tokens);
         this.#tell();
-      }).catch((e) => console.warn('push: could not note a notification', e));
+      }).catch((e) => console.warn(/* en */ 'push: could not note a notification', e));
     }
     if (list.some((n) => n?.kind === 'changed')) this.#soon();
   }
@@ -365,8 +393,8 @@ export class PushMirror {
     if (!this.online()) {
       // Nothing can reach the relay: the browser's online event brings the next sync (fix pass N4).
       const st = await this.#read();
-      if (st.on && st.problem?.message !== NO_CONNECTION) {
-        st.problem = { message: NO_CONNECTION, at: this.clock.now(), needsYou: false };
+      if (st.on && st.problem?.said?.why !== NO_CONNECTION.why) {
+        st.problem = { message: /* en */ 'This device has no connection.', said: NO_CONNECTION, at: this.clock.now(), needsYou: false };
         await this.#save(st, await this.#readTokens());
         this.#tell();
       }
@@ -377,6 +405,9 @@ export class PushMirror {
     const st = await this.#read();
     const tokens = await this.#readTokens();
     await this.#noteGiven(st);
+    // The service worker's words follow the screens' language while notifications are on.
+    if (st.on) st.words = pushWords();
+    else delete st.words;
     const before = st.problem; // a passing one from an earlier sync clears once this one goes well
     let sent = 0;
     let calledOff = 0;
@@ -435,7 +466,7 @@ export class PushMirror {
       sub = await this.source.get();
     } catch (e) {
       // It can't be asked yet (annai's offline service starting): later, not "off".
-      throw new RelayError(String(/** @type {any} */ (e)?.message ?? e), { code: 'offline' });
+      throw new RelayError({ code: 'offline', why: 'service', en: /* en */ `The phone's push subscription can't be read yet: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     }
     if (sub) {
       if (sub.endpoint !== st.endpoint) this.#renewed(st, sub);
@@ -451,10 +482,11 @@ export class PushMirror {
       }
     }
     this.#moveAll(st);
-    st.problem = { message: OFF_BY_PHONE, at: this.clock.now(), needsYou: true };
+    const off = offByPhone();
+    st.problem = { message: off.en, said: off.said, at: this.clock.now(), needsYou: true };
     if (!this.#warned) {
       this.#warned = true;
-      this.notice({ title: 'Notifications are off', body: OFF_BY_PHONE });
+      this.notice({ title: t`Notifications are off`, body: off.message });
     }
     return null;
   }
@@ -502,11 +534,11 @@ export class PushMirror {
 
   /** A notification's title: the trip's name, or "Reminder" (choice 4). @param {string} scope @param {Map<string, string>} cache */
   async #title(scope, cache) {
-    if (scope === ME) return 'Reminder';
+    if (scope === ME) return t`Reminder`;
     const had = cache.get(scope);
     if (had !== undefined) return had;
-    const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)).catch(() => null);
-    const title = String(rec?.title ?? 'Reminder').slice(0, 120);
+    const rec = await this.store.tx(['scopes'], 'readonly', (x) => x.getScope(scope)).catch(() => null);
+    const title = String(rec?.title ?? t`Reminder`).slice(0, 120);
     cache.set(scope, title);
     return title;
   }
@@ -577,8 +609,7 @@ export class PushMirror {
   #offFailure(st, f) {
     if (f.relay === st.relay) return f.error;
     const host = new URL(f.relay).host;
-    const what = f.count === 1 ? 'A reminder' : `${f.count} reminders`;
-    return new RelayError(`${what} at the old relay, ${host}, couldn't be called off yet (${f.error.message.replace(/[.\s]+$/, '')}). annai keeps trying until ${f.count === 1 ? 'its time has' : 'their times have'} passed; the new relay works meanwhile.`, { code: 'relay' });
+    return new RelayError({ code: 'relay', why: 'old', host, count: f.count, en: /* en */ `${f.count} at the old relay, ${host}, couldn't be called off yet: ${f.error.en}` });
   }
 
   /**
@@ -587,7 +618,7 @@ export class PushMirror {
    * @param {State} st @param {Record<string, string>} tokens @param {Sub} sub @param {Want[]} list
    */
   async #send(st, tokens, sub, list) {
-    if (!greeted(st, sub)) await this.#hello(st, sub, AGAIN);
+    if (!greeted(st, sub)) await this.#hello(st, sub, helloAgain());
     const name = await subscriptionName(sub.endpoint);
     for (const w of list) {
       if (w.reuse) continue;
@@ -611,7 +642,7 @@ export class PushMirror {
         // This one, for good: noted, and the others go on.
         delete st.items[w.m.key];
         delete tokens[item.id];
-        st.problem = { message: await withoutSecrets(this.store, e.message), at: this.clock.now(), needsYou: false };
+        st.problem = { message: await withoutSecrets(this.store, e.en), said: e.said, at: this.clock.now(), needsYou: false };
       }
     }
     return n;
@@ -621,7 +652,8 @@ export class PushMirror {
   async #seal(sub, w) {
     let body = w.body;
     for (;;) {
-      const bytes = utf8(JSON.stringify({ v: 1, key: w.m.key, title: w.title, body, at: w.m.due, scope: w.m.scope, watch: w.m.watch, start: w.m.start }));
+      // A "coming up" item goes with its start and its words apart: sw.js says the minutes left when it shows it (localization L5f).
+      const bytes = utf8(JSON.stringify({ v: 1, key: w.m.key, title: w.title, body, at: w.m.due, scope: w.m.scope, watch: w.m.watch, start: w.m.start, what: w.m.what }));
       if (bytes.length < PAD || !body) return encryptPush(sub, bytes, { pad: PAD });
       body = body.slice(0, -20);
     }
@@ -631,7 +663,7 @@ export class PushMirror {
   async #hello(st, sub, words) {
     if (!st.key) return;
     const rand = random(16);
-    const payload = await encryptPush(sub, utf8(JSON.stringify({ v: 1, key: `hello|${rand}`, title: 'annai', body: words, test: true })), { pad: PAD });
+    const payload = await encryptPush(sub, utf8(JSON.stringify({ v: 1, key: `hello|${rand}`, title: /* en */ 'annai', body: words, test: true })), { pad: PAD });
     await this.#client(st.relay).schedule({ endpoint: sub.endpoint, key: st.key, id: rand, token: random(32), sendAt: this.clock.now(), ttl: 600, payload });
     st.hello = { endpoint: sub.endpoint, relay: st.relay, at: this.clock.now() };
   }
@@ -653,15 +685,15 @@ export class PushMirror {
         this.#soon();
         return;
       } catch (again) {
-        e = again instanceof RelayError ? again : new RelayError(OFF_BY_PHONE, { code: 'refused' });
+        e = again instanceof RelayError ? again : offByPhone();
       }
     }
     // The "notifications are on" never arrived (the relay forgot this phone): another, next time.
     if (e.code === 'unconfirmed' && st.hello && now - st.hello.at > MIN) st.hello = null;
-    const message = await withoutSecrets(this.store, e.message);
+    const message = await withoutSecrets(this.store, e.en);
     if (e.passing) {
-      // In the background, there is nothing for the user to do (fix pass N5).
-      st.problem = { message: /tries again|keeps trying/.test(message) ? message : `${message} annai tries again by itself.`, at: now, needsYou: false };
+      // In the background, there is nothing for the user to do (fix pass N5); one at an old relay says it keeps trying itself.
+      st.problem = { message, said: e.said, at: now, needsYou: false, ...(e.said.why === 'old' ? {} : { again: true }) };
       const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(30 * MIN, MIN * 2 ** this.#retries);
       this.#retries++;
       // The retry is the next sync: a sooner one already waiting would only fail again (fix pass N4).
@@ -669,11 +701,11 @@ export class PushMirror {
       this.#soonTimer = null;
       this.#retryTimer = this.clock.set(() => {
         this.#retryTimer = null;
-        this.sync().catch((x) => console.warn('push: a sync failed', x));
+        this.sync().catch((x) => console.warn(/* en */ 'push: a sync failed', x));
       }, wait);
       return;
     }
-    st.problem = { message, at: now, needsYou: e.code !== 'full' };
+    st.problem = { message, said: e.said, at: now, needsYou: e.code !== 'full' };
   }
 
   /** @param {string} base */
@@ -698,7 +730,7 @@ export class PushMirror {
     this.#soonAt = at;
     this.#soonTimer = this.clock.set(() => {
       this.#soonTimer = null;
-      this.sync().catch((e) => console.warn('push: a sync failed', e));
+      this.sync().catch((e) => console.warn(/* en */ 'push: a sync failed', e));
     }, wait);
   }
 
@@ -707,7 +739,7 @@ export class PushMirror {
       try {
         fn();
       } catch (e) {
-        console.warn('a push listener failed', e);
+        console.warn(/* en */ 'a push listener failed', e);
       }
     }
   }

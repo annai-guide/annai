@@ -1,4 +1,5 @@
 import { timeIn } from './time.js';
+import { t } from './l10n.js';
 
 /**
  * The sun, worked out on the phone (spec §11.5: "Sunrise, sunset and golden hour are computed on
@@ -72,24 +73,24 @@ export function sunTimes(ms, lat, lng) {
  * @param {number} now @param {number} lat @param {number} lng @param {string} tz @returns {string[]}
  */
 export function sunChips(now, lat, lng, tz) {
-  const t = sunTimes(now, lat, lng);
+  const sun = sunTimes(now, lat, lng);
   const hm = (/** @type {number} */ x) => timeIn(x, tz);
-  if (t.polar === 'day') return ['Midnight sun'];
-  if (t.polar === 'night') return ['Polar night'];
-  const sunrise = /** @type {number} */ (t.sunrise);
-  const sunset = /** @type {number} */ (t.sunset);
-  if (now < sunrise) return [`Sunrise ${hm(sunrise)}`];
-  const { goldenMorningEnd: goldenEnd, goldenEveningStart: golden } = t;
+  if (sun.polar === 'day') return [t`Midnight sun`];
+  if (sun.polar === 'night') return [t`Polar night`];
+  const sunrise = /** @type {number} */ (sun.sunrise);
+  const sunset = /** @type {number} */ (sun.sunset);
+  if (now < sunrise) return [t`Sunrise ${hm(sunrise)}`];
+  const { goldenMorningEnd: goldenEnd, goldenEveningStart: golden } = sun;
   // The sun never climbs past golden hour's 6° (high latitudes in winter): golden light until sunset, then dusk as any day.
   if (golden === null || goldenEnd === null) {
-    if (now < sunset) return ['Golden light all day', `Sunset ${hm(sunset)}`];
+    if (now < sunset) return [t`Golden light all day`, t`Sunset ${hm(sunset)}`];
   } else if (now < goldenEnd) {
-    return [`Golden hour until ${hm(goldenEnd)}`];
+    return [t`Golden hour until ${hm(goldenEnd)}`];
   } else if (now < golden) {
-    return [`Golden hour ${hm(golden)}`, `Sunset ${hm(sunset)}`];
+    return [t`Golden hour ${hm(golden)}`, t`Sunset ${hm(sunset)}`];
   }
-  if (now < sunset) return ['Golden hour now', `Sunset ${hm(sunset)}`];
-  if (t.dusk !== null && now < t.dusk) return [`Dusk ${hm(t.dusk)}`];
+  if (now < sunset) return [t`Golden hour now`, t`Sunset ${hm(sunset)}`];
+  if (sun.dusk !== null && now < sun.dusk) return [t`Dusk ${hm(sun.dusk)}`];
   const tomorrow = sunTimes(now + DAY / 2, lat, lng);
-  return tomorrow.sunrise !== null ? [`Sunrise ${hm(tomorrow.sunrise)}`] : [];
+  return tomorrow.sunrise !== null ? [t`Sunrise ${hm(tomorrow.sunrise)}`] : [];
 }

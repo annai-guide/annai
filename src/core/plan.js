@@ -1,5 +1,6 @@
 import { dayIn, timeIn, validZone, offsetMinutes } from './time.js';
 import { zone, sortWords } from './intl.js';
+import { t } from './l10n.js';
 
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the
@@ -61,7 +62,7 @@ export function planRows(items, bookings, { fallbackTz }) {
       booking,
       check: booking !== null && booking.status !== 'confirmed',
       missing: item.booking !== undefined && item.booking !== '' && !booking,
-      note: timed && !validZone(own) ? `Its time zone "${String(own ?? '')}" isn't one annai knows; shown in ${fallbackTz}.` : '',
+      note: timed && !validZone(own) ? t`Its time zone "${String(own ?? '')}" isn't one annai knows; shown in ${fallbackTz}.` : '',
     };
   });
 }

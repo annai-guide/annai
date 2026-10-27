@@ -23,6 +23,46 @@ c5yzsu	draft	annai kept running, but couldn't write down what happened, so it is
 gt9ssw	draft	annai couldn't start	annai 无法启动	src/app/main.js:379	
 6v646m	draft	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:381	
 982hh6	draft	Try again	重试	src/app/main.js:382	
+1f8b0m5	draft	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:53	
+7m1pck	draft	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:54	
+5lqjwd	draft	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你输入或说出的话（各自缩短）。	src/core/after/recap.js:55	
+nqzovd	draft	The trip's notes and memory, and your profile.	旅行的笔记和记忆，以及你的个人资料。	src/core/after/recap.js:56	
+1nvz32n	draft	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	如果模型接受照片，最多 {0} 张照片。按原样保存的照片（设置 → 照片 → 保留原图）可能仍包含拍摄地点。	src/core/after/recap.js:57	{0} = RECAP_PHOTOS
+49tlsl	draft	No model could write it: {0}. Check Settings → Models, then try again.	没有模型能写出来：{0}。请检查设置 → 模型，然后重试。	src/core/after/recap.js:163	{0} = each; Note: {0} is each model's name with its provider's own words, as given.
+rntcrc	draft	No model is set for the utility or main role. Add one in Settings → Models.	辅助和主要角色都没有设置模型。请在设置 → 模型中添加。	src/core/after/recap.js:163	
+1ocmp3v	draft	Try again in a while.	请稍后再试。	src/core/after/recap.js:165	
+11vzyc7	draft	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:179	
+tbxeeg	draft	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回了空的回顾。请重试，或在辅助角色中把另一个模型放在最前面（设置 → 模型）。	src/core/after/recap.js:221	
+1sob3wf	draft	1 hour a second	每秒 1 小时	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
+6jq1bh	draft	1 minute a second	每秒 1 分钟	src/core/after/replay.js:22	
+7013qq	draft	10 minutes a second	每秒 10 分钟	src/core/after/replay.js:22	
+1xgi8k0	draft	less than a minute	不到 1 分钟	src/core/after/replay.js:25	
+1tydm1k#other	draft	No road was recorded, with # stops and {0}.	没有记录到路线，共 # 个停留点，{0}。	src/core/after/replay.js:73	plural; # = n; {0} = marks; English: "No road was recorded, with # stop and {0}." (one), "No road was recorded, with # stops and {0}." (other); Note: {0} is the stamps counted, "スタンプ#個" / "# 个纪念章".
+1pigqmy#other	draft	{0} on the road, with # stops and {1}.	路程 {0}，共 # 个停留点，{1}。	src/core/after/replay.js:75	plural; # = n; {0} = road; {1} = marks; English: "{0} on the road, with # stop and {1}." (one), "{0} on the road, with # stops and {1}." (other); Note: {1} is the stamps counted.
+aad9xo#other	draft	{0} on the road, from {1}, with # stops and {2}.	从{1}出发，路程 {0}，共 # 个停留点，{2}。	src/core/after/replay.js:76	plural; # = n; {0} = road; {1} = first; {2} = marks; English: "{0} on the road, from {1}, with # stop and {2}." (one), "{0} on the road, from {1}, with # stops and {2}." (other); Note: {2} is the stamps counted.
+p6d198#other	draft	{0} on the road, from {1} to {2}, with # stops and {3}.	从{1}到{2}，路程 {0}，共 # 个停留点，{3}。	src/core/after/replay.js:77	plural; # = n; {0} = road; {1} = first; {2} = last; {3} = marks; English: "{0} on the road, from {1} to {2}, with # stop and {3}." (one), "{0} on the road, from {1} to {2}, with # stops and {3}." (other); Note: {3} is the stamps counted.
+118y86m	draft	Stopped	停留中	src/core/after/replay.js:98	Note: where the replay is: at a stop with no name.
+17826bm	draft	At {0}	在{0}	src/core/after/replay.js:98	{0} = stay.name
+1q5u96o	draft	Driving	驾驶中	src/core/after/replay.js:99	
+1t1k02g	draft	Walking	步行中	src/core/after/replay.js:99	
+bzqb1u	draft	Walking from {0}	从{0}步行中	src/core/after/replay.js:99	{0} = prev.name
+d6w22	draft	Driving from {0}	从{0}驾驶中	src/core/after/replay.js:99	{0} = prev.name
+1i4bl4d	draft	Not started yet	尚未开始	src/core/after/replay.js:100	
+1ceq85s	draft	On the way	在路上	src/core/after/replay.js:101	
+tzwrpj	draft	After {0}	{0}之后	src/core/after/replay.js:101	{0} = prev.name
+1rgnrl8	draft	A stop	一个停留点	src/core/after/replay.js:117	
+1ml0xuv	draft	{0} · arrived · stamp	{0} · 已到达 · 纪念章	src/core/after/replay.js:119	{0} = name
+4wysut	draft	{0} · arrived	{0} · 已到达	src/core/after/replay.js:119	{0} = name
+esglmt	draft	{0} · {1} · stamp	{0} · {1} · 纪念章	src/core/after/replay.js:121	{0} = name; {1} = long
+1mng1sm	draft	Walked {0} · {1} (partly unseen: the phone was locked)	步行 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:125	{0} = far; {1} = long
+2xd7wx	draft	Walked {0} · {1}	步行 {0} · {1}	src/core/after/replay.js:125	{0} = far; {1} = long
+1lwm8i6	draft	Drove {0} · {1} (partly unseen: the phone was locked)	驾驶 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:126	{0} = far; {1} = long
+s3mlgp	draft	Drove {0} · {1}	驾驶 {0} · {1}	src/core/after/replay.js:126	{0} = far; {1} = long
+1szxw8q	draft	a card	一张卡片	src/core/after/replay.js:131	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
+ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cut(String(words), 120) : t`a card`; Note: read by a screen reader; {0} is what she said or showed.
+1ot96wv	draft	You said: {0}	你（语音）：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120); Note: what you said aloud, beside "You: {0}" for what you typed.
+zxi5vs	draft	You: {0}	你：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120)
+d4j0a5	draft	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('/').pop()
 1e9ja08#other	draft	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
 1gzex44	draft	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到你设定的每日 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高。	src/core/agent/budgets.js:118	{0} = money(over.spent); {1} = money(over.perDay)
 bo3wjk	draft	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:118	
@@ -78,8 +118,49 @@ guullf	draft	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说
 1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2987	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
 8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2988	
 vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在 设置 → 模型 中检查模型，或稍后再试。	src/core/agent/loop.js:2995	
+4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:70	
+am2v0c	draft	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:160	
+13a6l3r	draft	There is nothing to export.	没有可导出的内容。	src/core/archive.js:167	
+4ngq1	draft	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:267	{0} = why; Note: {0} is a developer's detail, in English.
+gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:341	{0} = path
+1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:355	
+q7ee2s	draft	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:359	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:362	{0} = path
+hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:387	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:389	
+j0v5kk	draft	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:396	
+lfeohr#other	draft	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:402	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	draft	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:418	
+1aqa7w5	draft	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:430	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	draft	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:435	{0} = name
+21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:461	{0} = i + 1; {1} = name
+1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:465	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	draft	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:545	
+qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
+cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:650	
+pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置并将其开启。	src/core/backup.js:36	{0} = s.name
+al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:37	{0} = s.name
+1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:38	{0} = size(s.bytes ?? 0)
+3t4mx2	draft	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:39	{0} = s.name
+1r146xn	draft	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:40	
+1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:41	
+1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:42	
+bbv043	draft	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:43	
+1oqcoyx	draft	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:52	
+16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:133	
+mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:331	
+lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:348	
+1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:359	
+tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:367	
+230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:368	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	draft	Works.	可以使用。	src/core/backup.js:412	Note: the result of Save and test when the place says nothing itself.
+173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:463	
+1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:463	
 14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请删除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:8	
 1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:16	
+iwgrsx	draft	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此日历中有超过 {0} 个事件。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
+10s60wn	draft	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
+5l9pv6	draft	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	draft	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	draft	just now	刚刚	src/core/intl.js:126	
 3fqfy0	draft	Languages	语言	src/core/languages.js:304	
@@ -181,11 +262,71 @@ s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/
 1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:189	Note: the role by its screen name (補助 / 辅助).
 d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典 没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:190	
 1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:191	Note: the role by its screen name (メイン / 主要).
+g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
+2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
+mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
+zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:53	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	draft	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:55	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
+8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
+tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
+1e2afz	draft	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:213	
+is7g6t	draft	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:220	{0} = file; {1} = folder
+1k2igo9	draft	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:221	{0} = file; {1} = folder
+1svq3gn	draft	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:223	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	draft	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:241	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	draft	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:321	
+13j5338	draft	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:354	
+1xovhb	draft	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:363	{0} = u.host
+4lh0yw	draft	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:375	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
+hm96ty	draft	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:391	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	draft	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:446	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
+1iuga68	draft	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:457	
+1toghwz	draft	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:467	{0} = MANIFEST_FILE; {1} = url.host
+18tp402	draft	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
+1nz795c	draft	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
+u8bf72	draft	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:74	
+1dxa9va	draft	Notifications are on again: reminders come like this while annai is closed.	通知已再次开启：annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:75	
+dcq7bh	draft	annai has a reminder for you. Open annai to see it.	annai 有一条提醒。打开 annai 查看。	src/core/push/mirror.js:82	Note: a notification for a reminder the phone couldn't read.
+105rlv8	draft	Started {0} min ago: {1}.	{0}分钟前已开始：{1}。	src/core/push/mirror.js:83	{0} = '{0}'; {1} = '{1}'; Note: a notification; the service worker puts the minutes for {0} and the plan item for {1}.
+xjrph	draft	Now: {0}.	现在：{0}。	src/core/push/mirror.js:83	{0} = '{1}'; Note: a notification; the service worker puts the plan item for {0}.
+j6onej	draft	annai tries again by itself.	annai 会自动重试。	src/core/push/mirror.js:89	
+bonvch	draft	Nothing was turned on: tap Turn on notifications again once that is fixed.	没有开启任何内容：问题解决后，请再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
+luvbjl	draft	Nothing was turned on: check the connection, then tap Turn on notifications again.	没有开启任何内容：请检查网络连接，然后再点一次“开启通知”。	src/core/push/mirror.js:146	Note: the button's own words, Turn on notifications.
+1sqfmh1	draft	Turn notifications on first.	请先开启通知。	src/core/push/mirror.js:343	
+1hoeukd	draft	A test: reminders reach this phone through the relay.	测试：提醒会通过中继送达这部手机。	src/core/push/mirror.js:347	
+1gmsel8	draft	Notifications are off	通知已关闭	src/core/push/mirror.js:489	
+4nwn73	draft	The relay address must start with https:// (http:// only for localhost, to test).	中继地址必须以 https:// 开头（http:// 仅限测试用的 localhost）。	src/core/push/relay-client.js:18	
+1i03za7	draft	This phone has no connection: annai sends its reminders to the relay once it's back.	这部手机没有网络连接：恢复后，annai 会把提醒发送到中继。	src/core/push/relay-client.js:26	
+z45u0n	draft	annai's offline service isn't running yet. Try again in a moment.	annai 的离线服务还没有运行。请稍后再试。	src/core/push/relay-client.js:27	
+bu0i4z	draft	annai couldn't reach the relay at {0}. Is the phone offline?	annai 无法连接到 {0} 的中继。手机是否处于离线状态？	src/core/push/relay-client.js:28	{0} = host
+1dl1svy	draft	The relay is waiting for this phone's first notification.	中继正在等待这部手机的第一条通知。	src/core/push/relay-client.js:30	
+f5w28p	draft	The relay at {0} is busy.	{0} 的中继正忙。	src/core/push/relay-client.js:31	{0} = host
+1fsoa06	draft	The relay at {0} keeps no more of this phone's reminders for now. More can wait once some are sent.	{0} 的中继目前无法再为这部手机保留更多提醒。等一些提醒发出后，就可以继续等待。	src/core/push/relay-client.js:32	{0} = host
+1di80c2	draft	The relay's key changed.	中继的密钥已更改。	src/core/push/relay-client.js:33	
+ido0tg	draft	The phone's push service says this subscription no longer exists.	手机的推送服务表示此订阅已不存在。	src/core/push/relay-client.js:34	
+1tirqj9#other	draft	# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile.	旧中继 {0} 上的 # 条提醒尚未取消。annai 会一直尝试，直到它们的时间过去；在此期间新中继照常工作。	src/core/push/relay-client.js:36	plural; # = count; {0} = host; English: "A reminder at the old relay, {0}, couldn't be called off yet. annai keeps trying until its time has passed; the new relay works meanwhile." (one), "# reminders at the old relay, {0}, couldn't be called off yet. annai keeps trying until their times have passed; the new relay works meanwhile." (other)
+3d2k3u	draft	The relay at {0} answered {1}.	{0} 的中继返回了 {1}。	src/core/push/relay-client.js:39	{0} = host; {1} = status
+4nwp6a	draft	The phone turned annai's notifications off, or they were turned off in its settings, so reminders don't reach a closed annai. In Settings → Notifications, tap Turn on notifications.	手机关闭了 annai 的通知，或在其设置中被关闭，因此提醒无法送达已关闭的 annai。请在设置 → 通知中点击“开启通知”。	src/core/push/relay-client.js:40	Note: Settings → Notifications is annai's own screen, and the button's own words, Turn on notifications.
+1eeb6fm	draft	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回了 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
+12gfn9	draft	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中继发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
+n5y19n	draft	The relay at {0} refused it ({1}).	{0} 的中继拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
 stkvyf	draft	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	draft	System log	系统日志	src/core/scopes.js:42	
 ktdb8o	draft	Settings	设置	src/core/scopes.js:43	
 13w3r95	draft	This device	这台设备	src/core/scopes.js:45	
+ulzb3n	draft	Midnight sun	极昼	src/core/sun.js:78	
+1fjho8h	draft	Polar night	极夜	src/core/sun.js:79	
+tqn1pi	draft	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
+1xdfgdt	draft	Golden light all day	全天黄金时刻光线	src/core/sun.js:86	
+wd3hcp	draft	Sunset {0}	日落 {0}	src/core/sun.js:86	{0} = hm(sunset)
+1dxlj44	draft	Golden hour until {0}	黄金时刻至 {0}	src/core/sun.js:88	{0} = hm(goldenEnd)
+z7v0ig	draft	Golden hour {0}	黄金时刻 {0}	src/core/sun.js:90	{0} = hm(golden)
+12l7fk6	draft	Golden hour now	正值黄金时刻	src/core/sun.js:92	
+bxt142	draft	Dusk {0}	黄昏 {0}	src/core/sun.js:93	{0} = hm(sun.dusk)
 1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	在 iPhone 上：打开 设置 → App → Safari 浏览器 → 麦克风，选择“询问”或“允许”，然后回来再试一次。	src/core/voice/mic.js:13	
 h8lp19	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	在 Android 上：轻点地址左边的图标（在已安装的应用中：长按 annai 图标，然后 应用信息 → 权限），允许麦克风，然后再试一次。	src/core/voice/mic.js:15	
 17920wl	draft	Allow the microphone for this site in your browser's site settings, then try again.	在浏览器的网站设置中允许这个网站使用麦克风，然后再试一次。	src/core/voice/mic.js:16	
@@ -246,26 +387,26 @@ ihf6hd	draft	Her words go to the service behind {0} (Google's), to be spoken; th
 i7rrx1	draft	This voice is gone: it is skipped.	这个声音已不存在：已跳过。	src/core/voice/where.js:80	
 mf44l1	draft	Her words go to {0}, which sends back the sound.	她的话发给{0}，由它传回声音。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
 ew9em3	draft	Cancel	取消	src/ui/ask.js:21	
-7fxcga	draft	Back up this phone over it	用这部手机的备份覆盖它	src/ui/auto-backup.js:64	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
-qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这部手机是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:64	
-13aymis	draft	Back up this iPad over it	用这台 iPad 的备份覆盖它	src/ui/auto-backup.js:65	
-17c0bbv	draft	annai can't tell whether this iPad is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台 iPad 是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:65	
-1900dh1	draft	Back up this computer over it	用这台电脑的备份覆盖它	src/ui/auto-backup.js:66	
-iubvos	draft	annai can't tell whether this computer is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台电脑是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:66	
-1jhhbi	draft	Open Backups	打开备份	src/ui/auto-backup.js:75	
-8dbjq	draft	A newer backup is on {0}	{0}上有更新的备份	src/ui/auto-backup.js:81	{0} = target.name
-1g7wii9	draft	Import it as a copy	作为副本导入	src/ui/auto-backup.js:84	
-1ndbdgm	draft	A large backup is waiting	有一个大的备份在等待	src/ui/auto-backup.js:90	
-1nj869p	draft	This backup uploads {0} to {1}.	此备份会向{1}上传 {0}。	src/ui/auto-backup.js:91	{0} = size(h.bytes); {1} = target.name
-1lm8hbn	draft	Back up now	立即备份	src/ui/auto-backup.js:92	
-1m6y9c0	draft	Backups to {0} ({1}) stopped	到{0}（{1}）的备份已停止	src/ui/auto-backup.js:96	{0} = target.name; {1} = where
-54wd1u	draft	Backups to {0} stopped	到{0}的备份已停止	src/ui/auto-backup.js:96	{0} = target.name
-arudmh	draft	Open Backups to fix it.	请打开备份进行修复。	src/ui/auto-backup.js:97	
-y3yg69	draft	Backing up…	正在备份…	src/ui/auto-backup.js:103	
-zsz4na	draft	Backed up.	已备份。	src/ui/auto-backup.js:105	
-183eg6b	draft	The backup didn't finish	备份没有完成	src/ui/auto-backup.js:107	
-rs50uy	draft	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:124	
-12sejli	draft	Waiting for the backup that's running to finish…	正在等待进行中的备份完成…	src/ui/auto-backup.js:143	
+7fxcga	draft	Back up this phone over it	用这部手机的备份覆盖它	src/ui/auto-backup.js:65	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
+qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这部手机是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:65	
+13aymis	draft	Back up this iPad over it	用这台 iPad 的备份覆盖它	src/ui/auto-backup.js:66	
+17c0bbv	draft	annai can't tell whether this iPad is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台 iPad 是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:66	
+1900dh1	draft	Back up this computer over it	用这台电脑的备份覆盖它	src/ui/auto-backup.js:67	
+iubvos	draft	annai can't tell whether this computer is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这台电脑是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:67	
+1jhhbi	draft	Open Backups	打开备份	src/ui/auto-backup.js:76	
+8dbjq	draft	A newer backup is on {0}	{0}上有更新的备份	src/ui/auto-backup.js:82	{0} = target.name
+1g7wii9	draft	Import it as a copy	作为副本导入	src/ui/auto-backup.js:85	
+1ndbdgm	draft	A large backup is waiting	有一个大的备份在等待	src/ui/auto-backup.js:91	
+1nj869p	draft	This backup uploads {0} to {1}.	此备份会向{1}上传 {0}。	src/ui/auto-backup.js:92	{0} = size(h.bytes); {1} = target.name
+1lm8hbn	draft	Back up now	立即备份	src/ui/auto-backup.js:93	
+1m6y9c0	draft	Backups to {0} ({1}) stopped	到{0}（{1}）的备份已停止	src/ui/auto-backup.js:97	{0} = target.name; {1} = where
+54wd1u	draft	Backups to {0} stopped	到{0}的备份已停止	src/ui/auto-backup.js:97	{0} = target.name
+arudmh	draft	Open Backups to fix it.	请打开备份进行修复。	src/ui/auto-backup.js:98	
+y3yg69	draft	Backing up…	正在备份…	src/ui/auto-backup.js:104	
+zsz4na	draft	Backed up.	已备份。	src/ui/auto-backup.js:106	
+183eg6b	draft	The backup didn't finish	备份没有完成	src/ui/auto-backup.js:108	
+rs50uy	draft	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:125	
+12sejli	draft	Waiting for the backup that's running to finish…	正在等待进行中的备份完成…	src/ui/auto-backup.js:144	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	draft	Open in Maps	在地图中打开	src/ui/cards.js:68	
@@ -321,90 +462,90 @@ xyot5w	draft	Export everything	导出全部	src/ui/export-panel.js:87
 sxjkia	draft	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:90	
 xyveyo	draft	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:90	
 kpa27s	draft	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:91	
-la9701	draft	not backed up	未备份	src/ui/format.js:26	
-1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:27	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
-1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:27	{0} = relTime(at, now)
-meb4bg	draft	you	你	src/ui/format.js:31	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:35	
-16name3	draft	free	免费	src/ui/format.js:36	
-1bm6q72	draft	key rejected	密钥被拒绝	src/ui/format.js:41	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	draft	too many requests	请求过多	src/ui/format.js:41	
-4icrku	draft	answered	已回答	src/ui/format.js:41	
-jk3r0m	draft	overloaded	过载	src/ui/format.js:41	
-k1s3xh	draft	out of credit	额度用完	src/ui/format.js:41	
-1ci3mtm	draft	doesn't allow web apps	不允许网页应用	src/ui/format.js:42	
-1lj1ww1	draft	photo upload expired	照片上传已过期	src/ui/format.js:42	
-1x40ny1	draft	didn't take the photo	未接受照片	src/ui/format.js:42	
-f82spn	draft	too long for it	内容过长	src/ui/format.js:42	
-11n2a71	draft	couldn't connect	无法连接	src/ui/format.js:43	
-a3596h	draft	refused the request	拒绝了请求	src/ui/format.js:43	
-n3huvh	draft	unknown model or address	未知的模型或地址	src/ui/format.js:43	
-rhcw9u	draft	provider error	提供商出错	src/ui/format.js:43	
-13effb	draft	connection dropped	连接中断	src/ui/format.js:44	
-1quwfm7	draft	plugin failed	插件出错	src/ui/format.js:44	
-1s4r037	draft	too slow to start	启动太慢	src/ui/format.js:44	
-hqyrx7	draft	removed	已移除	src/ui/format.js:44	
-urm4i6	draft	stopped	已停止	src/ui/format.js:44	
-184j4co	draft	resting after an error	出错后暂停中	src/ui/format.js:45	
-1mrun4s	draft	redirected elsewhere	被重定向到别处	src/ui/format.js:45	
-1q01jst	draft	doesn't take photos	不支持照片	src/ui/format.js:45	
-365ivi	draft	can't use tools	无法使用工具	src/ui/format.js:45	
-4k8rwn	draft	its ability is switched off	该功能已关闭	src/ui/format.js:45	
-l7u7vc	draft	its plugin is missing	缺少其插件	src/ui/format.js:45	
-1y8iwje	draft	has no web tool of that kind	没有该类网页工具	src/ui/format.js:46	
-6gto9k	draft	couldn't hear the speech	未能听清语音	src/ui/format.js:46	
-710q7y	draft	conversation too long for it	对话过长	src/ui/format.js:46	
-7jim5c	draft	isn't a chat model	不是聊天模型	src/ui/format.js:46	
-w70v2a	draft	doesn't take audio	不支持音频	src/ui/format.js:46	
-1009iza	draft	Restaurant	餐厅	src/ui/format.js:60	
-1lrcegv	draft	Event	活动	src/ui/format.js:60	
-8cdq15	draft	Train	火车	src/ui/format.js:60	
-d57q3n	draft	Flight	航班	src/ui/format.js:60	
-jj8u9s	draft	Stay	住宿	src/ui/format.js:60	Note: A kind of booking: a hotel or other lodging.
-sksosh	draft	Car	租车	src/ui/format.js:60	Note: A kind of booking: a car, nearly always a rental.
-ukzedx	draft	Other	其他	src/ui/format.js:60	
-hqumoz	draft	Kind	类型	src/ui/format.js:75	
-j6u2ti	draft	Starts	开始	src/ui/format.js:77	context: booking; Note: A booking's start, its day and time shown beside it.
-1pcvk9l	draft	Ends	结束	src/ui/format.js:79	context: booking
-16ygujg	draft	Place	地点	src/ui/format.js:80	
-lypvx6	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:80	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	draft	Confirmation	确认号	src/ui/format.js:81	Note: A booking's confirmation code.
-t05i6w	draft	Cost	费用	src/ui/format.js:82	
-1vdspge	draft	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:99	{0} = num(p.done); {1} = num(p.total)
-zo1gq	draft	Getting the backup…	正在获取备份…	src/ui/format.js:99	
-fuj1qb	draft	Getting the backup ready…	正在准备备份…	src/ui/format.js:103	
-1a0lh7c	draft	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:104	{0} = num(p.done); {1} = num(p.total)
-1ofggks	draft	Comparing files…	正在比较文件…	src/ui/format.js:104	
-1jbhw8o	draft	Uploading…	正在上传…	src/ui/format.js:105	
-sg0mn0	draft	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:105	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	draft	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:110	
-1815ss7	draft	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:110	
-1kc2l15	draft	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:111	
-1ytn3n1	draft	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:111	
-14m1y56	draft	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:112	
-12hcbva	draft	An iPhone backed up to {0} {1}.	iPhone {1}备份到了{0}。	src/ui/format.js:116	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	draft	An iPad backed up to {0} {1}.	iPad {1}备份到了{0}。	src/ui/format.js:116	{0} = where; {1} = ago
-1hmrpdo	draft	A computer backed up to {0} {1}.	一台电脑{1}备份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago
-dc7u48	draft	An Android phone backed up to {0} {1}.	一部 Android 手机{1}备份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago
-19kyaez	draft	Another device backed up to {0} {1}.	另一台设备{1}备份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
-mbc651	draft	That was after this phone's last backup.	这晚于这部手机上次的备份。	src/ui/format.js:122	
-vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:122	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	draft	That was after this iPad's last backup.	这晚于这台 iPad 上次的备份。	src/ui/format.js:123	
-nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:123	
-hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:124	
-wn3ejs	draft	That was after this computer's last backup.	这晚于这台电脑上次的备份。	src/ui/format.js:124	
-1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:136	
-1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:141	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:141	
-10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:142	{0} = size(h.bytes)
-osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:143	{0} = h.message
-1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:144	Note: "Save and test" is the backup place's button.
-1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:145	
-173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:146	{0} = at
-1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:146	
-1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:158	
-hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:158	
-8091b1	draft	no limit	无限制	src/ui/format.js:183	
+la9701	draft	not backed up	未备份	src/ui/format.js:27	
+1h47npq	draft	backed up {0}	{0}已备份	src/ui/format.js:28	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
+1sjuc50	draft	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:28	{0} = relTime(at, now)
+meb4bg	draft	you	你	src/ui/format.js:32	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	draft	cost unknown	费用未知	src/ui/format.js:36	
+16name3	draft	free	免费	src/ui/format.js:37	
+1bm6q72	draft	key rejected	密钥被拒绝	src/ui/format.js:42	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	draft	too many requests	请求过多	src/ui/format.js:42	
+4icrku	draft	answered	已回答	src/ui/format.js:42	
+jk3r0m	draft	overloaded	过载	src/ui/format.js:42	
+k1s3xh	draft	out of credit	额度用完	src/ui/format.js:42	
+1ci3mtm	draft	doesn't allow web apps	不允许网页应用	src/ui/format.js:43	
+1lj1ww1	draft	photo upload expired	照片上传已过期	src/ui/format.js:43	
+1x40ny1	draft	didn't take the photo	未接受照片	src/ui/format.js:43	
+f82spn	draft	too long for it	内容过长	src/ui/format.js:43	
+11n2a71	draft	couldn't connect	无法连接	src/ui/format.js:44	
+a3596h	draft	refused the request	拒绝了请求	src/ui/format.js:44	
+n3huvh	draft	unknown model or address	未知的模型或地址	src/ui/format.js:44	
+rhcw9u	draft	provider error	提供商出错	src/ui/format.js:44	
+13effb	draft	connection dropped	连接中断	src/ui/format.js:45	
+1quwfm7	draft	plugin failed	插件出错	src/ui/format.js:45	
+1s4r037	draft	too slow to start	启动太慢	src/ui/format.js:45	
+hqyrx7	draft	removed	已移除	src/ui/format.js:45	
+urm4i6	draft	stopped	已停止	src/ui/format.js:45	
+184j4co	draft	resting after an error	出错后暂停中	src/ui/format.js:46	
+1mrun4s	draft	redirected elsewhere	被重定向到别处	src/ui/format.js:46	
+1q01jst	draft	doesn't take photos	不支持照片	src/ui/format.js:46	
+365ivi	draft	can't use tools	无法使用工具	src/ui/format.js:46	
+4k8rwn	draft	its ability is switched off	该功能已关闭	src/ui/format.js:46	
+l7u7vc	draft	its plugin is missing	缺少其插件	src/ui/format.js:46	
+1y8iwje	draft	has no web tool of that kind	没有该类网页工具	src/ui/format.js:47	
+6gto9k	draft	couldn't hear the speech	未能听清语音	src/ui/format.js:47	
+710q7y	draft	conversation too long for it	对话过长	src/ui/format.js:47	
+7jim5c	draft	isn't a chat model	不是聊天模型	src/ui/format.js:47	
+w70v2a	draft	doesn't take audio	不支持音频	src/ui/format.js:47	
+1009iza	draft	Restaurant	餐厅	src/ui/format.js:61	
+1lrcegv	draft	Event	活动	src/ui/format.js:61	
+8cdq15	draft	Train	火车	src/ui/format.js:61	
+d57q3n	draft	Flight	航班	src/ui/format.js:61	
+jj8u9s	draft	Stay	住宿	src/ui/format.js:61	Note: A kind of booking: a hotel or other lodging.
+sksosh	draft	Car	租车	src/ui/format.js:61	Note: A kind of booking: a car, nearly always a rental.
+ukzedx	draft	Other	其他	src/ui/format.js:61	
+hqumoz	draft	Kind	类型	src/ui/format.js:76	
+j6u2ti	draft	Starts	开始	src/ui/format.js:78	context: booking; Note: A booking's start, its day and time shown beside it.
+1pcvk9l	draft	Ends	结束	src/ui/format.js:80	context: booking
+16ygujg	draft	Place	地点	src/ui/format.js:81	
+lypvx6	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:81	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	draft	Confirmation	确认号	src/ui/format.js:82	Note: A booking's confirmation code.
+t05i6w	draft	Cost	费用	src/ui/format.js:83	
+1vdspge	draft	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:100	{0} = num(p.done); {1} = num(p.total)
+zo1gq	draft	Getting the backup…	正在获取备份…	src/ui/format.js:100	
+fuj1qb	draft	Getting the backup ready…	正在准备备份…	src/ui/format.js:104	
+1a0lh7c	draft	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:105	{0} = num(p.done); {1} = num(p.total)
+1ofggks	draft	Comparing files…	正在比较文件…	src/ui/format.js:105	
+1jbhw8o	draft	Uploading…	正在上传…	src/ui/format.js:106	
+sg0mn0	draft	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:106	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	draft	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:111	
+1815ss7	draft	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:111	
+1kc2l15	draft	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:112	
+1ytn3n1	draft	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:112	
+14m1y56	draft	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:113	
+12hcbva	draft	An iPhone backed up to {0} {1}.	iPhone {1}备份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	draft	An iPad backed up to {0} {1}.	iPad {1}备份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago
+1hmrpdo	draft	A computer backed up to {0} {1}.	一台电脑{1}备份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
+dc7u48	draft	An Android phone backed up to {0} {1}.	一部 Android 手机{1}备份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
+19kyaez	draft	Another device backed up to {0} {1}.	另一台设备{1}备份到了{0}。	src/ui/format.js:119	{0} = where; {1} = ago
+mbc651	draft	That was after this phone's last backup.	这晚于这部手机上次的备份。	src/ui/format.js:123	
+vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:123	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	draft	That was after this iPad's last backup.	这晚于这台 iPad 上次的备份。	src/ui/format.js:124	
+nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:124	
+hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:125	
+wn3ejs	draft	That was after this computer's last backup.	这晚于这台电脑上次的备份。	src/ui/format.js:125	
+1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:137	
+1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:142	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:142	
+10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:143	{0} = size(h.bytes)
+osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:144	{0} = holdWords(h)
+1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:145	Note: "Save and test" is the backup place's button.
+1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:146	
+173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:147	{0} = at
+1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:147	
+1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:159	
+hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:159	
+8091b1	draft	no limit	无限制	src/ui/format.js:184	
 1y3qo2k#other	draft	# trips	# 个旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
 12lprg	draft	Imported {0} from {1}.	已从{1}导入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	draft	Imported {0}.	已导入{0}。	src/ui/import-state.js:48	{0} = what
@@ -545,7 +686,6 @@ r91312	draft	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offli
 dbm7fe	draft	Open a trip someone sent you	打开别人发来的旅行	src/ui/open-file.js:6	
 1l0xxoj	draft	Close	关闭	src/ui/photo-viewer.js:32	
 1s1o4yb	draft	Show Shiori this part	把这部分给 Shiori 看	src/ui/photo-viewer.js:33	
-d4j0a5	draft	Photo {0}	照片 {0}	src/ui/photo-viewer.js:34	{0} = label
 u3xlwb	draft	The plugin "{0}" was turned off	插件“{0}”已关闭	src/ui/plugin-cards.js:12	{0} = name
 1k1qvj4	draft	Its hooks were handed more than {0} log entries in {1} seconds, which looks like a loop.	它的钩子在{1}秒内收到了超过{0}条日志，看起来像是陷入了循环。	src/ui/plugin-cards.js:13	{0} = num(why.entries); {1} = num(why.seconds)
 14cse4m	draft	You can turn it back on in Settings → Plugins.	可以在设置 → 插件中重新开启。	src/ui/plugin-cards.js:14	
@@ -630,7 +770,6 @@ jvtji4	draft	Its speech in and speech out models went behind the free entries.	�
 1r0x31s	draft	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
 1llun41	draft	The provider	提供商	src/ui/provider-setup.js:253	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	draft	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
-z45u0n	draft	annai's offline service isn't running yet. Try again in a moment.	annai 的离线服务还没有运行。请稍后再试。	src/ui/push.js:22	
 1vug986	draft	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	draft	The relay's key isn't one annai can use.	中继的密钥不是 annai 能用的。	src/ui/push.js:78	
 xp81tw	draft	annai {0}	annai {0}	src/ui/screens/about.js:40	{0} = v
@@ -755,7 +894,6 @@ tp830y	draft	After changes, at most every 6 hours	有改动后，最多每 6 小
 3tlu3u	draft	Off	关闭	src/ui/screens/backups.js:185	
 1tdau7e	draft	Also over mobile data	也使用移动数据	src/ui/screens/backups.js:187	
 uhtk71	draft	No limit	不限	src/ui/screens/backups.js:189	
-lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/ui/screens/backups.js:193	
 b69cje	draft	Looking…	正在查找…	src/ui/screens/backups.js:201	
 fdmwqv	draft	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:204	
 hcu7jn	draft	encrypted	已加密	src/ui/screens/backups.js:207	
@@ -807,7 +945,6 @@ iw9ebk	draft	Restroom	洗手间	src/ui/screens/drive.js:15
 18wvy25	draft	How long until our next stop?	到下一站还要多久？	src/ui/screens/drive.js:16	
 1r191hj	draft	How long until we reach {0}?	到{0}还要多久？	src/ui/screens/drive.js:16	{0} = next.name
 1xb4fg	draft	about {0}	约{0}	src/ui/screens/drive.js:20	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-1q5u96o	draft	Driving	驾驶中	src/ui/screens/drive.js:32	
 7quqpk	draft	Go to Trips	前往“旅行”	src/ui/screens/drive.js:33	
 ov2ou9	draft	Open a trip to see the road ahead.	打开一个旅行即可查看前方的路。	src/ui/screens/drive.js:33	
 sxc7mr	draft	The road ahead	前方的路	src/ui/screens/drive.js:39	
@@ -1050,28 +1187,28 @@ x5n8yx	draft	Notifications are blocked for annai. Touch and hold annai's icon, t
 3e712g	draft	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	此网站的通知被阻止了。请在浏览器的网站设置（地址旁边的图标）中允许，然后回到这里。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
 8kqp6a#other	draft	On · # reminders waiting at the relay.	开启 · 中继有 # 条提醒在等待。	src/ui/screens/notifications.js:29	plural; # = st.waiting; English: "On · # reminder waiting at the relay." (one), "On · # reminders waiting at the relay." (other)
 1i0bhgb	draft	Off: reminders show only while annai is open, and none reaches you while it is closed.	关闭：提醒只在 annai 打开时显示，关闭期间不会送达。	src/ui/screens/notifications.js:30	
-d0zb7s	draft	Save address	保存地址	src/ui/screens/notifications.js:63	
-1xxer91	draft	On iPhone, notifications work only in the Home Screen app. In Safari, tap Share, then Add to Home Screen, and open annai from your Home Screen.	在 iPhone 上，通知只能在主屏幕上的 App 中使用。请在 Safari 浏览器中轻点“共享”，然后选择“添加到主屏幕”，再从主屏幕打开 annai。	src/ui/screens/notifications.js:70	
-14jrhvb	draft	This browser can't show annai's notifications. On iPhone they need iOS 16.4 or later, in the Home Screen app.	此浏览器无法显示 annai 的通知。在 iPhone 上，需要 iOS 16.4 或更高版本，并使用主屏幕上的 App。	src/ui/screens/notifications.js:72	
-1xb9uri	draft	Asking…	正在请求…	src/ui/screens/notifications.js:82	
-1d3e9jv	draft	Turning them on…	正在开启…	src/ui/screens/notifications.js:90	
-16i4fmu	draft	Notifications are on. A first one comes now.	通知已开启。第一条马上就到。	src/ui/screens/notifications.js:93	
-17uhxrj	draft	Turn on notifications	开启通知	src/ui/screens/notifications.js:105	
-140kueu	draft	Notifications are off.	通知已关闭。	src/ui/screens/notifications.js:116	
-1kvu7gr	draft	Turn off	关闭	src/ui/screens/notifications.js:123	
-2d36ml	draft	A test notification comes in about 15 seconds. Lock the phone to see it arrive.	测试通知大约 15 秒后到达。锁定手机即可看到它送达。	src/ui/screens/notifications.js:133	
-1ldta1j	draft	Send a test notification	发送测试通知	src/ui/screens/notifications.js:140	
-np8gm3	draft	Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.	Shiori 的定时提醒，以及行程的“即将开始”和“该出发了”，会在 annai 关闭时以通知送达。轻点一条通知会打开 annai，Shiori 会跟上进度。	src/ui/screens/notifications.js:146	
-1gz01uq	draft	Relay	中继	src/ui/screens/notifications.js:149	
-rdqlke	draft	Relay address	中继地址	src/ui/screens/notifications.js:149	
-12r4tgf	draft	Reminders go through annai's relay, {0}, unless you run your own: its code is in annai's source, under {1}.	提醒会经过 annai 的中继 {0}，除非你自己运行一个：它的代码在 annai 的源代码中，位于 {1}。	src/ui/screens/notifications.js:150	{0} = 'push.annai.guide'; {1} = 'relay/'
-mkq4y8	draft	What the relay learns	中继会知道什么	src/ui/screens/notifications.js:151	
-u3pgdz	draft	annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.	annai 会在这部手机上加密每条提醒，并让每条大小相同：中继无法读取，也分不出长短。	src/ui/screens/notifications.js:152	
-1jsdzhi	draft	It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.	它会知道这部手机的推送地址（在负责送达的 Apple、Google 或 Mozilla 那里）、每条提醒的时间，以及有多少条在等待。和任何服务器一样，它能看到手机连接时的网络地址。	src/ui/screens/notifications.js:153	
-1gvv717	draft	Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn't.	关于地点的提醒（到达、离开、附近）从不离开手机。“该出发了”提醒的时间是根据 annai 上次查看时你所在的位置算出的，所以对同样知道你行程的人来说，它能大致看出你当时离得多远；中继看不出来。	src/ui/screens/notifications.js:154	
-1cg5akv	draft	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每条提醒在发送后，或在你取消它、关闭通知、移除其旅行时，会从中继删除。	src/ui/screens/notifications.js:155	
-1iz3xsa	draft	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在屏幕上打开时，会自己说出提醒，中继那份会被取消：你永远不会收到两次。	src/ui/screens/notifications.js:156	
-qkddms	draft	Every request to the relay is in Trace, under System · This device.	发往中继的每个请求都在记录中的“系统 · 此设备”下。	src/ui/screens/notifications.js:157	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
+d0zb7s	draft	Save address	保存地址	src/ui/screens/notifications.js:65	
+1xxer91	draft	On iPhone, notifications work only in the Home Screen app. In Safari, tap Share, then Add to Home Screen, and open annai from your Home Screen.	在 iPhone 上，通知只能在主屏幕上的 App 中使用。请在 Safari 浏览器中轻点“共享”，然后选择“添加到主屏幕”，再从主屏幕打开 annai。	src/ui/screens/notifications.js:72	
+14jrhvb	draft	This browser can't show annai's notifications. On iPhone they need iOS 16.4 or later, in the Home Screen app.	此浏览器无法显示 annai 的通知。在 iPhone 上，需要 iOS 16.4 或更高版本，并使用主屏幕上的 App。	src/ui/screens/notifications.js:74	
+1xb9uri	draft	Asking…	正在请求…	src/ui/screens/notifications.js:84	
+1d3e9jv	draft	Turning them on…	正在开启…	src/ui/screens/notifications.js:92	
+16i4fmu	draft	Notifications are on. A first one comes now.	通知已开启。第一条马上就到。	src/ui/screens/notifications.js:95	
+17uhxrj	draft	Turn on notifications	开启通知	src/ui/screens/notifications.js:107	
+140kueu	draft	Notifications are off.	通知已关闭。	src/ui/screens/notifications.js:118	
+1kvu7gr	draft	Turn off	关闭	src/ui/screens/notifications.js:125	
+2d36ml	draft	A test notification comes in about 15 seconds. Lock the phone to see it arrive.	测试通知大约 15 秒后到达。锁定手机即可看到它送达。	src/ui/screens/notifications.js:135	
+1ldta1j	draft	Send a test notification	发送测试通知	src/ui/screens/notifications.js:142	
+np8gm3	draft	Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.	Shiori 的定时提醒，以及行程的“即将开始”和“该出发了”，会在 annai 关闭时以通知送达。轻点一条通知会打开 annai，Shiori 会跟上进度。	src/ui/screens/notifications.js:148	
+1gz01uq	draft	Relay	中继	src/ui/screens/notifications.js:151	
+rdqlke	draft	Relay address	中继地址	src/ui/screens/notifications.js:151	
+12r4tgf	draft	Reminders go through annai's relay, {0}, unless you run your own: its code is in annai's source, under {1}.	提醒会经过 annai 的中继 {0}，除非你自己运行一个：它的代码在 annai 的源代码中，位于 {1}。	src/ui/screens/notifications.js:152	{0} = 'push.annai.guide'; {1} = 'relay/'
+mkq4y8	draft	What the relay learns	中继会知道什么	src/ui/screens/notifications.js:153	
+u3pgdz	draft	annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.	annai 会在这部手机上加密每条提醒，并让每条大小相同：中继无法读取，也分不出长短。	src/ui/screens/notifications.js:154	
+1jsdzhi	draft	It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.	它会知道这部手机的推送地址（在负责送达的 Apple、Google 或 Mozilla 那里）、每条提醒的时间，以及有多少条在等待。和任何服务器一样，它能看到手机连接时的网络地址。	src/ui/screens/notifications.js:155	
+1gvv717	draft	Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn't.	关于地点的提醒（到达、离开、附近）从不离开手机。“该出发了”提醒的时间是根据 annai 上次查看时你所在的位置算出的，所以对同样知道你行程的人来说，它能大致看出你当时离得多远；中继看不出来。	src/ui/screens/notifications.js:156	
+1cg5akv	draft	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每条提醒在发送后，或在你取消它、关闭通知、移除其旅行时，会从中继删除。	src/ui/screens/notifications.js:157	
+1iz3xsa	draft	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在屏幕上打开时，会自己说出提醒，中继那份会被取消：你永远不会收到两次。	src/ui/screens/notifications.js:158	
+qkddms	draft	Every request to the relay is in Trace, under System · This device.	发往中继的每个请求都在记录中的“系统 · 此设备”下。	src/ui/screens/notifications.js:159	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
 1tbrgfp	draft	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:29	
 15h0umr	draft	Next	接下来	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
 1m0ri7	draft	Nothing more is planned.	之后没有安排了。	src/ui/screens/now.js:83	
@@ -1081,7 +1218,6 @@ qkddms	draft	Every request to the relay is in Trace, under System · This device
 69apv3	draft	Location isn't allowed for annai. Tap GPS below to say where you are.	annai 未获允许使用位置信息。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:130	
 1770v5g	draft	Finding where you are…	正在确定你的位置…	src/ui/screens/now.js:131	
 1fnriow	draft	No GPS signal right now. Tap GPS below to say where you are.	现在没有 GPS 信号。请轻点下方的 GPS，告诉它你在哪里。	src/ui/screens/now.js:131	
-17826bm	draft	At {0}	在{0}	src/ui/screens/now.js:134	{0} = near.name
 ue501f	draft	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
 1fw5x21	draft	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
 tdmj58	draft	Flexible:	可调整：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
@@ -1337,7 +1473,6 @@ nsh8oa	draft	Written {0}, then edited by you.	{0}写成，之后由你编辑过�
 1izysa3	draft	No model is set up to write it yet.	还没有设置用来撰写它的模型。	src/ui/screens/recap.js:84	
 1ryjzrz	draft	Whole trip	整个旅行	src/ui/screens/replay.js:46	
 2m5fua	draft	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	还没有可回放的内容。GPS 开启时，annai 会记录你去过的地方；Shiori 的卡片、你的消息和照片也会显示在这里。	src/ui/screens/replay.js:50	
-1rgnrl8	draft	A stop	一个停留点	src/ui/screens/replay.js:71	
 wl73p3	draft	The route: {0}	路线：{0}	src/ui/screens/replay.js:76	{0} = r.words
 15c7htt	draft	You said	你说	src/ui/screens/replay.js:102	
 10ftdrc	draft	Photo {0}, {1}	照片 {0}，{1}	src/ui/screens/replay.js:104	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
@@ -1489,12 +1624,10 @@ g9ytfz	draft	Shiori wakes with your own models, as she would with GPS on: the sa
 amwn2j	draft	The track	轨迹	src/ui/screens/simulate.js:161	
 ckmlfc	draft	Itinerary file	行程文件	src/ui/screens/simulate.js:161	
 nicd80	draft	That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).	该文件不是 annai 能读取的行程：它需要是像大苏尔示例那样的 JSON（起点、地点路线和时间）。	src/ui/screens/simulate.js:175	
-1szxw8q	draft	a card	一张卡片	src/ui/screens/talk.js:46	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
 r4z2l4	draft	a photo	一张照片	src/ui/screens/talk.js:46	Note: read by a screen reader for a card that is only a photo: "Shiori: a photo".
 xekru5	draft	Choices: {0}.	选项：{0}。	src/ui/screens/talk.js:47	{0} = listed(choices, 'plain'); Note: read by a screen reader after a card or a question.
 1kr7agr	draft	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:48	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
 d6m2fp	draft	Shiori asks: {0}	Shiori 问：{0}	src/ui/screens/talk.js:48	{0} = WORDS; Note: read by a screen reader; {0} is her question.
-ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/ui/screens/talk.js:48	{0} = WORDS; Note: read by a screen reader; {0} is what she said or showed.
 hadl9d	draft	Shiori woke to look at the files you added.	Shiori 已唤醒，查看你添加的文件。	src/ui/screens/talk.js:94	
 15n0e2d	draft	Shiori woke to pick up where she left off.	Shiori 已唤醒，从中断的地方继续。	src/ui/screens/talk.js:95	
 1xhnipt	draft	Shiori woke to merge a new version of her personality.	Shiori 已唤醒，合并她性格的新版本。	src/ui/screens/talk.js:96	
