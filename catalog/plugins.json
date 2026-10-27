@@ -366,7 +366,7 @@
     {
       "id": "provider-local-speech",
       "name": "Local speech server",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
       "category": "speech",
       "keywords": [
@@ -381,7 +381,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1676,
+      "size": 3851,
       "requires": [
         {
           "id": "speech-openai",
@@ -390,7 +390,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "e74999f055de0bdf742380a68812a28433347c8c751ae34b3543986c7902e9a1"
+        "annai-plugin.json": "ec55a452341a1028d8e0ef9a63da7955b1934f8849cdd082c118d623be128e43",
+        "l10n/ja.json": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
+        "l10n/zh-Hans.json": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9"
       }
     },
     {

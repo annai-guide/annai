@@ -46,6 +46,15 @@
       "name": "LM Studio",
       "description": "LM Studio のサーバーのモデル。"
     },
+    "provider-local-speech": {
+      "name": "ローカルの音声サーバー",
+      "description": "Speaches、whisper.cpp、Kokoro など、自分で動かしているサーバーによる文字起こしと声。",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ]
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
