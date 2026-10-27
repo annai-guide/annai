@@ -342,7 +342,8 @@ export function createLlm({
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {
           // The screens' words where the error has them: these lines are for the import screen alone.
-          const why = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '');
+          const shown = /** @type {any} */ (e)?.shown;
+          const why = typeof shown === 'string' ? shown : String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '');
           failed.set(why, [...(failed.get(why) ?? []), p.name]);
         }
         if (!had[rec.plugin] && (await plugins.installed())[rec.plugin] && !providers().some((x) => x.plugin === rec.plugin)) await drop(rec.plugin).catch(() => {});

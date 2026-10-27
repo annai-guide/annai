@@ -41,7 +41,7 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
     for (const u of list) known.set(u.id, u);
   };
   if (official) {
-    const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e).replace(/^catalog: /, '')); return null; });
+    const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; });
     if (now && current()) keep(false, now);
   }
   if (address) {

@@ -1,5 +1,5 @@
 {
-  "build": "fc8c79528ad7",
+  "build": "44a6fb084f93",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -83,7 +83,7 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "bcf351269b15",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "7d2748a905be",
+    "/src/core/llm/service.js": "b02527a1a24d",
     "/src/core/llm/speech.js": "5d91010f311e",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "7727b72d584c",
@@ -222,7 +222,7 @@
     "/src/ui/plugin-cards.js": "078ba8c923a1",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "892b84f4a677",
-    "/src/ui/plugin-updates.js": "71a27ed3fa14",
+    "/src/ui/plugin-updates.js": "b5bf901c4cf4",
     "/src/ui/push.js": "d86ed631d3b2",
     "/src/ui/resume.js": "bf9b0a3dbac0",
     "/src/ui/router.js": "a2d1a500f736",
