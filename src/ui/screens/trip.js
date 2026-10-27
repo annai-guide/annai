@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, field, twoStep, linkIn } from '../dom.js';
+import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
 import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
@@ -114,7 +114,7 @@ async function askAndRemove(ctx, id, scope) {
       ctx.notices.toast(t`That trip was already removed.`);
       ctx.go('#/trips');
     } else if (!explainStorageFull(ctx, e)) {
-      const why = String(/** @type {any} */ (e)?.message ?? e).replace(/[.!?]?$/, '.');
+      const why = messageOf(e).replace(/[.!?]?$/, '.');
       ctx.notices.card({ tone: 'warn', title: t`That trip wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
     }
   }
@@ -157,7 +157,7 @@ function newFile(ctx, id) {
     explainStorageFull(ctx, e);
     // A schema's refusal is its English (decision 11), marked so.
     const why = e instanceof ValidationError ? e.errors.join('; ') : '';
-    error.replaceChildren(...(why ? linkIn(t`That file doesn't match its format: ${why}`, h('span', { lang: 'en', text: why })) : [String(e?.message ?? e)]));
+    error.replaceChildren(...(why ? linkIn(t`That file doesn't match its format: ${why}`, h('span', { lang: 'en', text: why })) : [messageOf(e)]));
     error.hidden = false;
   };
   const status = h('p', { class: 'sub', role: 'status' });

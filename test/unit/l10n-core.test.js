@@ -19,7 +19,9 @@ const { chipText, koeWords } = await import('../../src/core/voice/mode.js');
 const { micProblem } = await import('../../src/core/voice/mic.js');
 const { listenKind } = await import('../../src/core/voice/resolve.js');
 const { scopeTitle, ME, SYS } = await import('../../src/core/scopes.js');
-const { StorageFullError } = await import('../../src/core/errors.js');
+const { StorageFullError, StoppedError } = await import('../../src/core/errors.js');
+const { messageOf } = await import('../../src/ui/dom.js');
+const { runTool } = await import('../../src/core/agent/tools.js');
 const { keeperOf } = await import('../../src/core/llm/kept.js');
 const { disabledCard } = await import('../../src/ui/plugin-cards.js');
 const { reminderParts, errorWords } = await import('../../src/ui/screens/talk.js');
@@ -118,7 +120,22 @@ test("scopes' titles, storage errors, a provider that keeps turns and a plugin s
   assert.equal(scopeTitle({ id: ME, title: 'Me' }), '自分');
   assert.equal(scopeTitle({ id: SYS, title: 'System log' }), 'システムログ');
   assert.equal(scopeTitle({ id: 'trip-1', title: 'Big Sur' }), 'Big Sur');
-  assert.match(new StorageFullError().message, /^この端末の annai の保存領域がいっぱいです/);
   assert.deepEqual(keeperOf({ holds: 'at least 30 days', provider: 'provider-openai' }, 'provider-another-address', 'My server'), { name: 'My server', holds: null, server: true, note: '' });
   assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }).body, /^3回続けて失敗しました。最後のエラー：boom/);
+});
+
+test("an error a model may read keeps annai's English in message; the screens show its shown words (LESSONS 2026-10-27)", async () => {
+  for (const e of [new StorageFullError(), new StoppedError(), new AllFailedError([])]) {
+    assert.match(e.message, /^[\x20-\x7e]+$/, `${e.name}'s message is English`);
+    assert.match(String(e.shown), /[\u3040-\u30ff\u4e00-\u9fff]/, `${e.name}'s shown is Japanese`);
+    assert.equal(messageOf(e), e.shown);
+  }
+  // A tool that hits a full disk: Shiori reads the English.
+  const { output } = await runTool(/** @type {any} */ ({ name: 'write', run: async () => { throw new StorageFullError(); } }), {}, /** @type {any} */ ({ signal: new AbortController().signal }));
+  assert.equal(output.content, `Error: ${new StorageFullError().message}`);
+  // Kept as data in a turn's error: the Conversation's words in Japanese, a model's in English.
+  const why = whyOf(new StorageFullError());
+  assert.deepEqual(why, { message: new StorageFullError().message, name: 'StorageFullError' });
+  assert.match(whyWords(why), /^この端末の annai の保存領域がいっぱいです/);
+  assert.equal(whyWords(why, true), new StorageFullError().message);
 });

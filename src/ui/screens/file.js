@@ -1,4 +1,4 @@
-import { h, crumb, t, asUser, field, twoStep } from '../dom.js';
+import { h, crumb, t, asUser, field, twoStep, messageOf } from '../dom.js';
 import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -51,7 +51,7 @@ function editor(ctx, id, entry, content) {
       } catch (e) {
         explainStorageFull(ctx, e);
         // A schema's refusals are its English (decision 11), marked so.
-        errors.replaceChildren(...(e instanceof ValidationError ? e.errors.map((m) => h('li', { lang: 'en', text: m })) : [h('li', { text: String(/** @type {any} */ (e)?.message ?? e) })]));
+        errors.replaceChildren(...(e instanceof ValidationError ? e.errors.map((m) => h('li', { lang: 'en', text: m })) : [h('li', { text: messageOf(e) })]));
         errors.hidden = false;
       }
     };

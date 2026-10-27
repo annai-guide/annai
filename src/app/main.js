@@ -9,7 +9,7 @@ import { watchAppends, deliverHooks } from '../core/hooks.js';
 import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
-import { h, t } from '../ui/dom.js';
+import { h, t, messageOf } from '../ui/dom.js';
 import { list } from '../ui/format.js';
 import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
@@ -377,7 +377,7 @@ boot().catch((e) => {
   console.error(e);
   root.replaceChildren(h('div', { class: 'blocking' },
     h('h1', { class: 'title', text: t`annai couldn't start` }),
-    h('p', { text: String(e?.message ?? e) }),
+    h('p', { text: messageOf(e) }),
     h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
     h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, t`Try again`))));
 });

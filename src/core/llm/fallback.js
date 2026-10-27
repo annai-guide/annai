@@ -10,6 +10,7 @@ import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+import { shownFor } from '../errors.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -78,8 +79,9 @@ export function restText(until, now) {
 export class AllFailedError extends Error {
   /** @param {Attempt[]} attempts @param {string} [said] */
   constructor(attempts, said = '') {
-    super(t`Shiori can't reach her model.`);
+    super(/* en */ "Shiori can't reach her model.");
     this.name = /* en */ 'AllFailedError';
+    this.shown = shownFor(this.name);
     this.attempts = attempts;
     this.said = said;
   }
@@ -151,7 +153,7 @@ const named = (name, words, plain) => (plain ? `${name}: ${words}` : t`${name}: 
  * how each model failed (attempts), that no model is set for a role, an error's kind, or another error's own message; halves: both of
  * Shiori's halves are down, each for its reasons.
  * @typedef {{ attempts?: Pick<Attempt, 'name' | 'outcome' | 'error' | 'restsUntil'>[], offline?: boolean, role?: string, kind?: string, message?: string,
- *   provider?: string, halves?: { koe: Why, kokoro: Why } }} Why
+ *   provider?: string, name?: string, halves?: { koe: Why, kokoro: Why } }} Why  name: an error annai has words for (errors.js shownFor)
  */
 
 /** @param {unknown} e @param {{ role?: string, online?: boolean }} [o] @returns {Why} */
@@ -161,7 +163,9 @@ export function whyOf(e, { role = 'main', online = true } = {}) {
     return { attempts: e.attempts.map((a) => ({ name: a.name, outcome: a.outcome, ...(a.error ? { error: a.error } : {}), ...(a.restsUntil ? { restsUntil: a.restsUntil } : {}) })), ...(online ? {} : { offline: true }) };
   }
   if (e instanceof ProviderError) return { kind: e.kind, message: e.message, ...(e.provider ? { provider: e.provider } : {}) };
-  return { message: String(/** @type {any} */ (e)?.message ?? e) };
+  // An error annai names keeps its name, from which a screen makes its words; any other, its message as it was.
+  const name = /** @type {any} */ (e)?.name;
+  return { message: String(/** @type {any} */ (e)?.message ?? e), ...(typeof name === 'string' && shownFor(name) ? { name } : {}) };
 }
 
 /**
@@ -179,7 +183,7 @@ export function whyWords(why, plain = false) {
     const e = new ProviderError(/** @type {any} */ (why.kind), String(why.message ?? ''), { provider: why.provider });
     return plain ? explainPlain(e) : explain(e);
   }
-  return String(why.message ?? '');
+  return String((!plain && why.name ? shownFor(why.name) : undefined) ?? why.message ?? '');
 }
 
 /** No model is set for a role. @param {string} role @param {boolean} plain */

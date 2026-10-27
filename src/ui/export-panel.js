@@ -1,4 +1,4 @@
-import { h, t, field, checkbox, radios } from './dom.js';
+import { h, t, field, checkbox, radios, messageOf } from './dom.js';
 import { exportArchive, PRESETS, isFullBackup } from '../core/archive.js';
 import { recordBackup } from '../core/scopes.js';
 import { explainStorageFull } from './storage-full.js';
@@ -77,7 +77,7 @@ export function exportPanel(ctx, what) {
         saveBtn.hidden = false;
         saveBtn.focus();
       } catch (e) {
-        status.textContent = String(/** @type {any} */ (e)?.message ?? e);
+        status.textContent = messageOf(e);
       } finally {
         build.disabled = false;
       }

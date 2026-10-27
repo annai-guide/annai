@@ -1065,7 +1065,7 @@ export class Agent {
         if (wakes.length) await this.#turn(wakes);
       }
     } catch (e) {
-      await this.#notice({ tone: 'warn', title: t`Shiori stopped`, body: t`Something went wrong: ${String(/** @type {any} */ (e)?.message ?? e)}` });
+      await this.#notice({ tone: 'warn', title: t`Shiori stopped`, body: t`Something went wrong: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
     } finally {
       this.#busy = false;
       this.#abort = null;
@@ -1526,7 +1526,7 @@ export class Agent {
         blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
       } catch (e) {
         // Not dropped quietly: the user hears which photo didn't go, and why (spec §17).
-        await this.#notice({ tone: 'warn', title: t`A photo wasn't sent to Shiori`, body: sentences(t`${p.path}: ${String(/** @type {any} */ (e)?.message ?? e)}`, t`The message went without it.`) });
+        await this.#notice({ tone: 'warn', title: t`A photo wasn't sent to Shiori`, body: sentences(t`${p.path}: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, t`The message went without it.`) });
       }
     }
     return { images, blobs };
