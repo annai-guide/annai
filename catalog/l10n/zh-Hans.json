@@ -1,0 +1,158 @@
+{
+  "format": 1,
+  "plugins": {
+    "anthropic-messages": {
+      "name": "Anthropic Messages",
+      "description": "连接 Anthropic 的 Messages API，以及支持它的端点。"
+    },
+    "chat-completions": {
+      "name": "Chat Completions",
+      "description": "连接 OpenAI 风格的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。"
+    },
+    "gemini-api": {
+      "name": "Gemini API",
+      "description": "通过 Gemini 自己的 API（Interactions）进行对话、语音转文字和声音：支持所有音频格式，原样保留 Gemini 3 的思考签名，用量包含缓存和思考 token，声音可流式播放，对话由 Google 在轮次之间保存，因此每次只发送新内容；付费密钥还可使用 Google 搜索，答案按 Google 给出的样子显示。"
+    },
+    "gemini-live": {
+      "name": "Gemini Live",
+      "description": "连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。"
+    },
+    "openai-realtime": {
+      "name": "OpenAI Realtime",
+      "description": "连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。"
+    },
+    "openai-responses": {
+      "name": "OpenAI Responses",
+      "description": "连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。"
+    },
+    "provider-another-address": {
+      "name": "自定义提供商",
+      "description": "任何其他服务器：OpenAI 兼容的服务器、路由或代理，或你自己运行的服务器。填写它的地址，annai 会免费查看它提供什么。",
+      "keywords": [
+        "OpenAI 兼容",
+        "路由",
+        "自定义",
+        "代理",
+        "自托管"
+      ]
+    },
+    "provider-anthropic": {
+      "name": "Anthropic",
+      "description": "通过 Anthropic 的 Messages API 使用 Claude 模型，支持网页搜索，缓存最长可保留一小时。"
+    },
+    "provider-deepseek": {
+      "name": "DeepSeek",
+      "description": "DeepSeek 的模型，思考时会显示推理过程。"
+    },
+    "provider-gemini": {
+      "name": "Google Gemini",
+      "description": "通过 Google 自己的 API 使用 Gemini 模型，付费密钥可使用 Google 搜索，另有 Google 的语音转文字和声音，以及用于语音对话的 Gemini Live。"
+    },
+    "provider-groq": {
+      "name": "Groq",
+      "description": "快速的开放模型，以及快速的 Whisper 语音转文字。"
+    },
+    "provider-llamacpp": {
+      "name": "llama.cpp",
+      "description": "你自己运行的 llama.cpp 服务器（llama-server）上的模型，或基于它的服务器（如 Unsloth Studio、KoboldCpp）上的模型。快速判断时会关闭思考。",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ]
+    },
+    "provider-lmstudio": {
+      "name": "LM Studio",
+      "description": "LM Studio 服务器上的模型。"
+    },
+    "provider-local-speech": {
+      "name": "本地语音服务器",
+      "description": "由你自己运行的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ]
+    },
+    "provider-mistral": {
+      "name": "Mistral",
+      "description": "Mistral 的模型。"
+    },
+    "provider-ollama": {
+      "name": "Ollama",
+      "description": "Ollama 上的模型，快速判断时会关闭思考。"
+    },
+    "provider-openai": {
+      "name": "OpenAI",
+      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。"
+    },
+    "provider-openrouter": {
+      "name": "OpenRouter",
+      "description": "一个密钥即可使用许多模型（其中有免费的），还有语音转文字和声音。请“使用 OpenRouter 登录”，或填写密钥。",
+      "featured": "“使用 OpenRouter 登录”是最快的方式，并且会先让你用免费模型。"
+    },
+    "provider-scripted": {
+      "name": "脚本模型（测试用）",
+      "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
+    },
+    "provider-sglang": {
+      "name": "SGLang",
+      "description": "你自己运行的 SGLang 服务器上的模型，思考通过聊天模板开关。"
+    },
+    "provider-vllm": {
+      "name": "vLLM",
+      "description": "你自己运行的 vLLM 服务器上的模型，思考通过聊天模板开关，另有用于语音转文字的 Whisper 模型。"
+    },
+    "remote-trace": {
+      "name": "远程记录（开发者）",
+      "description": "开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。从不发送密钥。"
+    },
+    "scripted-model": {
+      "name": "脚本模型",
+      "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
+    },
+    "search-searxng": {
+      "name": "SearXNG 搜索",
+      "description": "通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。",
+      "keywords": [
+        "SearXNG",
+        "自托管"
+      ]
+    },
+    "search-serper": {
+      "name": "Serper 搜索",
+      "description": "通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。",
+      "keywords": [
+        "Serper",
+        "Google"
+      ]
+    },
+    "search-tavily": {
+      "name": "Tavily 搜索",
+      "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",
+      "keywords": [
+        "Tavily"
+      ]
+    },
+    "speech-openai": {
+      "name": "OpenAI 兼容语音",
+      "description": "通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。"
+    },
+    "storage-forgejo": {
+      "name": "Forgejo / Gitea",
+      "description": "把所有内容备份到 Forgejo 或 Gitea 服务器（比如你自己的或 Codeberg）上的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+    },
+    "storage-github": {
+      "name": "GitHub",
+      "description": "把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+    },
+    "storage-s3": {
+      "name": "S3 兼容存储",
+      "description": "把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。"
+    },
+    "storage-webdav": {
+      "name": "WebDAV",
+      "description": "把所有内容备份到允许浏览器访问的 WebDAV 服务器上的文件夹，每次备份一个归档文件。"
+    }
+  }
+}

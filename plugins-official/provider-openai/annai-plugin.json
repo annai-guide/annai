@@ -1,8 +1,9 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
   "category": "providers",
   "requires": [

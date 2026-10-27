@@ -1,4 +1,4 @@
-import { h, t, field, savedField, savedCheck, savingNote, messageOf } from './dom.js';
+import { h, t, field, savedField, savedCheck, savingNote, otherLang, messageOf } from './dom.js';
 import { numField, parseNum } from './format.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
@@ -14,7 +14,8 @@ export const keypad = (f) => ((f.kind === 'number' || f.kind === 'integer') && t
  * which we render a settings form automatically"; milestone 8b choice 12). Values go where
  * annai.settings.get() reads them; writeOnly ones go to the plugin's secrets, never into files.
  * @typedef {{ key: string, kind: 'text' | 'select' | 'secret' | 'number' | 'integer' | 'boolean' | 'unsupported', label: string,
- *   hint?: string, options?: string[], min?: number, max?: number, default?: any }} Field
+ *   hint?: string, options?: [string, string][], min?: number, max?: number, default?: any }} Field
+ *   options: [value, words]: a oneOf's consts with their titles (localization design, section 8), or an enum's values
  */
 
 /** The fields a settings schema asks for, one per top-level property. @param {any} schema @returns {Field[]} */
@@ -29,7 +30,10 @@ export function formFields(schema) {
     // A writeOnly field is a secret when it is a string; annai keeps no other kind of secret, and never
     // puts one into a file (fix pass 8b-5).
     if (p?.writeOnly) return { ...base, kind: /** @type {'secret' | 'unsupported'} */ (p.type === 'string' ? 'secret' : 'unsupported') };
-    if (p?.type === 'string' && Array.isArray(p.enum)) return { ...base, kind: /** @type {const} */ ('select'), options: p.enum.map(String) };
+    /** @type {any[] | null} */
+    const choices = p?.type !== 'string' ? null : Array.isArray(p.oneOf) && p.oneOf.every((/** @type {any} */ o) => o && 'const' in o) ? p.oneOf
+      : Array.isArray(p.enum) ? p.enum.map((/** @type {unknown} */ v) => ({ const: v })) : null;
+    if (choices) return { ...base, kind: /** @type {const} */ ('select'), options: choices.map((o) => /** @type {[string, string]} */ ([String(o?.const), String(o?.title || o?.const)])) };
     if (p?.type === 'string') return { ...base, kind: /** @type {const} */ ('text') };
     if (p?.type === 'number' || p?.type === 'integer') {
       return { ...base, kind: /** @type {'number' | 'integer'} */ (p.type), ...(typeof p.minimum === 'number' ? { min: p.minimum } : {}), ...(typeof p.maximum === 'number' ? { max: p.maximum } : {}) };
@@ -91,17 +95,24 @@ export function readForm(schema, raw) {
 
 /**
  * The form on a plugin's page, with what is saved now. Each plain field saves as it changes, alone,
- * once it is valid (spec §16.1); a secret has a Save button of its own, and is never shown again.
- * @param {any} ctx @param {string} pluginId @param {any} schema @returns {Promise<HTMLElement>}
+ * once it is valid (spec §16.1); a secret has a Save button of its own, and is never shown again. Its words are the plugin's, marked
+ * with their language (o.lang) when it isn't the screens'.
+ * @param {any} ctx @param {string} pluginId @param {any} schema @param {{ lang?: string }} [o] @returns {Promise<HTMLElement>}
  */
-export async function settingsForm(ctx, pluginId, schema) {
+export async function settingsForm(ctx, pluginId, schema, o = {}) {
+  const lang = otherLang(o.lang);
+  /** @param {HTMLElement} el */
+  const mark = (el) => {
+    if (lang) for (const x of el.querySelectorAll('.field-label, .check > span')) x.setAttribute('lang', lang);
+    return el;
+  };
   const path = /* en */ `/plugin-settings/${pluginId}.json`;
   const saved = (await ctx.ws.readJSON(SYS_SETTINGS, path).catch(() => null)) ?? {};
   const rows = [];
   for (const f of formFields(schema)) {
     const id = `setting-${pluginId}-${f.key}`;
     const now = saved[f.key] ?? f.default;
-    const hint = f.hint ? h('p', { class: 'sub', text: f.hint }) : null;
+    const hint = f.hint ? h('p', { class: 'sub', text: f.hint, lang }) : null;
     if (f.kind === 'unsupported') {
       rows.push(h('p', { class: 'sub', text: t`${f.label}: annai can't show this setting.` }));
       continue;
@@ -127,7 +138,7 @@ export async function settingsForm(ctx, pluginId, schema) {
           note.textContent = t`Saved`;
         }),
       }, t`Save`);
-      rows.push(field(f.label, input), hint, h('div', { class: 'acts' }, save, note), error);
+      rows.push(mark(field(f.label, input)), hint, h('div', { class: 'acts' }, save, note), error);
       continue;
     }
     // One field's own schema: an empty field is allowed, and clears it.
@@ -144,13 +155,13 @@ export async function settingsForm(ctx, pluginId, schema) {
     if (f.kind === 'boolean') {
       const c = savedCheck(f.label, Boolean(now), (on) => write(value(on)));
       c.input.id = id;
-      rows.push(c.el, hint);
+      rows.push(mark(c.el), hint);
       continue;
     }
     /** @type {any} */
     let input;
     if (f.kind === 'select') {
-      input = h('select', { id }, h('option', { value: '', text: '—' }), ...(f.options ?? []).map((o) => h('option', { value: o, text: o })));
+      input = h('select', { id }, h('option', { value: '', text: '—' }), ...(f.options ?? []).map(([v, words]) => h('option', { value: v, text: words, lang })));
       input.value = now === undefined || now === null ? '' : String(now);
     } else {
       input = h('input', {
@@ -158,9 +169,9 @@ export async function settingsForm(ctx, pluginId, schema) {
         ...(keypad(f) ? { inputmode: keypad(f) } : {}),
       });
     }
-    rows.push(savedField(f.label, input, () => {
+    rows.push(mark(savedField(f.label, input, () => {
       return value(input.value);
-    }, write), hint);
+    }, write)), hint);
   }
   return h('div', { class: 'settings-form' }, ...rows);
 }

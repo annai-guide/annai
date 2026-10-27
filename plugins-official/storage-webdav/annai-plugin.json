@@ -1,8 +1,9 @@
 {
   "id": "storage-webdav",
   "name": "WebDAV",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.",
   "provides": { "storage-type": ["webdav"] }

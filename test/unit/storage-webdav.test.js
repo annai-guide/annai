@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { activate, headerLines } from '../../plugins-official/storage-webdav/index.js';
@@ -12,6 +14,7 @@ import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { createBackups } from '../../src/core/backup.js';
+import { pluginWords } from './l10n-kit.js';
 
 /** The WebDAV type as annai's core sees it; sent: every request it made. */
 function davType() {
@@ -20,6 +23,7 @@ function davType() {
   /** @type {any} */
   let type = null;
   activate({
+    l10n: pluginWords(),
     helpers: { TargetError, readAnswer, xml: { elements: xmlElements, text: xmlText }, backupFiles: { name: backupFileName, parse: parseBackupFileName } },
     net: { fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => { sent.push({ url, init }); return fetch(url, init); } },
     storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } },
@@ -129,7 +133,8 @@ test('WebDAV through annai: whole files kept and pruned, every request traced, t
     const dir = new URL('../../plugins-official/storage-webdav/', import.meta.url);
     /** @type {Map<string, Uint8Array>} */
     const files = new Map();
-    for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+    // Its files, its translations' folder too.
+    for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) if (e.isFile()) { const name = relative(fileURLToPath(dir), join(e.parentPath, e.name)); files.set(name, new Uint8Array(await readFile(new URL(name, dir)))); }
     const served = '/plugins/storage-webdav/';
     const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
     await host.install(files, { source: 'official' });

@@ -11,6 +11,12 @@ translates them, a person or an agent. The design is
 - **One translator's file per language:** `l10n/<tag>.tsv`, with the columns `key`, `state`, `en`, `text`, `where`
   and `note`. Edit `text`, `state` and your own `Note:`; the script writes the rest.
 - **What ships** is `l10n/<tag>.json`, made from the TSV. Never edit it by hand.
+- **annai's official plugins** are in the same files (localization L7): a row keyed `<plugin id>:@<field>` is its manifest's field
+  (its name, description, a provider's notes, a setting's title), and `<plugin id>:<key>` its code's words (`l10n.t`, `l10n.tc`,
+  `l10n.plural` and `l10n.both`, or `t` and the rest taken out of `annai.l10n`). Their `where` names the plugin. `npm run strings`
+  writes each plugin's `plugins-official/<id>/l10n/<tag>.json` from them; run `npm run catalog` after it, since the catalog
+  holds every plugin file's hash, and bump the plugin's version. A third party's plugin ships its own translations
+  ([docs/plugins.md](plugins.md), "Translations").
 - **The glossary,** `l10n/glossary.tsv` (and `glossary.md` to read it), fixes the names of annai's screens and things
   in each language, the names iPhone and Android use for their own settings, and what is never translated.
 
@@ -58,7 +64,9 @@ someone who has read it in place: the `where` column says where it is used.
 ## What is not translated
 
 - **What models read** stays English: instructions, tool descriptions and results, `[annai]` lines, the now block.
-  The code marks these `/* en */`.
+  The code marks these `/* en */`. In a plugin, so do a search provider's `why`, a refusal a backup hold keeps (its `shown`
+  is the translation), and a reply a model reads (Gemini's safety refusal).
+- **A third party's plugin name** stays as written (decision 10); annai's own descriptive names are translated.
 - **Raw requests, responses and schema errors** on the developer screens stay English, marked `lang="en"`.
 - **What Shiori is told** when the screens aren't English is one line made from the glossary: the 31 names a traveller
   is likeliest to be pointed to (`TOLD` in `scripts/strings.mjs`: "Settings (設定), Models (モデル), …"), so she names a

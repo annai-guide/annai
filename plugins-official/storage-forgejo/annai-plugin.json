@@ -1,8 +1,9 @@
 {
   "id": "storage-forgejo",
   "name": "Forgejo / Gitea",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
   "provides": { "storage-type": ["forgejo"] }

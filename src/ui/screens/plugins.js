@@ -1,4 +1,4 @@
-import { h, crumb, t, twoStep, plural, messageOf as message } from '../dom.js';
+import { h, crumb, t, twoStep, plural, otherLang, messageOf as message } from '../dom.js';
 import { list, sentences } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { officialUpdates } from '../../core/llm/official.js';
@@ -78,7 +78,7 @@ function row(ctx, r, update, told) {
     h('a', { class: 'name', href: `#/plugins/${encodeURIComponent(r.id)}`, text: [r.name, r.shownVersion].filter(Boolean).join(' ') }),
     h('span', { class: 'sub', text: stateOf(r) }),
     r.builtin ? null : h('span', { class: 'sub', text: [r.kind === 'skill' ? t`Skill` : r.provider ? t`Model provider` : null, sourceLine(r)].filter(Boolean).join(' · ') }),
-    r.description ? h('p', { class: 'sub', text: r.description }) : null,
+    r.description ? h('p', { class: 'sub', text: r.description, lang: otherLang(r.lang) }) : null,
     ...[told?.named, ...(told?.lines ?? [])].filter(Boolean).map((line) => h('p', { class: 'sub', text: line })),
     r.builtin ? null : pluginActions(ctx, r, update));
 }

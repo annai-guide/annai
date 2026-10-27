@@ -4,7 +4,7 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
       "category": "developer",
       "keywords": [],
@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 12672,
+      "size": 13056,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,14 +20,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "60b6e645b769967c7b97dfd7102f2c1bb4e4f2f2b0d48fae895dd7bafb29994f",
-        "index.js": "5f04053758ea694cab858bd4bc9ea40f0c40a246ffcb30c264de5c29afe9549f"
+        "annai-plugin.json": "687cfb64d82d1c3e978fec01da5ecb3a12af838fa50110c5ab34c1fc5052c1e5",
+        "index.js": "5f04053758ea694cab858bd4bc9ea40f0c40a246ffcb30c264de5c29afe9549f",
+        "l10n/ja.json": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
+        "l10n/zh-Hans.json": "d0d84bb7c297830837be8c6ce2a59d96eddf7a4805ce66fef93359cf5969d37e"
       }
     },
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.9.1",
+      "version": "0.10.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +37,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19923,
+      "size": 20438,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,14 +45,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "5ca89e39454a427aea3fe63703f7cc27a6c3e441c1d16f12a6cfbb5b357429d9",
-        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b"
+        "annai-plugin.json": "c996ae9fc7276f071ae9369866e725707fbfa9a2eab650f71433e49960b38fcf",
+        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b",
+        "l10n/ja.json": "549e6b39331df19eca883923129a4295e19c3a46e7d556f59afbbb83b73f4efd",
+        "l10n/zh-Hans.json": "c6a14e04bf5429e1d74d7fc47cb0ac4c2bd742c4f1de11860cb71509e2e57905"
       }
     },
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -58,7 +62,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 64309,
+      "size": 66010,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -68,20 +72,22 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "984942622f5f2327d4e8a212563a3e865683e2ef1d0acf1255f57e07f2cec66d",
+        "annai-plugin.json": "b591937d5b02e1aa0ea973bfe1f8f10a129e01d6866b073471ba413b485bcd0d",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
+        "l10n/ja.json": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
+        "l10n/zh-Hans.json": "c1ba6a35452f52fd6691800349c2b23e54c6edb215169fd601db14eca0a18656",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
-        "speech.js": "c2bac69131fe23026545899fa60befa9848175308ea07e71cbbaaec5610191b4",
+        "speech.js": "3e31818f5151747cfa6902fd34f5d81572ec905a9d3e7b9aca8251b1bf58d4bf",
         "steps.js": "094f1c64c2a2fc168ec659144ced0795533d7e58686b7525bffd8a6a9cc17d10"
       }
     },
     {
       "id": "gemini-live",
       "name": "Gemini Live",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -89,7 +95,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 10943,
+      "size": 11360,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -97,14 +103,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "d096677ac2b2ae5457b74927ddff6fa61bf3477116d4d2c12a00ccf9175f91ae",
-        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7"
+        "annai-plugin.json": "5aac0880d6b48157b2f2d69d9e21f57f9d66c521aba52c1496b94a7b8c56e801",
+        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7",
+        "l10n/ja.json": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
+        "l10n/zh-Hans.json": "88b849b7e5d9e9315e869ab128fbcda96b4af38607db016fcdd1a7774d6425d3"
       }
     },
     {
       "id": "openai-realtime",
       "name": "OpenAI Realtime",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -112,7 +120,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 22948,
+      "size": 23381,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -120,14 +128,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "44fb1a19b95d09552b2f31d83e2bedf7d263df9f57f04687e199bcd98c62e0d3",
-        "index.js": "eb234e787601e43d0c34413ca9cd92d7016df04a8d0cf4560b5933ea12a13188"
+        "annai-plugin.json": "d4c8cc21c7dd45166f185cef89664c66f670173b2c888687a6eda6a5efe443fb",
+        "index.js": "eb234e787601e43d0c34413ca9cd92d7016df04a8d0cf4560b5933ea12a13188",
+        "l10n/ja.json": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
+        "l10n/zh-Hans.json": "917fae4baafc44716aba1d0a7d209ad46eef2b2d7ba982ce9f035d6b616eaf6f"
       }
     },
     {
       "id": "openai-responses",
       "name": "OpenAI Responses",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.",
       "category": "developer",
       "keywords": [],
@@ -135,7 +145,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 25753,
+      "size": 26417,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -143,14 +153,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "e9283a5785c656df094d84ea6841fa976de869de0a6122fee357ce4c158dc6ac",
-        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01"
+        "annai-plugin.json": "8d79ea8447df6626b08fc6314741d4e0ab275daeacbe9a20e4a18b0d5ba81fbb",
+        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01",
+        "l10n/ja.json": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
+        "l10n/zh-Hans.json": "8f17383d3a6e52efbef502a98b62e42c4ada3057783ad13b3c1b7f678f25bc39"
       }
     },
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.1.4",
+      "version": "2.2.0",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -169,20 +181,22 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24707,
+      "size": 39237,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "85d6c758abb98336da5d3c7c2c1f556186dd0501edc30393f7c6e644f7ee581c",
-        "index.js": "f17b0e95caa9396f8394859b06515a3c4f27705852bf2535106d3d5962b3f0c9",
-        "probe.js": "3dd2da5ad8350f8d6eb43c003658f7dcf90deb6811116a358f94e6f2f64c4150"
+        "annai-plugin.json": "7e30980b6a32c909afd98d3123ffd531f845bd5db011cce1bd623fe7d28cc821",
+        "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
+        "l10n/ja.json": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
+        "l10n/zh-Hans.json": "41efd6d62eb08676ec4ddbc45020bddeaa0aafe561de265aecd009773d9560a0",
+        "probe.js": "2ee480d300a84e152a42f1cf6fbbfdcd561ac9f102e7526fe53763edc4661b6d"
       }
     },
     {
       "id": "provider-anthropic",
       "name": "Anthropic",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
       "category": "providers",
       "keywords": [],
@@ -192,7 +206,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 9286,
+      "size": 9725,
       "requires": [
         {
           "id": "anthropic-messages",
@@ -201,13 +215,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "19baff782181ae19d18e790a475fc9b941573eb59b3b45b9af90f978c64c7de9"
+        "annai-plugin.json": "18746b1a2e8ea80a4b1caad209da1d913683716416b54e146b4fe232704e056a",
+        "l10n/ja.json": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
+        "l10n/zh-Hans.json": "97c82307fc7cb7fc51a42bf58fb7b8f746e304379aa720f5774b195878cd9229"
       }
     },
     {
       "id": "provider-deepseek",
       "name": "DeepSeek",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "DeepSeek's models, with their reasoning shown as they think.",
       "category": "providers",
       "keywords": [],
@@ -217,7 +233,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 668,
+      "size": 1190,
       "requires": [
         {
           "id": "chat-completions",
@@ -226,13 +242,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "668d5b5f52aa3be1f67307f775b15b08617100446424a45860cefbdc151230a9"
+        "annai-plugin.json": "48093129ca823c6f9d2ed4b66e4737d8983e993d67a05bc58f7feade7e80e12f",
+        "l10n/ja.json": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
+        "l10n/zh-Hans.json": "4c2832c8b0fc818f22493bdc61a0457ac94b30454f1968d176906a09a700970a"
       }
     },
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.6.0",
+      "version": "2.7.1",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -245,7 +263,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11729,
+      "size": 17029,
       "requires": [
         {
           "id": "gemini-api",
@@ -254,13 +272,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "50a6a1a204acb6ed2ec098253e7c75fe0020ea8187212fdb745d6e76d953d8f5"
+        "annai-plugin.json": "ece57873e8d0613ee72493325116f6a22517280b3abc1876aad521738d37e7ff",
+        "l10n/ja.json": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
+        "l10n/zh-Hans.json": "002febb9ec5463695956e7505c2cc8ae71e55e07ee38d8f15c2b82bbd1688f5f"
       }
     },
     {
       "id": "provider-groq",
       "name": "Groq",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Fast open models, and fast Whisper transcription.",
       "category": "providers",
       "keywords": [],
@@ -271,7 +291,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1607,
+      "size": 2383,
       "requires": [
         {
           "id": "chat-completions",
@@ -284,13 +304,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "2bbac45f89c61ad0faa40c9422dd54e457398cd6359143347312b4d8de258aa3"
+        "annai-plugin.json": "27659613c07538d9bd78a5e2538f1945a49496adf0565fe39ee6b41a6bc5a5f9",
+        "l10n/ja.json": "971743244bdf7d3855a8504df4f841a039c245a7964b28fb1771f1afaa8d62fc",
+        "l10n/zh-Hans.json": "2df41f6c26b6b9045204a55871a814a2cb806b05336db9e20ee587bd4eff3b31"
       }
     },
     {
       "id": "provider-llamacpp",
       "name": "llama.cpp",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "description": "Models on a llama.cpp server you run (llama-server), or one built on it such as Unsloth Studio or KoboldCpp. Their thinking is switched off for quick decisions.",
       "category": "providers",
       "keywords": [
@@ -304,7 +326,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4408,
+      "size": 7211,
       "requires": [
         {
           "id": "chat-completions",
@@ -313,14 +335,16 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "8d1e22f376f3efac33f87e67e178153138a29f7eb57dbbd8f895fbaff4f8a6fb",
-        "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7"
+        "annai-plugin.json": "282fb298926337f565f6e782b437e0a26600430a8f659e373608326a9ff57b03",
+        "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7",
+        "l10n/ja.json": "361425bae75413a650931ae2dac1a74847a06bf3a27628364e79e1644865a032",
+        "l10n/zh-Hans.json": "33368b043403032c695239cbd9088b898a6cdf9789ae7a656985f138c610aa5f"
       }
     },
     {
       "id": "provider-lmstudio",
       "name": "LM Studio",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on LM Studio's server.",
       "category": "providers",
       "keywords": [],
@@ -330,7 +354,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 3221,
+      "size": 5211,
       "requires": [
         {
           "id": "chat-completions",
@@ -339,14 +363,16 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "4f8bedb66e0a00b78ad0694d3e84ad7de4641b82430634c36bd813932f88ca38",
-        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451"
+        "annai-plugin.json": "21bbd42d88093541ea57b651c01ac3f42d6603ccdd7d7b35632e664560e2673a",
+        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451",
+        "l10n/ja.json": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
+        "l10n/zh-Hans.json": "2bb3e10f94c59f4ec281f53771316a159c7203eaf721af770c875789f29f59f6"
       }
     },
     {
       "id": "provider-local-speech",
       "name": "Local speech server",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
       "category": "speech",
       "keywords": [
@@ -361,7 +387,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1676,
+      "size": 3851,
       "requires": [
         {
           "id": "speech-openai",
@@ -370,13 +396,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "e74999f055de0bdf742380a68812a28433347c8c751ae34b3543986c7902e9a1"
+        "annai-plugin.json": "ec55a452341a1028d8e0ef9a63da7955b1934f8849cdd082c118d623be128e43",
+        "l10n/ja.json": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
+        "l10n/zh-Hans.json": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9"
       }
     },
     {
       "id": "provider-mistral",
       "name": "Mistral",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Mistral's models.",
       "category": "providers",
       "keywords": [],
@@ -386,7 +414,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 540,
+      "size": 974,
       "requires": [
         {
           "id": "chat-completions",
@@ -395,13 +423,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "8e907e7e22c967e71c6817baf20558d56f18c2ff9f4caafe5504c98c6ed1c20f"
+        "annai-plugin.json": "10fe899a2ee5db8dfcbc72db119ae97a1c598160f608f98e611bdb70218ec5ae",
+        "l10n/ja.json": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
+        "l10n/zh-Hans.json": "6e3d8d19e51b48a482a5e54c734b26a9f9a78b93db61907baf9588b53795d568"
       }
     },
     {
       "id": "provider-ollama",
       "name": "Ollama",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on Ollama, with their thinking switched off for quick decisions.",
       "category": "providers",
       "keywords": [],
@@ -411,7 +441,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4179,
+      "size": 6919,
       "requires": [
         {
           "id": "chat-completions",
@@ -420,14 +450,16 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "68d7913ac22c2d02686839b70e59dad4f1497fcebd9b64bd3cc6c5418f0a0e9d",
-        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
+        "annai-plugin.json": "e447076b9025c2694d581133fd84fc83791000a7a18b9c0dea11a098e6207814",
+        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb",
+        "l10n/ja.json": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
+        "l10n/zh-Hans.json": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825"
       }
     },
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
@@ -440,7 +472,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13295,
+      "size": 18549,
       "requires": [
         {
           "id": "openai-responses",
@@ -453,13 +485,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "d86189f4d64b3a6a87b48d6490e054a24c056b8401120edbd42465c38ce1c4e4"
+        "annai-plugin.json": "d40fbdf51eb0fe35eb29e70cab8d730622a01c5e774d1fb62b31d783fa3fcb43",
+        "l10n/ja.json": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
+        "l10n/zh-Hans.json": "60047f27be782a7900e2d45beab643e14bf63d000802b2d0e9abfa877162c4be"
       }
     },
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -471,7 +505,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 30956,
+      "size": 41759,
       "requires": [
         {
           "id": "chat-completions",
@@ -485,14 +519,16 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "ac013fe25f26b62480e7c71bc43ada28e2abcf666092c44b3114a25dd4446500",
-        "index.js": "31a1cc2a0a534ec00151891c495fc1663ca35b70107c42914bab8909548fe25f"
+        "annai-plugin.json": "d5f9696d00a92db1ca7d450098de43908599274f5eddaaa10d9eed59fad74e4c",
+        "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
+        "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
+        "l10n/zh-Hans.json": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7"
       }
     },
     {
       "id": "provider-scripted",
       "name": "Scripted model (for testing)",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
       "category": "developer",
       "keywords": [],
@@ -502,7 +538,7 @@
       "free": true,
       "local": false,
       "code": false,
-      "size": 884,
+      "size": 1367,
       "requires": [
         {
           "id": "scripted-model",
@@ -511,13 +547,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "616a37fadeb69c42b73865c169d208331db11f8f686635728a784cb9d33437ef"
+        "annai-plugin.json": "283d49d9dfd0be59000cfc593716445ef06eeb7b3327f1f281d3a6b46fe9bef1",
+        "l10n/ja.json": "75a78e1a3a3b216317a2041eba975e7e7d34a02c5cd74799a3a5412aa59f6f8e",
+        "l10n/zh-Hans.json": "9dfb3901051de397e56465adb78a6d14712730275536b85bccefc18b4026f41e"
       }
     },
     {
       "id": "provider-sglang",
       "name": "SGLang",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
       "category": "providers",
       "keywords": [],
@@ -527,7 +565,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1843,
+      "size": 3372,
       "requires": [
         {
           "id": "chat-completions",
@@ -536,13 +574,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "c06469647d3412ec6d91b3249cb80adf2de8848aff6d7f63876c8806b0e0b648"
+        "annai-plugin.json": "c30649666f345e235d0c69119d531e8496b9ac35f1514020fad0bc40a93f3a2f",
+        "l10n/ja.json": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
+        "l10n/zh-Hans.json": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665"
       }
     },
     {
       "id": "provider-vllm",
       "name": "vLLM",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
       "category": "providers",
       "keywords": [],
@@ -553,7 +593,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2349,
+      "size": 4474,
       "requires": [
         {
           "id": "chat-completions",
@@ -562,13 +602,15 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ff09a697526fcbd75e3eea088d766a8f2069f65536c31f4cdb8e6a84d8b89f40"
+        "annai-plugin.json": "ec1fe5eb5191c655864ee4de07bf2ec400b888495fd588379e8af132d0ae4d29",
+        "l10n/ja.json": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
+        "l10n/zh-Hans.json": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916"
       }
     },
     {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
       "category": "developer",
       "keywords": [],
@@ -576,18 +618,20 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19407,
+      "size": 28166,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "eedfc5535db2caf810e3bceb5089830278a2ba78e68f27d371b6733d9ac511b1",
-        "index.js": "f92387d45592c957b3a1f914eacb42512d4d59158b79fb5f184d00897126282d"
+        "annai-plugin.json": "afb9a2849511e48bf57b9b4b6f50ce0c777ffc67fdff4f11b9cd240d76b83cce",
+        "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
+        "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
+        "l10n/zh-Hans.json": "2f4d8f6cfbe005329a034ac011752b06a7fe22538a6c0eba646aa87f2bf78308"
       }
     },
     {
       "id": "scripted-model",
       "name": "Scripted model",
-      "version": "0.4.4",
+      "version": "0.5.0",
       "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
       "category": "developer",
       "keywords": [],
@@ -595,7 +639,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 7132,
+      "size": 7582,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -603,14 +647,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "17daa24ad812e528cf7ee3d46b3e1450f53cf70c2df3b877e82ef38438182540",
-        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a"
+        "annai-plugin.json": "54ca295b16ba7a826c30c7ed43c81dff23cab205a82dbe862bab7230c018660a",
+        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a",
+        "l10n/ja.json": "e311b1c502a9134d1f71c86cff7dd64e71eed6003f17c237d639124c550faf69",
+        "l10n/zh-Hans.json": "f0475b034744ccc5cd6ba794ac1e05a5a9d2174adbb9c979eab75b7cfc598a1b"
       }
     },
     {
       "id": "search-searxng",
       "name": "SearXNG Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
       "category": "tools",
       "keywords": [
@@ -621,7 +667,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3118,
+      "size": 5027,
       "requires": [],
       "provides": {
         "search": [
@@ -629,14 +675,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "1f1986e0712e81c4ec968de790c851e2a788605dcac0a6e968d53dc2e2241cb9",
-        "index.js": "ada51385e9898d4ab8ec2354eafb05543e0d1b2d425b1cfb7eaf4c3b1c3d2ac1"
+        "annai-plugin.json": "d086511197ecc0fc347ca34bf4f6f723921f3212f9b36085c34ae5f24208b859",
+        "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
+        "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
+        "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2"
       }
     },
     {
       "id": "search-serper",
       "name": "Serper Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
       "category": "tools",
       "keywords": [
@@ -647,7 +695,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 2711,
+      "size": 3919,
       "requires": [],
       "provides": {
         "search": [
@@ -655,14 +703,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "48e858c3d50f8b2a25ceb80f6430470e51f773df47e6c88f4616d4fa37951baa",
-        "index.js": "4a2244d5bf91a5c039afc5189fdda2552390a9f9e9e69c59b76b70166d54374e"
+        "annai-plugin.json": "f4c270517be1ca9ee045cb5562a56923e886b4371c477d03b3d90df6af412739",
+        "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
+        "l10n/ja.json": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
+        "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a"
       }
     },
     {
       "id": "search-tavily",
       "name": "Tavily Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",
       "category": "tools",
       "keywords": [
@@ -672,7 +722,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3226,
+      "size": 5227,
       "requires": [],
       "provides": {
         "search": [
@@ -680,14 +730,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "7acb1a6edc80daa8a4aaf66ed042c7289c3cbeda22ae97ff503e2977f0f8d91d",
-        "index.js": "7682eee36691dab1660155f53314e88f05c81751ba9ab7e9b350a040d4a1cfad"
+        "annai-plugin.json": "6c0e1583fd2cf48bb37856d5df8d5f1882f97c770e2c90639ba2aaf96577739a",
+        "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
+        "l10n/ja.json": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
+        "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08"
       }
     },
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
       "category": "developer",
       "keywords": [],
@@ -695,7 +747,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 9317,
+      "size": 9861,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -704,14 +756,16 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "ac2ad686e60fb1eda0e124a282543c5a114620702b41009aa5c1ff90d5e9b66c",
-        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92"
+        "annai-plugin.json": "83da81640186ba0fa86867c69b6bafd4ac58938f69d430b6fa75c1271416e22c",
+        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92",
+        "l10n/ja.json": "a9b094294d25ea2bda1dea0be13887ffdbefc6d0735aee3f4af72ae4eb83002b",
+        "l10n/zh-Hans.json": "2672c7f3bb4dbbd2e498d1cecd385f978703f868fcadf1da704390dfb159d86c"
       }
     },
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.3.0",
+      "version": "0.4.1",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -719,7 +773,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 45307,
+      "size": 65351,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -727,15 +781,17 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "63d66257deaae5acb87968e5a96184914b31c1a10c998af6cec50fc4a07d2b88",
-        "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "a2e4b7b5cbcfde6aec2901c112839e08937918e43ed98fe11d69c826429b69e4"
+        "annai-plugin.json": "e368078ef64035440971853864b70a6eec3d78750af5f0d430d3ce71e62ce8e8",
+        "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
+        "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541",
+        "l10n/ja.json": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
+        "l10n/zh-Hans.json": "74e81a5c4fb04bf50536a35a19f5e000519621836e5da193d23aabc96c43f2d9"
       }
     },
     {
       "id": "storage-github",
       "name": "GitHub",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -743,7 +799,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 29359,
+      "size": 40205,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -751,15 +807,17 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "c061ad76e9782e9ac58d0813dbaf2a22825697cdeee4c73769653945a7594278",
-        "git.js": "b5eede413ecbf8fe9ce8faddc7963d737307db7e398f890fa5acabc25e444b17",
-        "index.js": "8ec7530a9665d4bbad7a7f59d4d71bbf11dbdf294eee65be0e0579cc56e25a89"
+        "annai-plugin.json": "d9dc79efe9a0d79a27aaac116e5181c43cf4c6de28b480db04552ad336ec9eed",
+        "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
+        "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190",
+        "l10n/ja.json": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
+        "l10n/zh-Hans.json": "61c1f1f7a4db024c966ef9661fbcba41b916f50c22e6d75af593bd9bda3b0383"
       }
     },
     {
       "id": "storage-s3",
       "name": "S3-compatible storage",
-      "version": "0.1.0",
+      "version": "0.2.1",
       "description": "Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -767,7 +825,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 15125,
+      "size": 21908,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -775,15 +833,17 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "149cfca2f71b4e04b6d7d8c7ef962c82ba9b853264e51644dfa4f899078c6c5e",
-        "index.js": "875669a9b8d2c8fb712dd81015ab1521da673d516f046a53d24d972729357e84",
+        "annai-plugin.json": "5163b7f4d1be142eaee922ce3bf4acdff8e73597bd792e7a7a0139f779de4bb3",
+        "index.js": "84570a4a5184db62e47f67e4b8ef4642b363742546cfbc244dd95b596922c76e",
+        "l10n/ja.json": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
+        "l10n/zh-Hans.json": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
     },
     {
       "id": "storage-webdav",
       "name": "WebDAV",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -791,7 +851,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 9638,
+      "size": 14800,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -799,8 +859,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "75888749b25d4b7fdb188dd3b94b1236d6dec357b738389fe2d8a635e6966171",
-        "index.js": "495d3c27c4e4ef4a132d75ea57f2ff30046f19389cfafc9cc44b9c665740481a"
+        "annai-plugin.json": "b745c410226f872b9e25fadba2719a28d24e869886b7b166bf60c2104de0ec4c",
+        "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
+        "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
+        "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
       }
     }
   ]

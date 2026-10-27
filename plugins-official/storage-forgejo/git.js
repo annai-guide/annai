@@ -8,13 +8,27 @@
 
 const enc = new TextEncoder();
 
-/** A path git can't hold, in plain words. */
+/** A path git can't hold: what is wrong (code), and the path. */
 export class GitPathError extends Error {
-  /** @param {string} message */
-  constructor(message) {
+  /** @param {'part' | 'dot-git' | 'both' | 'twice'} code @param {string} path @param {string} message in English */
+  constructor(code, path, message) {
     super(message);
     this.name = 'GitPathError';
+    this.code = code;
+    this.path = path;
   }
+}
+
+/**
+ * What a path git can't hold means for a backup, in English and the screens' words, with what to do (annai.l10n.both).
+ * @param {any} l10n annai.l10n @param {GitPathError} e @returns {{ message: string, shown: string }}
+ */
+export function pathWords(l10n, e) {
+  const { both } = l10n;
+  if (e.code === 'part') return both`git can't hold "${e.path}": it has an empty, "." or ".." part. Rename it in annai, then back up again.`;
+  if (e.code === 'dot-git') return both`git can't hold "${e.path}": nothing in it may be called .git. Rename it in annai, then back up again.`;
+  if (e.code === 'both') return both`git can't hold both a file and a folder called "${e.path}". Rename it in annai, then back up again.`;
+  return both`"${e.path}" is in the backup twice. Rename it in annai, then back up again.`;
 }
 
 /** @param {ArrayBuffer} b */
@@ -56,11 +70,11 @@ export function nest(files) {
   const root = { files: new Map(), dirs: new Map() };
   for (const f of files) {
     const parts = f.path.split('/');
-    if (parts.some((p) => p === '' || p === '.' || p === '..')) throw new GitPathError(`git can't hold "${f.path}": it has an empty, "." or ".." part.`);
-    if (parts.some((p) => p.toLowerCase() === '.git')) throw new GitPathError(`git can't hold "${f.path}": nothing in it may be called .git.`);
+    if (parts.some((p) => p === '' || p === '.' || p === '..')) throw new GitPathError('part', f.path, `git can't hold "${f.path}": it has an empty, "." or ".." part.`);
+    if (parts.some((p) => p.toLowerCase() === '.git')) throw new GitPathError('dot-git', f.path, `git can't hold "${f.path}": nothing in it may be called .git.`);
     let d = root;
     for (const [i, p] of parts.slice(0, -1).entries()) {
-      if (d.files.has(p)) throw new GitPathError(`git can't hold both a file and a folder called "${parts.slice(0, i + 1).join('/')}".`);
+      if (d.files.has(p)) throw new GitPathError('both', parts.slice(0, i + 1).join('/'), `git can't hold both a file and a folder called "${parts.slice(0, i + 1).join('/')}".`);
       let next = d.dirs.get(p);
       if (!next) {
         next = { files: new Map(), dirs: new Map() };
@@ -69,8 +83,8 @@ export function nest(files) {
       d = next;
     }
     const name = /** @type {string} */ (parts.at(-1));
-    if (d.dirs.has(name)) throw new GitPathError(`git can't hold both a file and a folder called "${f.path}".`);
-    if (d.files.has(name)) throw new GitPathError(`"${f.path}" is in the backup twice.`);
+    if (d.dirs.has(name)) throw new GitPathError('both', f.path, `git can't hold both a file and a folder called "${f.path}".`);
+    if (d.files.has(name)) throw new GitPathError('twice', f.path, `"${f.path}" is in the backup twice.`);
     d.files.set(name, { sha: f.sha, mode: f.mode ?? '100644' });
   }
   return root;

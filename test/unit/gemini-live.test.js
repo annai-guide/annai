@@ -204,7 +204,7 @@ test("gemini-live is a protocol in annai's catalog: a keyed name, so a third par
   const catalog = JSON.parse(await readFile(new URL('../../catalog/plugins.json', import.meta.url), 'utf8')).plugins;
   const entry = catalog.find((/** @type {any} */ p) => p.id === 'gemini-live');
   assert.deepEqual(entry.provides, { 'endpoint-type': ['gemini-live'] });
-  assert.equal(entry.version, '0.3.0');
+  assert.equal(entry.version, JSON.parse(await readFile(new URL('../../plugins-official/gemini-live/annai-plugin.json', import.meta.url), 'utf8')).version);
   assert.ok(KEYED.has('endpoint-type'));
   const r = new Registry();
   const ranks = /** @type {Record<string, any[]>} */ ({ 'gemini-live': [1, 10, 'gemini-live'], other: [2, 5, 'other'] });

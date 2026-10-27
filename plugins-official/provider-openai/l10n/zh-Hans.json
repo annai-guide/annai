@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。",
+    "name": "OpenAI",
+    "provider.abilities.chat-completions.name": "对话（Chat Completions）",
+    "provider.abilities.chat-completions.note": "请优先使用“对话（Responses）”：GPT-6 Astra 和 GPT-6.1 Sol 只在那里调用工具。用“获取模型列表”添加模型。",
+    "provider.abilities.chat.name": "对话（Responses）",
+    "provider.abilities.chat.note": "在 OpenAI 上请用这个：GPT-6 Astra 和 GPT-6.1 Sol 只通过 Responses 调用工具。推理摘要可能需要在 OpenAI 有经过验证的组织；没有的话，请在可调参数中加入 \"reasoningSummary\": false。用“获取模型列表”添加的推理模型需要像这些模型一样设置推理级别；否则它思考时不显示进度，还可能超出时间限制。",
+    "provider.abilities.realtime.name": "实时语音",
+    "provider.abilities.realtime.note": "为 Koe 提供在一条流中双向语音的对话（OpenAI Realtime）。会话开启期间，你说的话会以电话音质（G.711，数据量是全音质的六分之一；在可调参数中加入 \"input\": \"pcm16\" 则发送全音质）发送给 OpenAI，并由 gpt-transcribe 转写；这部分由 OpenAI 另行计费（每分钟约 $0.0045），不计入“每日花费”。annai 直接从浏览器把你的密钥交给 OpenAI，而 OpenAI 建议使用由服务器生成的短期密钥：如果同一个密钥用于对话没有问题，但“测试”显示密钥被拒绝或地址无法访问，说明 OpenAI 拒绝来自浏览器的密钥，此时实时语音需要一台服务器，而 annai 没有。",
+    "provider.abilities.transcription.note": "把你说的话转成文字，供不接受音频的模型使用。",
+    "provider.abilities.voice.note": "Shiori 的声音。GPT-4o mini TTS 按音频计费；这里的价格是 OpenAI 估算的每分钟 $0.015。它接受风格（OpenAI 的 instructions）；TTS-1 和 TTS-1 HD 不接受，并且会不声不响地忽略它。OpenAI 将于 2027 年 1 月 6 日停用这三个模型。"
+  },
+  "messages": {}
+}

@@ -1,0 +1,158 @@
+{
+  "format": 1,
+  "plugins": {
+    "anthropic-messages": {
+      "name": "Anthropic Messages",
+      "description": "Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。"
+    },
+    "chat-completions": {
+      "name": "Chat Completions",
+      "description": "OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。"
+    },
+    "gemini-api": {
+      "name": "Gemini API",
+      "description": "Gemini 独自の API（Interactions）で、チャット、文字起こし、声を扱います：あらゆる音声形式、Gemini 3 の思考シグネチャをそのまま引き継ぎ、キャッシュと思考のトークンを含む使用量を数え、声はストリーミングし、ターン間の会話は Google が保持するので毎回新しい部分だけを送り、有料キーなら Google 検索も使えます（その答えは Google が返したとおりに表示します）。"
+    },
+    "gemini-live": {
+      "name": "Gemini Live",
+      "description": "Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
+    },
+    "openai-realtime": {
+      "name": "OpenAI Realtime",
+      "description": "OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
+    },
+    "openai-responses": {
+      "name": "OpenAI Responses",
+      "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
+    },
+    "provider-another-address": {
+      "name": "カスタムプロバイダー",
+      "description": "そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。",
+      "keywords": [
+        "OpenAI 互換",
+        "ルーター",
+        "カスタム",
+        "プロキシ",
+        "セルフホスト"
+      ]
+    },
+    "provider-anthropic": {
+      "name": "Anthropic",
+      "description": "Anthropic の Messages API を通じた Claude のモデル。Web 検索と、最長1時間もつキャッシュ付き。"
+    },
+    "provider-deepseek": {
+      "name": "DeepSeek",
+      "description": "DeepSeek のモデル。考えている途中の推論を表示します。"
+    },
+    "provider-gemini": {
+      "name": "Google Gemini",
+      "description": "Google 独自の API を通じた Gemini のモデル。有料キーでの Google 検索、Google の文字起こしと声、音声会話のための Gemini Live 付き。"
+    },
+    "provider-groq": {
+      "name": "Groq",
+      "description": "高速なオープンモデルと、高速な Whisper の文字起こし。"
+    },
+    "provider-llamacpp": {
+      "name": "llama.cpp",
+      "description": "自分で動かしている llama.cpp のサーバー（llama-server）、または Unsloth Studio や KoboldCpp などそれを土台にしたサーバーのモデル。クイック判定では思考をオフにします。",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ]
+    },
+    "provider-lmstudio": {
+      "name": "LM Studio",
+      "description": "LM Studio のサーバーのモデル。"
+    },
+    "provider-local-speech": {
+      "name": "ローカルの音声サーバー",
+      "description": "Speaches、whisper.cpp、Kokoro など、自分で動かしているサーバーによる文字起こしと声。",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ]
+    },
+    "provider-mistral": {
+      "name": "Mistral",
+      "description": "Mistral のモデル。"
+    },
+    "provider-ollama": {
+      "name": "Ollama",
+      "description": "Ollama のモデル。クイック判定では思考をオフにします。"
+    },
+    "provider-openai": {
+      "name": "OpenAI",
+      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのリアルタイム音声も、1つのキーで使えます。"
+    },
+    "provider-openrouter": {
+      "name": "OpenRouter",
+      "description": "1つのキーで多くのモデル（無料のものも含む）、さらに文字起こしと声も使えます。「OpenRouter でサインイン」するか、キーを入力してください。",
+      "featured": "「OpenRouter でサインイン」がいちばん手早い方法で、無料のモデルから始められます。"
+    },
+    "provider-scripted": {
+      "name": "台本どおりのモデル（テスト用）",
+      "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
+    },
+    "provider-sglang": {
+      "name": "SGLang",
+      "description": "自分で動かしている SGLang サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。"
+    },
+    "provider-vllm": {
+      "name": "vLLM",
+      "description": "自分で動かしている vLLM サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。文字起こし用の Whisper モデルも使えます。"
+    },
+    "remote-trace": {
+      "name": "リモート記録（開発者向け）",
+      "description": "開発者向け：annai の記録を、「記録」画面に表示されるとおりに、自分で動かしているサーバーへリアルタイムで送ります。サーバーとトークンを入力して「送信」をオンにするまでは何も送りません。キーは決して送りません。"
+    },
+    "scripted-model": {
+      "name": "台本どおりのモデル",
+      "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
+    },
+    "search-searxng": {
+      "name": "SearXNG 検索",
+      "description": "自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。",
+      "keywords": [
+        "SearXNG",
+        "セルフホスト"
+      ]
+    },
+    "search-serper": {
+      "name": "Serper 検索",
+      "description": "Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。",
+      "keywords": [
+        "Serper",
+        "Google"
+      ]
+    },
+    "search-tavily": {
+      "name": "Tavily 検索",
+      "description": "AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。",
+      "keywords": [
+        "Tavily"
+      ]
+    },
+    "speech-openai": {
+      "name": "OpenAI 互換の音声",
+      "description": "OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。"
+    },
+    "storage-forgejo": {
+      "name": "Forgejo / Gitea",
+      "description": "自分のサーバーや Codeberg など、Forgejo か Gitea のサーバーにある非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。"
+    },
+    "storage-github": {
+      "name": "GitHub",
+      "description": "GitHub の非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。"
+    },
+    "storage-s3": {
+      "name": "S3 互換ストレージ",
+      "description": "AWS S3、Cloudflare R2、Backblaze B2 など、S3 互換のストレージのバケットにすべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
+    },
+    "storage-webdav": {
+      "name": "WebDAV",
+      "description": "ブラウザからのアクセスを許可している WebDAV サーバーのフォルダーに、すべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
+    }
+  }
+}

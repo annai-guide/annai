@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。",
+    "name": "Anthropic Messages"
+  },
+  "messages": {}
+}

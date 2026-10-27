@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { checkManifest, checkSearchDesc, originsOf, inspectPackage } from '../../src/core/packages.js';
-import { addressProblem } from '../../src/core/llm/provider-desc.js';
+import { addressShown, addressProblem } from '../../src/core/llm/provider-desc.js';
 import { readAnswer, TargetError } from '../../src/core/storage-types.js';
 import { keysNote, whatItBrings, searchKeyInfo } from '../../src/ui/screens/plugin-install.js';
 import { cooldowns } from '../../src/core/web-search.js';
@@ -11,6 +11,7 @@ import { Registry } from '../../src/core/registry.js';
 import { activate as tavily } from '../../plugins-official/search-tavily/index.js';
 import { activate as serper } from '../../plugins-official/search-serper/index.js';
 import { activate as searxng } from '../../plugins-official/search-searxng/index.js';
+import { pluginWords } from './l10n-kit.js';
 
 const IDS = ['search-tavily', 'search-serper', 'search-searxng'];
 const manifest = async (/** @type {string} */ id) => JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8'));
@@ -23,7 +24,8 @@ function host(/** @type {Record<string, any>} */ secrets = {}, /** @type {Record
     register: (/** @type {string} */ kind, /** @type {any} */ item) => { assert.equal(kind, 'search'); provider = item; return () => {}; },
     secrets: { get: async (/** @type {string} */ n) => secrets[n] ?? null },
     settings: { get: async () => settings },
-    helpers: { addressProblem, readAnswer },
+    helpers: { addressProblem, addressShown, readAnswer },
+    l10n: pluginWords(),
   };
   return { annai, get provider() { return provider; } };
 }
@@ -58,7 +60,7 @@ test('a manifest\'s search is refused when it names no id or kind, an address th
 });
 
 test('the install screen says where searches and the key go, and an update that adds an origin is told', async () => {
-  const pkg = await inspectPackage(new Map([['annai-plugin.json', new TextEncoder().encode(JSON.stringify(await manifest('search-tavily')))], ['index.js', new TextEncoder().encode('export function activate() {}')]]));
+  const pkg = await inspectPackage(new Map([['annai-plugin.json', new TextEncoder().encode(JSON.stringify({ ...(await manifest('search-tavily')), l10n: undefined }))], ['index.js', new TextEncoder().encode('export function activate() {}')]]));
   assert.equal(pkg.search?.id, 'tavily');
   assert.equal(keysNote(pkg), 'Your search words and the key you give it are sent to https://api.tavily.com.');
   assert.equal(keysNote({ search: { origins: [] } }), 'Your search words are sent only to the address you give it.');
@@ -72,7 +74,7 @@ test('Tavily, against a stand-in of its API: the bearer key, a JSON body, rows f
   assert.deepEqual(await h.provider.ready(), { ok: true });
   const keyless = host();
   tavily(keyless.annai);
-  assert.deepEqual(await keyless.provider.ready(), { ok: false, why: 'needs a key (Settings → Plugins → Tavily Search)' });
+  assert.deepEqual(await keyless.provider.ready(), { ok: false, why: 'needs a key (Settings → Plugins → Tavily Search)', shown: 'needs a key (Settings → Plugins → Tavily Search)' });
   /** @type {any[]} */
   const seen = [];
   // Recorded from Tavily's documentation: POST /search → { query, answer, images, results[{ title, url, content, score, raw_content }], response_time }.

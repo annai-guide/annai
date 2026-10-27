@@ -1,0 +1,14 @@
+{
+  "manifest": {
+    "description": "由你自己运行的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
+    "name": "本地语音服务器",
+    "provider.abilities.transcription.note": "在提供商的地址上使用 Speaches 或 whisper.cpp。按 ID 或用“获取模型列表”添加模型。除非用 --convert 启动，whisper.cpp 的服务器只接受 WAV、MP3 和 FLAC：这种情况下请把它的 audioIn 设为 [\"mp3\", \"flac\", \"wav\"]。",
+    "provider.abilities.voice.note": "在它自己的地址上使用 Kokoro 或 Speaches。按 ID 添加一个声音模型，并在模型的“声音”中填入它的一个声音（Kokoro 的如 af_heart）。它们不接受风格：风格会保存但不会发送；如果服务器接受，请从模型的可调参数中删除 \"styled\": false。",
+    "keywords": [
+      "Speaches",
+      "whisper.cpp",
+      "Kokoro"
+    ]
+  },
+  "messages": {}
+}

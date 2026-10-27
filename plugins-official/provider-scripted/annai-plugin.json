@@ -1,8 +1,9 @@
 {
   "id": "provider-scripted",
   "name": "Scripted model (for testing)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
   "category": "developer",
   "requires": [

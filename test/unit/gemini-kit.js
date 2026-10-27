@@ -6,6 +6,7 @@ import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { g711 } from '../../src/core/voice/g711.js';
 import { encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
+import { pluginWords } from './l10n-kit.js';
 
 /**
  * The gemini-api plugin's endpoint types, registered the way annai's plugin host would, by type id.
@@ -15,7 +16,7 @@ import { encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
 export function loadTypes({ settings } = {}) {
   /** @type {Map<string, any>} */
   const types = new Map();
-  activate({ providers: { register: (/** @type {any} */ t) => { types.set(t.type, { ...t, pluginId: 'gemini-api' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry, base64: { encode: toBase64, decode: fromBase64 }, g711, wav: { encode: encodeWav, decode: pcm16 } }, settings });
+  activate({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { types.set(t.type, { ...t, pluginId: 'gemini-api' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry, base64: { encode: toBase64, decode: fromBase64 }, g711, wav: { encode: encodeWav, decode: pcm16 } }, settings });
   return types;
 }
 

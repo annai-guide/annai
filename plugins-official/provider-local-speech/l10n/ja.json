@@ -1,0 +1,14 @@
+{
+  "manifest": {
+    "description": "Speaches、whisper.cpp、Kokoro など、自分で動かしているサーバーによる文字起こしと声。",
+    "name": "ローカルの音声サーバー",
+    "provider.abilities.transcription.note": "Speaches か whisper.cpp を、プロバイダーのアドレスで使います。モデルは ID か「モデルの一覧を取得」で追加します。whisper.cpp のサーバーは --convert を付けて起動しない限り WAV、MP3、FLAC しか受け付けません。その場合は audioIn を [\"mp3\", \"flac\", \"wav\"] にしてください。",
+    "provider.abilities.voice.note": "Kokoro か Speaches を、独自のアドレスで使います。声のモデルを ID で追加し、モデルの「声」にそのモデルの声を1つ入れてください（Kokoro なら af_heart など）。これらはスタイルを受け付けないので、スタイルは保存されますが送られません。受け付けるサーバーなら、モデルの調整項目から \"styled\": false を削除してください。",
+    "keywords": [
+      "Speaches",
+      "whisper.cpp",
+      "Kokoro"
+    ]
+  },
+  "messages": {}
+}

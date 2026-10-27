@@ -10,6 +10,7 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
+import { pluginWords } from './l10n-kit.js';
 
 const root = new URL('../../', import.meta.url);
 const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8')).plugins;
@@ -278,7 +279,7 @@ test('every official transcription and Chat Completions ability declares the aud
   const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
   (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
   (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
-  (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers, l10n: pluginWords() });
   assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");
   const known = ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'];
   /** @type {Record<string, any>} */
@@ -375,7 +376,7 @@ const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 
 test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.6.0');
+  assert.equal(m.version, '2.7.1');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");

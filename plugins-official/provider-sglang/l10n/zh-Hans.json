@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "你自己运行的 SGLang 服务器上的模型，思考通过聊天模板开关。",
+    "name": "SGLang",
+    "provider.abilities.chat.note": "用“获取模型列表”添加模型：每个模型都会带上服务器保有的上下文长度。工具调用需要 --tool-call-parser <name>，会思考的模型需要 --reasoning-parser <name>；没有它们，Shiori 无法使用工具，她的思考也会混进她的话里。",
+    "provider.note": "除非用 --port 另行指定，SGLang 监听 30000 端口；用 --api-key 给它设密钥，或者把密钥留空。"
+  },
+  "messages": {}
+}

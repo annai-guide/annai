@@ -11,11 +11,13 @@ import { NotFoundError } from './workspace.js';
  * @typedef {{ id: string, at: number, device?: string, label?: string, encrypted?: boolean }} RemoteBackup
  *   a backup at a place: its id there, when it was made, and the device that made it, when known
  * @typedef {{ kind: 'newer', remote: RemoteBackup, seen?: boolean, known?: Record<string, number> } | { kind: 'large', bytes: number, at: number }
- *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean, said?: import('./backup.js').Said | null, offline?: boolean }} Hold
+ *   | { kind: 'error', message: string, at: number, count: number, retryAt: number, needsYou: boolean, said?: import('./backup.js').Said | null, offline?: boolean,
+ *   shown?: string, lang?: string }} Hold
  *   why automatic backups to a place wait: a backup there this device hasn't taken in; an upload too
  *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it). A failure's message
  *   is the log's English, or a place's or plugin's own words; said: what one of annai's own was, which the screens' words are
- *   made from (backup.js holdWords); offline: this device was offline, and annai tries again once it's back.
+ *   made from (backup.js holdWords); offline: this device was offline, and annai tries again once it's back. shown and lang: a
+ *   plugin's own words in the screens' language when it failed (lang), shown only on screens in that language (localization L7).
  *   seen: the user found the newer backup themselves, testing the place on its screen; known: as LastBackup's, what
  *   "Back up over it" covers
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number, known?: Record<string, number> }} LastBackup
@@ -80,6 +82,7 @@ export async function deviceId(ws) {
 
 /**
  * @param {Workspace} ws @param {{ type: string, name: string, config?: Record<string, string>, auto?: Auto, mobileData?: boolean }} t
+ *   name: '' for a new place, whose name is its kind's, made where it is shown (backup.js)
  * @returns {Promise<string>} the new place's id
  */
 export async function addTarget(ws, { type, name, config = {}, auto = 'changes', mobileData = false }) {

@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -193,7 +195,8 @@ test('GitHub through annai: every request is in the trace, and the token is in n
     const dir = new URL('../../plugins-official/storage-github/', import.meta.url);
     /** @type {Map<string, Uint8Array>} */
     const files = new Map();
-    for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+    // Its files, its translations' folder too.
+  for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) if (e.isFile()) { const name = relative(fileURLToPath(dir), join(e.parentPath, e.name)); files.set(name, new Uint8Array(await readFile(new URL(name, dir)))); }
     // Installed from its files; loaded from this repository, since Node has no service worker to serve them.
     const served = '/plugins/storage-github/';
     const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
@@ -489,4 +492,18 @@ test('a cancel that lands as the download ends throws the backup away, and the t
   await assert.rejects(phone.backups.download(id, 'b1', { signal: stop.signal }), (e) => /** @type {any} */ (e).name === 'AbortError');
   const [line] = await phone.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.download'] }));
   assert.deepEqual([line.data.backup, line.data.stopped, line.data.bytes > 0], ['b1', true, true]);
+});
+
+test("a new place stores no name: it is its kind's, made where it is shown, so it follows the screens' language (store data, not words)", async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  const id = await d.backups.add('memory');
+  const { getTarget } = await import('../../src/core/backup-targets.js');
+  assert.equal((await getTarget(d.ws, id))?.name, '');
+  assert.equal((await d.backups.list())[0].name, 'Memory');
+  assert.equal((await d.backups.get(id))?.name, 'Memory');
+  // A record from before keeps the name it stored.
+  const { setTarget } = await import('../../src/core/backup-targets.js');
+  await setTarget(d.ws, id, { name: 'My memory' });
+  assert.equal((await d.backups.get(id))?.name, 'My memory');
 });
