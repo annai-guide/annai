@@ -1,8 +1,9 @@
 {
   "id": "speech-openai",
   "name": "OpenAI-compatible speech",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
   "provides": { "endpoint-type": ["openai-transcription", "openai-speech"] }

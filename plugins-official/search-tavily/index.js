@@ -12,7 +12,9 @@ export function activate(annai) {
   return annai.register('search', {
     id: 'tavily', name: 'Tavily', kind: 'web',
     async ready() {
-      return (await key()) ? { ok: true } : { ok: false, why: 'needs a key (Settings → Plugins → Tavily Search)' };
+      // Shiori is told why in English, and the screen shows it in its own words (annai's shown rule).
+      const { message, shown } = annai.l10n.both`needs a key (Settings → Plugins → Tavily Search)`;
+      return (await key()) ? { ok: true } : { ok: false, why: message, shown };
     },
     /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit?: number }} c */
     async search(query, { fetch, signal, limit = 8 }) {

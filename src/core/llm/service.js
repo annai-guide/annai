@@ -440,9 +440,9 @@ export function createLlm({
         if (!Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) continue;
         try {
           await service.setAbility(providerId, a.id, true);
-          out.on.push(abilityName(a));
+          out.on.push(abilityName(a, { shown: plugins.shownOf(rec.plugin)?.provider }));
         } catch (error) {
-          out.failed.push({ name: abilityName(a), error });
+          out.failed.push({ name: abilityName(a, { shown: plugins.shownOf(rec.plugin)?.provider }), error });
         }
       }
       await useSuggestion({ ws }, providerId, src, which);

@@ -1,0 +1,14 @@
+{
+  "manifest": {
+    "description": "自分で動かしている llama.cpp のサーバー（llama-server）、または Unsloth Studio や KoboldCpp などそれを土台にしたサーバーのモデル。クイック判定では思考をオフにします。",
+    "name": "llama.cpp",
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。サーバーが読み込んでいるモデルについては、会話ごとのコンテキストの長さと、画像を読めるかどうかを読み取ります（llama-server の /props）。それ以外のモデルは、そのページでコンテキストウィンドウを設定し（llama-server の -c、または Unsloth Studio で設定したコンテキスト長）、画像を読めるなら「写真を受け付ける」にチェックを入れてください。--tools や --agent 付きで起動した llama-server は、同じコンピューター上のページしか受け入れません：--cors-origins https://annai.guide で annai のアドレスを追加してください。",
+    "provider.note": "llama-server は --port で変えない限りポート 9931 で待ち受けます。--api-key でキーを設定するか、キーを空のままにしてください。Unsloth Studio は独自のアドレス（変えない限りポート 8888）で動き、キー（sk-unsloth-…）は Unsloth Studio の Settings → API で取得します。",
+    "keywords": [
+      "Unsloth",
+      "LM Studio",
+      "KoboldCpp"
+    ]
+  },
+  "messages": {}
+}

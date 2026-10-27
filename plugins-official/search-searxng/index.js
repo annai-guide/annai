@@ -11,9 +11,11 @@ export function activate(annai) {
     id: 'searxng', name: 'SearXNG', kind: 'web',
     async ready() {
       const url = await address();
-      if (!url) return { ok: false, why: 'needs the address of your instance (Settings → Plugins → SearXNG Search)' };
+      // Shiori is told why in English, and the screen shows it in its own words (annai's shown rule).
+      const { message, shown } = annai.l10n.both`needs the address of your instance (Settings → Plugins → SearXNG Search)`;
+      if (!url) return { ok: false, why: message, shown };
       const wrong = annai.helpers.addressProblem(url);
-      return wrong ? { ok: false, why: wrong } : { ok: true };
+      return wrong ? { ok: false, why: wrong, shown: annai.helpers.addressShown(url) } : { ok: true };
     },
     /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit?: number }} c */
     async search(query, { fetch, signal, limit = 8 }) {

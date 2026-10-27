@@ -29,7 +29,6 @@ export const RETRY_MAX_MS = 60_000;
 export const REFUSALS = 3;
 const SETTINGS_SCOPE = 'sys:settings';
 const PAGE = `#/plugins/${ID}`;
-const WHERE = 'Settings → Plugins → Remote trace (for developers)';
 /** sw.js names its offline copy annai-shell-<version>-<build>. */
 const SHELL = /^annai-shell-(.+)-([0-9a-f]{12})$/;
 /** What a Bearer token can hold: visible ASCII, no spaces (anything else, a request can't carry). */
@@ -37,24 +36,28 @@ const TOKEN_CHARS = /^[\x21-\x7e]+$/;
 /** A batch, or a single entry, the server found too big or not to its liking: it gets half, or that entry goes. */
 const TOO_MUCH = new Set([400, 413]);
 const encoder = new TextEncoder();
+/**
+ * @typedef {{ code: 'offline' | 'no-token' | 'token' | 'status' | 'unreachable' | 'unready', status?: number }} Problem
+ *   why entries wait, as data: offline; no token, or one a request can't carry; the server's status; no answer; the batch not made ready
+ */
 
 /**
- * Why annai can't send to an address, in plain words, or null: https anywhere, http only on this
- * device (annai's CSP allows nothing else), and no name or password in it. @param {unknown} address
+ * Why annai can't send to an address, in plain words (annai.l10n's: they are only shown), or null: https anywhere, http only on
+ * this device (annai's CSP allows nothing else), and no name or password in it. @param {unknown} address @param {any} l10n annai.l10n
  */
-export function serverProblem(address) {
+export function serverProblem(address, { t }) {
   const text = String(address ?? '').trim();
-  if (!text) return 'It needs the address of your server.';
+  if (!text) return t`It needs the address of your server.`;
   /** @type {URL} */
   let u;
   try {
     u = new URL(text);
   } catch {
-    return 'Its server address must start with https:// (http:// only for localhost or 127.0.0.1).';
+    return t`Its server address must start with https:// (http:// only for localhost or 127.0.0.1).`;
   }
-  if (u.username || u.password) return "Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.";
+  if (u.username || u.password) return t`Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.`;
   if (u.protocol === 'https:' || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
-  return 'Its server address must start with https:// (http:// only for localhost or 127.0.0.1).';
+  return t`Its server address must start with https:// (http:// only for localhost or 127.0.0.1).`;
 }
 
 /**
@@ -71,7 +74,7 @@ function hostOf(url) {
   try {
     return new URL(url).host;
   } catch {
-    return 'The server';
+    return url;
   }
 }
 
@@ -128,8 +131,14 @@ export function start(annai, {
   let carded = false;
   /** @type {string | null} the card about its own settings shown last (no token, a token a request can't carry), so it shows once */
   let told = null;
-  /** @type {string | null} why entries wait, for the chip's name */
+  /** @type {Problem | null} why entries wait, for the chip's name */
   let problem = null;
+  const { t, plural, format } = annai.l10n;
+  /** Where its settings are, in the screens' words. */
+  const settingsAt = () => t`Change it in Settings → Plugins → Remote trace (for developers).`;
+  /** Why entries wait, in a sentence. @param {Problem} p */
+  const problemWords = (p) => (p.code === 'offline' ? t`The phone is offline.` : p.code === 'no-token' ? t`It has no token.` : p.code === 'token' ? t`Its token can't be sent.`
+    : p.code === 'status' ? t`The server answered ${p.status}.` : p.code === 'unreachable' ? t`The server can't be reached.` : t`annai couldn't get the batch ready.`);
   /** Settings being read again: no batch starts meanwhile. */
   let holding = 0;
   let reads = 0;
@@ -154,7 +163,7 @@ export function start(annai, {
   const label = () => {
     if (!chipEl) return;
     const waiting = queue.length + (flight?.items.length ?? 0);
-    const words = problem && waiting ? `Sending trace: ${waiting} waiting, ${problem}` : 'Sending trace';
+    const words = problem && waiting ? format.sentences(plural(waiting, 'Sending trace: # waiting.', 'Sending trace: # waiting.'), problemWords(problem)) : t`Sending trace`;
     chipEl.setAttribute('aria-label', words);
     chipEl.title = words;
   };
@@ -167,7 +176,7 @@ export function start(annai, {
         render: (/** @type {any} */ el, /** @type {any} */ dock) => {
           chipEl = el;
           ui = dock;
-          el.textContent = 'Trace';
+          el.textContent = t`Trace`;
           el.setAttribute('role', 'button');
           el.tabIndex = 0;
           const open = () => dock.go(PAGE);
@@ -235,7 +244,7 @@ export function start(annai, {
     if (!on || holding || flight || stopped || !queue.length) return;
     if (!online()) {
       // The browser tells annai when it is back (onOnline below): no tries until then.
-      problem = 'the phone is offline';
+      problem = { code: 'offline' };
       label();
       return;
     }
@@ -252,19 +261,19 @@ export function start(annai, {
     }, Math.max(0, due - t));
   };
 
-  /** A failed try: the next waits longer. @param {string} why */
+  /** A failed try: the next waits longer. @param {Problem} why */
   const failed = (why) => {
     failures++;
     retryAt = now() + Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** (failures - 1));
     problem = why;
   };
 
-  /** A setting of its own a request can't go without: one card, and tries again, since the form can fix it without a settings entry. @param {string} why @param {string} body */
+  /** A setting of its own a request can't go without: one card, and tries again, since the form can fix it without a settings entry. @param {Problem} why @param {string} body */
   const needs = (why, body) => {
     failed(why);
-    if (told === body) return;
-    told = body;
-    card({ tone: 'warn', title: "Remote trace isn't sending", body });
+    if (told === why.code) return;
+    told = why.code;
+    card({ tone: 'warn', title: t`Remote trace isn't sending`, body });
   };
 
   /** Sends the oldest entries waiting, one batch, and keeps them when the server doesn't take them. */
@@ -292,11 +301,11 @@ export function start(annai, {
       const token = String((await annai.secrets.get('token')) ?? '').trim();
       if (!mine()) return;
       if (!token) {
-        needs('it has no token', `It needs the server's token. Add it in ${WHERE}.`);
+        needs({ code: 'no-token' }, t`It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).`);
         return;
       }
       if (!TOKEN_CHARS.test(token)) {
-        needs("its token can't be sent", `Its token has characters a request can't carry: letters, digits and punctuation only, no spaces. Change it in ${WHERE}.`);
+        needs({ code: 'token' }, format.sentences(t`Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.`, settingsAt()));
         return;
       }
       if (!device) {
@@ -336,22 +345,24 @@ export function start(annai, {
           dropped++;
         }
         retryAt = now() + RETRY_MS;
-        problem = `the server answered ${res.status}`;
+        problem = { code: 'status', status: res.status };
       } else {
-        failed(`the server answered ${res.status}`);
+        failed({ code: 'status', status: res.status });
       }
       if (refusals >= REFUSALS && !carded) {
         carded = true;
-        const hint = res.status === 401 || res.status === 403 ? ': the token may be wrong' : '';
+        const host = hostOf(to.server);
+        const kept = format.num(KEEP_MAX);
         card({
-          tone: 'warn', title: 'The trace server refuses what annai sends',
-          body: `${hostOf(to.server)} answered ${res.status} ${refusals} times in a row${hint}. annai keeps trying about once a minute, and keeps the newest ${KEEP_MAX.toLocaleString('en-US')} entries until they go. Check the server address and the token in ${WHERE}, or turn Send off there.`,
-          actions: ui ? [{ label: 'Open Remote trace', primary: true, run: () => ui.go(PAGE) }] : [],
+          tone: 'warn', title: t`The trace server refuses what annai sends`,
+          body: format.sentences(res.status === 401 || res.status === 403 ? t`${host} answered ${res.status} ${refusals} times in a row: the token may be wrong.` : t`${host} answered ${res.status} ${refusals} times in a row.`,
+            t`annai keeps trying about once a minute, and keeps the newest ${kept} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.`),
+          actions: ui ? [{ label: t`Open Remote trace`, primary: true, run: () => ui.go(PAGE) }] : [],
         });
       }
     } catch {
       // Offline, or no answer; or the batch couldn't be made ready (its keys unread): tried again later, never at once.
-      if (mine()) failed(asking ? "the server can't be reached" : "annai couldn't get the batch ready");
+      if (mine()) failed(asking ? { code: 'unreachable' } : { code: 'unready' });
     } finally {
       if (mine()) {
         flight = null;
@@ -384,10 +395,10 @@ export function start(annai, {
       halt();
       return;
     }
-    const why = serverProblem(s.server);
+    const why = serverProblem(s.server, annai.l10n);
     if (why) {
       halt();
-      card({ tone: 'warn', title: "Remote trace isn't sending", body: `${why} Change it in ${WHERE}.` });
+      card({ tone: 'warn', title: t`Remote trace isn't sending`, body: format.sentences(why, settingsAt()) });
       return;
     }
     on = { server: String(s.server).trim(), location: s.location === true };
@@ -426,7 +437,7 @@ export function start(annai, {
   const unlisten = onOnline(() => {
     if (!on || stopped) return;
     retryAt = 0;
-    if (problem === 'the phone is offline') problem = null;
+    if (problem?.code === 'offline') problem = null;
     schedule();
     label();
   });

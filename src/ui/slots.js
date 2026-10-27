@@ -1,4 +1,4 @@
-import { h } from './dom.js';
+import { h, otherLang } from './dom.js';
 
 /**
  * What plugins add to annai's screens (spec §16.4), drawn. Each item draws itself into an element
@@ -42,8 +42,8 @@ export function pluginUi(ctx, pluginId) {
     h,
     go: (/** @type {string} */ hash) => ctx.go(String(hash)),
     trip: () => ctx.agent?.trip ?? null,
-    toast: (/** @type {string} */ text) => ctx.notices.toast(String(text)),
-    card: (/** @type {any} */ c) => ctx.notices.card({ title: String(c?.title ?? ''), body: c?.body === undefined ? undefined : String(c.body), tone: c?.tone, actions: c?.actions }),
+    toast: (/** @type {string} */ text) => ctx.notices.toast(String(text), { lang: ctx.plugins?.langOf(pluginId) }),
+    card: (/** @type {any} */ c) => ctx.notices.card({ title: String(c?.title ?? ''), body: c?.body === undefined ? undefined : String(c.body), tone: c?.tone, actions: c?.actions, lang: ctx.plugins?.langOf(pluginId) }),
     shiori: Object.freeze({
       state: () => ({ ...(ctx.agent?.state ?? { name: 'sleeping', label: '' }) }),
       on,
@@ -89,6 +89,9 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
     if (seq !== undefined && seq !== shown) run(/** @type {() => void} */ (x));
     else cleanups[group].push(/** @type {() => void} */ (x));
   };
+  // Its words' language, when it isn't the screens' (localization design, section 8).
+  const words = otherLang(ctx.plugins?.langOf(entry.pluginId));
+  if (words) el.lang = words;
   let failed = false;
   const fail = (/** @type {unknown} */ e) => {
     if (failed) return;

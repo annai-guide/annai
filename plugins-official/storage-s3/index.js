@@ -7,8 +7,8 @@ import { signV4, uriEncode, amzDate, EMPTY_SHA256 } from './sigv4.js';
  * @typedef {{ endpoint: string, region: string, bucket: string, prefix: string, key: string, secret: string,
  *   TargetError: any, xml: { elements: (x: string, n: string) => string[], text: (x: string, n: string) => string | null },
  *   backupFiles: { parse: (name: string) => any }, read: (res: Response, how: string, where: string) => Promise<any>,
- *   net: (url: string, init?: RequestInit) => Promise<Response> }} S
- *   read: annai's reader of a server's answer: whatever is wrong with an answer is the bucket's doing, never a bug here
+ *   net: (url: string, init?: RequestInit) => Promise<Response>, l10n: any }} S
+ *   read: annai's reader of a server's answer: whatever is wrong with an answer is the bucket's doing, never a bug here; l10n: annai.l10n
  */
 
 const PREFIX = 'annai/';
@@ -29,6 +29,12 @@ const prefixOf = (config) => {
   return p.endsWith('/') ? p : `${p}/`;
 };
 
+/**
+ * A refusal of kind: its English for the log and a hold, and the screens' words beside it (annai's shown rule; annai.l10n.both).
+ * @param {{ TargetError: any }} c @param {string} kind @param {{ message: string, shown: string }} w @param {object} [extra]
+ */
+const refuse = (c, kind, w, extra = {}) => new c.TargetError(kind, w.message, { ...extra, shown: w.shown });
+
 /** @param {any} annai */
 export function activate(annai) {
   const { TargetError, xml, backupFiles, readAnswer } = annai.helpers;
@@ -40,23 +46,25 @@ export function activate(annai) {
     prefix: prefixOf(c.config),
     key: String(c.secret.accessKeyId ?? '').trim(),
     secret: String(c.secret.secretAccessKey ?? '').trim(),
-    TargetError, xml, backupFiles, read: readAnswer, net: annai.net.fetch,
+    TargetError, xml, backupFiles, read: readAnswer, net: annai.net.fetch, l10n: annai.l10n,
   });
+  const { t } = annai.l10n;
   return annai.storage.register({
     type: 's3',
-    name: 'S3-compatible storage',
+    // Shown, never stored: a new place keeps no name, and shows its kind's.
+    name: t`S3-compatible storage`,
     stores: 'file',
     fields: [
-      { key: 'endpoint', label: 'S3 address', placeholder: 'https://s3.us-east-1.amazonaws.com' },
-      { key: 'region', label: 'Region', placeholder: 'us-east-1' },
-      { key: 'bucket', label: 'Bucket', placeholder: 'my-annai-backups' },
-      { key: 'prefix', label: 'Folder in the bucket', placeholder: PREFIX, advanced: true },
+      { key: 'endpoint', label: t`S3 address`, placeholder: 'https://s3.us-east-1.amazonaws.com' },
+      { key: 'region', label: t`Region`, placeholder: 'us-east-1' },
+      { key: 'bucket', label: t`Bucket`, placeholder: 'my-annai-backups' },
+      { key: 'prefix', label: t`Folder in the bucket`, placeholder: PREFIX, advanced: true },
     ],
-    secret: [{ key: 'accessKeyId', label: 'Access key ID' }, { key: 'secretAccessKey', label: 'Secret access key' }],
-    help: "Use a bucket of its own for annai's backups, and an access key that may only list, read, write and delete in it. The bucket must allow browser access: paste the rules below into its CORS settings.",
+    secret: [{ key: 'accessKeyId', label: t`Access key ID` }, { key: 'secretAccessKey', label: t`Secret access key` }],
+    help: t`Use a bucket of its own for annai's backups, and an access key that may only list, read, write and delete in it. The bucket must allow browser access: paste the rules below into its CORS settings.`,
     where: (/** @type {any} */ config) => `${String(config.bucket || 'bucket')}/${prefixOf(config)}`,
     browserAccess: (/** @type {string} */ origin) => ({
-      text: "Paste these rules into the bucket's CORS settings. On AWS: the bucket → Permissions → Cross-origin resource sharing (CORS) → Edit. On Cloudflare R2: the bucket → Settings → CORS policy → Edit.",
+      text: t`Paste these rules into the bucket's CORS settings. On AWS: the bucket → Permissions → Cross-origin resource sharing (CORS) → Edit. On Cloudflare R2: the bucket → Settings → CORS policy → Edit.`,
       code: corsRules(origin),
     }),
     check: (/** @type {any} */ c) => check(client(c)),
@@ -79,10 +87,10 @@ function webAddress(u) {
 
 /** What can be told without asking the bucket. @param {S} s */
 function ready(s) {
-  const E = s.TargetError;
-  if (!webAddress(s.endpoint)) throw new E('setup', 'Check the S3 address: it must be a web address that starts with https://.');
-  if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(s.bucket)) throw new E('setup', "Check the bucket's name: lowercase letters, digits, dots and dashes.");
-  if (!s.key || !s.secret) throw new E('setup', 'Paste the access key ID and the secret access key, then save.');
+  const { both } = s.l10n;
+  if (!webAddress(s.endpoint)) throw refuse(s, 'setup', both`Check the S3 address: it must be a web address that starts with https://.`);
+  if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(s.bucket)) throw refuse(s, 'setup', both`Check the bucket's name: lowercase letters, digits, dots and dashes.`);
+  if (!s.key || !s.secret) throw refuse(s, 'setup', both`Paste the access key ID and the secret access key, then save.`);
 }
 
 /** Where a key of the bucket is: AWS addresses take the bucket in the host name, unless its name has a dot. @param {S} s @param {string} key */
@@ -118,18 +126,19 @@ async function call(s, method, key, { query = [], body, signal } = {}) {
 async function failure(s, res) {
   const body = await s.read(res, 'text', s.bucket).catch(() => '');
   const code = s.xml.text(body, 'Code') ?? '';
-  const E = s.TargetError;
-  if (code === 'InvalidAccessKeyId' || code === 'SignatureDoesNotMatch') return new E('auth', `${s.bucket} didn't accept the access key. Check the key ID and the secret, then save.`);
+  const { both } = s.l10n;
+  if (code === 'InvalidAccessKeyId' || code === 'SignatureDoesNotMatch') return refuse(s, 'auth', both`${s.bucket} didn't accept the access key. Check the key ID and the secret, then save.`);
   if (code === 'AuthorizationHeaderMalformed' || code === 'PermanentRedirect' || code === 'IllegalLocationConstraintException') {
     const region = s.xml.text(body, 'Region');
-    return new E('setup', region ? `${s.bucket} is in the region ${region}. Set Region to ${region}, then save.` : `${s.bucket} is in another region. Set Region to the bucket's region, then save.`);
+    return refuse(s, 'setup', region ? both`${s.bucket} is in the region ${region}. Set Region to ${region}, then save.` : both`${s.bucket} is in another region. Set Region to the bucket's region, then save.`);
   }
-  if (code === 'RequestTimeTooSkewed') return new E('setup', "This device's clock is more than 15 minutes off, so the bucket refused it. Set the clock to the network's time, then try again.");
-  if (code === 'NoSuchBucket') return new E('missing', `There is no bucket ${s.bucket} at ${new URL(s.endpoint).host}. Check the name and the address.`);
-  if (code === 'NoSuchKey') return new E('missing', 'That backup is no longer in the bucket.');
-  if (code === 'AccessDenied' || res.status === 403) return new E('refused', `The access key isn't allowed to do this in ${s.bucket}. Give it permission to list, read, write and delete objects there.`);
-  if (code === 'SlowDown' || res.status === 503) return new E('rate', 'The bucket asked annai to slow down. annai tries again in a few minutes.', { retryAt: Date.now() + 5 * 60_000 });
-  return new E('other', `The bucket refused this (HTTP ${res.status}${code ? `: ${code}` : ''}). annai tries again later.`);
+  if (code === 'RequestTimeTooSkewed') return refuse(s, 'setup', both`This device's clock is more than 15 minutes off, so the bucket refused it. Set the clock to the network's time, then try again.`);
+  if (code === 'NoSuchBucket') return refuse(s, 'missing', both`There is no bucket ${s.bucket} at ${new URL(s.endpoint).host}. Check the name and the address.`);
+  if (code === 'NoSuchKey') return refuse(s, 'missing', both`That backup is no longer in the bucket.`);
+  if (code === 'AccessDenied' || res.status === 403) return refuse(s, 'refused', both`The access key isn't allowed to do this in ${s.bucket}. Give it permission to list, read, write and delete objects there.`);
+  if (code === 'SlowDown' || res.status === 503) return refuse(s, 'rate', both`The bucket asked annai to slow down. annai tries again in a few minutes.`, { retryAt: Date.now() + 5 * 60_000 });
+  // The bucket's own code, as it gave it.
+  return refuse(s, 'other', code ? both`The bucket refused this (HTTP ${res.status}: ${code}). annai tries again later.` : both`The bucket refused this (HTTP ${res.status}). annai tries again later.`);
 }
 
 /** @param {S} s */
@@ -142,10 +151,10 @@ async function check(s) {
   } catch (e) {
     if (/** @type {any} */ (e)?.name === 'AbortError' || e instanceof s.TargetError) throw e;
     // To a web page, a bucket without CORS rules looks like no answer at all.
-    throw new s.TargetError('setup', `annai couldn't reach ${s.bucket}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.`);
+    throw refuse(s, 'setup', s.l10n.both`annai couldn't reach ${s.bucket}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.`);
   }
   if (!res.ok) throw await failure(s, res);
-  return { note: `Works: annai can reach ${s.bucket} and keep its backups in ${s.prefix}.` };
+  return { note: s.l10n.t`Works: annai can reach ${s.bucket} and keep its backups in ${s.prefix}.` };
 }
 
 /** The backups in the folder, newest first; other files are left alone. @param {S} s */

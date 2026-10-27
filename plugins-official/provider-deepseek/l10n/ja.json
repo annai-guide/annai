@@ -1,0 +1,8 @@
+{
+  "manifest": {
+    "description": "DeepSeek のモデル。考えている途中の推論を表示します。",
+    "name": "DeepSeek",
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。"
+  },
+  "messages": {}
+}

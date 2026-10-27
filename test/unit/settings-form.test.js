@@ -20,7 +20,7 @@ test("a plugin's settings schema becomes fields: text, a choice, numbers, a swit
     ['station', 'text', 'Tide station'], ['units', 'select', 'units'], ['days', 'integer', 'Days ahead'],
     ['alerts', 'boolean', 'Alert me'], ['key', 'secret', 'API key'], ['nested', 'unsupported', 'nested'],
   ]);
-  assert.deepEqual(formFields(SCHEMA)[1].options, ['ft', 'm']);
+  assert.deepEqual(formFields(SCHEMA)[1].options, [['ft', 'ft'], ['m', 'm']]);
   assert.deepEqual([formFields(SCHEMA)[2].min, formFields(SCHEMA)[2].max], [1, 7]);
   assert.deepEqual(formFields({ type: 'object' }), []);
 });
@@ -55,4 +55,17 @@ test('a number field asks for a digit keypad only when its minimum is zero or mo
   assert.equal(keypad({ kind: 'number' }), undefined, 'no minimum, so a minus may be wanted');
   assert.equal(keypad({ kind: 'integer', max: 10 }), undefined);
   assert.equal(keypad({ kind: 'text' }), undefined);
+});
+
+test("a choice with words: JSON Schema's oneOf of consts shows each one's title, a plain enum its values (localization design, section 8)", () => {
+  const schema = { type: 'object', properties: { depth: { type: 'string', title: 'Depth', oneOf: [{ const: 'basic', title: 'Basic' }, { const: 'advanced' }] } } };
+  assert.deepEqual(formFields(schema)[0].options, [['basic', 'Basic'], ['advanced', 'advanced']]);
+  assert.equal(formFields(schema)[0].kind, 'select');
+  assert.deepEqual(readForm(schema, { depth: 'advanced' }).values, { depth: 'advanced' });
+});
+
+test('a oneOf that validates, not chooses (an entry without a const), stays the field its type gives', () => {
+  const schema = { type: 'object', properties: { url: { type: 'string', title: 'Address', oneOf: [{ pattern: '^https://' }, { const: '' }] } } };
+  assert.equal(formFields(schema)[0].kind, 'text');
+  assert.equal(formFields(schema)[0].options, undefined);
 });

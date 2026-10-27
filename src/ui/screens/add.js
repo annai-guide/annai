@@ -1,10 +1,10 @@
-import { h, crumb, t, messageOf as message } from '../dom.js';
+import { h, crumb, t, otherLang, messageOf as message } from '../dom.js';
 import { size } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
 import { NO_SERVICE } from './plugin-install.js';
 import { sayFilled } from '../provider-setup.js';
-import { officialPlugins } from '../../core/llm/official.js';
+import { officialPlugins, catalogWords, shownEntry } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
 import { searchCatalog, squash } from '../../core/search.js';
 import { CATEGORIES } from '../../core/llm/provider-desc.js';
@@ -132,7 +132,9 @@ export function byKind(found, typed, item) {
 export async function renderAdd(ctx, route) {
   const { kind, ability, from } = route.params;
   const [back, backText] = Object.hasOwn(FROM, from) ? FROM[from] : ['#/plugins', t`Plugins`];
-  const [catalog, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
+  const [listed, words, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), catalogWords(), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
+  // annai's catalog in the screens' language, where its words are had; else in English, marked so.
+  const catalog = listed?.map((p) => shownEntry(p, words)) ?? null;
   /** @type {Record<string, number>} */
   const configured = {};
   for (const p of Object.values(cfg?.providers ?? {})) configured[p.plugin] = (configured[p.plugin] ?? 0) + 1;
@@ -172,7 +174,7 @@ function rowItem(ctx, r, why, update) {
     h('span', { class: 'name', text: f.name }),
     why ? h('span', { class: 'sub', text: t`Also for: ${why}` }) : null,
     badges.length ? h('span', { class: 'chips' }, ...badges) : null,
-    f.description ? h('p', { class: 'sub', text: f.description }) : null,
+    f.description ? h('p', { class: 'sub', text: f.description, lang: otherLang(/** @type {any} */ (f).lang) }) : null,
     h('span', { class: 'sub', text: [r.from, f.version ? (f.code ? t`Has code` : t`Data only`) : null, f.size ? size(f.size) : null].filter(Boolean).join(' · ') }),
     r.note ? h('p', { class: 'sub warn', text: r.note }) : null,
     h('div', { class: 'acts' }, ...actions(ctx, r, update)));

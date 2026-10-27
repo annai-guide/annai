@@ -1,4 +1,4 @@
-import { h, crumb, t, linkIn } from '../dom.js';
+import { h, crumb, t, linkIn, otherLang } from '../dom.js';
 import { mount, slotEntries } from '../slots.js';
 
 /**
@@ -36,7 +36,7 @@ function page(ctx, kind, pluginId, id, back, backLabel, more = []) {
   const trace = t`Trace`;
   const failed = h('p', { hidden: true }, ...linkIn(t`This page couldn't be drawn; the plugin's error is in ${trace}.`, h('a', { href: '#/trace?kind=Plugins', text: trace })));
   mount(ctx, e, body, (ui) => e.item.render(body, ui, ...more), { what: /* en */ `${kind.slice(3)} ${id}`, onFail: () => { failed.hidden = false; } });
-  return h('div', { class: 'screen ext' }, crumbs(back, backLabel), h('h1', { class: 'title', text: String(e.item.title) }), body, failed);
+  return h('div', { class: 'screen ext' }, crumbs(back, backLabel), h('h1', { class: 'title', text: String(e.item.title), lang: otherLang(ctx.plugins?.langOf(pluginId)) }), body, failed);
 }
 
 /** A whole screen a plugin adds (choice 5). @param {any} ctx @param {{ parts: string[] }} route */

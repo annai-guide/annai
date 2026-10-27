@@ -1,7 +1,7 @@
 import { sha256Hex } from '../hash.js';
 import { PluginError, NOT_OWN, TURN_ON, notOwnShown, turnOnShown } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
-import { t } from '../l10n.js';
+import { t, lang } from '../l10n.js';
 import { sentences } from '../intl.js';
 
 /**
@@ -30,7 +30,47 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   }
   if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
   const json = await res.json();
+  await namesReady({ fetch: get, base }); // what the catalog's plugins are named on the screens, beside it
   return Array.isArray(json?.plugins) ? json.plugins : [];
+}
+
+/** @type {Awaited<ReturnType<typeof catalogWords>>} the catalog's words, once had in this run */
+let names = null;
+/** @type {Promise<unknown> | null} */
+let naming = null;
+/** The catalog's words for officialName, read once a run (tried again while they can't be had). @param {FetchOptions} [opts] */
+export const namesReady = (opts) => (naming ??= catalogWords(opts).then((w) => { names = w; if (!w) naming = null; }));
+/**
+ * An official plugin's name as the screens show it: annai's catalog's translation (decision 10), once read (namesReady, as reading the
+ * catalog does), else its English. Only for annai's own plugins: a third party's name is shown as written. @param {string} id @param {string} name
+ */
+export const officialName = (id, name) => names?.[id]?.name ?? name;
+/** An installed plugin's name as the screens show it: annai's own in their words, any other as written. @param {any} state its record @param {string} id @param {string} name */
+export const pluginName = (state, id, name) => (state?.source === 'official' ? officialName(id, name) : name);
+
+/**
+ * The catalog's words for the screens (localization design, section 8): each official plugin's name, description, featured sentence and
+ * keywords, from catalog/l10n/<tag>.json; null in English, or when they can't be had. @param {FetchOptions} [opts]
+ * @returns {Promise<Record<string, { name?: string, description?: string, featured?: string, keywords?: string[] }> | null>}
+ */
+export async function catalogWords({ fetch: get = defaultFetch, base = '' } = {}) {
+  if (lang() === 'en') return null;
+  try {
+    const res = await get(`${base}/catalog/l10n/${lang()}.json`, { cache: 'no-cache' });
+    const json = res.ok ? await res.json() : null;
+    return json?.plugins && typeof json.plugins === 'object' ? json.plugins : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A catalog entry as the screens show it, keywords added; lang: its words' language. @template {{ id: string, keywords: string[] }} E
+ * @param {E} entry @param {Awaited<ReturnType<typeof catalogWords>>} words @returns {E & { lang: string }}
+ */
+export function shownEntry(entry, words) {
+  const w = words?.[entry.id];
+  return w ? { ...entry, ...w, keywords: [...new Set([...entry.keywords, ...(w.keywords ?? [])])], lang: lang() } : { ...entry, lang: 'en' };
 }
 
 /**
@@ -182,9 +222,9 @@ async function ensureNow(host, kind, type, opts) {
 }
 
 /**
- * The types of a kind annai's catalog offers, each with the name of the plugin that brings it.
+ * The types of a kind annai's catalog offers, each with the name of the plugin that brings it, in the screens' words.
  * @param {string} kind @param {FetchOptions} [opts] @returns {Promise<{ type: string, name: string }[]>}
  */
 export async function offeredTypes(kind, opts = {}) {
-  return (await officialPlugins(opts)).flatMap((p) => (p.provides?.[kind] ?? []).map((type) => ({ type, name: p.name })));
+  return (await officialPlugins(opts)).flatMap((p) => (p.provides?.[kind] ?? []).map((type) => ({ type, name: officialName(p.id, p.name) })));
 }

@@ -1,6 +1,6 @@
 // git.js is the GitHub place's file, copied unchanged (hence its header and the helpers unused here): a plugin can't
 // import another's files, and a unit test keeps the two copies identical.
-import { blobId, nest, GitPathError, readInOrder } from './git.js';
+import { blobId, nest, GitPathError, readInOrder, pathWords } from './git.js';
 
 /**
  * Forgejo and Gitea (Codeberg runs Forgejo) as a place for annai's backups (spec §12.4), through
@@ -21,8 +21,9 @@ import { blobId, nest, GitPathError, readInOrder } from './git.js';
  * @typedef {{ server: string, host: string, owner: string, repo: string, branch: string }} Where
  * @typedef {Where & { base: string, token: string, device: { id: string, label: string }, app: string, TargetError: any, zip: any,
  *   read: (res: Response, how: string, where: string, o?: { max?: number }) => Promise<any>,
- *   net: (url: string, init?: RequestInit) => Promise<Response> }} F
- *   read: annai's reader of a server's answer: whatever is wrong with an answer is the server's doing (a TargetError), never a bug here
+ *   net: (url: string, init?: RequestInit) => Promise<Response>, l10n: any }} F
+ *   read: annai's reader of a server's answer: whatever is wrong with an answer is the server's doing (a TargetError), never a bug here;
+ *   l10n: annai.l10n, its words on annai's screens
  * @typedef {{ sha: string, size: number }} RemoteFile
  * @typedef {{ sha: string, message: string, at: number }} Commit a commit, as a branch or the commit list tells of it
  * @typedef {{ operation: 'create' | 'update' | 'delete', path: string, sha?: string, size: number }} Op
@@ -93,7 +94,7 @@ function where(config) {
   } catch {
     // not an address yet
   }
-  return { server, host: host || 'the server', owner, repo, branch: String(config.branch ?? '').trim() };
+  return { server, host, owner, repo, branch: String(config.branch ?? '').trim() };
 }
 
 /** @param {any} annai */
@@ -102,26 +103,28 @@ export function activate(annai) {
   /** @param {any} c @returns {F} */
   const client = (c) => {
     const w = where(c.config);
-    return { ...w, base: `${w.server}/api/v1`, token: String(c.secret.token ?? '').trim(), device: c.device, app: c.app, TargetError, zip, read: readAnswer, net: annai.net.fetch };
+    return { ...w, base: `${w.server}/api/v1`, token: String(c.secret.token ?? '').trim(), device: c.device, app: c.app, TargetError, zip, read: readAnswer, net: annai.net.fetch, l10n: annai.l10n };
   };
+  const { t } = annai.l10n;
   return annai.storage.register({
     type: 'forgejo',
     name: 'Forgejo / Gitea',
     stores: 'tree',
     fields: [
-      { key: 'server', label: 'Server address', placeholder: 'https://git.example.com' },
-      { key: 'owner', label: 'Owner', placeholder: 'Found from the token if empty' },
-      { key: 'repo', label: 'Repository', placeholder: 'Found from the token if empty' },
-      { key: 'branch', label: 'Branch', placeholder: "The repository's own", advanced: true },
+      { key: 'server', label: t`Server address`, placeholder: 'https://git.example.com' },
+      { key: 'owner', label: t`Owner`, placeholder: t`Found from the token if empty` },
+      { key: 'repo', label: t`Repository`, placeholder: t`Found from the token if empty` },
+      { key: 'branch', label: t`Branch`, placeholder: t`The repository's own`, advanced: true },
     ],
-    secret: [{ key: 'token', label: 'Access token' }],
-    help: "First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.",
+    secret: [{ key: 'token', label: t`Access token` }],
+    help: t`First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.`,
     where: (/** @type {any} */ config) => {
       const w = where(config);
-      return w.owner && w.repo ? `${w.host}/${w.owner}/${w.repo}` : w.host;
+      // No server yet: said in the screens' words. Every message names the host after ready() has checked the address.
+      return !w.host ? t`the server` : w.owner && w.repo ? `${w.host}/${w.owner}/${w.repo}` : w.host;
     },
     browserAccess: (/** @type {string} */ origin) => ({
-      text: `The server must let web apps at ${origin} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.`,
+      text: t`The server must let web apps at ${origin} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.`,
       code: corsLines(origin),
     }),
     check: (/** @type {any} */ c) => check(client(c)),
@@ -138,20 +141,18 @@ const top = (path) => path.split('/')[0];
 const folders = (path) => path.split('/').slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join('/'));
 /** A path as the user knows it: a trip's file without the trip's id. @param {string} path */
 const shown = (path) => path.replace(/^trips\/[^/]+\//, '/');
-/** @param {number} n */
-const size = (n) => (n < 1_000_000 ? `${Math.max(1, Math.round(n / 1000))} KB` : `${Math.round(n / 1_000_000)} MB`);
-/** @param {number} ms */
-const minutes = (ms) => {
-  const m = Math.max(1, Math.round(ms / 60_000));
-  return `${m} ${m === 1 ? 'minute' : 'minutes'}`;
-};
 /** @param {F} g */
 const named = (g) => `${g.owner}/${g.repo}`;
+/**
+ * A refusal of kind: its English for the log and a hold, and the screens' words beside it (annai's shown rule; annai.l10n.both).
+ * @param {F} g @param {string} kind @param {{ message: string, shown: string }} w @param {object} [extra]
+ */
+const refuse = (g, kind, w, extra = {}) => new g.TargetError(kind, w.message, { ...extra, shown: w.shown });
 /** An answer annai can't use: the server's doing, never a bug here (spec §5.5). @param {F} g */
-const unreadable = (g) => new g.TargetError('other', `${g.host} answered something annai can't read. annai tries again later.`);
+const unreadable = (g) => refuse(g, 'other', g.l10n.both`${g.host} answered something annai can't read. annai tries again later.`);
 /** No answer at all: offline, or a server that doesn't let web apps use its API (no CORS), which a page can't tell apart. @param {F} g */
-const unreachable = (g) => Object.assign(new g.TargetError('other',
-  `annai couldn't reach ${g.host}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.`), { noAnswer: true });
+const unreachable = (g) => Object.assign(refuse(g, 'other',
+  g.l10n.both`annai couldn't reach ${g.host}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.`), { noAnswer: true });
 /** A git object id from an answer, or unreadable. @param {F} g @param {unknown} v @returns {string} */
 const shaOf = (g, v) => {
   if (typeof v === 'string' && HEX.test(v)) return v;
@@ -199,16 +200,16 @@ function webAddress(u) {
 
 /** What can be told without asking the server. empty: an owner or repository may be empty, to be found (fill). @param {F} g */
 function ready(g, empty = false) {
-  const E = g.TargetError;
+  const { both } = g.l10n;
   const named = (/** @type {string} */ v) => /^[\w.-]+$/.test(v) || (empty && !v);
-  if (!webAddress(g.server)) throw new E('setup', "Check the server's address: it must be a web address that starts with https://.");
+  if (!webAddress(g.server)) throw refuse(g, 'setup', both`Check the server's address: it must be a web address that starts with https://.`);
   if (!g.owner || !g.repo) {
-    if (!empty) throw new E('setup', "Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.");
+    if (!empty) throw refuse(g, 'setup', both`Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.`);
   }
-  if (!named(g.owner) || !named(g.repo)) throw new E('setup', "Type the owner and the repository's name, for example you and annai-backup.");
-  if (g.branch && !/^(?!\/|.*(?:\/\/|\.\.|\/$|\.lock$))[\w./-]+$/.test(g.branch)) throw new E('setup', "Check the branch's name, or leave it empty for the repository's own.");
-  if (!g.token) throw new E('setup', 'Paste an access token for the repository, then save.');
-  if (!/^[\x21-\x7e]+$/.test(g.token)) throw new E('setup', 'The access token has letters no token has. Paste it again, then save.');
+  if (!named(g.owner) || !named(g.repo)) throw refuse(g, 'setup', both`Type the owner and the repository's name, for example you and annai-backup.`);
+  if (g.branch && !/^(?!\/|.*(?:\/\/|\.\.|\/$|\.lock$))[\w./-]+$/.test(g.branch)) throw refuse(g, 'setup', both`Check the branch's name, or leave it empty for the repository's own.`);
+  if (!g.token) throw refuse(g, 'setup', both`Paste an access token for the repository, then save.`);
+  if (!/^[\x21-\x7e]+$/.test(g.token)) throw refuse(g, 'setup', both`The access token has letters no token has. Paste it again, then save.`);
 }
 
 /**
@@ -241,7 +242,7 @@ async function overQuota(g, res) {
 
 /** A failed answer in plain words. @param {F} g @param {Response} res */
 async function failure(g, res) {
-  const E = g.TargetError;
+  const { both } = g.l10n;
   const quota = await overQuota(g, res);
   let said = '';
   try {
@@ -249,19 +250,22 @@ async function failure(g, res) {
   } catch {
     // not JSON
   }
-  const with_ = said ? `: ${said}` : '';
-  if (res.status === 401) return new E('auth', `${g.host} didn't accept the access token. Make a new one, paste it here, and save.`);
-  if (res.status === 403) return new E('refused', `The access token isn't allowed to change ${named(g)} on ${g.host}. Make one with Repository: Read and write, and check that the branch isn't protected.`);
-  if (res.status === 404) return new E('missing', `There is no repository ${named(g)} on ${g.host} that this token can see. Create a private repository named ${g.repo} there first (annai doesn't make one), or check the owner and the name.`);
-  if (quota) return new E('refused', `Your account on ${g.host} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.`);
-  if (res.status === 423) return new E('refused', `${named(g)} on ${g.host} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.`);
+  if (res.status === 401) return refuse(g, 'auth', both`${g.host} didn't accept the access token. Make a new one, paste it here, and save.`);
+  if (res.status === 403) return refuse(g, 'refused', both`The access token isn't allowed to change ${named(g)} on ${g.host}. Make one with Repository: Read and write, and check that the branch isn't protected.`);
+  if (res.status === 404) return refuse(g, 'missing', both`There is no repository ${named(g)} on ${g.host} that this token can see. Create a private repository named ${g.repo} there first (annai doesn't make one), or check the owner and the name.`);
+  if (quota) return refuse(g, 'refused', both`Your account on ${g.host} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.`);
+  if (res.status === 423) return refuse(g, 'refused', both`${named(g)} on ${g.host} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.`);
   if (res.status === 429 || res.status === 503) {
     const after = Number(res.headers.get('retry-after'));
     const wait = Number.isFinite(after) && after > 0 ? after * 1000 : 5 * 60_000;
-    return new E('rate', `${g.host} is busy. annai tries again in about ${minutes(wait)}.`, { retryAt: Date.now() + wait });
+    const m = Math.max(1, Math.round(wait / 60_000));
+    return new g.TargetError('rate', `${g.host} is busy. annai tries again in about ${m} ${m === 1 ? 'minute' : 'minutes'}.`, {
+      retryAt: Date.now() + wait, shown: g.l10n.plural(m, '{0} is busy. annai tries again in about # minute.', '{0} is busy. annai tries again in about # minutes.', g.host),
+    });
   }
-  if (res.status >= 500) return new E('other', `${g.host} had a problem (HTTP ${res.status}${with_}). annai tries again later.`);
-  return new E('other', `${g.host} refused this (HTTP ${res.status}${with_}). annai tries again later.`);
+  // The server's own words, as it gave them.
+  if (res.status >= 500) return refuse(g, 'other', said ? both`${g.host} had a problem (HTTP ${res.status}: ${said}). annai tries again later.` : both`${g.host} had a problem (HTTP ${res.status}). annai tries again later.`);
+  return refuse(g, 'other', said ? both`${g.host} refused this (HTTP ${res.status}: ${said}). annai tries again later.` : both`${g.host} refused this (HTTP ${res.status}). annai tries again later.`);
 }
 
 /** A request whose answer must be 200; its JSON. @param {F} g @param {string} path */
@@ -274,14 +278,14 @@ async function getJson(g, path) {
 /** The repository, refused unless it is private and the token may change it. @param {F} g */
 async function repoInfo(g) {
   ready(g);
-  const E = g.TargetError;
+  const { both } = g.l10n;
   const r = await getJson(g, '');
   if (!isObject(r) || typeof r.full_name !== 'string' || typeof r.default_branch !== 'string') throw unreadable(g);
   if (r.private !== true) {
-    throw new E('refused', `${r.full_name} on ${g.host} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.`);
+    throw refuse(g, 'refused', both`${r.full_name} on ${g.host} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.`);
   }
-  if (r.archived === true) throw new E('refused', `${r.full_name} on ${g.host} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.`);
-  if (r.permissions?.push === false) throw new E('refused', `The access token can read ${r.full_name} but not change it. Make one with Repository: Read and write.`);
+  if (r.archived === true) throw refuse(g, 'refused', both`${r.full_name} on ${g.host} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.`);
+  if (r.permissions?.push === false) throw refuse(g, 'refused', both`The access token can read ${r.full_name} but not change it. Make one with Repository: Read and write.`);
   return r;
 }
 
@@ -289,8 +293,8 @@ async function repoInfo(g) {
 const branchOf = (g, repo) => g.branch || String(repo.default_branch);
 
 /** @param {F} g @param {any} repo @param {string} branch */
-const noBranch = (g, repo, branch) => new g.TargetError('setup',
-  `${repo.full_name} has no branch ${branch}. Leave Branch empty to use ${repo.default_branch}, or make the branch on ${g.host} first.`);
+const noBranch = (g, repo, branch) => refuse(g, 'setup',
+  g.l10n.both`${repo.full_name} has no branch ${branch}. Leave Branch empty to use ${repo.default_branch}, or make the branch on ${g.host} first.`);
 
 /** @param {string} a @param {string} b */
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
@@ -307,7 +311,7 @@ const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 async function fill(g) {
   ready(g, true);
   if (g.owner && g.repo) return null;
-  const E = g.TargetError;
+  const { both } = g.l10n;
   let login = '';
   if (!g.owner) {
     const res = await request(g, 'GET', '/user');
@@ -318,7 +322,7 @@ async function fill(g) {
   const found = [];
   for (let page = 1; page <= SEARCH_PAGES; page++) {
     const res = await request(g, 'GET', `/repos/search?is_private=true&archived=false&limit=${COMMITS_PAGE}&page=${page}${g.repo ? `&q=${encodeURIComponent(g.repo)}` : ''}`);
-    if (res.status === 403) throw new E('refused', `The access token can't list repositories on ${g.host}. Make one with Repository: Read and write, and paste it here.`);
+    if (res.status === 403) throw refuse(g, 'refused', both`The access token can't list repositories on ${g.host}. Make one with Repository: Read and write, and paste it here.`);
     if (!res.ok) throw await failure(g, res);
     const data = (await g.read(res, 'json', g.host))?.data;
     if (!Array.isArray(data)) throw unreadable(g);
@@ -334,11 +338,15 @@ async function fill(g) {
   const pool = (own.length ? own : found).sort((a, b) => (`${a.owner}/${a.repo}` < `${b.owner}/${b.repo}` ? -1 : 1));
   if (pool.length === 1) return { ...pool[0], of: own.length ? login : g.owner };
   if (pool.length) {
-    throw new E('setup', `This token can change ${pool.length} private repositories on ${g.host}. Choose the one for annai's backups, or type its owner and name.`,
-      { choices: pool.slice(0, CHOICES).map((r) => ({ label: `${r.owner}/${r.repo}`, config: { owner: r.owner, repo: r.repo } })) });
+    throw new g.TargetError('setup', `This token can change ${pool.length} private repositories on ${g.host}. Choose the one for annai's backups, or type its owner and name.`, {
+      shown: g.l10n.plural(pool.length, "This token can change # private repository on {0}. Choose the one for annai's backups, or type its owner and name.",
+        "This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name.", g.host),
+      choices: pool.slice(0, CHOICES).map((r) => ({ label: `${r.owner}/${r.repo}`, config: { owner: r.owner, repo: r.repo } })),
+    });
   }
-  if (g.repo) throw new E('missing', `There is no private repository named ${g.repo} on ${g.host} that this token can change. Create it there first (annai doesn't make one), or check the name.`);
-  throw new E('missing', `This token can't change any private repository${g.owner ? ` of ${g.owner}` : ''} on ${g.host}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.`);
+  if (g.repo) throw refuse(g, 'missing', both`There is no private repository named ${g.repo} on ${g.host} that this token can change. Create it there first (annai doesn't make one), or check the name.`);
+  throw refuse(g, 'missing', g.owner ? both`This token can't change any private repository of ${g.owner} on ${g.host}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.`
+    : both`This token can't change any private repository on ${g.host}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.`);
 }
 
 /** Tests the place; what was found for an owner or repository left empty comes back as config, which annai keeps. @param {F} g */
@@ -350,10 +358,12 @@ async function check(g) {
   const head = r.empty ? null : await headOf(w, branch);
   if (!r.empty && !head) throw noBranch(w, r, branch);
   if (head) refuseForeign(w, r.full_name, (await snapshot(w, head.sha)) ?? new Map());
-  const note = `Works: annai can reach ${r.full_name} on ${g.host}, a private repository.`;
+  const { t, format } = g.l10n;
+  const note = t`Works: annai can reach ${r.full_name} on ${g.host}, a private repository.`;
   if (!filled) return { note };
-  const how = g.repo ? ` annai filled in its owner, ${filled.owner}.` : ` It is the only private repository${filled.of ? ` of ${filled.of}` : ''} this token can change, so annai filled it in.`;
-  return { note: note + how, config: { owner: filled.owner, repo: filled.repo } };
+  const how = g.repo ? t`annai filled in its owner, ${filled.owner}.` : filled.of ? t`It is the only private repository of ${filled.of} this token can change, so annai filled it in.`
+    : t`It is the only private repository this token can change, so annai filled it in.`;
+  return { note: format.sentences(note, how), config: { owner: filled.owner, repo: filled.repo } };
 }
 
 /** The branch's last commit, or null when there is no such branch. @param {F} g @param {string} branch @returns {Promise<Commit | null>} */
@@ -375,7 +385,7 @@ async function snapshot(g, sha, signal) {
   const files = new Map();
   let seen = 0;
   for (let page = 1; ; page++) {
-    if (page > MAX_PAGES) throw new g.TargetError('refused', `${named(g)} holds more files than annai reads, so annai can't use it. Choose a new private repository.`);
+    if (page > MAX_PAGES) throw refuse(g, 'refused', g.l10n.both`${named(g)} holds more files than annai reads, so annai can't use it. Choose a new private repository.`);
     const res = await call(g, 'GET', `/git/trees/${sha}?recursive=true&per_page=${PER_PAGE}&page=${page}`, { signal });
     if (res.status === 400 || res.status === 404) return null;
     if (!res.ok) throw await failure(g, res);
@@ -468,7 +478,7 @@ function pack(first, changes, manifest, part) {
 function refuseForeign(g, name, files) {
   const foreign = [...new Set([...files.keys()].map(top))].filter((t) => !OURS.has(t) && !EXTRAS.test(t));
   if (foreign.length) {
-    throw new g.TargetError('refused', `${name} holds other files (${foreign.slice(0, 3).join(', ')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
+    throw refuse(g, 'refused', g.l10n.both`${name} holds other files (${g.l10n.format.list(foreign.slice(0, 3), 'plain')}), so annai won't back up into it. Make a new private repository for annai's backups.`);
   }
 }
 
@@ -480,7 +490,7 @@ function refuseForeign(g, name, files) {
  *   maxFile and part: smaller, for tests
  */
 async function put(g, archive, { base = null, maxUpload = Infinity, onProgress = () => {}, signal, maxFile = MAX_FILE, part = PART } = {}) {
-  const E = g.TargetError;
+  const { both, format } = g.l10n;
   const repo = await repoInfo(g);
   const branch = branchOf(g, repo);
   const head = repo.empty ? null : await headOf(g, branch);
@@ -492,7 +502,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     if (!snap) throw unreadable(g);
     old = snap;
     const remote = await newest(g, branch, head);
-    if (remote && old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw new E('newer', `There is a newer backup in ${repo.full_name}.`, { remote });
+    if (remote && old.has(MANIFEST) && remote.id !== base && remote.device !== g.device.id) throw refuse(g, 'newer', both`There is a newer backup in ${repo.full_name}.`, { remote });
     refuseForeign(g, repo.full_name, old);
   }
   // The backup's files, by the repository's own ids.
@@ -504,7 +514,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
   const entries = [];
   for (const [i, path] of names.entries()) {
     const n = zipped.size(path);
-    if (n > maxFile) throw new E('refused', `annai sends files of up to ${size(maxFile)} to this kind of place, and ${shown(path)} is ${size(n)}. Remove it from annai, or back up to another kind of place.`);
+    if (n > maxFile) throw refuse(g, 'refused', both`annai sends files of up to ${format.size(maxFile)} to this kind of place, and ${shown(path)} is ${format.size(n)}. Remove it from annai, or back up to another kind of place.`);
     const bytes = await zipped.read(path);
     let sha = await idOf(bytes);
     // Kept with Git LFS, the file is a pointer to its content in the tree: the same content is the same pointer.
@@ -517,7 +527,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
   try {
     nest([...entries, ...extras.map(([path, f]) => ({ path, sha: f.sha }))]);
   } catch (e) {
-    if (e instanceof GitPathError) throw new E('refused', `${e.message} Rename it in annai, then back up again.`);
+    if (e instanceof GitPathError) throw refuse(g, 'refused', pathWords(g.l10n, e));
     throw e;
   }
   // What changed: files to create or update, each naming the one it replaces, and files to delete.
@@ -533,7 +543,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     if (e.path === MANIFEST) manifest = op;
     else changes.push(op);
   }
-  if (!manifest) throw new E('other', "This backup has no annai-archive.json, so annai didn't send it. annai tries again later.");
+  if (!manifest) throw refuse(g, 'other', both`This backup has no annai-archive.json, so annai didn't send it. annai tries again later.`);
   /** @type {Op[]} */
   const gone = [...old].filter(([path]) => !wanted.has(path) && !EXTRAS.test(top(path))).map(([path, f]) => ({ operation: 'delete', path, sha: f.sha, size: 0 }));
   // The server checks each change against the branch as it was, so a file where a new folder goes
@@ -541,7 +551,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
   const inFolders = new Set(entries.flatMap((e) => folders(e.path)));
   const first = gone.filter((d) => inFolders.has(d.path) || folders(d.path).some((f) => wanted.has(f)));
   const bytes = [...changes, manifest].reduce((n, op) => n + op.size, 0);
-  if (bytes > maxUpload) throw new E('large', `This backup would upload ${size(bytes)}.`, { bytes });
+  if (bytes > maxUpload) throw refuse(g, 'large', both`This backup would upload ${format.size(bytes)}.`, { bytes });
 
   const total = changes.length + 1;
   let done = 0;
@@ -584,7 +594,7 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
       const [op] = ops;
       // One file alone: when the server still answers, it is this file's size that is refused.
       if (op.operation === 'delete' || (res === null && !(await answers(g, branch)))) throw unreachable(g);
-      throw new E('refused', `${g.host} didn't take ${shown(op.path)} (${size(op.size)}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.`);
+      throw refuse(g, 'refused', both`${g.host} didn't take ${shown(op.path)} (${format.size(op.size)}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.`);
     }
     // Any refusal may be the branch moving meanwhile, whatever its status says: a file's id that no longer
     // matches (409, 422 on Gitea), a file already there (422) or gone (500, 404 on Gitea), or a push refused
@@ -592,12 +602,12 @@ async function put(g, archive, { base = null, maxUpload = Infinity, onProgress =
     const now = await headOf(g, branch).catch(() => undefined);
     if (now && now.sha !== expected) {
       const remote = await newest(g, branch, now).catch(() => null);
-      if (remote && remote.device !== g.device.id && remote.id !== base) throw new E('newer', `Another device backed up to ${repo.full_name} at the same moment.`, { remote });
-      throw new E('other', `${repo.full_name} changed while annai backed up. annai tries again later.`);
+      if (remote && remote.device !== g.device.id && remote.id !== base) throw refuse(g, 'newer', both`Another device backed up to ${repo.full_name} at the same moment.`, { remote });
+      throw refuse(g, 'other', both`${repo.full_name} changed while annai backed up. annai tries again later.`);
     }
     // A branch there was is gone now (404, as a deleted repository answers too): someone deleted it meanwhile, if the repository is still there.
     if (now === null && expected !== null && (await call(g, 'GET', '').catch(() => null))?.ok) {
-      throw new E('setup', `The branch ${branch} of ${repo.full_name} was deleted while annai backed up to it, so this backup stopped. Make it again on ${g.host}, or leave Branch empty to back up to ${repo.default_branch}, then back up again.`);
+      throw refuse(g, 'setup', both`The branch ${branch} of ${repo.full_name} was deleted while annai backed up to it, so this backup stopped. Make it again on ${g.host}, or leave Branch empty to back up to ${repo.default_branch}, then back up again.`);
     }
     throw await failure(g, res);
   };
@@ -624,14 +634,14 @@ async function answers(g, branch) {
  * @param {F} g @param {string} id @param {AbortSignal} [signal]
  */
 async function backupCommit(g, id, signal) {
-  const E = g.TargetError;
+  const { both } = g.l10n;
   const commit = HEX.test(id) ? await call(g, 'GET', `/git/commits/${id}?stat=false&verification=false&files=false`, { signal }) : null;
-  if (!commit || [400, 404, 422].includes(commit.status)) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
+  if (!commit || [400, 404, 422].includes(commit.status)) throw refuse(g, 'missing', both`That backup isn't in ${named(g)} on ${g.host}.`);
   if (!commit.ok) throw await failure(g, commit);
   const c = await g.read(commit, 'json', g.host);
   if (!isObject(c)) throw unreadable(g);
   if (PARTIAL.test(String(c.commit?.message ?? ''))) {
-    throw new E('missing', "That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.");
+    throw refuse(g, 'missing', both`That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.`);
   }
 }
 
@@ -640,7 +650,7 @@ function manifestOf(g, bytes) {
   try {
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    throw new g.TargetError('other', 'This backup is damaged: its annai-archive.json is not readable.');
+    throw refuse(g, 'other', g.l10n.both`This backup is damaged: its annai-archive.json is not readable.`);
   }
 }
 
@@ -657,7 +667,7 @@ async function peek(g, id, { signal } = {}) {
   try {
     bytes = await raw(g, MANIFEST, id, signal, MANIFEST_MAX);
   } catch (e) {
-    if (e instanceof g.TargetError && /** @type {any} */ (e).kind === 'missing') throw new g.TargetError('missing', "That commit isn't an annai backup.");
+    if (e instanceof g.TargetError && /** @type {any} */ (e).kind === 'missing') throw refuse(g, 'missing', g.l10n.both`That commit isn't an annai backup.`);
     throw e;
   }
   return manifestOf(g, bytes);
@@ -670,16 +680,16 @@ async function peek(g, id, { signal } = {}) {
  */
 async function get(g, id, { onProgress = () => {}, signal } = {}) {
   ready(g);
-  const E = g.TargetError;
+  const { both } = g.l10n;
   await backupCommit(g, id, signal);
   const files = await snapshot(g, id, signal);
-  if (!files) throw new E('missing', `That backup isn't in ${named(g)} on ${g.host}.`);
-  if (!files.has(MANIFEST)) throw new E('missing', "That commit isn't an annai backup.");
+  if (!files) throw refuse(g, 'missing', both`That backup isn't in ${named(g)} on ${g.host}.`);
+  if (!files.has(MANIFEST)) throw refuse(g, 'missing', both`That commit isn't an annai backup.`);
   const manifestBytes = await raw(g, MANIFEST, id, signal, MANIFEST_MAX);
   const manifest = manifestOf(g, manifestBytes);
   const lists = [manifest?.files, manifest?.blobs, manifest?.extras].map((l) => (Array.isArray(l) ? l : []));
   const names = [...new Set(lists.flat().map((x) => x?.name).filter((n) => typeof n === 'string' && n !== MANIFEST))];
-  for (const name of names) if (!files.has(name)) throw new E('missing', `This backup is damaged: ${shown(name)} is missing from ${named(g)}.`);
+  for (const name of names) if (!files.has(name)) throw refuse(g, 'missing', both`This backup is damaged: ${shown(name)} is missing from ${named(g)}.`);
   const out = new g.zip.ZipWriter();
   await readInOrder(names, (name) => raw(g, name, id, signal), async (name, bytes, i) => {
     await out.add(name, bytes, { compress: false });
@@ -696,7 +706,7 @@ async function get(g, id, { onProgress = () => {}, signal } = {}) {
  */
 async function raw(g, path, ref, signal, max = MAX_FILE) {
   const res = await call(g, 'GET', `/media/${pathPart(path)}?ref=${ref}`, { signal });
-  if (res.status === 404) throw new g.TargetError('missing', `This backup is damaged: ${shown(path)} is missing from ${named(g)}.`);
+  if (res.status === 404) throw refuse(g, 'missing', g.l10n.both`This backup is damaged: ${shown(path)} is missing from ${named(g)}.`);
   if (!res.ok) throw await failure(g, res);
   return /** @type {Uint8Array} */ (await g.read(res, 'bytes', g.host, { max }));
 }

@@ -1,8 +1,9 @@
 {
   "id": "storage-s3",
   "name": "S3-compatible storage",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.",
   "provides": { "storage-type": ["s3"] }

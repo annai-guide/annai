@@ -23,9 +23,10 @@
  *   count: the model list's length; speech: whether it names a transcription model, or a voice
  * @typedef {{ base: string, root: string, list: Finding, abilities: Record<AbilityId, Finding> }} Probe
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
- * @typedef {{ fetch: Fetch, reach: (url: string) => Promise<boolean>, problem: (url: string) => string | null }} Io
+ * @typedef {{ fetch: Fetch, reach: (url: string) => Promise<boolean>, problem: (url: string) => string | null, l10n: any }} Io
  *   fetch: annai's traced fetch; reach: whether a server answers at all (a no-cors request, which any server lets
- *   through); problem: annai's check of an address a key may go to (https, or http only for this device)
+ *   through); problem: annai's check of an address a key may go to (https, or http only for this device), in the screens' words;
+ *   l10n: annai.l10n: a finding's why, and every refusal here, is shown, never kept or read by a model
  * @typedef {{ status: number, json?: any, redirect?: boolean } | { failed: true, slow: boolean }} Answer
  */
 
@@ -47,16 +48,16 @@ const SPEAKS = /\btts\b|kokoro|orpheus|piper|xtts|chatterbox|speech|voice/i;
 
 /**
  * The address as annai will use it, or why it can't be: one annai sends keys to (problem), alone.
- * @param {string} address @param {Io['problem']} problem
+ * @param {string} address @param {Io} io
  */
-export function baseOf(address, problem) {
+export function baseOf(address, { problem, l10n: { t } }) {
   const typed = String(address ?? '').trim();
-  if (!typed) throw new Error("Give the server's address first, with https:// in front.");
+  if (!typed) throw new Error(t`Give the server's address first, with https:// in front.`);
   const wrong = problem(typed);
   // In words that don't show what was typed: a key pasted into the address field stays off the screen.
-  if (wrong) throw new Error(wrong.split(typed).join('What you typed'));
+  if (wrong) throw new Error(wrong.split(typed).join(t`What you typed`));
   const u = new URL(typed);
-  if (u.username || u.password || u.search || u.hash) throw new Error('Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.');
+  if (u.username || u.password || u.search || u.hash) throw new Error(t`Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.`);
   return `${u.origin}${u.pathname.replace(/\/{2,}/g, '/').replace(/\/+$/, '')}`;
 }
 
@@ -64,9 +65,9 @@ export function baseOf(address, problem) {
  * Looks at an address, at no cost. @param {string} address @param {string | null} key @param {Io} io @returns {Promise<Probe>}
  */
 export async function probe(address, key, io) {
-  const base = baseOf(address, io.problem);
+  const base = baseOf(address, io);
   const k = key?.trim() || null;
-  if (k && !/^[\x21-\x7e]+$/.test(k)) throw new Error("The key has a character no key has, such as a space or a line break: paste it again.");
+  if (k && !/^[\x21-\x7e]+$/.test(k)) throw new Error(io.l10n.t`The key has a character no key has, such as a space or a line break: paste it again.`);
   /** @type {Look} one control path for the whole look, and each answer kept, so a request asked twice is sent once */
   const c = { key: k, io, nowhere: `annai-probe-${[...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, '0')).join('')}`, asked: new Map(), send: limit(AT_ONCE) };
   if (new URL(base).pathname !== '/') return look(base, c);
@@ -129,13 +130,14 @@ async function look(base, c) {
   })));
   /** @type {Promise<boolean> | undefined} the server checked for once, if a request couldn't be made */
   let there;
+  const { t, plural } = io.l10n;
   /** @param {string} name @param {Answer | undefined} control @returns {Promise<Finding>} */
   const finding = async (name, control) => {
     const a = got[name];
-    if (!('failed' in a)) return read(a, control, key, name === 'list');
-    if (a.slow) return { state: 'unreachable', why: `It didn't answer within ${WAIT_MS / 1000} seconds.` };
+    if (!('failed' in a)) return read(a, control, key, name === 'list', io.l10n);
+    if (a.slow) return { state: 'unreachable', why: plural(WAIT_MS / 1000, "It didn't answer within # second.", "It didn't answer within # seconds.") };
     there ??= io.reach(`${base}/models`).catch(() => false);
-    return (await there) ? { state: 'blocked', why: "It doesn't allow web apps like annai to call it (no CORS)." } : { state: 'unreachable', why: "annai couldn't reach it." };
+    return (await there) ? { state: 'blocked', why: t`It doesn't allow web apps like annai to call it (no CORS).` } : { state: 'unreachable', why: t`annai couldn't reach it.` };
   };
   const list = await finding('list', got.control);
   /** @type {Record<string, Finding>} */
@@ -175,36 +177,35 @@ async function ask(url, init, origin, get) {
 /**
  * What one answer says, read against the control's (the same kind of request to a path that can't exist).
  * @param {{ status: number, json?: any, redirect?: boolean }} a @param {Answer | undefined} c @param {string | null} key @param {boolean} list
- * @returns {Finding}
+ * @param {any} l10n @returns {Finding}
  */
-function read(a, c, key, list) {
+function read(a, c, key, list, { t }) {
   const s = a.status;
-  if (a.redirect) return { state: 'unknown', ...(s ? { status: s } : {}), why: "It answered with a redirect, which annai doesn't follow." };
+  if (a.redirect) return { state: 'unknown', ...(s ? { status: s } : {}), why: t`It answered with a redirect, which annai doesn't follow.` };
   const control = c && !('failed' in c) && !c.redirect ? c : null;
   // The answer an address that can't exist got too says nothing.
   const same = control?.status === s && (control.json === undefined) === (a.json === undefined);
-  const anyAddress = "at any address, even one that can't exist, so annai can't tell from it.";
   if (s >= 200 && s < 300) {
-    if (a.json === undefined) return { state: 'absent', status: s, why: 'A web page answered, not an API.' };
+    if (a.json === undefined) return { state: 'absent', status: s, why: t`A web page answered, not an API.` };
     // A list of models is a list, whatever the server answers elsewhere.
     const items = list && (Array.isArray(a.json.data) ? a.json.data : Array.isArray(a.json.models) ? a.json.models : null);
     if (items) {
       const names = items.map((/** @type {any} */ m) => String(m?.id ?? m?.name ?? m?.model ?? ''));
       return { state: 'found', status: s, count: items.length, speech: { transcription: names.some((x) => HEARS.test(x)), voice: names.some((x) => SPEAKS.test(x)) } };
     }
-    if (same) return { state: 'unknown', status: s, why: `It answers this way ${anyAddress}` };
-    return list ? { state: 'unknown', status: s, why: 'It answered, but not with a list of models.' } : { state: 'found', status: s };
+    if (same) return { state: 'unknown', status: s, why: t`It answers this way at any address, even one that can't exist, so annai can't tell from it.` };
+    return list ? { state: 'unknown', status: s, why: t`It answered, but not with a list of models.` } : { state: 'found', status: s };
   }
   if (NOT_THERE.has(s)) return { state: 'absent', status: s };
-  if (s === 501) return { state: 'absent', status: s, why: "The server says it doesn't do this." };
+  if (s === 501) return { state: 'absent', status: s, why: t`The server says it doesn't do this.` };
   if (THERE.has(s)) {
     const auth = s === 401 || s === 403;
-    if (same && auth) return { state: 'unknown', status: s, why: key ? `It refuses the key ${anyAddress} Check the key, then look again.` : 'It asks for a key before it says what it has: give the key, then look again.' };
-    if (same) return { state: 'unknown', status: s, why: `It answers HTTP ${s} ${anyAddress}` };
-    if (auth && !control) return { state: 'unknown', status: s, why: key ? "It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again." : "It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again." };
-    return { state: 'found', status: s, ...(auth ? { why: key ? "It didn't take the key: check it." : 'It asks for a key.' } : {}) };
+    if (same && auth) return { state: 'unknown', status: s, why: key ? t`It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.` : t`It asks for a key before it says what it has: give the key, then look again.` };
+    if (same) return { state: 'unknown', status: s, why: t`It answers HTTP ${s} at any address, even one that can't exist, so annai can't tell from it.` };
+    if (auth && !control) return { state: 'unknown', status: s, why: key ? t`It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.` : t`It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.` };
+    return { state: 'found', status: s, ...(auth ? { why: key ? t`It didn't take the key: check it.` : t`It asks for a key.` } : {}) };
   }
-  if (s === 429) return { state: 'unknown', status: s, why: 'It is busy (too many requests): look again in a minute.' };
-  if (s >= 500) return { state: 'unknown', status: s, why: `It had a problem of its own (HTTP ${s}): look again later.` };
-  return { state: 'unknown', status: s, why: `It answered HTTP ${s}, which says neither yes nor no.` };
+  if (s === 429) return { state: 'unknown', status: s, why: t`It is busy (too many requests): look again in a minute.` };
+  if (s >= 500) return { state: 'unknown', status: s, why: t`It had a problem of its own (HTTP ${s}): look again later.` };
+  return { state: 'unknown', status: s, why: t`It answered HTTP ${s}, which says neither yes nor no.` };
 }

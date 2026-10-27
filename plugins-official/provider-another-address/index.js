@@ -6,52 +6,53 @@
  */
 import { probe, LOOKS } from './probe.js';
 
-/** The note under what was found (the mockup's words). */
-const FREE = 'annai only asked for the model list and sent an empty request to each known path. Nothing here costs money; Test sends real requests.';
-
 /** @param {unknown} e */
 const words = (e) => String(/** @type {any} */ (e)?.message ?? e);
-/** A reason, after a colon. @param {string} s */
-const after = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /**
- * The speech abilities: a server may answer their paths for every model it has (Ollama does), so a path there
- * says only that; Test says whether a model there can listen or speak.
- * @type {Record<string, { verb: string, noun: string }>}
+ * One line of what was found, in whole sentences after its name: ✓ there, ✗ not there (or blocked), ? no telling. A speech
+ * path (transcription, voice) a server may answer for every model it has (Ollama does), so it says only that it is there;
+ * Test says whether a model there can listen or speak. off: its model list names none, so it is added switched off.
+ * @param {any} l10n annai.l10n @param {string} name @param {import('./probe.js').Finding} f
+ * @param {{ id: string, off: boolean }} [speech]
  */
-const SPEECH = { transcription: { verb: 'listen', noun: 'transcription model' }, voice: { verb: 'speak', noun: 'voice' } };
-
-/**
- * One line of what was found: ✓ there, ✗ not there (or blocked), ? no telling. speech: a speech path's, and
- * whether it is added switched off. @param {string} name @param {import('./probe.js').Finding} f
- * @param {{ verb: string, noun: string, off: boolean }} [speech]
- */
-export function findingLine(name, f, speech) {
+export function findingLine({ t, plural, format }, name, f, speech) {
+  /** @param {string} mark @param {...string} parts */
+  const line = (mark, ...parts) => `${mark} ${parts.some(Boolean) ? t`${name}: ${format.sentences(...parts)}` : name}`;
+  const why = f.why ?? '';
   if (f.state === 'found' && speech) {
-    return `✓ ${name}: the path is there; Test says whether a model there can ${speech.verb}${f.why ? ` (${after(f.why).replace(/\.$/, '')})` : ''}${speech.off ? `. Its model list names no ${speech.noun}, so it's added switched off.` : ''}`;
+    const listen = speech.id === 'transcription';
+    return line('✓', listen ? t`The path is there; Test says whether a model there can listen.` : t`The path is there; Test says whether a model there can speak.`, why,
+      !speech.off ? '' : listen ? t`Its model list names no transcription model, so it's added switched off.` : t`Its model list names no voice, so it's added switched off.`);
   }
-  if (f.state === 'found') return `✓ ${name}${f.count !== undefined ? `: ${f.count} model${f.count === 1 ? '' : 's'}` : ''}${f.why ? `: ${after(f.why)}` : ''}`;
-  if (f.state === 'absent') return `✗ ${name}: not found${f.why ? ` (${after(f.why).replace(/\.$/, '')})` : ''}`;
-  if (f.state === 'blocked') return `✗ ${name}: blocked: it doesn't allow web apps (no CORS)`;
-  return `? ${name}: ${after(f.why ?? "annai can't tell.")}`;
+  if (f.state === 'found') return line('✓', f.count === undefined ? '' : plural(f.count, '# model.', '# models.'), why);
+  if (f.state === 'absent') return line('✗', t`Not found.`, why);
+  if (f.state === 'blocked') return line('✗', t`Blocked: it doesn't allow web apps (no CORS).`);
+  return line('?', why || t`annai can't tell.`);
 }
 
 /**
- * What was found, in a line or two above the list. @param {import('./probe.js').Probe} r @param {string} host
+ * What was found, in a line or two above the list. @param {any} l10n @param {import('./probe.js').Probe} r @param {string} host
  * @param {boolean} any whether anything annai can use was found
  */
-function summary(r, host, any) {
+function summary({ t }, r, host, any) {
   const all = [r.list, ...Object.values(r.abilities)];
-  if (all.every((f) => f.state === 'unreachable')) return `annai couldn't reach ${host}. Check the address and your connection.`;
-  if (all.every((f) => f.state === 'blocked')) return `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't use it from a browser. If it has a setting for the addresses allowed to call it (CORS), add annai's.`;
-  return any ? `What ${r.base} offers:` : `annai found nothing at ${r.base} that it can use. Below is why.`;
+  if (all.every((f) => f.state === 'unreachable')) return t`annai couldn't reach ${host}. Check the address and your connection.`;
+  if (all.every((f) => f.state === 'blocked')) return t`${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't use it from a browser. If it has a setting for the addresses allowed to call it (CORS), add annai's.`;
+  return any ? t`What ${r.base} offers:` : t`annai found nothing at ${r.base} that it can use. Below is why.`;
 }
+
+/** The speech paths, which say only that they are there. */
+const SPEECH = new Set(['transcription', 'voice']);
 
 /**
  * The setup annai.providers.setup takes. io: annai's traced fetch, the no-cors check and its address check.
  * @param {import('./probe.js').Io} io
  */
 export function anotherAddress(io) {
+  const { t } = io.l10n;
+  /** A path's name: a protocol's as written, transcription and voice in words. @param {(typeof LOOKS)[number]} l */
+  const nameOf = (l) => (l.id === 'transcription' ? t`Transcription` : l.id === 'voice' ? t`Voice` : l.name);
   return {
     /** The address, a key if it needs one, a look at what it offers, and Add with these. @param {any} ui @param {any} provider */
     panel(ui, provider) {
@@ -66,44 +67,44 @@ export function anotherAddress(io) {
       const changed = (what) => {
         looks += 1;
         results.replaceChildren();
-        status.textContent = what && looked ? `The ${what} changed: look again.` : '';
+        status.textContent = !what || !looked ? '' : what === 'address' ? t`The address changed: look again.` : t`The key changed: look again.`;
       };
       const address = h('input', { id: 'probe-address', type: 'url', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://…/v1', oninput: () => changed('address') });
-      const key = h('input', { id: 'probe-key', type: 'password', autocomplete: 'off', placeholder: 'if it needs one', oninput: () => changed('key') });
+      const key = h('input', { id: 'probe-key', type: 'password', autocomplete: 'off', placeholder: t`if it needs one`, oninput: () => changed('key') });
       /** @param {import('./probe.js').Probe} r @param {string | null} k */
       const show = (r, k) => {
         const host = new URL(r.base).host;
         const found = LOOKS.filter((l) => r.abilities[l.id].state === 'found');
         // A speech path found is switched on only where the model list names a model for it.
-        const off = (/** @type {string} */ id) => id in SPEECH && !r.list.speech?.[/** @type {'transcription' | 'voice'} */ (id)];
+        const off = (/** @type {string} */ id) => SPEECH.has(id) && !r.list.speech?.[/** @type {'transcription' | 'voice'} */ (id)];
         const add = h('button', {
           class: 'btn pri', type: 'button',
           onclick: async () => {
             add.disabled = true;
-            status.textContent = 'Adding it, with what it needs…';
+            status.textContent = t`Adding it, with what it needs…`;
             try {
               await ui.add({
                 name: host, baseUrl: r.base, key: k ?? undefined, roles: null,
                 // Anthropic Messages at the address without /v1, as that protocol adds /v1/messages itself.
                 abilities: Object.fromEntries(found.filter((l) => !off(l.id)).map((l) => [l.id, { on: true, ...(l.root && r.root !== r.base ? { baseUrl: r.root } : {}) }])),
               });
-              status.textContent = `Added ${host}.`;
+              status.textContent = t`Added ${host}.`;
             } catch (e) {
               status.textContent = words(e);
               add.disabled = false;
             }
           },
-        }, 'Add with these');
-        status.textContent = summary(r, host, found.length > 0);
+        }, t`Add with these`);
+        status.textContent = summary(io.l10n, r, host, found.length > 0);
         results.replaceChildren(
-          h('h3', { text: 'Found, at no cost' }),
+          h('h3', { text: t`Found, at no cost` }),
           h('ul', { class: 'checks-result' },
-            h('li', { class: r.list.state === 'found' ? 'ok' : 'bad', text: findingLine('Model list', r.list) }),
+            h('li', { class: r.list.state === 'found' ? 'ok' : 'bad', text: findingLine(io.l10n, t`Model list`, r.list) }),
             ...LOOKS.map((l) => {
-              const line = findingLine(l.name, r.abilities[l.id], SPEECH[l.id] && { ...SPEECH[l.id], off: off(l.id) });
+              const line = findingLine(io.l10n, nameOf(l), r.abilities[l.id], SPEECH.has(l.id) ? { id: l.id, off: off(l.id) } : undefined);
               return h('li', { class: line.startsWith('✓') ? 'ok' : 'bad', text: line });
             })),
-          h('p', { class: 'sub', text: FREE }),
+          h('p', { class: 'sub', text: t`annai only asked for the model list and sent an empty request to each known path. Nothing here costs money; Test sends real requests.` }),
           ...(found.length ? [h('div', { class: 'acts' }, add)] : []));
       };
       const look = h('button', {
@@ -113,7 +114,7 @@ export function anotherAddress(io) {
           looked = true;
           changed();
           const mine = looks;
-          status.textContent = 'Looking: the model list, then an empty request to each known path…';
+          status.textContent = t`Looking: the model list, then an empty request to each known path…`;
           try {
             const k = key.value.trim() || null;
             const r = await probe(address.value, k, io);
@@ -124,13 +125,13 @@ export function anotherAddress(io) {
             look.disabled = false;
           }
         },
-      }, 'Look for what it offers');
+      }, t`Look for what it offers`);
       /** @param {string} label @param {any} input */
       const field = (label, input) => h('label', { class: 'field' }, h('span', { class: 'field-label', text: label }), input);
       return h('div', {},
-        h('p', { text: 'Give its address, and its key if it needs one. annai looks for what it offers, at no cost, then adds it with what it found.' }),
-        field('Address', address),
-        field('API key (optional)', key),
+        h('p', { text: t`Give its address, and its key if it needs one. annai looks for what it offers, at no cost, then adds it with what it found.` }),
+        field(t`Address`, address),
+        field(t`API key (optional)`, key),
         h('div', { class: 'acts' }, look),
         status,
         results);
@@ -146,5 +147,5 @@ export function activate(annai) {
   // CORS says. It carries no key, no body and no cookies. A browser sends no-cors requests only if they may follow a
   // redirect (otherwise they fail as unreachable), so this one may; the requests with the key never do.
   const reach = (/** @type {string} */ url) => annai.net.fetch(url, { mode: 'no-cors', cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(15_000) }).then(() => true, () => false);
-  return annai.providers.setup(anotherAddress({ fetch, reach, problem: annai.helpers.addressProblem }));
+  return annai.providers.setup(anotherAddress({ fetch, reach, problem: annai.helpers.addressShown, l10n: annai.l10n }));
 }

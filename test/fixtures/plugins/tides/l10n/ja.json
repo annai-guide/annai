@@ -1,0 +1,17 @@
+{
+  "manifest": {
+    "description": "今いる海岸の潮汐表。",
+    "keywords": [
+      "潮汐"
+    ],
+    "settings.properties.station.title": "観測地点",
+    "settings.properties.station.description": "潮位観測地点のID（例：9413450）。",
+    "settings.properties.depth.title": "詳しさ",
+    "settings.properties.depth.oneOf.0.title": "基本",
+    "settings.properties.depth.oneOf.1.title": "詳細"
+  },
+  "messages": {
+    "16w1m76": "潮汐表",
+    "13pcmq4": "{0}に干潮。"
+  }
+}

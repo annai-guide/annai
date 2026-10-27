@@ -1,4 +1,4 @@
-import { officialUpdates, updateOfficial } from '../core/llm/official.js';
+import { officialUpdates, updateOfficial, officialName } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
 import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
@@ -62,9 +62,13 @@ export async function knownAddressUpdates(host) {
   return (await knownUpdates(host)).filter((u) => u.url);
 }
 
+/** An update's plugin by name: annai's own in the screens' words, one from an address as written. @param {Update} u */
+const nameOf = (u) => (u.url ? u.name : officialName(u.id, u.name));
+
 /** "Tides 1.0.0 → 1.1.0", or "tide-pools (changed)" when only its files did. @param {Update} u */
 export function offerWords(u) {
   const changed = u.changed || u.installed === u.available;
+  u = { ...u, name: nameOf(u) };
   if (addsAnything(u.added)) return changed ? t`${u.name} (changed) (brings something new: you'll be asked first)` : t`${u.name} ${u.installed} → ${u.available} (brings something new: you'll be asked first)`;
   return changed ? t`${u.name} (changed)` : t`${u.name} ${u.installed} → ${u.available}`;
 }
@@ -101,9 +105,9 @@ export async function applyUpdates(ctx, updates, env = {}) {
         : await updateOfficial(ctx.plugins, u.entry, env);
       applied++;
       knownOf(ctx.plugins).delete(u.id);
-      if (how === 'restart') waiting.push(u.name);
+      if (how === 'restart') waiting.push(nameOf(u));
     } catch (e) {
-      failed.push(t`${u.name}: ${messageOf(e)}`);
+      failed.push(t`${nameOf(u)}: ${messageOf(e)}`);
     }
   }
   if (failed.length) ctx.notices.card({ tone: 'warn', title: t`Some plugins weren't updated`, body: sentences(...failed) });

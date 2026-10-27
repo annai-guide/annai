@@ -1,8 +1,8 @@
-import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
+import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural, otherLang } from '../dom.js';
 import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
-import { officialPlugins } from '../../core/llm/official.js';
+import { officialPlugins, namesReady, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine, sourceHost } from './plugin-install.js';
@@ -83,14 +83,18 @@ export async function renderProvider(ctx, id) {
   const tunablesFor = (type) => types.get(type)?.tunables ?? {};
   const p = providerOf(rec, tunablesFor);
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === rec.plugin);
-  const desc = src?.provider;
+  // Its notes and abilities' names in the screens' language where its plugin has them; shownIn: the language they are in.
+  const desc = src ? ctx.plugins.shownOf(rec.plugin)?.provider ?? src.provider : undefined;
+  const shownIn = otherLang(ctx.plugins.langOf(rec.plugin));
   const installed = (await ctx.plugins.installed())[rec.plugin];
   // What a plugin that isn't running is called comes from annai's catalog, never as its id (the second emulator re-check).
   const catalog = (!src && !installed) || Object.values(p.abilities).some((a) => !types.has(a.type)) ? await officialPlugins().catch(() => null) : null;
-  const catalogName = (/** @type {string | undefined} */ id) => catalog?.find((/** @type {any} */ e) => e.id === id)?.name ?? null;
+  const catalogName = (/** @type {string | undefined} */ id) => { const e = catalog?.find((/** @type {any} */ x) => x.id === id); return e ? officialName(e.id, e.name) : null; };
   /** A protocol by name: running, else annai's own from the catalog, else nothing to name. @param {string} type @returns {string | null} */
   const protocolName = (type) => types.get(type)?.name ?? catalogName(/** @type {Record<string, string>} */ (OFFICIAL_NAMES['endpoint-type'])[type]);
-  const pluginName = src?.name ?? installed?.name ?? catalogName(rec.plugin);
+  await namesReady();
+  const named = src?.name ?? installed?.name;
+  const pluginName = named ? shownPluginName(installed, rec.plugin, named) : catalogName(rec.plugin);
   const hasKey = Boolean(await ctx.llm.keyFor(id));
   const status = h('p', { class: 'sub', role: 'status' });
   const title = h('h1', { class: 'title', text: p.name });
@@ -145,7 +149,7 @@ export async function renderProvider(ctx, id) {
   const host = installed ? sourceHost(installed) : null;
   if (!others && host) removes.push(t`To add it back, you'll need its address again: ${host}.`);
   if (!others && installed?.source === 'file') removes.push(installed.file ? t`To add it back, you'll need its file again (${installed.file}).` : t`To add it back, you'll need its file again.`);
-  const view = { ctx, id, tunablesFor, desc, protocolName };
+  const view = { ctx, id, tunablesFor, desc, protocolName, shownIn };
   const removing = h('p', { class: 'sub', role: 'status' });
   // What a provider keeps, named as its warning shows: typing a new key or address, or arming a removal (G2).
   const keyWarn = h('p', { class: 'sub' });
@@ -179,7 +183,7 @@ export async function renderProvider(ctx, id) {
       panel,
       key ? field(t`API key`, key) : null,
       desc?.note || desc?.keyUrl
-        ? h('p', { class: 'sub' }, desc.note ?? '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, t`Get a key`) : null)
+        ? h('p', { class: 'sub' }, desc.note ? h('span', { lang: shownIn, text: desc.note }) : '', desc.note && desc.keyUrl ? ' ' : '', desc.keyUrl ? h('a', { href: desc.keyUrl, target: '_blank', rel: 'noopener' }, t`Get a key`) : null)
         : null,
       serverNote.el,
       desc?.freeTier ? savedCheck(freeTierLabel(desc.freeTier, pluginName ?? p.name), p.free, async (on) => {
@@ -219,7 +223,10 @@ export async function renderProvider(ctx, id) {
  */
 export async function renderNewProvider(ctx, pluginId) {
   await ctx.llm.ready;
-  const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId);
+  await namesReady();
+  const found = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId);
+  // Its plugin by name: annai's own in the screens' words (decision 10).
+  const src = found && { ...found, name: shownPluginName((await ctx.plugins.installed())[pluginId], pluginId, found.name) };
   const open = (/** @type {string} */ id) => ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
   const panel = src && drawPanel(ctx, pluginId, null, { added: open });
   const status = h('p', { class: 'sub', role: 'status', text: panel ? '' : src ? t`${src.name} has no way of its own to add it here: add it by hand, and set it up on its page.` : t`This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.` });
@@ -290,7 +297,10 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
   return h('div', { class: 'risk-note' }, h('p', { text: t`Its plugin, ${entry.name}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
 }
 
-/** @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any, protocolName: (type: string) => string | null }} View */
+/**
+ * @typedef {{ ctx: any, id: string, tunablesFor: (type: string) => Record<string, any>, desc: any, protocolName: (type: string) => string | null, shownIn?: string }} View
+ *   desc: its provider's description as the screens show it; shownIn: the language of its words, when it isn't the screens'
+ */
 
 /**
  * Saves fields into the user's layer of the provider, or of one ability, as it is now (a function works
@@ -325,7 +335,7 @@ async function abilityPanel(view, abilityId, added) {
   const body = h('div', {});
   // replaceChildren, unlike h, would show a null as the word.
   const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
-  const shownName = abilityName(a);
+  const shownName = abilityName(a, { shown: view.desc });
   const use = savedCheck(t`Use ${shownName}`, a.on, async (on) => {
     await ctx.llm.setAbility(id, abilityId, on);
     await draw();
@@ -346,7 +356,7 @@ async function abilityBody(view, abilityId) {
   const cfg = await ctx.llm.config();
   const rec = cfg.providers[id];
   const a = providerOf(rec, tunablesFor).abilities[abilityId];
-  const note = desc?.abilities?.[abilityId]?.note ? h('p', { class: 'sub', text: desc.abilities[abilityId].note }) : null;
+  const note = desc?.abilities?.[abilityId]?.note ? h('p', { class: 'sub', text: desc.abilities[abilityId].note, lang: view.shownIn }) : null;
   if (!a?.on) return [note];
   const type = ctx.llm.types().get(a.type);
   if (!type) return [installPanel(ctx, a.type, view.protocolName(a.type), () => ctx.render()), note];
@@ -380,7 +390,7 @@ async function abilityBody(view, abilityId) {
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
   const tools = await providerToolSwitches(ctx, models, providerOf(rec).free, typeof desc?.freeTier === 'string' ? desc.freeTier : providerOf(rec).name);
   // What to do with a model from before the provider's list gave windows, while there is one.
-  const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote }) : null;
+  const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote, lang: view.shownIn }) : null;
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
   const first = models[0];
   return [

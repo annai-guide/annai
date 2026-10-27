@@ -417,12 +417,14 @@ Each listed language is a file in the package, `l10n/<tag>.json`:
 
 #### What annai checks
 
-At install, as the rest of the manifest is checked (src/core/packages.js:35–41), and refused with the reason in plain words:
+At install, and again at use. **A translation that fails a check is left out, never a reason to refuse the plugin** (changed in L7's review, RULES 6 "fail working"): the plugin installs, its words show as written (marked with their language) in that language, and the install screen says why in one developer's line. Only `language` that is no language tag at all, or more than 50 in `l10n`, refuses the manifest. Tags are matched in canonical form (`zh-hans`, `ja-jp` and `"language": "EN"` are accepted); each file is read by its tag as written. A translation's checks:
 
-- `language` and each tag in `l10n` are well-formed and canonical (`Intl.getCanonicalLocales(x)[0] === x`); at most 50 languages;
-- each listed file is there (and in `files` for an install from an address), is JSON, at most 256 KiB, an object with only `manifest` and `messages`;
+- its tag is a language tag, listed once;
+- the file is there (an install from an address fetches it, and leaves it out when it can't be had), is JSON, at most 256 KiB, an object with only `manifest` and `messages`;
 - every `manifest` key names a translatable field that exists in this manifest, and its text is within that field's own limit (500 characters for a description);
 - every message is a string, or an object of plural forms whose keys are among the language's categories, each at most 2,000 characters.
+
+An empty text is no translation: that field or message shows its own words. A third party's `name` may be translated and is never shown.
 
 At use, a translation whose placeholders aren't its source's is skipped for the source, without a card. Nothing in a translation is ever HTML: it reaches the page as text, as everything else does. The install screen's warnings (full trust, whose keys it could read, where a search goes) are annai's own words, never the plugin's, in every language.
 

@@ -73,19 +73,24 @@ export const holes = (s) => [...new Set(s.match(/\{\d+\}/g))].sort().join('');
 
 /** A value in a message, isolated in a right-to-left language so a Latin name keeps its place. @param {unknown} v */
 const wrap = (v) => (dir() === 'rtl' ? `\u2068${v}\u2069` : String(v));
-/** @param {TemplateStringsArray} strings @param {unknown[]} values @param {string} [context] */
-function say(strings, values, context) {
-  let text = seen.get(strings);
+/**
+ * @param {TemplateStringsArray} strings @param {unknown[]} values @param {string | undefined} context
+ * @param {Record<string, any> | null} [words] @param {WeakMap<TemplateStringsArray, string>} [cache]
+ */
+function say(strings, values, context, words = table, cache = seen) {
+  let text = cache.get(strings);
   if (text === undefined) {
     const source = strings.reduce((s, p, i) => `${s}{${i - 1}}${p}`);
-    const own = table?.[key(source, context)];
-    seen.set(strings, text = typeof own === 'string' && holes(own) === holes(source) ? own : pseudo ? pseudo(source) : source);
+    const own = words?.[key(source, context)];
+    cache.set(strings, text = typeof own === 'string' && own && holes(own) === holes(source) ? own : pseudo ? pseudo(source) : source);
   }
   return text.replace(/\{(\d+)\}/g, (m, i) => wrap(values[i]));
 }
+/** @param {TemplateStringsArray} strings @param {unknown[]} values */
+const english = (strings, values) => strings.reduce((s, p, i) => `${s}${values[i - 1]}${p}`);
 
 /** A message: t`Last backup ${when}, to ${where}.`. @param {TemplateStringsArray} strings @param {...unknown} values */
-export const t = (strings, ...values) => (table || pseudo ? say(strings, values) : strings.reduce((s, p, i) => `${s}${values[i - 1]}${p}`));
+export const t = (strings, ...values) => (table || pseudo ? say(strings, values, undefined) : english(strings, values));
 /** A message with a context, for English that means two things: tc('verb')`Open`. @param {string} context */
 export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => say(strings, values, context);
 
@@ -93,7 +98,7 @@ export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /**
  * Words annai sends or speaks as if the user said them (a quick ask, a voice's sample): the screens' when the user speaks their
  * language, else English (the user, 2026-10-24). asUser(speaks)`Where can we eat?`; the message is t's. @param {boolean} speaks
  */
-export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => (speaks ? t(strings, ...values) : strings.reduce((s, p, i) => `${s}${values[i - 1]}${p}`));
+export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => (speaks ? t(strings, ...values) : english(strings, values));
 
 /**
  * plural(n, '# stamp', '# stamps'): `#` is n, formatted for the language; {0}… are the other values. The words give a text per
@@ -101,11 +106,35 @@ export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, 
  * @param {number} n @param {string} one @param {string} other @param {...unknown} values
  */
 export function plural(n, one, other, ...values) {
-  const forms = table?.[key(`${one}\0${other}`)];
+  return count(table, n, one, other, values);
+}
+/** @param {Record<string, any> | null} words @param {number} n @param {string} one @param {string} other @param {unknown[]} values */
+function count(words, n, one, other, values) {
+  const forms = words?.[key(`${one}\0${other}`)];
   const own = forms && typeof forms === 'object' ? forms[(rules ??= new Intl.PluralRules(tag)).select(n)] ?? forms.other : undefined;
   // English without a translation, counted the English way.
   const english = Math.abs(n) === 1 ? one : other;
-  const text = typeof own === 'string' && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
+  const text = typeof own === 'string' && own && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
   const shown = n.toLocaleString(locale());
   return text.replace(/#|\{(\d+)\}/g, (m, i) => (i === undefined ? shown : wrap(values[i])));
+}
+
+/**
+ * A plugin's words (localization design, section 8): t, tc and plural over its messages for the screens (null: its own words), and
+ * both, { message, shown }: English for what is kept or a model reads, and the screens' words (the shown rule). @param {Record<string, any> | null} words
+ */
+export function wordsOver(words) {
+  /** @type {WeakMap<TemplateStringsArray, string>} */
+  const cache = new WeakMap();
+  /** @param {TemplateStringsArray} strings @param {...unknown} values */
+  const tr = (strings, ...values) => say(strings, values, undefined, words, cache);
+  return {
+    t: tr,
+    /** @param {string} context */
+    tc: (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => say(strings, values, context, words, cache),
+    /** @param {number} n @param {string} one @param {string} other @param {...unknown} values */
+    plural: (n, one, other, ...values) => count(words, n, one, other, values),
+    /** @param {TemplateStringsArray} strings @param {...unknown} values */
+    both: (strings, ...values) => ({ message: english(strings, values), shown: tr(strings, ...values) }),
+  };
 }

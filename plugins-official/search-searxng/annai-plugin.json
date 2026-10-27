@@ -1,8 +1,9 @@
 {
   "id": "search-searxng",
   "name": "SearXNG Search",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
   "category": "tools",

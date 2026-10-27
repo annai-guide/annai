@@ -1,0 +1,18 @@
+{
+  "id": "acme-tides",
+  "name": "Acme Tides",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "index.js",
+  "language": "en",
+  "l10n": ["ja"],
+  "description": "Tide tables for the coast you are on.",
+  "keywords": ["tides"],
+  "settings": {
+    "type": "object",
+    "properties": {
+      "station": { "type": "string", "title": "Station", "description": "The tide station's id, such as 9413450." },
+      "depth": { "type": "string", "title": "Detail", "oneOf": [{ "const": "basic", "title": "Basic" }, { "const": "advanced", "title": "Advanced" }], "default": "basic" }
+    }
+  }
+}

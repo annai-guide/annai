@@ -1,0 +1,41 @@
+{
+  "manifest": {
+    "description": "开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。从不发送密钥。",
+    "name": "远程记录（开发者）",
+    "settings.properties.device.description": "随每批一起发送，让服务器能把本设备与其他设备区分开。annai 会在第一次发送时生成一个；你也可以自己起名。",
+    "settings.properties.device.title": "设备 ID",
+    "settings.properties.location.description": "同时发送 GPS 开启时 annai 记录的位置点（驾驶时约每秒一个）。关闭时，其他条目仍可能包含地点，正如“记录”中显示的：天气请求的地址、工具的输入等。",
+    "settings.properties.location.title": "发送位置点",
+    "settings.properties.send.description": "打开后，从现在起“记录”所记下的内容会在几秒内发送到服务器：你写的、Shiori 说的、她的工具、请求和错误。密钥会被遮盖，已保存的内容（照片、长文本）留在这里。关闭会立即停止。",
+    "settings.properties.send.title": "发送",
+    "settings.properties.server.description": "annai 发送记录的去处：你自己运行的服务器，例如 annai 的 scripts/trace-sink.mjs。用 https://…，http:// 只能用于 localhost 或 127.0.0.1。",
+    "settings.properties.server.title": "服务器地址",
+    "settings.properties.token.description": "服务器的令牌。annai 以 Authorization: Bearer 发送它，并和你的密钥一起保存，从不放进文件。",
+    "settings.properties.token.title": "令牌"
+  },
+  "messages": {
+    "14w66x9": "无法连接服务器。",
+    "15ggh6g": "服务器地址中含有用户名或密码，请求无法携带它们。请把它们去掉，并把服务器的令牌填到“令牌”中。",
+    "16cfxwg": "annai 会继续大约每分钟尝试一次，并保留最新的 {0} 条，直到发出为止。请在设置 → 插件 → 远程记录（开发者）中检查服务器地址和令牌，或在那里关闭“发送”。",
+    "18ckgf7": "{0} 连续 {2} 次返回了 {1}。",
+    "1ahd84q": "令牌中含有请求无法携带的字符：只能用字母、数字和标点，不能有空格。",
+    "1kwbgo3": "手机处于离线状态。",
+    "1qhwapr": "记录服务器拒绝了 annai 发送的内容",
+    "1t53c9s": "正在发送记录",
+    "46d80m": "服务器返回了 {0}。",
+    "4clmw9": "需要你的服务器地址。",
+    "ata72m": "记录",
+    "bbadl": "远程记录没有在发送",
+    "dslm8u": "{0} 连续 {2} 次返回了 {1}：令牌可能不对。",
+    "m3chyg": "打开远程记录",
+    "q62pwu": "令牌无法发送。",
+    "rr1ir8": "请在设置 → 插件 → 远程记录（开发者）中更改。",
+    "rt350m": "annai 无法准备好这一批。",
+    "s7tmcq": "需要服务器的令牌。请在设置 → 插件 → 远程记录（开发者）中添加。",
+    "u2jqcp": "服务器地址必须以 https:// 开头（http:// 只能用于 localhost 或 127.0.0.1）。",
+    "zr5o1w": "没有令牌。",
+    "zzw26r": {
+      "other": "正在发送记录：# 条等待中。"
+    }
+  }
+}
