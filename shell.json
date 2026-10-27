@@ -1,5 +1,5 @@
 {
-  "build": "190089940441",
+  "build": "9c5e0291345a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -227,7 +227,7 @@
     "/src/ui/resume.js": "bf9b0a3dbac0",
     "/src/ui/router.js": "a2d1a500f736",
     "/src/ui/save.js": "513ac16dd31a",
-    "/src/ui/settings-form.js": "d79ccbbd4d12",
+    "/src/ui/settings-form.js": "29a0c1fd9fdc",
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "c57b5f370de8",
     "/src/ui/screens/backups.js": "cb4c5d840205",
