@@ -23,6 +23,10 @@ provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugi
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	
 provider-scripted:@name	draft	Scripted model (for testing)	按脚本回复的模型（测试用）	plugins-official/provider-scripted/annai-plugin.json:3	
 provider-scripted:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/provider-scripted/annai-plugin.json:7	
+provider-sglang:@name	draft	SGLang	SGLang	plugins-official/provider-sglang/annai-plugin.json:3	
+provider-sglang:@description	draft	Models on an SGLang server you run, with their thinking switched through the chat template.	你自己运行的 SGLang 服务器上的模型，思考通过聊天模板开关。	plugins-official/provider-sglang/annai-plugin.json:7	
+provider-sglang:@provider.note	draft	SGLang listens on port 30000 unless --port says otherwise; give it a key with --api-key, or leave the key empty.	除非用 --port 另行指定，SGLang 监听 30000 端口；用 --api-key 给它设密钥，或者把密钥留空。	plugins-official/provider-sglang/annai-plugin.json:19	
+provider-sglang:@provider.abilities.chat.note	draft	Add models with Fetch model list: each comes with the context the server holds. Tool calls need --tool-call-parser <name>, and a model that thinks needs --reasoning-parser <name>; without them Shiori can't use her tools, and her thinking shows in her words.	用“获取模型列表”添加模型：每个模型都会带上服务器保有的上下文长度。工具调用需要 --tool-call-parser <name>，会思考的模型需要 --reasoning-parser <name>；没有它们，Shiori 无法使用工具，她的思考也会混进她的话里。	plugins-official/provider-sglang/annai-plugin.json:56	
 scripted-model:@name	draft	Scripted model	按脚本回复的模型	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:8	
 speech-openai:@name	draft	OpenAI-compatible speech	OpenAI 兼容语音	plugins-official/speech-openai/annai-plugin.json:3	

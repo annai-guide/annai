@@ -537,7 +537,7 @@
     {
       "id": "provider-sglang",
       "name": "SGLang",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
       "category": "providers",
       "keywords": [],
@@ -547,7 +547,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1843,
+      "size": 3372,
       "requires": [
         {
           "id": "chat-completions",
@@ -556,7 +556,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "c06469647d3412ec6d91b3249cb80adf2de8848aff6d7f63876c8806b0e0b648"
+        "annai-plugin.json": "c30649666f345e235d0c69119d531e8496b9ac35f1514020fad0bc40a93f3a2f",
+        "l10n/ja.json": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
+        "l10n/zh-Hans.json": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665"
       }
     },
     {
