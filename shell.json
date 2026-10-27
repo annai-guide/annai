@@ -276,6 +276,8 @@
     "/src/ui/updates.js": "2a4585a6ce98",
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
-    "/src/ui/welcome.js": "23fcd35c12df"
+    "/src/ui/welcome.js": "23fcd35c12df",
+    "/l10n/ja.json": "93c74031a4af",
+    "/l10n/zh-Hans.json": "729860452ddd"
   }
 }

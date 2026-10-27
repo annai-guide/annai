@@ -11,6 +11,8 @@ const SOURCE = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
 const SHELL_BLOCK = /const SHELL = \[([\s\S]*?)\];/;
 const SHELL = [...(SHELL_BLOCK.exec(SOURCE)?.[1] ?? '').matchAll(/'(\/[^']*)'/g)].map((m) => m[1]);
 const RECORD = '/shell-record.json';
+/** The catalogs a site has, which its manifest names after the shell (stamp.mjs). */
+const CATALOGS = [...(/const LANGS = \[([^\]]*)\];/.exec(SOURCE)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => `/l10n/${m[1]}.json`);
 const hashOf = (/** @type {string} */ text) => createHash('sha256').update(text).digest('hex').slice(0, 12);
 const ORIGIN = 'https://annai.guide';
 const pathOf = (/** @type {string | Request} */ r) => new URL(typeof r === 'string' ? r : r.url, ORIGIN).pathname;
@@ -21,11 +23,12 @@ assert.ok(PAGES.every((p) => SHELL.includes(p)));
 const only = (changed, shell = SHELL) => ['/shell.json', ...shell.filter((p) => PAGES.includes(p) || changed.includes(p))];
 
 /** A phone and the site it updates from. The site holds version A of every shell file; `ship` publishes a version's manifest. */
-function phone() {
+/** @param {{ languages?: string[] }} [o] the phone's languages, for the screens' catalog */
+function phone({ languages = /** @type {string[]} */ ([]) } = {}) {
   /** The phone's caches, in the order they were made: name → path → body. @type {Map<string, Map<string, string>>} */
   const stores = new Map();
   /** The site: path → body. @type {Map<string, string>} */
-  const site = new Map(SHELL.map((p) => [p, `the ${p} of version A`]));
+  const site = new Map([...SHELL, ...CATALOGS].map((p) => [p, p.startsWith('/l10n/') ? '{"a":"version A"}' : `the ${p} of version A`]));
   /** Each path the phone asked the site for, in order. @type {string[]} */
   const fetched = [];
   /** @type {string[]} */
@@ -79,7 +82,7 @@ function phone() {
 
   /** The site publishes a version: its manifest names the build and the hash of each of its shell files as the site holds them. */
   const ship = (/** @type {string} */ build, shell = SHELL) => {
-    site.set('/shell.json', JSON.stringify({ build, files: Object.fromEntries(shell.map((p) => [p, hashOf(/** @type {string} */ (site.get(p)))])) }));
+    site.set('/shell.json', JSON.stringify({ build, files: Object.fromEntries([...shell, ...CATALOGS].map((p) => [p, hashOf(/** @type {string} */ (site.get(p)))])) }));
   };
 
   /**
@@ -91,7 +94,7 @@ function phone() {
       .replace(SHELL_BLOCK, `const SHELL = ${JSON.stringify(shell)};`);
     /** @type {Record<string, (e: any) => void>} */
     const handlers = {};
-    const self = { location: new URL(`${ORIGIN}/sw.js`), navigator: { languages: [] }, addEventListener: (/** @type {string} */ t, /** @type {any} */ f) => { handlers[t] = f; } };
+    const self = { location: new URL(`${ORIGIN}/sw.js`), navigator: { languages }, addEventListener: (/** @type {string} */ t, /** @type {any} */ f) => { handlers[t] = f; } };
     vm.runInNewContext(source, {
       self, caches, Request: SwRequest, Response, URL, console, TextDecoder, crypto,
       fetch: async (/** @type {Request} */ r) => serve(r),
@@ -284,4 +287,25 @@ test("an install whose cache another version's activate deleted meanwhile fails,
   // The next check tries again, and copies from B.
   p.meanwhile.clear();
   assert.deepEqual(await p.install('cccccccccccc'), only(['/src/core/sun.js']));
+});
+
+test("an update that changes one file fetches no catalog: an unchanged one is copied, checked by its own hash (L6 review 3)", async () => {
+  const p = phone({ languages: ['ja-JP'] });
+  p.ship('aaaaaaaaaaaa');
+  const first = await p.install('aaaaaaaaaaaa');
+  assert.ok(first.includes('/l10n/ja.json'), 'the first install fetches it');
+  p.site.set('/src/core/sun.js', 'the sun, version B');
+  p.ship('bbbbbbbbbbbb');
+  assert.deepEqual(await p.install('bbbbbbbbbbbb'), only(['/src/core/sun.js']), 'no catalog fetched');
+  assert.equal(p.cacheOf('bbbbbbbbbbbb').store?.get('/l10n/ja.json'), '{"a":"version A"}', 'copied');
+  // A changed catalog is fetched.
+  p.site.set('/l10n/ja.json', '{"a":"version C"}');
+  p.ship('cccccccccccc');
+  assert.deepEqual(await p.install('cccccccccccc'), [...only([]), '/l10n/ja.json']);
+  assert.equal(p.cacheOf('cccccccccccc').store?.get('/l10n/ja.json'), '{"a":"version C"}');
+  // One the old cache holds with other words than its manifest says (kept later by cache-words) is fetched, not trusted.
+  p.cacheOf('cccccccccccc').store?.set('/l10n/ja.json', '{"a":"from the device"}');
+  p.site.set('/src/core/sun.js', 'the sun, version D');
+  p.ship('dddddddddddd');
+  assert.deepEqual(await p.install('dddddddddddd'), [...only(['/src/core/sun.js']), '/l10n/ja.json']);
 });

@@ -3,7 +3,7 @@
 // name of its cache, change whenever anything annai ships changes (spec §17 rule 5). The catalogs of the languages in its
 // LANGS list (l10n/<tag>.json) are hashed after the shell, so a translation fixed alone makes a new build too; then _headers.
 // Beside sw.js it writes shell.json, the build's manifest: { build, files: { path: hash } }, the first 12 hex digits of each
-// shell file's SHA-256. An update fetches only the files whose hash isn't the one the version before holds them under (sw.js install).
+// shell file's SHA-256, then each catalog's. An update fetches only the files whose hash isn't the one the version before holds them under (sw.js install).
 //   node scripts/stamp.mjs          writes the hash and the manifest (the deploy build command)
 //   node scripts/stamp.mjs --check  exits 1 when either is out of date (CI)
 import { readFile, writeFile } from 'node:fs/promises';
@@ -32,7 +32,12 @@ export async function stamp(root, { check = false } = {}) {
     files[path] = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
   }
   const langs = /const LANGS = \[([^\]]*)\];/.exec(sw)?.[1] ?? '';
-  for (const [, tag] of langs.matchAll(/'([^']+)'/g)) hash.update(`/l10n/${tag}.json\0`).update(await readFile(new URL(`l10n/${tag}.json`, root))).update('\0');
+  for (const [, tag] of langs.matchAll(/'([^']+)'/g)) {
+    const bytes = await readFile(new URL(`l10n/${tag}.json`, root));
+    hash.update(`/l10n/${tag}.json\0`).update(bytes).update('\0');
+    // Named in the manifest too, so an update copies a catalog that hasn't changed (L6 review 3).
+    files[`/l10n/${tag}.json`] = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
+  }
   // The site's headers too: the pages carry its policy (CSP, Permissions-Policy), so a change to it alone must reach phones.
   const headers = await readFile(new URL('_headers', root)).catch(() => null);
   if (headers) hash.update('/_headers\0').update(headers).update('\0');
