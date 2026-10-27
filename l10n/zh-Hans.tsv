@@ -1023,7 +1023,7 @@ qyfmia	draft	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens
 1f9vvmr	draft	Wait for her first words (seconds)	等待她开口（秒）	src/ui/screens/voice.js:150	
 1sz04rq	draft	Wait 5 to 120 seconds.	请设为 5 到 120 秒。	src/ui/screens/voice.js:150	
 17b2a79	draft	On the screen	屏幕上	src/ui/screens/voice.js:151	
-4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	开启：她出声说的话会以“已朗读”标记显示在对话中，说话时也会在她上方的气泡中显示。关闭：屏幕保持安静。她说过的话在对话中折叠起来，直到你轻点“显示她说的话”。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	开启：她出声说的话会以“已朗读”标记显示在对话中，说话时也会在她上方的气泡中显示。关闭：屏幕保持安静。她说过的话在对话中折叠起来，直到你轻点“查看她说的话”。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	draft	Shiori's voice	Shiori 的声音	src/ui/screens/voice.js:154	
 1879vb9	draft	Voices, tried in order: none.	依次尝试的声音：无。	src/ui/screens/voice.js:155	
 1su08w7	draft	Voices, tried in order: {0}.	依次尝试的声音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')
