@@ -15,9 +15,7 @@ export const manifest = {
   description: t`fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.`,
 };
 
-// Below, Shiori's words: English (localization design, section 7). A search provider's name and why are the screen's; en, their English.
-/** What Shiori is told a provider is called. @param {any} p */
-const told = (p) => String(p.en ?? p.name);
+// Below, Shiori's words: English (localization design, section 7).
 
 const READER = 'https://r.jina.ai/';
 const SEARCH = 'https://s.jina.ai/';
@@ -187,7 +185,7 @@ export function activate(annai) {
   const jina = {
     id: 'jina', name: /* en */ 'Jina Search', kind: /** @type {const} */ ('web'),
     async ready() {
-      return (await key()) ? { ok: true } : { ok: false, why: t`needs a key (Settings → Tools)`, en: /* en */ 'needs a key (Settings → Tools)' };
+      return (await key()) ? { ok: true } : { ok: false, why: /* en */ 'needs a key (Settings → Tools)', shown: t`needs a key (Settings → Tools)` };
     },
     /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
     async search(query, { fetch: get, signal }) {
@@ -235,7 +233,7 @@ export function activate(annai) {
       const ask = async (p, reserve = 0) => {
         const room = deadline - Date.now() - reserve;
         if (room < 100) {
-          passed.push(`${told(p)} was left out: the search ran out of time`);
+          passed.push(`${p.name} was left out: the search ran out of time`);
           return null;
         }
         try {
@@ -246,7 +244,7 @@ export function activate(annai) {
         } catch (e) {
           if (call.signal.aborted) throw e;
           failed.push({ p, e });
-          why.push(/** @type {any} */ (e)?.late ? `${told(p)} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
+          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
         }
         return null;
       };
@@ -274,18 +272,18 @@ export function activate(annai) {
         const rest = cooldowns.left(p.id);
         if (rest > 0) {
           resting.push(p);
-          passed.push(`${told(p)} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
+          passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
           continue;
         }
         const reserve = reserveFor(p, k);
         const room = deadline - Date.now() - reserve;
         if (room < 100) {
-          passed.push(`${told(p)} was left out: the search ran out of time`);
+          passed.push(`${p.name} was left out: the search ran out of time`);
           continue;
         }
         const r = await ready(p, room);
         if (!r.ok) {
-          passed.push(`${told(p)} ${r.en ?? r.why ?? "isn't ready"}`);
+          passed.push(`${p.name} ${r.why ?? "isn't ready"}`);
           continue;
         }
         const out = await ask(p, reserve);

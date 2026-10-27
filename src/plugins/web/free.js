@@ -113,11 +113,10 @@ const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? 
 /**
  * The floor: a Wikivoyage guide's lines that answer the query, Nominatim's official websites for the place, and
  * Wikipedia's matching articles. Encyclopedic, not web search; always reachable, and credited.
- * Its name is what Settings → Tools shows; en is what Shiori is told.
- * @type {import('../../core/web-search.js').SearchProvider & { en: string }}
+ * @type {import('../../core/web-search.js').SearchProvider}
  */
 export const KNOWLEDGE = {
-  id: 'wiki', name: t`Wikivoyage, Wikipedia and Nominatim`, en: /* en */ 'Wikivoyage, Wikipedia and Nominatim', kind: 'knowledge', always: true, limitMs: LIMIT_MS,
+  id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
   async search(query, { fetch: get, signal, limit }) {
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
