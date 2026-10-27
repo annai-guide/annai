@@ -1,5 +1,5 @@
 {
-  "build": "433183509399",
+  "build": "ef98a6ed6850",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "ce10ac662c8a",
     "/src/app/claim.js": "6b9f4f7eb997",
-    "/src/app/main.js": "c8c37add0535",
+    "/src/app/main.js": "518b41bdc460",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "85a3fceb2ea8",
     "/src/core/after/recap.js": "be962ed954c1",
@@ -219,7 +219,7 @@
     "/src/ui/photo-viewer.js": "b886168a8b88",
     "/src/ui/platform.js": "d92cd56df069",
     "/src/ui/privacy.js": "fbe514b232cf",
-    "/src/ui/plugin-cards.js": "259b7921f544",
+    "/src/ui/plugin-cards.js": "c697e1272270",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "35fae79af4f2",
     "/src/ui/plugin-updates.js": "2d92abf4c8df",

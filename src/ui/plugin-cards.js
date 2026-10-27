@@ -15,8 +15,12 @@ export function disabledCard({ name, reason, message }) {
   };
 }
 
-/** What needs a plugin says on a page no service worker took, where none can load (spec §5.3). */
+/** What needs a plugin says on a page no service worker took, where none can load (spec §5.3): on the screens, in their language. */
 export const NEEDS_RELOAD = t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
+/** The same, as models and the logs are told it: in English, as every word annai gives a model is (a role's attempts keep it). */
+const NEEDS_RELOAD_EN = /* en */ "annai needs a reload: it opened without its offline service, so its plugins can't start.";
+/** Why plugins can't load on this page, for models and the logs: English, or undefined when they can. @param {boolean} gaveUp @param {boolean} controlled */
+export const pluginsHeld = (gaveUp, controlled) => (gaveUp && !controlled ? NEEDS_RELOAD_EN : undefined);
 
 /** That page's one card, naming the plugins that are on, if any; Reload now is the user's own tap, so it can't loop. @param {string[]} names @param {() => void} reload */
 export function reloadCard(names, reload) {
