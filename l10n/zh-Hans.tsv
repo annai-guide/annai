@@ -339,29 +339,30 @@ storage-github:9mtyxq	draft	That commit isn't an annai backup.	这个提交不�
 storage-github:1n7ook3	draft	This backup is damaged: {0} is missing from GitHub.	此备份已损坏：GitHub 上缺少 {0}。	plugins-official/storage-github/index.js:429	{0} = shown(name)
 storage-s3:@name	draft	S3-compatible storage	S3 兼容存储	plugins-official/storage-s3/annai-plugin.json:3	
 storage-s3:@description	draft	Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.	把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。	plugins-official/storage-s3/annai-plugin.json:8	
-storage-s3:8yhmg7	draft	S3 address	S3 地址	plugins-official/storage-s3/index.js:57	
-storage-s3:kazmvx	draft	Region	区域	plugins-official/storage-s3/index.js:58	
-storage-s3:1r2hopj	draft	Bucket	存储桶	plugins-official/storage-s3/index.js:59	
-storage-s3:l5m77r	draft	Folder in the bucket	存储桶中的文件夹	plugins-official/storage-s3/index.js:60	
-storage-s3:1qn3pnm	draft	Secret access key	秘密访问密钥	plugins-official/storage-s3/index.js:62	
-storage-s3:1x5pkl1	draft	Access key ID	访问密钥 ID	plugins-official/storage-s3/index.js:62	
-storage-s3:108gcn6	draft	Use a bucket of its own for annai's backups, and an access key that may only list, read, write and delete in it. The bucket must allow browser access: paste the rules below into its CORS settings.	请为 annai 的备份使用一个专用的存储桶，以及一个只能在其中列出、读取、写入和删除的访问密钥。存储桶必须允许浏览器访问：请把下面的规则粘贴到它的 CORS 设置中。	plugins-official/storage-s3/index.js:63	
-storage-s3:57z8dw	draft	Paste these rules into the bucket's CORS settings. On AWS: the bucket → Permissions → Cross-origin resource sharing (CORS) → Edit. On Cloudflare R2: the bucket → Settings → CORS policy → Edit.	请把这些规则粘贴到存储桶的 CORS 设置中。在 AWS 上：存储桶 → Permissions → Cross-origin resource sharing (CORS) → Edit。在 Cloudflare R2 上：存储桶 → Settings → CORS policy → Edit。	plugins-official/storage-s3/index.js:66	
-storage-s3:8661z	draft	Check the S3 address: it must be a web address that starts with https://.	请检查 S3 地址：它必须是以 https:// 开头的网址。	plugins-official/storage-s3/index.js:90	
-storage-s3:10a1q42	draft	Check the bucket's name: lowercase letters, digits, dots and dashes.	请检查存储桶名称：只能用小写字母、数字、点和连字符。	plugins-official/storage-s3/index.js:91	
-storage-s3:mr2ov4	draft	Paste the access key ID and the secret access key, then save.	请粘贴访问密钥 ID 和秘密访问密钥，然后保存。	plugins-official/storage-s3/index.js:92	
-storage-s3:1p9jl62	draft	{0} didn't accept the access key. Check the key ID and the secret, then save.	{0} 不接受这个访问密钥。请检查密钥 ID 和秘密密钥，然后保存。	plugins-official/storage-s3/index.js:129	{0} = s.bucket
-storage-s3:9x4rxt	draft	{0} is in the region {1}. Set Region to {2}, then save.	{0} 位于区域 {1}。请把“区域”设为 {2}，然后保存。	plugins-official/storage-s3/index.js:132	{0} = s.bucket; {1} = region; {2} = region
-storage-s3:lemzpr	draft	{0} is in another region. Set Region to the bucket's region, then save.	{0} 位于另一个区域。请把“区域”设为存储桶所在的区域，然后保存。	plugins-official/storage-s3/index.js:132	{0} = s.bucket
-storage-s3:15c84vt	draft	This device's clock is more than 15 minutes off, so the bucket refused it. Set the clock to the network's time, then try again.	本设备的时钟偏差超过 15 分钟，所以存储桶拒绝了请求。请把时钟设为网络时间，然后再试。	plugins-official/storage-s3/index.js:134	
-storage-s3:j42moo	draft	There is no bucket {0} at {1}. Check the name and the address.	{1} 上没有存储桶 {0}。请检查名称和地址。	plugins-official/storage-s3/index.js:135	{0} = s.bucket; {1} = new URL(s.endpoint).host
-storage-s3:1svwfg6	draft	That backup is no longer in the bucket.	这个备份已不在存储桶中。	plugins-official/storage-s3/index.js:136	
-storage-s3:jz3aga	draft	The access key isn't allowed to do this in {0}. Give it permission to list, read, write and delete objects there.	这个访问密钥无权在 {0} 中执行此操作。请授予它在那里列出、读取、写入和删除对象的权限。	plugins-official/storage-s3/index.js:137	{0} = s.bucket
-storage-s3:1ytxnj0	draft	The bucket asked annai to slow down. annai tries again in a few minutes.	存储桶要求 annai 放慢速度。annai 会在几分钟后再试。	plugins-official/storage-s3/index.js:138	
-storage-s3:1oijivd	draft	The bucket refused this (HTTP {0}). annai tries again later.	存储桶拒绝了此操作（HTTP {0}）。annai 稍后会再试。	plugins-official/storage-s3/index.js:140	{0} = res.status
-storage-s3:1yhneka	draft	The bucket refused this (HTTP {0}: {1}). annai tries again later.	存储桶拒绝了此操作（HTTP {0}：{1}）。annai 稍后会再试。	plugins-official/storage-s3/index.js:140	{0} = res.status; {1} = code
-storage-s3:14d0hy0	draft	annai couldn't reach {0}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.	annai 无法连接 {0}。如果本设备在线，说明存储桶还不允许浏览器访问：请把下面的规则粘贴到它的 CORS 设置中，然后再测试。	plugins-official/storage-s3/index.js:153	{0} = s.bucket
-storage-s3:3rdj3o	draft	Works: annai can reach {0} and keep its backups in {1}.	可以使用：annai 能访问 {0}，并把备份保存在 {1} 中。	plugins-official/storage-s3/index.js:156	{0} = s.bucket; {1} = s.prefix
+storage-s3:1viru9x	draft	S3-compatible storage	S3 兼容存储	plugins-official/storage-s3/index.js:55	
+storage-s3:8yhmg7	draft	S3 address	S3 地址	plugins-official/storage-s3/index.js:58	
+storage-s3:kazmvx	draft	Region	区域	plugins-official/storage-s3/index.js:59	
+storage-s3:1r2hopj	draft	Bucket	存储桶	plugins-official/storage-s3/index.js:60	
+storage-s3:l5m77r	draft	Folder in the bucket	存储桶中的文件夹	plugins-official/storage-s3/index.js:61	
+storage-s3:1qn3pnm	draft	Secret access key	秘密访问密钥	plugins-official/storage-s3/index.js:63	
+storage-s3:1x5pkl1	draft	Access key ID	访问密钥 ID	plugins-official/storage-s3/index.js:63	
+storage-s3:108gcn6	draft	Use a bucket of its own for annai's backups, and an access key that may only list, read, write and delete in it. The bucket must allow browser access: paste the rules below into its CORS settings.	请为 annai 的备份使用一个专用的存储桶，以及一个只能在其中列出、读取、写入和删除的访问密钥。存储桶必须允许浏览器访问：请把下面的规则粘贴到它的 CORS 设置中。	plugins-official/storage-s3/index.js:64	
+storage-s3:57z8dw	draft	Paste these rules into the bucket's CORS settings. On AWS: the bucket → Permissions → Cross-origin resource sharing (CORS) → Edit. On Cloudflare R2: the bucket → Settings → CORS policy → Edit.	请把这些规则粘贴到存储桶的 CORS 设置中。在 AWS 上：存储桶 → Permissions → Cross-origin resource sharing (CORS) → Edit。在 Cloudflare R2 上：存储桶 → Settings → CORS policy → Edit。	plugins-official/storage-s3/index.js:67	
+storage-s3:8661z	draft	Check the S3 address: it must be a web address that starts with https://.	请检查 S3 地址：它必须是以 https:// 开头的网址。	plugins-official/storage-s3/index.js:91	
+storage-s3:10a1q42	draft	Check the bucket's name: lowercase letters, digits, dots and dashes.	请检查存储桶名称：只能用小写字母、数字、点和连字符。	plugins-official/storage-s3/index.js:92	
+storage-s3:mr2ov4	draft	Paste the access key ID and the secret access key, then save.	请粘贴访问密钥 ID 和秘密访问密钥，然后保存。	plugins-official/storage-s3/index.js:93	
+storage-s3:1p9jl62	draft	{0} didn't accept the access key. Check the key ID and the secret, then save.	{0} 不接受这个访问密钥。请检查密钥 ID 和秘密密钥，然后保存。	plugins-official/storage-s3/index.js:130	{0} = s.bucket
+storage-s3:9x4rxt	draft	{0} is in the region {1}. Set Region to {2}, then save.	{0} 位于区域 {1}。请把“区域”设为 {2}，然后保存。	plugins-official/storage-s3/index.js:133	{0} = s.bucket; {1} = region; {2} = region
+storage-s3:lemzpr	draft	{0} is in another region. Set Region to the bucket's region, then save.	{0} 位于另一个区域。请把“区域”设为存储桶所在的区域，然后保存。	plugins-official/storage-s3/index.js:133	{0} = s.bucket
+storage-s3:15c84vt	draft	This device's clock is more than 15 minutes off, so the bucket refused it. Set the clock to the network's time, then try again.	本设备的时钟偏差超过 15 分钟，所以存储桶拒绝了请求。请把时钟设为网络时间，然后再试。	plugins-official/storage-s3/index.js:135	
+storage-s3:j42moo	draft	There is no bucket {0} at {1}. Check the name and the address.	{1} 上没有存储桶 {0}。请检查名称和地址。	plugins-official/storage-s3/index.js:136	{0} = s.bucket; {1} = new URL(s.endpoint).host
+storage-s3:1svwfg6	draft	That backup is no longer in the bucket.	这个备份已不在存储桶中。	plugins-official/storage-s3/index.js:137	
+storage-s3:jz3aga	draft	The access key isn't allowed to do this in {0}. Give it permission to list, read, write and delete objects there.	这个访问密钥无权在 {0} 中执行此操作。请授予它在那里列出、读取、写入和删除对象的权限。	plugins-official/storage-s3/index.js:138	{0} = s.bucket
+storage-s3:1ytxnj0	draft	The bucket asked annai to slow down. annai tries again in a few minutes.	存储桶要求 annai 放慢速度。annai 会在几分钟后再试。	plugins-official/storage-s3/index.js:139	
+storage-s3:1oijivd	draft	The bucket refused this (HTTP {0}). annai tries again later.	存储桶拒绝了此操作（HTTP {0}）。annai 稍后会再试。	plugins-official/storage-s3/index.js:141	{0} = res.status
+storage-s3:1yhneka	draft	The bucket refused this (HTTP {0}: {1}). annai tries again later.	存储桶拒绝了此操作（HTTP {0}：{1}）。annai 稍后会再试。	plugins-official/storage-s3/index.js:141	{0} = res.status; {1} = code
+storage-s3:14d0hy0	draft	annai couldn't reach {0}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.	annai 无法连接 {0}。如果本设备在线，说明存储桶还不允许浏览器访问：请把下面的规则粘贴到它的 CORS 设置中，然后再测试。	plugins-official/storage-s3/index.js:154	{0} = s.bucket
+storage-s3:3rdj3o	draft	Works: annai can reach {0} and keep its backups in {1}.	可以使用：annai 能访问 {0}，并把备份保存在 {1} 中。	plugins-official/storage-s3/index.js:157	{0} = s.bucket; {1} = s.prefix
 storage-webdav:@name	draft	WebDAV	WebDAV	plugins-official/storage-webdav/annai-plugin.json:3	
 storage-webdav:@description	draft	Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.	把所有内容备份到允许浏览器访问的 WebDAV 服务器上的文件夹，每次备份一个归档文件。	plugins-official/storage-webdav/annai-plugin.json:8	
 storage-webdav:1jyz6k5	draft	Folder address	文件夹地址	plugins-official/storage-webdav/index.js:57	
@@ -539,25 +540,25 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺�
 syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:561	
 qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:665	
 cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:666	
-e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:40	
-pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:42	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
-al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:43	{0} = s.name
-1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:44	{0} = size(s.bytes ?? 0)
-3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:45	{0} = s.name
-1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:47	
-1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:48	
-1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:49	
-bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:50	
-1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:61	
-16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:148	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:349	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:366	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:377	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:385	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:386	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	可以使用。	src/core/backup.js:430	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:481	
-173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:482	
+e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:42	
+pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:44	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
+al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:45	{0} = s.name
+1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:46	{0} = size(s.bytes ?? 0)
+3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:47	{0} = s.name
+1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:49	
+1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:50	
+1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:51	
+bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:52	
+1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:63	
+16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:158	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:362	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:379	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:390	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:398	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:399	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	可以使用。	src/core/backup.js:443	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:494	
+173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:495	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	Note: 移除, as the trip's own button, Remove trip (移除旅行).
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
 gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	

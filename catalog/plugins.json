@@ -817,7 +817,7 @@
     {
       "id": "storage-s3",
       "name": "S3-compatible storage",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -825,7 +825,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 21750,
+      "size": 21905,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -833,10 +833,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "978ce407a1b032822dfcf4d9edc0459975e309f5d5b7f4a215503053e241c943",
-        "index.js": "abfaefa33ea7ec7461d3c951251eeba3b277571255450d244fd9ac4d3cca222a",
-        "l10n/ja.json": "9d993ee3ecadff1aa227673c28189f9cdb374561b7e6218ebb95c5eb5a14e701",
-        "l10n/zh-Hans.json": "410291dfbaedd05555b2bf3e77c340abeebbe037b031d9cfb4f73227a05364cb",
+        "annai-plugin.json": "5163b7f4d1be142eaee922ce3bf4acdff8e73597bd792e7a7a0139f779de4bb3",
+        "index.js": "84570a4a5184db62e47f67e4b8ef4642b363742546cfbc244dd95b596922c76e",
+        "l10n/ja.json": "e5036308cd1dab3cfa0c9ff5ff6efa8961b4e31632e01ab84b1ee03da105d84a",
+        "l10n/zh-Hans.json": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
     },

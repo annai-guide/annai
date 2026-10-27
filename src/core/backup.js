@@ -7,6 +7,8 @@ import { isPluginBug } from './plugins.js';
 import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-types.js';
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
 import { t, lang } from './l10n.js';
+import { OFFICIAL_NAMES, STORAGE_NAMES } from './official-names.js';
+import { officialName } from './llm/official.js';
 import { sentences, size } from './intl.js';
 
 /**
@@ -142,11 +144,19 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
   /** Whether a place keeps whole archive files. @param {Target} rec */
   const whole = (rec) => typeOf(rec.type)?.stores === 'file';
 
+  /** A kind of place by name: the running plugin's, in the screens' words, else annai's own kind's from its catalog, else its id. @param {string} type */
+  const kindName = (type) => {
+    const own = /** @type {Record<string, string>} */ (OFFICIAL_NAMES['storage-type'])[type];
+    return typeOf(type)?.name ?? (own ? officialName(own, /** @type {Record<string, string>} */ (STORAGE_NAMES)[type] ?? type) : type);
+  };
+  /** A place with its name to show: its own, else its kind's, made here (a new place stores none: data, not words). @param {Target} rec */
+  const named = (rec) => (rec.name ? rec : { ...rec, name: kindName(rec.type) });
+
   /** @param {string} id */
   async function target(id) {
     const rec = await getTarget(ws, id);
     if (!rec) throw Object.assign(new TargetError('missing', /* en */ "That backup place was removed."), { shown: t`That backup place was removed.` });
-    return rec;
+    return named(rec);
   }
 
   /**
@@ -328,9 +338,12 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     label,
     noun,
     /** Every place this device backs up to, oldest first. */
-    list: () => listTargets(ws),
+    list: async () => (await listTargets(ws)).map(named),
     /** @param {string} id */
-    get: (id) => getTarget(ws, id),
+    get: async (id) => {
+      const rec = await getTarget(ws, id);
+      return rec && named(rec);
+    },
     typeOf,
     types: () => [...storageTypes(registry).values()],
 
@@ -347,7 +360,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       }
       const kind = typeOf(type);
       if (!kind) throw Object.assign(new TargetError('setup', /* en */ "annai couldn't start the plugin for this kind of backup place. Try again."), { shown: t`annai couldn't start the plugin for this kind of backup place. Try again.` });
-      const id = await addTarget(ws, { type, name: kind.name });
+      const id = await addTarget(ws, { type, name: '' });
       emit();
       return id;
     },
@@ -430,7 +443,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const note = await shownWithoutSecrets(store, String(said?.note ?? t`Works.`));
       // What the place filled in for fields left empty is the place's own from now on: later backups don't look again.
       const filled = settingsOf(rec, said?.config);
-      if (Object.keys(filled).length) rec = await setTarget(ws, id, { config: { ...rec.config, ...filled } });
+      if (Object.keys(filled).length) rec = named(await setTarget(ws, id, { config: { ...rec.config, ...filled } }));
       const there = await listed(rec);
       const me = await deviceId(ws);
       const newer = newerOf(there, rec.last, me);

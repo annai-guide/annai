@@ -1,3 +1,4 @@
 // Written by scripts/catalog.mjs: the names of the kinds handed keys that annai's official plugins provide (spec §5.6),
-// so none is a third party's, even before annai's own is installed.
+// so none is a third party's, even before annai's own is installed; and its kinds of backup place's English names.
 export const OFFICIAL_NAMES = Object.freeze({"endpoint-type":{"anthropic-messages":"anthropic-messages","chat-completions":"chat-completions","gemini":"gemini-api","gemini-transcription":"gemini-api","gemini-speech":"gemini-api","gemini-live":"gemini-live","openai-realtime":"openai-realtime","openai-responses":"openai-responses","scripted":"scripted-model","openai-transcription":"speech-openai","openai-speech":"speech-openai"},"storage-type":{"forgejo":"storage-forgejo","github":"storage-github","s3":"storage-s3","webdav":"storage-webdav"}});
+export const STORAGE_NAMES = Object.freeze({"forgejo":"Forgejo / Gitea","github":"GitHub","s3":"S3-compatible storage","webdav":"WebDAV"});

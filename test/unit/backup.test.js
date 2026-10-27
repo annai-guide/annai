@@ -493,3 +493,17 @@ test('a cancel that lands as the download ends throws the backup away, and the t
   const [line] = await phone.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.download'] }));
   assert.deepEqual([line.data.backup, line.data.stopped, line.data.bytes > 0], ['b1', true, true]);
 });
+
+test("a new place stores no name: it is its kind's, made where it is shown, so it follows the screens' language (store data, not words)", async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  const id = await d.backups.add('memory');
+  const { getTarget } = await import('../../src/core/backup-targets.js');
+  assert.equal((await getTarget(d.ws, id))?.name, '');
+  assert.equal((await d.backups.list())[0].name, 'Memory');
+  assert.equal((await d.backups.get(id))?.name, 'Memory');
+  // A record from before keeps the name it stored.
+  const { setTarget } = await import('../../src/core/backup-targets.js');
+  await setTarget(d.ws, id, { name: 'My memory' });
+  assert.equal((await d.backups.get(id))?.name, 'My memory');
+});
