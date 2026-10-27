@@ -2806,13 +2806,13 @@ export class Agent {
 
   /** The microphone stopped while listening (another app took it, say): a card says why, and a wait for an answer ends. @param {Error} e */
   #earFailed(e) {
-    const problem = this.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(e?.message ?? e) };
+    const problem = this.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(/** @type {any} */ (e)?.shown ?? e?.message ?? e), plain: /* en */ 'Listening stopped' };
     this.#closeEar();
     this.#notice({ tone: 'warn', title: problem.title, body: problem.body });
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       this.#pending = null;
-      p.resolve({ deaf: `${problem.title}.` });
+      p.resolve({ deaf: `${problem.plain}.` }); // the tool's result: annai's English
     }
   }
 
