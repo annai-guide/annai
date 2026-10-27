@@ -192,6 +192,10 @@ test('an address install brings the translations its manifest lists', async () =
   const without = await fetchPackage('https://x.example/p/annai-plugin.json', { fetch: get });
   assert.deepEqual([...without.keys()], ['annai-plugin.json']);
   assert.match((await inspectPackage(without)).left[0].why, /missing/);
+  // A request that gets no answer (a network blip) is no answer that it isn't there: the install fails, to be tried again.
+  site.set('https://x.example/p/l10n/ja.json', JSON.stringify(JA));
+  const blip = async (/** @type {string} */ url) => { if (url.endsWith('/l10n/ja.json')) throw new TypeError('Failed to fetch'); return get(url); };
+  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: blip }), /couldn't reach/);
 });
 
 test("a plugin's refusal is kept in its English, its words beside it with their language, shown only in that language", () => {
