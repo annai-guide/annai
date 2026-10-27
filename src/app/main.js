@@ -27,7 +27,7 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
-import { screensAtStart, chosenDistances } from '../ui/languages.js';
+import { screensAtStart } from '../ui/languages.js';
 import { setDistances } from '../core/intl.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
@@ -166,7 +166,7 @@ async function boot() {
   await recoverSimulation({ store, ws }).catch(() => {});
   const settings = await readAppSettings(ws);
   // The Distances choice, before anything is drawn.
-  setDistances(chosenDistances(settings));
+  setDistances(settings.languages?.distances);
   const active = settings.activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));

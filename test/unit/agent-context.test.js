@@ -179,7 +179,7 @@ test('under screens not in English the languages section ends with their names, 
     assert.equal(ja, `${plain} annai's screens are in Japanese. When you name a screen, a setting or a button, use the name it shows: Settings (設定), Models (モデル). This doesn't change the language you answer in.`);
     assert.equal((await take()).languages, ja, 'stable');
     await updateAppSettings(ws, { languages: { distances: 'mi' } });
-    assert.equal((await take()).languages, `${ja} Give distances in miles, as annai's screens show them.`);
+    assert.equal((await take()).languages, `${ja} Give distances in miles, as annai's screens show them, whatever their profile says.`);
   } finally {
     setWords('en', null);
   }

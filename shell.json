@@ -1,5 +1,5 @@
 {
-  "build": "ec398721419a",
+  "build": "7fed43be1726",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "0f29fc062d38",
     "/src/app/claim.js": "6b9f4f7eb997",
-    "/src/app/main.js": "3f4b7ec3e0ac",
+    "/src/app/main.js": "54d7fd665fd5",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "6ee60f3d1f0d",
     "/src/core/after/recap.js": "6238f6093ac3",
@@ -109,7 +109,7 @@
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "14efc0eed98c",
     "/src/core/l10n.js": "ebc508be8dad",
-    "/src/core/languages.js": "d9d31dba33bf",
+    "/src/core/languages.js": "5bdd5c3b4d31",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",
@@ -205,7 +205,7 @@
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
     "/src/ui/install.js": "2c4eb4214b7c",
-    "/src/ui/languages.js": "dbe77b8cb614",
+    "/src/ui/languages.js": "6db3643abbac",
     "/src/ui/live-chip.js": "1f44abeb7177",
     "/src/ui/live-help.js": "b59b03827f96",
     "/src/ui/markdown.js": "f07c8d58f557",

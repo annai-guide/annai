@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LANGUAGES, nativeName, languageSettings, languagesText, screensText, distancesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
+import { LANGUAGES, nativeName, languageSettings, languagesText, screensText, distancesText, distancesOf, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
 
@@ -327,7 +327,9 @@ test('the screens\' names Shiori is told (localization L6): one stable line unde
 test('a Distances choice is told to Shiori; Automatic says nothing (localization L6)', () => {
   assert.equal(distancesText({}), '');
   assert.equal(distancesText({ languages: { distances: null } }), '');
-  assert.equal(distancesText({ languages: { distances: 'mi' } }), "Give distances in miles, as annai's screens show them.");
-  assert.equal(distancesText({ languages: { distances: 'km' } }), "Give distances in kilometres, as annai's screens show them.");
-  assert.equal(distancesText({ languages: { distances: 'parsecs' } }), '');
+  assert.equal(distancesText({ languages: { distances: 'mi' } }), "Give distances in miles, as annai's screens show them, whatever their profile says.");
+  assert.equal(distancesText({ languages: { distances: 'km' } }), "Give distances in kilometres, as annai's screens show them, whatever their profile says.");
+  for (const odd of ['parsecs', 'toString', 'constructor', '__proto__', 7, null]) assert.equal(distancesText({ languages: { distances: odd } }), '', String(odd));
+  assert.equal(distancesText({ languages: 'mi' }), '');
+  assert.deepEqual([distancesOf({ languages: { distances: 'km' } }), distancesOf({ languages: { distances: 'toString' } }), distancesOf({})], ['km', null, null]);
 });
