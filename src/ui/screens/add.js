@@ -1,4 +1,4 @@
-import { h, crumb, t, otherLang, messageOf as message } from '../dom.js';
+import { h, crumb, t, otherLang, messageOf as message, showError } from '../dom.js';
 import { size } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
@@ -189,7 +189,7 @@ async function run(ctx, b, title, work) {
   } catch (e) {
     b.disabled = false;
     b.textContent = label;
-    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title, body: message(e) });
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title, body: message(e), errors: [e] });
   }
 }
 
@@ -264,14 +264,14 @@ async function fromFile(ctx, f) {
       try {
         files = await readZip(bytes, { maxTotal: PLUGIN_MAX_BYTES });
       } catch (e) {
-        throw new Error(t`this file isn't a plugin package annai can open: ${message(e)}`);
+        throw Object.assign(new Error(t`this file isn't a plugin package annai can open: ${message(e)}`), { en: message(e) });
       }
     }
     const pkg = await ctx.plugins.inspect(files);
     setPendingPackage({ files, pkg, from: { source: 'file', file: f.name }, back: location.hash });
     ctx.go('#/plugin-install');
   } catch (e) {
-    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: NOT_INSTALLABLE, body: message(e) });
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: NOT_INSTALLABLE, body: message(e), errors: [e] });
   }
 }
 
@@ -305,7 +305,7 @@ async function fromAddress(ctx, value, button, error) {
     setPendingPackage({ files, pkg, from: { source: 'url', url }, back: location.hash });
     ctx.go('#/plugin-install');
   } catch (e) {
-    error.textContent = message(e);
+    showError(error, e);
     error.hidden = false;
   } finally {
     button.disabled = false;

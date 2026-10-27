@@ -327,7 +327,7 @@ async function installPending(ctx, buttons, { use = [], fresh = false }) {
     await ctx.plugins.install(p.files, p.from);
     await choose();
   } catch (e) {
-    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${pkg.name} wasn't installed`, body: message(e) });
+    if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${pkg.name} wasn't installed`, body: message(e), errors: [e] });
     buttons.forEach((b) => { b.disabled = false; });
     return;
   }
@@ -342,7 +342,7 @@ async function installPending(ctx, buttons, { use = [], fresh = false }) {
       await ctx.plugins.start(pkg.id);
       ctx.notices.toast(t`Installed ${pkg.name}.`);
     } catch (e) {
-      ctx.notices.card({ tone: 'warn', title: t`${pkg.name} was installed, but it didn't start`, body: sentences(message(e), t`You can turn it off or remove it in Settings → Plugins.`) });
+      ctx.notices.card({ tone: 'warn', title: t`${pkg.name} was installed, but it didn't start`, body: sentences(message(e), t`You can turn it off or remove it in Settings → Plugins.`), errors: [e] });
     }
   }
   ctx.go('#/plugins');
