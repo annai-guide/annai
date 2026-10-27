@@ -58,6 +58,14 @@ const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromR
 const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
   hook: 'annai.hooks.on', provider: "the manifest's provider", 'provider-setup': 'annai.providers.setup' };
 
+/** A name as it is compared with annai's and the built-ins': case, spaces, width and invisible characters aside. @param {string} t */
+const plain = (t) => String(t).normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+/**
+ * A package's name as its rows show it: with its id when it is written as annai's or a built-in's as they are named now (own,
+ * plain), as one named in another language of the screens is. lookalike tells ownerName the id is there already.
+ * @param {string} name @param {string} id @param {Set<string>} own
+ */
+const shownName = (name, id, own) => (own.has(plain(name)) ? { name: `${name} (${id})`, lookalike: true } : { name });
 /** A state record's kind: a bare skill, or a plugin (every record from before milestone 8). @param {any} s @returns {'skill' | 'plugin'} */
 const kindOfState = (s) => (s?.kind === 'skill' ? 'skill' : 'plugin');
 /** Where a package came from, read the same way for records from before milestone 8, whose source was the file's name. @param {any} s */
@@ -175,7 +183,6 @@ export class PluginHost {
       throw new PluginError(id, pkg.kind === 'skill' ? 'is a name annai uses for one of its own parts, so a skill can\'t have it.' : 'has the same id as a plugin built into annai');
     }
     // A name written as annai's, or a built-in's (look-alikes show their ids).
-    const plain = (/** @type {string} */ t) => String(t).normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
     if (['annai', ...[...this.builtins.values()].map((m) => m.name)].some((n) => plain(n) === plain(pkg.name))) throw new PluginError(id, `its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.`);
     const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
@@ -588,6 +595,8 @@ export class PluginHost {
         provider: false, requires: [],
       });
     }
+    // A built-in's name is in the screens' words, so a package named as one in another language is installed: it is shown with its id.
+    const own = new Set(['annai', ...[...this.builtins.values()].map((m) => plain(m.name))]);
     for (const [id, s] of Object.entries(await this.installed())) {
       /** @type {any} */
       let m = null;
@@ -609,7 +618,7 @@ export class PluginHost {
       const active = this.active.has(id);
       rows.push({
         ...catalogFacts(m ?? { id, name: s.name ?? id, version: s.version }, { size: sizes.get(id) ?? 0 }), provides: m?.provides ?? {},
-        id, name: m?.name ?? s.name ?? id, version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
+        id, ...shownName(m?.name ?? s.name ?? id, id, own), version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
         // A model provider's plugin, and what it requires (milestone 1).
