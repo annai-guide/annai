@@ -33,6 +33,15 @@
       "name": "Groq",
       "description": "快速的开放模型，以及快速的 Whisper 语音转文字。"
     },
+    "provider-llamacpp": {
+      "name": "llama.cpp",
+      "description": "你自己运行的 llama.cpp 服务器（llama-server）上的模型，或基于它的服务器（如 Unsloth Studio、KoboldCpp）上的模型。快速判断时会关闭思考。",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ]
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
