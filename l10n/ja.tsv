@@ -870,7 +870,7 @@ elt1il	ok	Developer	開発者向け	src/ui/screens/add.js:26
 lrurod	ok	Tools and MCP	ツールと MCP	src/ui/screens/add.js:26	
 17ifucf	ok	Transcription	文字起こし	src/ui/screens/add.js:28	
 9kdcjv	ok	Chat	チャット	src/ui/screens/add.js:28	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	ok	Voice	声	src/ui/screens/add.js:28	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+b1qn4p	ok	Voice	声	src/ui/screens/add.js:28	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.; Note: Settings' Voice section and its button (settings.js:49) use this same message, where the screen's name 音声 is meant: they show 声 until the code says tc('screen') there (proposed).
 su5wo1	ok	Live voice	ライブ音声	src/ui/screens/add.js:28	
 1pod8pr	ok	Experimental	試験運用版	src/ui/screens/add.js:30	
 hzmwb	ok	Models	モデル	src/ui/screens/add.js:30	
@@ -1605,7 +1605,7 @@ jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコ
 ltgiri	ok	Erasing…	消去しています…	src/ui/screens/settings.js:178	
 u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:199	
 tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:205	
-1x8t4tk	ok	Type {0} to confirm	確認のため{0}と入力	src/ui/screens/settings.js:207	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:207	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
 199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:217	
 1bu98qy	ok	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:18	
@@ -1908,7 +1908,7 @@ qctftg	ok	Not everything could be checked:	確認できなかったものがあ�
 owcel8	ok	Everything is up to date.	すべて最新です。	src/ui/screens/updates.js:22	
 lxnmgn	ok	Check now	今すぐ確認	src/ui/screens/updates.js:43	
 b0fwq0	ok	Checking for updates	アップデートの確認	src/ui/screens/updates.js:52	
-1lxhz3f	ok	annai checks by itself when it starts and when you come back to it, at most every 15 minutes. Plugins installed from an address are checked there at most once a day, so their sites aren't asked every time; Check now asks them too. Nothing changes until you tap Restart or Update.	annai は起動時と、あなたが戻ってきたときに自分で確認します（15分に1回まで）。アドレスからインストールしたプラグインは、そのサイトに毎回問い合わせないよう、そこでの確認は1日1回までです。「今すぐ確認」ではそれらにも問い合わせます。「再起動」か「アップデート」をタップするまで何も変わりません。	src/ui/screens/updates.js:56	Note: "at most every 15 minutes" is a floor between checks: 15分に1回まで, not 最大15分ごと.
+1lxhz3f	ok	annai checks by itself when it starts and when you come back to it, at most every 15 minutes. Plugins installed from an address are checked there at most once a day, so their sites aren't asked every time; Check now asks them too. Nothing changes until you tap Restart or Update.	annai は起動時と、あなたが戻ってきたときに自分で確認します（15分に1回まで）。アドレスからインストールしたプラグインは、そのサイトに毎回問い合わせないよう、そこでの確認は1日1回までです。「今すぐ確認」ではそれらにも問い合わせます。「今すぐ再起動」か「アップデート」をタップするまで何も変わりません。	src/ui/screens/updates.js:56	Note: "at most every 15 minutes" is a floor between checks: 15分に1回まで, not 最大15分ごと.; Note: the buttons' own labels: 今すぐ再起動, アップデート.
 cdoxxa	ok	A new version of annai	annai の新しいバージョン	src/ui/screens/updates.js:57	
 1ng2wty	ok	It is ready, and annai uses it the next time it starts. Restart now to use it at once: if Shiori is in the middle of something, annai restarts once she has finished.	準備ができていて、次に annai を起動したときに使われます。すぐ使うには今すぐ再起動してください。Shiori が何かの途中なら、終わってから annai が再起動します。	src/ui/screens/updates.js:59	
 1wl12tq	ok	It is downloading. Restart now shows here once it is ready.	ダウンロード中です。準備ができると、ここに「今すぐ再起動」が表示されます。	src/ui/screens/updates.js:61	
@@ -1951,7 +1951,7 @@ qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/s
 1f9vvmr	ok	Wait for her first words (seconds)	Shiori の最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:147	
 1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:147	
 17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:148	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出したことの言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:150	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:150	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	ok	Shiori's voice	Shiori の声	src/ui/screens/voice.js:151	
 1879vb9	ok	Voices, tried in order: none.	試す順の声：なし。	src/ui/screens/voice.js:152	
 1su08w7	ok	Voices, tried in order: {0}.	試す順の声：{0}。	src/ui/screens/voice.js:152	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
