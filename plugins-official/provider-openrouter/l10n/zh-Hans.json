@@ -5,7 +5,7 @@
     "name": "OpenRouter",
     "provider.abilities.transcription.note": "把你说的话转成文字，供不接受音频的模型使用。价格是 OpenRouter 上的最低价；它可能会把请求发给收费更高的提供商。",
     "provider.abilities.voice.note": "Shiori 的声音。每个模型都有自己的声音，会在模型的“声音”中给出建议（“获取模型列表”会带来 OpenRouter 列出的声音）。这里设置的声音和风格是 Fish Audio 声音库中的 Women KatKat（友好、清晰、年轻明亮）以及年轻、欢快活泼又平静温柔的风格：每个 Fish Audio 模型，无论是下面列出的还是按 ID 添加的，都以它们开始（不发送声音时，Fish Audio 会为每句话换一个说话人）。从列表添加的模型以 OpenRouter 为它列出的第一个温暖的声音开始。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 接受风格；其他模型会保存风格但不会发送。OpenRouter 只发送 MP3 或 PCM。",
-    "provider.note": "一个密钥即可使用许多提供商。免费模型每天允许 50 次请求（购买 $10 额度后每天 1,000 次）。它的语音转文字和声音使用同一个密钥：语音转文字模型都不免费；Fish Audio 的免费声音每说一句就用掉一次每日免费请求。其他声音需要你在 OpenRouter 购买的额度。"
+    "provider.note": "一个密钥即可使用许多提供商。免费模型每天允许 50 次请求（充值 $10 余额后每天 1,000 次）。它的语音转文字和声音使用同一个密钥：语音转文字模型都不免费；Fish Audio 的免费声音每说一句就用掉一次每日免费请求。其余的都需要你在 OpenRouter 充值的余额。"
   },
   "messages": {
     "11d8zzj": "正在连接 OpenRouter…",
@@ -17,13 +17,13 @@
     "1gutt9j": "重新登录以获取新密钥，替换已保存的那个。",
     "1mdql10": "annai 没有在等待这个代码的登录：它已被使用过，或是在另一个浏览器中开始的。",
     "1owwfx5": "连接",
-    "1vsq4do": "Shiori 一开始用免费模型思考，所以试用 annai 不花钱。annai 还添加了 OpenRouter 的语音转文字和声音，排在手机自带的听写和浏览器声音之后。其中免费声音排在前面：它每说一句，就用掉一次聊天模型也在用的每日免费请求。其他声音要花一点钱，从你在 OpenRouter 购买的额度中扣除。要优先使用它们，请在“角色”中把它们上移。",
+    "1vsq4do": "Shiori 一开始用免费模型思考，所以试用 annai 不花钱。annai 还添加了 OpenRouter 的语音转文字和声音，排在手机自带的语音输入和浏览器声音之后。其中免费声音排在前面：它每说一句，就用掉一次对话模型也在用的每日免费请求。其他声音要花一点钱，从你在 OpenRouter 充值的余额中扣除。要优先使用它们，请在“角色”中把它们上移。",
     "2yktg6": "请“使用 OpenRouter 登录”获取密钥，或在下方填写密钥。",
     "4uzwwb": "重新登录",
     "6y7i9": "这次登录不是在这个浏览器中开始的，所以 annai 忽略了它。",
-    "7pnsck": "annai 会把新密钥用于 OpenRouter 的聊天、语音转文字和声音。",
+    "7pnsck": "annai 会把新密钥用于 OpenRouter 的对话、语音转文字和声音。",
     "7utsi6": "使用 OpenRouter 登录",
-    "a7pqtl": "“使用 OpenRouter 登录”即可用一个密钥使用许多模型。annai 会先让你用免费模型（每天 50 次请求），所以试用不花钱。它还会添加 OpenRouter 的语音转文字和声音（其中有一个免费的）；手机自带的听写和声音仍排在前面。",
+    "a7pqtl": "“使用 OpenRouter 登录”即可用一个密钥使用许多模型。annai 会先让你用免费模型（每天 50 次请求），所以试用不花钱。它还会添加 OpenRouter 的语音转文字和声音（其中有一个免费的）；手机自带的语音输入和声音仍排在前面。",
     "alllou": "请轻点“使用 OpenRouter 登录”重新开始。",
     "bf7jcl": "OpenRouter 用重定向作了回应，annai 不会带着你的登录信息跟随重定向。",
     "buz2qi": "OpenRouter 没有发来密钥。",
