@@ -39,10 +39,12 @@ export async function renderNotifications(ctx) {
   const st = await push.status();
   const where = platform();
   const status = h('p', { class: 'sub', role: 'status', text: statusText(st) });
-  const alert = h('p', { class: 'error', role: 'alert', hidden: !st.problem, text: st.problem?.message ?? '' });
+  // A problem kept before its words were made at display is shown as it was kept, in English.
+  const alert = h('p', { class: 'error', role: 'alert', hidden: !st.problem, text: st.problem?.message ?? '', ...(st.problem?.lang ? { lang: st.problem.lang } : {}) });
   /** @param {string} text */
   const fail = (text) => {
     alert.textContent = text;
+    alert.removeAttribute('lang');
     alert.hidden = false;
   };
   const address = h('input', { id: 'push-relay', type: 'url', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: st.relay });

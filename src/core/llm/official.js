@@ -1,6 +1,8 @@
 import { sha256Hex } from '../hash.js';
 import { PluginError, NOT_OWN, TURN_ON } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
+import { t } from '../l10n.js';
+import { sentences } from '../intl.js';
 
 /**
  * annai's official on-demand plugins (spec §5.3, §9.1): listed in /catalog/plugins.json with the
@@ -24,9 +26,9 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   try {
     res = await get(`${base}/catalog/plugins.json`, { cache: 'no-cache' });
   } catch {
-    throw new PluginError('catalog', "annai's list of plugins couldn't be loaded. Check the connection and try again.");
+    throw new PluginError('catalog', t`annai's list of plugins couldn't be loaded. Check the connection and try again.`);
   }
-  if (!res.ok) throw new PluginError('catalog', `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`);
+  if (!res.ok) throw new PluginError('catalog', t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`);
   const json = await res.json();
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
@@ -40,17 +42,17 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   for (const [name, hash] of Object.entries(entry.files)) {
-    const url = `${base}/plugins-official/${encodeURIComponent(entry.id)}/${name.split('/').map(encodeURIComponent).join('/')}`;
+    const url = /* en */ `${base}/plugins-official/${encodeURIComponent(entry.id)}/${name.split('/').map(encodeURIComponent).join('/')}`;
     /** @type {Response} */
     let res;
     try {
       res = await get(url, { cache: 'no-cache' });
     } catch {
-      throw new PluginError(entry.id, "couldn't be downloaded. Check the connection and try again.");
+      throw new PluginError(entry.id, t`couldn't be downloaded. Check the connection and try again.`);
     }
-    if (!res.ok) throw new PluginError(entry.id, `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`);
+    if (!res.ok) throw new PluginError(entry.id, t`couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`);
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, `wasn't installed: ${name} doesn't match annai's catalog`);
+    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, t`wasn't installed: ${name} doesn't match annai's catalog`);
     files.set(name, bytes);
   }
   return files;
@@ -104,9 +106,6 @@ export async function updateOfficial(host, entry, opts = {}) {
   return 'started';
 }
 
-/** What each kind of thing a plugin provides is called, for messages. @type {Record<string, string>} */
-const KINDS = { 'endpoint-type': 'an endpoint type', 'storage-type': 'a kind of backup place' };
-
 /** The type ids of a kind that running plugins provide. @param {import('../registry.js').Registry} registry @param {string} kind */
 const provided = (registry, kind) => new Set(registry.list(kind).map((/** @type {any} */ t) => t.type));
 
@@ -148,12 +147,14 @@ const inFlight = new WeakMap();
 
 /** @param {PluginHost} host @param {string} kind @param {string} type @param {FetchOptions} opts */
 async function ensureNow(host, kind, type, opts) {
-  const what = KINDS[kind] ?? kind;
   // A third party's serves offline only for a name no official plugin provides: annai's own names are never theirs (Registry.owner).
   const theirs = provided(host.registry, kind).has(type);
   const entry = (await officialPlugins(opts).catch((e) => { if (theirs) return []; throw e; })).find((p) => p.provides?.[kind]?.includes(type));
   if (!entry && theirs) return;
-  if (!entry) throw new PluginError(type, `isn't ${what} annai knows. Install a plugin that provides it.`);
+  if (!entry) {
+    throw new PluginError(type, kind === 'storage-type' ? t`isn't a kind of backup place annai knows. Install a plugin that provides it.`
+      : t`isn't an endpoint type annai knows. Install a plugin that provides it.`);
+  }
   const state = (await host.installed())[entry.id];
   // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
   if (state && state.source !== 'official') throw new PluginError(entry.id, NOT_OWN);
@@ -162,13 +163,15 @@ async function ensureNow(host, kind, type, opts) {
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
     // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
-    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`);
+    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, TURN_ON));
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {
     await installOfficial(host, entry, opts);
   }
-  if (!provided(host.registry, kind).has(type)) throw new PluginError(entry.id, `didn't provide ${what} ${type}`);
+  if (!provided(host.registry, kind).has(type)) {
+    throw new PluginError(entry.id, kind === 'storage-type' ? t`didn't provide a kind of backup place ${type}` : t`didn't provide an endpoint type ${type}`);
+  }
 }
 
 /**

@@ -180,6 +180,13 @@ test('no connection: nothing is lost; what failed goes when it is back; a restar
     assert.deepEqual(await k.waiting(), []);
     const st = await k.mirror.status();
     assert.match(String(st.problem?.message), /couldn't reach the relay/);
+    // Kept as data and the log's English; the words are made when the screen asks (localization L5f), with the service worker's.
+    const kept = await k.ws.readJSON(SYS_DEVICE, FILE);
+    assert.deepEqual(kept.problem.said, { code: 'offline', host: 'push.annai.guide' });
+    assert.equal(kept.problem.message, "annai couldn't reach the relay at push.annai.guide.");
+    assert.equal(kept.words.soon, 'In {0} min: {1}.');
+    const logged = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS_DEVICE, { types: ['push.sync'] }));
+    assert.equal(logged.at(-1)?.data.error, "annai couldn't reach the relay at push.annai.guide.");
     k.net.offline = false;
     await k.mirror.sync();
     assert.equal((await k.waiting()).length, 1);
@@ -623,6 +630,8 @@ test('a "coming up" reminder at the relay carries its item\'s start, for the pho
     const tea = k.pushed().find((p) => p.watch === 'plan:tea:coming-up');
     assert.equal(tea?.body, 'In 15 min: Tea at the inn at 16:00.');
     assert.equal(tea?.start, at('16:00'));
+    // …and its item apart, which the service worker puts in its words for the minutes left (localization L5f).
+    assert.equal(tea?.what, 'Tea at the inn at 16:00');
   } finally {
     await k.stop();
   }
