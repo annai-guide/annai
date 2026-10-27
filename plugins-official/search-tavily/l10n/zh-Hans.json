@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",
+    "name": "Tavily 搜索",
+    "search.key.note": "免费密钥每月有 1,000 个额度，无需银行卡。基本搜索消耗 1 个额度，深入搜索消耗 2 个。",
+    "settings.properties.depth.description": "“基本”每次搜索消耗 1 个额度；“深入”读得更深，消耗 2 个。",
+    "settings.properties.depth.oneOf.0.title": "基本",
+    "settings.properties.depth.oneOf.1.title": "深入",
+    "settings.properties.depth.title": "深度",
+    "settings.properties.key.title": "Tavily API 密钥",
+    "keywords": [
+      "Tavily"
+    ]
+  },
+  "messages": {
+    "1lf6xjz": "需要密钥（设置 → 插件 → Tavily 搜索）"
+  }
+}

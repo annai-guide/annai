@@ -95,6 +95,13 @@
       "name": "按脚本回复的模型",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
     },
+    "search-tavily": {
+      "name": "Tavily 搜索",
+      "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",
+      "keywords": [
+        "Tavily"
+      ]
+    },
     "speech-openai": {
       "name": "OpenAI 兼容语音",
       "description": "通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。"

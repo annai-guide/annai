@@ -704,7 +704,7 @@
     {
       "id": "search-tavily",
       "name": "Tavily Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",
       "category": "tools",
       "keywords": [
@@ -714,7 +714,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3226,
+      "size": 5235,
       "requires": [],
       "provides": {
         "search": [
@@ -722,8 +722,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "7acb1a6edc80daa8a4aaf66ed042c7289c3cbeda22ae97ff503e2977f0f8d91d",
-        "index.js": "7682eee36691dab1660155f53314e88f05c81751ba9ab7e9b350a040d4a1cfad"
+        "annai-plugin.json": "6c0e1583fd2cf48bb37856d5df8d5f1882f97c770e2c90639ba2aaf96577739a",
+        "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
+        "l10n/ja.json": "ef5216e2ccc42f1a57faab01692d1604183e26cee19ca6e09434995f045e2dd5",
+        "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08"
       }
     },
     {

@@ -95,6 +95,13 @@
       "name": "台本どおりのモデル",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
     },
+    "search-tavily": {
+      "name": "Tavily 検索",
+      "description": "AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。",
+      "keywords": [
+        "Tavily"
+      ]
+    },
     "speech-openai": {
       "name": "OpenAI 互換の音声",
       "description": "OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。"
