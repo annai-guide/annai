@@ -142,7 +142,7 @@ function runTx(db, stores, mode, fn) {
         resolve(result);
       }
     };
-    t.onabort = () => fail(t.error ?? new DOMException('The transaction was aborted.', 'AbortError'));
+    /* en */ t.onabort = () => fail(t.error ?? new DOMException('The transaction was aborted.', 'AbortError'));
     Promise.resolve()
       .then(() => fn(makeTx(t)))
       .then((r) => { result = r; }, (e) => {

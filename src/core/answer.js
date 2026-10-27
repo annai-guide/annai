@@ -1,3 +1,24 @@
+import { t } from './l10n.js';
+import { size } from './intl.js';
+
+/**
+ * What was wrong with a server's answer, as data (an error carries it as said): where is the server as the user knows it. The log and
+ * a model read the error's English message; a screen shows its shown words, made here, and a record may keep said (pack/download.js).
+ * @typedef {{ code: 'status', where: string, status: number } | { code: 'unreadable' | 'cut', where: string } | { code: 'too-much', where: string, mb: number }} AnswerSaid
+ */
+
+/** An answer's problem in the screens' words, from its data. @param {AnswerSaid} s */
+export function answerWords(s) {
+  const { where } = s;
+  if (s.code === 'status') return t`${where} answered ${s.status}.`;
+  if (s.code === 'unreadable') return t`${where} sent an answer annai can't read.`;
+  if (s.code === 'too-much') return t`${where} sent more than annai reads (${size(s.mb * 1_048_576)}).`;
+  return t`${where}'s answer was cut off.`;
+}
+
+/** An error by the shown rule: message in annai's English, said its data, shown its words. @param {string} en @param {AnswerSaid} said */
+const fault = (en, said) => Object.assign(new Error(en), { said, shown: answerWords(said) });
+
 /** The most of a server's answer annai reads as JSON: 8 MiB. */
 export const ANSWER_MAX = 8 * 1024 * 1024;
 
@@ -15,7 +36,7 @@ export async function answerJSON(res, where, max = ANSWER_MAX) {
   try {
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    throw new Error(`${where} sent an answer annai can't read.`);
+    throw fault(/* en */ `${where} sent an answer annai can't read.`, { code: 'unreadable', where });
   }
 }
 
@@ -26,8 +47,9 @@ export async function answerJSON(res, where, max = ANSWER_MAX) {
  * @returns {Promise<Uint8Array>}
  */
 export async function answerBytes(res, where, max = ANSWER_MAX) {
-  if (!res.ok) throw Object.assign(new Error(`${where} answered ${res.status}.`), { status: res.status });
-  const tooMuch = () => new Error(`${where} sent more than annai reads (${Math.max(1, Math.round(max / 1_048_576))} MB).`);
+  if (!res.ok) throw Object.assign(fault(/* en */ `${where} answered ${res.status}.`, { code: 'status', where, status: res.status }), { status: res.status });
+  const mb = Math.max(1, Math.round(max / 1_048_576));
+  const tooMuch = () => fault(/* en */ `${where} sent more than annai reads (${mb} MB).`, { code: 'too-much', where, mb });
   if (Number(res.headers.get('content-length')) > max) {
     res.body?.cancel().catch(() => {});
     throw tooMuch();
@@ -51,7 +73,7 @@ export async function answerBytes(res, where, max = ANSWER_MAX) {
     }
   } catch (e) {
     if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-    throw new Error(`${where}'s answer was cut off.`);
+    throw fault(/* en */ `${where}'s answer was cut off.`, { code: 'cut', where });
   }
   if (over) throw tooMuch();
   const out = new Uint8Array(n);

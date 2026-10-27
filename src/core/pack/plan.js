@@ -9,9 +9,10 @@ import { PLAN_FILE, LEG_MAX_KM } from '../plan.js';
  * guides are found when downloading, from the names here and Wikipedia's (choice 3).
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {[lat: number, lng: number]} LatLng
- * @typedef {{ id: string, kind: 'osm', label: string, points: LatLng[], radius: number, km: number }} OsmPart
- *   points: one (around a stop) or two (a stretch of a leg); km: the stretch's length, 0 around a stop
- * @typedef {{ id: string, kind: 'wikipedia', label: string, at: LatLng }} WikiPart
+ * @typedef {{ how: 'around' | 'near' | 'between', names: string[] }} Place  where a part is, as data: around or near a stop, or between two
+ * @typedef {{ id: string, kind: 'osm', label: string, place: Place, points: LatLng[], radius: number, km: number }} OsmPart
+ *   label: where it is, in annai's English (the log's); points: one (around a stop) or two (a stretch of a leg); km: the stretch's length, 0 around a stop
+ * @typedef {{ id: string, kind: 'wikipedia', label: string, place: Place, at: LatLng }} WikiPart
  * @typedef {OsmPart | WikiPart} Part
  * @typedef {{ name: string, lat: number, lng: number }} Stop
  * @typedef {{ key: string, stops: Stop[], parts: Part[], names: string[], cut: number }} PackPlan
@@ -64,14 +65,17 @@ function between(a, b, f) {
   return [r4(a.lat + (b.lat - a.lat) * f), r4(lng)];
 }
 
-/** @param {LatLng[]} points @param {number} radius @param {number} km @param {string} label @returns {OsmPart} */
-function osmPart(points, radius, km, label) {
-  return { id: `o${hashId(`osm ${radius} ${points.map((p) => p.join(',')).join(' ')}`)}`, kind: 'osm', label, points, radius, km };
+/** Where a part is, in annai's English. @param {Place} place */
+export const labelOf = ({ how, names }) => /* en */ (how === 'between' ? `between ${names[0]} and ${names[1]}` : `${how} ${names[0]}`);
+
+/** @param {LatLng[]} points @param {number} radius @param {number} km @param {Place} place @returns {OsmPart} */
+function osmPart(points, radius, km, place) {
+  return { id: `o${hashId(`osm ${radius} ${points.map((p) => p.join(',')).join(' ')}`)}`, kind: 'osm', label: labelOf(place), place, points, radius, km };
 }
 
-/** @param {LatLng} at @param {string} label @returns {WikiPart} */
-function wikiPart(at, label) {
-  return { id: `w${hashId(`wikipedia ${at.join(',')}`)}`, kind: 'wikipedia', label, at };
+/** @param {LatLng} at @param {Place} place @returns {WikiPart} */
+function wikiPart(at, place) {
+  return { id: `w${hashId(`wikipedia ${at.join(',')}`)}`, kind: 'wikipedia', label: labelOf(place), place, at };
 }
 
 /**
@@ -111,18 +115,19 @@ export function packPlan({ trip, items }) {
     const osmDone = osm.some((o) => o.km === 0 && meters(pt(o.points[0]), s) < 1000);
     const wikiDone = wikiNear(here);
     if ((!osmDone && osm.length >= MAX_OSM) || (!wikiDone && wiki.length >= MAX_WIKI)) cut++;
-    if (!osmDone && osm.length < MAX_OSM) osm.push(osmPart([here], STOP_M, 0, `around ${s.name}`));
-    if (!wikiDone && wiki.length < MAX_WIKI) wiki.push(wikiPart(here, `near ${s.name}`));
+    if (!osmDone && osm.length < MAX_OSM) osm.push(osmPart([here], STOP_M, 0, { how: 'around', names: [s.name] }));
+    if (!wikiDone && wiki.length < MAX_WIKI) wiki.push(wikiPart(here, { how: 'near', names: [s.name] }));
   }
   for (let i = 0; i + 1 < stops.length; i++) {
     const [a, b] = [stops[i], stops[i + 1]];
     const km = meters(a, b) / 1000;
     if (km > LEG_MAX_KM || km * 1000 <= STOP_M) continue; // a flight; or the stops' own circles reach
-    const label = `between ${a.name} and ${b.name}`;
+    /** @type {Place} */
+    const place = { how: 'between', names: [a.name, b.name] };
     const n = Math.ceil(km / STRETCH_KM);
     let whole = true;
     for (let k = 0; k < n; k++) {
-      const part = osmPart([between(a, b, k / n), between(a, b, (k + 1) / n)], CORRIDOR_M, Math.round((km / n) * 10) / 10, label);
+      const part = osmPart([between(a, b, k / n), between(a, b, (k + 1) / n)], CORRIDOR_M, Math.round((km / n) * 10) / 10, place);
       if (osm.some((o) => o.id === part.id)) continue;
       if (osm.length >= MAX_OSM) whole = false;
       else osm.push(part);
@@ -131,7 +136,7 @@ export function packPlan({ trip, items }) {
       const p = between(a, b, d / km);
       if (wikiNear(p)) continue;
       if (wiki.length >= MAX_WIKI) whole = false;
-      else wiki.push(wikiPart(p, label));
+      else wiki.push(wikiPart(p, place));
     }
     if (!whole) cut++;
   }

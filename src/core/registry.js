@@ -1,11 +1,21 @@
-/** Words said of plugins in several places. */
+import { t } from './l10n.js';
+
+/** Words said of plugins in several places, in annai's English for models and the log; the screens' words are the functions below. */
+/* en */
 const OWN = "annai's own plugin uses this name";
 /** A package from elsewhere can't take one of annai's own ids (security review). */
+/* en */
 export const TAKEN = `${OWN}, so a package from elsewhere can't have it. Ask its author to rename it.`;
 /** One from elsewhere that holds one is never used as annai's own (security review). */
+/* en */
 export const NOT_OWN = `${OWN}, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.`;
 /** A plugin the user switched off stays off (security review). */
+/* en */
 export const TURN_ON = 'Turn it on in Settings → Plugins, then try again.';
+/** TAKEN, NOT_OWN and TURN_ON in the screens' words (the shown rule). */
+export const takenShown = () => t`annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.`;
+export const notOwnShown = () => t`annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.`;
+export const turnOnShown = () => t`Turn it on in Settings → Plugins, then try again.`;
 
 const by = (/** @type {string} */ f) => (/** @type {any} */ x) => String(x?.[f]);
 /** Kinds whose names have one owner, with how a name is read. @type {Record<string, (item: any) => string>} */
@@ -45,11 +55,15 @@ export function isPluginBug(e) {
 }
 
 export class PluginError extends Error {
-  /** @param {string} pluginId @param {string} message @param {unknown} [cause] */
-  constructor(pluginId, message, cause) {
+  /**
+   * @param {string} pluginId @param {string} message annai's English, for a model and the log
+   * @param {{ cause?: unknown, shown?: string }} [o] shown: the screens' words, where annai has them (the shown rule; a screen shows shown ?? message)
+   */
+  constructor(pluginId, message, { cause, shown } = {}) {
     super(`${pluginId}: ${message}`, cause === undefined ? undefined : { cause });
-    this.name = 'PluginError';
+    this.name = /* en */ 'PluginError';
     this.pluginId = pluginId;
+    this.shown = shown;
   }
 }
 
@@ -65,8 +79,7 @@ export class PluginError extends Error {
  */
 
 /** Why, in annai's English, as the log keeps it for the Trace. @param {DisabledWhy} why */
-/* en */
-export const disabledReason = (why) => (why.kind === 'loop' ? `its hooks were handed more than ${why.entries} log entries in ${why.seconds} seconds, which looks like a loop` : `failed ${why.count} times in a row`);
+export const disabledReason = (why) => /* en */ (why.kind === 'loop' ? `its hooks were handed more than ${why.entries} log entries in ${why.seconds} seconds, which looks like a loop` : `failed ${why.count} times in a row`);
 
 export class Registry {
   /** @type {Map<string, { pluginId: string, item: any, seq: number }[]>} */ #items = new Map();
@@ -201,14 +214,14 @@ export class Registry {
    */
   guard(pluginId, name, fn) {
     return async (...args) => {
-      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, 'is switched off after repeated errors');
+      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`is switched off after repeated errors` });
       try {
         const result = await fn(...args);
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
         this.#fail(pluginId, name, e);
-        throw new PluginError(pluginId, `${name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
+        throw new PluginError(pluginId, /* en */ `${name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
       }
     };
   }
@@ -247,7 +260,7 @@ export class Registry {
       try {
         fn({ pluginId, why, message: message ?? reason });
       } catch (err) {
-        console.warn('a registry listener failed', err);
+        console.warn(/* en */ 'a registry listener failed', err);
       }
     }
     this.#emit();
@@ -268,7 +281,7 @@ export class Registry {
       try {
         fn();
       } catch (e) {
-        console.warn('a registry listener failed', e);
+        console.warn(/* en */ 'a registry listener failed', e);
       }
     }
   }

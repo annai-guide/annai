@@ -15,146 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { key, holes } from '../src/core/l10n.js';
 
 /**
- * The files whose bare English the check refuses: every user-facing literal in them goes through t. Each step extends it; the last
- * extraction step replaces it with whole folders.
+ * Where the check refuses bare English: files, or folders ending in "/". Since localization L5h it is all of src/, core included with no
+ * file left out: every user-facing literal goes through t, and a model's or a developer's is marked /* en *\/, so --find over src/
+ * lists nothing and the check fails on new bare English in a shown place anywhere.
  */
-export const EXTRACTED = [
-  'src/ui/screens/trips.js',
-  'src/ui/languages.js',
-  'src/core/languages.js',
-  // L5a: the shell
-  'src/ui/shell.js',
-  'src/ui/router.js',
-  'src/ui/dock.js',
-  'src/ui/notices.js',
-  'src/ui/cards.js',
-  'src/ui/dom.js',
-  'src/ui/install.js',
-  'src/ui/platform.js',
-  'src/ui/updates.js',
-  'src/app/claim.js',
-  'src/app/main.js',
-  'src/ui/storage-full.js',
-  'src/ui/unlock.js',
-  'src/ui/mic-help.js',
-  'src/ui/live-help.js',
-  'src/ui/wake-lock.js',
-  'src/ui/slots.js',
-  'src/ui/media-keys.js',
-  'src/ui/tap-keeps-keyboard.js',
-  'src/ui/dock-hides.js',
-  // l10n-L5d: models and tools.
-  'src/ui/screens/models.js',
-  'src/ui/screens/model.js',
-  'src/ui/screens/provider.js',
-  'src/ui/provider-setup.js',
-  'src/ui/screens/add.js',
-  'src/ui/search-panel.js',
-  'src/ui/screens/tools.js',
-  'src/ui/screens/mcp.js',
-  'src/ui/credits.js',
-  'src/ui/privacy.js',
-  // l10n-L5e: plugins, backups and settings.
-  'src/ui/screens/plugins.js',
-  'src/ui/screens/plugin.js',
-  'src/ui/screens/plugin-install.js',
-  'src/ui/plugin-cards.js',
-  'src/ui/plugin-pending.js',
-  'src/ui/plugin-updates.js',
-  'src/ui/settings-form.js',
-  'src/ui/screens/backups.js',
-  'src/ui/auto-backup.js',
-  'src/ui/export-panel.js',
-  'src/ui/screens/import.js',
-  'src/ui/import-state.js',
-  'src/ui/save.js',
-  'src/ui/screens/settings.js',
-  'src/ui/screens/notifications.js',
-  'src/ui/push.js',
-  'src/ui/screens/about.js',
-  'src/ui/screens/updates.js',
-  'src/ui/screens/experimental.js',
-  'src/ui/screens/simulate.js',
-  'src/ui/screens/trace.js',
-  'src/ui/screens/ext.js',
-  // l10n-L5b: trips and the trip.
-  'src/ui/screens/trip.js',
-  'src/ui/screens/plan.js',
-  'src/ui/screens/booking.js',
-  'src/ui/screens/file.js',
-  'src/ui/screens/now.js',
-  'src/ui/screens/drive.js',
-  'src/ui/screens/replay.js',
-  'src/ui/screens/recap.js',
-  'src/ui/stamps.js',
-  'src/ui/trip-rows.js',
-  'src/ui/photo-viewer.js',
-  'src/ui/add-files.js',
-  'src/ui/open-file.js',
-  'src/ui/bring-in.js',
-  'src/ui/offline-pack.js',
-  'src/ui/format.js',
-  // l10n-L5c: conversation, voice and Shiori.
-  'src/ui/screens/talk.js',
-  'src/ui/talk-panel.js',
-  'src/ui/voice-chip.js',
-  'src/ui/live-chip.js',
-  'src/ui/speech-check.js',
-  'src/ui/model-check.js',
-  'src/ui/screens/voice.js',
-  'src/core/voice/where.js',
-  'src/ui/screens/shiori.js',
-  'src/ui/avatar.js',
-  'src/ui/welcome.js',
-  'src/ui/screens/welcome.js',
-  'src/ui/ask.js',
-  'src/ui/markdown.js',
-  'src/ui/grounding.js',
-  // l10n-L5f1: core's words for the user (agent, models, voice, live). A model's words in them are marked /* en */.
-  'src/core/errors.js',
-  'src/core/scopes.js',
-  'src/core/llm/contract.js',
-  'src/core/llm/fallback.js',
-  'src/core/llm/check.js',
-  'src/core/live/plan-watches.js',
-  'src/core/live/live.js',
-  'src/core/voice/mode.js',
-  'src/core/voice/voice.js',
-  'src/core/voice/mic.js',
-  'src/core/agent/budgets.js',
-  'src/core/agent/loop.js',
-  'src/core/agent/halves.js',
-  // l10n-L5f2: data, files, after the trip, push and packages (the user-facing core files; zip.js, inflate.js, pkpass.js,
-  // request-photos.js and backup-auto.js hold only a developer's or a model's English, marked).
-  'src/core/push/mirror.js',
-  'src/core/push/relay-client.js',
-  'src/core/backup.js',
-  'src/core/archive.js',
-  'src/core/after/recap.js',
-  'src/core/after/replay.js',
-  'src/core/llm/official.js',
-  'src/core/packages.js',
-  'src/core/imports.js',
-  'src/core/ics.js',
-  'src/core/sun.js',
-  'src/core/plan.js',
-  'src/core/photos.js',
-  // l10n-L5g: the built-in plugins. Tool descriptions and what tools answer are Shiori's, marked English.
-  'src/plugins/core-schemas/index.js',
-  'src/plugins/core-schemas/schemas.js',
-  'src/plugins/files/index.js',
-  'src/plugins/go/index.js',
-  'src/plugins/mcp/client.js',
-  'src/plugins/mcp/index.js',
-  'src/plugins/places/index.js',
-  'src/plugins/sensors/index.js',
-  'src/plugins/skills/index.js',
-  'src/plugins/voice-browser/capture-worklet.js',
-  'src/plugins/voice-browser/index.js',
-  'src/plugins/voice-browser/player-worklet.js',
-  'src/plugins/web/free.js',
-  'src/plugins/web/index.js',
-];
+export const EXTRACTED = ['src/'];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
 /** The runtime itself and the pseudo-locale mention t and plural without being messages. */
@@ -668,7 +533,7 @@ export async function check(root, files = EXTRACTED) {
     if (made === null) problems.push({ file: 'sw.js', line: 1, message: "has no `const LANGS = [...];` and `const SHIPPED_LANGS = [...];` lines for the languages it caches" });
     else if (made !== sw) problems.push({ file: 'sw.js', line: sw.slice(0, sw.search(LANGS_LINE)).split('\n').length, message: "LANGS isn't what l10n/languages.json makes: run npm run strings" });
   }
-  for (const file of files) {
+  for (const file of (await Promise.all(files.map((f) => (f.endsWith('/') && existsSync(`${root}/${f}`) ? jsFiles(root, f.slice(0, -1)) : [f])))).flat()) {
     if (!existsSync(`${root}/${file}`)) { problems.push({ file, line: 1, message: 'is listed in EXTRACTED but is not there' }); continue; }
     for (const b of bareEnglish(file, await readFile(`${root}/${file}`, 'utf8'))) problems.push({ file, line: b.line, message: `bare English "${b.text}": wrap it in t\`…\`, or mark it /* en */ if it stays English` });
   }

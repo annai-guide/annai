@@ -39,24 +39,24 @@ const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
  * @param {Blob} file @returns {Promise<Record<string, any>>}
  */
 export async function readPass(file) {
-  if (file.size > PASS_MAX) throw new Error(`This file is larger (${(file.size / 1048576).toFixed(1)} MB) than a Wallet pass ever is, so annai didn't open it.`);
+  if (file.size > PASS_MAX) /* en */ throw new Error(`This file is larger (${(file.size / 1048576).toFixed(1)} MB) than a Wallet pass ever is, so annai didn't open it.`);
   /** @type {ZipReader} */
   let zip;
   try {
     zip = await ZipReader.open(file, { maxEntry: PASS_MAX, maxTotal: PASS_MAX });
   } catch (e) {
-    throw new Error(`annai couldn't open this Wallet pass: ${e instanceof ZipError ? e.message : 'it is damaged'}.`);
+    /* en */ throw new Error(`annai couldn't open this Wallet pass: ${e instanceof ZipError ? e.message : 'it is damaged'}.`);
   }
-  if (!zip.has('pass.json')) throw new Error("This isn't a Wallet pass: it has no pass.json.");
-  if (zip.size('pass.json') > JSON_MAX) throw new Error("This pass's pass.json is larger than any pass's, so annai didn't read it.");
+  if (!zip.has('pass.json')) /* en */ throw new Error("This isn't a Wallet pass: it has no pass.json.");
+  if (zip.size('pass.json') > JSON_MAX) /* en */ throw new Error("This pass's pass.json is larger than any pass's, so annai didn't read it.");
   /** @type {any} */
   let pass;
   try {
     pass = JSON.parse(decode(await zip.read('pass.json')));
   } catch (e) {
-    throw new Error(e instanceof ZipError ? `annai couldn't open this Wallet pass: ${e.message}.` : "This pass's pass.json isn't valid JSON, so annai can't read it.");
+    /* en */ throw new Error(e instanceof ZipError ? `annai couldn't open this Wallet pass: ${e.message}.` : "This pass's pass.json isn't valid JSON, so annai can't read it.");
   }
-  if (!isObject(pass)) throw new Error("This pass's pass.json isn't valid JSON, so annai can't read it.");
+  if (!isObject(pass)) /* en */ throw new Error("This pass's pass.json isn't valid JSON, so annai can't read it.");
   const lang = ['en.lproj/pass.strings', ...zip.names().filter((n) => /^[^/]+\.lproj\/pass\.strings$/.test(n)).sort()]
     .find((n) => zip.has(n) && zip.size(n) <= STRINGS_MAX);
   const strings = lang ? passStrings(decode(await zip.read(lang))) : new Map();
@@ -77,7 +77,7 @@ export async function readPass(file) {
       const value = say(f.value);
       if (value === undefined) continue;
       const label = say(f.label);
-      fields.push({ section: section.replace('Fields', ''), key: String(f.key ?? ''), ...(label !== undefined ? { label } : {}), value });
+      /* en */ fields.push({ section: section.replace('Fields', ''), key: String(f.key ?? ''), ...(label !== undefined ? { label } : {}), value });
     }
   }
   /** @type {Record<string, any>[]} */

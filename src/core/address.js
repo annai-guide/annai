@@ -8,7 +8,7 @@ import { t } from './l10n.js';
  */
 
 /** The blank a key's place shows. */
-export const KEY_BLANK = '«key»';
+/* en */ export const KEY_BLANK = '«key»';
 /** Lowercase words, joined by - _ or .: model-context-protocol, internationalization. */
 const WORDS = /^[a-z]+(?:[-_.][a-z]+)*$/;
 /**

@@ -5,7 +5,7 @@
  * {0}… and # are kept: they are the message's values.
  */
 const FROM = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const TO = 'áƀçðéƒĝĥíĵķļɱñóṕǫŕśţúṽŵẋýžÁḂÇÐÉḞĜĤÍĴĶĻṀŃÓṔǪŔŠŢÚṼŴẊÝŽ';
+/* en */ const TO = 'áƀçðéƒĝĥíĵķļɱñóṕǫŕśţúṽŵẋýžÁḂÇÐÉḞĜĤÍĴĶĻṀŃÓṔǪŔŠŢÚṼŴẊÝŽ';
 const ACCENT = new Map([...FROM].map((c, i) => [c, TO[i]]));
 const HOLES = /(\{\d+\}|#)/;
 

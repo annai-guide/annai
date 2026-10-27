@@ -39,7 +39,7 @@ const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
 /** The ask once more, as a text Koe's (§6.8), in annai's words. */
 const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /** The ask again when the user's turn got no sound and no word (the watchdog, in a session that is alive). */
-const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
+/* en */ const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
 /** This device's record of the cards about voice it has shown once. */
@@ -559,7 +559,7 @@ export class LiveKoe {
     const { images } = await resolveEvent(this.c.store, e);
     for (const im of takes ? images : []) if (im.type === 'image' && im.data) this.#send((s) => s.image({ mediaType: im.mediaType, data: im.data }));
     const words = String(text ?? '').trim();
-    this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
+    /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
       : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]` : theirs(words));
     return true;
   }
@@ -714,8 +714,8 @@ export class LiveKoe {
     }
     this.#due = null;
     const again = !this.#rescued;
-    const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
-    this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
+    /* en */ const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
+    /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
     // Twice in a row: not a session to keep (its cut flag has Halves give the answer to Koe's next model, or Kokoro).
     if (!again) return this.#gone(true);
     this.#rescued = true;
@@ -1038,7 +1038,7 @@ export class LiveKoe {
 
   /** Writes in order; an entry may be worked out first. @param {any} ev @returns {Promise<unknown>} */
   #write(ev) {
-    this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev)).catch((e) => console.warn('a live line was not written', e));
+    /* en */ this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev)).catch((e) => console.warn('a live line was not written', e));
     return this.#chain;
   }
 
@@ -1061,7 +1061,7 @@ export class LiveKoe {
     try {
       await this.#answered(false);
       // Always answered: the model waits for it.
-      const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
+      /* en */ const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
       // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither.
       if (REACH.includes(e.name) && !out.isError) this.#passed();
       if ((e.name === 'show' || e.name === 'ask') && !out.isError && this.#due?.strict) this.#answer(undefined);

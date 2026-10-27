@@ -25,9 +25,9 @@ function huffman(lengths, partial = false) {
   let left = 1;
   for (let len = 1; len <= 15; len++) {
     left = (left << 1) - count[len];
-    if (left < 0) throw new Error('bad code lengths');
+    if (left < 0) /* en */ throw new Error('bad code lengths');
   }
-  if (left > 0 && !(partial && count[0] + count[1] === lengths.length)) throw new Error('incomplete code');
+  if (left > 0 && !(partial && count[0] + count[1] === lengths.length)) /* en */ throw new Error('incomplete code');
   const offs = new Uint16Array(16);
   for (let len = 1; len < 15; len++) offs[len + 1] = offs[len] + count[len];
   const symbol = new Uint16Array(lengths.length);
@@ -53,7 +53,7 @@ export function inflateSmall(data, limit) {
   const bits = (need) => {
     let v = buf;
     while (cnt < need) {
-      if (pos >= data.length) throw new Error('ran out of data');
+      if (pos >= data.length) /* en */ throw new Error('ran out of data');
       v |= data[pos++] << cnt;
       cnt += 8;
     }
@@ -75,7 +75,7 @@ export function inflateSmall(data, limit) {
       first <<= 1;
       code <<= 1;
     }
-    throw new Error('bad code');
+    /* en */ throw new Error('bad code');
   };
   /** @param {Huffman} lit @param {Huffman} dist */
   const codes = (lit, dist) => {
@@ -88,12 +88,12 @@ export function inflateSmall(data, limit) {
         return;
       } else {
         sym -= 257;
-        if (sym >= 29) throw new Error('bad length');
+        if (sym >= 29) /* en */ throw new Error('bad length');
         const len = LBASE[sym] + bits(LEXT[sym]);
         const ds = decode(dist);
-        if (ds >= 30) throw new Error('bad distance');
+        if (ds >= 30) /* en */ throw new Error('bad distance');
         const d = DBASE[ds] + bits(DEXT[ds]);
-        if (d > outPos) throw new Error('bad distance');
+        if (d > outPos) /* en */ throw new Error('bad distance');
         if (outPos + len > limit) throw new RangeError('over');
         for (let i = 0; i < len; i++, outPos++) out[outPos] = out[outPos - d];
       }
@@ -106,11 +106,11 @@ export function inflateSmall(data, limit) {
     if (type === 0) {
       buf = 0;
       cnt = 0;
-      if (pos + 4 > data.length) throw new Error('ran out of data');
+      if (pos + 4 > data.length) /* en */ throw new Error('ran out of data');
       const len = data[pos] | (data[pos + 1] << 8);
-      if (len !== (~(data[pos + 2] | (data[pos + 3] << 8)) & 0xffff)) throw new Error('bad stored block');
+      if (len !== (~(data[pos + 2] | (data[pos + 3] << 8)) & 0xffff)) /* en */ throw new Error('bad stored block');
       pos += 4;
-      if (pos + len > data.length) throw new Error('ran out of data');
+      if (pos + len > data.length) /* en */ throw new Error('ran out of data');
       if (outPos + len > limit) throw new RangeError('over');
       out.set(data.subarray(pos, pos + len), outPos);
       pos += len;
@@ -121,7 +121,7 @@ export function inflateSmall(data, limit) {
       const nlen = bits(5) + 257;
       const ndist = bits(5) + 1;
       const ncode = bits(4) + 4;
-      if (nlen > 286 || ndist > 30) throw new Error('bad counts');
+      if (nlen > 286 || ndist > 30) /* en */ throw new Error('bad counts');
       const lengths = new Uint8Array(320);
       for (let i = 0; i < ncode; i++) lengths[ORDER[i]] = bits(3);
       const lencode = huffman(lengths.subarray(0, 19));
@@ -135,15 +135,15 @@ export function inflateSmall(data, limit) {
         let prev = 0;
         let rep;
         if (sym === 16) {
-          if (i === 0) throw new Error('bad repeat');
+          if (i === 0) /* en */ throw new Error('bad repeat');
           prev = all[i - 1];
           rep = 3 + bits(2);
         } else rep = sym === 17 ? 3 + bits(3) : 11 + bits(7);
-        if (i + rep > all.length) throw new Error('bad repeat');
+        if (i + rep > all.length) /* en */ throw new Error('bad repeat');
         while (rep--) all[i++] = prev;
       }
       codes(huffman(all.subarray(0, nlen), true), huffman(all.subarray(nlen), true));
-    } else throw new Error('bad block');
+    } else /* en */ throw new Error('bad block');
   } while (!last);
   return out.subarray(0, outPos);
 }

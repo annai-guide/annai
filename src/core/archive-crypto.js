@@ -63,7 +63,7 @@ const bytesOf = async (b) => new Uint8Array(await b.arrayBuffer());
  * @returns {Promise<Blob>}
  */
 export async function encrypt(file, passphrase, iterations = ITERATIONS) {
-  if (!passphrase) throw new PassphraseError('Enter a passphrase to encrypt the file.', t`Enter a passphrase to encrypt the file.`);
+  if (!passphrase) /* en */ throw new PassphraseError('Enter a passphrase to encrypt the file.', t`Enter a passphrase to encrypt the file.`);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const count = new Uint8Array(4);
   new DataView(count.buffer).setUint32(0, iterations);
@@ -87,10 +87,10 @@ export async function encrypt(file, passphrase, iterations = ITERATIONS) {
  */
 export async function decrypt(file, passphrase) {
   const header = await bytesOf(file.slice(0, HEADER));
-  if (!isEncrypted(header)) throw new PassphraseError('This file is not encrypted.', t`This file is not encrypted.`);
-  if (file.size < HEADER + TAG) throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
+  if (!isEncrypted(header)) /* en */ throw new PassphraseError('This file is not encrypted.', t`This file is not encrypted.`);
+  if (file.size < HEADER + TAG) /* en */ throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
   const iterations = new DataView(header.buffer, header.byteOffset + MAGIC.length, 4).getUint32(0);
-  if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
+  if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) /* en */ throw new PassphraseError('This file is damaged.', t`This file is damaged.`);
   const key = await deriveKey(passphrase, header.slice(MAGIC.length + 4, HEADER), iterations);
   const size = CHUNK + TAG;
   const n = Math.max(1, Math.ceil((file.size - HEADER) / size));
@@ -101,7 +101,7 @@ export async function decrypt(file, passphrase) {
     try {
       parts.push(new Blob([await crypto.subtle.decrypt({ name: 'AES-GCM', iv: chunkIv(i, i === n - 1), additionalData: ownBuffer(header) }, key, ownBuffer(sealed))]));
     } catch {
-      throw i === 0 ? new PassphraseError('Wrong passphrase, or the file is damaged.', t`Wrong passphrase, or the file is damaged.`) : new PassphraseError('This file is damaged.', t`This file is damaged.`);
+      /* en */ throw i === 0 ? new PassphraseError('Wrong passphrase, or the file is damaged.', t`Wrong passphrase, or the file is damaged.`) : new PassphraseError('This file is damaged.', t`This file is damaged.`);
     }
   }
   return new Blob(parts);

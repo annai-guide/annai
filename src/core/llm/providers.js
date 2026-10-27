@@ -1,6 +1,7 @@
 import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 import { pricesAt } from './cost.js';
+import { t } from '../l10n.js';
 
 /**
  * Providers made from provider plugins' descriptions (spec §9.8): its values are the template layer of
@@ -242,7 +243,7 @@ export async function useSuggestion({ ws }, providerId, src, which) {
 function startFor(cfg, providerId, abilityId) {
   const rec = cfg.providers[providerId];
   const a = rec ? providerOf(rec).abilities[abilityId] : undefined;
-  if (!a) throw new Error(`That provider has no ability called ${abilityId}.`);
+  if (!a) throw Object.assign(new Error(/* en */ `That provider has no ability called ${abilityId}.`), { shown: t`That provider has no ability called ${abilityId}.` });
   return structuredClone(a.modelDefaults ?? {});
 }
 

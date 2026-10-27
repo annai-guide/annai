@@ -12,7 +12,8 @@ import { logEvent } from './events.js';
 import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks } from './registry.js';
+import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
+import { t, plural } from './l10n.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -39,9 +40,9 @@ export const START_TIMEOUT = 10_000;
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** A package's secret holding the address it came from, keys and all (fix pass 8a-1); annai's alone, as a plugin's are plugin:<id>:… (Reset R1). @param {string} id */
-const ADDRESS = (id) => `package:${id}:address`;
+const ADDRESS = (id) => /* en */ `package:${id}:address`;
 /** A plugin's settings file in sys:settings (spec §5.4). @param {string} id */
-const SETTINGS = (id) => `/plugin-settings/${id}.json`;
+const SETTINGS = (id) => /* en */ `/plugin-settings/${id}.json`;
 /** Built-ins whose secrets are no settings: the MCP client's are its servers', which their own screen removes (spec §5.1). */
 const NO_RESET = new Set(['mcp']);
 /** What a settings schema gives a key nothing is saved for: its default, writeOnly ones aside (they are secrets). @param {any} schema */
@@ -55,7 +56,7 @@ const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromR
   base64: Object.freeze({ encode: toBase64, decode: fromBase64 }), g711, wav: Object.freeze({ encode: encodeWav, decode: pcm16 }) });
 
 /** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
-const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
+/* en */ const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
   hook: 'annai.hooks.on', provider: "the manifest's provider", 'provider-setup': 'annai.providers.setup' };
 
 /** A name as it is compared with annai's and the built-ins': case, spaces, width and invisible characters aside. @param {string} t */
@@ -164,7 +165,8 @@ export class PluginHost {
     try {
       files = await readZip(bytes, { maxTotal: this.maxPackageBytes });
     } catch (e) {
-      throw new PluginError('plugin', `this file isn't a plugin package annai can open: ${/** @type {any} */ (e)?.message ?? e}`);
+      const why = /** @type {any} */ (e)?.message ?? e;
+      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}` });
     }
     return this.install(files, opts);
   }
@@ -180,12 +182,20 @@ export class PluginHost {
     const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
     const id = pkg.id;
     if (this.builtins.has(id)) {
-      throw new PluginError(id, pkg.kind === 'skill' ? 'is a name annai uses for one of its own parts, so a skill can\'t have it.' : 'has the same id as a plugin built into annai');
+      /* en */
+      if (pkg.kind === 'skill') throw new PluginError(id, "is a name annai uses for one of its own parts, so a skill can't have it.", { shown: t`is a name annai uses for one of its own parts, so a skill can't have it.` });
+      throw new PluginError(id, /* en */ 'has the same id as a plugin built into annai', { shown: t`has the same id as a plugin built into annai` });
     }
     // A name written as annai's, or a built-in's (look-alikes show their ids).
-    if (['annai', ...[...this.builtins.values()].map((m) => m.name)].some((n) => plain(n) === plain(pkg.name))) throw new PluginError(id, `its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.`);
+    if ([/* en */ 'annai', ...[...this.builtins.values()].map((m) => m.name)].some((n) => plain(n) === plain(pkg.name))) {
+      throw new PluginError(id, /* en */ `its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.`, { shown: t`its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.` });
+    }
     const had = (await this.installed())[id];
-    if (had && kindOfState(had) !== pkg.kind) throw new PluginError(id, `is installed already as a ${kindOfState(had)}. Remove it first.`);
+    if (had && kindOfState(had) !== pkg.kind) {
+      /* en */
+      const en = `is installed already as a ${kindOfState(had)}. Remove it first.`;
+      throw new PluginError(id, en, { shown: kindOfState(had) === 'skill' ? t`is installed already as a skill. Remove it first.` : t`is installed already as a plugin. Remove it first.` });
+    }
     return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg), from: sourceOf(had) } : null };
   }
 
@@ -234,7 +244,10 @@ export class PluginHost {
   /** The user's choice of who owns a name (app settings' uses), or null to undo it. @param {string} kind @param {string} name @param {string | null} pluginId */
   async choose(kind, name, pluginId) {
     if (pluginId && !this.registry.choosable(kind, name)) {
-      throw new PluginError(pluginId, KEYED.has(kind) ? `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.` : `${name} is annai's own, so no plugin replaces it.`);
+      /* en */
+      if (KEYED.has(kind)) throw new PluginError(pluginId, `${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.`, { shown: t`${name} is handed the keys you give it, so the one used is annai's own, else the one installed first.` });
+      /* en */
+      throw new PluginError(pluginId, `${name} is annai's own, so no plugin replaces it.`, { shown: t`${name} is annai's own, so no plugin replaces it.` });
     }
     await updateAppSettings(this.ws, { uses: { [`${kind}:${name}`]: pluginId } });
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
@@ -259,8 +272,8 @@ export class PluginHost {
     const state = await this.installed();
     const before = state[id];
     // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review), nor annai's one from elsewhere.
-    if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN);
-    if (before && before.source !== 'official' && source === 'official') throw new PluginError(id, NOT_OWN);
+    if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN, { shown: takenShown() });
+    if (before && before.source !== 'official' && source === 'official') throw new PluginError(id, NOT_OWN, { shown: notOwnShown() });
     // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
     const shown = await this.#keepAddress(id, url);
     state[id] = {
@@ -326,10 +339,10 @@ export class PluginHost {
       const now = await t.getSecret(ADDRESS(id));
       if (typeof now?.address === 'string') return now.address;
       // Kept among the plugin's own before Reset R1 (or by a backup from then): moved when it is surely annai's.
-      const old = await t.getSecret(`plugin:${id}:address`);
+      /* en */ const old = await t.getSecret(`plugin:${id}:address`);
       if (!shownUrl.includes(KEY_BLANK) || typeof old?.address !== 'string' || !Array.isArray(old.keys) || !old.keys.every((k) => typeof k === 'string')) return null;
       await t.putSecret(ADDRESS(id), { address: old.address, keys: old.keys });
-      await t.deleteSecret(`plugin:${id}:address`);
+      /* en */ await t.deleteSecret(`plugin:${id}:address`);
       return old.address;
     });
     if (kept) return kept;
@@ -385,7 +398,7 @@ export class PluginHost {
         const n = (s.startFailures ?? 0) + 1;
         const disabled = n >= MAX_START_FAILURES;
         await this.#updateState(id, { startFailures: n, ...(disabled ? { enabled: false } : {}) }).catch(() => {});
-        if (disabled) this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });
+        if (disabled) /* en */ this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });
         failures.push({ id, error, disabled });
       }
     }
@@ -426,8 +439,8 @@ export class PluginHost {
   /** @param {string} id */
   async #startNow(id) {
     if (this.active.has(id)) return;
-    if (this.#removing.has(id)) throw new PluginError(id, 'is being removed');
-    if (this.#stale.has(id)) throw new PluginError(id, 'was updated. Restart annai to run the new version.');
+    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`is being removed` });
+    if (this.#stale.has(id)) throw new PluginError(id, /* en */ 'was updated. Restart annai to run the new version.', { shown: t`was updated. Restart annai to run the new version.` });
     const manifest = await this.#stored(id);
     const state = await this.installed();
     if (manifest.entry) this.#loaded.set(id, state[id]?.fingerprint);
@@ -447,7 +460,7 @@ export class PluginHost {
       try {
         a.dispose();
       } catch (e) {
-        console.warn(`plugin ${id} failed to stop cleanly`, e);
+        /* en */ console.warn(`plugin ${id} failed to stop cleanly`, e);
       }
     }
     this.registry.removePlugin(id);
@@ -552,9 +565,9 @@ export class PluginHost {
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[], bytes: number }>}
    */
   async reset(id) {
-    if (this.#removing.has(id)) throw new PluginError(id, 'is being removed');
+    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`is being removed` });
     const had = await this.saved(id);
-    if (!had) throw new PluginError(id, 'keeps MCP servers, not settings: remove a server on its own screen.');
+    if (!had) throw new PluginError(id, /* en */ 'keeps MCP servers, not settings: remove a server on its own screen.', { shown: t`keeps MCP servers, not settings: remove a server on its own screen.` });
     const isSettings = (/** @type {string} */ p) => p === SETTINGS(id);
     const bytes = had.file ? (await forget(this.ws.store, SYS_SETTINGS, { files: isSettings, history: isSettings })).bytes : 0;
     await this.ws.store.tx(['secrets'], 'readwrite', async (t) => {
@@ -634,7 +647,7 @@ export class PluginHost {
   /** A bare skill's SKILL.md as stored, read again (choice 2). @param {string} id */
   async #storedSkill(id) {
     const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${SKILL_FILE}`).catch(() => undefined);
-    if (t === undefined) throw new PluginError(id, 'is not installed');
+    if (t === undefined) /* en */ throw new PluginError(id, 'is not installed');
     /** @type {import('./skills.js').Skill} */
     let skill;
     try {
@@ -642,7 +655,7 @@ export class PluginHost {
     } catch (e) {
       throw new PluginError(id, String(/** @type {any} */ (e)?.message ?? e));
     }
-    if (skill.name !== id) throw new PluginError(id, `its ${SKILL_FILE} names "${skill.name}", not the folder it is installed in`);
+    if (skill.name !== id) /* en */ throw new PluginError(id, `its ${SKILL_FILE} names "${skill.name}", not the folder it is installed in`);
     return skill;
   }
 
@@ -657,11 +670,11 @@ export class PluginHost {
       const dir = `/${id}/${folder ? `${folder}/` : ''}`;
       const read = async () => {
         const t = await this.ws.readText(SYS_PLUGINS, `${dir}${SKILL_FILE}`);
-        if (t === undefined) throw new PluginError(id, `its skill folder ${f} has no ${SKILL_FILE}`);
+        if (t === undefined) /* en */ throw new PluginError(id, `its skill folder ${f} has no ${SKILL_FILE}`);
         try {
           return parseSkill(t);
         } catch (e) {
-          throw new PluginError(id, `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
+          /* en */ throw new PluginError(id, `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
         }
       };
       const skill = await read();
@@ -683,7 +696,7 @@ export class PluginHost {
     }
     for (const p of manifest.personalities ?? []) {
       const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${p}`);
-      if (t === undefined) throw new PluginError(id, `its personality ${p} is missing`);
+      if (t === undefined) /* en */ throw new PluginError(id, `its personality ${p} is missing`);
       this.registry.add(id, 'personality', { name: String(p).split('/').pop()?.replace(/\.md$/, ''), text: t, plugin: manifest.name });
     }
     // A model provider's description (spec §9.1): its providers in Settings → Models are made from it.
@@ -703,11 +716,11 @@ export class PluginHost {
     try {
       manifest = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
     } catch {
-      throw new PluginError(id, `its ${MANIFEST_FILE} is not valid JSON`);
+      /* en */ throw new PluginError(id, `its ${MANIFEST_FILE} is not valid JSON`);
     }
-    if (!manifest) throw new PluginError(id, 'is not installed');
+    if (!manifest) /* en */ throw new PluginError(id, 'is not installed');
     checkManifest(manifest);
-    if (manifest.id !== id) throw new PluginError(id, `its ${MANIFEST_FILE} names "${manifest.id}", not the folder it is installed in`);
+    if (manifest.id !== id) /* en */ throw new PluginError(id, `its ${MANIFEST_FILE} names "${manifest.id}", not the folder it is installed in`);
     return manifest;
   }
 
@@ -720,7 +733,7 @@ export class PluginHost {
         const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id, manifest));
         if (typeof r === 'function') dispose = r;
       } else if (manifest.entry) {
-        throw new PluginError(id, 'its module has no activate() function');
+        /* en */ throw new PluginError(id, 'its module has no activate() function');
       }
       if (!builtin) await this.#content(id, manifest);
     } catch (e) {
@@ -746,7 +759,8 @@ export class PluginHost {
     let timer;
     const late = new Promise((_, reject) => {
       timer = setTimeout(() => {
-        reject(new Error(`it didn't finish starting within ${Math.round(this.startTimeout / 100) / 10} seconds`));
+        const s = Math.round(this.startTimeout / 100) / 10;
+        reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "it didn't finish starting within # second", "it didn't finish starting within # seconds") }));
         work.then((r) => {
           if (this.active.has(id)) return;
           try {
@@ -770,7 +784,7 @@ export class PluginHost {
     const registry = this.registry;
     const need = (/** @type {'llm' | 'agent' | 'notices'} */ what) => {
       const svc = this.#services[what];
-      if (!svc) throw new PluginError(id, `${what} isn't ready yet; use it after annai has started`);
+      if (!svc) /* en */ throw new PluginError(id, `${what} isn't ready yet; use it after annai has started`);
       return svc;
     };
     /** @type {Record<string, any>} */
@@ -785,7 +799,7 @@ export class PluginHost {
       register: (/** @type {string} */ kind, /** @type {any} */ item) => {
         // A kind with a call of its own is checked and stamped there.
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
-        if (call) throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
+        if (call) /* en */ throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
         return registry.add(id, kind, item);
       },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
@@ -806,8 +820,8 @@ export class PluginHost {
                 // against the plugin, which is switched off when it keeps crashing (§5.5).
                 // A fetch the browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer too (§17).
                 if (!isPluginBug(e)) throw e;
-                registry.fail(id, `tool ${tool.name}`, e);
-                throw new PluginError(id, `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, e);
+                registry.fail(id, /* en */ `tool ${tool.name}`, e);
+                throw new PluginError(id, /* en */ `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
               }
             },
           });
@@ -821,7 +835,7 @@ export class PluginHost {
       /** Log appends, as frozen copies, never this plugin's own (spec §5.4: read-only in v1). */
       hooks: Object.freeze({
         on: (/** @type {any} */ fn, /** @type {{ types?: string[] }} */ o = {}) => {
-          if (typeof fn !== 'function') throw new PluginError(id, 'hooks.on needs a function');
+          if (typeof fn !== 'function') /* en */ throw new PluginError(id, 'hooks.on needs a function');
           return registry.add(id, 'hook', { fn, ...(Array.isArray(o?.types) ? { types: o.types.map(String) } : {}) });
         },
       }),
@@ -882,7 +896,7 @@ export class PluginHost {
         /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network; a realtime one open() and attach(). */
         register: (/** @type {any} */ type) => {
           if (typeof type?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(type.type)) {
-            throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
+            /* en */ throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
           }
           const chat = typeof type.run === 'function' || (typeof type.build === 'function' && typeof type.read === 'function');
           const hears = type.speech === 'in' && typeof type.transcribeRequest === 'function' && typeof type.readTranscript === 'function';
@@ -890,26 +904,26 @@ export class PluginHost {
           // A realtime voice type (K4): annai opens its socket; it builds the address and drives what is sent.
           const formats = (/** @type {any} */ l) => Array.isArray(l) && l.length > 0 && l.every((f) => typeof f?.format === 'string' && Number.isInteger(f?.rate));
           if (type.realtime && !(typeof type.open === 'function' && typeof type.attach === 'function' && formats(type.audio?.in) && formats(type.audio?.out))) {
-            throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
+            /* en */ throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
           }
           // Choices the provider page offers in words (G3): each a label, and a switch or options of words.
           const words = (/** @type {any} */ x) => typeof x === 'string' && x.trim() !== '';
           const choice = (/** @type {any} */ c) => c && typeof c === 'object' && words(c.label) && (c.options === undefined
             || (c.options && typeof c.options === 'object' && !Array.isArray(c.options) && Object.keys(c.options).length > 0 && Object.values(c.options).every(words)));
           if (type.choices !== undefined && !(type.choices && typeof type.choices === 'object' && !Array.isArray(type.choices) && Object.values(type.choices).every(choice))) {
-            throw new PluginError(id, `the endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
+            /* en */ throw new PluginError(id, `the endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
           }
           if (!chat && !hears && !speaks && !type.realtime) {
-            throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
+            /* en */ throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
         },
         /** A provider plugin's own setup and quirks, once (decision 15; docs/plugins.md, "Model providers with code"). */
         setup: (/** @type {any} */ item) => {
-          if (!manifest.provider) throw new PluginError(id, 'providers.setup is for a plugin that describes a model provider (its manifest has no provider)');
+          if (!manifest.provider) /* en */ throw new PluginError(id, 'providers.setup is for a plugin that describes a model provider (its manifest has no provider)');
           const wrong = checkSetup(item);
           if (wrong) throw new PluginError(id, wrong);
-          if (registry.entries('provider-setup', { all: true }).some((e) => e.pluginId === id)) throw new PluginError(id, 'called providers.setup twice: a plugin has one setup');
+          if (registry.entries('provider-setup', { all: true }).some((e) => e.pluginId === id)) /* en */ throw new PluginError(id, 'called providers.setup twice: a plugin has one setup');
           return registry.add(id, 'provider-setup', Object.freeze({ ...item, keyField: item.keyField !== false }));
         },
       }),

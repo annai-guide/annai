@@ -14,7 +14,7 @@ import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './tra
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
-import { tracedFetch, withoutSecrets } from './net.js';
+import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
 import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
@@ -515,7 +515,7 @@ export class Agent {
 
   /** A system card, with any key annai keeps blanked from what it says (spec §9.9). @param {Notice} n */
   async #notice(n) {
-    this.#emit('notice', { ...n, title: await withoutSecrets(this.store, n.title), body: await withoutSecrets(this.store, n.body) });
+    this.#emit('notice', { ...n, title: await shownWithoutSecrets(this.store, n.title), body: await shownWithoutSecrets(this.store, n.body) });
   }
 
   /** @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {any} x */

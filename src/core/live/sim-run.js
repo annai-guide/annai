@@ -5,6 +5,8 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { validZone, deviceZone, dayIn } from '../time.js';
 import { pointsOf } from '../after/route.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
+import { t } from '../l10n.js';
+import { num } from '../intl.js';
 
 /**
  * Developer → "Simulate a trip" (spec §13): a recorded or made-up GPS track and its clock fed through
@@ -85,7 +87,7 @@ export class SimRun {
    * @param {SimSource} source @param {{ speed?: SimSpeed }} [o] @returns {Promise<{ trip: string }>}
    */
   async start(source, { speed = 10 } = {}) {
-    if (this.running) throw new Error('A simulation is already running. Stop it first.');
+    if (this.running) throw Object.assign(new Error(/* en */ 'A simulation is already running. Stop it first.'), { shown: t`A simulation is already running. Stop it first.` });
     const { agent, live, registry, ws, store } = this.c;
     const p = source.kind === 'trip' ? await this.#fromTrip(source.trip) : this.#fromItinerary(source.itinerary);
     const trip = await p.make();
@@ -211,7 +213,7 @@ export class SimRun {
       try {
         fn();
       } catch (e) {
-        console.warn('a simulation listener failed', e);
+        /* en */ console.warn('a simulation listener failed', e);
       }
     }
   }
@@ -231,16 +233,18 @@ export class SimRun {
   #fromItinerary(it) {
     const track = trackFrom(it);
     const tz = validZone(it?.timezone) ? /** @type {string} */ (it.timezone) : deviceZone();
-    const title = `${String(it?.name ?? '').trim().slice(0, 150) || 'A simulated trip'} (simulation)`;
+    // A new trip's title, which is the user's from then on: in the screens' words.
+    const stem = String(it?.name ?? '').trim().slice(0, 150) || t`A simulated trip`;
+    const title = simTitle(stem, 1);
     const { ws, store } = this.c;
     /** @type {Prepared} */
     const prepared = {
       track, tz, title,
       make: async () => {
-        prepared.title = await ownTitle(store, title);
+        prepared.title = await ownTitle(store, stem);
         const id = await createTrip(ws, { title: prepared.title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
         /** @type {[string, string, any][]} */
-        const files = [
+        /* en */ const files = [
           ...Object.entries(it.plan ?? {}).map(([n, v]) => /** @type {[string, string, any]} */ ([`plan item "${n}"`, `/plan/${fileName(n)}.json`, v])),
           ...Object.entries(it.bookings ?? {}).map(([n, v]) => /** @type {[string, string, any]} */ ([`booking "${n}"`, `/bookings/${fileName(n)}.json`, v])),
         ];
@@ -252,7 +256,7 @@ export class SimRun {
               await ws.write(id, path, value, { author: 'user' });
             } catch (e) {
               const why = /** @type {any} */ (e)?.errors?.join('; ') ?? String(/** @type {any} */ (e)?.message ?? e);
-              throw new Error(`The itinerary's ${what} doesn't fit annai's ${path.startsWith('/plan/') ? 'plan' : 'booking'} format: ${why}. Fix it in the file and try again.`);
+              /* en */ throw new Error(`The itinerary's ${what} doesn't fit annai's ${path.startsWith('/plan/') ? 'plan' : 'booking'} format: ${why}. Fix it in the file and try again.`);
             }
           }
         } catch (e) {
@@ -270,7 +274,7 @@ export class SimRun {
   async #fromTrip(id) {
     const { store, ws } = this.c;
     const scope = await store.tx(['scopes'], 'readonly', (t) => t.getScope(id));
-    if (!scope || scope.kind !== 'trip') throw new Error("That trip isn't on this device any more.");
+    if (!scope || scope.kind !== 'trip') throw Object.assign(new Error(/* en */ "That trip isn't on this device any more."), { shown: t`That trip isn't on this device any more.` });
     const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(id, { types: ['location', 'state'] }));
     const points = pointsOf(events.filter((e) => e.type === 'location'));
     const lastAt = points.length ? points[points.length - 1].at : Infinity;
@@ -279,7 +283,8 @@ export class SimRun {
     const track = trackFromLog(points, end === undefined ? {} : { end });
     const info = (await ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
     const tz = [info.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
-    const title = `${scope.title.slice(0, 150)} (simulation)`;
+    const stem = scope.title.slice(0, 150);
+    const title = simTitle(stem, 1);
     /** @type {[string, any][]} */
     const copies = [];
     for (const f of await ws.list(id, '/')) {
@@ -291,7 +296,7 @@ export class SimRun {
     const prepared = {
       track, tz, title,
       make: async () => {
-        prepared.title = await ownTitle(store, title);
+        prepared.title = await ownTitle(store, stem);
         const t = await createTrip(ws, { title: prepared.title, start: /** @type {string} */ (dayIn(track[0].at, tz)), end: /** @type {string} */ (dayIn(track[track.length - 1].at, tz)) });
         await ws.patch(t, '/trip.json', { timezones: [tz], simulation: true, ...(Array.isArray(info.party) ? { party: info.party } : {}), ...(Array.isArray(info.places) ? { places: info.places } : {}) }, { author: 'user' });
         for (const [path, v] of copies) await ws.write(t, path, v, { author: 'user' }).catch(() => {}); // one annai no longer accepts stays out
@@ -302,15 +307,16 @@ export class SimRun {
   }
 }
 
+/** A simulation's trip title, the nth with its name, in the screens' words. @param {string} stem @param {number} n */
+const simTitle = (stem, n) => (n === 1 ? t`${stem} (simulation)` : t`${stem} (simulation ${num(n)})`);
+
 /**
  * A simulation's trip title no trip on this device has: "<name> (simulation)", then "<name> (simulation 2)" and so on, so each
  * simulation can be told apart in Trips and in the Trace's trip filter (the second emulator re-check).
- * @param {import('../types.js').Store} store @param {string} title @returns {Promise<string>}
+ * @param {import('../types.js').Store} store @param {string} stem the name it simulates @returns {Promise<string>}
  */
-async function ownTitle(store, title) {
+async function ownTitle(store, stem) {
   const { active, archived } = await listTrips(store);
-  const taken = new Set([...active, ...archived].map((t) => t.title));
-  const stem = title.replace(/ \(simulation\)$/, '');
-  if (!taken.has(title)) return title;
-  for (let n = 2; ; n++) if (!taken.has(`${stem} (simulation ${n})`)) return `${stem} (simulation ${n})`;
+  const taken = new Set([...active, ...archived].map((x) => x.title));
+  for (let n = 1; ; n++) if (!taken.has(simTitle(stem, n))) return simTitle(stem, n);
 }

@@ -2,7 +2,7 @@ import { callOnce, enabledProviderTools } from './call.js';
 import { t } from '../l10n.js';
 import { when, sentences } from '../intl.js';
 import { dayIn, timeIn, deviceZone } from '../time.js';
-import { ProviderError, portable, explain, explainPlain } from './contract.js';
+import { ProviderError, portable, explain, explainPlain, saidWords } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -116,15 +116,16 @@ function passedShown(outcome) {
 /**
  * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
- * @param {{ name: string, outcome: string, error?: string, restsUntil?: number, [k: string]: unknown }[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
+ * @param {{ name: string, outcome: string, error?: string, said?: import('./contract.js').Said, restsUntil?: number, [k: string]: unknown }[]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
  */
 export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
   for (const a of attempts) {
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
-    // A provider's own words are shown as it gave them; annai's are by kind, in the screens' language unless a model reads them.
-    const said = a.outcome === 'unreachable' ? '' : a.error ?? '';
+    // A provider's own words are shown as it gave them; annai's are by kind, or from what one of its own was (said), in the screens'
+    // language unless a model reads them.
+    const said = a.outcome === 'unreachable' ? '' : !plain && a.said ? saidWords(a.said, a.outcome) : a.error ?? '';
     const kind = new ProviderError(/** @type {any} */ (a.outcome), a.outcome);
     let why = said || (plain ? /** @type {Record<string, string>} */ (PASSED)[a.outcome] ?? explainPlain(kind) : passedShown(a.outcome) ?? explain(kind));
     if (a.restsUntil && !plain) {
@@ -152,7 +153,7 @@ const named = (name, words, plain) => (plain ? `${name}: ${words}` : t`${name}: 
  * Why a model call failed, as data a card, the log and a model each make their words from (the design, "Store data, not words"):
  * how each model failed (attempts), that no model is set for a role, an error's kind, or another error's own message; halves: both of
  * Shiori's halves are down, each for its reasons.
- * @typedef {{ attempts?: Pick<Attempt, 'name' | 'outcome' | 'error' | 'restsUntil'>[], offline?: boolean, role?: string, kind?: string, message?: string,
+ * @typedef {{ attempts?: Pick<Attempt, 'name' | 'outcome' | 'error' | 'said' | 'restsUntil'>[], offline?: boolean, role?: string, kind?: string, message?: string,
  *   provider?: string, name?: string, halves?: { koe: Why, kokoro: Why } }} Why  name: an error annai has words for (errors.js shownFor)
  */
 
@@ -160,7 +161,7 @@ const named = (name, words, plain) => (plain ? `${name}: ${words}` : t`${name}: 
 export function whyOf(e, { role = 'main', online = true } = {}) {
   if (e instanceof AllFailedError) {
     if (!e.attempts.length) return { role };
-    return { attempts: e.attempts.map((a) => ({ name: a.name, outcome: a.outcome, ...(a.error ? { error: a.error } : {}), ...(a.restsUntil ? { restsUntil: a.restsUntil } : {}) })), ...(online ? {} : { offline: true }) };
+    return { attempts: e.attempts.map((a) => ({ name: a.name, outcome: a.outcome, ...(a.error ? { error: a.error } : {}), ...(a.said ? { said: a.said } : {}), ...(a.restsUntil ? { restsUntil: a.restsUntil } : {}) })), ...(online ? {} : { offline: true }) };
   }
   if (e instanceof ProviderError) return { kind: e.kind, message: e.message, ...(e.provider ? { provider: e.provider } : {}) };
   // An error annai names keeps its name, from which a screen makes its words; any other, its message as it was.
@@ -450,7 +451,8 @@ export async function callRole(c) {
           sendable = await c.speech(model, asked, plain, c.signal);
           if (keeps) sendable = heardIds(asked, sendable);
         } catch (e) {
-          attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e) });
+          const said = /** @type {any} */ (e)?.said;
+          attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e), ...(said ? { said } : {}) });
           break;
         }
       }
@@ -471,7 +473,7 @@ export async function callRole(c) {
         return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id };
       } catch (e) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
-        attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message });
+        attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message, ...(err.said ? { said: err.said } : {}) });
         if (err.kind === 'cancelled') {
           await record(null, said + err.partial);
           throw err;

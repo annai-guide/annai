@@ -2,7 +2,7 @@ import { h, t, plural, linkIn, messageOf } from './dom.js';
 import { size, relTime, num, list, sentences, sentenceGap } from './format.js';
 import { connectionOf } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
-import { MAX_BYTES } from '../core/pack/download.js';
+import { MAX_BYTES, partWords, failWords } from '../core/pack/download.js';
 
 /**
  * The trip's Offline pack panel and Now's line (spec §11.5): what the pack holds, about how much
@@ -52,8 +52,10 @@ export function packWords(s, connection) {
   if (m.full) lines.push(t`It stopped at its ${size(MAX_BYTES)} limit, so it holds only the start of the plan.`);
   if (s.cut) lines.push(t`This plan is longer than a pack holds, so some of the way between stops is left out.`);
   if (m.failed.length) {
+    // Which part and why, from what the failure kept; one kept before then, in the English it kept.
     const f = m.failed[0];
-    lines.push(plural(m.failed.length, "One part didn't download: {0} ({1}).", "# parts didn't download: {0} ({1}).", f.label, f.why.replace(/[.!?]$/, '')));
+    const why = f.said ? failWords(f.said) : f.why;
+    lines.push(plural(m.failed.length, "One part didn't download: {0} ({1}).", "# parts didn't download: {0} ({1}).", f.part ? partWords(f.part) : f.label, why.replace(/[.!?。]$/u, '')));
   } else if (m.stopped) lines.push(t`The download was stopped before the end.`);
   /** @type {string | null} */
   let button = null;

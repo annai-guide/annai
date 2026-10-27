@@ -21,7 +21,7 @@ export function toBytes(x) {
   if (typeof x === 'string') return utf8(x);
   if (x instanceof Uint8Array) return x;
   if (x instanceof ArrayBuffer) return new Uint8Array(x);
-  throw new TypeError('expected bytes or a string');
+  /* en */ throw new TypeError('expected bytes or a string');
 }
 
 /** @param {Uint8Array} b @returns {string} lowercase hex */

@@ -65,19 +65,19 @@ export function dueNow(t, stores, env, timings = TIMINGS) {
   /** @param {string} why @returns {{ run: false, why: string }} */
   const no = (why) => ({ run: false, why });
   if (t.auto === 'off') return no('off');
-  if (!t.checked) return no('not set up');
-  if (!env.visible) return no('not open');
+  if (!t.checked) /* en */ return no('not set up');
+  if (!env.visible) /* en */ return no('not open');
   if (env.connection === 'offline') return no('offline');
   const h = t.hold;
-  if (h?.kind === 'newer') return no('a newer backup is there');
-  if (h?.kind === 'error' && env.now < h.retryAt) return no('waiting to try again');
+  if (h?.kind === 'newer') /* en */ return no('a newer backup is there');
+  if (h?.kind === 'error' && env.now < h.retryAt) /* en */ return no('waiting to try again');
   const free = env.connection === 'wifi' || t.mobileData;
   const changedSinceAsked = h?.kind === 'large' && env.lastChangeAt !== null && env.lastChangeAt > h.at;
-  if (h?.kind === 'large' && !free && !changedSinceAsked) return no('waiting for your OK');
-  if (env.connection === 'cellular' && !t.mobileData) return no('waiting for Wi-Fi');
-  if (!env.changed) return no('nothing changed');
-  if (env.lastChangeAt !== null && env.now - env.lastChangeAt < timings.quietMs) return no('changes still coming');
-  if (t.last && env.now - t.last.at < timings.gapMs[stores][t.auto === 'daily' ? 'daily' : 'changes']) return no('backed up recently');
+  if (h?.kind === 'large' && !free && !changedSinceAsked) /* en */ return no('waiting for your OK');
+  if (env.connection === 'cellular' && !t.mobileData) /* en */ return no('waiting for Wi-Fi');
+  if (!env.changed) /* en */ return no('nothing changed');
+  if (env.lastChangeAt !== null && env.now - env.lastChangeAt < timings.quietMs) /* en */ return no('changes still coming');
+  if (t.last && env.now - t.last.at < timings.gapMs[stores][t.auto === 'daily' ? 'daily' : 'changes']) /* en */ return no('backed up recently');
   // Where the browser can't say whether it is on Wi-Fi, the place's own limit (the user's), or annai's.
   const limit = t.askAbove === null ? Infinity : t.askAbove ?? timings.askAbove;
   return { run: true, maxUpload: free ? Infinity : limit };

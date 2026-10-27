@@ -56,11 +56,11 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
     try {
       bytes = b.bytes === undefined ? undefined : toBytes(b.bytes);
     } catch {
-      throw new Error("The content given isn't bytes: give a Uint8Array, an ArrayBuffer or a string.");
+      /* en */ throw new Error("The content given isn't bytes: give a Uint8Array, an ArrayBuffer or a string.");
     }
     const hash = bytes ? await sha256Hex(bytes) : b.hash ?? '';
-    if (bytes && b.hash && b.hash !== hash) throw new Error(`The content given as ${b.hash.slice(0, 12)}… has another fingerprint.`);
-    if (!bytes && hash && !isName(hash)) throw new Error(`The content ${hash.slice(0, 12)}… is not stored.`);
+    if (bytes && b.hash && b.hash !== hash) /* en */ throw new Error(`The content given as ${b.hash.slice(0, 12)}… has another fingerprint.`);
+    if (!bytes && hash && !isName(hash)) /* en */ throw new Error(`The content ${hash.slice(0, 12)}… is not stored.`);
     if (!hash) continue;
     blobRefs.push(hash);
     if (bytes) keep.push({ hash, bytes, type: b.type });
@@ -81,7 +81,7 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
         const own = await reachable(t, scope, h);
         if (own && (!blobRefs.includes(h) || (await t.hasBlob(h)))) continue;
         if (!own && (await t.hasBlob(h))) denied = h;
-        throw new Error(`The content ${h.slice(0, 12)}… is not stored.`);
+        /* en */ throw new Error(`The content ${h.slice(0, 12)}… is not stored.`);
       }
       return t.appendEvent(scope, ev);
     });

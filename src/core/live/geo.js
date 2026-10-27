@@ -45,7 +45,7 @@ export function keep(last, fix, moving) {
 }
 
 /** The rough travel estimate (spec §11.3): straight-line distance × a detour factor ÷ a typical speed, so reminders err early. */
-export const TRAVEL = Object.freeze({ drive: { detour: 1.4, kmh: 50, words: 'by car' }, walk: { detour: 1.3, kmh: 4.5, words: 'on foot' } });
+/* en */ export const TRAVEL = Object.freeze({ drive: { detour: 1.4, kmh: 50, words: 'by car' }, walk: { detour: 1.3, kmh: 4.5, words: 'on foot' } });
 
 /** Minutes to travel km in a straight line, by mode, rounded up. @param {number} km @param {'drive' | 'walk'} mode */
 export function travelMinutes(km, mode) {
@@ -65,7 +65,7 @@ export function kmText(m) {
 
 /** "42 min", "2 h 5 min". @param {number} ms */
 export function span(ms) {
-  if (ms < 60_000) return 'less than a minute';
+  if (ms < 60_000) /* en */ return 'less than a minute';
   const min = Math.round(ms / 60_000);
   if (min < 60) return `${min} min`;
   return `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}`;

@@ -122,6 +122,16 @@ vbsaso	draft	Until it is tidied up, the conversation is too long for her model. 
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1ptx7ob	draft	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:93	
+myk8x4	draft	annai couldn't reach {0} ({1}). Is the device offline?	annai 无法连到 {0}（{1}）。这台设备是否离线了？	src/core/agent/net.js:218	{0} = host; {1} = said; Note: {1} is the browser's own words, often English.
+uc7dg2	draft	annai couldn't reach {0}. Is the device offline?	annai 无法连到 {0}。这台设备是否离线了？	src/core/agent/net.js:218	{0} = host
+157dl17	draft	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
+13g1wjf	draft	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
+1izvp43	draft	Agree	同意	src/core/agent/personalities.js:131	
+15czcef	draft	{0} answered {1}.	{0} 返回了 {1}。	src/core/answer.js:13	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
+1nhf5ew	draft	{0} sent an answer annai can't read.	{0} 发来了 annai 无法读取的回复。	src/core/answer.js:14	{0} = where
+17yvnnz	draft	{0} sent more than annai reads ({1}).	{0} 发来的内容超过了 annai 能读取的上限（{1}）。	src/core/answer.js:15	{0} = where; {1} = size(s.mb * 1_048_576)
+9rf9qv	draft	{0}'s answer was cut off.	{0} 的回复中途断了。	src/core/answer.js:16	{0} = where
 1im1t3t	draft	Enter a passphrase to encrypt the file.	请输入用于加密文件的密码短语。	src/core/archive-crypto.js:66	
 1bw0b6k	draft	This file is not encrypted.	这个文件没有加密。	src/core/archive-crypto.js:90	
 1nzwtma	draft	This file is damaged.	这个文件已损坏。	src/core/archive-crypto.js:91	
@@ -146,24 +156,27 @@ lfeohr#other	draft	This file is damaged: {0} are missing.	此文件已损坏：�
 syvqmc	draft	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:544	
 qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:648	
 cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
-pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置并将其开启。	src/core/backup.js:36	{0} = s.name
-al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:37	{0} = s.name
-1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:38	{0} = size(s.bytes ?? 0)
-3t4mx2	draft	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:39	{0} = s.name
-1r146xn	draft	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:40	
-1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:41	
-1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:42	
-bbv043	draft	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:43	
-1oqcoyx	draft	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:52	
-16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:139	
-mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:337	
-lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:354	
-1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:365	
-tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:373	
-230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	draft	Works.	可以使用。	src/core/backup.js:418	Note: the result of Save and test when the place says nothing itself.
-173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:469	
-1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:469	
+pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置并将其开启。	src/core/backup.js:37	{0} = s.name
+al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:38	{0} = s.name
+1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:39	{0} = size(s.bytes ?? 0)
+3t4mx2	draft	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:40	{0} = s.name
+1atge5k	draft	{0} sent an answer larger than annai reads ({1}). annai tries again later.	{0} 发来的回复超过了 annai 能读取的上限（{1}）。annai 稍后会再试。	src/core/backup.js:41	{0} = s.name; {1} = size(s.bytes ?? 0)
+js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} 的回复 annai 无法读取。annai 稍后会再试。	src/core/backup.js:42	{0} = s.name
+1wsnrwc	draft	The connection to {0} broke while annai read its answer. annai tries again later.	annai 读取回复时，与 {0} 的连接断了。annai 稍后会再试。	src/core/backup.js:43	{0} = s.name
+1r146xn	draft	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:44	
+1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:45	
+1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:46	
+bbv043	draft	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:47	
+1oqcoyx	draft	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:56	
+16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:143	
+mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:342	
+lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:359	
+1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:370	
+tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:378	
+230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:379	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	draft	Works.	可以使用。	src/core/backup.js:423	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:474	
+173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:475	
 14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请删除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	
 1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
 gnrtev	draft	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
@@ -217,6 +230,12 @@ ub25px	draft	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/cor
 112i693	draft	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:158	
 1hf686i	draft	Nothing more is on the plan.	行程中没有更多安排了。	src/core/live/plan-watches.js:159	
 1jsyqjn	draft	Next on the plan: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
+1jok3pb	draft	A simulation is already running. Stop it first.	模拟已在运行。请先停止它。	src/core/live/sim-run.js:90	
+enf0f5	draft	A simulated trip	模拟的旅行	src/core/live/sim-run.js:237	Note: a new trip's default name, before "(simulation)" is added.
+1426icm	draft	That trip isn't on this device any more.	这个旅行已不在这台设备上。	src/core/live/sim-run.js:277	
+1o5lnqs	draft	{0} (simulation {1})	{0}（模拟 {1}）	src/core/live/sim-run.js:311	{0} = stem; {1} = num(n)
+1vpfjix	draft	{0} (simulation)	{0}（模拟）	src/core/live/sim-run.js:311	{0} = stem; Note: a trip's title; it becomes the user's own once made.
+1cvk0p6	draft	That trip has no recorded track yet: GPS records one while it is on.	这个旅行还没有记录的轨迹：GPS 开启时才会记录。	src/core/live/simulate.js:112	
 h8yuqy	draft	annai can reach this address from the browser.	annai 可以从浏览器连到这个地址。	src/core/llm/check.js:60	
 152u1pq	draft	The key works. The model said: "{0}".	密钥可用。模型说：“{0}”。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
 iiy1hf	draft	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型在调用测试工具之前就用完了输出空间；它可能会先思考很久。请试试更低的推理级别。	src/core/llm/check.js:88	
@@ -233,26 +252,62 @@ mlh3jc	draft	Main	主要	src/core/llm/check.js:134
 1q9bibx	draft	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
 1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
-1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:96	
-1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:97	
-99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:98	
-1f1gofm	draft	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:99	
-1m90sjx	draft	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:100	
-ofpdqd	draft	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:101	
-1acsflt	draft	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:102	
-1htll8g	draft	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:103	
-reueb3	draft	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:104	
-3bfivn	draft	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:105	
-z0xde1	draft	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:106	
-11ib30k	draft	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:107	
-1sdnnoc	draft	The connection dropped.	连接中断了。	src/core/llm/contract.js:108	
-vfwfwf	draft	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:109	
-5x3mf4	draft	Stopped.	已停止。	src/core/llm/contract.js:110	
-1jk8mhk	draft	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:111	
-r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:112	
-19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:113	
-1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:114	{0} = provider
-sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	
+17ifucf	draft	Transcription	语音转文字	src/core/llm/config.js:92	
+9kdcjv	draft	Chat	聊天	src/core/llm/config.js:92	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	draft	Voice	声音	src/core/llm/config.js:92	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	draft	Live voice	实时语音	src/core/llm/config.js:92	
+1nuav0n	draft	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:376	
+1qjc2dh	draft	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:378	{0} = rec.ability
+4iiule	draft	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:381	
+3i9i3z	draft	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:385	{0} = name
+1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:97	
+1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:98	
+99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:99	
+1f1gofm	draft	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:100	
+1m90sjx	draft	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:101	
+ofpdqd	draft	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:102	
+1acsflt	draft	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:103	
+1htll8g	draft	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:104	
+reueb3	draft	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:105	
+3bfivn	draft	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:106	
+z0xde1	draft	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:107	
+11ib30k	draft	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:108	
+1sdnnoc	draft	The connection dropped.	连接中断了。	src/core/llm/contract.js:109	
+vfwfwf	draft	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:110	
+5x3mf4	draft	Stopped.	已停止。	src/core/llm/contract.js:111	
+1jk8mhk	draft	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:112	
+r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:113	
+19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:114	
+1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	{0} = provider
+sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:116	
+izfolc	draft	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:136	
+b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:137	
+1e0qpon	draft	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:138	
+6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:139	{0} = name; {1} = ability; {2} = name
+11neb14	draft	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:140	{0} = name
+akhc81	draft	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:141	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	draft	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:142	{0} = name
+x31pwm	draft	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:143	
+il3b75	draft	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:144	
+1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:146	{0} = host
+10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:147	{0} = host
+16osh89	draft	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:148	{0} = ability
+1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:149	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:150	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:152	{0} = name
+g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	价格是一个对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
+m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	在一个阶梯中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
+z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	在计划中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
+e0jbhd	draft	{0} is not a price: it is a number, not below 0.	{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:98	{0} = f.key
+1mrick8	draft	"tiers" is a list: [{"above": 200000, "input": 2}].	"tiers" 是一个列表：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:99	
+1c4vzsd	draft	A tier's "above" is a number of tokens: [{"above": 200000, "input": 2}].	阶梯的 "above" 是 token 数：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:100	
+1h4915v	draft	"{0}" isn't a price annai knows.	“{0}”不是 annai 认识的价格。	src/core/llm/cost.js:101	{0} = f.key
+w1fuif	draft	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	计划是一个列表：[{"from": "2027-01-01", "input": 2}]。	src/core/llm/cost.js:102	
+1cvqmj	draft	A schedule's "from" {0} is not a date: write it like 2027-01-01.	计划的 "from" 中的 {0} 不是日期：请写成 2027-01-01 这样。	src/core/llm/cost.js:103	{0} = f.from
+zo2if3	draft	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	计划缺少 "from"：每一项都以 2027-01-01 这样的日期开始。	src/core/llm/cost.js:104	
+1k2ht3r	draft	The schedule has {0} twice: put what changes that day in one entry.	计划中 {0} 出现了两次：请把那天的变化放在同一项里。	src/core/llm/cost.js:105	{0} = f.from
+1dfcj24	draft	The schedule names "{0}", which isn't a price annai knows.	计划中有“{0}”，但它不是 annai 认识的价格。	src/core/llm/cost.js:106	{0} = f.key
 4zknwy	draft	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:101	
 9bk0c8	draft	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
 12h1lml	draft	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:103	
@@ -264,25 +319,45 @@ uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.
 1i0eq06	draft	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
 10vxomx	draft	It was removed.	它已被删除。	src/core/llm/fallback.js:110	
 s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
-13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:144	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
+13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:135	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:145	
+1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	Note: the role by its screen name (補助 / 辅助).
+d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	
+1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:196	Note: the role by its screen name (メイン / 主要).
 g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
 zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:53	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
 1th61o	draft	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:55	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
-oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/llm/official.js:166	
-8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
-tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
+1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:158	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:169	{0} = entry.name
+tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:178	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:180	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
+557vva	draft	{0} isn't a web address: give it with https:// in front.	{0} 不是网址：请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
+y6rxxs	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 只连接你网络上的 https 地址，所以另一台电脑上的服务器需要一个 https 地址。Tailscale Serve 可以提供：{0}。服务器还必须允许来自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
+1qpfdfv	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1).	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。	src/core/llm/provider-desc.js:166	
+ja1k8e	draft	is turned off.	已关闭。	src/core/llm/service.js:242	Note: said of a plugin named before it on the screen.
+1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:244	Note: said of a plugin named before it on the screen.
+sejc5h	draft	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:257	{0} = name
+sv2i3h	draft	didn't provide a model provider.	没有提供模型提供商。	src/core/llm/service.js:258	Note: said of a plugin.
+b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	它的插件不是 annai 自己的。请从原来的来源重新安装。	src/core/llm/service.js:331	
+1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:340	
+3ds0qg	draft	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
+1rb0o7n	draft	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	draft	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
+1ff3ec8	draft	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:73	{0} = a
+i9ok5g	draft	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
+1qn6l15	draft	{0} didn't answer in time.	{0} 没有在限定时间内回复。	src/core/pack/download.js:79	{0} = s.where
+16rip5y	draft	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+cvcpkl	draft	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有回复（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
+rhruvr	draft	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	draft	Wikivoyage sent no text for {0}.	Wikivoyage 没有发来 {0} 的正文。	src/core/pack/download.js:83	{0} = s.title
 aaicx8	draft	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-emc8n2	draft	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:58	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
+mlem3w	draft	wasn't installed from an address, so annai has nowhere to look for an update	它不是从地址安装的，所以 annai 没有地方查找更新	src/core/package-updates.js:54	
+1nrhfbi	draft	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在放的是另一个包（{0}），所以没有更新。如果你想要它，请删除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
+emc8n2	draft	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
 1e2afz	draft	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:213	
 is7g6t	draft	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:220	{0} = file; {1} = folder
 1k2igo9	draft	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:221	{0} = file; {1} = folder
@@ -303,6 +378,18 @@ pft16a	draft	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列�
 tqmba2	draft	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
 18tp402	draft	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
 1nz795c	draft	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
+hn1sl5	draft	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/core/plugins.js:169	{0} = why
+hs0rw0	draft	is a name annai uses for one of its own parts, so a skill can't have it.	这是 annai 用于自身某部分的名称，所以技能不能使用。	src/core/plugins.js:186	
+85vpp4	draft	has the same id as a plugin built into annai	与 annai 内置插件的 ID 相同	src/core/plugins.js:187	
+d18gob	draft	its name, "{0}", is annai's own name, or one of its parts'. Ask its author to rename it.	它的名称“{0}”是 annai 或其某部分的名称。请让作者改名。	src/core/plugins.js:191	{0} = pkg.name
+1vbpaus	draft	is installed already as a plugin. Remove it first.	已作为插件安装。请先删除它。	src/core/plugins.js:197	
+qo4woi	draft	is installed already as a skill. Remove it first.	已作为技能安装。请先删除它。	src/core/plugins.js:197	
+1idb6oe	draft	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 会拿到你提供的密钥，所以使用的是 annai 自己的，没有时则用最先安装的那个。	src/core/plugins.js:248	{0} = name
+7ot8m8	draft	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 自己的，所以没有插件能取代它。	src/core/plugins.js:250	{0} = name
+n5bfxm	draft	is being removed	正在删除	src/core/plugins.js:442	
+5wicvq	draft	was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:443	
+1jrheem	draft	keeps MCP servers, not settings: remove a server on its own screen.	它保存的是 MCP 服务器而不是设置：请在各服务器自己的页面上删除。	src/core/plugins.js:570	
+rhqr7k#other	draft	it didn't finish starting within # seconds	没有在 # 秒内完成启动	src/core/plugins.js:763	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
 u8bf72	draft	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:74	
 1dxa9va	draft	Notifications are on again: reminders come like this while annai is closed.	通知已再次开启：annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:75	
 dcq7bh	draft	annai has a reminder for you. Open annai to see it.	annai 有一条提醒。打开 annai 查看。	src/core/push/mirror.js:82	Note: a notification for a reminder the phone couldn't read.
@@ -329,6 +416,27 @@ ido0tg	draft	The phone's push service says this subscription no longer exists.	�
 1eeb6fm	draft	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回了 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	draft	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中继发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	draft	The relay at {0} refused it ({1}).	{0} 的中继拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
+3hb2ch	draft	The key works.	密钥有效。	src/core/realtime/open.js:267	
+r6odk7	draft	annai can open a live session at this address from the browser.	annai 可以从浏览器在这个地址打开实时会话。	src/core/realtime/open.js:267	
+1gyqcn2	draft	It answered aloud: {0}.	它用声音回答了：{0}。	src/core/realtime/open.js:298	{0} = words
+ip7w4y#other	draft	It didn't answer aloud within # seconds.	没有在 # 秒内用声音回答。	src/core/realtime/open.js:298	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	draft	The session closed before it answered.	回答前会话就关闭了。	src/core/realtime/open.js:299	
+9sqs1k	draft	It answered, but not aloud in words.	它回答了，但没有用声音说出话来。	src/core/realtime/open.js:299	
+ntqu7n	draft	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自己的插件使用这个名称，所以来自别处的包不能使用它。请让作者改名。	src/core/registry.js:16	
+1euv2cd	draft	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的插件使用这个名称，但已安装的那个来自别处，所以 annai 不会使用它。请在设置 → 插件中删除它，然后再试一次。	src/core/registry.js:17	
+oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/registry.js:18	
+f1c9to	draft	is switched off after repeated errors	因多次出错已被关闭	src/core/registry.js:217	
+1t55x9w	draft	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会让 {1} 无法运行：它需要 {2} {3}。请先更新 {4}，或保留这个版本。	src/core/requires.js:48	{0} = version; {1} = other; {2} = name; {3} = r.version; {4} = other
+189pevd	draft	needs {0}, which you turned off.	需要你已关闭的 {0}。	src/core/requires.js:73	{0} = named
+1i0uac3	draft	needs {0}, which isn't installed. Install it from {1} first, then try again.	需要尚未安装的 {0}。请先从 {1} 安装，然后再试一次。	src/core/requires.js:76	{0} = r.id; {1} = r.homepage
+j773ua	draft	needs {0}, which isn't installed. Install it first, then try again.	需要尚未安装的 {0}。请先安装，然后再试一次。	src/core/requires.js:78	{0} = r.id
+13cz3da	draft	needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:80	{0} = r.id; {1} = r.version; {2} = s.version
+111jct3	draft	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	需要 annai 的 {0}（{1}），但已安装的 {2} 来自别处，不是 annai 自己的。请在设置 → 插件中删除它，然后再试一次。	src/core/requires.js:84	{0} = e.name; {1} = r.id; {2} = r.id
+18yy3kp	draft	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}（已安装 {3}）。等 annai 有合适的版本后再试一次。	src/core/requires.js:87	{0} = e.name; {1} = r.version; {2} = e.version; {3} = s.version
+9ntdzt	draft	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}。等 annai 有合适的版本后再试一次。	src/core/requires.js:89	{0} = e.name; {1} = r.version; {2} = e.version
+gvuaip	draft	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:195	
+olo1mq	draft	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:198	
+seoih8	draft	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:200	{0} = entry.name
 stkvyf	draft	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	draft	System log	系统日志	src/core/scopes.js:42	
 ktdb8o	draft	Settings	设置	src/core/scopes.js:43	
@@ -380,6 +488,7 @@ xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in
 1j6uoln	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:164	
 1oy92m8	draft	This browser has no phone dictation either.	这个浏览器也没有手机语音输入。	src/core/voice/resolve.js:165	
 l80ifa	draft	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
+m5s9f4	draft	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:132	
 jo5o9d	draft	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:314	
 ocv5zw	draft	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:359	
 pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
@@ -500,8 +609,8 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 1s6dmy6	draft	Camera	相机	src/ui/dock.js:223	
 1rm0t76	draft	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:144	{0} = label; Note: {0} is a field's label.
 1a791in	draft	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:146	{0} = label; Note: {0} is a field's label.
-1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:231	
-12ek4is	draft	Saved	已保存	src/ui/dom.js:278	
+1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:232	
+12ek4is	draft	Saved	已保存	src/ui/dom.js:279	
 fj0t7x	draft	History (every version and the log)	历史（每个版本和日志）	src/ui/export-panel.js:21	
 oopaku	draft	Memory	记忆	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
 1l4mw9c	draft	Photos	照片	src/ui/export-panel.js:23	
@@ -731,24 +840,26 @@ u8epe6	draft	Downloading sends the plan's places to OpenStreetMap and Wikipedia,
 11sehoe	draft	Guides: {0}.	指南：{0}。	src/ui/offline-pack.js:51	{0} = list(m.guides.map((g) => g.title), 'plain')
 wc42uc	draft	It stopped at its {0} limit, so it holds only the start of the plan.	已达到{0}的上限，因此只包含行程的开头部分。	src/ui/offline-pack.js:52	{0} = size(MAX_BYTES)
 16n19op	draft	This plan is longer than a pack holds, so some of the way between stops is left out.	行程太长，离线包装不下，因此停留点之间的部分路段没有包含在内。	src/ui/offline-pack.js:53	
-1nbogz3#other	draft	# parts didn't download: {0} ({1}).	# 个部分未能下载：{0}（{1}）。	src/ui/offline-pack.js:56	plural; # = m.failed.length; {0} = f.label; {1} = f.why.replace(/[.!?]$/, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
-1pbas9l	draft	The download was stopped before the end.	下载在完成前被停止了。	src/ui/offline-pack.js:57	
-1nes6lp	draft	The plan changed since.	之后行程有了变化。	src/ui/offline-pack.js:61	
-w5716a	draft	Update (about {0})	更新（约{0}）	src/ui/offline-pack.js:62	{0} = about
-13cigs6	draft	Download the rest (about {0})	下载其余部分（约{0}）	src/ui/offline-pack.js:63	{0} = about
-o81vpw	draft	Try again (about {0})	重试（约{0}）	src/ui/offline-pack.js:63	{0} = about
-16r6naq	draft	It is more than a month old.	已超过一个月。	src/ui/offline-pack.js:65	
-1v2fms	draft	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	连接 Wi-Fi 时，只要这个旅行处于打开状态，annai 会自动保持它为最新。	src/ui/offline-pack.js:68	
-1vwbp7l	draft	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此浏览器不会告诉 annai 何时连着 Wi-Fi，请在这里更新。	src/ui/offline-pack.js:68	
-5pklax	draft	Offline pack	离线包	src/ui/offline-pack.js:78	
-1bk5sw	draft	What came is kept. Try again in a moment.	已下载的部分会保留。请稍后再试。	src/ui/offline-pack.js:85	
-v6p0ku	draft	The offline pack didn't download	离线包未能下载	src/ui/offline-pack.js:85	
-qtuxek	draft	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地点 © {0}；摘要来自 Wikipedia，指南来自 Wikivoyage，{1}。	src/ui/offline-pack.js:117	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-qdh58i	draft	No offline pack for this trip yet.	这个旅行还没有离线包。	src/ui/offline-pack.js:125	
-1l61m6n	draft	The offline pack is from before the plan changed.	离线包是行程变化之前的。	src/ui/offline-pack.js:126	
-ksuwxs	draft	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:127	
-r91312	draft	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:127	{0} = when; Note: {0} is a relative time ("2 hours ago").
+1nbogz3#other	draft	# parts didn't download: {0} ({1}).	# 个部分未能下载：{0}（{1}）。	src/ui/offline-pack.js:58	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
+1pbas9l	draft	The download was stopped before the end.	下载在完成前被停止了。	src/ui/offline-pack.js:59	
+1nes6lp	draft	The plan changed since.	之后行程有了变化。	src/ui/offline-pack.js:63	
+w5716a	draft	Update (about {0})	更新（约{0}）	src/ui/offline-pack.js:64	{0} = about
+13cigs6	draft	Download the rest (about {0})	下载其余部分（约{0}）	src/ui/offline-pack.js:65	{0} = about
+o81vpw	draft	Try again (about {0})	重试（约{0}）	src/ui/offline-pack.js:65	{0} = about
+16r6naq	draft	It is more than a month old.	已超过一个月。	src/ui/offline-pack.js:67	
+1v2fms	draft	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	连接 Wi-Fi 时，只要这个旅行处于打开状态，annai 会自动保持它为最新。	src/ui/offline-pack.js:70	
+1vwbp7l	draft	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此浏览器不会告诉 annai 何时连着 Wi-Fi，请在这里更新。	src/ui/offline-pack.js:70	
+5pklax	draft	Offline pack	离线包	src/ui/offline-pack.js:80	
+1bk5sw	draft	What came is kept. Try again in a moment.	已下载的部分会保留。请稍后再试。	src/ui/offline-pack.js:87	
+v6p0ku	draft	The offline pack didn't download	离线包未能下载	src/ui/offline-pack.js:87	
+qtuxek	draft	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地点 © {0}；摘要来自 Wikipedia，指南来自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+qdh58i	draft	No offline pack for this trip yet.	这个旅行还没有离线包。	src/ui/offline-pack.js:127	
+1l61m6n	draft	The offline pack is from before the plan changed.	离线包是行程变化之前的。	src/ui/offline-pack.js:128	
+ksuwxs	draft	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:129	
+r91312	draft	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 dbm7fe	draft	Open a trip someone sent you	打开别人发来的旅行	src/ui/open-file.js:6	
+ow6fak	draft	This browser could not draw the photo.	这个浏览器无法绘制这张照片。	src/ui/photo-codec.js:72	
+11dn6um	draft	This browser could not write {0}.	这个浏览器无法写出 {0}。	src/ui/photo-codec.js:80	{0} = type
 1l0xxoj	draft	Close	关闭	src/ui/photo-viewer.js:32	
 1s1o4yb	draft	Show Shiori this part	把这部分给 Shiori 看	src/ui/photo-viewer.js:33	
 u3xlwb	draft	The plugin "{0}" was turned off	插件“{0}”已关闭	src/ui/plugin-cards.js:12	{0} = name
@@ -868,10 +979,6 @@ s4bdkr	draft	{0}: each under the SIL Open Font License 1.1.	{0}：均依据 SIL 
 b5o954	draft	Model providers	模型提供商	src/ui/screens/add.js:26	
 elt1il	draft	Developer	开发者	src/ui/screens/add.js:26	
 lrurod	draft	Tools and MCP	工具和 MCP	src/ui/screens/add.js:26	
-17ifucf	draft	Transcription	语音转文字	src/ui/screens/add.js:28	
-9kdcjv	draft	Chat	聊天	src/ui/screens/add.js:28	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	draft	Voice	声音	src/ui/screens/add.js:28	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	draft	Live voice	实时语音	src/ui/screens/add.js:28	
 1pod8pr	draft	Experimental	实验性功能	src/ui/screens/add.js:30	
 hzmwb	draft	Models	模型	src/ui/screens/add.js:30	
 1n6w7a7	draft	That file isn't something annai can install	该文件不是 annai 能安装的内容	src/ui/screens/add.js:31	
@@ -917,7 +1024,6 @@ ksdme7	draft	Install from an address or a file	从地址或文件安装	src/ui/s
 1e2k1fe	draft	Address of a plugin or skill	插件或技能的地址	src/ui/screens/add.js:248	
 17bnagd	draft	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 文件、annai-plugin.json 或 SKILL.md，放在允许网页应用读取的网站上（GitHub 文件页面可以）。	src/ui/screens/add.js:249	
 7ikogv	draft	Install from a file	从文件安装	src/ui/screens/add.js:251	
-hn1sl5	draft	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/ui/screens/add.js:265	{0} = message(e)
 ai5f3u	draft	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	请先粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/ui/screens/add.js:293	
 1huuh2k	draft	Getting it…	正在获取…	src/ui/screens/add.js:298	
 16r9x4z	draft	From an Android phone	来自一部 Android 手机	src/ui/screens/backups.js:15	
@@ -1148,7 +1254,6 @@ dlgvv3	draft	Refresh tools	刷新工具	src/ui/screens/mcp.js:95
 j4kt4t	draft	{0} wasn't removed	{0}未能移除	src/ui/screens/mcp.js:100	{0} = s.name
 1gcnxbm	draft	This model no longer exists.	该模型已不存在。	src/ui/screens/model.js:43	
 3kaxmm	draft	Provider model id	提供商的模型 ID	src/ui/screens/model.js:78	
-4iiule	draft	Give the provider's model id.	请填写提供商的模型 ID。	src/ui/screens/model.js:79	
 h1nzmw	draft	This model no longer exists	该模型已不存在	src/ui/screens/model.js:94	
 u1a0kf	draft	Back to Models	返回模型	src/ui/screens/model.js:94	
 emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（已关闭）	src/ui/screens/model.js:102	{0} = ep.name; {1} = ability.name
@@ -1712,36 +1817,37 @@ qjf670	draft	Three identical tool calls in a row with identical results.	连续�
 glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:235	{0} = formatCost(c.total)
 td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:262	
 9e5yo5	draft	(a photo)	（照片）	src/ui/screens/talk.js:274	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:329	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:329	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:341	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:342	
-1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:350	
-1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:350	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:365	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:419	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:438	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:468	
-bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:469	
-7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:483	
-12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:485	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:485	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:485	
-va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:485	
-mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:488	
-10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:493	
-va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:500	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:501	
-czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:502	
-1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:512	{0} = messageOf(e)
-1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:515	
-3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:515	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:515	
-p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:515	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:535	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:536	
-159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:551	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:558	
+rqx5bo	draft	I adjusted my personality	我调整了自己的性格	src/ui/screens/talk.js:310	Note: Shiori's card, in her first person.
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:330	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:330	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:342	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:343	
+1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:351	
+1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:351	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:366	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:420	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:439	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:469	
+bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:470	
+7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:484	
+12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:486	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:486	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:486	
+va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:486	
+mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:489	
+10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:494	
+va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:501	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:502	
+czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:503	
+1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:513	{0} = messageOf(e)
+1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:516	
+3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:516	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:516	
+p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:516	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:536	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:537	
+159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:552	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:559	
 11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

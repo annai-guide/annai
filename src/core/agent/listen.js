@@ -10,11 +10,11 @@
 
 /** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */
 export function spokenText(spoken) {
-  if (!spoken.cut) return 'Said aloud.';
-  return spoken.heard ? `The user stopped you after: "${spoken.heard}".` : 'The user stopped you before you said anything.';
+  if (!spoken.cut) /* en */ return 'Said aloud.';
+  /* en */ return spoken.heard ? `The user stopped you after: "${spoken.heard}".` : 'The user stopped you before you said anything.';
 }
 
 /** A reply that couldn't be said aloud, for speak's result. @param {'no-voice' | 'blocked'} why */
 export function unspoken(why) {
-  return `Not said aloud: ${why === 'blocked' ? "the browser didn't let annai play sound yet" : 'no voice in the speech-out list could speak'}. It was shown on screen instead; the user may type.`;
+  /* en */ return `Not said aloud: ${why === 'blocked' ? "the browser didn't let annai play sound yet" : 'no voice in the speech-out list could speak'}. It was shown on screen instead; the user may type.`;
 }
