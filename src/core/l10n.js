@@ -82,7 +82,7 @@ function say(strings, values, context, words = table, cache = seen) {
   if (text === undefined) {
     const source = strings.reduce((s, p, i) => `${s}{${i - 1}}${p}`);
     const own = words?.[key(source, context)];
-    cache.set(strings, text = typeof own === 'string' && holes(own) === holes(source) ? own : pseudo ? pseudo(source) : source);
+    cache.set(strings, text = typeof own === 'string' && own && holes(own) === holes(source) ? own : pseudo ? pseudo(source) : source);
   }
   return text.replace(/\{(\d+)\}/g, (m, i) => wrap(values[i]));
 }
@@ -114,7 +114,7 @@ function count(words, n, one, other, values) {
   const own = forms && typeof forms === 'object' ? forms[(rules ??= new Intl.PluralRules(tag)).select(n)] ?? forms.other : undefined;
   // English without a translation, counted the English way.
   const english = Math.abs(n) === 1 ? one : other;
-  const text = typeof own === 'string' && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
+  const text = typeof own === 'string' && own && holes(own) === holes(`${one}${other}`) ? own : pseudo ? pseudo(english) : english;
   const shown = n.toLocaleString(locale());
   return text.replace(/#|\{(\d+)\}/g, (m, i) => (i === undefined ? shown : wrap(values[i])));
 }

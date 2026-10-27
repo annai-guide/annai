@@ -727,8 +727,8 @@ The manifest names the language its own words are written in (`language`, Englis
 - **`manifest`** gives the fields the screens show, by their path in your manifest: `description`; `keywords` (added to the
   English ones, so a search in the user's language finds you); a provider's `provider.note`, and each ability's `name`, `note` and
   `noWindowNote` (`provider.abilities.chat.note`); `search.key.note`; a setting's `title` and `description`, and the `title` of each of its
-  choices (`settings.properties.depth.oneOf.0.title`); and `featured`. **`name` is not one:** the install screen names the plugin the
-  user trusts the same way in every language. annai translates only its own plugins' descriptive names ("Custom provider").
+  choices (`settings.properties.depth.oneOf.0.title`); and `featured`. **A translated `name` is never shown:** the install screen names
+  the plugin the user trusts the same way in every language. annai shows only its own plugins' translated names ("Custom provider").
 - **`messages`** are your code's words, by key: the FNV-1a hash (32 bits) of the English as you write it in the code, in base 36,
   `{0}`, `{1}` … in place of its values. A plural's key is the hash of its two forms joined by `\0` (`"# tide\0# tides"`), and its
   translation an object of the language's plural categories (Japanese and Chinese have only `other`; English `one` and `other`).
@@ -739,15 +739,18 @@ The manifest names the language its own words are written in (`language`, Englis
 
 ### What annai checks
 
-At install, as the rest of the manifest, and refused with the reason:
+At install, and again at use. **A translation that fails a check is left out**, never a reason to refuse your plugin: it installs, its
+words show as written in that language, and the install screen says why in one line. Only a `language` that is no language tag, or
+more than 50 in `l10n`, refuses the manifest. Tags match in any case (`zh-hans`, `ja-jp`, `EN`); a file is read by its tag as you
+wrote it. A translation is used when:
 
-- `language` and each tag in `l10n` are language tags as written canonically (`ja`, `zh-Hans`, `pt-BR`; never `ja_JP` or `EN`), at most
-  50, none twice;
-- each listed file is there (an install from an address fetches them itself), JSON, at most 256 KiB, an object with only `manifest`
-  and `messages`;
+- its tag is a language tag, listed once;
+- its file is there (an install from an address fetches it, and leaves it out when the host doesn't have it), JSON, at most 256 KiB,
+  an object with only `manifest` and `messages`;
 - every `manifest` key is a field a translation may give that your manifest has, within that field's own limit (500 characters for a
   description, 1,000 for a note, 200 for a title, 40 for a keyword, up to 20 more keywords);
-- every message is text, or the language's plural forms, each at most 2,000 characters.
+- every message is text, or the language's plural forms, each at most 2,000 characters. An empty text is no translation: your own
+  words show there.
 
 At use, a translation whose placeholders aren't its English's is skipped, and the English shows. A translation is text: it reaches
 the page as text, never as HTML. The install screen's warnings (full access, whose keys it could read, where searches and keys go) are

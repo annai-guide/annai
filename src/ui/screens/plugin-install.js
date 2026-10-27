@@ -269,6 +269,8 @@ export async function renderPluginInstall(ctx) {
     h('p', { class: 'sub', text: line }),
     home ? h('p', {}, h('a', { href: home, target: '_blank', rel: 'noopener noreferrer', text: home })) : null,
     words.manifest.description ? h('p', { text: words.manifest.description, lang: shownIn }) : null,
+    // A translation left out (fail working): its developer's words, one line each.
+    ...(pkg.left ?? []).map((l) => h('p', { class: 'sub', lang: 'en', text: /* en */ `A translation is left out: ${l.why}.` })),
     h('p', { class: 'sub', text: sourceLine(from) }),
     taken ? h('p', { class: 'error', role: 'alert', text: taken }) : null,
     h('section', { class: 'panel', 'aria-label': t`What it brings` },

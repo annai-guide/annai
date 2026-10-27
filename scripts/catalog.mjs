@@ -46,7 +46,7 @@ for (const e of (await readdir(dir, { withFileTypes: true })).filter((x) => x.is
   for (const tag of manifest.l10n ?? []) {
     const file = join(base, 'l10n', `${tag}.json`);
     const bytes = await readFile(file).catch(() => undefined);
-    const wrong = checkTranslation(manifest, tag, bytes && new Uint8Array(bytes), true);
+    const wrong = checkTranslation(manifest, tag, bytes && new Uint8Array(bytes));
     if (wrong) throw new Error(`plugins-official/${e.name}: ${wrong}`);
     // What the Add screen shows of it in that language.
     const own = JSON.parse(String(bytes)).manifest ?? {};

@@ -36,20 +36,16 @@ test('a plugin with its language and a translation is accepted, and keeps its En
   await inspectPackage(pkg(TIDES({ language: undefined, l10n: ['en-GB'] }), null).set('l10n/en-GB.json', new TextEncoder().encode(JSON.stringify({ messages: { a: { one: 'x', other: 'y' } } }))));
 });
 
-test("each of the design's checks refuses, saying why in plain words", async () => {
+test("a translation that fails a check is left out, saying why in a developer's line; the plugin installs all the same (fail working)", async () => {
   /** @type {[Map<string, Uint8Array>, RegExp][]} */
   const cases = [
-    [pkg(TIDES({ language: 'EN' })), /"EN" isn't a language tag as written canonically/],
     [pkg(TIDES({ l10n: ['ja_JP'] })), /"ja_JP" isn't a language tag/],
-    [pkg(TIDES({ l10n: ['ja', 'ja'] })), /lists a language twice/],
-    [pkg(TIDES({ l10n: Array.from({ length: 51 }, (_, i) => `x-${i}`) })), /at most 50|maxItems|50/],
     [pkg(TIDES(), null), /l10n\/ja\.json, listed in l10n, is missing/],
     [pkg(TIDES(), '{ not json'), /l10n\/ja\.json is not valid JSON/],
     [pkg(TIDES(), JSON.stringify({ messages: { a: 'x'.repeat(L10N_MAX_BYTES) } })), /larger than 256 KiB/],
     [pkg(TIDES(), '[]'), /object with only manifest and messages/],
     [pkg(TIDES(), { ...JA, extra: {} }), /object with only manifest and messages/],
-    [pkg(TIDES(), { manifest: { name: 'アクメ潮汐' } }), /translates name, which isn't a field a translation may give/],
-    [pkg(TIDES(), { manifest: { version: '2' } }), /translates version/],
+    [pkg(TIDES(), { manifest: { version: '2' } }), /translates version, which isn't a field a translation may give/],
     [pkg(TIDES(), { manifest: { 'settings.properties.wind.title': '風' } }), /translates settings\.properties\.wind\.title, which this manifest doesn't have/],
     [pkg(TIDES(), { manifest: { featured: '潮' } }), /translates featured, which this manifest doesn't have/],
     [pkg(TIDES(), { manifest: { description: 'あ'.repeat(501) } }), /description must be text of up to 500 characters/],
@@ -61,17 +57,50 @@ test("each of the design's checks refuses, saying why in plain words", async () 
     [pkg(TIDES(), { messages: { a: 'あ'.repeat(2001) } }), /up to 2000 characters/],
   ];
   for (const [f, why] of cases) {
-    await assert.rejects(inspectPackage(f), (e) => e instanceof PluginError && why.test(/** @type {Error} */ (e).message), String(why));
+    const p = await inspectPackage(f);
+    assert.equal(p.id, 'acme-tides', String(why));
+    assert.equal(p.left.length, 1, String(why));
+    assert.match(p.left[0].why, why);
   }
-  // The tags are checked with the rest of the manifest, so a stored one is checked again as it starts.
+  // Left out at use too: a stored package's bad translation shows its own words.
+  setWords('ja', {});
+  const bad = new TextEncoder().encode(JSON.stringify({ messages: { a: { one: '潮', other: '潮' } } }));
+  assert.equal(wordsOf(TIDES(), () => bad).lang, 'en');
+  // The list is part of the manifest: more than 50 is refused, and a language that is no tag at all.
+  await assert.rejects(inspectPackage(pkg(TIDES({ l10n: Array.from({ length: 51 }, (_, i) => `x-${i}`) }))), /50/);
   assert.throws(() => checkManifest(TIDES({ language: 'en_US' })), /isn't a language tag/);
 });
 
-test("annai's own plugins may translate their descriptive names; a third party's name is shown as written (decision 10)", async () => {
+test('tags in another case are the same tag: "EN", "ja-jp" and "zh-hans" are accepted, and each file is read by its tag as written', async () => {
+  const p = await inspectPackage(pkg(TIDES({ language: 'EN', l10n: ['ja-jp', 'ja-JP'] }), null).set('l10n/ja-jp.json', new TextEncoder().encode(JSON.stringify(JA))).set('l10n/ja-JP.json', new TextEncoder().encode(JSON.stringify(JA))));
+  assert.deepEqual(p.left.map((x) => x.tag), ['ja-JP'], 'the same language twice: the second is left out');
+  assert.equal(translationFor(TIDES({ l10n: ['zh-hans'] }), 'zh-Hans'), 'zh-hans');
+  assert.equal(translationFor(TIDES({ language: 'EN', l10n: ['ja'] }), 'en'), null);
+  setWords('zh-Hans', {});
+  const zh = { manifest: { description: '你所在海岸的潮汐表。' } };
+  const w = wordsOf(TIDES({ l10n: ['zh-hans'] }), (f) => (f === 'l10n/zh-hans.json' ? new TextEncoder().encode(JSON.stringify(zh)) : undefined));
+  assert.equal(w.manifest.description, '你所在海岸的潮汐表。');
+});
+
+test("a third party's translated name is accepted and never shown: its name is as written in every language (decision 10)", async () => {
   const named = { manifest: { name: 'アクメ潮汐' } };
-  await assert.rejects(inspectPackage(pkg(TIDES(), named)), /translates name/);
-  const p = await inspectPackage(pkg(TIDES(), named), { official: true });
+  const p = await inspectPackage(pkg(TIDES(), named));
+  assert.deepEqual(p.left, []);
   assert.equal(p.name, 'Acme Tides');
+  setWords('ja', {});
+  const k = await hostKit();
+  await k.host.install(pkg(TIDES(), named));
+  assert.equal((await k.host.describe()).find((r) => r.id === 'acme-tides')?.name, 'Acme Tides');
+});
+
+test("an empty translation is no translation: the plugin's own words show", () => {
+  setWords('ja', {});
+  const w = wordsOver({ [key('Low tide.')]: '', [key('# tide\0# tides')]: { other: '' } });
+  assert.equal(w.t`Low tide.`, 'Low tide.');
+  assert.equal(w.plural(2, '# tide', '# tides'), '2 tides');
+  const m = wordsOf(TIDES(), () => new TextEncoder().encode(JSON.stringify({ manifest: { description: '', keywords: [''] } }))).manifest;
+  assert.equal(m.description, 'Tide tables for the coast you are on.');
+  assert.deepEqual(m.keywords, ['tides']);
 });
 
 test('which translation the screens use: none in its own language, else the one listed for the language', () => {
@@ -155,8 +184,14 @@ test("a plugin's card and toast carry its words' language", async () => {
 
 test('an address install brings the translations its manifest lists', async () => {
   const site = new Map([['https://x.example/p/annai-plugin.json', JSON.stringify(TIDES())], ['https://x.example/p/l10n/ja.json', JSON.stringify(JA)]]);
-  const got = await fetchPackage('https://x.example/p/annai-plugin.json', { fetch: async (url) => (site.has(url) ? new Response(site.get(url)) : new Response('', { status: 404 })) });
+  const get = async (/** @type {string} */ url) => (site.has(url) ? new Response(site.get(url)) : new Response('', { status: 404 }));
+  const got = await fetchPackage('https://x.example/p/annai-plugin.json', { fetch: get });
   assert.deepEqual([...got.keys()].sort(), ['annai-plugin.json', 'l10n/ja.json']);
+  // A host without one of them installs all the same: it is left out.
+  site.delete('https://x.example/p/l10n/ja.json');
+  const without = await fetchPackage('https://x.example/p/annai-plugin.json', { fetch: get });
+  assert.deepEqual([...without.keys()], ['annai-plugin.json']);
+  assert.match((await inspectPackage(without)).left[0].why, /missing/);
 });
 
 test("a plugin's refusal is kept in its English, its words beside it with their language, shown only in that language", () => {
@@ -200,14 +235,4 @@ test("the catalog's words for the screens: none in English; an entry in their wo
   assert.deepEqual(shownEntry(entry, words), { ...entry, description: 'AIエージェント向けのウェブ検索。', keywords: ['Tavily', '検索'], lang: 'ja' });
   assert.equal(shownEntry({ ...entry, id: 'search-serper' }, words).lang, 'en');
   assert.equal(await catalogWords({ fetch: async () => new Response('', { status: 404 }) }), null, "words that can't be had: English");
-});
-
-test("annai's own plugin, installed from its catalog with what it requires, may translate its name; one from a file may not", async () => {
-  const { installWith } = await import('../../src/core/requires.js');
-  const k = await hostKit();
-  const named = () => pkg(TIDES(), { manifest: { name: 'アクメ潮汐' } });
-  await installWith(k.host, named(), { source: 'official' }, { catalog: [] });
-  assert.equal((await k.host.installed())['acme-tides']?.source, 'official');
-  const other = await hostKit();
-  await assert.rejects(installWith(other.host, named(), { source: 'file' }, { catalog: [] }), /translates name/);
 });
