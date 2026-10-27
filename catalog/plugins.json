@@ -699,7 +699,7 @@
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
       "category": "developer",
       "keywords": [],
@@ -707,7 +707,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 9317,
+      "size": 9861,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -716,8 +716,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "ac2ad686e60fb1eda0e124a282543c5a114620702b41009aa5c1ff90d5e9b66c",
-        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92"
+        "annai-plugin.json": "83da81640186ba0fa86867c69b6bafd4ac58938f69d430b6fa75c1271416e22c",
+        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92",
+        "l10n/ja.json": "a9b094294d25ea2bda1dea0be13887ffdbefc6d0735aee3f4af72ae4eb83002b",
+        "l10n/zh-Hans.json": "2672c7f3bb4dbbd2e498d1cecd385f978703f868fcadf1da704390dfb159d86c"
       }
     },
     {

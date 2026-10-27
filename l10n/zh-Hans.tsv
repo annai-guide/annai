@@ -12,6 +12,8 @@ openai-responses:@description	draft	Talks to OpenAI's Responses API and to serve
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	
+speech-openai:@name	draft	OpenAI-compatible speech	OpenAI 兼容语音	plugins-official/speech-openai/annai-plugin.json:3	
+speech-openai:@description	draft	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。	plugins-official/speech-openai/annai-plugin.json:8	
 1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:32	
 1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:62	
 cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:63	

@@ -12,6 +12,8 @@ openai-responses:@description	draft	Talks to OpenAI's Responses API and to serve
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral のモデル。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	モデルは「モデルの一覧を取得」で追加します。	plugins-official/provider-mistral/annai-plugin.json:23	
+speech-openai:@name	draft	OpenAI-compatible speech	OpenAI 互換の音声	plugins-official/speech-openai/annai-plugin.json:3	
+speech-openai:@description	draft	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。	plugins-official/speech-openai/annai-plugin.json:8	
 1aajvdy	ok	Opening annai…	annai を開いています…	src/app/boot.js:32	
 1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:62	
 cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:63	
