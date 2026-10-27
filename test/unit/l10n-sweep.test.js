@@ -60,7 +60,7 @@ test("a server's answer a storage plugin can't read: the hold keeps what it was,
   await d.backups.backUp(id).catch(() => {});
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, "the bucket answered something annai can't read. annai tries again later.");
-  assert.deepEqual(hold.said, { code: 'unreadable', name: 'the bucket' });
+  assert.deepEqual(hold.said, { code: 'unreadable', where: 'the bucket' });
   assert.equal(holdWords(hold), 'the bucket から annai が読めない応答が届きました。annai はあとでもう一度試します。');
 });
 
@@ -89,4 +89,53 @@ test("a typed address, prices and a server's answer: the screens' words, and Eng
 test("an offline pack's failure: which part and why, in Japanese from the data it keeps", () => {
   assert.equal(partWords({ source: 'osm', place: { how: 'between', names: ['Bixby', 'Nepenthe'] } }), 'Bixby と Nepenthe のあいだの OpenStreetMap');
   assert.equal(failWords({ code: 'osm', inner: { code: 'status', where: 'overpass.example', status: 504 }, message: 'x' }), 'OpenStreetMap が応答しませんでした（overpass.example が 504 を返しました）。');
+});
+
+// Review 1: one said vocabulary for servers (answer.js), kept by holds and a pack's failures, and an export's failure (archive.js).
+const { tracedFetch } = await import('../../src/core/agent/net.js');
+const { downloadPack } = await import('../../src/core/pack/download.js');
+const { packTrip } = await import('./pack-kit.js');
+const down = async () => { throw new TypeError('Failed to fetch'); };
+
+test("a storage plugin's server that can't be reached while the phone is online: the hold keeps what it was, and says it in Japanese", async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  const id = await d.backups.add('memory');
+  place.failNext(await tracedFetch(d.store, SYS, { tool: 'backup' }, down)('https://dav.example.com/x').catch((x) => x));
+  await d.backups.backUp(id).catch(() => {});
+  const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
+  assert.equal(hold.message, "annai couldn't reach dav.example.com (Failed to fetch). Is the device offline?");
+  assert.deepEqual(hold.said, { code: 'unreachable', where: 'dav.example.com', info: 'Failed to fetch' });
+  assert.equal(holdWords(hold), 'annai は dav.example.com につながりませんでした（Failed to fetch）。この端末はオフラインですか？annai はあとでもう一度試します。');
+});
+
+test("an offline pack whose servers can't be reached: its failure keeps what it was, and the panel says it in Japanese", async () => {
+  const { ws, trip } = await packTrip();
+  const m = await downloadPack({ ws, scope: trip, fetch: tracedFetch(ws.store, trip, { tool: 'offline-pack' }, down), version: '9.9.9', gapMs: 0, busyMs: 1 });
+  const [f] = m.failed;
+  assert.equal(f.said?.code, 'osm');
+  assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'overpass.private.coffee', info: 'Failed to fetch' });
+  assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMap が応答しませんでした（annai は overpass\.private\.coffee につながりませんでした（Failed to fetch）。この端末はオフラインですか？）。$/);
+});
+
+test("an export that fails while backing up: the hold keeps what it was in data, English in message, and its card says it in Japanese", async () => {
+  const place = memoryPlace();
+  const d = await device(place);
+  const id = await d.backups.add('memory');
+  await d.ws.write(d.trip, '/notes/a.md', 'Tea at four.', { author: 'user' });
+  const hash = (await d.ws.read(d.trip, '/notes/a.md'))?.entry.hash;
+  await d.store.tx(['blobs'], 'readwrite', (t) => t.deleteBlob(/** @type {string} */ (hash)));
+  const e = await d.backups.backUp(id).catch((x) => x);
+  assert.match(messageOf(e), /の内容がストレージにないため/);
+  const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
+  assert.equal(hold.message, 'The content of /notes/a.md is missing from storage.');
+  assert.deepEqual(hold.said, { code: 'content-missing', path: '/notes/a.md' });
+  assert.match(holdWords(hold), /^\/notes\/a\.md の内容がストレージにないため/);
+});
+
+test("a hold whose said this annai doesn't know is shown as an old hold, never as 'this device is offline'", async () => {
+  const { oldHold } = await import('../../src/core/backup.js');
+  const later = { kind: 'error', message: 'Something a later annai said.', said: { code: 'from-later' }, at: 1, count: 1, retryAt: 2, needsYou: false };
+  assert.equal(oldHold(later), true);
+  assert.equal(holdWords(/** @type {any} */ (later)), 'Something a later annai said.');
 });

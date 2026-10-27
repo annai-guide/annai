@@ -122,61 +122,59 @@ vbsaso	draft	Until it is tidied up, the conversation is too long for her model. 
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
-1ptx7ob	draft	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:93	
-myk8x4	draft	annai couldn't reach {0} ({1}). Is the device offline?	annai は {0} につながりませんでした（{1}）。この端末はオフラインですか？	src/core/agent/net.js:218	{0} = host; {1} = said; Note: {1} is the browser's own words, often English.
-uc7dg2	draft	annai couldn't reach {0}. Is the device offline?	annai は {0} につながりませんでした。この端末はオフラインですか？	src/core/agent/net.js:218	{0} = host
+1ptx7ob	draft	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	draft	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	draft	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	draft	Agree	同意する	src/core/agent/personalities.js:131	
-15czcef	draft	{0} answered {1}.	{0} が {1} を返しました。	src/core/answer.js:13	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
-1nhf5ew	draft	{0} sent an answer annai can't read.	{0} から annai が読めない応答が届きました。	src/core/answer.js:14	{0} = where
-17yvnnz	draft	{0} sent more than annai reads ({1}).	{0} から annai が読める量（{1}）を超える応答が届きました。	src/core/answer.js:15	{0} = where; {1} = size(s.mb * 1_048_576)
-9rf9qv	draft	{0}'s answer was cut off.	{0} の応答が途中で切れました。	src/core/answer.js:16	{0} = where
+myk8x4	draft	annai couldn't reach {0} ({1}). Is the device offline?	annai は {0} につながりませんでした（{1}）。この端末はオフラインですか？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
+uc7dg2	draft	annai couldn't reach {0}. Is the device offline?	annai は {0} につながりませんでした。この端末はオフラインですか？	src/core/answer.js:18	{0} = where
+15czcef	draft	{0} answered {1}.	{0} が {1} を返しました。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
+1nhf5ew	draft	{0} sent an answer annai can't read.	{0} から annai が読めない応答が届きました。	src/core/answer.js:20	{0} = where
+17yvnnz	draft	{0} sent more than annai reads ({1}).	{0} から annai が読める量（{1}）を超える応答が届きました。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
+9rf9qv	draft	{0}'s answer was cut off.	{0} の応答が途中で切れました。	src/core/answer.js:22	{0} = where
 1im1t3t	draft	Enter a passphrase to encrypt the file.	ファイルを暗号化するパスフレーズを入力してください。	src/core/archive-crypto.js:66	
 1bw0b6k	draft	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	draft	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
 qh6gdt	draft	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
-4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:69	
-am2v0c	draft	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを暗号化したバックアップだけです。	src/core/archive.js:159	
-13a6l3r	draft	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:166	
-4ngq1	draft	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:266	{0} = why; Note: {0} is a developer's detail, in English.
-gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:340	{0} = path
-1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:354	
-q7ee2s	draft	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:358	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:361	{0} = path
-hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:386	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:388	
-j0v5kk	draft	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:395	
-lfeohr#other	draft	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:401	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	draft	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:417	
-1aqa7w5	draft	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:429	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	draft	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:434	{0} = name
-21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:460	{0} = i + 1; {1} = name
-1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:464	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	draft	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:544	
-qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:648	
-cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:649	
-pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:37	{0} = s.name
-al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:38	{0} = s.name
-1cm4kmv	draft	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	src/core/backup.js:39	{0} = size(s.bytes ?? 0)
-3t4mx2	draft	There is a newer backup at {0}.	{0} に新しいバックアップがあります。	src/core/backup.js:40	{0} = s.name
-1atge5k	draft	{0} sent an answer larger than annai reads ({1}). annai tries again later.	{0} から annai が読める量（{1}）を超える応答が届きました。annai はあとでもう一度試します。	src/core/backup.js:41	{0} = s.name; {1} = size(s.bytes ?? 0)
-js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} から annai が読めない応答が届きました。annai はあとでもう一度試します。	src/core/backup.js:42	{0} = s.name
-1wsnrwc	draft	The connection to {0} broke while annai read its answer. annai tries again later.	応答を読んでいる途中で {0} との接続が切れました。annai はあとでもう一度試します。	src/core/backup.js:43	{0} = s.name
-1r146xn	draft	This phone is offline, so annai couldn't reach this place.	この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:44	
-1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	この iPad はオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:45	
-1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	このコンピュータはオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:46	
-bbv043	draft	This device is offline, so annai couldn't reach this place.	このデバイスはオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:47	
-1oqcoyx	draft	annai tries again once it's back online.	オンラインに戻ると、annai はもう一度試します。	src/core/backup.js:56	
-16b3dai	draft	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:143	
-mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai はこの種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:342	
-lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	メガバイト数を入力するか、上限なしなら空欄にしてください。	src/core/backup.js:359	
-1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:370	
-tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:378	
-230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:379	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	draft	Works.	動作しています。	src/core/backup.js:423	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	draft	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:474	
-173rmiu	draft	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:475	
+4ngq1	draft	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:64	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:65	{0} = s.path
+13a6l3r	draft	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:66	
+am2v0c	draft	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを暗号化したバックアップだけです。	src/core/archive.js:66	
+4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:86	
+1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:371	
+q7ee2s	draft	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:375	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:378	{0} = path
+hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:403	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:405	
+j0v5kk	draft	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:412	
+lfeohr#other	draft	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:418	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	draft	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:434	
+1aqa7w5	draft	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:446	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	draft	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:451	{0} = name
+21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:477	{0} = i + 1; {1} = name
+1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:481	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	draft	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:561	
+qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:665	
+cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:666	
+e0756x	draft	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:40	
+pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:42	{0} = s.name
+al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:43	{0} = s.name
+1cm4kmv	draft	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	src/core/backup.js:44	{0} = size(s.bytes ?? 0)
+3t4mx2	draft	There is a newer backup at {0}.	{0} に新しいバックアップがあります。	src/core/backup.js:45	{0} = s.name
+1r146xn	draft	This phone is offline, so annai couldn't reach this place.	この端末はオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:47	
+1skrtkx	draft	This iPad is offline, so annai couldn't reach this place.	この iPad はオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:48	
+1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	このコンピュータはオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:49	
+bbv043	draft	This device is offline, so annai couldn't reach this place.	このデバイスはオフラインのため、annai はこのバックアップ先に接続できませんでした。	src/core/backup.js:50	
+1oqcoyx	draft	annai tries again once it's back online.	オンラインに戻ると、annai はもう一度試します。	src/core/backup.js:59	
+16b3dai	draft	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:146	
+mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai はこの種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:345	
+lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	メガバイト数を入力するか、上限なしなら空欄にしてください。	src/core/backup.js:362	
+1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:373	
+tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:381	
+230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:382	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	draft	Works.	動作しています。	src/core/backup.js:426	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	draft	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:477	
+173rmiu	draft	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:478	
 14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末の annai の保存領域がいっぱいです。不要になった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/core/errors.js:31	
 1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai が別のタブで開かれたため、このタブでは止まりました。ここで annai を使うには、このタブを再読み込みしてください。	src/core/errors.js:32	
 gnrtev	draft	Shiori can't reach her model.	Shiori がモデルにつながりません。	src/core/errors.js:33	

@@ -51,15 +51,32 @@ export function isFullBackup(include, share) {
   return !share && include.history && include.memory && include.photos;
 }
 
+/**
+ * An export's failure, as data a backup's hold keeps (backup.js): its screens' words are archiveWords'.
+ * @typedef {{ code: 'keys-plain' | 'nothing' } | { code: 'unbuildable', why: string } | { code: 'content-missing', path: string }} ArchiveSaid
+ */
+
+/** The codes archiveWords knows. */
+export const ARCHIVE_CODES = new Set(['keys-plain', 'nothing', 'unbuildable', 'content-missing']);
+
+/** An export's failure in the screens' words, from its data. @param {ArchiveSaid} s */
+export function archiveWords(s) {
+  if (s.code === 'unbuildable') return t`annai couldn't build a file it could open again: ${s.why}`;
+  if (s.code === 'content-missing') return t`The content of ${s.path} is missing from storage, so it can't be exported.`;
+  return s.code === 'nothing' ? t`There is nothing to export.` : t`API keys can only be included in an encrypted backup of everything.`;
+}
+
 export class ArchiveError extends Error {
   /**
    * @param {string} message in annai's English, as a log (a backup's, backup.js) or a model may read it
-   * @param {{ shown?: string, newer?: boolean }} [o] shown: the screens' words (the shown rule); newer: the file was made by a newer annai
+   * @param {{ shown?: string, said?: ArchiveSaid, newer?: boolean }} [o] shown: the screens' words (the shown rule), else said's;
+   *   said: what an export's failure was, which a hold keeps; newer: the file was made by a newer annai
    */
-  constructor(message, { shown, newer = false } = {}) {
+  constructor(message, { shown, said, newer = false } = {}) {
     super(message);
     this.name = /* en */ 'ArchiveError';
-    this.shown = shown;
+    this.shown = shown ?? (said ? archiveWords(said) : undefined);
+    this.said = said;
     this.newer = newer;
   }
 }
@@ -156,14 +173,14 @@ const EVENT_SCHEMA = {
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
   if (opts.secrets && (opts.kind !== 'everything' || !opts.passphrase)) {
-    throw new ArchiveError(/* en */ `API keys can only be included in an encrypted backup of everything.`, { shown: t`API keys can only be included in an encrypted backup of everything.` });
+    throw new ArchiveError(/* en */ `API keys can only be included in an encrypted backup of everything.`, { said: { code: 'keys-plain' } });
   }
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
     // This device's own scope never travels (spec §12.4); the system log goes only with history.
     : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
-  if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { shown: t`There is nothing to export.` });
+  if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { said: { code: 'nothing' } });
 
   /** @type {Manifest} */
   const manifest = {
@@ -263,7 +280,7 @@ export async function exportArchive(store, opts) {
   const problems = validate(MANIFEST_SCHEMA, manifest);
   if (problems.length) {
     const why = problems.join('; ');
-    throw new ArchiveError(/* en */ `annai couldn't build a file it could open again: ${why}`, { shown: t`annai couldn't build a file it could open again: ${why}` });
+    throw new ArchiveError(/* en */ `annai couldn't build a file it could open again: ${why}`, { said: { code: 'unbuildable', why } });
   }
   let blob = zip.finish();
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
@@ -337,7 +354,7 @@ async function sharePhoto(f, bytes, share) {
 async function readBlob(store, hash, path) {
   const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
   if (!(rec?.data instanceof ArrayBuffer)) {
-    throw new ArchiveError(/* en */ `The content of ${path} is missing from storage.`, { shown: t`The content of ${path} is missing from storage, so it can't be exported.` });
+    throw new ArchiveError(/* en */ `The content of ${path} is missing from storage.`, { said: { code: 'content-missing', path } });
   }
   return new Uint8Array(rec.data);
 }
