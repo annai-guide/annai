@@ -8,6 +8,9 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 import { setupUi } from '../../src/ui/provider-setup.js';
 import { hostKit } from './package-kit.js';
 import { AUTH_URL, KEYS_URL, signInUrl, codeSignIn, tapCode, exchange, freeLimit, openRouter } from '../../plugins-official/provider-openrouter/index.js';
+import { pluginWords } from './l10n-kit.js';
+
+const l10n = pluginWords();
 
 // Sign in with OpenRouter is OpenRouter's plugin's own setup (milestone 4): OAuth with PKCE, a code to paste on
 // an iPhone Home Screen app, one provider with one key for chat, transcription and voice, its speech models
@@ -78,7 +81,7 @@ async function device({ chat = /** @type {() => Response} */ (() => new Response
 async function signIn(d, { provider = null, keys = async () => new Response(JSON.stringify({ key: KEY })) } = {}) {
   const storage = memoryStorage();
   const url = new URL(await signInUrl({ callback: 'https://annai.guide/', provider, storage }));
-  const setup = openRouter({ storage, fetch: keys, card: (c) => d.cards.push(c) });
+  const setup = openRouter({ l10n, storage, fetch: keys, card: (c) => d.cards.push(c) });
   await setup.returned(new URLSearchParams(`?code=abc&state=${url.searchParams.get('state')}`), setupUi(d.ctx, 'provider-openrouter'));
   return storage;
 }
@@ -130,16 +133,16 @@ test('exchange: the code and the verifier buy a key; a strange state, an old sig
   /** @type {any} */
   let sent = null;
   const fetch = async (/** @type {any} */ url, /** @type {any} */ init) => { sent = { url, body: JSON.parse(init.body) }; return new Response(JSON.stringify({ key: 'sk-or-new' })); };
-  await assert.rejects(exchange({ code: 'c', state: 'not-ours', fetch, storage, now: 2000 }), /didn't start in this browser/);
-  assert.equal(await exchange({ code: ' c ', state: s.state, fetch, storage, now: 2000 }), 'sk-or-new');
+  await assert.rejects(exchange({ l10n, code: 'c', state: 'not-ours', fetch, storage, now: 2000 }), /didn't start in this browser/);
+  assert.equal(await exchange({ l10n, code: ' c ', state: s.state, fetch, storage, now: 2000 }), 'sk-or-new');
   assert.equal(sent.url, KEYS_URL);
   assert.deepEqual(sent.body, { code: 'c', code_verifier: s.verifier, code_challenge_method: 'S256' });
   assert.equal(storage.getItem('annai.openrouter'), null, 'the verifier is used once');
   await signInUrl({ callback: null, storage, now: 3000 });
-  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('{}'), storage, now: 3000 }), /didn't send a key/);
-  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: async () => new Response('no', { status: 500 }), storage, now: 3000 }), /HTTP 500/);
+  await assert.rejects(exchange({ l10n, code: 'c', state: null, pasted: true, fetch: async () => new Response('{}'), storage, now: 3000 }), /didn't send a key/);
+  await assert.rejects(exchange({ l10n, code: 'c', state: null, pasted: true, fetch: async () => new Response('no', { status: 500 }), storage, now: 3000 }), /HTTP 500/);
   await signInUrl({ callback: 'https://annai.guide/', storage, now: 1000 });
-  await assert.rejects(exchange({ code: 'c', state: 'any', fetch, storage, now: 1000 + 16 * 60_000 }), /expired/);
+  await assert.rejects(exchange({ l10n, code: 'c', state: 'any', fetch, storage, now: 1000 + 16 * 60_000 }), /expired/);
 });
 
 test("the code and the verifier never follow a redirect: together they'd buy a key for whoever is at the other end (fix pass)", async () => {
@@ -149,9 +152,9 @@ test("the code and the verifier never follow a redirect: together they'd buy a k
   const inits = [];
   const answer = (/** @type {any} */ res) => async (/** @type {any} */ _url, /** @type {any} */ init) => { inits.push(init); return res; };
   const opaque = /** @type {any} */ ({ type: 'opaqueredirect', status: 0, ok: false, json: async () => ({ key: 'sk-or-elsewhere' }) });
-  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: answer(opaque), storage, now: 2000 }), /OpenRouter answered with a redirect, which annai doesn't follow with your sign-in/);
+  await assert.rejects(exchange({ l10n, code: 'c', state: null, pasted: true, fetch: answer(opaque), storage, now: 2000 }), /OpenRouter answered with a redirect, which annai doesn't follow with your sign-in/);
   const moved = new Response(null, { status: 307, headers: { location: 'https://elsewhere.example/keys' } });
-  await assert.rejects(exchange({ code: 'c', state: null, pasted: true, fetch: answer(moved), storage, now: 2000 }), /redirect/);
+  await assert.rejects(exchange({ l10n, code: 'c', state: null, pasted: true, fetch: answer(moved), storage, now: 2000 }), /redirect/);
   assert.ok(inits.length === 2 && inits.every((i) => i.redirect === 'manual'));
 });
 
@@ -159,22 +162,22 @@ test("a code OpenRouter won't take, an old sign-in and an empty paste each say w
   const storage = memoryStorage();
   await signInUrl({ callback: null, storage, now: 1000 });
   const expired = async () => Response.json({ error: { code: 403, message: 'Authorization code expired' } }, { status: 403 });
-  await assert.rejects(exchange({ code: 'old', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /works once, for 10 minutes.*Tap Sign in with OpenRouter/);
+  await assert.rejects(exchange({ l10n, code: 'old', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /works once, for 10 minutes.*Tap Sign in with OpenRouter/);
   assert.ok(storage.getItem('annai.openrouter'), 'kept: a new code from the same sign-in still fits');
-  await assert.rejects(exchange({ code: '  ', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /Paste the code/);
-  await assert.rejects(exchange({ code: 'late', state: null, pasted: true, fetch: expired, storage, now: 1000 + 16 * 60_000 }), /expired.*Tap Sign in with OpenRouter to start again/);
+  await assert.rejects(exchange({ l10n, code: '  ', state: null, pasted: true, fetch: expired, storage, now: 2000 }), /Paste the code/);
+  await assert.rejects(exchange({ l10n, code: 'late', state: null, pasted: true, fetch: expired, storage, now: 1000 + 16 * 60_000 }), /expired.*Tap Sign in with OpenRouter to start again/);
   assert.equal(storage.getItem('annai.openrouter'), null);
-  await assert.rejects(exchange({ code: 'again', state: 'x', fetch: expired, storage, now: 2000 }), /^Error: annai has no sign-in waiting for this code: it was used already, or began in another browser\.$/);
+  await assert.rejects(exchange({ l10n, code: 'again', state: 'x', fetch: expired, storage, now: 2000 }), /^Error: annai has no sign-in waiting for this code: it was used already, or began in another browser\.$/);
 });
 
 test('a callback without the state is refused, and a code may be pasted only in a sign-in that asked for one (login CSRF)', async () => {
   const storage = memoryStorage();
   await signInUrl({ callback: 'https://annai.guide/', storage, now: 1000 });
   const fetch = async () => new Response(JSON.stringify({ key: 'sk-or-attacker' }));
-  await assert.rejects(exchange({ code: 'attacker-code', state: null, fetch, storage, now: 2000 }), /didn't start in this browser/);
-  await assert.rejects(exchange({ code: 'attacker-code', state: null, pasted: true, fetch, storage, now: 2000 }), /didn't start in this browser/);
+  await assert.rejects(exchange({ l10n, code: 'attacker-code', state: null, fetch, storage, now: 2000 }), /didn't start in this browser/);
+  await assert.rejects(exchange({ l10n, code: 'attacker-code', state: null, pasted: true, fetch, storage, now: 2000 }), /didn't start in this browser/);
   await signInUrl({ callback: null, storage, now: 3000 });
-  assert.equal(await exchange({ code: 'mine', state: null, pasted: true, fetch, storage, now: 3000 }), 'sk-or-attacker');
+  assert.equal(await exchange({ l10n, code: 'mine', state: null, pasted: true, fetch, storage, now: 3000 }), 'sk-or-attacker');
 });
 
 test('the iPhone Home Screen sign-in is ready before the tap, and a pending one is kept: the same address, the same verifier, until it expires, and for the same provider only', async () => {
@@ -211,19 +214,19 @@ test("on an iPhone Home Screen app, annai's 15 minutes count from the tap, not f
   const { url } = await codeSignIn({ storage, now: 0 });
   assert.equal(tapCode(url, { storage, now: 20 * 60_000 }), true);
   assert.deepEqual(await codeSignIn({ storage, now: 21 * 60_000 }), { url, pending: true }, 'drawn again after the tap: the same sign-in waits');
-  assert.equal(await exchange({ code: 'fresh', state: null, pasted: true, fetch: ok, storage, now: 24 * 60_000 }), 'sk-or-fresh');
+  assert.equal(await exchange({ l10n, code: 'fresh', state: null, pasted: true, fetch: ok, storage, now: 24 * 60_000 }), 'sk-or-fresh');
   assert.equal(tapCode(url, { storage, now: 25 * 60_000 }), false, 'used: no sign-in waits for this address any more');
   const second = await codeSignIn({ storage, now: 30 * 60_000 });
   assert.equal(tapCode(second.url, { storage, now: 31 * 60_000 }), true);
   const refused = async () => Response.json({ error: { code: 403, message: 'Invalid code or code_verifier' } }, { status: 403 });
-  await assert.rejects(exchange({ code: 'typo', state: null, pasted: true, fetch: refused, storage, now: 32 * 60_000 }), /works once/);
-  await assert.rejects(exchange({ code: 'late', state: null, pasted: true, fetch: ok, storage, now: 47 * 60_000 }), /expired/);
+  await assert.rejects(exchange({ l10n, code: 'typo', state: null, pasted: true, fetch: refused, storage, now: 32 * 60_000 }), /works once/);
+  await assert.rejects(exchange({ l10n, code: 'late', state: null, pasted: true, fetch: ok, storage, now: 47 * 60_000 }), /expired/);
   const third = await codeSignIn({ storage, now: 47 * 60_000 });
   assert.notEqual(third.url, second.url);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saved(storage).verifier)));
   assert.equal(new URL(third.url).searchParams.get('code_challenge'), b64url(digest));
   assert.equal(tapCode(third.url, { storage, now: 48 * 60_000 }), true);
-  assert.equal(await exchange({ code: 'new', state: null, pasted: true, fetch: ok, storage, now: 50 * 60_000 }), 'sk-or-new');
+  assert.equal(await exchange({ l10n, code: 'new', state: null, pasted: true, fetch: ok, storage, now: 50 * 60_000 }), 'sk-or-new');
 });
 
 test('free models used up for the day are too many requests, not an account out of credit; a real 402 stays one', () => {
@@ -322,7 +325,7 @@ test("annai gets ready before it asks OpenRouter for a key: with annai's catalog
     const storage = memoryStorage();
     const url = new URL(await signInUrl({ callback: 'https://annai.guide/', storage }));
     let asked = 0;
-    const setup = openRouter({ storage, card: () => {}, fetch: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-lost' })); } });
+    const setup = openRouter({ l10n, storage, card: () => {}, fetch: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-lost' })); } });
     await assert.rejects(setup.returned(new URLSearchParams(`?code=abc&state=${url.searchParams.get('state')}`), setupUi(ctx, 'provider-openrouter')), (/** @type {any} */ e) => e.message.startsWith(why) && /Nothing was sent to OpenRouter yet: try again\.$/.test(e.message));
     assert.equal(asked, 0);
     assert.ok(storage.getItem('annai.openrouter'), 'the sign-in still waits, so trying again costs nothing');
@@ -348,9 +351,9 @@ test("Sign in with OpenRouter's address is made before annai is told to expect i
   at.location = { origin: 'https://annai.guide', assign: (/** @type {string} */ url) => happened.push(`went to ${new URL(url).origin}`) };
   try {
     const full = { getItem: () => null, setItem: () => { throw new DOMException('The storage is full.', 'QuotaExceededError'); }, removeItem: () => {} };
-    await button(openRouter({ storage: full }).panel(ui, null)).attrs.onclick();
+    await button(openRouter({ l10n, storage: full }).panel(ui, null)).attrs.onclick();
     assert.deepEqual(happened, [], 'no address, so nothing expected back');
-    await button(openRouter({ storage: memoryStorage() }).panel(ui, null)).attrs.onclick();
+    await button(openRouter({ l10n, storage: memoryStorage() }).panel(ui, null)).attrs.onclick();
     assert.deepEqual(happened, ['expected', 'went to https://openrouter.ai']);
   } finally {
     delete at.location;

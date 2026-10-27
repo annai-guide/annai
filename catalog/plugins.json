@@ -493,7 +493,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -505,7 +505,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 30956,
+      "size": 41780,
       "requires": [
         {
           "id": "chat-completions",
@@ -519,8 +519,10 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "ac013fe25f26b62480e7c71bc43ada28e2abcf666092c44b3114a25dd4446500",
-        "index.js": "31a1cc2a0a534ec00151891c495fc1663ca35b70107c42914bab8909548fe25f"
+        "annai-plugin.json": "d5f9696d00a92db1ca7d450098de43908599274f5eddaaa10d9eed59fad74e4c",
+        "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
+        "l10n/ja.json": "605c15e212d5d82127fe5244bd8304970ec276bf8985f5297f9d73edb1f2a6c8",
+        "l10n/zh-Hans.json": "d30c1dba64c3ec0c7d136542ce3d77f113ea2c69735b6be93d63b02ee73edb1f"
       }
     },
     {

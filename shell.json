@@ -1,5 +1,5 @@
 {
-  "build": "688f8ff3ddcf",
+  "build": "34444da14b91",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -259,7 +259,7 @@
     "/src/ui/screens/trips.js": "b03e27d2aeaf",
     "/src/ui/screens/updates.js": "61d9ab6e11e6",
     "/src/ui/screens/voice.js": "0fdfe5528a1a",
-    "/src/ui/screens/welcome.js": "566b8bbc1d8b",
+    "/src/ui/screens/welcome.js": "0516cef1ac52",
     "/src/ui/search-panel.js": "61251e7a5617",
     "/src/ui/shell.js": "388d28a0eb17",
     "/src/ui/slots.js": "5afd7dc93687",

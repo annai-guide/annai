@@ -86,6 +86,11 @@
       "name": "OpenAI",
       "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。"
     },
+    "provider-openrouter": {
+      "name": "OpenRouter",
+      "description": "一个密钥即可使用许多模型（其中有免费的），还有语音转文字和声音。请“使用 OpenRouter 登录”，或填写密钥。",
+      "featured": "“使用 OpenRouter 登录”是最快的方式，并且会先让你用免费模型。"
+    },
     "provider-scripted": {
       "name": "按脚本回复的模型（测试用）",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
