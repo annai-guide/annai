@@ -77,6 +77,39 @@ export const EXTRACTED = [
   'src/ui/screens/simulate.js',
   'src/ui/screens/trace.js',
   'src/ui/screens/ext.js',
+  // l10n-L5b: trips and the trip.
+  'src/ui/screens/trip.js',
+  'src/ui/screens/plan.js',
+  'src/ui/screens/booking.js',
+  'src/ui/screens/file.js',
+  'src/ui/screens/now.js',
+  'src/ui/screens/drive.js',
+  'src/ui/screens/replay.js',
+  'src/ui/screens/recap.js',
+  'src/ui/stamps.js',
+  'src/ui/trip-rows.js',
+  'src/ui/photo-viewer.js',
+  'src/ui/add-files.js',
+  'src/ui/open-file.js',
+  'src/ui/bring-in.js',
+  'src/ui/offline-pack.js',
+  'src/ui/format.js',
+  // l10n-L5c: conversation, voice and Shiori.
+  'src/ui/screens/talk.js',
+  'src/ui/talk-panel.js',
+  'src/ui/voice-chip.js',
+  'src/ui/live-chip.js',
+  'src/ui/speech-check.js',
+  'src/ui/model-check.js',
+  'src/ui/screens/voice.js',
+  'src/core/voice/where.js',
+  'src/ui/screens/shiori.js',
+  'src/ui/avatar.js',
+  'src/ui/welcome.js',
+  'src/ui/screens/welcome.js',
+  'src/ui/ask.js',
+  'src/ui/markdown.js',
+  'src/ui/grounding.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
@@ -86,7 +119,7 @@ const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
 /** Properties whose value a screen shows as it is, and calls whose first argument it does (the design's "certain places"). */
 const SHOWN_PROPS = new Set(['text', 'title', 'aria-label', 'placeholder', 'label', 'alt', 'body']);
 /** Properties that hold a code, not words: a class, an id, a type, a link. */
-const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value']);
+const CODE_PROPS = new Set(['class', 'id', 'name', 'type', 'role', 'href', 'src', 'rel', 'for', 'method', 'inputmode', 'autocomplete', 'pattern', 'accept', 'target', 'lang', 'dir', 'kind', 'mode', 'value', 'preserveAspectRatio', 'viewBox', 'points', 'd', 'transform']);
 /** The calls that show words, and which of their arguments (dom.js's labelled controls too); `pairs`: the second is [value, label][]. */
 const SHOWN_CALLS = new Map([
   ['field', [0]], ['checkbox', [0]], ['toast', [0]], ['card', [0]], ['twoStep', [0, 1]], ['jsonField', [0]], ['savedField', [0]], ['savedCheck', [0]],
@@ -140,7 +173,7 @@ function importedNames(sf, file) {
 /** Which of t, tc and plural an expression names: an imported name, or a member of a namespace import. @param {ReturnType<typeof importedNames>} imports @param {ts.Node} n */
 function markerOf(imports, n) {
   if (ts.isIdentifier(n)) return imports.names.get(n.text) ?? null;
-  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && imports.spaces.has(n.expression.text) && ['t', 'tc', 'plural'].includes(n.name.text)) return n.name.text;
+  if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && imports.spaces.has(n.expression.text) && ['t', 'tc', 'plural', 'asUser'].includes(n.name.text)) return n.name.text;
   return null;
 }
 
@@ -165,7 +198,8 @@ export function readMessages(file, text) {
     if (ts.isTaggedTemplateExpression(n)) {
       let context = '';
       let marked = false;
-      if (is(n.tag, 't')) marked = true;
+      // asUser(speaks)`…` is t's message, sent as the user's words: no context.
+      if (is(n.tag, 't') || (ts.isCallExpression(n.tag) && is(n.tag.expression, 'asUser'))) marked = true;
       else if (ts.isCallExpression(n.tag) && is(n.tag.expression, 'tc')) {
         marked = true;
         const c = n.tag.arguments[0];
@@ -524,7 +558,7 @@ export function bareEnglish(file, text) {
       }
       // The values of a message are code, but English in them is shown (t`Saved ${ok ? 'Kept' : 'Lost'}`).
       if (markerOf(imports, n.expression) === 'plural') n.arguments.slice(3).forEach(shown);
-    } else if (ts.isTaggedTemplateExpression(n) && ts.isTemplateExpression(n.template) && (markerOf(imports, n.tag) === 't' || (ts.isCallExpression(n.tag) && markerOf(imports, n.tag.expression) === 'tc'))) {
+    } else if (ts.isTaggedTemplateExpression(n) && ts.isTemplateExpression(n.template) && (markerOf(imports, n.tag) === 't' || (ts.isCallExpression(n.tag) && ['tc', 'asUser'].includes(String(markerOf(imports, n.tag.expression)))))) {
       for (const span of n.template.templateSpans) shown(span.expression);
     } else if (ts.isPropertyAssignment(n) && SHOWN_PROPS.has(nameOf(n.name))) shown(n.initializer);
     ts.forEachChild(n, visit);
@@ -605,6 +639,8 @@ export function readsAsWords(s) {
   if (!/\p{L}/u.test(text)) return false;
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^[./#~@]?[\w.@-]*\/[\w./@{}-]*$/.test(text) || /[{};]\s*$|^[\d.]+(px|em|rem|%|s|ms)\b/.test(text)) return false;
   if (/^[A-Z0-9_]+$/.test(text)) return false;
+  // A hash link made of parts ("#/trip/ /replay"), and a CSS function ("translate( px,  px)").
+  if (/^#\//.test(text) || /^[a-z][\w-]*\(.*\)$/s.test(text)) return false;
   if (!/\s/.test(text)) return /^\p{Lu}\p{Ll}/u.test(text) || /[^\x00-\x7f]/.test(text) && /\p{L}/u.test(text) || /[.…!?]$/.test(text) && /\p{L}{2}/u.test(text);
   return (text.match(/\p{L}+/gu)?.length ?? 0) >= 2 || /\p{Lu}/u.test(text);
 }
@@ -634,7 +670,10 @@ export function findWords(file, text) {
 }
 /** Where a literal is code, not words: an import, a comparison, a property's name, a selector, a pattern. @param {ts.SourceFile} sf @param {ts.Node} n */
 function skipped(sf, n) {
-  const p = n.parent;
+  let p = n.parent;
+  // A value chosen by a condition, or one of a list, belongs to what holds the choice (a class: cond ? 'btn' : 'btn pri').
+  for (let c = n; (ts.isConditionalExpression(p) && p.condition !== c) || ts.isParenthesizedExpression(p) || ts.isArrayLiteralExpression(p)
+    || (ts.isBinaryExpression(p) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(p.operatorToken.kind)); c = p, p = p.parent);
   if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isCaseClause(p) || ts.isElementAccessExpression(p) || ts.isLiteralTypeNode(p) || ts.isExternalModuleReference(p)) return true;
   if (ts.isPropertyAssignment(p) && (p.name === n || CODE_PROPS.has(nameOf(p.name)))) return true;
   if (ts.isBinaryExpression(p) && [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.InKeyword].includes(p.operatorToken.kind)) return true;

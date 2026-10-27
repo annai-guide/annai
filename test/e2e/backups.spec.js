@@ -155,7 +155,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await page.getByRole('link', { name: /Kyoto/ }).click();
     await writeNote(page, '/notes/kiyomizu.md', 'Kiyomizu-dera');
     await expect(page.getByText('A newer backup is on GitHub')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/^An? (iPhone|Android phone) backed up to me\/annai-backup .*, after this phone's last backup\./)).toBeVisible();
+    await expect(page.getByText(/^An? (iPhone|Android phone) backed up to me\/annai-backup .*\. That was after this phone's last backup\./)).toBeVisible();
     expect(gh.commits(REPO).length).toBe(commits);
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
     await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });

@@ -131,7 +131,7 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     await tryIt.getByLabel('Message', { exact: true }).fill('Hello');
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(tryIt.locator('.talk-text').last()).toHaveText('Hello from B.');
-    await expect(tryIt.getByText(/^\d+ tokens · /)).toBeVisible();
+    await expect(tryIt.getByText(/^[\d,]+ tokens · /)).toBeVisible();
     expect(llm.bodies('/b/v1/messages')).toHaveLength(1);
     // A is out of credit: it says so, and B, next in the main role, isn't asked.
     await page.goto('/#/models');
