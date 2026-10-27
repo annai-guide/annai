@@ -216,7 +216,7 @@ async function boot() {
   registry.onDisabled(async (d) => {
     const row = (await plugins.describe().catch(() => [])).find((/** @type {any} */ r) => r.id === d.pluginId);
     shell.notices.card({
-      ...disabledCard({ name: row?.name ?? d.pluginId, reason: d.reason, message: await withoutSecrets(store, d.message) }),
+      ...disabledCard({ name: row?.name ?? d.pluginId, why: d.why, message: await withoutSecrets(store, d.message) }),
       actions: [{ label: t`Plugins`, run: () => { location.hash = '#/plugins'; } }],
     });
   });

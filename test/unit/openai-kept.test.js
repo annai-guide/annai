@@ -761,10 +761,10 @@ test('a keyless endpoint keeps nothing: it could not delete what it stored', asy
 });
 
 test("the provider's own name and words, unless it is OpenAI's own provider; OpenAI's note about its dashboard", () => {
-  assert.deepEqual(keeperOf(type.keeps, 'provider-openai', 'OpenAI'), { name: 'OpenAI', holds: 'at least 30 days', note: type.keeps.note });
-  assert.deepEqual(keeperOf(type.keeps, 'provider-another-address', 'My server'), { name: 'My server', holds: 'as long as that server keeps them', note: '' });
-  assert.deepEqual(keeperOf({ name: 'Google', days: 55, hours: 23 }, 'provider-gemini', 'Google Gemini'), { name: 'Google', holds: null, note: '' });
-  assert.deepEqual(keeperOf(undefined, 'x', 'Y'), { name: 'Y', holds: null, note: '' });
+  assert.deepEqual(keeperOf(type.keeps, 'provider-openai', 'OpenAI'), { name: 'OpenAI', holds: 'at least 30 days', server: false, note: type.keeps.note });
+  assert.deepEqual(keeperOf(type.keeps, 'provider-another-address', 'My server'), { name: 'My server', holds: null, server: true, note: '' });
+  assert.deepEqual(keeperOf({ name: 'Google', days: 55, hours: 23 }, 'provider-gemini', 'Google Gemini'), { name: 'Google', holds: null, server: false, note: '' });
+  assert.deepEqual(keeperOf(undefined, 'x', 'Y'), { name: 'Y', holds: null, server: false, note: '' });
 });
 
 test("P4: a missing response's id, which OpenAI repeats in its error, is not in the trace", async () => {

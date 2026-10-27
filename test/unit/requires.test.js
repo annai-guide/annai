@@ -158,7 +158,7 @@ test('security review: a requirement annai switched off after repeated errors st
   const { host, registry } = await hostKit();
   const s = await CATALOG();
   await addFromCatalog(host, 'proto-a', { fetch: s.fetch });
-  registry.disable('proto-a', 'failed 3 times in a row');
+  registry.disable('proto-a', { kind: 'failed', count: 3 });
   assert.equal(host.active.has('proto-a'), false);
   await addFromCatalog(host, 'provider-x', { fetch: s.fetch }); // not a tap: a path in the background
   assert.equal(registry.isDisabled('proto-a'), true);

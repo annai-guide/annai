@@ -104,9 +104,10 @@ export function deliverHooks(registry, events, now = () => Date.now()) {
           counts.set(pluginId, w);
         }
         if (++w.count > HOOK_LIMIT) {
+          /* en */
           const why = `its hooks were handed more than ${HOOK_LIMIT} log entries in ${HOOK_WINDOW_MS / 1000} seconds, which looks like a loop`;
           registry.fail(pluginId, 'hook', new Error(why));
-          registry.disable(pluginId, why);
+          registry.disable(pluginId, { kind: 'loop', entries: HOOK_LIMIT, seconds: HOOK_WINDOW_MS / 1000 }, why);
           counts.delete(pluginId); // turned on again, it starts with a window of its own
           break;
         }

@@ -1,3 +1,5 @@
+import { t } from '../l10n.js';
+
 /**
  * The provider contract (spec §9.1): annai's own message format in and out, the events a
  * streamed reply is made of, normalized usage and normalized errors. Endpoint-type plugins
@@ -62,7 +64,8 @@
  *   forgotten: the provider no longer has the kept turn a call continued (G2)
  */
 
-/** What the user is told, by kind of error (spec §9.9). */
+/** What a model and the log are told, by kind of error (spec §9.9): annai's English, whatever the screens' language. */
+/* en */
 const PLAIN = Object.freeze({
   auth: 'The key was rejected. Check it in Settings → Models.',
   credit: 'This account is out of credit.',
@@ -84,23 +87,55 @@ const PLAIN = Object.freeze({
   forgotten: 'The provider no longer has the earlier turns; annai sends the conversation whole.',
 });
 
+/**
+ * The same words for the user, in the screens' language (the design: a provider's words can't be translated, its kind can).
+ * @param {string} kind @param {string} [provider] its name, where the words give it
+ */
+function shown(kind, provider) {
+  switch (kind) {
+    case 'auth': return t`The key was rejected. Check it in Settings → Models.`;
+    case 'credit': return t`This account is out of credit.`;
+    case 'rate': return t`The provider says too many requests for now.`;
+    case 'overloaded': return t`The provider is overloaded right now.`;
+    case 'context': return t`The conversation is too long for this model.`;
+    case 'image': return t`This model didn't accept the photo.`;
+    case 'upload': return t`A photo uploaded earlier has expired.`;
+    case 'blocked': return t`This address doesn't allow web apps like annai to call it.`;
+    case 'unreachable': return t`annai couldn't reach this address. It may be down, or it may not allow web apps.`;
+    case 'bad-request': return t`The provider didn't accept the request. Check the tunables on its provider's page.`;
+    case 'not-found': return t`The provider doesn't know this model or address. Check the model id and the base URL.`;
+    case 'server': return t`The provider had a problem on its side.`;
+    case 'network': return t`The connection dropped.`;
+    case 'timeout': return t`The model took too long to start answering.`;
+    case 'cancelled': return t`Stopped.`;
+    case 'plugin': return t`The plugin for this model's protocol failed.`;
+    case 'type-missing': return t`This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.`;
+    case 'forgotten': return t`The provider no longer has the earlier turns; annai sends the conversation whole.`;
+    case 'redirect': return provider ? t`${provider} answered with a redirect, which annai doesn't follow with your key. Check its address.`
+      : t`The provider answered with a redirect, which annai doesn't follow with your key. Check its address.`;
+    default: return null;
+  }
+}
+
 /** Every error kind, for checking one a plugin gives. */
 export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
 
 export class ProviderError extends Error {
   /**
    * @param {ErrorKind} kind @param {string} message
-   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean }} [more]
-   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said; noChain: the server ignored the kept turn it was told to continue
+   * @param {{ status?: number, retryAfter?: number, partial?: string, cause?: unknown, noChain?: boolean, provider?: string }} [more]
+   *   retryAfter: ms the provider asked to wait; partial: what the reply had already said; noChain: the server ignored the kept turn it was told to continue;
+   *   provider: the provider's name, for the words of a kind that names it (redirect)
    */
   constructor(kind, message, more = {}) {
     super(message, more.cause === undefined ? undefined : { cause: more.cause });
-    this.name = 'ProviderError';
+    this.name = /* en */ 'ProviderError';
     /** @type {ErrorKind} */
     this.kind = kind;
     this.status = more.status;
     this.retryAfter = more.retryAfter;
     this.partial = more.partial ?? '';
+    this.provider = more.provider;
     /** A kept turn the call continued failed: annai sends the conversation whole, once (G2). */
     this.whole = false;
     /** The server ignored the kept turn it was told to continue: annai keeps nothing there until it starts again. */
@@ -130,19 +165,24 @@ export function sameOrigin(endpoint, url) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
-  throw new ProviderError('bad-request', `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
+  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${want || endpoint.baseUrl || '(none)'}. Check its tunables.`);
 }
 
 /** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere (fix pass). @param {Response} res @param {{ name?: string }} endpoint */
 export function noRedirect(res, endpoint) {
   if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
-    throw new ProviderError('redirect', `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status });
+    throw new ProviderError('redirect', /* en */ `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status, provider: endpoint.name });
   }
 }
 
-/** Plain words for an error, by its kind. @param {ProviderError} e */
+/** Plain words for an error, by its kind, for the user: in the screens' language. @param {ProviderError} e */
 export function explain(e) {
-  return PLAIN[e.kind] ?? e.message;
+  return shown(e.kind, e.provider) ?? e.message;
+}
+
+/** The same, for a model to read or the log to keep: annai's English. @param {ProviderError} e */
+export function explainPlain(e) {
+  return /** @type {Record<string, string>} */ (PLAIN)[e.kind] ?? e.message;
 }
 
 /**
@@ -236,7 +276,7 @@ function retryAfterOf(headers) {
 export function portable(messages, modelKey) {
   /** @type {(p: Part) => Part[]} */
   const keep = (p) => {
-    if (p.type === 'speech') return [{ type: 'text', text: p.text || '[audio, not transcribed]' }]; // resolved before sending; never sent as it is
+    if (p.type === 'speech') return [{ type: 'text', text: p.text || /* en */ '[audio, not transcribed]' }]; // resolved before sending; never sent as it is
     if (p.type === 'reasoning') return (p.signature || p.redacted) && p.model !== modelKey ? [] : [p];
     if (p.type === 'provider') return p.model === modelKey ? [p] : [];
     if (p.type === 'tool_call') {

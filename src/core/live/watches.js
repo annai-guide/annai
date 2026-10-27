@@ -5,7 +5,8 @@ import { newId } from '../scopes.js';
  * scope of the conversation they belong to (a trip, or "me"), so removing a trip removes its
  * watches (§4.9). The plan's own watches aren't stored: they come from the plan.
  * @typedef {import('../workspace.js').Workspace} Workspace
- * @typedef {{ id: string, owner: string, when: { type: string, [k: string]: any }, repeat?: boolean, fallback: string, expires?: string, created?: string, path?: string }} Watch
+ * @typedef {{ id: string, owner: string, when: { type: string, [k: string]: any }, repeat?: boolean, fallback: string, expires?: string, created?: string, path?: string,
+ *   say?: import('./plan-watches.js').PlanSay }} Watch
  *   owner: shiori, system or plugin:<id>; path: where it is stored (not part of the record)
  */
 

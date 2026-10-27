@@ -4,9 +4,10 @@ import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js'
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, SYS_SETTINGS, newId } from '../scopes.js';
 import { storedTexts } from './log.js';
-import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
+import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS, whyWords } from '../llm/fallback.js';
 import { LiveKoe } from '../koe/live.js';
-import { ProviderError, explain } from '../llm/contract.js';
+import { ProviderError, explainPlain } from '../llm/contract.js';
+import { t } from '../l10n.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
@@ -23,6 +24,7 @@ import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.j
  * With no Koe model, everything goes to Kokoro: Shiori as one half.
  * @typedef {import('./loop.js').Wake} Wake
  * @typedef {import('./loop.js').TurnEnd} TurnEnd
+ * @typedef {import('../llm/fallback.js').Why} Why
  * @typedef {'text' | 'live' | 'down' | 'off'} KoeState  text: Koe talks through the loop; live: in live sessions (K5); down: Koe's list failed, and it rests; off: no Koe model
  * @typedef {'koe-up' | 'koe-down'} Told
  * @typedef {Told | 'live-open' | 'live-closed' | 'live-dropped'} Block
@@ -33,14 +35,14 @@ import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.j
 /** The events a half marks as its own while Shiori is two halves. */
 const MARKED = new Set(['wake', 'tool.call', 'tool.result', 'error', 'out.speak', 'out.show', 'out.ask', 'note', 'model.turn', 'heard']);
 const BLOCKS = Object.freeze({
-  'koe-down': "Koe can't speak right now; talk to the user directly.",
-  'koe-up': 'Koe is speaking again; use tell_koe.',
-  'live-open': 'A live voice session opened: Koe speaks natively, and its words reach you as [Koe said aloud].',
-  'live-closed': 'The live voice session closed.',
-  'live-dropped': "The live voice session dropped and couldn't resume: Koe goes on through its next model.",
+  'koe-down': /* en */ "Koe can't speak right now; talk to the user directly.",
+  'koe-up': /* en */ 'Koe is speaking again; use tell_koe.',
+  'live-open': /* en */ 'A live voice session opened: Koe speaks natively, and its words reach you as [Koe said aloud].',
+  'live-closed': /* en */ 'The live voice session closed.',
+  'live-dropped': /* en */ "The live voice session dropped and couldn't resume: Koe goes on through its next model.",
 });
 /** What Koe is told when it asks Kokoro after the user's Stop. */
-export const STOP_HELD = "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; tell them what you know yourself.";
+export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; tell them what you know yourself.";
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'restart'];
@@ -48,7 +50,7 @@ const KOKORO_ONLY = ['personality', 'restart'];
 const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
-const REVIEW = "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+const REVIEW = /* en */ "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
 /** Words for the user as annai shows them: a leading "Say:" (an instruction to Koe) goes, and the first letter is a capital. @param {unknown} text */
 const forUserText = (text) => String(text ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** The conversation's lines, for the review. */
@@ -74,7 +76,7 @@ export class Channel {
     const to = from === 'koe' ? 'kokoro' : 'koe';
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -85,14 +87,14 @@ export function channelTool(from, channel, refuse = () => null) {
   const koe = from === 'koe';
   const name = koe ? 'tell_kokoro' : 'tell_koe';
   return {
-    name, pluginId: 'core', group: 'Talk',
+    name, pluginId: 'core', group: /* en */ 'Talk',
     description: koe
-      ? "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
-      : 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says it in its own words. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them; annai shows them only if Koe never says it.',
+      ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
+      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says it in its own words. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them; annai shows them only if Koe never says it.',
     input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
     run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
-      const no = text ? refuse() : `Error: ${name} needs the text to pass on.`;
+      const no = text ? refuse() : /* en */ `Error: ${name} needs the text to pass on.`;
       if (no) return { content: no, isError: true };
       return channel.send(from, text, i.mode === 'immediate' ? 'immediate' : 'append', 'tool', call.wake, undefined, Boolean(call.watched), koe ? '' : String(i.for_user ?? '').trim());
     },
@@ -139,8 +141,8 @@ export class Halves {
   #retell = [];
   #failTold = false;
   #nothingTold = false;
-  /** Why each half's list last failed, while it is down (a failure only of models resting keeps the reason before). */
-  #lost = { koe: '', kokoro: '' };
+  /** Why each half's list last failed, while it is down (a failure only of models resting keeps the reason before). @type {{ koe: Why | null, kokoro: Why | null }} */
+  #lost = { koe: null, kokoro: null };
   /** The card for both halves down was shown: once, until the user writes again or a half works again. */
   #bothTold = false;
   /**
@@ -257,7 +259,7 @@ export class Halves {
         left: (notes) => this.#leftUnsaid(notes),
       },
     });
-    this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
+    this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : /* en */ "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
     // Koe's quick tools are Shiori's own, by name: Kokoro's (timers, recall), else the plugins'.
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
     this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null)), ALREADY_TOLD]);
@@ -334,7 +336,7 @@ export class Halves {
   /** Kokoro's words for the user (for_user) a switch or Start fresh left unsaid: shown, never aloud. @param {Wake[]} notes */
   #leftUnsaid(notes) {
     for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
-    const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), title: "Shiori's answer" }));
+    const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), answer: true }));
     if (!list.length) return;
     const shown = this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
@@ -371,7 +373,7 @@ export class Halves {
       try {
         fn(x);
       } catch (e) {
-        console.warn('a listener failed', e);
+        console.warn(/* en */ 'a listener failed', e);
       }
     }
   }
@@ -421,7 +423,7 @@ export class Halves {
   }
 
   /** @param {() => unknown} fn @param {(e: unknown) => unknown} [failed] */
-  #route(fn, failed = (e) => console.warn('routing failed', e)) {
+  #route(fn, failed = (e) => console.warn(/* en */ 'routing failed', e)) {
     this.#routes++;
     this.#routing = this.#routing.then(fn).catch(failed).finally(() => { this.#routes--; });
     return this.#routing;
@@ -463,8 +465,8 @@ export class Halves {
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
     // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
     if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) {
-      if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon('voice off');
-      else this.live.close(voiceOff ? 'voice off' : 'pathway');
+      if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon(/* en */ 'voice off');
+      else this.live.close(voiceOff ? /* en */ 'voice off' : 'pathway');
     }
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
@@ -483,7 +485,7 @@ export class Halves {
     }
     if (this.#told.state === state) return;
     this.#told = { scope, state };
-    const unsaid = state !== 'koe-up' && this.#unsaid.splice(0).length ? " What you last told Koe didn't reach the user." : '';
+    const unsaid = state !== 'koe-up' && this.#unsaid.splice(0).length ? /* en */ " What you last told Koe didn't reach the user." : '';
     await this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', `${BLOCKS[state]}${unsaid}`]] });
   }
 
@@ -508,7 +510,7 @@ export class Halves {
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
       return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
     }
-    this.#notice({ tone: 'warn', title: "Koe's live voice couldn't start", body: 'Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.' });
+    this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.` });
     this.#talkDirectly(w.fallbacks);
   }
 
@@ -538,7 +540,7 @@ export class Halves {
     this.#route(async () => {
       await this.#refresh();
       if (!cut) return;
-      if (this.koeState === 'text') this.koe.enqueue({ kind: 'cue', text: 'the live session dropped while you were answering; finish briefly' });
+      if (this.koeState === 'text') this.koe.enqueue({ kind: 'cue', text: /* en */ 'the live session dropped while you were answering; finish briefly' });
       else if (this.koeState === 'down') this.#talkDirectly();
     });
   }
@@ -547,13 +549,13 @@ export class Halves {
   async #liveSetup() {
     const s = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.koe.trip, personalityName: (await this.kokoro.settings()).personality, locale: this.voice?.locale });
     const { place, activity } = this.sense?.() ?? {};
-    const voice = this.voice?.on ? 'on: you speak aloud in this live session' : 'off: what you say shows as text';
-    const tail = await this.#koeTail({ now: this.koe.now(), timeZone: this.koe.timeZone(), voice, online: this.koe.online(), reasons: ['a live session opened'], place, activity });
+    const voice = this.voice?.on ? /* en */ 'on: you speak aloud in this live session' : /* en */ 'off: what you say shows as text';
+    const tail = await this.#koeTail({ now: this.koe.now(), timeZone: this.koe.timeZone(), voice, online: this.koe.online(), reasons: [/* en */ 'a live session opened'], place, activity });
     // The protocol's own language fields (Gemini Live's transcription hints, OpenAI's transcription language) get the setting; the words are in the instructions.
     const languages = languageSettings(await readAppSettings(this.ws), this.voice?.locale);
     // How she sounds, as in Classic: one stable line while the voice's style is set (the description's, or the user's own).
     const style = (await this.voice?.speakingStyle().catch(() => '')) ?? '';
-    return { instructions: koeSystem(s, true) + (style ? `\n\n# Voice\nYour speaking style: ${style}.` : ''), context: [await this.#recent(), tail].filter(Boolean).join('\n'), languages: modelLanguages(languages), known: languages };
+    return { instructions: koeSystem(s, true) + (style ? /* en */ `\n\n# Voice\nYour speaking style: ${style}.` : ''), context: [await this.#recent(), tail].filter(Boolean).join('\n'), languages: modelLanguages(languages), known: languages };
   }
 
   /**
@@ -573,16 +575,16 @@ export class Halves {
       if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
       const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
-      const who = e.type === 'msg.user' ? 'the user typed' : e.type === 'heard' ? 'heard' : d.half === 'koe' ? 'you said' : 'said to the user';
+      const who = e.type === 'msg.user' ? /* en */ 'the user typed' : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
       lines.unshift(`[${who}] ${escapeTags(quote(text))}`);
     }
-    return lines.length ? `The conversation so far:\n${lines.join('\n')}` : '';
+    return lines.length ? /* en */ `The conversation so far:\n${lines.join('\n')}` : '';
   }
 
   #koeOpen() {
     if (this.#koeTrip === this.kokoro.target) return;
     this.#koeTrip = this.kokoro.target;
-    this.koe.open(this.kokoro.target).catch((e) => console.warn('Koe could not open the conversation', e));
+    this.koe.open(this.kokoro.target).catch((e) => console.warn(/* en */ 'Koe could not open the conversation', e));
   }
 
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean }} [o] */
@@ -629,7 +631,7 @@ export class Halves {
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
-      this.#notice({ tone: 'warn', title: 'Shiori answers as one half for now', body: `annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.message ?? e)}` });
+      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.message ?? e)}` });
     });
   }
 
@@ -799,7 +801,7 @@ export class Halves {
     this.kokoro.interrupt();
     // Koe hears of it, waiting or not (review a1): once its model has seen this, its questions reach Kokoro again.
     this.#nothingTold = false;
-    this.#nothingToAdd('Kokoro was stopped.', 'stopped');
+    this.#nothingToAdd(/* en */ 'Kokoro was stopped.', 'stopped');
   }
 
   async idle() {
@@ -851,14 +853,14 @@ export class Halves {
     // Live mode's reminders wait for its own work: Koe never waits long on them.
     const next = this.next ? await Promise.race([this.next().catch(() => null), new Promise((r) => { setTimeout(() => r(null), 150); })]) : null;
     const view = await compactView({ ws: this.ws, trip: this.koe.trip, now: now.now, timeZone: now.timeZone, next: /** @type {any} */ (next) });
-    return `${block}\n${view}\nKokoro's notes carry id="${this.nonce}".`;
+    return /* en */ `${block}\n${view}\nKokoro's notes carry id="${this.nonce}".`;
   }
 
   /** A photo reaches a text Koe only when every chat model of its list takes photos (plan decision 22). @param {import('../llm/contract.js').Message[]} messages */
   async #koeSendable(messages) {
     const cfg = await this.llm.config();
     if (chatCandidates(cfg, KOE_CLASSIC).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
-    return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: '[a photo; Kokoro sees it]' } : p)) }));
+    return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: /* en */ '[a photo; Kokoro sees it]' } : p)) }));
   }
 
   /** The user is watching Koe's turn (or its live session) that is answering now. */
@@ -900,7 +902,7 @@ export class Halves {
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
-    else if (answered) this.#wakeKokoro({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
+    else if (answered) this.#wakeKokoro({ kind: 'cue', text: /* en */ 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
     if (typed || answered || !LINES.includes(e.type) || !this.#works()) return;
     const now = this.clock();
@@ -911,13 +913,13 @@ export class Halves {
   /** Kokoro's speak, show and ask while Koe talks become notes to Koe; its wait is answered (plan decision 15). @param {{ id: string, name: string, input: any, wake: string }} call */
   async #gate({ name, input, wake }) {
     if (!this.#works()) return null;
-    if (name === 'wait') return { content: "Koe is talking with the user; what they say reaches you. Call sleep when you're done." };
+    if (name === 'wait') return { content: /* en */ "Koe is talking with the user; what they say reaches you. Call sleep when you're done." };
     const text = name === 'speak' ? String(input?.text ?? '')
-      : name === 'show' ? `Kokoro wants to show: ${cardText(input?.card)}`
-        : name === 'ask' ? `Kokoro wants to ask: ${String(input?.question ?? '')} (${(Array.isArray(input?.options) ? input.options : []).join(', ')})` : null;
+      : name === 'show' ? /* en */ `Kokoro wants to show: ${cardText(input?.card)}`
+        : name === 'ask' ? /* en */ `Kokoro wants to ask: ${String(input?.question ?? '')} (${(Array.isArray(input?.options) ? input.options : []).join(', ')})` : null;
     if (text === null) return null;
     await this.channel.send('kokoro', text, 'append', /** @type {any} */ (`gated:${name}`), wake, { name, input });
-    return { content: 'Koe is speaking for you; use tell_koe.', told: true };
+    return { content: /* en */ 'Koe is speaking for you; use tell_koe.', told: true };
   }
 
   /**
@@ -940,52 +942,54 @@ export class Halves {
         // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
         const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
           : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
-        if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
-        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), title: "Shiori's answer" }], undefined, { unsaid: true });
-      else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
+        if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true });
+        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
+      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true });
+      else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
       else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
-      else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
+      else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
     }
   }
 
   /**
    * A half's list failed (emulator pass: both halves failed, each quietly, and the user heard nothing). When the other is down
-   * too, the card says why for each, once: its words, for the loop's card and error (Half.failed); true, said already; null:
-   * the half's own rule. @param {'koe' | 'kokoro'} side @param {string} why @param {unknown} e @returns {string | true | null}
+   * too, the card says why for each, once: both halves' whys, for the loop's card and error (Half.failed), which make the words;
+   * true, said already; null: the half's own rule. @param {'koe' | 'kokoro'} side @param {Why} why @param {unknown} e @returns {Why | true | null}
    */
   #down(side, why, e) {
     if (!this.#split) return null;
     const resting = e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched');
     if (!resting || !this.#lost[side]) this.#lost[side] = why;
-    if (!this.#lost.koe || !this.#lost.kokoro) return null;
+    const { koe, kokoro } = this.#lost;
+    if (!koe || !kokoro) return null;
     if (this.#bothTold) return true;
     this.#bothTold = true;
-    const lines = (/** @type {string} */ name, /** @type {string} */ text) => text.split('\n').map((l) => `${name}: ${l}`);
-    return [...lines('Koe', this.#lost.koe), ...lines('Kokoro', this.#lost.kokoro)].join('\n');
+    return { halves: { koe, kokoro } };
   }
 
   /** A half works again. @param {'koe' | 'kokoro'} side */
   #up(side) {
-    this.#lost[side] = '';
+    this.#lost[side] = null;
     this.#bothTold = false;
   }
 
   /**
    * Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). Only while
-   * someone waits for Kokoro (Koe asked it, or waits): a check nobody waited for stays in the Trace. @param {string} why @param {unknown} e
+   * someone waits for Kokoro (Koe asked it, or waits): a check nobody waited for stays in the Trace. Koe reads it, so it is annai's
+   * English. @param {Why} why @param {unknown} e
    */
   #kokoroFailed(why, e) {
     if (!this.#works()) return false;
     const attempts = e instanceof AllFailedError ? e.attempts : [];
     const rest = attempts.find((a) => a.restsUntil);
     const kind = attempts.map((a) => a.outcome).find((o) => o !== 'benched' && o !== 'ok');
+    const plain = whyWords(why, true);
     // Only resting models: why they rest is the failure before.
-    if (rest || kind || !attempts.length) this.#why = rest ? `${rest.name}: ${rest.error}.` : kind ? explain(new ProviderError(/** @type {any} */ (kind), why)) : why;
+    if (rest || kind || !attempts.length) this.#why = rest ? `${rest.name}: ${rest.error}.` : kind ? explainPlain(new ProviderError(/** @type {any} */ (kind), plain)) : plain;
     if (!this.#failTold && (this.#asked || this.koe.waiting)) {
       this.#failTold = true;
       this.#asked = false;
-      this.#note(`Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'kokoro-failed');
+      this.#note(/* en */ `Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'kokoro-failed');
     }
     return true;
   }
@@ -1030,7 +1034,7 @@ export class Halves {
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
       this.#note(t.finalText, 'final-text', t.wakeId);
-    } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ (['Kokoro was stopped.', 'stopped'])));
+    } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ ([/* en */ 'Kokoro was stopped.', 'stopped'])));
     if (told) {
       this.#answered = true;
       this.#asked = false;
@@ -1039,7 +1043,7 @@ export class Halves {
   }
 
   /** @param {string} [text] @param {NoteWhy} [why] */
-  #nothingToAdd(text = 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
+  #nothingToAdd(text = /* en */ 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
     this.#note(text, why);

@@ -306,17 +306,17 @@ test("removing a provider keeps the chosen mode", async () => {
 test("the voice chip's words for Koe: the list that talks, why Classic stands in, Koe down, and Classic chosen but empty; nothing with voice off, no Koe model, or a way still from voice off", () => {
   /** @param {any} w */
   const way = (w) => ({ mode: 'realtime', using: 'classic', why: '', koe: true, split: true, path: 'text', ...w });
-  assert.deepEqual(koeWords(way({ using: 'realtime', path: 'live' }), true), { text: ' · Realtime', note: '' });
-  assert.deepEqual(koeWords(way({ mode: 'classic' }), true), { text: ' · Classic', note: '' });
-  assert.deepEqual(koeWords(way({ why: 'resting' }), true), { text: ' · Classic', reason: '(Realtime resting)', note: "Realtime is resting after a failure. Classic talks until it can." });
-  assert.deepEqual(koeWords(way({ why: 'off' }), true), { text: ' · Classic', reason: '(Realtime off)', note: "Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile." });
-  assert.deepEqual(koeWords(way({ why: 'none' }), true), { text: ' · Classic', reason: '(no Realtime model)', note: 'Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.' });
+  assert.deepEqual(koeWords(way({ using: 'realtime', path: 'live' }), true), { text: 'Realtime', note: '' });
+  assert.deepEqual(koeWords(way({ mode: 'classic' }), true), { text: 'Classic', note: '' });
+  assert.deepEqual(koeWords(way({ why: 'resting' }), true), { text: 'Classic', reason: '(Realtime resting)', note: "Realtime is resting after a failure. Classic talks until it can." });
+  assert.deepEqual(koeWords(way({ why: 'off' }), true), { text: 'Classic', reason: '(Realtime off)', note: "Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile." });
+  assert.deepEqual(koeWords(way({ why: 'none' }), true), { text: 'Classic', reason: '(no Realtime model)', note: 'Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.' });
   // Koe down: Realtime wanted, nothing in Classic that can answer: never "Classic".
-  assert.deepEqual(koeWords(way({ why: 'resting', path: null }), true), { text: ' · Realtime resting', note: 'Shiori answers directly until it can.' });
-  assert.deepEqual(koeWords(way({ why: 'off', path: null }), true), { text: ' · Realtime off', note: 'Shiori answers directly until it can.' });
-  assert.deepEqual(koeWords(way({ mode: 'classic', path: null }), true), { text: ' · Classic unavailable', note: "Koe · Classic can't answer now. Shiori answers directly until it can." });
+  assert.deepEqual(koeWords(way({ why: 'resting', path: null }), true), { text: 'Realtime resting', note: 'Shiori answers directly until it can.' });
+  assert.deepEqual(koeWords(way({ why: 'off', path: null }), true), { text: 'Realtime off', note: 'Shiori answers directly until it can.' });
+  assert.deepEqual(koeWords(way({ mode: 'classic', path: null }), true), { text: 'Classic unavailable', note: "Koe · Classic can't answer now. Shiori answers directly until it can." });
   // Classic chosen with nothing in it: Shiori is one half.
-  assert.deepEqual(koeWords(way({ mode: 'classic', split: false, path: null }), true), { text: ' · Classic', reason: '(no model)', note: 'Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.' });
+  assert.deepEqual(koeWords(way({ mode: 'classic', split: false, path: null }), true), { text: 'Classic', reason: '(no model)', note: 'Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.' });
   assert.deepEqual(koeWords(way({ using: 'realtime' }), false), { text: '', note: '' }, 'voice off: as before');
   assert.deepEqual(koeWords(way({ koe: false }), true), { text: '', note: '' });
   assert.deepEqual(koeWords(way({ why: 'voice off' }), true), { text: '', note: '' }, 'voice just came on: nothing until Koe has worked out its way');
