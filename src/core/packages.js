@@ -29,7 +29,11 @@ import { size, sentences, list } from './intl.js';
  *   left: the translations left out, and why (leftOut)
  */
 
-export const API_VERSION = 1;
+/**
+ * The newest plugin API this annai runs; it runs every older one too. 2 adds annai.l10n: a plugin that reads it says api 2, so an annai
+ * from before refuses it in words ("was made for plugin API 2") instead of running it without its words.
+ */
+export const API_VERSION = 2;
 export const MANIFEST_FILE = 'annai-plugin.json';
 /** A plugin package may unpack to at most this much. */
 export const PLUGIN_MAX_BYTES = 64 * 1024 * 1024;
@@ -76,8 +80,8 @@ export function checkManifest(manifest) {
   const id = typeof manifest?.id === 'string' ? manifest.id : 'plugin';
   const errors = validate(PLUGIN_MANIFEST_SCHEMA, manifest);
   if (errors.length) throw new PluginError(id, /* en */ `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
-  if (manifest.api !== API_VERSION) {
-    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
+  if (manifest.api > API_VERSION) {
+    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION} and older`);
   }
   if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
     throw new PluginError(id, /* en */ `its entry "${manifest.entry}" isn't a file inside the plugin`);
@@ -289,7 +293,7 @@ export async function fingerprint(files) {
 /** The manifest annai reads a bare skill as; nothing like it is stored (choice 2). @param {Skill} skill */
 export function skillManifest(skill) {
   return {
-    id: skill.name, name: skill.name, version: skillVersion(skill.metadata), api: API_VERSION, description: skill.description, skills: ['.'],
+    id: skill.name, name: skill.name, version: skillVersion(skill.metadata), api: 1, description: skill.description, skills: ['.'],
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}),
   };
 }

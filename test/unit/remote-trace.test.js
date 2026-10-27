@@ -673,7 +673,7 @@ test('the package: an official plugin with the settings form the brief asks for,
   const manifest = JSON.parse(await readFile(new URL('plugins-official/remote-trace/annai-plugin.json', root), 'utf8'));
   assert.equal(manifest.id, 'remote-trace');
   assert.equal(manifest.name, 'Remote trace (for developers)');
-  assert.equal(manifest.api, 1);
+  assert.equal(manifest.api, 2, 'it reads annai.l10n');
   assert.equal(manifest.entry, 'index.js');
   assert.deepEqual(Object.keys(manifest.settings.properties), ['server', 'token', 'location', 'send', 'device']);
   assert.deepEqual([manifest.settings.properties.device.type, manifest.settings.properties.device.title, manifest.settings.properties.device.maxLength], ['string', 'Device id', 64]);

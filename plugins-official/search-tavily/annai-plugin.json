@@ -2,7 +2,7 @@
   "id": "search-tavily",
   "name": "Tavily Search",
   "version": "0.2.0",
-  "api": 1,
+  "api": 2,
   "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",

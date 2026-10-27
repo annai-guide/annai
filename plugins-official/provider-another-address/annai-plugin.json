@@ -3,7 +3,7 @@
   "name": "Custom provider",
   "version": "2.2.0",
   "catchAll": true,
-  "api": 1,
+  "api": 2,
   "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "files": [

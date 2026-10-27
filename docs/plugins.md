@@ -28,7 +28,7 @@ A plugin's manifest:
   - `id`: lowercase letters, digits, `.`, `_` and `-`, 2 to 64 characters, starting with a letter or digit.
   - `name`: up to 80 characters.
   - `version`: semantic, like `1.0.0`.
-  - `api`: must be `1`. A plugin made for another API version is turned off cleanly.
+  - `api`: the plugin API it was made for: `1`, or `2` for a plugin that reads `annai.l10n` (see Translations). annai runs its own API and every older one; a plugin made for a newer one is refused, naming it, so an older annai never runs a plugin without the API it needs.
 - **Optional fields:**
   - `description` (up to 500 characters), `author`, `homepage`.
   - `entry`: an ES module inside the package, ending in `.js` or `.mjs`.
@@ -757,6 +757,8 @@ the page as text, never as HTML. The install screen's warnings (full access, who
 annai's own words, never yours, in every language.
 
 ### `annai.l10n`
+
+A plugin that reads it says `"api": 2` in its manifest: an annai from before `annai.l10n` then refuses it, naming the API, instead of running it without its words.
 
 | | |
 |---|---|
