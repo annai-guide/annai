@@ -338,7 +338,7 @@
     {
       "id": "provider-lmstudio",
       "name": "LM Studio",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on LM Studio's server.",
       "category": "providers",
       "keywords": [],
@@ -348,7 +348,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 3221,
+      "size": 5211,
       "requires": [
         {
           "id": "chat-completions",
@@ -357,8 +357,10 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "4f8bedb66e0a00b78ad0694d3e84ad7de4641b82430634c36bd813932f88ca38",
-        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451"
+        "annai-plugin.json": "21bbd42d88093541ea57b651c01ac3f42d6603ccdd7d7b35632e664560e2673a",
+        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451",
+        "l10n/ja.json": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
+        "l10n/zh-Hans.json": "2bb3e10f94c59f4ec281f53771316a159c7203eaf721af770c875789f29f59f6"
       }
     },
     {

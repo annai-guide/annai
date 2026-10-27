@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "LM Studio 服务器上的模型。",
+    "name": "LM Studio",
+    "provider.abilities.chat.note": "用“获取模型列表”添加模型。对于在 LM Studio 中已加载的模型，会读取它加载时的上下文长度，以及它能否读图、是否为工具调用训练过；未加载的模型请在其页面上设置上下文窗口。LM Studio 没有说明如何开关思考：如果模型会思考，请在其页面上设置推理级别。",
+    "provider.note": "在 LM Studio 的服务器设置中打开 Enable CORS，让 annai 的页面能调用它；如果要从另一台电脑访问，还要打开 Serve on Local Network。除非改过，它监听 1234 端口。如果你开启了它的身份验证，请把它的 API 令牌填为密钥。"
+  },
+  "messages": {}
+}
