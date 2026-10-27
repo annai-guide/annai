@@ -991,7 +991,7 @@ sns8o2	draft	Voice is on.	音声はオンです。	src/ui/screens/voice.js:47
 540b06	draft	Auto	自動	src/ui/screens/voice.js:48	
 fceyoz	draft	Voice	音声	src/ui/screens/voice.js:48	context: voice mode; Note: voice on, off or auto (the glossary's Voice on, Voice off).
 qvtz3k	draft	On	オン	src/ui/screens/voice.js:48	
-12k3pw4	draft	Show what she says	Shiori の言葉を表示	src/ui/screens/voice.js:56	
+12k3pw4	draft	Show what she says	話した言葉を表示	src/ui/screens/voice.js:56	
 3gprw9	draft	Keep voice clips	音声クリップを残す	src/ui/screens/voice.js:57	
 o7g54g	draft	Cut her off by speaking	話しかけて Shiori をさえぎる	src/ui/screens/voice.js:62	
 1maeag1	draft	Speaking…	話しています…	src/ui/screens/voice.js:70	
@@ -1023,7 +1023,7 @@ qyfmia	draft	Listen for an answer (seconds)	返事を待つ時間（秒）	src/u
 1f9vvmr	draft	Wait for her first words (seconds)	Shiori の最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:150	
 1sz04rq	draft	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:150	
 17b2a79	draft	On the screen	画面での表示	src/ui/screens/voice.js:151	
-4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出したことの言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「Shiori の言葉を表示」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出したことの言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	draft	Shiori's voice	Shiori の声	src/ui/screens/voice.js:154	
 1879vb9	draft	Voices, tried in order: none.	試す順の声：なし。	src/ui/screens/voice.js:155	
 1su08w7	draft	Voices, tried in order: {0}.	試す順の声：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')
