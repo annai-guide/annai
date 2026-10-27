@@ -6,7 +6,7 @@ import { withoutSecrets, withoutSecretsIn, shownWithoutSecrets } from './agent/n
 import { isPluginBug } from './plugins.js';
 import { storageTypes, TargetError, NEEDS_YOU, backupFileName } from './storage-types.js';
 import { listTargets, getTarget, addTarget, setTarget, removeTarget, deviceId, targetSecret, setTargetSecret } from './backup-targets.js';
-import { t } from './l10n.js';
+import { t, lang } from './l10n.js';
 import { sentences, size } from './intl.js';
 
 /**
@@ -51,11 +51,13 @@ export function backupWords(s) {
 }
 
 /**
- * Why backups to a place stopped, as a screen says it: from what the hold keeps where annai wrote it; a place's or a plugin's own
- * words, and a hold kept before it said what it was, as they were written. @param {{ message: string, said?: Said | null, offline?: boolean }} h
+ * Why backups to a place stopped, as a screen says it: from what the hold keeps where annai wrote it; a plugin's own words in the
+ * screens' language when they were kept in it (a backup can bring the hold to a device in another); else a place's or a plugin's
+ * words, and a hold kept before it said what it was, as they were written.
+ * @param {{ message: string, said?: Said | null, offline?: boolean, shown?: string, lang?: string }} h
  */
 export function holdWords(h) {
-  const why = (h.said ? backupWords(h.said) : null) ?? h.message;
+  const why = (h.said ? backupWords(h.said) : null) ?? (h.shown && h.lang === lang() ? h.shown : h.message);
   return h.offline ? sentences(why, t`annai tries again once it's back online.`) : why;
 }
 
@@ -159,10 +161,12 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       ? await withoutSecretsIn(store, te.choices.slice(0, 20).map((c) => ({ label: String(c?.label ?? '').slice(0, 200), config: settingsOf(rec, c?.config) })))
       : undefined;
     const cleaned = new TargetError(te?.kind ?? 'other', message, { remote: te?.remote, bytes: te?.bytes, retryAt: te?.retryAt, ...(choices ? { choices } : {}) });
-    // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps.
+    // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps. A
+    // place's plugin's own words carry their language, so a hold keeps them only for screens in it (localization L7).
     const { said } = /** @type {any} */ (e) ?? {};
     const shown = /** @type {any} */ (e)?.shown ?? (said ? backupWords(said) ?? undefined : undefined);
-    return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await shownWithoutSecrets(store, shown) } : {}), ...(said ? { said } : {}) });
+    return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await shownWithoutSecrets(store, shown) } : {}), ...(said ? { said } : {}),
+      ...(te && !said && typeof te.shown === 'string' ? { lang: lang() } : {}) });
   }
 
   /** What a place filled in for fields left empty, or offers: text values of its own fields. @param {Target} rec @param {unknown} config @returns {Record<string, string>} */
@@ -230,8 +234,10 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       // Offline is no failure of the place's: its count, which the wait after a failure grows with, stays.
       const was = rec.hold?.kind === 'error' ? rec.hold.count : 0;
       const count = online() ? was + 1 : was;
-      const said = /** @type {any} */ (e).said;
-      h = { kind: 'error', message: e.message, said: said ?? null, ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
+      const { said, shown, lang: shownIn } = /** @type {any} */ (e);
+      h = { kind: 'error', message: e.message, said: said ?? null, ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind),
+        // A plugin's own words with their language: a screen in another one shows its English.
+        ...(shownIn && shown !== e.message ? { shown, lang: shownIn } : {}) };
     }
     await setTarget(ws, rec.id, { hold: h }).catch(() => {});
     if (h.kind === 'newer') await log('backup.newer', { target: rec.id, type: rec.type, remote: h.remote });

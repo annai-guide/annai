@@ -1,4 +1,4 @@
-import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts, originsOf } from './packages.js';
+import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts, originsOf, wordsOf, translationFor } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, COMPONENTS } from './ui-slots.js';
@@ -13,7 +13,8 @@ import { readZip, ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
 import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
-import { t, plural } from './l10n.js';
+import { t, plural, lang, dir, wordsOver } from './l10n.js';
+import { num, money, size, distance, duration, relTime, when, day, list, sentences } from './intl.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
@@ -22,7 +23,7 @@ import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { orderSearch, searchOffIn, trusted } from './web-search.js';
 import { mergePatch } from './patch.js';
-import { addressProblem } from './llm/provider-desc.js';
+import { addressProblem, addressShown } from './llm/provider-desc.js';
 import { checkSetup } from './llm/setup.js';
 import { catalogFacts } from './catalog-facts.js';
 import { toBase64, fromBase64 } from './bytes.js';
@@ -52,8 +53,10 @@ function defaultsOf(schema) {
 }
 /** Shared helpers every plugin gets (spec §5.4, §9.1). */
 const HELPERS = Object.freeze({ sse, parsePartialJSON, ProviderError, errorFromResponse, retry, tsv, mergePatch, TargetError, zip: Object.freeze({ ZipReader, ZipWriter }),
-  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem,
+  backupFiles: Object.freeze({ name: backupFileName, parse: parseBackupFileName }), xml: Object.freeze({ elements: xmlElements, text: xmlText }), readAnswer, addressProblem, addressShown,
   base64: Object.freeze({ encode: toBase64, decode: fromBase64 }), g711, wav: Object.freeze({ encode: encodeWav, decode: pcm16 }) });
+/** annai.l10n's formats, as annai's own. */
+const FORMATS = Object.freeze({ num, money, size, distance, duration, relTime, when, day, list, sentences });
 
 /** The kinds annai.register refuses, with the call each goes through. @type {Record<string, string>} */
 /* en */ const OWN_CALL = { tool: 'annai.tools.register', 'endpoint-type': 'annai.providers.register', 'storage-type': 'annai.storage.register', schema: 'annai.schemas.register',
@@ -101,6 +104,8 @@ export class PluginHost {
   #starting = new Map();
   /** @type {Set<string>} ids being removed: their start's later writes are skipped, and they don't start again (fix pass 8a-2) */
   #removing = new Set();
+  /** @type {Map<string, ReturnType<typeof wordsOf>>} each running plugin's words for the screens */
+  #words = new Map();
   /** @type {Record<string, any>} installed.json as last read, for ranks */
   #known = {};
   /** @type {Record<string, string>} the user's choices of who owns a name, "<kind>:<name>" → plugin id (app settings' uses) */
@@ -175,11 +180,11 @@ export class PluginHost {
    * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
    * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
    * the skill isn't used until the user chooses it. previous: the installed version this package would replace, and where it came from.
-   * @param {Map<string, Uint8Array>} files
+   * @param {Map<string, Uint8Array>} files @param {{ official?: boolean }} [o] official: annai's own, from its catalog
    * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added, from: { source: string, file?: string, url?: string } } | null }>}
    */
-  async inspect(files) {
-    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
+  async inspect(files, { official = false } = {}) {
+    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes, official });
     const id = pkg.id;
     if (this.builtins.has(id)) {
       /* en */
@@ -262,7 +267,7 @@ export class PluginHost {
    * @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts]
    */
   async install(files, { source = 'file', file, url } = {}) {
-    const pkg = await this.inspect(files);
+    const pkg = await this.inspect(files, { official: source === 'official' });
     const id = pkg.id;
     /** @type {Map<string, Uint8Array>} */
     const toWrite = new Map([...pkg.files].map(([rel, bytes]) => [`/${id}/${rel}`, bytes]));
@@ -443,6 +448,7 @@ export class PluginHost {
     if (this.#stale.has(id)) throw new PluginError(id, /* en */ 'was updated. Restart annai to run the new version.', { shown: t`was updated. Restart annai to run the new version.` });
     const manifest = await this.#stored(id);
     const state = await this.installed();
+    this.#words.set(id, await this.words(id, manifest));
     if (manifest.entry) this.#loaded.set(id, state[id]?.fingerprint);
     const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
     await this.#start(manifest, mod, false);
@@ -463,7 +469,26 @@ export class PluginHost {
         /* en */ console.warn(`plugin ${id} failed to stop cleanly`, e);
       }
     }
+    this.#words.delete(id);
     this.registry.removePlugin(id);
+  }
+
+  /** An installed plugin's words for the screens, from its stored files (wordsOf). @param {string} id @param {any} [manifest] as stored */
+  async words(id, manifest) {
+    const m = manifest ?? (await this.manifestOf(id));
+    const tag = m ? translationFor(m) : null;
+    const bytes = tag ? (await this.ws.read(SYS_PLUGINS, `/${id}/l10n/${tag}.json`).catch(() => null))?.bytes : undefined;
+    return wordsOf(m, () => bytes);
+  }
+
+  /** A running plugin's manifest as the screens show it, or null. @param {string} id */
+  shownOf(id) {
+    return this.#words.get(id)?.manifest ?? null;
+  }
+
+  /** The language a running plugin's words are in: the screens' for a built-in. @param {string} id */
+  langOf(id) {
+    return this.#words.get(id)?.lang ?? (this.builtins.has(id) ? lang() : 'en');
   }
 
   /** The user's choices that name a plugin go. @param {string} id */
@@ -590,7 +615,8 @@ export class PluginHost {
 
   /**
    * Rows for the plugins screen, each with the facts annai's catalog gives (its kind, abilities,
-   * keywords, size: catalogFacts) and what it provides. problem: why an installed plugin can't start, if it can't.
+   * keywords, size: catalogFacts) and what it provides. problem: why an installed plugin can't start, if it can't. Its words are the
+   * screens' where it has them (an official plugin's name too); lang: their language.
    */
   async describe() {
     const rows = [];
@@ -604,7 +630,7 @@ export class PluginHost {
     for (const m of this.builtins.values()) {
       rows.push({
         ...catalogFacts(m), provides: m.provides ?? {},
-        id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', builtin: true, enabled: true, active: this.active.has(m.id),
+        id: m.id, name: m.name, version: m.version, shownVersion: m.version, description: m.description ?? '', lang: lang(), builtin: true, enabled: true, active: this.active.has(m.id),
         failing: this.registry.isDisabled(m.id), problem: null, restart: false, kind: 'plugin', source: 'builtin', skills: skillsOf(m.id), code: true, settings: null,
         provider: false, requires: [],
       });
@@ -630,11 +656,14 @@ export class PluginHost {
         problem = String(/** @type {any} */ (e)?.message ?? e);
       }
       const active = this.active.has(id);
+      const w = m && kindOfState(s) !== 'skill' ? this.#words.get(id) ?? (await this.words(id, m)) : null;
+      const shown = w?.manifest ?? m;
       rows.push({
-        ...catalogFacts(m ?? { id, name: s.name ?? id, version: s.version }, { size: sizes.get(id) ?? 0 }), provides: m?.provides ?? {},
-        id, ...shownName(m?.name ?? s.name ?? id, id, own), version: m?.version ?? s.version, shownVersion, description: m?.description ?? '', builtin: false,
+        ...catalogFacts(shown ?? { id, name: s.name ?? id, version: s.version }, { size: sizes.get(id) ?? 0 }), provides: m?.provides ?? {},
+        id, ...shownName((s.source === 'official' ? shown : m)?.name ?? s.name ?? id, id, own), version: m?.version ?? s.version, shownVersion, description: shown?.description ?? '', builtin: false,
+        lang: w?.lang ?? m?.language ?? 'en',
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
-        kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: m?.settings ?? null,
+        kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: shown?.settings ?? null,
         // A model provider's plugin, and what it requires (milestone 1).
         provider: Boolean(m?.provider), requires: Array.isArray(m?.requires) ? m.requires : [],
         // Off, the skills it has (minors 18).
@@ -794,8 +823,12 @@ export class PluginHost {
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
     );
+    const words = this.#words.get(id);
+    const shownIn = this.langOf(id);
     return Object.freeze({
       id,
+      /** Its words in the screens' language, and the formats (localization design, section 8). */
+      l10n: Object.freeze({ lang: lang(), dir: dir(), ...wordsOver(words?.messages ?? null), format: FORMATS }),
       register: (/** @type {string} */ kind, /** @type {any} */ item) => {
         // A kind with a call of its own is checked and stamped there.
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
@@ -846,8 +879,8 @@ export class PluginHost {
         fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => tracedFetch(this.ws.store, SYS, { tool: `plugin:${id}` }, this.#services.fetch)(url, init),
       }),
       ui: Object.freeze({
-        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions }),
-        toast: (/** @type {string} */ text) => need('notices').toast(String(text)),
+        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions, lang: shownIn }),
+        toast: (/** @type {string} */ text) => need('notices').toast(String(text), shownIn),
         // What a plugin adds to annai's screens (spec §16.4), checked first; it goes when the plugin stops.
         slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
           const wrong = checkSlot(slot, item);
