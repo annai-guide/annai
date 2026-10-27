@@ -113,6 +113,13 @@ remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the
 remote-trace:m3chyg	draft	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	draft	Scripted model	按脚本回复的模型	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:8	
+search-serper:@name	draft	Serper Search	Serper 搜索	plugins-official/search-serper/annai-plugin.json:3	
+search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:8	
+search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@keywords.1	draft	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@search.key.note	draft	2,500 free searches on sign-up, no card.	注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:17	
+search-serper:@settings.properties.key.title	draft	Serper API key	Serper API 密钥	plugins-official/search-serper/annai-plugin.json:22	
+search-serper:nnxk8n	draft	needs a key (Settings → Plugins → Serper Search)	需要密钥（设置 → 插件 → Serper 搜索）	plugins-official/search-serper/index.js:16	
 search-tavily:@name	draft	Tavily Search	Tavily 搜索	plugins-official/search-tavily/annai-plugin.json:3	
 search-tavily:@description	draft	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。	plugins-official/search-tavily/annai-plugin.json:8	
 search-tavily:@keywords.0	draft	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	

@@ -1,8 +1,9 @@
 {
   "id": "search-serper",
   "name": "Serper Search",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
   "category": "tools",

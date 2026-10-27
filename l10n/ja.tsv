@@ -113,6 +113,13 @@ remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the
 remote-trace:m3chyg	draft	Open Remote trace	リモート記録を開く	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	draft	Scripted model	台本どおりのモデル	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	draft	A model that replies from a script, for tests and plugin authors. It never uses the network.	台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。	plugins-official/scripted-model/annai-plugin.json:8	
+search-serper:@name	draft	Serper Search	Serper 検索	plugins-official/search-serper/annai-plugin.json:3	
+search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:8	
+search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@keywords.1	draft	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@search.key.note	draft	2,500 free searches on sign-up, no card.	登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:17	
+search-serper:@settings.properties.key.title	draft	Serper API key	Serper の API キー	plugins-official/search-serper/annai-plugin.json:22	
+search-serper:nnxk8n	draft	needs a key (Settings → Plugins → Serper Search)	キーが必要です（設定 → プラグイン → Serper 検索）	plugins-official/search-serper/index.js:16	
 search-tavily:@name	draft	Tavily Search	Tavily 検索	plugins-official/search-tavily/annai-plugin.json:3	
 search-tavily:@description	draft	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。	plugins-official/search-tavily/annai-plugin.json:8	
 search-tavily:@keywords.0	draft	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	

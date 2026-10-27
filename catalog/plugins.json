@@ -678,7 +678,7 @@
     {
       "id": "search-serper",
       "name": "Serper Search",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
       "category": "tools",
       "keywords": [
@@ -689,7 +689,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 2711,
+      "size": 3927,
       "requires": [],
       "provides": {
         "search": [
@@ -697,8 +697,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "48e858c3d50f8b2a25ceb80f6430470e51f773df47e6c88f4616d4fa37951baa",
-        "index.js": "4a2244d5bf91a5c039afc5189fdda2552390a9f9e9e69c59b76b70166d54374e"
+        "annai-plugin.json": "f4c270517be1ca9ee045cb5562a56923e886b4371c477d03b3d90df6af412739",
+        "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
+        "l10n/ja.json": "6bb0d3d5dca938342f806a3c1b17c0e7e5f2794dd80a5b18bb12febff0acb1ae",
+        "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a"
       }
     },
     {
