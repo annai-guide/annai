@@ -1,5 +1,5 @@
 {
-  "build": "9c5e0291345a",
+  "build": "c1b7ef591928",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -115,7 +115,7 @@
     "/src/core/now.js": "c47b701f7e42",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
-    "/src/core/packages.js": "885a3c145590",
+    "/src/core/packages.js": "42c72c879d8e",
     "/src/core/requires.js": "7bd7542312ba",
     "/src/core/pack/download.js": "4823640428e0",
     "/src/core/pack/keeper.js": "b03982f77e3a",

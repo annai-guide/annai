@@ -540,7 +540,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       add(`${folder}${SKILL_FILE}`);
     }
     for (const f of Array.isArray(manifest.personalities) ? manifest.personalities : []) add(f);
-    // Its translations, each left out when it can't be had (fail working).
+    // Its translations, each left out when the site answers it hasn't one (fail working).
     const l10n = new Set((Array.isArray(manifest.l10n) ? manifest.l10n : []).filter((x) => typeof x === 'string' && fileName(`l10n/${x}.json`)).map((x) => `l10n/${x}.json`));
     for (const f of l10n) add(f);
     names.delete(MANIFEST_FILE);
@@ -556,9 +556,9 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(u));
       } catch (e) {
-        if (l10n.has(name) && /** @type {any} */ (e)?.name !== 'AbortError') continue;
-        // Which file the site lacks (minors 21).
+        // Which file the site lacks (minors 21). A translation it answers it hasn't (a 404) is left out; no answer at all fails.
         const status = /** @type {any} */ (e)?.status;
+        if (status && l10n.has(name)) continue;
         throw status ? new Error(t`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
       }
     }
