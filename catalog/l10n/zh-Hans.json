@@ -95,6 +95,14 @@
       "name": "按脚本回复的模型",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
     },
+    "search-serper": {
+      "name": "Serper 搜索",
+      "description": "通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。",
+      "keywords": [
+        "Serper",
+        "Google"
+      ]
+    },
     "search-tavily": {
       "name": "Tavily 搜索",
       "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",

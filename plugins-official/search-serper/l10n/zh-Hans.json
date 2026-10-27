@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。",
+    "name": "Serper 搜索",
+    "search.key.note": "注册即送 2,500 次免费搜索，无需银行卡。",
+    "settings.properties.key.title": "Serper API 密钥",
+    "keywords": [
+      "Serper",
+      "Google"
+    ]
+  },
+  "messages": {
+    "nnxk8n": "需要密钥（设置 → 插件 → Serper 搜索）"
+  }
+}

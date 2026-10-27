@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。",
+    "name": "Serper 検索",
+    "search.key.note": "登録時に 2,500 回の無料検索、カード不要。",
+    "settings.properties.key.title": "Serper の API キー",
+    "keywords": [
+      "Serper",
+      "Google"
+    ]
+  },
+  "messages": {
+    "nnxk8n": "キーが必要です（設定 → プラグイン → Serper 検索）"
+  }
+}

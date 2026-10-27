@@ -95,6 +95,14 @@
       "name": "台本どおりのモデル",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
     },
+    "search-serper": {
+      "name": "Serper 検索",
+      "description": "Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。",
+      "keywords": [
+        "Serper",
+        "Google"
+      ]
+    },
     "search-tavily": {
       "name": "Tavily 検索",
       "description": "AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。",
