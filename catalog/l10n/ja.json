@@ -25,6 +25,10 @@
       "name": "Mistral",
       "description": "Mistral のモデル。"
     },
+    "provider-scripted": {
+      "name": "台本どおりのモデル（テスト用）",
+      "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
+    },
     "scripted-model": {
       "name": "台本どおりのモデル",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
