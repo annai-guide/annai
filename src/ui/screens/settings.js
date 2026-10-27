@@ -30,6 +30,15 @@ export function waitingWords(app, plugins) {
   return sentences(app ? t`A new version of annai is ready.` : '', plugins.length ? t`Plugin updates are ready: ${list(plugins.map(updateName), 'plain')}.` : '') || null;
 }
 
+/**
+ * Backups' line: the kinds of place backed up to automatically, each once (a place is named by its kind, so two WebDAV places are one
+ * WebDAV). @param {{ name?: string, auto: string }[]} places Backups' list
+ */
+export function backupLine(places) {
+  const kinds = [...new Set(places.filter((p) => p.auto !== 'off').map((p) => String(p.name)))];
+  return kinds.length ? t`Backing up automatically to ${list(kinds, 'plain')}.` : t`No automatic backups yet. Add a place to back up to, such as a private GitHub repository.`;
+}
+
 /** @param {string} line @param {string} href @param {string} label */
 const goTo = (line, href, label) => [h('p', { class: 'sub', text: line }), h('div', { class: 'acts' }, h('a', { class: 'btn', href }, label))];
 
@@ -39,7 +48,6 @@ export async function renderSettings(ctx) {
   const app = await readAppSettings(ctx.ws);
   const exportSlot = h('div', {});
   const places = ctx.backups ? await ctx.backups.list() : [];
-  const automatic = places.filter((/** @type {any} */ p) => p.auto !== 'off').map((/** @type {any} */ p) => p.name);
   const waits = waitingWords(Boolean(ctx.updates?.waiting), (await ctx.updates?.plugins().catch(() => [])) ?? []);
   /** @type {Record<string, () => Promise<any> | any>} */
   const sections = {
@@ -51,7 +59,7 @@ export async function renderSettings(ctx) {
     notifications: () => section(t`Notifications`, ...goTo(t`Reminders while annai is closed, through the push relay, and what it learns.`, '#/notifications', t`Notifications`)),
     backup: () => section(t`Backup`,
       h('p', { class: 'sub', text: app.lastExportAt ? t`Last export ${relTime(app.lastExportAt)}.` : t`No export yet. Export regularly: annai keeps everything on this device.` }),
-      h('p', { class: 'sub', text: automatic.length ? t`Backing up automatically to ${list(automatic, 'plain')}.` : t`No automatic backups yet. Add a place to back up to, such as a private GitHub repository.` }),
+      h('p', { class: 'sub', text: backupLine(places) }),
       h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
         onclick: () => exportSlot.replaceChildren(exportPanel(ctx, { kind: 'everything' })),

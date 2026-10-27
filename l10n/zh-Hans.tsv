@@ -2042,66 +2042,66 @@ djv8ja	ok	Timeline	时间线	src/ui/screens/replay.js:175
 j4z771	ok	Pause	暂停	src/ui/screens/replay.js:176	
 17z59l7	ok	Plugin updates are ready: {0}.	插件更新已就绪：{0}。	src/ui/screens/settings.js:30	{0} = list(plugins.map(updateName), 'plain')
 1ltn2ct	ok	A new version of annai is ready.	annai 的新版本已就绪。	src/ui/screens/settings.js:30	
-k12u1x	ok	Updates	更新	src/ui/screens/settings.js:46	
-1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 会在启动时和你回来时，查找自身及其插件的新版本。可以立即检查，或查看正在运行的构建。	src/ui/screens/settings.js:47	
-1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、每个角色尝试它们的顺序、她每天可花费的金额、缓存，以及何时总结。	src/ui/screens/settings.js:49	
-1kkulsa	ok	Voice	语音	src/ui/screens/settings.js:50	context: screen
-qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 如何说话和听你说话，各有一个测试。	src/ui/screens/settings.js:50	
-1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭期间的提醒，通过推送中继送达，以及中继会知道什么。	src/ui/screens/settings.js:51	
-1vex33	ok	Backup	备份	src/ui/screens/settings.js:52	
-1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:53	
-rpzgfn	ok	Last export {0}.	上次导出：{0}。	src/ui/screens/settings.js:53	{0} = relTime(app.lastExportAt)
-2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:54	
-zi2agh	ok	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:54	{0} = list(automatic, 'plain')
-1tpqgk3	ok	Automatic backups	自动备份	src/ui/screens/settings.js:58	
-706cmq	ok	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:60	
-8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:61	
-m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:62	
-11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和抓取，以及 Jina 密钥。	src/ui/screens/settings.js:64	Note: fetch → 抓取, as the other rows name it.
-hflnof	ok	Skills and code plugins: install, update, switch off or remove.	技能和代码插件：安装、更新、关闭或移除。	src/ui/screens/settings.js:65	
-ysihre	ok	Manage plugins	管理插件	src/ui/screens/settings.js:65	
-eop0jq	ok	Storage	存储空间	src/ui/screens/settings.js:66	
-1p1ce3s	ok	Protected from automatic clearing: no.	受保护，不会被自动清除：否。	src/ui/screens/settings.js:67	
-1q6azye	ok	Protected from automatic clearing: yes.	受保护，不会被自动清除：是。	src/ui/screens/settings.js:67	
-q3dcqq	ok	Using {0} of about {1}.	已使用约 {1} 中的 {0}。	src/ui/screens/settings.js:68	{0} = size(st.usage); {1} = size(st.quota)
-12kaphy	ok	Your data is now protected.	你的数据现已受到保护。	src/ui/screens/settings.js:73	
-16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	浏览器没有同意。把 annai 安装到主屏幕通常可以解决。	src/ui/screens/settings.js:73	
-o8v2vm	ok	Protect my data	保护我的数据	src/ui/screens/settings.js:76	
-1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：许可证、源代码、致谢，以及你的密钥和数据如何保存。	src/ui/screens/settings.js:77	{0} = ctx.version
-onrqou	ok	About	关于	src/ui/screens/settings.js:77	
-1stxhg7	ok	Diagnostics	诊断	src/ui/screens/settings.js:78	
-ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	一份最近的错误和系统事件报告，不含你的文件或密钥，可贴到问题报告中。	src/ui/screens/settings.js:79	
-2yd0qo	ok	Copy diagnostics	复制诊断信息	src/ui/screens/settings.js:80	
-5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模拟的旅行试试 GPS、回放和回顾。	src/ui/screens/settings.js:81	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在试验中的功能，例如在标签页之间滑动。每项在你开启前都是关闭的。	src/ui/screens/settings.js:82	
-3y74hh	ok	Erase	清除	src/ui/screens/settings.js:83	
-5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：完全按拍摄时的样子保存照片	src/ui/screens/settings.js:100	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（无法写入时用 JPEG）	src/ui/screens/settings.js:103	Note: Short, so the select box shows it whole on a phone.
-8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:118	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边为整数像素，至少 {0}。留空则不限。	src/ui/screens/settings.js:119	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的最大值至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:126	{0} = num(0.1)
-1ftv62v	ok	This browser writes WebP.	此浏览器可以写入 WebP。	src/ui/screens/settings.js:128	
-t33cgw	ok	The originals stay in your phone's photo library.	原图保留在你手机的照片图库中。	src/ui/screens/settings.js:128	
-xbsoea	ok	Each photo you add is stored once.	你添加的每张照片只保存一次。	src/ui/screens/settings.js:128	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器无法写入 WebP，所以照片保存为 JPEG。	src/ui/screens/settings.js:128	
-10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:131	
-ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:132	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	最长边，像素	src/ui/screens/settings.js:134	
-ehvdao	ok	Largest file, MB	最大文件，MB	src/ui/screens/settings.js:135	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大文件至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:135	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:136	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只制作一次，并与对话一起保存。仔细查看时总会发送更多细节，所以较小的设置也够用。	src/ui/screens/settings.js:137	
-1223a8b	ok	Longest side sent, pixels	发送的最长边，像素	src/ui/screens/settings.js:139	
-1iw8fgg	ok	Largest photo sent, MB	发送照片的最大值，MB	src/ui/screens/settings.js:140	
-10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:142	
-1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:158	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:160	
-ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:179	
-u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:200	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:206	
-1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:208	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
-199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:218	
+2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:39	
+zi2agh	ok	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:39	{0} = list(kinds, 'plain')
+k12u1x	ok	Updates	更新	src/ui/screens/settings.js:54	
+1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 会在启动时和你回来时，查找自身及其插件的新版本。可以立即检查，或查看正在运行的构建。	src/ui/screens/settings.js:55	
+1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、每个角色尝试它们的顺序、她每天可花费的金额、缓存，以及何时总结。	src/ui/screens/settings.js:57	
+1kkulsa	ok	Voice	语音	src/ui/screens/settings.js:58	context: screen
+qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 如何说话和听你说话，各有一个测试。	src/ui/screens/settings.js:58	
+1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭期间的提醒，通过推送中继送达，以及中继会知道什么。	src/ui/screens/settings.js:59	
+1vex33	ok	Backup	备份	src/ui/screens/settings.js:60	
+1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:61	
+rpzgfn	ok	Last export {0}.	上次导出：{0}。	src/ui/screens/settings.js:61	{0} = relTime(app.lastExportAt)
+1tpqgk3	ok	Automatic backups	自动备份	src/ui/screens/settings.js:66	
+706cmq	ok	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:68	
+8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:69	
+m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:70	
+11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和抓取，以及 Jina 密钥。	src/ui/screens/settings.js:72	Note: fetch → 抓取, as the other rows name it.
+hflnof	ok	Skills and code plugins: install, update, switch off or remove.	技能和代码插件：安装、更新、关闭或移除。	src/ui/screens/settings.js:73	
+ysihre	ok	Manage plugins	管理插件	src/ui/screens/settings.js:73	
+eop0jq	ok	Storage	存储空间	src/ui/screens/settings.js:74	
+1p1ce3s	ok	Protected from automatic clearing: no.	受保护，不会被自动清除：否。	src/ui/screens/settings.js:75	
+1q6azye	ok	Protected from automatic clearing: yes.	受保护，不会被自动清除：是。	src/ui/screens/settings.js:75	
+q3dcqq	ok	Using {0} of about {1}.	已使用约 {1} 中的 {0}。	src/ui/screens/settings.js:76	{0} = size(st.usage); {1} = size(st.quota)
+12kaphy	ok	Your data is now protected.	你的数据现已受到保护。	src/ui/screens/settings.js:81	
+16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	浏览器没有同意。把 annai 安装到主屏幕通常可以解决。	src/ui/screens/settings.js:81	
+o8v2vm	ok	Protect my data	保护我的数据	src/ui/screens/settings.js:84	
+1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：许可证、源代码、致谢，以及你的密钥和数据如何保存。	src/ui/screens/settings.js:85	{0} = ctx.version
+onrqou	ok	About	关于	src/ui/screens/settings.js:85	
+1stxhg7	ok	Diagnostics	诊断	src/ui/screens/settings.js:86	
+ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	一份最近的错误和系统事件报告，不含你的文件或密钥，可贴到问题报告中。	src/ui/screens/settings.js:87	
+2yd0qo	ok	Copy diagnostics	复制诊断信息	src/ui/screens/settings.js:88	
+5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模拟的旅行试试 GPS、回放和回顾。	src/ui/screens/settings.js:89	
+xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在试验中的功能，例如在标签页之间滑动。每项在你开启前都是关闭的。	src/ui/screens/settings.js:90	
+3y74hh	ok	Erase	清除	src/ui/screens/settings.js:91	
+5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：完全按拍摄时的样子保存照片	src/ui/screens/settings.js:108	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（无法写入时用 JPEG）	src/ui/screens/settings.js:111	Note: Short, so the select box shows it whole on a phone.
+8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:126	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边为整数像素，至少 {0}。留空则不限。	src/ui/screens/settings.js:127	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的最大值至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:134	{0} = num(0.1)
+1ftv62v	ok	This browser writes WebP.	此浏览器可以写入 WebP。	src/ui/screens/settings.js:136	
+t33cgw	ok	The originals stay in your phone's photo library.	原图保留在你手机的照片图库中。	src/ui/screens/settings.js:136	
+xbsoea	ok	Each photo you add is stored once.	你添加的每张照片只保存一次。	src/ui/screens/settings.js:136	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器无法写入 WebP，所以照片保存为 JPEG。	src/ui/screens/settings.js:136	
+10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:139	
+ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:140	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	最长边，像素	src/ui/screens/settings.js:142	
+ehvdao	ok	Largest file, MB	最大文件，MB	src/ui/screens/settings.js:143	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大文件至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:143	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:144	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只制作一次，并与对话一起保存。仔细查看时总会发送更多细节，所以较小的设置也够用。	src/ui/screens/settings.js:145	
+1223a8b	ok	Longest side sent, pixels	发送的最长边，像素	src/ui/screens/settings.js:147	
+1iw8fgg	ok	Largest photo sent, MB	发送照片的最大值，MB	src/ui/screens/settings.js:148	
+10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:150	
+1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:151	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:166	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:168	
+ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:187	
+u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:208	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:214	
+1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:216	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:226	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:18	
 1mlnwtl	ok	Shiori, asleep	Shiori，睡着了	src/ui/screens/shiori.js:18	

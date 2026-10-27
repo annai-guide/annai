@@ -2042,66 +2042,66 @@ djv8ja	ok	Timeline	タイムライン	src/ui/screens/replay.js:175
 j4z771	ok	Pause	一時停止	src/ui/screens/replay.js:176	
 17z59l7	ok	Plugin updates are ready: {0}.	プラグインのアップデートがあります：{0}。	src/ui/screens/settings.js:30	{0} = list(plugins.map(updateName), 'plain')
 1ltn2ct	ok	A new version of annai is ready.	annai の新しいバージョンの準備ができました。	src/ui/screens/settings.js:30	
-k12u1x	ok	Updates	アップデート	src/ui/screens/settings.js:46	
-1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai は起動時と、あなたが戻ってきたときに、自分とプラグインの新しいバージョンを探します。今すぐ確認するか、動いているビルドを確認できます。	src/ui/screens/settings.js:47	
-1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori が使うプロバイダーとモデル、各役割が試す順番、1日に使える額、キャッシュ、要約するタイミング。	src/ui/screens/settings.js:49	
-1kkulsa	ok	Voice	音声	src/ui/screens/settings.js:50	context: screen
-qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori の話し方と聞き取り。それぞれにテストがあります。	src/ui/screens/settings.js:50	
-1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai を閉じている間のリマインダー。プッシュ中継を通じて届き、中継が知ることも説明します。	src/ui/screens/settings.js:51	
-1vex33	ok	Backup	バックアップ	src/ui/screens/settings.js:52	
-1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	まだエクスポートしていません。定期的にエクスポートしてください。annai はすべてをこの端末に保存しています。	src/ui/screens/settings.js:53	
-rpzgfn	ok	Last export {0}.	前回のエクスポート：{0}。	src/ui/screens/settings.js:53	{0} = relTime(app.lastExportAt)
-2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	自動バックアップはまだありません。非公開の GitHub リポジトリなど、バックアップ先を追加してください。	src/ui/screens/settings.js:54	
-zi2agh	ok	Backing up automatically to {0}.	{0}に自動でバックアップしています。	src/ui/screens/settings.js:54	{0} = list(automatic, 'plain')
-1tpqgk3	ok	Automatic backups	自動バックアップ	src/ui/screens/settings.js:58	
-706cmq	ok	A trip someone sent you, or a backup to bring back:	送られてきた旅や、戻したいバックアップ：	src/ui/screens/settings.js:60	
-8f98y9	ok	Open an annai file	annai のファイルを開く	src/ui/screens/settings.js:61	
-m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	見た目、性格、自分から動く頻度。	src/ui/screens/settings.js:62	
-11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori の各ツールのオン/オフ、Web 検索と読み込み、Jina のキー。	src/ui/screens/settings.js:64	
-hflnof	ok	Skills and code plugins: install, update, switch off or remove.	スキルとコード付きプラグイン：インストール、アップデート、オフ、削除。	src/ui/screens/settings.js:65	
-ysihre	ok	Manage plugins	プラグインを管理	src/ui/screens/settings.js:65	
-eop0jq	ok	Storage	ストレージ	src/ui/screens/settings.js:66	
-1p1ce3s	ok	Protected from automatic clearing: no.	自動消去からの保護：なし。	src/ui/screens/settings.js:67	
-1q6azye	ok	Protected from automatic clearing: yes.	自動消去からの保護：あり。	src/ui/screens/settings.js:67	
-q3dcqq	ok	Using {0} of about {1}.	約{1}のうち{0}を使用しています。	src/ui/screens/settings.js:68	{0} = size(st.usage); {1} = size(st.quota)
-12kaphy	ok	Your data is now protected.	データが保護されました。	src/ui/screens/settings.js:73	
-16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	ブラウザが同意しませんでした。annai をホーム画面に追加すると、たいてい解決します。	src/ui/screens/settings.js:73	
-o8v2vm	ok	Protect my data	データを保護	src/ui/screens/settings.js:76	
-1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：ライセンス、ソース、クレジット、キーとデータの扱い。	src/ui/screens/settings.js:77	{0} = ctx.version
-onrqou	ok	About	情報	src/ui/screens/settings.js:77	
-1stxhg7	ok	Diagnostics	診断	src/ui/screens/settings.js:78	
-ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	最近のエラーとシステムの出来事のレポート。ファイルやキーは含まず、不具合の報告に貼り付けられます。	src/ui/screens/settings.js:79	
-2yd0qo	ok	Copy diagnostics	診断情報をコピー	src/ui/screens/settings.js:80	
-5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	シミュレーションした旅で、GPS、リプレイ、振り返りを試せます。	src/ui/screens/settings.js:81	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	タブ間のスワイプなど、まだ試している機能。どれもオンにするまでオフです。	src/ui/screens/settings.js:82	
-3y74hh	ok	Erase	消去	src/ui/screens/settings.js:83	
-5d0bx7	ok	Keep originals: store photos exactly as taken	オリジナルを残す：写真を撮ったままの状態で保存	src/ui/screens/settings.js:100	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（このブラウザで書けない場合は JPEG）	src/ui/screens/settings.js:103	
-8dymvi	ok	Quality goes from {0} to {1}.	画質は{0}から{1}までです。	src/ui/screens/settings.js:118	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	長辺は{0}以上の整数のピクセル数です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:119	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	送る写真の最大サイズは{0} MB 以上です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:126	{0} = num(0.1)
-1ftv62v	ok	This browser writes WebP.	このブラウザは WebP を書けます。	src/ui/screens/settings.js:128	
-t33cgw	ok	The originals stay in your phone's photo library.	オリジナルは端末の写真ライブラリに残ります。	src/ui/screens/settings.js:128	
-xbsoea	ok	Each photo you add is stored once.	追加した写真は1回だけ保存されます。	src/ui/screens/settings.js:128	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	このブラウザは WebP を書けないため、写真は JPEG で保存されます。	src/ui/screens/settings.js:128	
-10avjxv	ok	Save photos as	写真の保存形式	src/ui/screens/settings.js:131	
-ayixjd	ok	Quality ({0} to {1})	画質（{0}〜{1}）	src/ui/screens/settings.js:132	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	長辺（ピクセル）	src/ui/screens/settings.js:134	
-ehvdao	ok	Largest file, MB	最大ファイルサイズ（MB）	src/ui/screens/settings.js:135	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大ファイルサイズは{0} MB 以上です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:135	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	Shiori に送る写真	src/ui/screens/settings.js:136	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	送るコピーは一度だけ作られ、会話と一緒に保存されます。詳しく見るときは常により細かく送るので、小さな設定でも使えます。	src/ui/screens/settings.js:137	
-1223a8b	ok	Longest side sent, pixels	送る長辺（ピクセル）	src/ui/screens/settings.js:139	
-1iw8fgg	ok	Largest photo sent, MB	送る写真の最大サイズ（MB）	src/ui/screens/settings.js:140	
-10wwcx4	ok	Send photos as	写真の送信形式	src/ui/screens/settings.js:142	
-1kotxez	ok	Quality sent ({0} to {1})	送る画質（{0}〜{1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	診断情報をコピーしました。	src/ui/screens/settings.js:158	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコピーできませんでした。このレポートを選択してコピーしてください：	src/ui/screens/settings.js:160	
-ltgiri	ok	Erasing…	消去しています…	src/ui/screens/settings.js:179	
-u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:200	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:206	
-1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:208	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
-199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:218	
+2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	自動バックアップはまだありません。非公開の GitHub リポジトリなど、バックアップ先を追加してください。	src/ui/screens/settings.js:39	
+zi2agh	ok	Backing up automatically to {0}.	{0}に自動でバックアップしています。	src/ui/screens/settings.js:39	{0} = list(kinds, 'plain')
+k12u1x	ok	Updates	アップデート	src/ui/screens/settings.js:54	
+1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai は起動時と、あなたが戻ってきたときに、自分とプラグインの新しいバージョンを探します。今すぐ確認するか、動いているビルドを確認できます。	src/ui/screens/settings.js:55	
+1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori が使うプロバイダーとモデル、各役割が試す順番、1日に使える額、キャッシュ、要約するタイミング。	src/ui/screens/settings.js:57	
+1kkulsa	ok	Voice	音声	src/ui/screens/settings.js:58	context: screen
+qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori の話し方と聞き取り。それぞれにテストがあります。	src/ui/screens/settings.js:58	
+1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai を閉じている間のリマインダー。プッシュ中継を通じて届き、中継が知ることも説明します。	src/ui/screens/settings.js:59	
+1vex33	ok	Backup	バックアップ	src/ui/screens/settings.js:60	
+1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	まだエクスポートしていません。定期的にエクスポートしてください。annai はすべてをこの端末に保存しています。	src/ui/screens/settings.js:61	
+rpzgfn	ok	Last export {0}.	前回のエクスポート：{0}。	src/ui/screens/settings.js:61	{0} = relTime(app.lastExportAt)
+1tpqgk3	ok	Automatic backups	自動バックアップ	src/ui/screens/settings.js:66	
+706cmq	ok	A trip someone sent you, or a backup to bring back:	送られてきた旅や、戻したいバックアップ：	src/ui/screens/settings.js:68	
+8f98y9	ok	Open an annai file	annai のファイルを開く	src/ui/screens/settings.js:69	
+m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	見た目、性格、自分から動く頻度。	src/ui/screens/settings.js:70	
+11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori の各ツールのオン/オフ、Web 検索と読み込み、Jina のキー。	src/ui/screens/settings.js:72	
+hflnof	ok	Skills and code plugins: install, update, switch off or remove.	スキルとコード付きプラグイン：インストール、アップデート、オフ、削除。	src/ui/screens/settings.js:73	
+ysihre	ok	Manage plugins	プラグインを管理	src/ui/screens/settings.js:73	
+eop0jq	ok	Storage	ストレージ	src/ui/screens/settings.js:74	
+1p1ce3s	ok	Protected from automatic clearing: no.	自動消去からの保護：なし。	src/ui/screens/settings.js:75	
+1q6azye	ok	Protected from automatic clearing: yes.	自動消去からの保護：あり。	src/ui/screens/settings.js:75	
+q3dcqq	ok	Using {0} of about {1}.	約{1}のうち{0}を使用しています。	src/ui/screens/settings.js:76	{0} = size(st.usage); {1} = size(st.quota)
+12kaphy	ok	Your data is now protected.	データが保護されました。	src/ui/screens/settings.js:81	
+16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	ブラウザが同意しませんでした。annai をホーム画面に追加すると、たいてい解決します。	src/ui/screens/settings.js:81	
+o8v2vm	ok	Protect my data	データを保護	src/ui/screens/settings.js:84	
+1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：ライセンス、ソース、クレジット、キーとデータの扱い。	src/ui/screens/settings.js:85	{0} = ctx.version
+onrqou	ok	About	情報	src/ui/screens/settings.js:85	
+1stxhg7	ok	Diagnostics	診断	src/ui/screens/settings.js:86	
+ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	最近のエラーとシステムの出来事のレポート。ファイルやキーは含まず、不具合の報告に貼り付けられます。	src/ui/screens/settings.js:87	
+2yd0qo	ok	Copy diagnostics	診断情報をコピー	src/ui/screens/settings.js:88	
+5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	シミュレーションした旅で、GPS、リプレイ、振り返りを試せます。	src/ui/screens/settings.js:89	
+xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	タブ間のスワイプなど、まだ試している機能。どれもオンにするまでオフです。	src/ui/screens/settings.js:90	
+3y74hh	ok	Erase	消去	src/ui/screens/settings.js:91	
+5d0bx7	ok	Keep originals: store photos exactly as taken	オリジナルを残す：写真を撮ったままの状態で保存	src/ui/screens/settings.js:108	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（このブラウザで書けない場合は JPEG）	src/ui/screens/settings.js:111	
+8dymvi	ok	Quality goes from {0} to {1}.	画質は{0}から{1}までです。	src/ui/screens/settings.js:126	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	長辺は{0}以上の整数のピクセル数です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:127	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	送る写真の最大サイズは{0} MB 以上です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:134	{0} = num(0.1)
+1ftv62v	ok	This browser writes WebP.	このブラウザは WebP を書けます。	src/ui/screens/settings.js:136	
+t33cgw	ok	The originals stay in your phone's photo library.	オリジナルは端末の写真ライブラリに残ります。	src/ui/screens/settings.js:136	
+xbsoea	ok	Each photo you add is stored once.	追加した写真は1回だけ保存されます。	src/ui/screens/settings.js:136	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	このブラウザは WebP を書けないため、写真は JPEG で保存されます。	src/ui/screens/settings.js:136	
+10avjxv	ok	Save photos as	写真の保存形式	src/ui/screens/settings.js:139	
+ayixjd	ok	Quality ({0} to {1})	画質（{0}〜{1}）	src/ui/screens/settings.js:140	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	長辺（ピクセル）	src/ui/screens/settings.js:142	
+ehvdao	ok	Largest file, MB	最大ファイルサイズ（MB）	src/ui/screens/settings.js:143	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大ファイルサイズは{0} MB 以上です。上限なしなら空欄にしてください。	src/ui/screens/settings.js:143	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	Shiori に送る写真	src/ui/screens/settings.js:144	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	送るコピーは一度だけ作られ、会話と一緒に保存されます。詳しく見るときは常により細かく送るので、小さな設定でも使えます。	src/ui/screens/settings.js:145	
+1223a8b	ok	Longest side sent, pixels	送る長辺（ピクセル）	src/ui/screens/settings.js:147	
+1iw8fgg	ok	Largest photo sent, MB	送る写真の最大サイズ（MB）	src/ui/screens/settings.js:148	
+10wwcx4	ok	Send photos as	写真の送信形式	src/ui/screens/settings.js:150	
+1kotxez	ok	Quality sent ({0} to {1})	送る画質（{0}〜{1}）	src/ui/screens/settings.js:151	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	診断情報をコピーしました。	src/ui/screens/settings.js:166	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコピーできませんでした。このレポートを選択してコピーしてください：	src/ui/screens/settings.js:168	
+ltgiri	ok	Erasing…	消去しています…	src/ui/screens/settings.js:187	
+u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:208	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:214	
+1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:216	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
+199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:226	
 1bu98qy	ok	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:18	
 1mlnwtl	ok	Shiori, asleep	Shiori、おやすみ中	src/ui/screens/shiori.js:18	
