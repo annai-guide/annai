@@ -45,6 +45,10 @@
       "name": "SGLang",
       "description": "你自己运行的 SGLang 服务器上的模型，思考通过聊天模板开关。"
     },
+    "provider-vllm": {
+      "name": "vLLM",
+      "description": "你自己运行的 vLLM 服务器上的模型，思考通过聊天模板开关，另有用于语音转文字的 Whisper 模型。"
+    },
     "scripted-model": {
       "name": "按脚本回复的模型",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
