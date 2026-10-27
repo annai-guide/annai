@@ -201,3 +201,13 @@ test("the catalog's words for the screens: none in English; an entry in their wo
   assert.equal(shownEntry({ ...entry, id: 'search-serper' }, words).lang, 'en');
   assert.equal(await catalogWords({ fetch: async () => new Response('', { status: 404 }) }), null, "words that can't be had: English");
 });
+
+test("annai's own plugin, installed from its catalog with what it requires, may translate its name; one from a file may not", async () => {
+  const { installWith } = await import('../../src/core/requires.js');
+  const k = await hostKit();
+  const named = () => pkg(TIDES(), { manifest: { name: 'アクメ潮汐' } });
+  await installWith(k.host, named(), { source: 'official' }, { catalog: [] });
+  assert.equal((await k.host.installed())['acme-tides']?.source, 'official');
+  const other = await hostKit();
+  await assert.rejects(installWith(other.host, named(), { source: 'file' }, { catalog: [] }), /translates name/);
+});
