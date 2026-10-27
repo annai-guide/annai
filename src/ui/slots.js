@@ -42,7 +42,7 @@ export function pluginUi(ctx, pluginId) {
     h,
     go: (/** @type {string} */ hash) => ctx.go(String(hash)),
     trip: () => ctx.agent?.trip ?? null,
-    toast: (/** @type {string} */ text) => ctx.notices.toast(String(text), ctx.plugins?.langOf(pluginId)),
+    toast: (/** @type {string} */ text) => ctx.notices.toast(String(text), { lang: ctx.plugins?.langOf(pluginId) }),
     card: (/** @type {any} */ c) => ctx.notices.card({ title: String(c?.title ?? ''), body: c?.body === undefined ? undefined : String(c.body), tone: c?.tone, actions: c?.actions, lang: ctx.plugins?.langOf(pluginId) }),
     shiori: Object.freeze({
       state: () => ({ ...(ctx.agent?.state ?? { name: 'sleeping', label: '' }) }),

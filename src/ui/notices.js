@@ -138,7 +138,7 @@ let lone = 0;
    */
   function card({ title, body, en, tone = 'info', actions = [], toast: brief, lang }) {
     if (brief) {
-      toast(title, lang);
+      toast(title, { lang });
       return () => {};
     }
     // A card with anything to do but Dismiss (Try again, Open Trace, Install) is never folded away.
@@ -163,8 +163,8 @@ let lone = 0;
     fitters.get(node)?.();
     return dismiss;
   }
-  /** @param {string} text @param {string} [lang] a plugin's words' language, marked when it isn't the screens' */
-  function toast(text, lang) {
+  /** @param {string} text @param {{ lang?: string }} [o] lang: a plugin's words' language, marked when it isn't the screens' */
+  function toast(text, { lang } = {}) {
     const shown = h('div', { class: 'toast', text, lang: otherLang(lang) });
     toasts.append(shown);
     setTimeout(() => shown.remove(), 3500);
