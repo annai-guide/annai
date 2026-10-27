@@ -1,5 +1,5 @@
 {
-  "build": "44a6fb084f93",
+  "build": "c9a66ea2ed9a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -267,7 +267,7 @@
     "/src/ui/shiori.css": "12e0c9107729",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
-    "/src/ui/talk-panel.js": "d5f63afb4327",
+    "/src/ui/talk-panel.js": "b12c573be9a4",
     "/src/ui/tap-keeps-keyboard.js": "548810a75a20",
     "/src/ui/dock-hides.js": "5dc41158b534",
     "/src/ui/trip-rows.js": "2ed4ee25799b",
