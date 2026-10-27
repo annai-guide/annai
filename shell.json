@@ -1,5 +1,5 @@
 {
-  "build": "263503bb6162",
+  "build": "190089940441",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -278,6 +278,6 @@
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
     "/l10n/ja.json": "7721f0c5ccd3",
-    "/l10n/zh-Hans.json": "f0fe95e9c59f"
+    "/l10n/zh-Hans.json": "e78602c5e293"
   }
 }
