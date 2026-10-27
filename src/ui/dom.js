@@ -192,13 +192,24 @@ export function linkIn(text, ...links) {
 }
 
 /**
- * Shows what went wrong (messageOf) in el. A schema's refusal is its English (src/core/schema.js), a developer's words (decision
- * 11), so it goes in a span marked lang="en", which the next words shown there replace with it. @param {HTMLElement} el @param {unknown} e
+ * The part of an error's words that is a developer's English (decision 11), "" when none: all of messageOf for a schema's refusals and
+ * an error marked `en: true` (annai's own checks, EnglishError, a PluginError with no screen words); the part its `en` names, when
+ * it is a string (the English inside a sentence in the screens' words). A provider's or a plugin's own words are never marked.
+ * @param {any} e
  */
-export function showError(el, e) {
-  const text = messageOf(e);
-  el.replaceChildren(Array.isArray(/** @type {any} */ (e)?.errors) && typeof /** @type {any} */ (e).shown !== 'string' ? h('span', { lang: 'en', text }) : text);
+export function englishOf(e) {
+  if (typeof e?.en === 'string') return e.en;
+  return typeof e?.shown !== 'string' && (e?.en === true || Array.isArray(e?.errors)) ? messageOf(e) : '';
 }
+
+/**
+ * text (made of messageOf(e) for each error) as parts, with each error's English in a span marked lang="en", where its words stand.
+ * @param {string} text @param {...unknown} errors @returns {(string | HTMLElement)[]}
+ */
+export const englishIn = (text, ...errors) => linkIn(text, ...errors.map(englishOf).filter(Boolean).map((en) => h('span', { lang: 'en', text: en })));
+
+/** Shows what went wrong (messageOf) in el, a developer's English marked lang="en". The next words shown there replace it. @param {HTMLElement} el @param {unknown} e */
+export const showError = (el, e) => el.replaceChildren(...englishIn(messageOf(e), e));
 
 /**
  * A field's number for autosave's read(): null when empty (unless needed), else lo to hi, whole when asked; anything else throws words.

@@ -5,7 +5,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { validZone, deviceZone, dayIn } from '../time.js';
 import { pointsOf } from '../after/route.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
-import { t } from '../l10n.js';
+import { t, EnglishError } from '../l10n.js';
 import { num } from '../intl.js';
 
 /**
@@ -256,7 +256,7 @@ export class SimRun {
               await ws.write(id, path, value, { author: 'user' });
             } catch (e) {
               const why = /** @type {any} */ (e)?.errors?.join('; ') ?? String(/** @type {any} */ (e)?.message ?? e);
-              /* en */ throw new Error(`The itinerary's ${what} doesn't fit annai's ${path.startsWith('/plan/') ? 'plan' : 'booking'} format: ${why}. Fix it in the file and try again.`);
+              /* en */ throw new EnglishError(`The itinerary's ${what} doesn't fit annai's ${path.startsWith('/plan/') ? 'plan' : 'booking'} format: ${why}. Fix it in the file and try again.`);
             }
           }
         } catch (e) {
