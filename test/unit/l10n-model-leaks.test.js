@@ -7,6 +7,7 @@ import { Live } from '../../src/core/live/live.js';
 import { agentKit, until } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { createTrip } from '../../src/core/scopes.js';
 
 // What reaches a model stays annai's English under Japanese screens (the L5f review's probes, made tests): the next plan reminder
 // in Koe's view, an opened notification in Shiori's catch-up, and why the microphone stopped while she listened.
@@ -36,6 +37,27 @@ test("a plan reminder opened from its notification: Shiori's catch-up quotes its
   await again.settled();
   const woke = k.agent.wakes.map((/** @type {any} */ w) => w.text).join('\n');
   assert.match(woke, /opened the reminder "In 15 min: Tea at the inn at 16:00\."/);
+  assert.doesNotMatch(woke, KANA);
+  again.dispose();
+});
+
+test("a plan reminder of a trip that isn't open, opened from its notification: its own trip's English, never the open trip's or an id", async () => {
+  // The open trip has a plan item of the same file name: the other trip's reminder must not be taken for it.
+  const k = await liveKit({ live: false, plan: { tea: { ...TEA, title: 'Coffee at the pier' } } });
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(other, '/plan/tea.json', { id: 'tea', ...TEA }, { author: 'user' });
+  k.live.dispose();
+  await k.clock.advanceTo(at('15:50'));
+  const opened = (/** @type {string} */ watch) => ({ kind: 'opened', key: `${other}|${watch}|1`, scope: other, watch, title: 'Kyoto', body: 'あと10分：Tea at the inn（16:00）。', t: at('15:50') });
+  const news = [opened('plan:tea:coming-up'), opened('plan:gone:coming-up')];
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA, news: async () => /** @type {any} */ (news.splice(0)) });
+  await again.start();
+  await again.settled();
+  const woke = k.agent.wakes.filter((/** @type {any} */ w) => w.scope === other).map((/** @type {any} */ w) => w.text).join('\n');
+  assert.match(woke, /opened the reminder "In 15 min: Tea at the inn at 16:00\."/);
+  assert.doesNotMatch(woke, /Coffee at the pier/);
+  // A plan reminder that is no longer planned: no words, and never its id.
+  assert.doesNotMatch(woke, /plan:gone/);
   assert.doesNotMatch(woke, KANA);
   again.dispose();
 });
