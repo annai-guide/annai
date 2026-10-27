@@ -47,6 +47,7 @@ if (command === 'clips') {
       ...(typeof opts.app === 'string' ? { app: resolve(opts.app) } : {}),
       ...(typeof opts['answer-timeout'] === 'string' ? { answerTimeoutMs: Number(opts['answer-timeout']) * 1000 } : {}),
       ...(typeof opts['max-sessions'] === 'string' ? { maxSessions: Number(opts['max-sessions']) } : {}),
+      ...(typeof opts.ui === 'string' ? { ui: opts.ui } : {}),
     });
     process.exit(r.pass ? 0 : 1);
   } catch (e) {

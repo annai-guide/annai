@@ -5,6 +5,7 @@
 //   node scripts/strings.mjs                    updates the TSVs, the JSON files, src/core/l10n-list.js and sw.js's LANGS
 //   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
 //                                               and any bare English where a screen surely shows it (npm run check)
+//   node scripts/strings.mjs --check --glossary-all   the same, warning about the glossary on accepted rows too (after a glossary change)
 //   node scripts/strings.mjs --find [paths]     lists the literals that read as words and are not marked
 //   node scripts/strings.mjs --review <tag>     a language's drafts as a Markdown table
 import ts from 'typescript';
@@ -272,8 +273,11 @@ export function updateRows(old, messages, tag) {
   });
 }
 
-/** What ships for a language: { key: text } and, for plurals, { key: { category: text } }. @param {Omit<Row, 'line'>[]} rows */
-export function shippedJson(rows) {
+/**
+ * What ships for a language: { key: text } and, for plurals, { key: { category: text } }; and the screens' names Shiori is told, under
+ * "@glossary", a key no message's can be (keys are base 36). @param {Omit<Row, 'line'>[]} rows @param {string} [names] glossaryNames'
+ */
+export function shippedJson(rows, names = '') {
   /** @type {Record<string, any>} */
   const out = {};
   for (const r of [...rows].sort((a, b) => (a.key < b.key ? -1 : 1))) {
@@ -282,6 +286,7 @@ export function shippedJson(rows) {
     if (c) (out[k] ??= {})[c] = r.text;
     else out[k] = r.text;
   }
+  if (names) out['@glossary'] = names;
   return `${JSON.stringify(out)}\n`;
 }
 
@@ -315,6 +320,7 @@ export async function update(root) {
   if (problems.length) throw new Error(problems.map((p) => `${p.file}:${p.line}: ${p.message}`).join('\n'));
   const list = await languages(root);
   const tags = [...new Set([...list.map((l) => l.tag), ...(await tsvTags(root))])].sort();
+  const glossary = await glossaryOf(root);
   /** @type {string[]} */
   const written = [];
   const put = async (/** @type {string} */ path, /** @type {string} */ text) => {
@@ -329,7 +335,7 @@ export async function update(root) {
     const old = existsSync(`${root}/${file}`) ? readTsv(await readFile(`${root}/${file}`, 'utf8')) : [];
     const rows = updateRows(old, messages, tag);
     await put(file, writeTsv(rows));
-    await put(`l10n/${tag}.json`, shippedJson(rows));
+    await put(`l10n/${tag}.json`, shippedJson(rows, glossaryNames(glossary, tag)));
   }
   await put('src/core/l10n-list.js', listFile(list));
   if (existsSync(`${root}/sw.js`)) {
@@ -364,6 +370,19 @@ export function readGlossary(text) {
   }
   return out;
 }
+/** The glossary, or none. @param {string} root */
+const glossaryOf = async (root) => (existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : []);
+
+/**
+ * The glossary's names Shiori is told when the screens aren't English: those she would say to a traveller finding their way in annai,
+ * not the developer's screens (Trace, Diagnostics, Simulate a trip…). The design allows the line about 100 to 300 tokens (decision 7):
+ * with these 31 it is 275 cl100k tokens in Japanese, 235 in Chinese (L6 review 4). A name added costs every user one cold cache.
+ */
+const TOLD = new Set(['Add', 'Backup', 'Booking', 'Conversation', 'Files', 'Languages', 'Models', 'Notifications', 'Now', 'Photos', 'Plan', 'Plugins',
+  'Recap', 'Replay', 'Settings', 'Tools', 'Trips', 'Updates', 'Voice', 'Archive', 'Check this', 'Main', 'Offline pack', 'Speech in', 'Speech out',
+  'Spend per day', 'Start fresh', 'Tidy up', 'Koe · Classic', 'Koe · Realtime', 'Voice on']);
+/** The names Shiori is told in a language (localization decision 7): "Settings (設定), Models (モデル), …", in the glossary's order. @param {Term[]} glossary @param {string} tag */
+export const glossaryNames = (glossary, tag) => glossary.filter((g) => g.terms[tag] && TOLD.has(g.en)).map((g) => `${g.en} (${g.terms[tag]})`).join(', ');
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
  * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
@@ -389,17 +408,19 @@ function naming(/** @type {string} */ english, /** @type {string[]} */ ens, neve
   return found;
 }
 /**
- * A language's rows that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
- * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written.
- * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @returns {Problem[]}
+ * A language's drafts that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
+ * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written. A row a reviewer accepted
+ * (`ok`) is not warned again: its `Note:` says why it reads as it does (localization L6). all: every row with a text, as after a
+ * glossary word changed (--glossary-all).
+ * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @param {{ all?: boolean }} [o] @returns {Problem[]}
  */
-export function glossaryWarnings(glossary, tag, rows) {
+export function glossaryWarnings(glossary, tag, rows, { all = false } = {}) {
   const termOf = (/** @type {Term} */ g) => g.terms[tag] || (g.kind === 'never' ? g.en : '');
   const usable = glossary.filter((g) => termOf(g));
   /** @type {Problem[]} */
   const out = [];
   for (const r of rows) {
-    if (!r.text || r.state === 'new') continue;
+    if (!r.text || r.state === 'new' || (!all && r.state !== 'draft')) continue;
     for (const en of naming(r.en, usable.map((g) => g.en), new Set(usable.filter((g) => g.kind === 'never').map((g) => g.en)))) {
       const g = /** @type {Term} */ (usable.find((x) => x.en === en));
       const term = termOf(g);
@@ -479,9 +500,10 @@ export function bareEnglish(file, text) {
 /**
  * Everything wrong with annai's words, by file and line, and how many drafts each language has.
  * @param {string} root @param {string[]} [files] the files whose bare English is refused
+ * @param {{ glossaryAll?: boolean }} [o] glossaryAll: the glossary's warnings for accepted rows too
  * @returns {Promise<{ problems: Problem[], warnings: Problem[], drafts: Record<string, { draft: number, ok: number }> }>}
  */
-export async function check(root, files = EXTRACTED) {
+export async function check(root, files = EXTRACTED, { glossaryAll = false } = {}) {
   const { messages, problems } = await extract(root);
   /** @type {Problem[]} */
   const warnings = [];
@@ -489,7 +511,7 @@ export async function check(root, files = EXTRACTED) {
   const drafts = {};
   const list = await languages(root);
   // Once the glossary is there, a message that names one of its terms is held to the language's word for it (a warning).
-  const glossary = existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : [];
+  const glossary = await glossaryOf(root);
   for (const tag of [...new Set([...list.map((l) => l.tag), ...(await tsvTags(root))])].sort()) {
     const file = `l10n/${tag}.tsv`;
     const listed = list.some((l) => l.tag === tag);
@@ -519,10 +541,10 @@ export async function check(root, files = EXTRACTED) {
       const m = messages.get(base);
       bag.push({ file, line: r.line, message: m?.kind === 'plural' ? `${tag} has no "${r.key.split('#')[1]}" form: its categories are ${categories(tag).join(', ')}` : `"${r.en}" is no longer in the code: run npm run strings` });
     }
-    warnings.push(...glossaryWarnings(glossary, tag, rows));
+    warnings.push(...glossaryWarnings(glossary, tag, rows, { all: glossaryAll }));
     if (listed) {
       const json = `l10n/${tag}.json`;
-      if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows)) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
+      if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows, glossaryNames(glossary, tag))) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
     }
   }
   const listPath = 'src/core/l10n-list.js';
@@ -614,7 +636,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
   const args = process.argv.slice(2);
   if (args[0] === '--check') {
-    const { problems, warnings, drafts } = await check(root);
+    const { problems, warnings, drafts } = await check(root, EXTRACTED, { glossaryAll: args.includes('--glossary-all') });
     for (const w of warnings) console.warn(`warning ${w.file}:${w.line}: ${w.message}`);
     for (const p of problems) console.error(`${p.file}:${p.line}: ${p.message}`);
     for (const [tag, d] of Object.entries(drafts)) console.log(`${tag}: ${d.draft} drafts, ${d.ok} read`);

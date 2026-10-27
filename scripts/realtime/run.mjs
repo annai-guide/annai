@@ -36,9 +36,10 @@ export async function reanalyse(dir, clips) {
 
 /**
  * @param {{ keys: import('./keys.mjs').Keys, only?: string[], out: URL, port?: number, roomDb?: number | null, settleMs?: number, answerTimeoutMs?: number,
- *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, log?: (s: string) => void }} o
+ *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, log?: (s: string) => void }} o
+ *   ui: the screens' language to run under (localization L6), chosen in Settings → Shiori once annai is set up
  */
-export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, log = console.log }) {
+export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, ui, log = console.log }) {
   const names = (only ?? Object.keys(SCENARIOS).filter((n) => !SCENARIOS[n].extra)).filter((n) => {
     if (!SCENARIOS[n]) throw new Error(`There is no scenario "${n}". They are: ${Object.keys(SCENARIOS).join(', ')}.`);
     return true;
@@ -68,7 +69,7 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
           break;
         }
         log(`\n[${name}] ${sc.about}${keys.line ? ` (key line ${keys.line})` : ''}`);
-        const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => keys.scrub(s) };
+        const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => keys.scrub(s), ...(ui ? { ui } : {}) };
         const rec = await runScenario(browser, name, sc, env);
         rec.keyLine = keys.line;
         sessions += rec.frames.filter((f) => f.kind === 'setup').length; // sockets opened with a setup message: what a key's quota counts

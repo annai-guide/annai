@@ -58,7 +58,8 @@ test('the shell.json in the repository is the one stamp writes', async () => {
   const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
   const manifest = JSON.parse(await readFile(new URL('../../shell.json', import.meta.url), 'utf8'));
   assert.equal(manifest.build, /const BUILD = '([^']+)';/.exec(sw)?.[1]);
-  assert.deepEqual(Object.keys(manifest.files), [...(/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').matchAll(/'(\/[^']*)'/g)].map((m) => m[1]));
+  const langs = [...(/const LANGS = \[([^\]]*)\];/.exec(sw)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => `/l10n/${m[1]}.json`);
+  assert.deepEqual(Object.keys(manifest.files), [...[...(/const SHELL = \[([\s\S]*?)\];/.exec(sw)?.[1] ?? '').matchAll(/'(\/[^']*)'/g)].map((m) => m[1]), ...langs]);
 });
 
 test("a translation changing alone makes a new build: the catalogs of LANGS are hashed with the shell", async () => {
@@ -72,6 +73,10 @@ test("a translation changing alone makes a new build: the catalogs of LANGS are 
     const root = pathToFileURL(dir + '/');
     const first = (await stamp(root)).build;
     assert.equal((await stamp(root, { check: true })).ok, true);
+    // The manifest names each catalog's hash after the shell's, so an update copies one that hasn't changed (L6 review 3).
+    const files = JSON.parse(await readFile(join(dir, 'shell.json'), 'utf8')).files;
+    assert.deepEqual(Object.keys(files), ['/', '/l10n/ja.json', '/l10n/zh-Hans.json']);
+    assert.equal(files['/l10n/ja.json'], createHash('sha256').update('{"a":"b"}').digest('hex').slice(0, 12));
     await writeFile(join(dir, 'l10n/zh-Hans.json'), '{"a":"d"}');
     assert.equal((await stamp(root, { check: true })).ok, false, 'a fixed translation is a new build');
     assert.notEqual((await stamp(root)).build, first);

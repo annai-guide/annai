@@ -100,6 +100,19 @@ export function languagesText(s) {
   return `The user speaks ${list}${s.spoken.length > 1 ? '; they may switch between these' : ''}. Answer in the language they used. ${rest}`;
 }
 
+/** What Shiori is told of screens not in English (localization decision 7): one stable line of their names. @param {string} tag @param {string} names the catalog's, "Settings (設定), …" */
+export const screensText = (tag, names) => /* en */ (tag.split('-')[0] === 'en' || !names ? ''
+  : `annai's screens are in ${display('en', tag, tag)}. When you name a screen, a setting or a button, use the name it shows: ${names}. This doesn't change the language you answer in.`);
+
+/** The Distances choice kept in the app settings: 'km', 'mi', or null for Automatic (anything else). @param {Record<string, any>} app @returns {'km' | 'mi' | null} */
+export const distancesOf = (app) => { const d = app?.languages?.distances; return d === 'km' || d === 'mi' ? d : null; };
+/** What Shiori is told of a Distances choice, over the profile's Units line; '' for Automatic. @param {Record<string, any>} app */
+export function distancesText(app) {
+  const d = distancesOf(app);
+  /* en */
+  return d ? `Give distances in ${d === 'mi' ? 'miles' : 'kilometres'}, as annai's screens show them, whatever their profile says.` : '';
+}
+
 /**
  * What a protocol plugin is given: the languages as data, nothing else. Until the user has chosen, no language is given as a hint (the
  * browser's language is told to models in words only): a hint that forces a Whisper-style model to English would garble a Japanese

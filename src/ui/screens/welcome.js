@@ -1,4 +1,6 @@
 import { h, t, linkIn } from '../dom.js';
+import { screensRow } from '../languages.js';
+import { readAppSettings } from '../../core/settings.js';
 import { num, sentences, sentenceGap } from '../format.js';
 import { markWelcomed } from '../welcome.js';
 import { keysAndData, finePrint } from '../privacy.js';
@@ -34,8 +36,11 @@ const ja = (text) => h('span', { lang: 'ja', text });
 const KOE = /* en */ '声';
 const KOKORO = /* en */ '心';
 
-/** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (the search step) @returns {any[]} */
-function body(n, ctx, ticks) {
+/**
+ * @param {number} n @param {any} ctx @param {Element | null} part the first step's screens' language, or the search step's free services, ticked as saved
+ * @returns {any[]}
+ */
+function body(n, ctx, part) {
   const id = idOf(n);
   if (id === 'welcome') {
     return [
@@ -43,6 +48,8 @@ function body(n, ctx, ticks) {
       h('p', { text: t`Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.` }),
       h('p', { class: 'sub', text: t`She is at the bottom of every screen: tap her to talk, or type.` }),
       h('p', { class: 'sub', text: t`annai (案内) is Japanese for "guidance; showing someone around".` }),
+      // The screens' language, to choose before reading on: annai restarts here, on the welcome, in it (L6 review 2).
+      part,
     ];
   }
   if (id === 'halves') {
@@ -72,7 +79,7 @@ function body(n, ctx, ticks) {
     return [
       h('p', { class: 'lead', text: t`Shiori can search the web as soon as you start, through free services. No key, nothing to set up.` }),
       h('p', { text: t`These are on. Untick any you would rather not use.` }),
-      ticks,
+      part,
       h('p', { class: 'sub', text: WELCOME_SEARCH }),
     ];
   }
@@ -145,7 +152,7 @@ export async function renderWelcome(ctx, route) {
   const screen = h('div', { class: 'screen welcome', dataset: { step: String(n) } },
     h('p', { class: 'step', text: t`${num(n)} of ${num(LAST)}` }),
     title,
-    ...body(n, ctx, idOf(n) === 'search' ? await freeTicks(ctx.ws) : null),
+    ...body(n, ctx, idOf(n) === 'search' ? await freeTicks(ctx.ws) : idOf(n) === 'welcome' ? screensRow(ctx, await readAppSettings(ctx.ws)) : null),
     h('div', { class: 'acts' }, ...nav));
   // Once the shell has put the step on screen, its heading takes the focus, so a screen reader starts there.
   setTimeout(() => { if (title.isConnected) title.focus(); }, 0);

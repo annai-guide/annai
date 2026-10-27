@@ -1,4 +1,4 @@
-import { h, t, field, savedField, savedCheck, numberIn } from '../dom.js';
+import { h, t, tc, field, savedField, savedCheck, numberIn } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { photoSettings } from '../../core/photos.js';
 import { canEncode } from '../photo-codec.js';
@@ -46,7 +46,7 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: waits ?? t`annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.` }),
       h('div', { class: 'acts' }, h('a', { class: waits ? /* en */ 'btn pri' : 'btn', href: '#/updates' }, t`Updates`))),
     models: () => section(t`Models`, ...goTo(t`The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.`, '#/models', t`Models`)),
-    voice: () => section(t`Voice`, ...goTo(t`How Shiori speaks and hears you, with a test for each.`, '#/voice', t`Voice`)),
+    voice: () => section(tc('screen')`Voice`, ...goTo(t`How Shiori speaks and hears you, with a test for each.`, '#/voice', tc('screen')`Voice`)),
     notifications: () => section(t`Notifications`, ...goTo(t`Reminders while annai is closed, through the push relay, and what it learns.`, '#/notifications', t`Notifications`)),
     backup: () => section(t`Backup`,
       h('p', { class: 'sub', text: app.lastExportAt ? t`Last export ${relTime(app.lastExportAt)}.` : t`No export yet. Export regularly: annai keeps everything on this device.` }),

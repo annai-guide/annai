@@ -72,6 +72,12 @@ memories afterwards.
 - **Model providers** are plugins too, usually data only: a description of the provider's address, abilities and models, and the protocol plugins it requires, which come with it. Data-only plugins can't run anything, so they get no full-access warning; their install screen says where keys go.
 - A package installed from an address is checked there for updates, which change nothing until you tap Update; one that would bring new code or skills says so first. Removing a plugin, skill or server removes everything it stored.
 
+## Languages
+
+- annai's screens are in English, Japanese and Chinese (Simplified), as your phone is set unless you choose one in Settings → Shiori → Languages. Distances, beside it, are kilometres or miles by your phone's region unless you choose.
+- Shiori answers in the language you speak to her, among those you list there, whatever the screens are in.
+- To translate, or to correct a translation: [docs/translating.md](docs/translating.md).
+
 ## Principles
 
 - **Just a web page.** Installable to the Home Screen; no app store. Targets

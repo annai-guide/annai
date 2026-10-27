@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LANGUAGES, nativeName, languageSettings, languagesText, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
+import { LANGUAGES, nativeName, languageSettings, languagesText, screensText, distancesText, distancesOf, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
 
@@ -312,4 +312,24 @@ test('tagOf: Shiori\'s line in a script annai has no table row for (Bengali, Tam
   }
   assert.equal(tagOf('நான் கியோட்டோ போகிறேன்', answers('bn'), true, 'en'), '', 'Tamil is not the Bengali she answers in');
   assert.equal(tagOf('আমি যাচ্ছি', answers('bn'), false, 'ja'), NO_LANGUAGE, 'the answer language is only hers');
+});
+
+test('the screens\' names Shiori is told (localization L6): one stable line under screens not in English, none in English', () => {
+  const names = 'Settings (設定), Models (モデル)';
+  const ja = screensText('ja', names);
+  assert.equal(ja, "annai's screens are in Japanese. When you name a screen, a setting or a button, use the name it shows: Settings (設定), Models (モデル). This doesn't change the language you answer in.");
+  assert.equal(screensText('ja', names), ja, 'the same words every time, so the cached prefix holds');
+  assert.match(screensText('zh-Hans', '设置'), /^annai's screens are in Simplified Chinese\./);
+  for (const tag of ['en', 'en-US', 'en-GB', 'en-XA']) assert.equal(screensText(tag, names), '', tag);
+  assert.equal(screensText('ja', ''), '', 'no names, no line');
+});
+
+test('a Distances choice is told to Shiori; Automatic says nothing (localization L6)', () => {
+  assert.equal(distancesText({}), '');
+  assert.equal(distancesText({ languages: { distances: null } }), '');
+  assert.equal(distancesText({ languages: { distances: 'mi' } }), "Give distances in miles, as annai's screens show them, whatever their profile says.");
+  assert.equal(distancesText({ languages: { distances: 'km' } }), "Give distances in kilometres, as annai's screens show them, whatever their profile says.");
+  for (const odd of ['parsecs', 'toString', 'constructor', '__proto__', 7, null]) assert.equal(distancesText({ languages: { distances: odd } }), '', String(odd));
+  assert.equal(distancesText({ languages: 'mi' }), '');
+  assert.deepEqual([distancesOf({ languages: { distances: 'km' } }), distancesOf({ languages: { distances: 'toString' } }), distancesOf({})], ['km', null, null]);
 });

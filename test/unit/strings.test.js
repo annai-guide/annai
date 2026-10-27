@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cp, mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { check, update, extract, readMessages, readGlossary, glossaryWarnings, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
+import { check, update, extract, readMessages, readGlossary, glossaryWarnings, glossaryNames, shippedJson, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
 import { key } from '../../src/core/l10n.js';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/strings', import.meta.url));
@@ -344,6 +344,35 @@ test('a message that names a glossary term in English, whose translation does no
   assert.equal(w('ja', [row('Add to Home Screen', 'ホーム画面へ')]).length, 1);
 });
 
+test('a row a reviewer accepted is not warned about the glossary again: only drafts are (localization L6)', () => {
+  const g = readGlossary(GLOSSARY);
+  const row = (/** @type {string} */ state) => ({ key: 'k', state, en: 'Start a trip', text: '出発を始める', where: '', note: 'Note: 出発 reads better here.', line: 2 });
+  assert.equal(glossaryWarnings(g, 'ja', [row('draft')]).length, 1);
+  assert.equal(glossaryWarnings(g, 'ja', [row('ok')]).length, 0);
+  // After a glossary word changes, every row is read again on asking (--glossary-all; L6 review 7).
+  assert.equal(glossaryWarnings(g, 'ja', [row('ok')], { all: true }).length, 1);
+});
+
+test('strings --check --glossary-all warns about accepted rows too; plain --check only about drafts (L6 review 7)', async () => {
+  const dir = await mkdtemp(`${tmpdir()}/annai-strings-`);
+  try {
+    await cp(FIXTURE, dir, { recursive: true });
+    await update(dir);
+    await writeFile(`${dir}/l10n/glossary.tsv`, `${GLOSSARY}\n`);
+    const rows = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8'));
+    const named = rows.find((r) => /\bHello\b/.test(r.en));
+    assert.ok(named);
+    await writeFile(`${dir}/l10n/glossary.tsv`, `${GLOSSARY}\nhello\tthing\tやあ\t你好\tsrc/a.mjs:1\t\n`);
+    await writeFile(`${dir}/l10n/ja.tsv`, writeTsv(rows.map((r) => (r.key === named.key ? { ...r, state: 'ok', text: 'こんにちは {0}' } : r))));
+    const plain = (await check(dir)).warnings.filter((w) => w.file === 'l10n/ja.tsv' && /"hello"/.test(w.message));
+    const all = (await check(dir, undefined, { glossaryAll: true })).warnings.filter((w) => w.file === 'l10n/ja.tsv' && /"hello"/.test(w.message));
+    assert.equal(plain.length, 0);
+    assert.equal(all.length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('the check warns, and does not fail, for the glossary', async () => {
   await inCopy(async (dir) => {
     await writeFile(`${dir}/src/g.mjs`, "import { t } from './dom.js';\nexport const x = () => t`Start a trip`;\n");
@@ -382,4 +411,18 @@ test('a name kept as written is held to it at the start of a message too: "Shior
   const w = (/** @type {string} */ en, /** @type {string} */ text) => glossaryWarnings(g, 'ja', [{ key: 'k', state: 'draft', en, text, where: '', note: '', line: 2 }]).length;
   assert.equal(w('Shiori answers in {0}', 'しおりは{0}で答えます'), 1, 'her name written in kana');
   assert.equal(w('Shiori answers in {0}', 'Shiori は{0}で答えます'), 0);
+});
+
+test('the screens\' names for Shiori are the glossary\'s rows a traveller is told of, in its order, and ship in the catalog under @glossary (localization L6)', () => {
+  const g = readGlossary(`${GLOSSARY}\nSpeech in\tthing\t聞き取り\t语音识别\tsrc/a.mjs:1\t\nTrace\tscreen\t記録\t记录\tsrc/a.mjs:1\t\nkey\tthing\tキー\t密钥\tsrc/a.mjs:1\t`);
+  assert.equal(glossaryNames(g, 'ja'), 'Trips (旅), Speech in (聞き取り)', 'not Trace, a developer\'s screen, nor a platform word or a lowercase thing');
+  assert.equal(glossaryNames(g, 'zh-Hans'), 'Trips (行程), Speech in (语音识别)');
+  const rows = [{ key: 'b', state: 'ok', en: 'Hi', text: 'やあ', where: '', note: '' }];
+  assert.deepEqual(JSON.parse(shippedJson(rows, 'Trips (旅)')), { b: 'やあ', '@glossary': 'Trips (旅)' });
+  assert.deepEqual(JSON.parse(shippedJson(rows)), { b: 'やあ' });
+});
+
+test('the line Shiori is told of the screens names at most 31 names in every language, which measured 275 cl100k tokens at most (L6 review 4)', async () => {
+  const g = readGlossary(await readFile(new URL('../../l10n/glossary.tsv', import.meta.url), 'utf8'));
+  for (const tag of ['ja', 'zh-Hans']) assert.ok(glossaryNames(g, tag).split('), ').length <= 31, tag);
 });
