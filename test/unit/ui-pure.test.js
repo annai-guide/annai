@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced, wokeText, wokeTitles, reminderLine } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, wokeTitles, reminderParts } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -738,10 +738,13 @@ test('a wake in the conversation says why from its kinds, never the words the mo
   assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/a.jpg', '/files/b.jpg', '/files/c.jpg', '/files/d.jpg'] }]), 'Shiori woke to look at the 4 files you added.');
   assert.equal(wokeText([{ kind: 'file', text: 'x' }]), 'Shiori woke to look at the files you added.');
   assert.equal(wokeText([{ kind: 'recap', text: 'x' }, { kind: 'plugin', plugin: 'trail', text: 'y' }], (id) => `${id}!`), 'Shiori woke to tell you the recap. Shiori woke for the plugin trail!.');
-  assert.deepEqual(reminderLine({}), ['Reminder: ', '']);
-  assert.deepEqual(reminderLine({ aloud: true }), ['Reminder, said aloud: ', '']);
-  assert.deepEqual(reminderLine({ title: "Shiori's answer", aloud: false }), ["Shiori's answer: ", '']);
-  assert.deepEqual(reminderLine({ title: 'Reminder', aloud: true }), ['Reminder, said aloud: ', ''], 'any other title is a reminder');
+  /** The line's parts, its words as the attributes they get. @param {any} d */
+  const line = (d) => reminderParts({ text: 'Tea.', ...d }, () => ({ lang: 'mine' }), (_, a) => `${a.text}@${a.lang}`);
+  assert.deepEqual(line({}), ['Reminder: ', 'Tea.@mine', '']);
+  assert.deepEqual(line({ aloud: true }), ['Reminder, said aloud: ', 'Tea.@mine', '']);
+  assert.deepEqual(line({ title: "Shiori's answer", aloud: false }), ["Shiori's answer: ", 'Tea.@mine', '']);
+  assert.deepEqual(line({ title: 'Reminder', aloud: true }), ['Reminder, said aloud: ', 'Tea.@mine', ''], 'any other title is a reminder');
+  assert.deepEqual(line({ watch: 'plan:hearst:leave' }), ['Reminder: ', 'Tea.@en', ''], "a plan watch's words are annai's English, as stored");
 });
 
 test("the price line says a change that is coming: from its date, the price then", () => {

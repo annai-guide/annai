@@ -112,24 +112,15 @@ export function wokeText(reasons, nameOf = (id) => id) {
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
- * A reminder annai showed by itself, from its data: the words before and after its text. The one title annai gives one is
- * "Shiori's answer" (her note shown for her, halves.js); anything else is a reminder. Said aloud, it says so. @param {{ title?: string, aloud?: boolean }} d
- * @returns {[string, string]}
+ * A reminder annai showed by itself, for the Conversation and Now, from its data. The one title annai gives one is "Shiori's answer"
+ * (her note shown for her, halves.js); anything else is a reminder. Said aloud, it says so. Its words are marked: a plan watch's are
+ * annai's English as stored, anyone else's carry their own language. @param {any} d the event's data
+ * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */
-export function reminderLine(d) {
-  const message = d.title === /* en */ "Shiori's answer" ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
-  const [before, , after] = around(message, '');
-  return [before, after];
-}
-
-/**
- * A reminder's line, for the Conversation and Now: its label from its data, then its words, marked. A plan watch's words are annai's
- * English as stored; anyone else's carry their own language. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine
- */
-export function reminderParts(d, mine) {
+export function reminderParts(d, mine, make = h) {
   const words = String(d.text ?? '');
-  const [before, after] = reminderLine(d);
-  return [before, h('span', { ...(String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words)), text: words }), after];
+  const message = d.title === /* en */ "Shiori's answer" ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
+  return around(message, make('span', { ...(String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words)), text: words }));
 }
 
 /** Whose search grounded a reply: the name it gave, Google Search's by default. @param {any} d */

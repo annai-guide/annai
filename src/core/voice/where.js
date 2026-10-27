@@ -14,8 +14,8 @@ import { list } from '../intl.js';
 // Settings → Voice's words, for the user (never a model's).
 export const DICTATION_AWAY = t`Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.`;
 export const DICTATION_HERE = t`On this phone only: the browser recognizes your speech on the device.`;
-/** The stand-in entries' names, as Settings → Models names them. @type {Record<string, string>} */
-const STAND_IN_NAMES = { 'send-audio': t`Send audio to the model`, dictation: t`Phone dictation`, 'browser-voice': t`Browser voice` };
+/** The stand-in entries' names in the screens' words, for Settings → Models and Voice. @type {Record<string, string>} */
+export const STAND_IN_NAMES = { 'send-audio': t`Send audio to the model`, dictation: t`Phone dictation`, 'browser-voice': t`Browser voice` };
 
 /** @param {string} url */
 function hostOf(url) {

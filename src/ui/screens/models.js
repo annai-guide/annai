@@ -6,6 +6,7 @@ import { LEVELS } from '../../core/llm/reasoning.js';
 import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
 import { renderProvider, renderNewProvider } from './provider.js';
+import { STAND_IN_NAMES } from '../../core/voice/where.js';
 import { renderModel, LEVEL_WORDS } from './model.js';
 import { featuredStart } from '../provider-setup.js';
 import { numField, num, list as listOf } from '../format.js';
@@ -27,9 +28,6 @@ const KOE_NOTES = {
   'koe-realtime': t`Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.`,
   'koe-classic': t`Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.`,
 };
-/** What each stand-in entry is (spec §10.1, §10.3). @type {Record<string, string>} */
-/** The stand-ins in the screens' words. @type {Record<string, string>} */
-const STAND_IN_NAMES = { 'send-audio': t`Send audio to the model`, dictation: t`Phone dictation`, 'browser-voice': t`Browser voice` };
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
 const STAND_IN_NOTES = { 'send-audio': t`when the model takes audio`, dictation: t`the phone's own; usually goes to Google or Apple`, 'browser-voice': t`the browser's own; some voices go online` };
 
@@ -110,7 +108,7 @@ function rolesSection(ctx, cfg) {
   const models = Object.values(cfg.models).map(modelOf);
   /** The ability kind a model belongs to: a role takes models of its own kind. @param {string} id */
   const kind = (id) => abilityOf(cfg, id)?.kind;
-  const nameOf = (/** @type {string} */ id) => STAND_IN_NAMES[id] ?? STAND_INS[id]?.name ?? models.find((m) => m.id === id)?.name ?? id;
+  const nameOf = (/** @type {string} */ id) => STAND_IN_NAMES[id] ?? models.find((m) => m.id === id)?.name ?? id;
   /**
    * Changes one role as it is saved now, read fresh so no other change is lost.
    * @param {string} role @param {(r: import('../../core/llm/config.js').Roles[string]) => import('../../core/llm/config.js').Roles[string]} change
@@ -127,7 +125,7 @@ function rolesSection(ctx, cfg) {
   };
   /** A speech list can take its own stand-ins and the models of its kind: transcription, or voices. @param {string} role */
   const speechChoices = (role) => [
-    ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id, s]) => ({ id, name: STAND_IN_NAMES[id] ?? s.name })),
+    ...Object.entries(STAND_INS).filter(([, s]) => s.role === role).map(([id]) => ({ id, name: STAND_IN_NAMES[id] })),
     ...models.filter((m) => ROLE_KINDS[role].includes(kind(m.id) ?? '')),
   ];
   return h('section', { class: 'panel', 'aria-label': t`Roles` },

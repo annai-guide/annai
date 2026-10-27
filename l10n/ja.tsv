@@ -572,72 +572,72 @@ nf3vcm	draft	Style	スタイル	src/ui/screens/model.js:195
 18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	料金（100万トークンあたりの USD、JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
 1wo5fes	draft	Prices, USD (JSON: perMillionChars)	料金（USD、JSON：perMillionChars）	src/ui/screens/model.js:197	
 heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	料金（USD、JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
-1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · リアルタイム：1つのストリームで聞いて話す	src/ui/screens/models.js:15	
-k0393o	draft	Main: talks with you	メイン：あなたと話す	src/ui/screens/models.js:15	
-mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · クラシック：チャットモデルに聞き取りと読み上げを組み合わせる	src/ui/screens/models.js:15	
-187fzjq	draft	Quick decision: yes-or-no checks	クイック判定：はい・いいえの確認	src/ui/screens/models.js:16	
-5815dj	draft	Utility: summaries and small jobs	補助：要約や小さな作業	src/ui/screens/models.js:16	
-1hclnju	draft	Speech in: how Shiori hears you	聞き取り：Shiori があなたの声を聞く方法	src/ui/screens/models.js:17	
-dadv07	draft	Speech out: Shiori's voice	読み上げ：Shiori の声	src/ui/screens/models.js:17	
-1h7ll5r	draft	utility	補助	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
-1naapyq	draft	speech-out	読み上げ	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-1t30hzc	draft	main	メイン	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
-1u27rxd	draft	decide	クイック判定	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-1u7wm22	draft	Koe · Realtime	Koe · リアルタイム	src/ui/screens/models.js:21	
-a363wx	draft	speech-in	聞き取り	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:21	
-12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	音声がオンで、音声ボタンでリアルタイムを選んでいる間、Koe はこれを使います。ここに答えられるものがなければ、クラシックが答えます。	src/ui/screens/models.js:27	
-1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	クラシックを選んでいるとき、音声がオフのとき、リアルタイムが答えられないとき、Koe はこれを使います。聞き取りがあなたの声を聞き、読み上げが話します。	src/ui/screens/models.js:28	
-1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:34	
-1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインで動く声もあります	src/ui/screens/models.js:34	Note: オンラインで動く: some voices run online (not "come online").
-ce8br5	draft	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:34	
-jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori が考える場所：annai が呼び出すプロバイダー、そのモデル、各役割が順に試すモデル、そしてリクエストにかけられる費用。	src/ui/screens/models.js:51	
-uhtk71	draft	No limit	上限なし	src/ui/screens/models.js:69	
-exnl8y	draft	Spend per day	1日の利用額	src/ui/screens/models.js:74	
-1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori のモデルの呼び出しに、すべての旅を合わせて1日に使える額です。使い切ると、彼女のターンはカードで終わり、翌日に続けます。空の場合：上限なし。	src/ui/screens/models.js:75	
-3bernd	draft	Spend per day (USD)	1日の利用額（USD）	src/ui/screens/models.js:76	
-yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	1日は 0.01 ドル以上にしてください。上限なしにするには空にします。	src/ui/screens/models.js:76	
-1kmogw5	draft	Cache	キャッシュ	src/ui/screens/models.js:77	
-el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	プロバイダーは会話の始まりをしばらく保持するので、次のリクエストが安くなります。1時間は5分より書き込みが高くつきますが、数分おきより間を空けて話すなら元が取れます。5分しか保持しないモデルには5分を求めます。	src/ui/screens/models.js:78	
-1bz9ywx	draft	5 minutes	5分	src/ui/screens/models.js:79	
-3eima2	draft	1 hour	1時間	src/ui/screens/models.js:79	
-kl14fu	draft	Keep it for	保持する時間	src/ui/screens/models.js:79	
-uw7pcm	draft	Housekeeping	会話の整理	src/ui/screens/models.js:80	
-qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	会話が長くなると、Shiori は古い部分を要約します。モデルのコンテキストのこの割合に達したとき、またはリクエストがこの大きさになるときに行います。空の場合：通常どおり。	src/ui/screens/models.js:81	
-1sywcgn	draft	Summarize at a share from 50 to 90%.	要約する割合は 50〜90% にしてください。	src/ui/screens/models.js:83	
-5gbpvm	draft	Summarize at (% of the context)	要約するタイミング（コンテキストの %）	src/ui/screens/models.js:83	
-gbbwof	draft	The largest request is from 1 to 64 MiB.	最大のリクエストは 1〜64 MiB です。	src/ui/screens/models.js:84	
-jg9kdh	draft	Largest request (MiB)	最大のリクエスト（MiB）	src/ui/screens/models.js:84	
-9ubpo0	draft	Nothing switched on	オンのものなし	src/ui/screens/models.js:100	
-y7dwt8#other	draft	# models	モデル#個	src/ui/screens/models.js:100	plural; # = n; English: "# model" (one), "# models" (other)
-awnddp	draft	Providers	プロバイダー	src/ui/screens/models.js:102	
-rwmbqk	draft	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:104	
-1cjfpwc	draft	Add a provider	プロバイダーを追加	src/ui/screens/models.js:105	
-hbz43i	draft	Roles	役割	src/ui/screens/models.js:133	
-1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上からモデルを試します。1つが失敗すると、次のモデルが答えます。空の役割はメインのリストを使います（Koe は除く）。	src/ui/screens/models.js:135	
-7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から試します。聞くモデルで使える最初の項目と、最初に応答した声を使います。	src/ui/screens/models.js:138	
-1erapbm	draft	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:162	{0} = nameOf(id); {1} = called
-1w3dq5v	draft	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:168	
-pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空です：Koe にはリアルタイムの声がないので、クラシックが答えます。ライブ音声のあるプロバイダーから、Gemini Live などを追加してください。	src/ui/screens/models.js:169	
-1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空です：クラシックでは、Shiori は半身1つ（メインのモデル）だけです。ここに速いモデルを追加すると、手前で素早く話す声になります。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary. The main model in brackets: it is her one half, not half of the main model.
-wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	何もないので、annai はあなたの声を聞けません。項目を追加してください。	src/ui/screens/models.js:171	
-1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	何もないので、Shiori は声に出して話せません。声を追加してください。	src/ui/screens/models.js:172	
-el9rbx	draft	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:173	
-1rqw64m	draft	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:174	
-48wtk9	draft	Wait for the words (seconds)	言葉を待つ時間（秒）	src/ui/screens/models.js:174	
-796n77	draft	Wait for the first words (seconds)	最初の言葉を待つ時間（秒）	src/ui/screens/models.js:174	
-q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	写真を見られない、PDF を読めないモデルには、読む写真や PDF を、ここにある対応モデルが説明します。なければメインのモデルが説明します。	src/ui/screens/models.js:179	
-14w2ppx	draft	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:181	{0} = called
-17olz31	draft	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:183	{0} = called
-ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/models.js:190	{0} = called
-58mvoq	draft	Reasoning for {0}	{0}の推論	src/ui/screens/models.js:191	{0} = called
-1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	待つ時間は 1〜600 秒です。通常どおりにするには空にします。	src/ui/screens/models.js:192	
-8nhvom	draft	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:207	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	draft	Drag, or use the arrow keys	ドラッグするか、矢印キーを使います	src/ui/screens/models.js:223	
-1ln5v12	draft	Move {0}	{0}を移動	src/ui/screens/models.js:225	{0} = name
-1rvkqip	draft	Move up	上へ移動	src/ui/screens/models.js:226	
-c2tjmw	draft	Move down	下へ移動	src/ui/screens/models.js:227	
+1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · リアルタイム：1つのストリームで聞いて話す	src/ui/screens/models.js:16	
+k0393o	draft	Main: talks with you	メイン：あなたと話す	src/ui/screens/models.js:16	
+mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · クラシック：チャットモデルに聞き取りと読み上げを組み合わせる	src/ui/screens/models.js:16	
+187fzjq	draft	Quick decision: yes-or-no checks	クイック判定：はい・いいえの確認	src/ui/screens/models.js:17	
+5815dj	draft	Utility: summaries and small jobs	補助：要約や小さな作業	src/ui/screens/models.js:17	
+1hclnju	draft	Speech in: how Shiori hears you	聞き取り：Shiori があなたの声を聞く方法	src/ui/screens/models.js:18	
+dadv07	draft	Speech out: Shiori's voice	読み上げ：Shiori の声	src/ui/screens/models.js:18	
+1h7ll5r	draft	utility	補助	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
+1naapyq	draft	speech-out	読み上げ	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+1t30hzc	draft	main	メイン	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
+1u27rxd	draft	decide	クイック判定	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+1u7wm22	draft	Koe · Realtime	Koe · リアルタイム	src/ui/screens/models.js:22	
+a363wx	draft	speech-in	聞き取り	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:22	
+12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	音声がオンで、音声ボタンでリアルタイムを選んでいる間、Koe はこれを使います。ここに答えられるものがなければ、クラシックが答えます。	src/ui/screens/models.js:28	
+1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	クラシックを選んでいるとき、音声がオフのとき、リアルタイムが答えられないとき、Koe はこれを使います。聞き取りがあなたの声を聞き、読み上げが話します。	src/ui/screens/models.js:29	
+1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:32	
+1w4m41d	draft	the browser's own; some voices go online	ブラウザに内蔵。オンラインで動く声もあります	src/ui/screens/models.js:32	Note: オンラインで動く: some voices run online (not "come online").
+ce8br5	draft	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:32	
+jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori が考える場所：annai が呼び出すプロバイダー、そのモデル、各役割が順に試すモデル、そしてリクエストにかけられる費用。	src/ui/screens/models.js:49	
+uhtk71	draft	No limit	上限なし	src/ui/screens/models.js:67	
+exnl8y	draft	Spend per day	1日の利用額	src/ui/screens/models.js:72	
+1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori のモデルの呼び出しに、すべての旅を合わせて1日に使える額です。使い切ると、彼女のターンはカードで終わり、翌日に続けます。空の場合：上限なし。	src/ui/screens/models.js:73	
+3bernd	draft	Spend per day (USD)	1日の利用額（USD）	src/ui/screens/models.js:74	
+yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	1日は 0.01 ドル以上にしてください。上限なしにするには空にします。	src/ui/screens/models.js:74	
+1kmogw5	draft	Cache	キャッシュ	src/ui/screens/models.js:75	
+el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	プロバイダーは会話の始まりをしばらく保持するので、次のリクエストが安くなります。1時間は5分より書き込みが高くつきますが、数分おきより間を空けて話すなら元が取れます。5分しか保持しないモデルには5分を求めます。	src/ui/screens/models.js:76	
+1bz9ywx	draft	5 minutes	5分	src/ui/screens/models.js:77	
+3eima2	draft	1 hour	1時間	src/ui/screens/models.js:77	
+kl14fu	draft	Keep it for	保持する時間	src/ui/screens/models.js:77	
+uw7pcm	draft	Housekeeping	会話の整理	src/ui/screens/models.js:78	
+qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	会話が長くなると、Shiori は古い部分を要約します。モデルのコンテキストのこの割合に達したとき、またはリクエストがこの大きさになるときに行います。空の場合：通常どおり。	src/ui/screens/models.js:79	
+1sywcgn	draft	Summarize at a share from 50 to 90%.	要約する割合は 50〜90% にしてください。	src/ui/screens/models.js:81	
+5gbpvm	draft	Summarize at (% of the context)	要約するタイミング（コンテキストの %）	src/ui/screens/models.js:81	
+gbbwof	draft	The largest request is from 1 to 64 MiB.	最大のリクエストは 1〜64 MiB です。	src/ui/screens/models.js:82	
+jg9kdh	draft	Largest request (MiB)	最大のリクエスト（MiB）	src/ui/screens/models.js:82	
+9ubpo0	draft	Nothing switched on	オンのものなし	src/ui/screens/models.js:98	
+y7dwt8#other	draft	# models	モデル#個	src/ui/screens/models.js:98	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	draft	Providers	プロバイダー	src/ui/screens/models.js:100	
+rwmbqk	draft	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:102	
+1cjfpwc	draft	Add a provider	プロバイダーを追加	src/ui/screens/models.js:103	
+hbz43i	draft	Roles	役割	src/ui/screens/models.js:131	
+1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上からモデルを試します。1つが失敗すると、次のモデルが答えます。空の役割はメインのリストを使います（Koe は除く）。	src/ui/screens/models.js:133	
+7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から試します。聞くモデルで使える最初の項目と、最初に応答した声を使います。	src/ui/screens/models.js:136	
+1erapbm	draft	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:160	{0} = nameOf(id); {1} = called
+1w3dq5v	draft	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:166	
+pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空です：Koe にはリアルタイムの声がないので、クラシックが答えます。ライブ音声のあるプロバイダーから、Gemini Live などを追加してください。	src/ui/screens/models.js:167	
+1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空です：クラシックでは、Shiori は半身1つ（メインのモデル）だけです。ここに速いモデルを追加すると、手前で素早く話す声になります。	src/ui/screens/models.js:168	Note: halves is 半身/分身 per the glossary. The main model in brackets: it is her one half, not half of the main model.
+wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	何もないので、annai はあなたの声を聞けません。項目を追加してください。	src/ui/screens/models.js:169	
+1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	何もないので、Shiori は声に出して話せません。声を追加してください。	src/ui/screens/models.js:170	
+el9rbx	draft	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:171	
+1rqw64m	draft	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:172	
+48wtk9	draft	Wait for the words (seconds)	言葉を待つ時間（秒）	src/ui/screens/models.js:172	
+796n77	draft	Wait for the first words (seconds)	最初の言葉を待つ時間（秒）	src/ui/screens/models.js:172	
+q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	写真を見られない、PDF を読めないモデルには、読む写真や PDF を、ここにある対応モデルが説明します。なければメインのモデルが説明します。	src/ui/screens/models.js:177	
+14w2ppx	draft	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:179	{0} = called
+17olz31	draft	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:181	{0} = called
+ci7mt7	draft	Add to {0}	{0}に追加	src/ui/screens/models.js:188	{0} = called
+58mvoq	draft	Reasoning for {0}	{0}の推論	src/ui/screens/models.js:189	{0} = called
+1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	待つ時間は 1〜600 秒です。通常どおりにするには空にします。	src/ui/screens/models.js:190	
+8nhvom	draft	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:205	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:217	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	draft	Drag, or use the arrow keys	ドラッグするか、矢印キーを使います	src/ui/screens/models.js:221	
+1ln5v12	draft	Move {0}	{0}を移動	src/ui/screens/models.js:223	{0} = name
+1rvkqip	draft	Move up	上へ移動	src/ui/screens/models.js:224	
+c2tjmw	draft	Move down	下へ移動	src/ui/screens/models.js:225	
 1tbrgfp	draft	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:29	
 izy3tv	draft	Offline · reminders still work	オフライン · リマインダーは使えます	src/ui/screens/now.js:40	
 15h0umr	draft	Next	次の予定	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
@@ -853,63 +853,63 @@ xekru5	draft	Choices: {0}.	選択肢：{0}。	src/ui/screens/talk.js:44	{0} = li
 1kr7agr	draft	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:45	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
 d6m2fp	draft	Shiori asks: {0}	Shiori の質問：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is her question.
 ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is what she said or showed.
-hadl9d	draft	Shiori woke to look at the files you added.	追加されたファイルを見るため、Shiori が起動しました。	src/ui/screens/talk.js:92	
-15n0e2d	draft	Shiori woke to pick up where she left off.	中断したところから続けるため、Shiori が起動しました。	src/ui/screens/talk.js:93	
-1xhnipt	draft	Shiori woke to merge a new version of her personality.	性格の新しいバージョンを取り込むため、Shiori が起動しました。	src/ui/screens/talk.js:94	
-1ul7xke	draft	Shiori woke for a reminder, or something she watches for.	リマインダーか、見守っていた何かのため、Shiori が起動しました。	src/ui/screens/talk.js:95	
-o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sight.	annai が見えていない間のできごとを確認するため、Shiori が起動しました。	src/ui/screens/talk.js:96	
-1xllewb	draft	Shiori woke because you turned GPS on.	GPS がオンになったので、Shiori が起動しました。	src/ui/screens/talk.js:97	
-susy7u	draft	Shiori woke to tell you the recap.	振り返りを話すため、Shiori が起動しました。	src/ui/screens/talk.js:98	
-drekzl#other	draft	Shiori woke to look at the # files you added.	追加されたファイル#件を見るため、Shiori が起動しました。	src/ui/screens/talk.js:104	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
-9c8dtz#other	draft	Shiori woke to look at the # files you added: {0}.	追加されたファイル#件（{0}）を見るため、Shiori が起動しました。	src/ui/screens/talk.js:105	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
-18v7cvz#other	draft	Shiori woke for # reminders, or things she watches for: {0}.	リマインダーか見守っていたこと#件（{0}）のため、Shiori が起動しました。	src/ui/screens/talk.js:106	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
-18rv8j7	draft	Shiori woke.	Shiori が起動しました。	src/ui/screens/talk.js:107	
-gofzl2	draft	Shiori woke for the plugin {0}.	プラグイン {0} により Shiori が起動しました。	src/ui/screens/talk.js:107	{0} = nameOf(String(r.plugin ?? ''))
-1oe5z73	draft	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is the reminder's words.
-7ew4gb	draft	Shiori's answer: {0}	Shiori の答え：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is her answer, shown by annai.
-n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is the reminder's words.
-y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori の答え（読み上げ）：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is her answer, shown by annai.
-6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:147	
-1ussy6i	draft	Trip	旅	src/ui/screens/talk.js:204	Note: The heading over a trip's files that are in no folder.
-137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:218	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:218	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:224	{0} = formatCost(c.total)
-glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:224	{0} = formatCost(c.total)
-td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:251	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:314	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:314	Note: a note from Koe to Kokoro; its words follow.
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/ui/screens/talk.js:324	
-e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:326	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:327	
-1mjdfzn	draft	Shiori can't reach her model	Shiori がモデルにつながりません	src/ui/screens/talk.js:334	
-1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:334	
-1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:334	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:348	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:402	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-17o4v1i	draft	Conversation	会話	src/ui/screens/talk.js:419	
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:421	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:451	
-bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:452	
-7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:466	
-12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:468	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:468	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:468	
-va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:468	
-mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:471	
-10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:476	
-va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:483	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:484	
-czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:485	
-1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:495	{0} = String(/** @type {any} */ (e)?.message ?? e)
-1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:498	
-3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:498	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:498	
-p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:498	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:518	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:519	
-159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:534	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:541	
-vmlwpb	draft	Undo	元に戻す	src/ui/screens/talk.js:548	
+hadl9d	draft	Shiori woke to look at the files you added.	追加されたファイルを見るため、Shiori が起動しました。	src/ui/screens/talk.js:91	
+15n0e2d	draft	Shiori woke to pick up where she left off.	中断したところから続けるため、Shiori が起動しました。	src/ui/screens/talk.js:92	
+1xhnipt	draft	Shiori woke to merge a new version of her personality.	性格の新しいバージョンを取り込むため、Shiori が起動しました。	src/ui/screens/talk.js:93	
+1ul7xke	draft	Shiori woke for a reminder, or something she watches for.	リマインダーか、見守っていた何かのため、Shiori が起動しました。	src/ui/screens/talk.js:94	
+o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sight.	annai が見えていない間のできごとを確認するため、Shiori が起動しました。	src/ui/screens/talk.js:95	
+1xllewb	draft	Shiori woke because you turned GPS on.	GPS がオンになったので、Shiori が起動しました。	src/ui/screens/talk.js:96	
+susy7u	draft	Shiori woke to tell you the recap.	振り返りを話すため、Shiori が起動しました。	src/ui/screens/talk.js:97	
+drekzl#other	draft	Shiori woke to look at the # files you added.	追加されたファイル#件を見るため、Shiori が起動しました。	src/ui/screens/talk.js:103	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
+9c8dtz#other	draft	Shiori woke to look at the # files you added: {0}.	追加されたファイル#件（{0}）を見るため、Shiori が起動しました。	src/ui/screens/talk.js:104	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
+18v7cvz#other	draft	Shiori woke for # reminders, or things she watches for: {0}.	リマインダーか見守っていたこと#件（{0}）のため、Shiori が起動しました。	src/ui/screens/talk.js:105	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
+18rv8j7	draft	Shiori woke.	Shiori が起動しました。	src/ui/screens/talk.js:106	
+gofzl2	draft	Shiori woke for the plugin {0}.	プラグイン {0} により Shiori が起動しました。	src/ui/screens/talk.js:106	{0} = nameOf(String(r.plugin ?? ''))
+1oe5z73	draft	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is the reminder's words.
+7ew4gb	draft	Shiori's answer: {0}	Shiori の答え：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	draft	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is the reminder's words.
+y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori の答え（読み上げ）：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is her answer, shown by annai.
+6xevdr	draft	Search suggestions from Google	Google の検索候補	src/ui/screens/talk.js:137	
+1ussy6i	draft	Trip	旅	src/ui/screens/talk.js:194	Note: The heading over a trip's files that are in no folder.
+137bppl	draft	Heard, not for Shiori: {0}	聞こえた言葉（Shiori 宛てではありません）：{0}	src/ui/screens/talk.js:208	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:208	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:214	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:214	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:241	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:304	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:304	Note: a note from Koe to Kokoro; its words follow.
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/ui/screens/talk.js:314	
+e34nbi	draft	Started fresh	新しく始めました	src/ui/screens/talk.js:316	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:317	
+1mjdfzn	draft	Shiori can't reach her model	Shiori がモデルにつながりません	src/ui/screens/talk.js:324	
+1o41up	draft	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:324	
+1p4yyw7	draft	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:324	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:338	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	{0}より。	src/ui/screens/talk.js:392	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+17o4v1i	draft	Conversation	会話	src/ui/screens/talk.js:409	
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。旅から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:411	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:441	
+bomkf4	draft	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:442	
+7flpxf	draft	Summarizing…	要約しています…	src/ui/screens/talk.js:456	
+12707g	draft	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:458	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:458	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:458	
+va2k72	draft	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:458	
+mienoe	draft	Summarize now	今すぐ要約	src/ui/screens/talk.js:461	
+10sfmur	draft	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:466	
+va77q0	draft	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:473	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:474	
+czdqlz	draft	Start fresh	新しく始める	src/ui/screens/talk.js:475	
+1h9wwbn	draft	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:485	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1thzla3	draft	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:488	
+3fntk0	draft	Started fresh.	新しく始めました。	src/ui/screens/talk.js:488	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:488	
+p5pj7b	draft	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:488	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:508	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:509	
+159f82q	draft	Undone	元に戻しました	src/ui/screens/talk.js:524	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:531	
+vmlwpb	draft	Undo	元に戻す	src/ui/screens/talk.js:538	
 11gkctr	draft	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -1029,7 +1029,7 @@ qyfmia	draft	Listen for an answer (seconds)	返事を待つ時間（秒）	src/u
 4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shiori が声に出したことの言葉が、「読み上げ」の印付きで会話に表示され、話している間は Shiori の上に吹き出しで表示されます。オフ：静かな画面です。話した行は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	draft	Shiori's voice	Shiori の声	src/ui/screens/voice.js:154	
 1879vb9	draft	Voices, tried in order: none.	試す順の声：なし。	src/ui/screens/voice.js:155	
-1su08w7	draft	Voices, tried in order: {0}.	試す順の声：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')
+1su08w7	draft	Voices, tried in order: {0}.	試す順の声：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => voiceName(e.name)), 'plain')
 1oc2cqc	draft	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザ自身の声です。端末上で話す声もあります。オンラインと書かれた声は、言葉をそのサービスに送ります。	src/ui/screens/voice.js:158	
 t9jotl	draft	This browser has no voice of its own.	このブラウザには自前の声がありません。	src/ui/screens/voice.js:158	
 154la7x	draft	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:161	

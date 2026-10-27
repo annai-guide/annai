@@ -152,7 +152,7 @@ export async function renderVoice(ctx) {
       showWords.el,
       h('p', { class: 'sub', text: t`On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".` })),
     section(t`Shiori's voice`,
-      h('p', { class: 'sub', text: entries.length ? t`Voices, tried in order: ${list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')}.` : t`Voices, tried in order: none.` }),
+      h('p', { class: 'sub', text: entries.length ? t`Voices, tried in order: ${list(entries.map((/** @type {any} */ e) => voiceName(e.name)), 'plain')}.` : t`Voices, tried in order: none.` }),
       h('div', { class: 'acts' }, sayButton), sayStatus),
     section(t`Browser voice`,
       h('p', { class: 'sub', text: synth?.available() ? t`The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.` : t`This browser has no voice of its own.` }),

@@ -572,72 +572,72 @@ nf3vcm	draft	Style	风格	src/ui/screens/model.js:195
 18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	价格，每百万 token 的美元（JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
 1wo5fes	draft	Prices, USD (JSON: perMillionChars)	价格，美元（JSON：perMillionChars）	src/ui/screens/model.js:197	
 heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	价格，美元（JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
-1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · 实时：在同一个流中听你说并说话	src/ui/screens/models.js:15	
-k0393o	draft	Main: talks with you	主要：与你交谈	src/ui/screens/models.js:15	
-mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · 经典：聊天模型，配合语音识别和朗读	src/ui/screens/models.js:15	
-187fzjq	draft	Quick decision: yes-or-no checks	快速判断：是或否的检查	src/ui/screens/models.js:16	
-5815dj	draft	Utility: summaries and small jobs	辅助：摘要和小任务	src/ui/screens/models.js:16	
-1hclnju	draft	Speech in: how Shiori hears you	语音识别：Shiori 怎样听你说话	src/ui/screens/models.js:17	
-dadv07	draft	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens/models.js:17	
-1h7ll5r	draft	utility	辅助	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
-1naapyq	draft	speech-out	朗读	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-1t30hzc	draft	main	主要	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
-1u27rxd	draft	decide	快速判断	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-1u7wm22	draft	Koe · Realtime	Koe · 实时	src/ui/screens/models.js:21	
-a363wx	draft	speech-in	语音识别	src/ui/screens/models.js:21	Note: the role's id, shown so in English buttons; translated as the role's name.
-a5cd15	draft	Koe · Classic	Koe · 经典	src/ui/screens/models.js:21	
-12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	语音开启且在语音按钮上选了实时时，Koe 使用它。这里没有能回答的，就由经典回答。	src/ui/screens/models.js:27	
-1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	选了经典、语音关闭，或实时无法回答时，Koe 使用它：语音识别听你说，朗读负责说话。	src/ui/screens/models.js:28	
-1htj30x	draft	the phone's own; usually goes to Google or Apple	手机自带；通常发送到 Google 或 Apple	src/ui/screens/models.js:34	
-1w4m41d	draft	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:34	
-ce8br5	draft	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:34	
-jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 思考的地方：annai 调用的提供商、它们的模型、每个角色依次尝试的模型，以及她的请求可以花多少钱。	src/ui/screens/models.js:51	
-uhtk71	draft	No limit	不限	src/ui/screens/models.js:69	
-exnl8y	draft	Spend per day	每日花费	src/ui/screens/models.js:74	
-1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 的模型调用在所有旅行中一天可花的金额。用完后，她的这一轮会以一张卡片结束，第二天继续。留空：不限。	src/ui/screens/models.js:75	
-3bernd	draft	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:76	
-yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空表示不限。	src/ui/screens/models.js:76	
-1kmogw5	draft	Cache	缓存	src/ui/screens/models.js:77	
-el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话的开头保留一段时间，让她的下一个请求更便宜。保留一小时的写入费用比五分钟高，如果你说话的间隔比几分钟长，就划算。只保留五分钟的模型会按五分钟请求。	src/ui/screens/models.js:78	
-1bz9ywx	draft	5 minutes	5 分钟	src/ui/screens/models.js:79	
-3eima2	draft	1 hour	1 小时	src/ui/screens/models.js:79	
-kl14fu	draft	Keep it for	保留时长	src/ui/screens/models.js:79	
-uw7pcm	draft	Housekeeping	对话整理	src/ui/screens/models.js:80	
-qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	对话变长时，Shiori 会总结较早的部分。达到她的模型上下文的这个比例，或请求会变得这么大时，她就会这样做。留空：按默认。	src/ui/screens/models.js:81	
-1sywcgn	draft	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:83	
-5gbpvm	draft	Summarize at (% of the context)	总结时机（占上下文的 %）	src/ui/screens/models.js:83	
-gbbwof	draft	The largest request is from 1 to 64 MiB.	最大请求为 1 到 64 MiB。	src/ui/screens/models.js:84	
-jg9kdh	draft	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:84	
-9ubpo0	draft	Nothing switched on	未开启任何功能	src/ui/screens/models.js:100	
-y7dwt8#other	draft	# models	# 个模型	src/ui/screens/models.js:100	plural; # = n; English: "# model" (one), "# models" (other)
-awnddp	draft	Providers	提供商	src/ui/screens/models.js:102	
-rwmbqk	draft	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:104	
-1cjfpwc	draft	Add a provider	添加提供商	src/ui/screens/models.js:105	
-hbz43i	draft	Roles	角色	src/ui/screens/models.js:133	
-1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下尝试它的模型。一个失败时，由下一个回答。空的角色使用主要列表，Koe 的除外。	src/ui/screens/models.js:135	
-7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：使用对听你说话的模型可用的第一项，以及第一个响应的声音。	src/ui/screens/models.js:138	
-1erapbm	draft	Remove {0} from {1}	从{1}移除{0}	src/ui/screens/models.js:162	{0} = nameOf(id); {1} = called
-1w3dq5v	draft	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:168	
-pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空：Koe 没有实时语音，所以由经典回答。请从提供实时语音的提供商添加一个，比如 Gemini Live。	src/ui/screens/models.js:169	
-1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空：在经典模式下，Shiori 只有一个分身，即主要模型。在这里添加一个快速模型，让她在前面有个反应快的声音。	src/ui/screens/models.js:170	Note: halves is 半身/分身 per the glossary.
-wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	这里没有任何项，所以 annai 听不到你。请添加一项。	src/ui/screens/models.js:171	
-1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	这里没有任何项，所以 Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:172	
-el9rbx	draft	Uses the main list.	使用主要列表。	src/ui/screens/models.js:173	
-1rqw64m	draft	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:174	
-48wtk9	draft	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:174	
-796n77	draft	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:174	
-q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	不能看照片或读 PDF 的模型，读到的每张照片或每个 PDF 会由这里能做到的模型描述，否则由主要模型描述。	src/ui/screens/models.js:179	
-14w2ppx	draft	Add a provider for {0}	为{0}添加提供商	src/ui/screens/models.js:181	{0} = called
-17olz31	draft	Add a model to {0}	向{0}添加模型	src/ui/screens/models.js:183	{0} = called
-ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:190	{0} = called
-58mvoq	draft	Reasoning for {0}	{0}的推理	src/ui/screens/models.js:191	{0} = called
-1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间为 1 到 600 秒；留空表示默认。	src/ui/screens/models.js:192	
-8nhvom	draft	Reorder {0}, {1} of {2}	重新排序{0}，第 {1} 个，共 {2} 个	src/ui/screens/models.js:207	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	draft	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:223	
-1ln5v12	draft	Move {0}	移动{0}	src/ui/screens/models.js:225	{0} = name
-1rvkqip	draft	Move up	上移	src/ui/screens/models.js:226	
-c2tjmw	draft	Move down	下移	src/ui/screens/models.js:227	
+1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · 实时：在同一个流中听你说并说话	src/ui/screens/models.js:16	
+k0393o	draft	Main: talks with you	主要：与你交谈	src/ui/screens/models.js:16	
+mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · 经典：聊天模型，配合语音识别和朗读	src/ui/screens/models.js:16	
+187fzjq	draft	Quick decision: yes-or-no checks	快速判断：是或否的检查	src/ui/screens/models.js:17	
+5815dj	draft	Utility: summaries and small jobs	辅助：摘要和小任务	src/ui/screens/models.js:17	
+1hclnju	draft	Speech in: how Shiori hears you	语音识别：Shiori 怎样听你说话	src/ui/screens/models.js:18	
+dadv07	draft	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens/models.js:18	
+1h7ll5r	draft	utility	辅助	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
+1naapyq	draft	speech-out	朗读	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+1t30hzc	draft	main	主要	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
+1u27rxd	draft	decide	快速判断	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+1u7wm22	draft	Koe · Realtime	Koe · 实时	src/ui/screens/models.js:22	
+a363wx	draft	speech-in	语音识别	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
+a5cd15	draft	Koe · Classic	Koe · 经典	src/ui/screens/models.js:22	
+12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	语音开启且在语音按钮上选了实时时，Koe 使用它。这里没有能回答的，就由经典回答。	src/ui/screens/models.js:28	
+1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	选了经典、语音关闭，或实时无法回答时，Koe 使用它：语音识别听你说，朗读负责说话。	src/ui/screens/models.js:29	
+1htj30x	draft	the phone's own; usually goes to Google or Apple	手机自带；通常发送到 Google 或 Apple	src/ui/screens/models.js:32	
+1w4m41d	draft	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:32	
+ce8br5	draft	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:32	
+jrbfa0	draft	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 思考的地方：annai 调用的提供商、它们的模型、每个角色依次尝试的模型，以及她的请求可以花多少钱。	src/ui/screens/models.js:49	
+uhtk71	draft	No limit	不限	src/ui/screens/models.js:67	
+exnl8y	draft	Spend per day	每日花费	src/ui/screens/models.js:72	
+1o8rfr8	draft	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 的模型调用在所有旅行中一天可花的金额。用完后，她的这一轮会以一张卡片结束，第二天继续。留空：不限。	src/ui/screens/models.js:73	
+3bernd	draft	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:74	
+yp0c9i	draft	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空表示不限。	src/ui/screens/models.js:74	
+1kmogw5	draft	Cache	缓存	src/ui/screens/models.js:75	
+el1opd	draft	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话的开头保留一段时间，让她的下一个请求更便宜。保留一小时的写入费用比五分钟高，如果你说话的间隔比几分钟长，就划算。只保留五分钟的模型会按五分钟请求。	src/ui/screens/models.js:76	
+1bz9ywx	draft	5 minutes	5 分钟	src/ui/screens/models.js:77	
+3eima2	draft	1 hour	1 小时	src/ui/screens/models.js:77	
+kl14fu	draft	Keep it for	保留时长	src/ui/screens/models.js:77	
+uw7pcm	draft	Housekeeping	对话整理	src/ui/screens/models.js:78	
+qfzxri	draft	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	对话变长时，Shiori 会总结较早的部分。达到她的模型上下文的这个比例，或请求会变得这么大时，她就会这样做。留空：按默认。	src/ui/screens/models.js:79	
+1sywcgn	draft	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:81	
+5gbpvm	draft	Summarize at (% of the context)	总结时机（占上下文的 %）	src/ui/screens/models.js:81	
+gbbwof	draft	The largest request is from 1 to 64 MiB.	最大请求为 1 到 64 MiB。	src/ui/screens/models.js:82	
+jg9kdh	draft	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:82	
+9ubpo0	draft	Nothing switched on	未开启任何功能	src/ui/screens/models.js:98	
+y7dwt8#other	draft	# models	# 个模型	src/ui/screens/models.js:98	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	draft	Providers	提供商	src/ui/screens/models.js:100	
+rwmbqk	draft	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:102	
+1cjfpwc	draft	Add a provider	添加提供商	src/ui/screens/models.js:103	
+hbz43i	draft	Roles	角色	src/ui/screens/models.js:131	
+1r5c1sj	draft	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下尝试它的模型。一个失败时，由下一个回答。空的角色使用主要列表，Koe 的除外。	src/ui/screens/models.js:133	
+7uxkel	draft	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：使用对听你说话的模型可用的第一项，以及第一个响应的声音。	src/ui/screens/models.js:136	
+1erapbm	draft	Remove {0} from {1}	从{1}移除{0}	src/ui/screens/models.js:160	{0} = nameOf(id); {1} = called
+1w3dq5v	draft	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:166	
+pzkck9	draft	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空：Koe 没有实时语音，所以由经典回答。请从提供实时语音的提供商添加一个，比如 Gemini Live。	src/ui/screens/models.js:167	
+1duwaob	draft	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空：在经典模式下，Shiori 只有一个分身，即主要模型。在这里添加一个快速模型，让她在前面有个反应快的声音。	src/ui/screens/models.js:168	Note: halves is 半身/分身 per the glossary.
+wer5y9	draft	Nothing here, so annai can't hear you. Add an entry.	这里没有任何项，所以 annai 听不到你。请添加一项。	src/ui/screens/models.js:169	
+1n694n2	draft	Nothing here, so Shiori can't speak aloud. Add a voice.	这里没有任何项，所以 Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:170	
+el9rbx	draft	Uses the main list.	使用主要列表。	src/ui/screens/models.js:171	
+1rqw64m	draft	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:172	
+48wtk9	draft	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:172	
+796n77	draft	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:172	
+q0h89m	draft	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	不能看照片或读 PDF 的模型，读到的每张照片或每个 PDF 会由这里能做到的模型描述，否则由主要模型描述。	src/ui/screens/models.js:177	
+14w2ppx	draft	Add a provider for {0}	为{0}添加提供商	src/ui/screens/models.js:179	{0} = called
+17olz31	draft	Add a model to {0}	向{0}添加模型	src/ui/screens/models.js:181	{0} = called
+ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/models.js:188	{0} = called
+58mvoq	draft	Reasoning for {0}	{0}的推理	src/ui/screens/models.js:189	{0} = called
+1cwghfv	draft	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间为 1 到 600 秒；留空表示默认。	src/ui/screens/models.js:190	
+8nhvom	draft	Reorder {0}, {1} of {2}	重新排序{0}，第 {1} 个，共 {2} 个	src/ui/screens/models.js:205	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	draft	 ({0})	（{0}）	src/ui/screens/models.js:217	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	draft	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:221	
+1ln5v12	draft	Move {0}	移动{0}	src/ui/screens/models.js:223	{0} = name
+1rvkqip	draft	Move up	上移	src/ui/screens/models.js:224	
+c2tjmw	draft	Move down	下移	src/ui/screens/models.js:225	
 1tbrgfp	draft	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:29	
 izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/ui/screens/now.js:40	
 15h0umr	draft	Next	接下来	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
@@ -853,63 +853,63 @@ xekru5	draft	Choices: {0}.	选项：{0}。	src/ui/screens/talk.js:44	{0} = liste
 1kr7agr	draft	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:45	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
 d6m2fp	draft	Shiori asks: {0}	Shiori 问：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is her question.
 ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/ui/screens/talk.js:45	{0} = WORDS; Note: read by a screen reader; {0} is what she said or showed.
-hadl9d	draft	Shiori woke to look at the files you added.	Shiori 已唤醒，查看你添加的文件。	src/ui/screens/talk.js:92	
-15n0e2d	draft	Shiori woke to pick up where she left off.	Shiori 已唤醒，从中断的地方继续。	src/ui/screens/talk.js:93	
-1xhnipt	draft	Shiori woke to merge a new version of her personality.	Shiori 已唤醒，合并她性格的新版本。	src/ui/screens/talk.js:94	
-1ul7xke	draft	Shiori woke for a reminder, or something she watches for.	Shiori 已唤醒：有提醒，或她留意的事情发生了。	src/ui/screens/talk.js:95	
-o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sight.	Shiori 已唤醒，了解 annai 不在屏幕上时发生的事。	src/ui/screens/talk.js:96	
-1xllewb	draft	Shiori woke because you turned GPS on.	你开启了 GPS，Shiori 已唤醒。	src/ui/screens/talk.js:97	
-susy7u	draft	Shiori woke to tell you the recap.	Shiori 已唤醒，给你讲回顾。	src/ui/screens/talk.js:98	
-drekzl#other	draft	Shiori woke to look at the # files you added.	Shiori 已唤醒，查看你添加的 # 个文件。	src/ui/screens/talk.js:104	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
-9c8dtz#other	draft	Shiori woke to look at the # files you added: {0}.	Shiori 已唤醒，查看你添加的 # 个文件：{0}。	src/ui/screens/talk.js:105	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
-18v7cvz#other	draft	Shiori woke for # reminders, or things she watches for: {0}.	Shiori 已唤醒：有 # 个提醒或她留意的事情：{0}。	src/ui/screens/talk.js:106	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
-18rv8j7	draft	Shiori woke.	Shiori 已唤醒。	src/ui/screens/talk.js:107	
-gofzl2	draft	Shiori woke for the plugin {0}.	插件 {0} 唤醒了 Shiori。	src/ui/screens/talk.js:107	{0} = nameOf(String(r.plugin ?? ''))
-1oe5z73	draft	Reminder, said aloud: {0}	提醒（已朗读）：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is the reminder's words.
-7ew4gb	draft	Shiori's answer: {0}	Shiori 的回答：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is her answer, shown by annai.
-n22tq9	draft	Reminder: {0}	提醒：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is the reminder's words.
-y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori 的回答（已朗读）：{0}	src/ui/screens/talk.js:121	{0} = WORDS; Note: {0} is her answer, shown by annai.
-6xevdr	draft	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:147	
-1ussy6i	draft	Trip	旅行	src/ui/screens/talk.js:204	Note: The heading over a trip's files that are in no folder.
-137bppl	draft	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:218	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	draft	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:218	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-1v011e1	draft	This trip so far: {0}	这次旅行到目前为止：{0}	src/ui/screens/talk.js:224	{0} = formatCost(c.total)
-glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:224	{0} = formatCost(c.total)
-td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:251	
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:314	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:314	Note: a note from Koe to Kokoro; its words follow.
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/ui/screens/talk.js:324	
-e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:326	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:327	
-1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/ui/screens/talk.js:334	
-1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:334	
-1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:334	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:348	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:402	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-17o4v1i	draft	Conversation	对话	src/ui/screens/talk.js:419	
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:421	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:451	
-bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:452	
-7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:466	
-12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:468	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:468	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:468	
-va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:468	
-mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:471	
-10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:476	
-va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:483	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:484	
-czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:485	
-1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:495	{0} = String(/** @type {any} */ (e)?.message ?? e)
-1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:498	
-3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:498	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:498	
-p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:498	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:518	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:519	
-159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:534	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:541	
-vmlwpb	draft	Undo	撤销	src/ui/screens/talk.js:548	
+hadl9d	draft	Shiori woke to look at the files you added.	Shiori 已唤醒，查看你添加的文件。	src/ui/screens/talk.js:91	
+15n0e2d	draft	Shiori woke to pick up where she left off.	Shiori 已唤醒，从中断的地方继续。	src/ui/screens/talk.js:92	
+1xhnipt	draft	Shiori woke to merge a new version of her personality.	Shiori 已唤醒，合并她性格的新版本。	src/ui/screens/talk.js:93	
+1ul7xke	draft	Shiori woke for a reminder, or something she watches for.	Shiori 已唤醒：有提醒，或她留意的事情发生了。	src/ui/screens/talk.js:94	
+o6uw4x	draft	Shiori woke to catch up on what happened while annai was out of sight.	Shiori 已唤醒，了解 annai 不在屏幕上时发生的事。	src/ui/screens/talk.js:95	
+1xllewb	draft	Shiori woke because you turned GPS on.	你开启了 GPS，Shiori 已唤醒。	src/ui/screens/talk.js:96	
+susy7u	draft	Shiori woke to tell you the recap.	Shiori 已唤醒，给你讲回顾。	src/ui/screens/talk.js:97	
+drekzl#other	draft	Shiori woke to look at the # files you added.	Shiori 已唤醒，查看你添加的 # 个文件。	src/ui/screens/talk.js:103	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
+9c8dtz#other	draft	Shiori woke to look at the # files you added: {0}.	Shiori 已唤醒，查看你添加的 # 个文件：{0}。	src/ui/screens/talk.js:104	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
+18v7cvz#other	draft	Shiori woke for # reminders, or things she watches for: {0}.	Shiori 已唤醒：有 # 个提醒或她留意的事情：{0}。	src/ui/screens/talk.js:105	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
+18rv8j7	draft	Shiori woke.	Shiori 已唤醒。	src/ui/screens/talk.js:106	
+gofzl2	draft	Shiori woke for the plugin {0}.	插件 {0} 唤醒了 Shiori。	src/ui/screens/talk.js:106	{0} = nameOf(String(r.plugin ?? ''))
+1oe5z73	draft	Reminder, said aloud: {0}	提醒（已朗读）：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is the reminder's words.
+7ew4gb	draft	Shiori's answer: {0}	Shiori 的回答：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	draft	Reminder: {0}	提醒：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is the reminder's words.
+y16fvl	draft	Shiori's answer, said aloud: {0}	Shiori 的回答（已朗读）：{0}	src/ui/screens/talk.js:122	{0} = WORDS; Note: {0} is her answer, shown by annai.
+6xevdr	draft	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:137	
+1ussy6i	draft	Trip	旅行	src/ui/screens/talk.js:194	Note: The heading over a trip's files that are in no folder.
+137bppl	draft	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:208	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	draft	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:208	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+1v011e1	draft	This trip so far: {0}	这次旅行到目前为止：{0}	src/ui/screens/talk.js:214	{0} = formatCost(c.total)
+glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:214	{0} = formatCost(c.total)
+td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:241	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:304	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:304	Note: a note from Koe to Kokoro; its words follow.
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/ui/screens/talk.js:314	
+e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:316	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:317	
+1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/ui/screens/talk.js:324	
+1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:324	
+1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:324	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:338	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:392	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+17o4v1i	draft	Conversation	对话	src/ui/screens/talk.js:409	
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:411	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:441	
+bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:442	
+7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:456	
+12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:458	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:458	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:458	
+va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:458	
+mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:461	
+10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:466	
+va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:473	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:474	
+czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:475	
+1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:485	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:488	
+3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:488	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:488	
+p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:488	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:508	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:509	
+159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:524	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:531	
+vmlwpb	draft	Undo	撤销	src/ui/screens/talk.js:538	
 11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -1029,7 +1029,7 @@ qyfmia	draft	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens
 4xxyqf	draft	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	开启：她出声说的话会以“已朗读”标记显示在对话中，说话时也会在她上方的气泡中显示。关闭：屏幕保持安静。她说过的话在对话中折叠起来，直到你轻点“查看她说的话”。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	draft	Shiori's voice	Shiori 的声音	src/ui/screens/voice.js:154	
 1879vb9	draft	Voices, tried in order: none.	依次尝试的声音：无。	src/ui/screens/voice.js:155	
-1su08w7	draft	Voices, tried in order: {0}.	依次尝试的声音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => (e.kind === 'browser' ? t`Browser voice` : e.name)), 'plain')
+1su08w7	draft	Voices, tried in order: {0}.	依次尝试的声音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => voiceName(e.name)), 'plain')
 1oc2cqc	draft	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	浏览器自带的声音。其中一些在这部手机上朗读；标为“在线”的会把她的话发给它们的服务。	src/ui/screens/voice.js:158	
 t9jotl	draft	This browser has no voice of its own.	这个浏览器没有自带的声音。	src/ui/screens/voice.js:158	
 154la7x	draft	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度从 0.5（慢）到 2（快）；1 为正常。	src/ui/screens/voice.js:161	
