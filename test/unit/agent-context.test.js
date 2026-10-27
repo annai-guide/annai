@@ -164,3 +164,23 @@ test('the languages (phase 2): one section, in the system text of Shiori, Kokoro
   const warm = nextSnapshot(snap, await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' }), { cold: false });
   assert.match(warm.languages, /Always answer in Japanese/);
 });
+
+test('under screens not in English the languages section ends with their names, and a Distances choice after them (localization L6)', async () => {
+  const { setWords } = await import('../../src/core/l10n.js');
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const { languagesText, languageSettings } = await import('../../src/core/languages.js');
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'en-US' });
+  const plain = languagesText(languageSettings({}, 'en-US'));
+  assert.equal((await take()).languages, plain, 'English screens: the languages alone');
+  try {
+    setWords('ja', { '@glossary': 'Settings (設定), Models (モデル)' });
+    const ja = (await take()).languages;
+    assert.equal(ja, `${plain} annai's screens are in Japanese. When you name a screen, a setting or a button, use the name it shows: Settings (設定), Models (モデル). This doesn't change the language you answer in.`);
+    assert.equal((await take()).languages, ja, 'stable');
+    await updateAppSettings(ws, { languages: { distances: 'mi' } });
+    assert.equal((await take()).languages, `${ja} Give distances in miles, as annai's screens show them.`);
+  } finally {
+    setWords('en', null);
+  }
+});

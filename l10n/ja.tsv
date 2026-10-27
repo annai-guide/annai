@@ -1,28 +1,28 @@
 key	state	en	text	where	note
 1aajvdy	ok	Opening annai…	annai を開いています…	src/app/boot.js:32	
-1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:61	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:62	
-u0vojx	ok	Use it here	ここで使う	src/app/main.js:63	
-p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:68	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:69	
-1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:70	
-fki4un	ok	Notifications	通知	src/app/main.js:204	
-1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:207	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:208	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:209	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:220	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:309	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:310	
-1n8cxuc	ok	Compare	比較	src/app/main.js:312	
-rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:313	
-1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:314	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:366	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:367	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:367	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:368	
-gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:379	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:381	
-982hh6	ok	Try again	再試行	src/app/main.js:382	
+1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:62	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:63	
+u0vojx	ok	Use it here	ここで使う	src/app/main.js:64	
+p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:69	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:70	
+1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:71	
+fki4un	ok	Notifications	通知	src/app/main.js:208	
+1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:211	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:212	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:213	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:224	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:313	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:314	
+1n8cxuc	ok	Compare	比較	src/app/main.js:316	
+rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:317	
+1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:318	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:370	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:371	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:371	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:372	
+gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:383	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:385	
+982hh6	ok	Try again	再試行	src/app/main.js:386	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには @ の前に名前かパスワードが含まれています。外してください。	src/core/address.js:70	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（名前で。名前のない場所は約100 mに丸めた位置で）。GPS の軌跡そのものは送りません。	src/core/after/recap.js:53	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	その間に車や徒歩で移動した距離、スタンプ、予定。	src/core/after/recap.js:54	
@@ -183,35 +183,35 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 10s60wn	ok	No file at {0}.	{0} にファイルがありません。	src/core/imports.js:13	{0} = path
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	ok	just now	たった今	src/core/intl.js:126	
+1acz027	ok	just now	たった今	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:405	Note: names what to tap (the dock's Shiori), as the English does.
-3fqfy0	ok	Languages	言語	src/core/languages.js:304	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:305	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
-1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:306	
-krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:307	Note: Phone dictation is the keyboard's 音声入力 (glossary, Speech in's note), not her 聞き取り.
-5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:308	
-17rv3f8	ok	Add	追加	src/core/languages.js:309	
-9c35st	ok	Remove	削除	src/core/languages.js:310	
-oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:313	{0} = name
-1u9ac5b	ok	Move {0} up	{0}を上へ移動	src/core/languages.js:314	{0} = name
-9v00pm	ok	Move {0} down	{0}を下へ移動	src/core/languages.js:315	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:317	{0} = name; {1} = own
-18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:318	{0} = name
-zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:318	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
-14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:319	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:319	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:320	{0} = name
-p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:320	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:322	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:323	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:325	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:325	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:326	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:326	
-1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:327	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:328	
-au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未選択：annai はブラウザの言語を使います。よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:329	
+3fqfy0	ok	Languages	言語	src/core/languages.js:311	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:312	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:313	
+krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:314	Note: Phone dictation is the keyboard's 音声入力 (glossary, Speech in's note), not her 聞き取り.
+5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:315	
+17rv3f8	ok	Add	追加	src/core/languages.js:316	
+9c35st	ok	Remove	削除	src/core/languages.js:317	
+oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:320	{0} = name
+1u9ac5b	ok	Move {0} up	{0}を上へ移動	src/core/languages.js:321	{0} = name
+9v00pm	ok	Move {0} down	{0}を下へ移動	src/core/languages.js:322	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:324	{0} = name; {1} = own
+18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:325	{0} = name
+zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:325	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:326	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:326	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:327	{0} = name
+p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:327	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:329	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:330	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:332	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:332	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:333	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:333	
+1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:334	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:335	
+au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未選択：annai はブラウザの言語を使います。よく使う順です。スマートフォンの音声入力は最初の言語だけを聞き取ります。複数の言語に対応するモデルには、すべてを伝えます。	src/core/languages.js:336	
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
@@ -739,17 +739,21 @@ uqmge3	ok	Open the browser menu (⋮).	ブラウザのメニュー（⋮）を�
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari は、7日間開かないと旅を消去することがあります。また、ホーム画面のアプリは旅を別に保存するので、ここで始めた旅はそちらにはありません。annai をホーム画面に追加して、そこで旅を始めてください。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	ブラウザは、空き容量が少なくなると旅を消去することがあります。annai をインストールして、旅を守ってください。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	手順を見る	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:184	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
-967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:198	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:199	{0} = name
-1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:214	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:219	
-v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:222	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
-15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:235	{0} = name
-dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:235	
-8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:242	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:243	{0} = name
-1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:244	
+n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:186	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
+967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:200	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:201	{0} = name
+1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:216	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:221	
+v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:224	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
+1c7q9dt	ok	Miles	マイル	src/ui/languages.js:233	Note: A choice of Distances.
+86ef5k	ok	Kilometres	キロメートル	src/ui/languages.js:233	Note: A choice of Distances.
+r122ro	ok	Automatic	自動	src/ui/languages.js:233	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離の単位	src/ui/languages.js:249	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:262	{0} = name
+dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:262	
+8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:269	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:270	{0} = name
+1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:271	
 15kmah9	ok	Simulation · moving fast	シミュレーション · 高速で移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	シミュレーション · 停止中	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	シミュレーション · 歩行中	src/ui/live-chip.js:22	
@@ -2080,55 +2084,57 @@ rfzxba	ok	What you say goes to the first of these that can hear it; what she say
 283rev	ok	What you say	あなたの言葉	src/ui/screens/voice.js:175	
 127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の中だけにとどめるには、キーボードのマイクキーで入力してください。iPhone と多くの Android のキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:177	
 bewa4v	ok	What she says	Shiori の言葉	src/ui/screens/voice.js:178	
-12fg67m	ok	Searching the web	Web 検索	src/ui/screens/welcome.js:20	
-13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:20	
-1okgje1	ok	What annai can do	annai でできること	src/ui/screens/welcome.js:20	
-1sfqzn2	ok	Get started	はじめる	src/ui/screens/welcome.js:20	
-9dx265	ok	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:20	
-1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai は、スマートフォンの中で動く、無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:42	Note: スマートフォン, as the other screens say it (not スマホ).
-119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:43	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:44	
-1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai の名前は、日本語の「案内」（人を案内すること、連れて回ること）から来ています。	src/ui/screens/welcome.js:45	Note: "案内 is Japanese for…" reads circular to a Japanese reader, so it says where the name comes from; keeps 案内 as the glossary asks.
-u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:51	
-5swud	ok	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:53	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
-qhkarb	ok	talks with you and answers at once.	はあなたと話し、すぐに答えます。	src/ui/screens/welcome.js:53	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
-ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}）	src/ui/screens/welcome.js:54	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
-vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	はじっくり考えて作業をします。計画、検索、予約の読み取りなどです。	src/ui/screens/welcome.js:54	Note: follows Kokoro's name in bold.
-1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	話しかけるのは Shiori だけです。Kokoro が作業している間、Koe があなたの相手をし、Kokoro が答えを見つけたら伝えます。2人のやりとりは会話に表示されます。設定 → Shiori で隠せます。	src/ui/screens/welcome.js:55	
-1px4lo	ok	Plans and bookings.	予定と予約。	src/ui/screens/welcome.js:60	
-syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	Shiori といっしょに1日ずつ旅を計画し、予約確認を追加できます。PDF、ウォレットのパス、スクリーンショットなどです。予約するのはあなたで、annai が代わりに予約することはありません。	src/ui/screens/welcome.js:60	
-1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:61	
-pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	GPS をオンにすると、annai は現在地をたどり、出発するとき、着いたとき、遅れそうなときなど、ちょうどいい時間と場所でリマインドします。	src/ui/screens/welcome.js:61	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	車の中でもトレイルでも、手を使わずに Shiori と話せます。	src/ui/screens/welcome.js:62	
-sb3fh1	ok	Voice.	音声。	src/ui/screens/welcome.js:62	
-1f1esb6	ok	Offline places.	オフラインの場所。	src/ui/screens/welcome.js:63	
-q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	予定に沿った OpenStreetMap の場所、Wikipedia の要約、Wikivoyage のガイド。電波がないときのために。	src/ui/screens/welcome.js:63	
-1nibb44	ok	Show Shiori what you see, and ask about it.	見ているものを Shiori に見せて、質問できます。	src/ui/screens/welcome.js:64	
-8buk0q	ok	Photos.	写真。	src/ui/screens/welcome.js:64	
-oet5z2	ok	Backups.	バックアップ。	src/ui/screens/welcome.js:65	
-wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	ファイルをエクスポートするか、GitHub、Forgejo や Gitea のサーバー、S3 バケット、WebDAV フォルダーに自動でバックアップできます。	src/ui/screens/welcome.js:65	
-1gocoxs	ok	Plugins and MCP servers.	プラグインとMCPサーバー。	src/ui/screens/welcome.js:66	
-rokix6	ok	Skills, tools and screens that others make.	ほかの人が作ったスキル、ツール、画面。	src/ui/screens/welcome.js:66	
-1ab3kpy	ok	Recap and replay.	振り返りとリプレイ。	src/ui/screens/welcome.js:67	
-1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅のあとに、旅の振り返りと、たどったルートの再生。	src/ui/screens/welcome.js:67	
-lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai は、あなたのキーとデータがあなたのものであり続けるように作られています。その仕組みと、その限界をここで正確に説明します。	src/ui/screens/welcome.js:69	
-13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori は、無料のサービスを使って、始めてすぐに Web を検索できます。キーも設定も不要です。	src/ui/screens/welcome.js:73	
-1yy7iex	ok	These are on. Untick any you would rather not use.	これらはオンになっています。使いたくないものはチェックを外してください。	src/ui/screens/welcome.js:74	
-10sp6fm	ok	A model set up here, in Safari, stays in Safari.	ここ Safari で設定したモデルは、Safari の中だけで使えます。	src/ui/screens/welcome.js:95	
-1dr4k8j	ok	Connect a model, so Shiori can think.	Shiori が考えられるように、モデルをつなぎましょう。	src/ui/screens/welcome.js:95	
-uy1icp	ok	Connect a model there, so Shiori can think.	Shiori が考えられるように、そこでモデルをつなぎましょう。	src/ui/screens/welcome.js:95	
-f7oh8p	ok	You can also install annai as an app from your browser's menu.	ブラウザのメニューから、annai をアプリとしてインストールすることもできます。	src/ui/screens/welcome.js:105	
-u8au6d	ok	First, install annai	まず、annai をインストール	src/ui/screens/welcome.js:109	
-fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari は、7日間アクセスがないと annai のデータを消すことがあります。また、ホーム画面のアプリは別にデータを持ちます。annai をホーム画面に追加し、そこでモデルを設定してください。	src/ui/screens/welcome.js:112	
-1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空き容量が少なくなると、ブラウザが annai のデータを消すことがあります。旅を守るために annai をインストールしてください。	src/ui/screens/welcome.js:113	
-hophvo	ok	Then, in the Home Screen app	次に、ホーム画面のアプリで	src/ui/screens/welcome.js:118	
-s3y93q	ok	Then	次に	src/ui/screens/welcome.js:118	
-1padbm0	ok	Next	次へ	src/ui/screens/welcome.js:132	
-1hzmxtu	ok	Back	戻る	src/ui/screens/welcome.js:133	
-1hpqu3m	ok	Skip	スキップ	src/ui/screens/welcome.js:134	
-186hb75	ok	Look around first	まず見てみる	src/ui/screens/welcome.js:139	
-zzldle	ok	Set up a model	モデルを設定	src/ui/screens/welcome.js:140	
-dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:146	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
+12fg67m	ok	Searching the web	Web 検索	src/ui/screens/welcome.js:23	
+13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:23	
+1okgje1	ok	What annai can do	annai でできること	src/ui/screens/welcome.js:23	
+1sfqzn2	ok	Get started	はじめる	src/ui/screens/welcome.js:23	
+9dx265	ok	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:23	
+18wuq59	ok	Change	変更	src/ui/screens/welcome.js:43	Note: The welcome's link to Settings → Shiori → Languages, after the screens' language.
+pxr3y5	ok	annai's screens: {0} · {1}	annai の表示言語：{0} · {1}	src/ui/screens/welcome.js:44	{0} = name; {1} = change; Note: {0} is the screens' language by its own name (日本語), {1} the link 変更; worded as the setting it opens (annai の表示言語).
+1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai は、スマートフォンの中で動く、無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:52	Note: スマートフォン, as the other screens say it (not スマホ).
+119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:53	
+1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:54	
+1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai の名前は、日本語の「案内」（人を案内すること、連れて回ること）から来ています。	src/ui/screens/welcome.js:55	Note: "案内 is Japanese for…" reads circular to a Japanese reader, so it says where the name comes from; keeps 案内 as the glossary asks.
+u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:62	
+5swud	ok	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:64	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
+qhkarb	ok	talks with you and answers at once.	はあなたと話し、すぐに答えます。	src/ui/screens/welcome.js:64	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
+ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}）	src/ui/screens/welcome.js:65	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
+vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	はじっくり考えて作業をします。計画、検索、予約の読み取りなどです。	src/ui/screens/welcome.js:65	Note: follows Kokoro's name in bold.
+1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	話しかけるのは Shiori だけです。Kokoro が作業している間、Koe があなたの相手をし、Kokoro が答えを見つけたら伝えます。2人のやりとりは会話に表示されます。設定 → Shiori で隠せます。	src/ui/screens/welcome.js:66	
+1px4lo	ok	Plans and bookings.	予定と予約。	src/ui/screens/welcome.js:71	
+syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	Shiori といっしょに1日ずつ旅を計画し、予約確認を追加できます。PDF、ウォレットのパス、スクリーンショットなどです。予約するのはあなたで、annai が代わりに予約することはありません。	src/ui/screens/welcome.js:71	
+1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:72	
+pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	GPS をオンにすると、annai は現在地をたどり、出発するとき、着いたとき、遅れそうなときなど、ちょうどいい時間と場所でリマインドします。	src/ui/screens/welcome.js:72	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	車の中でもトレイルでも、手を使わずに Shiori と話せます。	src/ui/screens/welcome.js:73	
+sb3fh1	ok	Voice.	音声。	src/ui/screens/welcome.js:73	
+1f1esb6	ok	Offline places.	オフラインの場所。	src/ui/screens/welcome.js:74	
+q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	予定に沿った OpenStreetMap の場所、Wikipedia の要約、Wikivoyage のガイド。電波がないときのために。	src/ui/screens/welcome.js:74	
+1nibb44	ok	Show Shiori what you see, and ask about it.	見ているものを Shiori に見せて、質問できます。	src/ui/screens/welcome.js:75	
+8buk0q	ok	Photos.	写真。	src/ui/screens/welcome.js:75	
+oet5z2	ok	Backups.	バックアップ。	src/ui/screens/welcome.js:76	
+wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	ファイルをエクスポートするか、GitHub、Forgejo や Gitea のサーバー、S3 バケット、WebDAV フォルダーに自動でバックアップできます。	src/ui/screens/welcome.js:76	
+1gocoxs	ok	Plugins and MCP servers.	プラグインとMCPサーバー。	src/ui/screens/welcome.js:77	
+rokix6	ok	Skills, tools and screens that others make.	ほかの人が作ったスキル、ツール、画面。	src/ui/screens/welcome.js:77	
+1ab3kpy	ok	Recap and replay.	振り返りとリプレイ。	src/ui/screens/welcome.js:78	
+1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅のあとに、旅の振り返りと、たどったルートの再生。	src/ui/screens/welcome.js:78	
+lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai は、あなたのキーとデータがあなたのものであり続けるように作られています。その仕組みと、その限界をここで正確に説明します。	src/ui/screens/welcome.js:80	
+13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori は、無料のサービスを使って、始めてすぐに Web を検索できます。キーも設定も不要です。	src/ui/screens/welcome.js:84	
+1yy7iex	ok	These are on. Untick any you would rather not use.	これらはオンになっています。使いたくないものはチェックを外してください。	src/ui/screens/welcome.js:85	
+10sp6fm	ok	A model set up here, in Safari, stays in Safari.	ここ Safari で設定したモデルは、Safari の中だけで使えます。	src/ui/screens/welcome.js:106	
+1dr4k8j	ok	Connect a model, so Shiori can think.	Shiori が考えられるように、モデルをつなぎましょう。	src/ui/screens/welcome.js:106	
+uy1icp	ok	Connect a model there, so Shiori can think.	Shiori が考えられるように、そこでモデルをつなぎましょう。	src/ui/screens/welcome.js:106	
+f7oh8p	ok	You can also install annai as an app from your browser's menu.	ブラウザのメニューから、annai をアプリとしてインストールすることもできます。	src/ui/screens/welcome.js:116	
+u8au6d	ok	First, install annai	まず、annai をインストール	src/ui/screens/welcome.js:120	
+fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari は、7日間アクセスがないと annai のデータを消すことがあります。また、ホーム画面のアプリは別にデータを持ちます。annai をホーム画面に追加し、そこでモデルを設定してください。	src/ui/screens/welcome.js:123	
+1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空き容量が少なくなると、ブラウザが annai のデータを消すことがあります。旅を守るために annai をインストールしてください。	src/ui/screens/welcome.js:124	
+hophvo	ok	Then, in the Home Screen app	次に、ホーム画面のアプリで	src/ui/screens/welcome.js:129	
+s3y93q	ok	Then	次に	src/ui/screens/welcome.js:129	
+1padbm0	ok	Next	次へ	src/ui/screens/welcome.js:143	
+1hzmxtu	ok	Back	戻る	src/ui/screens/welcome.js:144	
+1hpqu3m	ok	Skip	スキップ	src/ui/screens/welcome.js:145	
+186hb75	ok	Look around first	まず見てみる	src/ui/screens/welcome.js:150	
+zzldle	ok	Set up a model	モデルを設定	src/ui/screens/welcome.js:151	
+dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:157	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
 1jrfsn4	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	無料検索は、検索を Exa、Parallel、Firecrawl に送ります。送るのは検索した言葉だけで、ファイルや居場所は送りません。Exa はほかでは読めないページも読むので、そのページのアドレスも送ります。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索内容をモデルの学習に使うことがあるので、検索に名前や住所を入れないでください。その後ろには常に有効な最後の手段があり、同じ言葉を Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは「検索の方法：オフ」だけです。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	チェックしたものには、Shiori が検索する言葉だけが送られ、Exa には Shiori のために読むページのアドレスも送られます。ファイルや居場所は送りません。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索をモデルの学習に使うことがあるので、名前や住所は入れないでください。その後ろでは、最後の手段として常に Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは設定 → ツール → 検索の方法：オフだけです。これらはすべてそこで変更できます。	src/ui/search-panel.js:15	Note: "she" is written as Shiori: 彼女 reads distant in Japanese.
 1fn0bdg	ok	Use	使う	src/ui/search-panel.js:31	

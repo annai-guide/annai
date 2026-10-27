@@ -3,7 +3,7 @@ import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { chooseTag, lang as screensLang } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor } from '../core/languages.js';
-import { languageName } from '../core/intl.js';
+import { languageName, setDistances } from '../core/intl.js';
 
 /** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
 export function ownName(tag) {
@@ -65,6 +65,7 @@ export function languagesSection(ctx, app) {
   const note = h('span', { class: 'saved', role: 'status' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
   const screens = screensRow(ctx, app);
+  const distances = distancesRow(ctx, app);
   const hint = h('p', { class: 'sub' });
   const list = h('ol', { class: 'langs', 'aria-label': W.spokenLabel });
   const add = h('select', { id: 'language-add' });
@@ -167,6 +168,7 @@ export function languagesSection(ctx, app) {
     h('h2', { class: 'section', text: W.heading }),
     h('p', { class: 'sub', text: W.intro }),
     screens,
+    distances,
     h('div', { class: 'saving' },
       h('h3', { text: W.spokenLabel }), list,
       h('div', { class: 'row' }, field(W.add, add), addButton),
@@ -220,6 +222,31 @@ function screensRow(ctx, app) {
     }
   });
   return h('div', { class: 'saving' }, field(t`annai's screens in`, select), note, error);
+}
+
+/** The Distances choice kept: 'km', 'mi', or '' for Automatic. @param {Record<string, any>} app */
+export const chosenDistances = (app) => (['km', 'mi'].includes(app.languages?.distances) ? app.languages.distances : '');
+
+/** Distances (localization decision 4): Automatic (by region), Kilometres or Miles; used at once, told to Shiori at her next wake. @param {any} ctx @param {Record<string, any>} app */
+function distancesRow(ctx, app) {
+  const select = h('select', { id: 'language-distances' },
+    h('option', { value: '', text: t`Automatic` }), h('option', { value: 'km', text: t`Kilometres` }), h('option', { value: 'mi', text: t`Miles` }));
+  select.value = chosenDistances(app);
+  // Its note is no status role: the languages' own is the section's one (as the screens' row).
+  const note = h('span', { class: 'saved', 'aria-live': 'polite' });
+  let kept = select.value;
+  select.addEventListener('change', () => queueSave(async () => {
+    const v = select.value;
+    try {
+      await updateAppSettings(ctx.ws, { languages: { distances: v || null } });
+      setDistances(kept = v);
+      note.textContent = t`Saved`;
+    } catch (e) {
+      select.value = kept;
+      note.textContent = messageOf(e);
+    }
+  }));
+  return h('div', { class: 'saving' }, field(t`Distances`, select), note);
 }
 
 /**

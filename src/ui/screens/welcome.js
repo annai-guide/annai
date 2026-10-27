@@ -1,4 +1,7 @@
 import { h, t, linkIn } from '../dom.js';
+import { lang } from '../../core/l10n.js';
+import { SHIPPED } from '../../core/l10n-list.js';
+import { ownName } from '../languages.js';
 import { num, sentences, sentenceGap } from '../format.js';
 import { markWelcomed } from '../welcome.js';
 import { keysAndData, finePrint } from '../privacy.js';
@@ -34,6 +37,13 @@ const ja = (text) => h('span', { lang: 'ja', text });
 const KOE = /* en */ '声';
 const KOKORO = /* en */ '心';
 
+/** "annai's screens: English · Change" (localization design, section 2). */
+function screensLine() {
+  const name = ownName(lang());
+  const change = t`Change`;
+  return h('p', { class: 'sub' }, ...linkIn(t`annai's screens: ${name} · ${change}`, h('span', { lang: lang(), text: name }), h('a', { href: '#/shiori', text: change })));
+}
+
 /** @param {number} n @param {any} ctx @param {Element | null} ticks the free search services, ticked as saved (the search step) @returns {any[]} */
 function body(n, ctx, ticks) {
   const id = idOf(n);
@@ -43,6 +53,7 @@ function body(n, ctx, ticks) {
       h('p', { text: t`Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.` }),
       h('p', { class: 'sub', text: t`She is at the bottom of every screen: tap her to talk, or type.` }),
       h('p', { class: 'sub', text: t`annai (案内) is Japanese for "guidance; showing someone around".` }),
+      SHIPPED.length > 1 ? screensLine() : null,
     ];
   }
   if (id === 'halves') {

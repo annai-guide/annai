@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cp, mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { check, update, extract, readMessages, readGlossary, glossaryWarnings, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
+import { check, update, extract, readMessages, readGlossary, glossaryWarnings, glossaryNames, shippedJson, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find } from '../../scripts/strings.mjs';
 import { key } from '../../src/core/l10n.js';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/strings', import.meta.url));
@@ -389,4 +389,13 @@ test('a name kept as written is held to it at the start of a message too: "Shior
   const w = (/** @type {string} */ en, /** @type {string} */ text) => glossaryWarnings(g, 'ja', [{ key: 'k', state: 'draft', en, text, where: '', note: '', line: 2 }]).length;
   assert.equal(w('Shiori answers in {0}', 'しおりは{0}で答えます'), 1, 'her name written in kana');
   assert.equal(w('Shiori answers in {0}', 'Shiori は{0}で答えます'), 0);
+});
+
+test('the screens\' names for Shiori come from the glossary\'s screens, modes and capitalised things, and ship in the catalog under @glossary (localization L6)', () => {
+  const g = readGlossary(`${GLOSSARY}\nSpeech in\tthing\t聞き取り\t语音识别\tsrc/a.mjs:1\t\nkey\tthing\tキー\t密钥\tsrc/a.mjs:1\t`);
+  assert.equal(glossaryNames(g, 'ja'), 'Trips (旅), Koe (Koe), Speech in (聞き取り)', 'no platform, never or lowercase thing; none without a word');
+  assert.equal(glossaryNames(g, 'zh-Hans'), 'Trips (行程), Speech in (语音识别)');
+  const rows = [{ key: 'b', state: 'ok', en: 'Hi', text: 'やあ', where: '', note: '' }];
+  assert.deepEqual(JSON.parse(shippedJson(rows, 'Trips (旅)')), { b: 'やあ', '@glossary': 'Trips (旅)' });
+  assert.deepEqual(JSON.parse(shippedJson(rows)), { b: 'やあ' });
 });

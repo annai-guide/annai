@@ -27,7 +27,8 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
-import { screensAtStart } from '../ui/languages.js';
+import { screensAtStart, chosenDistances } from '../ui/languages.js';
+import { setDistances } from '../core/intl.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
 import { armUnlock } from '../ui/unlock.js';
@@ -163,7 +164,10 @@ async function boot() {
   // The conversation starts opening before the first screen, which waits for it (agent.opening).
   // A simulation the page went away in the middle of is over: the trip open before it comes back (spec §13).
   await recoverSimulation({ store, ws }).catch(() => {});
-  const active = (await readAppSettings(ws)).activeTrip;
+  const settings = await readAppSettings(ws);
+  // The Distances choice, before anything is drawn.
+  setDistances(chosenDistances(settings));
+  const active = settings.activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
