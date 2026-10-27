@@ -1,5 +1,6 @@
 import { logEvent } from '../events.js';
 import { t } from '../l10n.js';
+import { answerWords } from '../answer.js';
 
 /**
  * Web requests by tools and plugins, each recorded as a net.request (spec §4.5, §15): the trace
@@ -215,7 +216,10 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       const host = hostOf(base.url);
       /* en */
       const en = `annai couldn't reach ${host}${held ? '' : ` (${said})`}. Is the device offline?`;
-      throw Object.assign(new Error(en, held ? undefined : { cause: e }), { kind: 'network', shown: held ? t`annai couldn't reach ${host}. Is the device offline?` : t`annai couldn't reach ${host} (${said}). Is the device offline?` });
+      // What it was goes with it (answer.js's vocabulary): a hold or a pack's failure keeps it, and a screen says it in its words.
+      /** @type {import('../answer.js').AnswerSaid} */
+      const what = { code: 'unreachable', where: host, ...(held ? {} : { info: said }) };
+      throw Object.assign(new Error(en, held ? undefined : { cause: e }), { kind: 'network', said: what, shown: answerWords(what) });
     }
   };
 }

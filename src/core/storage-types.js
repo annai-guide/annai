@@ -122,9 +122,9 @@ export const TEXT_MAX = 8 * 1024 * 1024;
  * @returns {Promise<any>}
  */
 export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
-  // What it was goes with it (said, backup.js's): a hold keeps it, and the screens make its words.
+  // What it was goes with it (said, answer.js's vocabulary): a hold keeps it, and the screens make its words.
   const mb = Math.round(max / 1048576);
-  const tooLarge = () => Object.assign(new TargetError('other', /* en */ `${where} sent an answer larger than annai reads (${mb} MB). annai tries again later.`), { said: { code: 'answer-large', name: where, bytes: max } });
+  const tooLarge = () => Object.assign(new TargetError('other', /* en */ `${where} sent an answer larger than annai reads (${mb} MB). annai tries again later.`), { said: { code: 'too-much', where, mb } });
   try {
     if (how === 'blob') return await res.blob();
     if (how === 'arrayBuffer') return await res.arrayBuffer();
@@ -158,10 +158,10 @@ export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
     try {
       return JSON.parse(text);
     } catch {
-      throw Object.assign(new TargetError('other', /* en */ `${where} answered something annai can't read. annai tries again later.`), { said: { code: 'unreadable', name: where } });
+      throw Object.assign(new TargetError('other', /* en */ `${where} answered something annai can't read. annai tries again later.`), { said: { code: 'unreadable', where } });
     }
   } catch (e) {
     if (e instanceof TargetError || /** @type {any} */ (e)?.name === 'AbortError') throw e;
-    throw Object.assign(new TargetError('other', /* en */ `The connection to ${where} broke while annai read its answer. annai tries again later.`), { said: { code: 'broke', name: where } });
+    throw Object.assign(new TargetError('other', /* en */ `The connection to ${where} broke while annai read its answer. annai tries again later.`), { said: { code: 'cut', where } });
   }
 }

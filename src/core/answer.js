@@ -2,14 +2,20 @@ import { t } from './l10n.js';
 import { size } from './intl.js';
 
 /**
- * What was wrong with a server's answer, as data (an error carries it as said): where is the server as the user knows it. The log and
- * a model read the error's English message; a screen shows its shown words, made here, and a record may keep said (pack/download.js).
- * @typedef {{ code: 'status', where: string, status: number } | { code: 'unreadable' | 'cut', where: string } | { code: 'too-much', where: string, mb: number }} AnswerSaid
+ * What was wrong with reaching a server or with its answer, as data (an error carries it as said): where is the server as the user knows
+ * it; info, the browser's own words for a request it couldn't make. The log and a model read the error's English message; a screen shows
+ * its shown words, made here, and a hold or a pack's failure keeps said (backup.js, pack/download.js): the one vocabulary for servers.
+ * @typedef {{ code: 'status', where: string, status: number } | { code: 'unreadable' | 'cut', where: string } | { code: 'too-much', where: string, mb: number }
+ *   | { code: 'unreachable', where: string, info?: string }} AnswerSaid
  */
+
+/** The codes answerWords knows. */
+export const ANSWER_CODES = new Set(['status', 'unreadable', 'cut', 'too-much', 'unreachable']);
 
 /** An answer's problem in the screens' words, from its data. @param {AnswerSaid} s */
 export function answerWords(s) {
   const { where } = s;
+  if (s.code === 'unreachable') return s.info ? t`annai couldn't reach ${where} (${s.info}). Is the device offline?` : t`annai couldn't reach ${where}. Is the device offline?`;
   if (s.code === 'status') return t`${where} answered ${s.status}.`;
   if (s.code === 'unreadable') return t`${where} sent an answer annai can't read.`;
   if (s.code === 'too-much') return t`${where} sent more than annai reads (${size(s.mb * 1_048_576)}).`;

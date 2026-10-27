@@ -1,4 +1,5 @@
-import { exportArchive, checkManifest, PRESETS } from './archive.js';
+import { exportArchive, checkManifest, PRESETS, archiveWords, ARCHIVE_CODES } from './archive.js';
+import { answerWords, ANSWER_CODES } from './answer.js';
 import { recordBackup, SYS } from './scopes.js';
 import { logEvent } from './events.js';
 import { withoutSecrets, withoutSecretsIn, shownWithoutSecrets } from './agent/net.js';
@@ -24,23 +25,25 @@ import { sentences, size } from './intl.js';
  * @typedef {import('./storage-types.js').TargetContext} TargetContext
  * @typedef {import('./storage-types.js').Progress} Progress
  * @typedef {ReturnType<typeof createBackups>} Backups
- * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer' | 'answer-large' | 'unreadable' | 'broke', name?: string, noun?: string, bytes?: number }} Said
- *   one of annai's own errors, as data (a hold keeps it): the place's name (or the server's, as a storage plugin names it for readAnswer), this
- *   device's noun, the upload's size (or the most annai reads of an answer)
+ * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer', name?: string, noun?: string, bytes?: number }
+ *   | import('./answer.js').AnswerSaid | import('./archive.js').ArchiveSaid} Said
+ *   one of annai's own errors, as data (a hold keeps it): backup's own (the place's name, this device's noun, the upload's size), a server's
+ *   (answer.js: unreachable, or its answer) or an export's (archive.js)
  */
 
 /**
  * One of annai's own backup errors in the screens' words, made from its data: when it is thrown, and again when a hold that keeps it
- * is shown (localization L5f). Its English is the log's. @param {Said} s
+ * is shown (localization L5f). Its English is the log's. null for a code this annai doesn't know (a later one's): shown as an old hold.
+ * @param {Said} s @returns {string | null}
  */
 export function backupWords(s) {
+  if (ANSWER_CODES.has(s.code)) return sentences(answerWords(/** @type {import('./answer.js').AnswerSaid} */ (s)), t`annai tries again later.`);
+  if (ARCHIVE_CODES.has(s.code)) return archiveWords(/** @type {import('./archive.js').ArchiveSaid} */ (s));
   if (s.code === 'plugin-off') return t`The plugin for ${s.name} isn't running. Open this backup place in Settings → Backups to turn it on.`;
   if (s.code === 'passphrase') return t`Type the passphrase for the encrypted backups at ${s.name}, then save.`;
   if (s.code === 'large') return t`This backup would upload ${size(s.bytes ?? 0)}.`;
   if (s.code === 'newer') return t`There is a newer backup at ${s.name}.`;
-  if (s.code === 'answer-large') return t`${s.name} sent an answer larger than annai reads (${size(s.bytes ?? 0)}). annai tries again later.`;
-  if (s.code === 'unreadable') return t`${s.name} answered something annai can't read. annai tries again later.`;
-  if (s.code === 'broke') return t`The connection to ${s.name} broke while annai read its answer. annai tries again later.`;
+  if (s.code !== 'offline') return null;
   if (s.noun === 'phone') return t`This phone is offline, so annai couldn't reach this place.`;
   if (s.noun === 'iPad') return t`This iPad is offline, so annai couldn't reach this place.`;
   if (s.noun === 'computer') return t`This computer is offline, so annai couldn't reach this place.`;
@@ -52,7 +55,7 @@ export function backupWords(s) {
  * words, and a hold kept before it said what it was, as they were written. @param {{ message: string, said?: Said | null, offline?: boolean }} h
  */
 export function holdWords(h) {
-  const why = h.said ? backupWords(h.said) : h.message;
+  const why = (h.said ? backupWords(h.said) : null) ?? h.message;
   return h.offline ? sentences(why, t`annai tries again once it's back online.`) : why;
 }
 
@@ -61,14 +64,14 @@ export function holdWords(h) {
  * older one has neither said nor offline. Its words are the English annai wrote then, which a screen shows as a line of their own,
  * marked English, never inside a sentence of the screens' language. @param {any} h
  */
-export const oldHold = (h) => h?.kind === 'error' && !('said' in h) && !('offline' in h);
+export const oldHold = (h) => h?.kind === 'error' && ((!('said' in h) && !('offline' in h)) || (h.said && backupWords(h.said) === null));
 
 /**
  * One of annai's own errors, by the shown rule: its English for the log and the hold (message), the screens' words (shown), and what
  * it was (said). @param {ConstructorParameters<typeof TargetError>[0]} kind @param {string} en @param {Said} said
  * @param {ConstructorParameters<typeof TargetError>[2]} [extra]
  */
-const own = (kind, en, said, extra) => Object.assign(new TargetError(kind, en, extra), { shown: backupWords(said), said });
+const own = (kind, en, said, extra) => Object.assign(new TargetError(kind, en, extra), { shown: backupWords(said) ?? en, said });
 
 /** The newest time of each device's backups in a listing, by that device's own clock (minors 23). @param {RemoteBackup[]} listed @returns {Record<string, number>} */
 function knownOf(listed) {
@@ -158,7 +161,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
     const cleaned = new TargetError(te?.kind ?? 'other', message, { remote: te?.remote, bytes: te?.bytes, retryAt: te?.retryAt, ...(choices ? { choices } : {}) });
     // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps.
     const { said } = /** @type {any} */ (e) ?? {};
-    const shown = /** @type {any} */ (e)?.shown ?? (said ? backupWords(said) : undefined);
+    const shown = /** @type {any} */ (e)?.shown ?? (said ? backupWords(said) ?? undefined : undefined);
     return Object.assign(cleaned, { ...(typeof shown === 'string' ? { shown: await shownWithoutSecrets(store, shown) } : {}), ...(said ? { said } : {}) });
   }
 
