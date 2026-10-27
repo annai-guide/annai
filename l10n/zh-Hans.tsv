@@ -456,7 +456,7 @@ v8ip62	draft	trip	旅行	src/ui/screens/import.js:80	Note: A file's name when it
 t5o4f	draft	{0} is encrypted.	{0}已加密。	src/ui/screens/import.js:147	{0} = source.name
 17ezgqd	draft	Unlock	解锁	src/ui/screens/import.js:150	
 mp7avp	draft	with history	含历史	src/ui/screens/import.js:167	
-wa8d8i#other	draft	# files	# 个文件	src/ui/screens/import.js:167	plural; # = trip.files; English: "# file" (one), "# files" (other)
+wa8d8i#other	draft	# files	#个文件	src/ui/screens/import.js:167	plural; # = trip.files; English: "# file" (one), "# files" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
 1z02pm0	draft	You already have "{0}"	你已经有“{0}”	src/ui/screens/import.js:169	{0} = trip.existingTitle
 s27n78	draft	Add as a new trip	作为新旅行添加	src/ui/screens/import.js:169	
 wr63q8	draft	Replace mine (yours moves to archived trips)	替换我的（你的会移到已归档的旅行）	src/ui/screens/import.js:169	
@@ -484,7 +484,7 @@ ew9em3	draft	Cancel	取消	src/ui/screens/import.js:238
 c0u62t#other	draft	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 密钥；文件中的未被使用。	src/ui/screens/import.js:276	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	draft	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 密钥；文件中的未被使用。	src/ui/screens/import.js:277	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
 zul4ei	draft	shared file	共享的文件	src/ui/screens/import.js:288	
-151rypw#other	draft	# photos	# 张照片	src/ui/screens/import.js:306	plural; # = n; English: "# photo" (one), "# photos" (other)
+151rypw#other	draft	# photos	#张照片	src/ui/screens/import.js:306	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
 8w8k36	draft	a file	一个文件	src/ui/screens/import.js:306	
 ci7mt7	draft	Add to {0}	添加到{0}	src/ui/screens/import.js:309	{0} = trip.title
 odevmc	draft	Adding {0} of {1}…	正在添加 {0}/{1}…	src/ui/screens/import.js:315	{0} = num(Math.min(done + 1, total)); {1} = num(total)
@@ -1020,93 +1020,93 @@ pghiva	draft	Location	位置	src/ui/screens/trace.js:32
 1ocm8xt	draft	System · {0}	系统 · {0}	src/ui/screens/trace.js:47	{0} = s.title
 1jije2k	draft	Nothing here yet.	这里还没有内容。	src/ui/screens/trace.js:75	
 zixzwp	draft	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:86	
-vv1pu6	draft	Type contains	类型包含	src/ui/screens/trace.js:87	
-g9esrd	draft	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:111	
-obwhc7	draft	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:111	
-oh532o	draft	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:111	
-1ds6m85	draft	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:112	
-9chhxd	draft	"{0}"	“{0}”	src/ui/screens/trace.js:127	{0} = cut(s)
-1r6qy12	draft	the user wrote	用户写了	src/ui/screens/trace.js:133	
-yyq6of	draft	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:133	
-1eo2nlm	draft	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:137	
-l7yvjm	draft	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:137	
-omff16	draft	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:138	
-1larmkq	draft	phone dictation	手机听写	src/ui/screens/trace.js:141	
-piy3vo	draft	{0} from the microphone	来自麦克风 {0}	src/ui/screens/trace.js:141	{0} = duration(d.ms ?? 0)
-1sfeb1g	draft	an answer	一个回答	src/ui/screens/trace.js:142	
-1x13vat	draft	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:142	
-k9shc3	draft	while she was thinking	在她思考时	src/ui/screens/trace.js:142	
-an9lly	draft	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:143	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	draft	clip kept	已保留片段	src/ui/screens/trace.js:143	
-1gqj9yn	draft	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:145	{0} = d.by
-o1nqez	draft	from {0}	来自 {0}	src/ui/screens/trace.js:148	{0} = d.source
-v0l7oi#other	draft	# links	# 个链接	src/ui/screens/trace.js:148	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	draft	error	错误	src/ui/screens/trace.js:150	
-scvxkf	draft	ok	成功	src/ui/screens/trace.js:150	
-gqww9o	draft	upload	上传	src/ui/screens/trace.js:152	
-1qafm6e	draft	kept turn not deleted yet	保留的回合尚未删除	src/ui/screens/trace.js:154	
-7lsal4	draft	no answer	无应答	src/ui/screens/trace.js:154	
-udpknx	draft	kept turn deleted	保留的回合已删除	src/ui/screens/trace.js:154	
-hnu5xn	draft	kept turn looked up	已查询保留的回合	src/ui/screens/trace.js:155	
-1t1zawl	draft	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:156	{0} = d.mediaType
-12y45gf	draft	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:160	{0} = app
-13f9wx2	draft	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:160	{0} = app
-fgylb4#other	draft	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:161	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	draft	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:164	
-1vkhbgw	draft	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:164	
-17ybebf	draft	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:165	
-130nh2w	draft	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:166	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	draft	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:166	{0} = d.to
-1nulaw8	draft	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:168	{0} = d.late
-1vzfabu	draft	no connection	无网络连接	src/ui/screens/trace.js:168	
-1l7ac5y	draft	shown	已显示	src/ui/screens/trace.js:169	
-u35e3n	draft	said aloud	已朗读	src/ui/screens/trace.js:169	
-1yfde5	draft	no name	无名称	src/ui/screens/trace.js:171	
-1nk1wxu	draft	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:172	{0} = d.route
-1yo1hz0	draft	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:172	{0} = d.using || unnamed
-bt7zey	draft	from the devices present	来自现有的设备	src/ui/screens/trace.js:172	
-3gdj21	draft	no devices	无设备	src/ui/screens/trace.js:173	
-j7yqys	draft	GPS on	GPS 开启	src/ui/screens/trace.js:177	
-zemwn2	draft	GPS off	GPS 关闭	src/ui/screens/trace.js:177	
-1ijsnzq	draft	voice on	语音开启	src/ui/screens/trace.js:179	
-z2w914	draft	voice off	语音关闭	src/ui/screens/trace.js:179	
-1g1k3by	draft	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:182	{0} = d.waiting ?? 0
-xy6oxk	draft	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:182	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	draft	notification shown	通知已显示	src/ui/screens/trace.js:183	
-cjmncb	draft	notification opened	通知已打开	src/ui/screens/trace.js:184	
-3m7wpo#other	draft	# attempts	尝试 # 次	src/ui/screens/trace.js:194	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	draft	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:198	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	draft	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:199	{0} = Math.round(d.outputLatency * 1000)
-a1oech	draft	live session {0}	实时会话 {0}	src/ui/screens/trace.js:200	{0} = d.state
-beya44	draft	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:202	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	draft	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:207	{0} = duration(d.ms ?? 0)
-1wcl60z	draft	cut	已中断	src/ui/screens/trace.js:207	
-njy1uz	draft	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:207	
-9atabi	draft	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:208	{0} = d.waitMs
-j43x3k	draft	stalled	卡住	src/ui/screens/trace.js:208	
-1qyanji#other	draft	# holes, {0} ms	# 处中断，{0} ms	src/ui/screens/trace.js:209	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other)
-gw0cwm#other	draft	# holes	# 处中断	src/ui/screens/trace.js:209	plural; # = 0; English: "# hole" (one), "# holes" (other)
-1bx4bl6	draft	on {0}	在 {0} 上	src/ui/screens/trace.js:210	{0} = d.player
-1kg51bl	draft	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:213	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	draft	audio: {0}	音频：{0}	src/ui/screens/trace.js:216	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	draft	{0} sent	已发送 {0}	src/ui/screens/trace.js:218	{0} = size(d.bytes)
-l04i5	draft	{0} sent, after a kept turn	已发送 {0}，在保留的回合之后	src/ui/screens/trace.js:218	{0} = size(d.bytes)
-15hqi4k#other	draft	# guides	# 份指南	src/ui/screens/trace.js:222	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	draft	{0} failed	{0} 个失败	src/ui/screens/trace.js:222	{0} = d.failed
-1waoe51	draft	at its limit	已达上限	src/ui/screens/trace.js:223	
-66h5i6	draft	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:223	
-urm4i6	draft	stopped	已停止	src/ui/screens/trace.js:223	
-rfe2ef	draft	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:225	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	draft	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:226	
-uvybu3	draft	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:228	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	draft	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:228	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	draft	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:229	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	draft	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:230	{0} = d.backup
-57gz9u#other	draft	# secrets	# 个机密	src/ui/screens/trace.js:232	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	draft	# settings	# 项设置	src/ui/screens/trace.js:232	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-tqj8t3	draft	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:266	
-mp7j1w#other	draft	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:268	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-1kfziuy	draft	Show what was stored	显示保存的内容	src/ui/screens/trace.js:276	
+vv1pu6	draft	Type contains	事件类型包含	src/ui/screens/trace.js:87	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
+g9esrd	draft	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:144	
+obwhc7	draft	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:144	
+oh532o	draft	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:144	
+1ds6m85	draft	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:145	
+9chhxd	draft	"{0}"	“{0}”	src/ui/screens/trace.js:160	{0} = cut(s)
+1r6qy12	draft	the user wrote	用户写了	src/ui/screens/trace.js:166	
+yyq6of	draft	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:166	
+1eo2nlm	draft	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:170	
+l7yvjm	draft	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:170	
+omff16	draft	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:171	
+1larmkq	draft	phone dictation	手机听写	src/ui/screens/trace.js:174	
+piy3vo	draft	{0} from the microphone	来自麦克风 {0}	src/ui/screens/trace.js:174	{0} = duration(d.ms ?? 0)
+1sfeb1g	draft	an answer	一个回答	src/ui/screens/trace.js:175	
+1x13vat	draft	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:175	
+k9shc3	draft	while she was thinking	在她思考时	src/ui/screens/trace.js:175	
+an9lly	draft	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:176	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	draft	clip kept	已保留片段	src/ui/screens/trace.js:176	
+1gqj9yn	draft	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:178	{0} = d.by
+o1nqez	draft	from {0}	来自 {0}	src/ui/screens/trace.js:181	{0} = d.source
+v0l7oi#other	draft	# links	# 个链接	src/ui/screens/trace.js:181	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	draft	error	错误	src/ui/screens/trace.js:183	
+scvxkf	draft	ok	成功	src/ui/screens/trace.js:183	
+gqww9o	draft	upload	上传	src/ui/screens/trace.js:185	
+1qafm6e	draft	kept turn not deleted yet	保留的回合尚未删除	src/ui/screens/trace.js:187	
+7lsal4	draft	no answer	无应答	src/ui/screens/trace.js:187	
+udpknx	draft	kept turn deleted	保留的回合已删除	src/ui/screens/trace.js:187	
+hnu5xn	draft	kept turn looked up	已查询保留的回合	src/ui/screens/trace.js:188	
+1t1zawl	draft	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:189	{0} = d.mediaType
+12y45gf	draft	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:193	{0} = app
+13f9wx2	draft	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:193	{0} = app
+fgylb4#other	draft	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:194	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	draft	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:197	
+1vkhbgw	draft	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:197	
+17ybebf	draft	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:198	
+130nh2w	draft	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:199	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	draft	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:199	{0} = d.to
+1nulaw8	draft	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:201	{0} = d.late
+1vzfabu	draft	no connection	无网络连接	src/ui/screens/trace.js:201	
+1l7ac5y	draft	shown	已显示	src/ui/screens/trace.js:202	
+u35e3n	draft	said aloud	已朗读	src/ui/screens/trace.js:202	
+1yfde5	draft	no name	无名称	src/ui/screens/trace.js:204	
+1nk1wxu	draft	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:205	{0} = d.route
+1yo1hz0	draft	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:205	{0} = d.using || unnamed
+bt7zey	draft	from the devices present	来自现有的设备	src/ui/screens/trace.js:205	
+3gdj21	draft	no devices	无设备	src/ui/screens/trace.js:206	
+j7yqys	draft	GPS on	GPS 开启	src/ui/screens/trace.js:210	
+zemwn2	draft	GPS off	GPS 关闭	src/ui/screens/trace.js:210	
+1ijsnzq	draft	voice on	语音开启	src/ui/screens/trace.js:212	
+z2w914	draft	voice off	语音关闭	src/ui/screens/trace.js:212	
+1g1k3by	draft	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:215	{0} = d.waiting ?? 0
+xy6oxk	draft	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:215	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	draft	notification shown	通知已显示	src/ui/screens/trace.js:216	
+cjmncb	draft	notification opened	通知已打开	src/ui/screens/trace.js:217	
+3m7wpo#other	draft	# attempts	尝试 # 次	src/ui/screens/trace.js:227	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	draft	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:231	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	draft	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:232	{0} = Math.round(d.outputLatency * 1000)
+a1oech	draft	live session {0}	实时会话 {0}	src/ui/screens/trace.js:233	{0} = d.state
+beya44	draft	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:235	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	draft	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:240	{0} = duration(d.ms ?? 0)
+1wcl60z	draft	cut	已中断	src/ui/screens/trace.js:240	
+njy1uz	draft	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:240	
+9atabi	draft	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:241	{0} = d.waitMs
+j43x3k	draft	stalled	卡住	src/ui/screens/trace.js:241	
+1qyanji#other	draft	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:242	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	draft	# holes	# 处空白	src/ui/screens/trace.js:242	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	draft	on {0}	在 {0} 上	src/ui/screens/trace.js:243	{0} = d.player
+1kg51bl	draft	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:246	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	draft	audio: {0}	音频：{0}	src/ui/screens/trace.js:249	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	draft	{0} sent	已发送 {0}	src/ui/screens/trace.js:251	{0} = size(d.bytes)
+l04i5	draft	{0} sent, after a kept turn	已发送 {0}，在保留的回合之后	src/ui/screens/trace.js:251	{0} = size(d.bytes)
+15hqi4k#other	draft	# guides	# 份指南	src/ui/screens/trace.js:255	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	draft	{0} failed	{0} 个失败	src/ui/screens/trace.js:255	{0} = d.failed
+1waoe51	draft	at its limit	已达上限	src/ui/screens/trace.js:256	
+66h5i6	draft	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:256	
+urm4i6	draft	stopped	已停止	src/ui/screens/trace.js:256	
+rfe2ef	draft	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:258	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	draft	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:259	
+uvybu3	draft	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:261	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	draft	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:261	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	draft	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:262	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	draft	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:263	{0} = d.backup
+57gz9u#other	draft	# secrets	# 个机密	src/ui/screens/trace.js:265	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	draft	# settings	# 项设置	src/ui/screens/trace.js:265	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	draft	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:288	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	draft	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:288	
+1kfziuy	draft	Show what was stored	显示保存的内容	src/ui/screens/trace.js:305	
 yeiyfl	draft	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:23	
 33pqd9	draft	Last backup {0}, to {1}.	上次备份：{0}（{1}）	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, as "Last export" beside it.
 in89ko	draft	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:27	
