@@ -251,3 +251,21 @@ test("annai.l10n.format is the four formats official plugins use, with the signa
   assert.equal(f.list(['a', 'b', 'c'], 'plain'), 'a, b, c');
   assert.equal(f.sentences('One.', '', 'Two.'), 'One. Two.');
 });
+
+test("an official plugin is named in the screens' words wherever it is named: Updates, its card, and what a plugin needs", async () => {
+  const { namesReady, officialName, officialPlugins } = await import('../../src/core/llm/official.js');
+  const { offerWords } = await import('../../src/ui/plugin-updates.js');
+  const { checkRequires } = await import('../../src/core/requires.js');
+  setWords('ja', {});
+  const served = new Map([['/catalog/l10n/ja.json', { format: 1, plugins: { 'remote-trace': { name: 'リモート記録（開発者向け）' } } }], ['/catalog/plugins.json', { format: 1, plugins: [] }]]);
+  const fetch = async (/** @type {string} */ url) => new Response(JSON.stringify(served.get(url) ?? {}), { status: served.has(url) ? 200 : 404 });
+  assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'Remote trace (for developers)', 'before the catalog is read: its English');
+  await officialPlugins({ fetch });
+  await namesReady({ fetch });
+  assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'リモート記録（開発者向け）');
+  assert.match(offerWords({ id: 'remote-trace', name: 'Remote trace (for developers)', installed: '0.1.0', available: '0.2.0' }), /^リモート記録（開発者向け） 0\.1\.0 → 0\.2\.0$/);
+  assert.equal(offerWords({ id: 'remote-trace', name: 'Their trace', installed: '1', available: '2', url: 'https://x.example/p' }), 'Their trace 1 → 2', "a third party's from an address: as written");
+  const k = await hostKit();
+  const entry = /** @type {any} */ ({ id: 'remote-trace', name: 'Remote trace (for developers)', version: '0.2.0', files: {} });
+  await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
+});
