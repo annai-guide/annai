@@ -55,9 +55,10 @@ someone who has read it in place: the `where` column says where it is used.
 - **What models read** stays English: instructions, tool descriptions and results, `[annai]` lines, the now block.
   The code marks these `/* en */`.
 - **Raw requests, responses and schema errors** on the developer screens stay English, marked `lang="en"`.
-- **What Shiori is told** when the screens aren't English is one line made from the glossary: its screens, modes and
-  capitalised things ("Settings (設定), Models (モデル), …"), so she names a screen as the user sees it. A change to
-  those glossary rows changes that line, and so every user's cached prompt once.
+- **What Shiori is told** when the screens aren't English is one line made from the glossary: the 31 names a traveller
+  is likeliest to be pointed to (`TOLD` in `scripts/strings.mjs`: "Settings (設定), Models (モデル), …"), so she names a
+  screen as the user sees it. A change to those rows changes that line, and so every user's cached prompt once; keep
+  the line under 300 tokens.
 
 ## A new language
 

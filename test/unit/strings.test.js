@@ -391,11 +391,16 @@ test('a name kept as written is held to it at the start of a message too: "Shior
   assert.equal(w('Shiori answers in {0}', 'Shiori は{0}で答えます'), 0);
 });
 
-test('the screens\' names for Shiori come from the glossary\'s screens, modes and capitalised things, and ship in the catalog under @glossary (localization L6)', () => {
-  const g = readGlossary(`${GLOSSARY}\nSpeech in\tthing\t聞き取り\t语音识别\tsrc/a.mjs:1\t\nkey\tthing\tキー\t密钥\tsrc/a.mjs:1\t`);
-  assert.equal(glossaryNames(g, 'ja'), 'Trips (旅), Koe (Koe), Speech in (聞き取り)', 'no platform, never or lowercase thing; none without a word');
+test('the screens\' names for Shiori are the glossary\'s rows a traveller is told of, in its order, and ship in the catalog under @glossary (localization L6)', () => {
+  const g = readGlossary(`${GLOSSARY}\nSpeech in\tthing\t聞き取り\t语音识别\tsrc/a.mjs:1\t\nTrace\tscreen\t記録\t记录\tsrc/a.mjs:1\t\nkey\tthing\tキー\t密钥\tsrc/a.mjs:1\t`);
+  assert.equal(glossaryNames(g, 'ja'), 'Trips (旅), Speech in (聞き取り)', 'not Trace, a developer\'s screen, nor a platform word or a lowercase thing');
   assert.equal(glossaryNames(g, 'zh-Hans'), 'Trips (行程), Speech in (语音识别)');
   const rows = [{ key: 'b', state: 'ok', en: 'Hi', text: 'やあ', where: '', note: '' }];
   assert.deepEqual(JSON.parse(shippedJson(rows, 'Trips (旅)')), { b: 'やあ', '@glossary': 'Trips (旅)' });
   assert.deepEqual(JSON.parse(shippedJson(rows)), { b: 'やあ' });
+});
+
+test('the line Shiori is told of the screens names at most 31 names in every language, which measured 275 cl100k tokens at most (L6 review 4)', async () => {
+  const g = readGlossary(await readFile(new URL('../../l10n/glossary.tsv', import.meta.url), 'utf8'));
+  for (const tag of ['ja', 'zh-Hans']) assert.ok(glossaryNames(g, tag).split('), ').length <= 31, tag);
 });
