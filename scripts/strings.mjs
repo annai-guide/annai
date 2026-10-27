@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // annai's words, found, gathered and checked (localization design, section 1). The English is written in the code, marked
 // t`…`, tc(context)`…` or plural(n, one, other); this reads those marks with TypeScript's parser (no type checking), and keeps
-// one translator's file per language, l10n/<tag>.tsv, from which it writes what ships, l10n/<tag>.json.
-//   node scripts/strings.mjs                    updates the TSVs, the JSON files, src/core/l10n-list.js and sw.js's LANGS
+// one translator's file per language, l10n/<tag>.tsv, from which it writes what ships, l10n/<tag>.json. Official plugins' words are
+// in the same files (localization design, section 8): their manifests' translatable fields, and their code's l10n.t, l10n.tc,
+// l10n.plural and l10n.both, in rows keyed "<id>:…", from which it writes each plugin's plugins-official/<id>/l10n/<tag>.json.
+//   node scripts/strings.mjs                    updates the TSVs, the JSON files (the official plugins' too: run npm run catalog
+//                                               after), src/core/l10n-list.js and sw.js's LANGS
 //   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
 //                                               and any bare English where a screen surely shows it (npm run check)
 //   node scripts/strings.mjs --check --glossary-all   the same, warning about the glossary on accepted rows too (after a glossary change)
@@ -14,6 +17,7 @@ import { dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { key, holes } from '../src/core/l10n.js';
+import { TRANSLATED } from '../src/core/packages.js';
 
 /**
  * Where the check refuses bare English: files, or folders ending in "/". Since localization L5h it is all of src/, core included with no
@@ -23,6 +27,8 @@ import { key, holes } from '../src/core/l10n.js';
 export const EXTRACTED = ['src/'];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
+/** annai's official plugins: each folder's words are its own rows. */
+const PLUGINS = 'plugins-official';
 /** The runtime itself and the pseudo-locale mention t and plural without being messages. */
 const SKIP = new Set(['src/core/l10n.js', 'src/core/l10n-pseudo.js', 'src/core/l10n-list.js']);
 const HEADER = 'key\tstate\ten\ttext\twhere\tnote';
@@ -87,12 +93,19 @@ function markerOf(imports, n) {
   return null;
 }
 
+/** In a plugin, which of annai.l10n's t, tc, plural and both an expression names: l10n.t, or annai.l10n.t. @param {ts.Node} n */
+function pluginMarker(n) {
+  if (!ts.isPropertyAccessExpression(n) || !['t', 'tc', 'plural', 'both'].includes(n.name.text)) return null;
+  const on = n.expression;
+  return (ts.isIdentifier(on) && on.text === 'l10n') || (ts.isPropertyAccessExpression(on) && on.name.text === 'l10n') ? (n.name.text === 'both' ? 't' : n.name.text) : null;
+}
+
 /**
- * The messages a file marks, and what the script can't read.
- * @param {string} file the path shown @param {string} text
+ * The messages a file marks, and what the script can't read. plugin: an official plugin's file, whose words are annai.l10n's.
+ * @param {string} file the path shown @param {string} text @param {boolean} [plugin]
  * @returns {{ messages: Message[], errors: Problem[] }}
  */
-export function readMessages(file, text) {
+export function readMessages(file, text, plugin = false) {
   const sf = parse(file, text);
   const imports = importedNames(sf, file);
   /** @type {Message[]} */
@@ -100,8 +113,8 @@ export function readMessages(file, text) {
   /** @type {Problem[]} */
   const errors = [];
   const bad = (/** @type {ts.Node} */ n, /** @type {string} */ message) => errors.push({ file, line: lineOf(sf, n), message });
-  const is = (/** @type {ts.Node} */ n, /** @type {string} */ what) => markerOf(imports, n) === what;
-  for (const r of imports.refused) bad(r.node, r.message);
+  const is = (/** @type {ts.Node} */ n, /** @type {string} */ what) => (plugin ? pluginMarker(n) : markerOf(imports, n)) === what;
+  if (!plugin) for (const r of imports.refused) bad(r.node, r.message);
   /** @param {ts.TemplateLiteral} tpl */
   const sourceOf = (tpl) => (ts.isNoSubstitutionTemplateLiteral(tpl) ? tpl.text : tpl.templateSpans.reduce((s, sp, i) => `${s}{${i}}${sp.literal.text}`, tpl.head.text));
   const visit = (/** @type {ts.Node} */ n) => {
@@ -146,6 +159,76 @@ async function jsFiles(root, dir) {
   return out.sort();
 }
 
+/** The official plugins that speak annai's languages (their manifests list l10n), by id. @param {string} root @returns {Promise<string[]>} */
+async function pluginIds(root) {
+  if (!existsSync(`${root}/${PLUGINS}`)) return [];
+  const ids = (await readdir(`${root}/${PLUGINS}`, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  /** @type {string[]} */
+  const out = [];
+  for (const id of ids) if (JSON.parse(await readFile(`${root}/${PLUGINS}/${id}/annai-plugin.json`, 'utf8')).l10n) out.push(id);
+  return out;
+}
+
+/**
+ * An official plugin's messages, keyed "<id>:…": its manifest's translatable fields ("<id>:@description", a keyword
+ * "<id>:@keywords.0"; its name too, which annai translates for its own plugins, decision 10), and its code's annai.l10n words.
+ * @param {string} root @param {string} id @returns {Promise<{ messages: Message[], errors: Problem[] }>}
+ */
+export async function pluginMessages(root, id) {
+  const file = `${PLUGINS}/${id}/annai-plugin.json`;
+  const text = await readFile(`${root}/${file}`, 'utf8');
+  const manifest = JSON.parse(text);
+  /** @type {Message[]} */
+  const messages = [];
+  /** @param {string} path @param {string} source */
+  const add = (path, source) => {
+    const at = text.indexOf(JSON.stringify(source));
+    messages.push({ key: `${id}:@${path}`, kind: 't', context: '', source, file, line: at < 0 ? 1 : text.slice(0, at).split('\n').length, values: [] });
+  };
+  /** Each path a pattern names in the manifest ("*": every key or index). @param {any} o @param {string[]} parts @param {string} at */
+  const walk = (o, parts, at) => {
+    if (!parts.length) return typeof o === 'string' && o ? add(at, o) : Array.isArray(o) && at === 'keywords' ? o.forEach((k, i) => add(`keywords.${i}`, String(k))) : undefined;
+    if (!o || typeof o !== 'object') return;
+    const [p, ...rest] = parts;
+    for (const k of p === '*' ? Object.keys(o) : [p]) walk(o[k], rest, at ? `${at}.${k}` : k);
+  };
+  for (const [pattern] of [['name', 80], ...TRANSLATED]) walk(manifest, String(pattern).split('.'), '');
+  /** @type {Problem[]} */
+  const errors = [];
+  for (const f of await jsFiles(root, `${PLUGINS}/${id}`)) {
+    const read = readMessages(f, await readFile(`${root}/${f}`, 'utf8'), true);
+    errors.push(...read.errors);
+    messages.push(...read.messages.map((m) => ({ ...m, key: `${id}:${m.key}` })));
+  }
+  return { messages, errors };
+}
+
+/**
+ * What a plugin's l10n/<tag>.json holds, made from a language's rows: its manifest's fields, by path, and its messages.
+ * @param {Omit<Row, 'line'>[]} rows @param {string} id
+ */
+export function pluginJson(rows, id) {
+  /** @type {Record<string, any>} */
+  const manifest = {};
+  /** @type {Record<string, any>} */
+  const messages = {};
+  /** @type {string[]} */
+  const keywords = [];
+  for (const r of [...rows].sort((a, b) => (a.key < b.key ? -1 : 1))) {
+    if (r.state === 'new' || !r.text || !r.key.startsWith(`${id}:`)) continue;
+    const k = r.key.slice(id.length + 1);
+    if (k.startsWith('@keywords.')) keywords[Number(k.slice(10))] = r.text;
+    else if (k.startsWith('@')) manifest[k.slice(1)] = r.text;
+    else {
+      const [m, c] = k.split('#');
+      if (c) (messages[m] ??= {})[c] = r.text;
+      else messages[m] = r.text;
+    }
+  }
+  if (keywords.length) manifest.keywords = [...new Set(keywords.filter(Boolean))];
+  return `${JSON.stringify({ manifest, messages }, null, 2)}\n`;
+}
+
 /**
  * Every message under the scanned folders, in the order of their first use, and the problems in reading them.
  * @param {string} root
@@ -156,20 +239,21 @@ export async function extract(root) {
   const messages = new Map();
   /** @type {Problem[]} */
   const problems = [];
-  for (const dir of SCAN) {
-    for (const file of await jsFiles(root, dir)) {
-      if (SKIP.has(file)) continue;
-      const read = readMessages(file, await readFile(`${root}/${file}`, 'utf8'));
-      problems.push(...read.errors);
-      for (const m of read.messages) {
-        const had = messages.get(m.key);
-        if (!had) messages.set(m.key, m);
-        else if (had.source !== m.source || had.context !== m.context) {
-          problems.push({ file: m.file, line: m.line, message: `the key ${m.key} is also ${had.file}:${had.line}'s (a different message): change one's words` });
-        }
+  /** @param {{ messages: Message[], errors: Problem[] }} read */
+  const take = (read) => {
+    problems.push(...read.errors);
+    for (const m of read.messages) {
+      const had = messages.get(m.key);
+      if (!had) messages.set(m.key, m);
+      else if (had.source !== m.source || had.context !== m.context) {
+        problems.push({ file: m.file, line: m.line, message: `the key ${m.key} is also ${had.file}:${had.line}'s (a different message): change one's words` });
       }
     }
+  };
+  for (const dir of SCAN) {
+    for (const file of await jsFiles(root, dir)) if (!SKIP.has(file)) take(readMessages(file, await readFile(`${root}/${file}`, 'utf8')));
   }
+  for (const id of await pluginIds(root)) take(await pluginMessages(root, id));
   return { messages, problems };
 }
 
@@ -275,13 +359,13 @@ export function updateRows(old, messages, tag) {
 
 /**
  * What ships for a language: { key: text } and, for plurals, { key: { category: text } }; and the screens' names Shiori is told, under
- * "@glossary", a key no message's can be (keys are base 36). @param {Omit<Row, 'line'>[]} rows @param {string} [names] glossaryNames'
+ * "@glossary", a key no message's can be (keys are base 36). Official plugins' rows ("<id>:…") ship in their own files (pluginJson). @param {Omit<Row, 'line'>[]} rows @param {string} [names] glossaryNames'
  */
 export function shippedJson(rows, names = '') {
   /** @type {Record<string, any>} */
   const out = {};
   for (const r of [...rows].sort((a, b) => (a.key < b.key ? -1 : 1))) {
-    if (r.state === 'new' || !r.text) continue;
+    if (r.state === 'new' || !r.text || r.key.includes(':')) continue;
     const [k, c] = r.key.split('#');
     if (c) (out[k] ??= {})[c] = r.text;
     else out[k] = r.text;
@@ -336,6 +420,7 @@ export async function update(root) {
     const rows = updateRows(old, messages, tag);
     await put(file, writeTsv(rows));
     await put(`l10n/${tag}.json`, shippedJson(rows, glossaryNames(glossary, tag)));
+    if (list.some((l) => l.tag === tag)) for (const id of await pluginIds(root)) await put(`${PLUGINS}/${id}/l10n/${tag}.json`, pluginJson(rows, id));
   }
   await put('src/core/l10n-list.js', listFile(list));
   if (existsSync(`${root}/sw.js`)) {
@@ -545,7 +630,17 @@ export async function check(root, files = EXTRACTED, { glossaryAll = false } = {
     if (listed) {
       const json = `l10n/${tag}.json`;
       if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows, glossaryNames(glossary, tag))) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
+      for (const id of await pluginIds(root)) {
+        const own = `${PLUGINS}/${id}/l10n/${tag}.json`;
+        if (!existsSync(`${root}/${own}`) || (await readFile(`${root}/${own}`, 'utf8')) !== pluginJson(rows, id)) problems.push({ file: own, line: 1, message: `${own} isn't what ${file} makes: run npm run strings, then npm run catalog` });
+      }
     }
+  }
+  // Each official plugin lists every language annai has, as its l10n.
+  const tags = JSON.stringify(list.map((l) => l.tag));
+  for (const id of await pluginIds(root)) {
+    const file = `${PLUGINS}/${id}/annai-plugin.json`;
+    if (JSON.stringify(JSON.parse(await readFile(`${root}/${file}`, 'utf8')).l10n ?? []) !== tags) problems.push({ file, line: 1, message: `its l10n must be ${tags}, the languages in l10n/languages.json` });
   }
   const listPath = 'src/core/l10n-list.js';
   if (!existsSync(`${root}/${listPath}`) || (await readFile(`${root}/${listPath}`, 'utf8')) !== listFile(list)) problems.push({ file: listPath, line: 1, message: `${listPath} isn't what l10n/languages.json makes: run npm run strings` });
