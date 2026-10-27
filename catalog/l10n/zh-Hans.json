@@ -29,6 +29,10 @@
       "name": "DeepSeek",
       "description": "DeepSeek 的模型，思考时会显示推理过程。"
     },
+    "provider-gemini": {
+      "name": "Google Gemini",
+      "description": "通过 Google 自己的 API 使用 Gemini 模型，付费密钥可使用 Google 搜索，另有 Google 的语音转文字和声音，以及用于语音对话的 Gemini Live。"
+    },
     "provider-groq": {
       "name": "Groq",
       "description": "快速的开放模型，以及快速的 Whisper 语音转文字。"

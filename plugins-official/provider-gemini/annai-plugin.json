@@ -1,8 +1,9 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "api": 1,
+  "l10n": ["ja", "zh-Hans"],
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [
