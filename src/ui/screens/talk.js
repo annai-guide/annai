@@ -129,6 +129,12 @@ export function reminderParts(d, mine, make = h) {
   return around(message, make('span', { ...marked, text: words }));
 }
 
+/** A reminder's first sentence, about 80 characters at most, with no full stop: a watch's name in a line. @param {string} text */
+const brief = (text) => {
+  const first = (/^.+?(?:[.!?](?=\s|$)|[。！？])/su.exec(text.trim())?.[0] ?? text.trim()).replace(/[.!?。！？]+$/u, '');
+  return first.length > 80 ? `${first.slice(0, 79)}…` : first;
+};
+
 /**
  * An error's line in the Conversation, made from its data in the screens' language; null for one stored before it had any, which
  * is shown as stored, in annai's English. @param {any} d the event's data
@@ -139,8 +145,10 @@ export function errorWords(d) {
   if (d.kind === 'budget' && (d.which === 'steps' ? typeof d.steps === 'number' : typeof d.perDay === 'number')) return budgetWords(d).body;
   if (d.kind === 'silent') return t`Her model finished without saying anything to you.`;
   if (d.kind === 'stuck') return t`Three identical tool calls in a row with identical results.`;
-  // A watch is named by its reminder, as the user knows it, never by its id or its trigger's code.
-  if (d.kind === 'trigger' && typeof d.reminder === 'string') return t`The watch for "${d.reminder.replace(/[.!?。！？]+$/u, '')}" can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
+  // A watch is named briefly, as the user knows it, never by its id or its trigger's code: a plan watch by its item's title, another
+  // by its reminder's first words. An older plan watch's entry kept its English fallback, no name for these words: shown as stored.
+  const name = d.kind !== 'trigger' ? '' : typeof d.title === 'string' ? d.title : typeof d.reminder === 'string' && !String(d.watch).startsWith('plan:') ? brief(d.reminder) : '';
+  if (name) return t`The watch for "${name}" can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
   return null;
 }
 

@@ -146,6 +146,24 @@ test("a watch that can't be checked is named by its reminder in the Conversation
   assert.doesNotMatch(String(line), /w-abc|place の/);
 });
 
+test("a plan watch that can't be checked is named by its plan item's title, never by its English fallback; an older entry shows as stored", () => {
+  const line = String(errorWords({ kind: 'trigger', type: 'plan', watch: 'plan:tea:leave', title: 'Tea at the inn', why: 'x', message: 'x' }));
+  assert.match(line, /Tea at the inn/);
+  assert.doesNotMatch(line, /Leave soon/);
+  // One kept before it had the title: its English fallback is no name for a Japanese sentence; the stored English shows, marked.
+  assert.equal(errorWords({ kind: 'trigger', type: 'plan', watch: 'plan:tea:leave', reminder: 'Leave soon: Tea at the inn at 16:00.', why: 'x', message: 'The plan watch plan:tea:leave can\'t be checked: x.' }), null);
+});
+
+test("a watch that can't be checked is named briefly: its reminder's first sentence, about 80 characters at most", () => {
+  const long = `Time to stretch your legs and look at the sea before the bus. ${'Then walk on to the old harbour and the market. '.repeat(10)}`;
+  const line = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-1', reminder: long, why: 'x', message: 'x' }));
+  assert.match(line, /Time to stretch your legs and look at the sea before the bus/);
+  assert.doesNotMatch(line, /harbour/);
+  const run = String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-1', reminder: 'a'.repeat(300), why: 'x', message: 'x' }));
+  assert.ok(run.length < 140, run);
+  assert.match(String(errorWords({ kind: 'trigger', type: 'time', watch: 'w-2', reminder: 'お茶の時間です。そのあと港まで歩きます。', why: 'x', message: 'x' })), /「お茶の時間です」/);
+});
+
 test("a wrong passphrase on Import, and an address with a name or password, say so in the screens' words", async () => {
   const { decrypt, PassphraseError } = await import('../../src/core/archive-crypto.js');
   const { refuseUserinfo } = await import('../../src/core/address.js');
