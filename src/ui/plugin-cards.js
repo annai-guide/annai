@@ -43,8 +43,8 @@ export function startCards(failures, { name, taken }) {
   for (const f of failures) {
     const why = messageOf(f.error);
     const it = name(f.id);
-    if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened: ${why}`, t`You can turn it back on in Settings → Plugins.`) });
-    else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`) });
+    if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened: ${why}`, t`You can turn it back on in Settings → Plugins.`), errors: [f.error] });
+    else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`), errors: [f.error] });
     else unloaded.push(name(f.id));
   }
   return { cards: cards.map((c) => ({ tone: /** @type {const} */ ('warn'), ...c })), unloaded };

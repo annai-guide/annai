@@ -171,7 +171,7 @@ export class PluginHost {
       files = await readZip(bytes, { maxTotal: this.maxPackageBytes });
     } catch (e) {
       const why = /** @type {any} */ (e)?.message ?? e;
-      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}` });
+      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}`, en: String(why) });
     }
     return this.install(files, opts);
   }
