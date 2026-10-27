@@ -57,13 +57,17 @@ export function isPluginBug(e) {
 export class PluginError extends Error {
   /**
    * @param {string} pluginId @param {string} message annai's English, for a model and the log
-   * @param {{ cause?: unknown, shown?: string }} [o] shown: the screens' words, where annai has them (the shown rule; a screen shows shown ?? message)
+   * @param {{ cause?: unknown, shown?: string, en?: string | boolean }} [o] shown: the screens' words, where annai has them (the shown rule; a screen
+   *   shows shown ?? message). en: the part of shown that is a developer's English (true: all of it), to mark lang="en". With neither shown nor a cause
+   *   (a plugin's error carries its own words), the message is annai's English and is marked whole (en: true).
    */
-  constructor(pluginId, message, { cause, shown } = {}) {
+  constructor(pluginId, message, { cause, shown, en } = {}) {
     super(`${pluginId}: ${message}`, cause === undefined ? undefined : { cause });
     this.name = /* en */ 'PluginError';
     this.pluginId = pluginId;
     this.shown = shown;
+    /** @type {boolean | string} */
+    this.en = en ?? (shown === undefined && cause === undefined);
   }
 }
 
@@ -221,7 +225,10 @@ export class Registry {
         return result;
       } catch (e) {
         this.#fail(pluginId, name, e);
-        throw new PluginError(pluginId, /* en */ `${name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
+        // annai's own words are the frame, "starting failed"; the rest is the plugin's, unless annai made it (its own check, or words of its own).
+        const ours = /** @type {any} */ (e)?.en === true && typeof (/** @type {any} */ (e).shown) !== 'string';
+        const shown = typeof (/** @type {any} */ (e)?.shown) === 'string' ? `${name} failed: ${/** @type {any} */ (e).shown}` : undefined;
+        throw new PluginError(pluginId, /* en */ `${name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e, shown, en: ours || `${name} failed` });
       }
     };
   }

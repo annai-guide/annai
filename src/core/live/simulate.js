@@ -1,5 +1,6 @@
 import { meters } from './geo.js';
 import { t } from '../l10n.js';
+import { EnglishError } from '../errors.js';
 
 /**
  * Trip simulation (spec §13, §18): a GPS track and a fake clock fed through the same machinery as
@@ -49,14 +50,14 @@ const byTime = (a, b) => a.at - b.at || (a.kind === 'fix' ? 1 : 0) - (b.kind ===
 export function trackFrom(it) {
   const start = Date.parse(it?.start ?? '');
   const offset = /([zZ]|[+-]\d\d:\d\d)$/.exec(String(it?.start ?? ''))?.[1];
-  if (!Number.isFinite(start) || !offset || !/^\d{4}-\d{2}-\d{2}T/.test(it.start)) /* en */ throw new Error('An itinerary needs a start: an ISO date-time with an offset, like 2026-11-27T08:30:00-08:00.');
+  if (!Number.isFinite(start) || !offset || !/^\d{4}-\d{2}-\d{2}T/.test(it.start)) /* en */ throw new EnglishError('An itinerary needs a start: an ISO date-time with an offset, like 2026-11-27T08:30:00-08:00.');
   const route = Array.isArray(it.route) ? it.route : [];
-  if (route.length < 2) /* en */ throw new Error('An itinerary needs a route of at least two places.');
+  if (route.length < 2) /* en */ throw new EnglishError('An itinerary needs a route of at least two places.');
   const day = it.start.slice(0, 10);
   /** @param {string | undefined} hhmm @param {string} what */
   const time = (hhmm, what) => {
     /* en */ const t = Date.parse(`${day}T${hhmm}:00${offset}`);
-    if (!/^\d\d:\d\d$/.test(String(hhmm)) || !Number.isFinite(t)) /* en */ throw new Error(`${what} needs a time like 09:30, not ${JSON.stringify(hhmm)}.`);
+    if (!/^\d\d:\d\d$/.test(String(hhmm)) || !Number.isFinite(t)) /* en */ throw new EnglishError(`${what} needs a time like 09:30, not ${JSON.stringify(hhmm)}.`);
     return t;
   };
   const every = (it.everySec ?? 5) * 1000;
@@ -80,15 +81,15 @@ export function trackFrom(it) {
     const { p, i } = stops[s];
     /* en */ const name = p.name ?? `Stop ${s + 1}`;
     /* en */ const arrive = s === 0 ? start : time(p.arrive, `${name}'s arrive`);
-    if (arrive < reached) /* en */ throw new Error(`${name} is reached before the drive there ends: check its times.`);
+    if (arrive < reached) /* en */ throw new EnglishError(`${name} is reached before the drive there ends: check its times.`);
     const last = s === stops.length - 1;
     /* en */ const leave = last ? arrive + (it.endMin ?? 30) * 60_000 : time(p.leave, `${name}'s leave`);
-    if (leave < arrive) /* en */ throw new Error(`${name} is left before it is reached: check its times.`);
+    if (leave < arrive) /* en */ throw new EnglishError(`${name} is left before it is reached: check its times.`);
     stay(p, arrive, last ? leave + 1 : leave);
     if (last) break;
     const next = stops[s + 1];
     /* en */ const reach = time(next.p.arrive, `${next.p.name ?? `Stop ${s + 2}`}'s arrive`);
-    if (reach <= leave) /* en */ throw new Error(`${next.p.name ?? `Stop ${s + 2}`} is reached before the drive there ends: check its times.`);
+    if (reach <= leave) /* en */ throw new EnglishError(`${next.p.name ?? `Stop ${s + 2}`} is reached before the drive there ends: check its times.`);
     const path = route.slice(i, next.i + 1);
     const length = path.slice(1).reduce((sum, q, k) => sum + meters(path[k], q), 0);
     const speed = length / ((reach - leave) / 1000);

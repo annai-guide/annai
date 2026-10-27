@@ -112,7 +112,7 @@ export function pluginActions(ctx, r, update) {
           try {
             await ctx.plugins.setEnabled(r.id, !on);
           } catch (e) {
-            if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} didn't start`, body: message(e) });
+            if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} didn't start`, body: message(e), errors: [e] });
           }
           ctx.render();
         },
@@ -123,7 +123,7 @@ export function pluginActions(ctx, r, update) {
           if (r.provider && ctx.llm) await ctx.llm.removeProviderPlugin(r.id);
           else await ctx.plugins.uninstall(r.id);
         } catch (e) {
-          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} wasn't removed`, body: sentences(message(e), t`Try again.`) });
+          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} wasn't removed`, body: sentences(message(e), t`Try again.`), errors: [e] });
         }
         ctx.go('#/plugins');
       }, () => { if (r.provider) warnKept(ctx, kept, { plugin: r.id }); }),

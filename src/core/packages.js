@@ -9,6 +9,7 @@ import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
 import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
 import { t, lang, sameLanguage } from './l10n.js';
+import { EnglishError } from './errors.js';
 import { size, sentences, list } from './intl.js';
 
 /**
@@ -322,17 +323,19 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       const [plugin] = deep(MANIFEST_FILE);
       const skills = deep(SKILL_FILE);
       if (!plugin && skills.length > 1) {
-        throw new PluginError('skill', t`this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.`);
+        throw new PluginError('skill', /* en */ 'this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.',
+          { shown: t`this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.` });
       }
       const file = plugin ? MANIFEST_FILE : SKILL_FILE;
       const at = plugin ?? skills[0];
       const folder = at?.slice(0, -file.length);
       if (at) {
-        throw new PluginError(plugin ? 'plugin' : 'skill', at.split('/').length > 2
+        const deeper = at.split('/').length > 2;
+        throw new PluginError(plugin ? 'plugin' : 'skill', /* en */ `its ${file} is in ${folder}, ${deeper ? 'nested too deep' : 'beside other files'}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`, { shown: deeper
           ? t`its ${file} is in ${folder}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`
-          : t`its ${file} is in ${folder}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`);
+          : t`its ${file} is in ${folder}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.` });
       }
-      throw new PluginError('plugin', t`there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`);
+      throw new PluginError('plugin', /* en */ `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`, { shown: t`there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package` });
     }
   }
   /** @type {Map<string, Uint8Array>} */
@@ -350,7 +353,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       if (!ok) throw new PluginError(id, /* en */ `the file name "${name}" isn't allowed`);
       total += b.byteLength;
     }
-    if (total > maxBytes) throw new PluginError(id, t`is too large: it unpacks to more than ${size(maxBytes)}`);
+    if (total > maxBytes) throw new PluginError(id, /* en */ `is too large: it unpacks to more than ${size(maxBytes)}`, { shown: t`is too large: it unpacks to more than ${size(maxBytes)}` });
   };
   return kind === 'skill' ? skillPackage(files, checkNames) : pluginPackage(files, checkNames);
 }
@@ -484,7 +487,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       return await readZip(first, { maxTotal: max });
     } catch (e) {
       // What is wrong with the zip is a developer's detail, in English (zip.js).
-      throw new Error(t`${url.host} sent a zip annai can't open: ${/** @type {any} */ (e)?.message ?? e}`);
+      const why = String(/** @type {any} */ (e)?.message ?? e);
+      throw Object.assign(new Error(t`${url.host} sent a zip annai can't open: ${why}`), { en: why });
     }
   }
   const body = text(first).replace(/^﻿/, '');
@@ -549,7 +553,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
     const at = new Map();
     for (const name of names) {
       const u = fileUrl(name);
-      if (!u) throw new Error(/* en */ `The file name "${name}" isn't allowed.`);
+      if (!u) throw new EnglishError(/* en */ `The file name "${name}" isn't allowed.`);
       at.set(name, u);
     }
     for (const [name, u] of at) {

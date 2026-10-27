@@ -1,4 +1,4 @@
-import { h, t, plural, otherLang } from './dom.js';
+import { h, t, plural, otherLang, englishIn } from './dom.js';
 import { num } from './format.js';
 
 /** @typedef {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement>, said: HTMLElement, show: HTMLElement, all: HTMLElement }} Stack */
@@ -82,6 +82,8 @@ let lone = 0;
     st.show.setAttribute('aria-label', st.list.hidden ? plural(n, 'Show the # card: {0}', 'Show the # cards: {0}', title) : plural(n, 'Hide the # card: {0}', 'Hide the # cards: {0}', title));
     st.all.setAttribute('aria-label', plural(n, 'Dismiss the # card: {0}', 'Dismiss all # cards: {0}', title));
   };
+  /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
+  const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
   /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
   function place(kind, title, node) {
     const stack = stacks.get(kind);
@@ -90,7 +92,7 @@ let lone = 0;
       stack.members.add(node);
       stack.list.append(node);
       recount(stack);
-      stack.said.textContent = node.textContent;
+      announce(stack, node);
     } else if (lone) {
       const made = makeStack(kind, title);
       stacks.set(kind, made);
@@ -101,7 +103,7 @@ let lone = 0;
         made.list.append(m);
       }
       recount(made);
-      made.said.textContent = node.textContent;
+      announce(made, node);
     } else {
       singles.set(kind, node);
       el.append(node);
@@ -130,13 +132,14 @@ let lone = 0;
   /**
    * Cards of one kind (the same title and tone) fold into one card, "Reminder (3)", that shows each when opened, with one
    * Dismiss all, and each can still be dismissed alone.
-   * @param {{ title: string, body?: string, en?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean, lang?: string }} n
+   * @param {{ title: string, body?: string, en?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean, lang?: string, errors?: unknown[] }} n
    *   en: English kept from before the screens spoke other languages, a line of its own marked so; lang: the language of a plugin's
-   *   title and body, marked when it isn't the screens'
+   *   title and body, marked when it isn't the screens'; errors: those whose messageOf the body holds, so a developer's English in them
+   *   is marked lang="en" where it stands (englishIn)
    * toast: said briefly, as a toast, with no card to dismiss
    * @returns {() => void} dismiss
    */
-  function card({ title, body, en, tone = 'info', actions = [], toast: brief, lang }) {
+  function card({ title, body, en, tone = 'info', actions = [], toast: brief, lang, errors = [] }) {
     if (brief) {
       toast(title, { lang });
       return () => {};
@@ -151,7 +154,7 @@ let lone = 0;
     }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title, lang: otherLang(lang) }),
-      body ? h('p', { text: body, lang: otherLang(lang) }) : null,
+      body ? h('p', { lang: otherLang(lang) }, ...englishIn(body, ...errors)) : null,
       en ? h('p', { lang: 'en', text: en }) : null,
       body ? more : null,
       h('div', { class: 'acts' },
