@@ -1,5 +1,5 @@
 {
-  "build": "d30a055b7676",
+  "build": "10ecad7a2dc9",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -230,7 +230,7 @@
     "/src/ui/settings-form.js": "870a1569af2b",
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "b143023a3b9d",
-    "/src/ui/screens/backups.js": "d590bb040396",
+    "/src/ui/screens/backups.js": "cb4c5d840205",
     "/src/ui/screens/booking.js": "f364d395aa64",
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "e3849ae7faee",
@@ -249,7 +249,7 @@
     "/src/ui/screens/provider.js": "a8bb17a20233",
     "/src/ui/screens/recap.js": "439295edabe1",
     "/src/ui/screens/replay.js": "f3b77b241f52",
-    "/src/ui/screens/settings.js": "2772157114aa",
+    "/src/ui/screens/settings.js": "743ac37f29d3",
     "/src/ui/screens/simulate.js": "948c5df8c856",
     "/src/ui/screens/shiori.js": "339bbf1d1193",
     "/src/ui/screens/talk.js": "46797f886d94",
