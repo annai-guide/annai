@@ -389,8 +389,9 @@ function naming(/** @type {string} */ english, /** @type {string[]} */ ens, neve
   return found;
 }
 /**
- * A language's rows that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
- * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written.
+ * A language's drafts that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
+ * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written. A row a reviewer accepted
+ * (`ok`) is not warned again: its `Note:` says why it reads as it does (localization L6).
  * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @returns {Problem[]}
  */
 export function glossaryWarnings(glossary, tag, rows) {
@@ -399,7 +400,7 @@ export function glossaryWarnings(glossary, tag, rows) {
   /** @type {Problem[]} */
   const out = [];
   for (const r of rows) {
-    if (!r.text || r.state === 'new') continue;
+    if (!r.text || r.state !== 'draft') continue;
     for (const en of naming(r.en, usable.map((g) => g.en), new Set(usable.filter((g) => g.kind === 'never').map((g) => g.en)))) {
       const g = /** @type {Term} */ (usable.find((x) => x.en === en));
       const term = termOf(g);
