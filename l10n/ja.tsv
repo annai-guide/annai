@@ -213,30 +213,30 @@ remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the
 remote-trace:m3chyg	draft	Open Remote trace	リモート記録を開く	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	ok	Scripted model	台本どおりのモデル	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。	plugins-official/scripted-model/annai-plugin.json:8	
-search-searxng:@name	draft	SearXNG Search	SearXNG 検索	plugins-official/search-searxng/annai-plugin.json:3	
-search-searxng:@description	draft	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。	plugins-official/search-searxng/annai-plugin.json:8	
-search-searxng:@keywords.0	draft	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
-search-searxng:@keywords.1	draft	self-hosted	セルフホスト	plugins-official/search-searxng/annai-plugin.json:10	
-search-searxng:@settings.properties.url.title	draft	Your SearXNG address	SearXNG のアドレス	plugins-official/search-searxng/annai-plugin.json:23	
-search-searxng:@settings.properties.url.description	draft	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	https://search.example.com のようなアドレスです。インスタンスの settings.yml で search: formats: に json を加え、Web サーバーが annai のアドレスに対して Access-Control-Allow-Origin を送るようにしてください。暗号化しない http が使えるのは localhost だけです。	plugins-official/search-searxng/annai-plugin.json:24	
-search-searxng:xli1co	draft	needs the address of your instance (Settings → Plugins → SearXNG Search)	インスタンスのアドレスが必要です（設定 → プラグイン → SearXNG 検索）	plugins-official/search-searxng/index.js:15	
-search-serper:@name	draft	Serper Search	Serper 検索	plugins-official/search-serper/annai-plugin.json:3	
-search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:8	
-search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
-search-serper:@keywords.1	draft	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
-search-serper:@search.key.note	draft	2,500 free searches on sign-up, no card.	登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:17	
-search-serper:@settings.properties.key.title	draft	Serper API key	Serper の API キー	plugins-official/search-serper/annai-plugin.json:22	
-search-serper:nnxk8n	draft	needs a key (Settings → Plugins → Serper Search)	キーが必要です（設定 → プラグイン → Serper 検索）	plugins-official/search-serper/index.js:16	
-search-tavily:@name	draft	Tavily Search	Tavily 検索	plugins-official/search-tavily/annai-plugin.json:3	
-search-tavily:@description	draft	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。	plugins-official/search-tavily/annai-plugin.json:8	
-search-tavily:@keywords.0	draft	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	
-search-tavily:@search.key.note	draft	A free key gives 1,000 credits a month, no card. A basic search costs 1 credit, an advanced one 2.	無料のキーで毎月 1,000 クレジット、カード不要。基本の検索は1クレジット、詳細な検索は2クレジットです。	plugins-official/search-tavily/annai-plugin.json:17	
-search-tavily:@settings.properties.key.title	draft	Tavily API key	Tavily の API キー	plugins-official/search-tavily/annai-plugin.json:22	
-search-tavily:@settings.properties.depth.description	draft	Basic costs 1 credit a search; advanced reads deeper for 2.	「基本」は1回の検索で1クレジット、「詳細」はより深く読んで2クレジットです。	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.oneOf.0.title	draft	Basic	基本	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.oneOf.1.title	draft	Advanced	詳細	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.title	draft	Depth	深さ	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:1lf6xjz	draft	needs a key (Settings → Plugins → Tavily Search)	キーが必要です（設定 → プラグイン → Tavily 検索）	plugins-official/search-tavily/index.js:16	
+search-searxng:@name	ok	SearXNG Search	SearXNG 検索	plugins-official/search-searxng/annai-plugin.json:3	
+search-searxng:@description	ok	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。	plugins-official/search-searxng/annai-plugin.json:8	
+search-searxng:@keywords.0	ok	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@keywords.1	ok	self-hosted	セルフホスト	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@settings.properties.url.title	ok	Your SearXNG address	SearXNG のアドレス	plugins-official/search-searxng/annai-plugin.json:23	
+search-searxng:@settings.properties.url.description	ok	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	https://search.example.com のようなアドレスです。インスタンスの settings.yml で search: formats: に json を加え、Web サーバーが annai のアドレスに対して Access-Control-Allow-Origin を送るようにしてください。暗号化しない http が使えるのは localhost だけです。	plugins-official/search-searxng/annai-plugin.json:24	
+search-searxng:xli1co	ok	needs the address of your instance (Settings → Plugins → SearXNG Search)	設定 → プラグイン → SearXNG 検索 でインスタンスのアドレスを入力	plugins-official/search-searxng/index.js:15	Note: Shown in brackets after the name on Tools ("SearXNG（…）"), so no brackets of its own: they nested.
+search-serper:@name	ok	Serper Search	Serper 検索	plugins-official/search-serper/annai-plugin.json:3	
+search-serper:@description	ok	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:8	
+search-serper:@keywords.0	ok	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@keywords.1	ok	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@search.key.note	ok	2,500 free searches on sign-up, no card.	登録時に 2,500 回の無料検索、カード不要。	plugins-official/search-serper/annai-plugin.json:17	
+search-serper:@settings.properties.key.title	ok	Serper API key	Serper の API キー	plugins-official/search-serper/annai-plugin.json:22	
+search-serper:nnxk8n	ok	needs a key (Settings → Plugins → Serper Search)	設定 → プラグイン → Serper 検索 でキーを入力	plugins-official/search-serper/index.js:16	Note: Shown in brackets after the name on Tools ("Serper（…）"), so no brackets of its own: they nested.
+search-tavily:@name	ok	Tavily Search	Tavily 検索	plugins-official/search-tavily/annai-plugin.json:3	
+search-tavily:@description	ok	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。	plugins-official/search-tavily/annai-plugin.json:8	
+search-tavily:@keywords.0	ok	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	
+search-tavily:@search.key.note	ok	A free key gives 1,000 credits a month, no card. A basic search costs 1 credit, an advanced one 2.	無料のキーで毎月 1,000 クレジット、カード不要。基本の検索は1クレジット、詳細な検索は2クレジットです。	plugins-official/search-tavily/annai-plugin.json:17	
+search-tavily:@settings.properties.key.title	ok	Tavily API key	Tavily の API キー	plugins-official/search-tavily/annai-plugin.json:22	
+search-tavily:@settings.properties.depth.description	ok	Basic costs 1 credit a search; advanced reads deeper for 2.	「基本」は1回の検索で1クレジット、「詳細」はより深く読んで2クレジットです。	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:@settings.properties.depth.oneOf.0.title	ok	Basic	基本	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:@settings.properties.depth.oneOf.1.title	ok	Advanced	詳細	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:@settings.properties.depth.title	ok	Depth	深さ	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:1lf6xjz	ok	needs a key (Settings → Plugins → Tavily Search)	設定 → プラグイン → Tavily 検索 でキーを入力	plugins-official/search-tavily/index.js:16	Note: Shown in brackets after the name on Tools ("Tavily（…）"), so no brackets of its own: they nested.
 speech-openai:@name	ok	OpenAI-compatible speech	OpenAI 互換の音声	plugins-official/speech-openai/annai-plugin.json:3	
 speech-openai:@description	ok	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。	plugins-official/speech-openai/annai-plugin.json:8	
 storage-forgejo:@name	draft	Forgejo / Gitea	Forgejo / Gitea	plugins-official/storage-forgejo/annai-plugin.json:3	
@@ -975,8 +975,8 @@ g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's ge
 1g8sy5k	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shiori の weather ツールで使います。予報の日の出と日の入りも Open-Meteo のものです。「いま」画面のゴールデンアワーと、Open-Meteo が応答しないときの日の出・日の入りは、端末で計算します。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_search の無料 Web 検索と、ほかの読み込み方法で読めないページを fetch で読む手段。設定 → ツールでチェックしている間だけ使います。送るのは検索した言葉か、ページのアドレスだけです。	src/ui/credits.js:54	
 382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	web_search の無料 Web 検索。設定 → ツールでチェックしている間だけ使います。送るのは検索した言葉だけです。	src/ui/credits.js:61	
-138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	web_search の Web 検索。Tavily Search プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).
-1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_search の Web 検索。Serper Search プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:82	
+138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	web_search の Web 検索。Tavily 検索プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:75	Note: Tavily 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
+1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_search の Web 検索。Serper 検索プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Web アプリからは読めないページを読み、Web を検索します。Shiori の fetch と web_search ツールで、設定 → ツールの選択に従って使います。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori のイラスト：annai のために AI 画像生成でデザインし、ベクター画像になぞり直しました。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	Shiori へのメッセージ	src/ui/dock.js:43	

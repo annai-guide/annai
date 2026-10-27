@@ -667,7 +667,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5035,
+      "size": 5027,
       "requires": [],
       "provides": {
         "search": [
@@ -677,7 +677,7 @@
       "files": {
         "annai-plugin.json": "d086511197ecc0fc347ca34bf4f6f723921f3212f9b36085c34ae5f24208b859",
         "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
-        "l10n/ja.json": "c2d95f59fa920da78042218d67c07f7ecfa80983c99e7b48f408cea690ab14cb",
+        "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
         "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2"
       }
     },
@@ -695,7 +695,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 3927,
+      "size": 3919,
       "requires": [],
       "provides": {
         "search": [
@@ -705,7 +705,7 @@
       "files": {
         "annai-plugin.json": "f4c270517be1ca9ee045cb5562a56923e886b4371c477d03b3d90df6af412739",
         "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
-        "l10n/ja.json": "6bb0d3d5dca938342f806a3c1b17c0e7e5f2794dd80a5b18bb12febff0acb1ae",
+        "l10n/ja.json": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
         "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a"
       }
     },
@@ -722,7 +722,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5235,
+      "size": 5227,
       "requires": [],
       "provides": {
         "search": [
@@ -732,7 +732,7 @@
       "files": {
         "annai-plugin.json": "6c0e1583fd2cf48bb37856d5df8d5f1882f97c770e2c90639ba2aaf96577739a",
         "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
-        "l10n/ja.json": "ef5216e2ccc42f1a57faab01692d1604183e26cee19ca6e09434995f045e2dd5",
+        "l10n/ja.json": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
         "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08"
       }
     },
