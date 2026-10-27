@@ -10,6 +10,7 @@ import { installMic } from './page-mic.mjs';
 import { SOUND } from './analyse.mjs';
 import { framesOf } from './frames.mjs';
 import { LANGUAGES } from '../../src/core/languages.js';
+import { key } from '../../src/core/l10n.js';
 
 const SERVE = fileURLToPath(new URL('../serve.mjs', import.meta.url));
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
@@ -122,7 +123,7 @@ export async function setUp(page, key, log, { standIn } = {}) {
     await panel.getByLabel('Add a model by id').fill('kokoro-model');
     await panel.getByRole('button', { name: 'Add model' }).click();
     await page.getByRole('link', { name: /^kokoro-model/ }).waitFor();
-    await page.getByRole('link', { name: '← Models' }).click();
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
     await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.getByText('1. kokoro-model').waitFor();
@@ -193,7 +194,23 @@ export async function setLanguages(page, want) {
   return { ...want, applied: true };
 }
 
-/** What one scenario run is given. @typedef {{ origin: string, standIn?: string, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, log: (s: string) => void, scrub: (s: string) => string }} Env */
+/**
+ * The screens' language chosen in Settings → Shiori, the way a user would, once annai is set up in English; annai restarts in it.
+ * Returns the words of that language, by English (and a context), for the locators after it. @param {import('@playwright/test').Page} page @param {string} tag
+ */
+export async function setScreens(page, tag) {
+  const back = new URL(page.url()).hash || '#/trips';
+  await page.goto('/#/shiori');
+  const restarted = page.waitForEvent('load');
+  await page.locator('#language-ui').selectOption(tag);
+  await restarted;
+  await page.waitForFunction((t) => document.documentElement.lang.startsWith(t), tag);
+  const words = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+  await page.goto(`/${back}`);
+  return (/** @type {string} */ en, /** @type {string} */ context = '') => words[key(en, context)] ?? en;
+}
+
+/** What one scenario run is given. ui: the screens' language (localization L6). @typedef {{ origin: string, standIn?: string, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
 
 /**
  * One scenario in a fresh context.
@@ -249,9 +266,15 @@ export async function runScenario(browser, name, sc, env) {
       languages = await setLanguages(page, sc.languages);
       log(`    languages: ${languages.applied ? `${languages.spoken.join(', ')}; answers in ${languages.answer}` : `not applied (${languages.why})`}`);
     }
+    /** The screens' words for the English the locators below name. @type {(en: string, context?: string) => string} */
+    let w = (en) => en;
+    if (env.ui) {
+      w = await setScreens(page, env.ui);
+      log(`    annai's screens: ${env.ui}`);
+    }
     log('    annai is set up; tapping Shiori');
-    await page.getByRole('button', { name: 'Shiori' }).click();
-    await page.locator('.voice-chip').filter({ hasText: 'Listening live' }).waitFor({ timeout: 40_000 });
+    await page.getByRole('button', { name: w('Shiori') }).click();
+    await page.locator('.voice-chip').filter({ hasText: w('Listening live') }).waitFor({ timeout: 40_000 });
     await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: 15_000 });
     talking = true;
     before = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim()));
@@ -313,8 +336,8 @@ export async function runScenario(browser, name, sc, env) {
     await wait(1500);
     // Voice off closes the session; its closing is traced.
     await page.locator('.voice-chip').click();
-    await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
-    await page.locator('.voice-chip').filter({ hasText: 'Voice off' }).waitFor();
+    await page.getByRole('group', { name: w('Voice', 'voice mode') }).getByRole('button', { name: w('Off') }).click();
+    await page.locator('.voice-chip').filter({ hasText: w('Voice off') }).waitFor();
     await wait(2500);
     return await collect(opened);
   } catch (e) {
