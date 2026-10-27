@@ -235,6 +235,21 @@ test("M6 fix: annai's own protocol, switched off after errors or by the user, is
   assert.equal(next.registry.owner('endpoint-type', 'scripted'), null);
 });
 
+test("installed.json keeps what any plugin provides, filled in at start for one installed before (a backup place's kind is named by it)", async () => {
+  const { host, ws, relaunch } = await hostKit();
+  const provides = { 'storage-type': ['vault'] };
+  await host.install(codePlugin('acme-vault', 'return;', { provides }), { source: 'url', url: 'https://acme.example/annai-plugin.json' });
+  await host.install(codePlugin('acme-plain', 'return;'), { source: 'file' });
+  const state = await host.installed();
+  delete state['acme-vault'].provides;
+  await ws.write(SYS_PLUGINS, '/installed.json', state, { author: 'system' });
+  const next = relaunch();
+  await next.startInstalled();
+  const after = await next.installed();
+  assert.deepEqual(after['acme-vault'].provides, provides);
+  assert.deepEqual(after['acme-plain'].provides, {});
+});
+
 /** A plugin that replaces a component: an avatar or a dock. @param {string} id @param {string} name */
 const LOOK = (id, name = 'avatar') => codePlugin(id, `return annai.ui.component('${name}', { create: () => ({ el: {} }) });`);
 

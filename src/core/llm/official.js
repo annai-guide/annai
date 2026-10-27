@@ -41,6 +41,8 @@ let names = null;
  * has been read in this run, else its English. For one that is installed, pluginName. @param {string} id @param {string} name
  */
 export const officialName = (id, name) => names?.[id]?.name ?? name;
+/** The catalog's words officialPlugins read beside it (catalogWords), for shownEntry; null before, in English, or when they couldn't be had. */
+export const officialWords = () => names;
 /**
  * An installed plugin's name as the screens show it: annai's own from its own translation on the device (the running plugin's words, else
  * its stored ones, as Plugins shows it, running or off), any other as written (decision 10). No request is made.
