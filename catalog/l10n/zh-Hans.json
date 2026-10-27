@@ -13,6 +13,10 @@
       "name": "Gemini Live",
       "description": "连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。"
     },
+    "openai-realtime": {
+      "name": "OpenAI Realtime",
+      "description": "连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"

@@ -5,6 +5,8 @@ chat-completions:@name	draft	Chat Completions	Chat Completions	plugins-official/
 chat-completions:@description	draft	Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.	OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。	plugins-official/chat-completions/annai-plugin.json:8	
 gemini-live:@name	draft	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	draft	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。	plugins-official/gemini-live/annai-plugin.json:8	
+openai-realtime:@name	draft	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
+openai-realtime:@description	draft	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。	plugins-official/openai-realtime/annai-plugin.json:8	
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral のモデル。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	モデルは「モデルの一覧を取得」で追加します。	plugins-official/provider-mistral/annai-plugin.json:23	
