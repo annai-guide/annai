@@ -63,6 +63,10 @@
       "name": "Ollama",
       "description": "Ollama 上的模型，快速判断时会关闭思考。"
     },
+    "provider-openai": {
+      "name": "OpenAI",
+      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。"
+    },
     "provider-scripted": {
       "name": "按脚本回复的模型（测试用）",
       "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"

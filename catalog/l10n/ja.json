@@ -63,6 +63,10 @@
       "name": "Ollama",
       "description": "Ollama のモデル。クイック判定では思考をオフにします。"
     },
+    "provider-openai": {
+      "name": "OpenAI",
+      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のための Realtime の声も、1つのキーで使えます。"
+    },
     "provider-scripted": {
       "name": "台本どおりのモデル（テスト用）",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"

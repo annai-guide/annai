@@ -453,7 +453,7 @@
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
@@ -466,7 +466,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13295,
+      "size": 18529,
       "requires": [
         {
           "id": "openai-responses",
@@ -479,7 +479,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "d86189f4d64b3a6a87b48d6490e054a24c056b8401120edbd42465c38ce1c4e4"
+        "annai-plugin.json": "d40fbdf51eb0fe35eb29e70cab8d730622a01c5e774d1fb62b31d783fa3fcb43",
+        "l10n/ja.json": "ca591711ef32fd29a64411b259c5c3ec37b231163f8c985fdaa4a7a41061a5a8",
+        "l10n/zh-Hans.json": "e77f978f9f62442401d9e96dcc7abc8932d71e2cbab650c2e507072853dea4db"
       }
     },
     {
