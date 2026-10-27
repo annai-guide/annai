@@ -765,7 +765,16 @@ annai's own words, never yours, in every language.
 | `` annai.l10n.tc('verb')`Open` `` | the same, for English that means two things (the context is part of the key) |
 | `annai.l10n.plural(n, '# tide', '# tides', ...values)` | a count: `#` is `n`, formatted for the language |
 | `` annai.l10n.both`GitHub refused the token.` `` | `{ message, shown }`: the English, and the screens' words |
-| `annai.l10n.format` | annai's formats, in the screens' language with the phone's region: `num`, `money`, `size`, `distance`, `duration`, `relTime`, `when`, `day`, `list`, `sentences` (sentences side by side, as the language writes them) |
+| `annai.l10n.format.num(n, options?)` | a number as the language writes it (`Intl.NumberFormat` options: `{ style: 'percent' }`) |
+| `annai.l10n.format.size(bytes)` | a size by 1024s: "512 bytes", "2.0 kB", "12 MB" |
+| `annai.l10n.format.list(items, kind?)` | a list: `'and'` (the default), `'or'`, or `'plain'` (commas alone) |
+| `annai.l10n.format.sentences(...parts)` | sentences side by side, as the language writes them (no space in Chinese and Japanese), the empty left out |
+
+The formats are in the screens' language with the phone's region. More can come on request.
+
+**`both`'s values are the same in both parts:** a value is put into the English and the screens' words as you give it. Pass data
+(a name, an address, a number) or a value formatted for English when the English part matters, such as a size kept in a hold.
+
 
 **Three kinds of words.** Words the user reads on a screen go through `annai.l10n`. Words a model reads stay English: a tool's
 description, its results and errors, a search provider's `name` and `why`. Words a developer reads stay English too: your manifest's

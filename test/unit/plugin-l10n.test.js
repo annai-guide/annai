@@ -236,3 +236,18 @@ test("the catalog's words for the screens: none in English; an entry in their wo
   assert.equal(shownEntry({ ...entry, id: 'search-serper' }, words).lang, 'en');
   assert.equal(await catalogWords({ fetch: async () => new Response('', { status: 404 }) }), null, "words that can't be had: English");
 });
+
+test("annai.l10n.format is the four formats official plugins use, with the signatures docs/plugins.md gives", async () => {
+  const k = await hostKit();
+  await k.host.install(codePlugin('fmt', 'globalThis.__fmt = annai.l10n.format;'));
+  await k.host.start('fmt');
+  const f = /** @type {any} */ (globalThis).__fmt;
+  assert.deepEqual(Object.keys(f).sort(), ['list', 'num', 'sentences', 'size']);
+  assert.equal(f.num(1234.5), '1,234.5');
+  assert.equal(f.num(0.25, { style: 'percent' }), '25%');
+  assert.equal(f.size(2048), '2.0 kB');
+  assert.equal(f.list(['a', 'b', 'c']), 'a, b, and c');
+  assert.equal(f.list(['a', 'b'], 'or'), 'a or b');
+  assert.equal(f.list(['a', 'b', 'c'], 'plain'), 'a, b, c');
+  assert.equal(f.sentences('One.', '', 'Two.'), 'One. Two.');
+});
