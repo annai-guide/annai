@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -243,8 +243,13 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'Android phone' } } }), null, now), 'Paused: there is a newer backup from an Android phone');
   assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), null, now), 'Paused: there is a newer backup from another device');
   assert.equal(placeStatus(t({ hold: { kind: 'large', bytes: 150 * 1024 * 1024, at: now } }), null, now), 'Not backed up yet. Waiting for your OK to upload 150 MB');
-  assert.equal(placeStatus(t({ last, hold: { kind: 'error', message: 'GitHub had a problem.', at: now, count: 1, retryAt: now, needsYou: false } }), null, now),
-    'Last backup 2 hours ago. The last try failed: GitHub had a problem.');
+  // A hold kept before holds said what they were: its English is a line of its own (holdNote), never inside the sentence.
+  const old = t({ last, hold: { kind: 'error', message: 'GitHub had a problem.', at: now, count: 1, retryAt: now, needsYou: false } });
+  assert.equal(placeStatus(old, null, now), 'Last backup 2 hours ago. The last try failed.');
+  assert.equal(holdNote(old), 'GitHub had a problem.');
+  const offline = t({ last, hold: { kind: 'error', message: 'GitHub had a problem.', offline: true, at: now, count: 1, retryAt: now, needsYou: false } });
+  assert.equal(placeStatus(offline, null, now), "Last backup 2 hours ago. The last try failed: GitHub had a problem. annai tries again once it's back online.");
+  assert.equal(holdNote(offline), '');
   assert.equal(placeStatus(t(), { phase: 'uploading', done: 3, total: 12 }, now), 'Uploading 3 of 12…');
   assert.equal(placeStatus(t(), { phase: 'checking', done: 1, total: 40 }, now), 'Comparing files 1 of 40…');
   assert.equal(placeStatus(t(), { phase: 'building', done: 0, total: 0 }, now), 'Getting the backup ready…');

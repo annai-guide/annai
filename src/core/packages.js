@@ -9,7 +9,7 @@ import { answerBytes } from './answer.js';
 import { readZip } from './zip.js';
 import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
 import { t } from './l10n.js';
-import { size, sentences } from './intl.js';
+import { size, sentences, list } from './intl.js';
 
 /**
  * A package as annai reads it before installing (spec §5.2): a folder, zip or address holding
@@ -502,12 +502,12 @@ export function agreedTo(agreed, added) {
     && (added.origins ?? []).every((o) => (agreed.origins ?? []).includes(o));
 }
 
-/** What was added, in words, for package-updates.js's sentence (its words are made in English there). @param {Added} a */
+/** What was added, in the screens' words, a list of whole labels for package-updates.js's sentence. @param {Added} a */
 export function addedWords(a) {
-  return /* en */ [
-    ...(a.code ? ['code that runs in annai'] : []),
-    ...a.skills.map((s) => `the skill ${s.name}`),
-    ...a.personalities.map((p) => `the personality ${p.name}`),
-    ...(a.origins ?? []).map((o) => (a.searchOrigins?.includes(o) ? `an address your searches are sent to: ${o}` : `a provider that sends keys to ${o}`)),
-  ].join(', ');
+  return list([
+    ...(a.code ? [t`code that runs in annai`] : []),
+    ...a.skills.map((s) => t`the skill ${s.name}`),
+    ...a.personalities.map((p) => t`the personality ${p.name}`),
+    ...(a.origins ?? []).map((o) => (a.searchOrigins?.includes(o) ? t`an address your searches are sent to: ${o}` : t`a provider that sends keys to ${o}`)),
+  ], 'plain');
 }

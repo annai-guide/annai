@@ -72,7 +72,7 @@ bo3wjk	draft	Shiori stopped: today's budget is spent	Shiori 已停止：今天�
 edkx3h	draft	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:513	
 yvabm6	draft	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:513	
 bzrasi	draft	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:634	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	draft	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:634	{0} = String(/** @type {any} */ (e)?.message ?? e)
+o0lfar	draft	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:634	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	draft	Tap to talk	轻点说话	src/core/agent/loop.js:109	
 1ldobgc	draft	Tap to interrupt	轻点打断	src/core/agent/loop.js:109	
 4mbury	draft	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:109	
@@ -87,14 +87,14 @@ izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/co
 1a5prky#other	draft	Something woke her more than the # times an hour you allow: {0}	有东西唤醒她的次数超过了你允许的每小时#次：{0}	src/core/agent/loop.js:844	plural; # = budgets.wakesPerHour; {0} = w.text; English: "Something woke her more than the # time an hour you allow: {0}" (one), "Something woke her more than the # times an hour you allow: {0}" (other)
 19793n8	draft	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:845	
 16ny0z2	draft	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1068	
-1sxm1ou	draft	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1068	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1sxm1ou	draft	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1068	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 n7ewdg	draft	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1100	
 oeaxaa	draft	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1100	
 x10s30	draft	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1233	
 1ds0zov	draft	Reminder	提醒	src/core/agent/loop.js:1431	
 1szzjml	draft	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1431	
 nxpady	draft	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1529	
-sp1muy	draft	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1529	{0} = p.path; {1} = String(/** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+sp1muy	draft	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1529	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
 ssozn1	draft	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1529	
 311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1582	
 1b4988h	draft	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1845	
@@ -147,17 +147,18 @@ al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	�
 1ymfft0	draft	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:42	
 bbv043	draft	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:43	
 1oqcoyx	draft	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:52	
-16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:133	
-mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:331	
-lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:348	
-1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:359	
-tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:367	
-230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:368	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	draft	Works.	可以使用。	src/core/backup.js:412	Note: the result of Save and test when the place says nothing itself.
-173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:463	
-1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:463	
-14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请删除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:8	
-1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:16	
+16b3dai	draft	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:139	
+mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:337	
+lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:354	
+1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:365	
+tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:373	
+230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	draft	Works.	可以使用。	src/core/backup.js:418	Note: the result of Save and test when the place says nothing itself.
+173rmiu	draft	This backup is damaged.	此备份已损坏。	src/core/backup.js:469	
+1w4k6nl	draft	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:469	
+14zz5l	draft	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请删除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	
+1rgff8l	draft	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
+gnrtev	draft	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
 iwgrsx	draft	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此日历中有超过 {0} 个事件。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
 10s60wn	draft	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
 5l9pv6	draft	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
@@ -245,23 +246,22 @@ r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Se
 19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:113	
 1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:114	{0} = provider
 sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	
-gnrtev	draft	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/llm/fallback.js:81	
-4zknwy	draft	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:99	
-9bk0c8	draft	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:100	
-12h1lml	draft	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:101	
-uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:102	
-19lcshx	draft	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:103	
-1coimht	draft	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:104	
-6o9g3j	draft	It doesn't have the provider tool this needs.	它没有这项需要的提供商工具。	src/core/llm/fallback.js:105	
-8xm1wt	draft	It isn't a chat model.	它不是聊天模型。	src/core/llm/fallback.js:106	
-1i0eq06	draft	It is switched off.	它已关闭。	src/core/llm/fallback.js:107	
-10vxomx	draft	It was removed.	它已被删除。	src/core/llm/fallback.js:108	
-s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:109	
-13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:132	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:142	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:189	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典 没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:190	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:191	Note: the role by its screen name (メイン / 主要).
+4zknwy	draft	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:101	
+9bk0c8	draft	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
+12h1lml	draft	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:103	
+uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:104	
+19lcshx	draft	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:105	
+1coimht	draft	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:106	
+6o9g3j	draft	It doesn't have the provider tool this needs.	它没有这项需要的提供商工具。	src/core/llm/fallback.js:107	
+8xm1wt	draft	It isn't a chat model.	它不是聊天模型。	src/core/llm/fallback.js:108	
+1i0eq06	draft	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
+10vxomx	draft	It was removed.	它已被删除。	src/core/llm/fallback.js:110	
+s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
+13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:144	
+1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
+d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典 没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:194	
+1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
 g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
@@ -270,9 +270,12 @@ zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下�
 1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
 1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
+oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在 设置 → 插件 中把它打开，然后再试一次。	src/core/llm/official.js:166	
 8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
+aaicx8	draft	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+emc8n2	draft	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:58	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
 1e2afz	draft	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:213	
 is7g6t	draft	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:220	{0} = file; {1} = folder
 1k2igo9	draft	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:221	{0} = file; {1} = folder
@@ -286,6 +289,11 @@ hm96ty	draft	That package has more than {0} files; annai installs packages of up
 pft16a	draft	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:446	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
 1iuga68	draft	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:457	
 1toghwz	draft	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:467	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	draft	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:508	Note: one of a list of what an update adds.
+1tdxuf	draft	the skill {0}	技能 {0}	src/core/packages.js:509	{0} = s.name
+1j0uwka	draft	the personality {0}	性格 {0}	src/core/packages.js:510	{0} = p.name
+14wn58m	draft	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
+tqmba2	draft	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:511	{0} = o; Note: one of a list of what an update adds.
 18tp402	draft	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
 1nz795c	draft	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 u8bf72	draft	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样送达。	src/core/push/mirror.js:74	
@@ -485,8 +493,8 @@ ky4lc5	draft	Stop	停止	src/ui/dock.js:210
 1s6dmy6	draft	Camera	相机	src/ui/dock.js:223	
 1rm0t76	draft	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:144	{0} = label; Note: {0} is a field's label.
 1a791in	draft	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:146	{0} = label; Note: {0} is a field's label.
-1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:230	
-12ek4is	draft	Saved	已保存	src/ui/dom.js:277	
+1gkm7i5	draft	Saving…	正在保存…	src/ui/dom.js:231	
+12ek4is	draft	Saved	已保存	src/ui/dom.js:278	
 fj0t7x	draft	History (every version and the log)	历史（每个版本和日志）	src/ui/export-panel.js:21	
 oopaku	draft	Memory	记忆	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
 1l4mw9c	draft	Photos	照片	src/ui/export-panel.js:23	
@@ -583,18 +591,19 @@ vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone 
 nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:124	
 hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以将其作为副本导入，把它的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:125	
 wn3ejs	draft	That was after this computer's last backup.	这晚于这台电脑上次的备份。	src/ui/format.js:125	
-1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:137	
-1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:142	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:142	
-10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:143	{0} = size(h.bytes)
-osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:144	{0} = holdWords(h)
-1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:145	Note: "Save and test" is the backup place's button.
-1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:146	
-173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:147	{0} = at
-1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:147	
-1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:159	
-hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:159	
-8091b1	draft	no limit	无限制	src/ui/format.js:184	
+1n6qjpw	draft	Working…	正在处理…	src/ui/format.js:140	
+1sw982j	draft	Last backup {0}.	上次备份：{0}。	src/ui/format.js:145	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	draft	Not backed up yet.	尚未备份。	src/ui/format.js:145	
+10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上传{0}	src/ui/format.js:146	{0} = size(h.bytes)
+nbshf0	draft	The last try failed.	上次尝试失败了。	src/ui/format.js:148	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	draft	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:149	{0} = holdWords(h)
+1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:150	Note: "Save and test" is the backup place's button.
+1e2pygg	draft	Automatic backups are off	自动备份已关闭	src/ui/format.js:151	
+173tgfr	draft	Last backup {0}	上次备份：{0}	src/ui/format.js:152	{0} = at
+1uajbr3	draft	Not backed up yet	尚未备份	src/ui/format.js:152	
+1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:164	
+hmr3pn	draft	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:164	
+8091b1	draft	no limit	无限制	src/ui/format.js:189	
 1y3qo2k#other	draft	# trips	# 个旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
 12lprg	draft	Imported {0} from {1}.	已从{1}导入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	draft	Imported {0}.	已导入{0}。	src/ui/import-state.js:48	{0} = what
@@ -696,9 +705,9 @@ icn7kg	draft	Dismiss all	全部关闭	src/ui/notices.js:69
 1w0wlmk#other	draft	Show the # cards: {0}	显示 # 张卡片：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
 1wucd5m#other	draft	Hide the # cards: {0}	隐藏 # 张卡片：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
 1dg2v9a#other	draft	Dismiss all # cards: {0}	关闭全部 # 张卡片：{0}	src/ui/notices.js:83	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	draft	Less	收起	src/ui/notices.js:146	Note: Closes a long card back to three lines.
-lz65mo	draft	More	展开	src/ui/notices.js:146	Note: Opens a long card to its full height.
-an1pf7	draft	Dismiss	关闭	src/ui/notices.js:156	
+18u3mqg	draft	Less	收起	src/ui/notices.js:147	Note: Closes a long card back to three lines.
+lz65mo	draft	More	展开	src/ui/notices.js:147	Note: Opens a long card to its full height.
+an1pf7	draft	Dismiss	关闭	src/ui/notices.js:158	
 16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	draft	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
@@ -914,60 +923,60 @@ e7ctat	draft	From an iPhone	来自一部 iPhone	src/ui/screens/backups.js:15
 3k42nl	draft	Getting it ready…	正在准备…	src/ui/screens/backups.js:39	
 c65xlw	draft	Backups	备份	src/ui/screens/backups.js:50	
 cn5225	draft	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.	annai 会把此设备上的一切备份到你在这里添加的位置：在有改动后或每天一次，通过 Wi-Fi，在 annai 打开期间进行。你的 API 密钥留在此设备上。	src/ui/screens/backups.js:51	
-n9d7fo	draft	No backup places yet.	还没有备份位置。	src/ui/screens/backups.js:56	
-gqqie4	draft	Add a place	添加位置	src/ui/screens/backups.js:58	
-t3jn1u	draft	Add a place to back up to	添加一个备份位置	src/ui/screens/backups.js:58	
-a3z2xh	draft	annai couldn't load the kinds of backup places. Check the connection, then open this screen again.	annai 无法加载备份位置的类型。请检查网络连接，然后重新打开此页面。	src/ui/screens/backups.js:59	
-112uufk	draft	Back to Backups	返回备份	src/ui/screens/backups.js:65	
-1kdmc2z	draft	This backup place was removed	此备份位置已被移除	src/ui/screens/backups.js:65	
-1k7hmqc	draft	Turning it on…	正在开启…	src/ui/screens/backups.js:95	
-14tfw5g	draft	Turn it on	开启	src/ui/screens/backups.js:103	
-m8ft8e	draft	The plugin for {0} isn't running, so annai can't back up here.	{0}的插件没有运行，所以 annai 无法备份到这里。	src/ui/screens/backups.js:105	{0} = target.name
-zkviy	draft	Plugin	插件	src/ui/screens/backups.js:105	
-1yxhxra	draft	not set	未设置	src/ui/screens/backups.js:121	
-8rf2wi	draft	saved (type a new one to replace it)	已保存（输入新的以替换）	src/ui/screens/backups.js:121	
-raudcs	draft	Encrypt backups with a passphrase	用密码短语加密备份	src/ui/screens/backups.js:124	
-13qje2w	draft	Include API keys (only in encrypted backups)	包含 API 密钥（仅限加密备份）	src/ui/screens/backups.js:127	
-75wjfp	draft	Testing…	正在测试…	src/ui/screens/backups.js:148	
-ebg9wq	draft	Keep 1 to 30 backups.	可保留 1 到 30 个备份。	src/ui/screens/backups.js:158	
-1gcdel3	draft	Save and test	保存并测试	src/ui/screens/backups.js:168	
-wcqrhx	draft	A newer backup	更新的备份	src/ui/screens/backups.js:171	
-1eedj8v	draft	A newer backup is here	这里有更新的备份	src/ui/screens/backups.js:172	
-xvbztk	draft	A backup is already here	这里已经有一个备份	src/ui/screens/backups.js:172	
-1n4xwcb	draft	A large backup	大的备份	src/ui/screens/backups.js:178	
-7hmq4d	draft	This backup uploads {0}.	此备份会上传 {0}。	src/ui/screens/backups.js:179	{0} = size(hold.bytes)
-111408e	draft	Back up automatically	自动备份	src/ui/screens/backups.js:182	
-15ywqaa	draft	After changes, within the hour	有改动后，一小时内	src/ui/screens/backups.js:183	
-tp830y	draft	After changes, at most every 6 hours	有改动后，最多每 6 小时一次	src/ui/screens/backups.js:183	
-1u04fpp	draft	Once a day	每天一次	src/ui/screens/backups.js:184	
-3tlu3u	draft	Off	关闭	src/ui/screens/backups.js:185	
-1tdau7e	draft	Also over mobile data	也使用移动数据	src/ui/screens/backups.js:187	
-uhtk71	draft	No limit	不限	src/ui/screens/backups.js:189	
-b69cje	draft	Looking…	正在查找…	src/ui/screens/backups.js:201	
-fdmwqv	draft	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:204	
-hcu7jn	draft	encrypted	已加密	src/ui/screens/backups.js:207	
-17hpvne	draft	Show the backups here	显示这里的备份	src/ui/screens/backups.js:214	
-lqkwe8	draft	How to set it up	如何设置	src/ui/screens/backups.js:217	
-14gwhko	draft	Where	位置	src/ui/screens/backups.js:221	
-6yqmdh	draft	Passphrase	密码短语	src/ui/screens/backups.js:228	
-bdzmld	draft	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	请把密码短语保存在安全的地方：没有它，这些备份就无法打开。annai 会把它保存在此设备上，以便自动备份。	src/ui/screens/backups.js:229	
-1l5dtm7	draft	Keep this many of this device's backups here	在这里保留此设备的备份数量	src/ui/screens/backups.js:231	
-552cet	draft	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	每次备份后，此设备在这里留下的较早备份会被删除。其他设备的备份永远不会被删除。	src/ui/screens/backups.js:232	
-l5nax	draft	When	时间	src/ui/screens/backups.js:237	
-xxa9v2	draft	Upload without asking up to, MB	无需询问即可上传的上限（MB）	src/ui/screens/backups.js:239	
-4fiyr5	draft	Restore	恢复	src/ui/screens/backups.js:245	
-12kqj5m	draft	Open a backup from here on the import screen, where you choose what comes in.	在导入页面打开这里的备份，由你选择导入哪些内容。	src/ui/screens/backups.js:247	
-yzcijn	draft	Browser access	浏览器访问	src/ui/screens/backups.js:269	
-13bzcw5	draft	Copied	已复制	src/ui/screens/backups.js:278	
-cdidgs	draft	Copying didn't work here: it is selected, so copy it yourself.	这里无法复制：内容已选中，请自己复制。	src/ui/screens/backups.js:281	
-s6g5lw	draft	Copy	复制	src/ui/screens/backups.js:284	
-15ef6mt	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:294	
-9nqmyo	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:295	
-w51f7d	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:298	{0} = most
-1rx8b6y	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:299	{0} = most
-9patw8	draft	annai stops backing up here. The backups already there stay.	annai 会停止备份到这里。已经在那里的备份会保留。	src/ui/screens/backups.js:305	
-1hx8faa	draft	Tap again to remove it	再点一次以移除	src/ui/screens/backups.js:306	
-78xlh8	draft	Remove this place	移除此位置	src/ui/screens/backups.js:306	
+n9d7fo	draft	No backup places yet.	还没有备份位置。	src/ui/screens/backups.js:57	
+gqqie4	draft	Add a place	添加位置	src/ui/screens/backups.js:59	
+t3jn1u	draft	Add a place to back up to	添加一个备份位置	src/ui/screens/backups.js:59	
+a3z2xh	draft	annai couldn't load the kinds of backup places. Check the connection, then open this screen again.	annai 无法加载备份位置的类型。请检查网络连接，然后重新打开此页面。	src/ui/screens/backups.js:60	
+112uufk	draft	Back to Backups	返回备份	src/ui/screens/backups.js:66	
+1kdmc2z	draft	This backup place was removed	此备份位置已被移除	src/ui/screens/backups.js:66	
+1k7hmqc	draft	Turning it on…	正在开启…	src/ui/screens/backups.js:103	
+14tfw5g	draft	Turn it on	开启	src/ui/screens/backups.js:111	
+m8ft8e	draft	The plugin for {0} isn't running, so annai can't back up here.	{0}的插件没有运行，所以 annai 无法备份到这里。	src/ui/screens/backups.js:113	{0} = target.name
+zkviy	draft	Plugin	插件	src/ui/screens/backups.js:113	
+1yxhxra	draft	not set	未设置	src/ui/screens/backups.js:129	
+8rf2wi	draft	saved (type a new one to replace it)	已保存（输入新的以替换）	src/ui/screens/backups.js:129	
+raudcs	draft	Encrypt backups with a passphrase	用密码短语加密备份	src/ui/screens/backups.js:132	
+13qje2w	draft	Include API keys (only in encrypted backups)	包含 API 密钥（仅限加密备份）	src/ui/screens/backups.js:135	
+75wjfp	draft	Testing…	正在测试…	src/ui/screens/backups.js:156	
+ebg9wq	draft	Keep 1 to 30 backups.	可保留 1 到 30 个备份。	src/ui/screens/backups.js:166	
+1gcdel3	draft	Save and test	保存并测试	src/ui/screens/backups.js:176	
+wcqrhx	draft	A newer backup	更新的备份	src/ui/screens/backups.js:179	
+1eedj8v	draft	A newer backup is here	这里有更新的备份	src/ui/screens/backups.js:180	
+xvbztk	draft	A backup is already here	这里已经有一个备份	src/ui/screens/backups.js:180	
+1n4xwcb	draft	A large backup	大的备份	src/ui/screens/backups.js:186	
+7hmq4d	draft	This backup uploads {0}.	此备份会上传 {0}。	src/ui/screens/backups.js:187	{0} = size(hold.bytes)
+111408e	draft	Back up automatically	自动备份	src/ui/screens/backups.js:190	
+15ywqaa	draft	After changes, within the hour	有改动后，一小时内	src/ui/screens/backups.js:191	
+tp830y	draft	After changes, at most every 6 hours	有改动后，最多每 6 小时一次	src/ui/screens/backups.js:191	
+1u04fpp	draft	Once a day	每天一次	src/ui/screens/backups.js:192	
+3tlu3u	draft	Off	关闭	src/ui/screens/backups.js:193	
+1tdau7e	draft	Also over mobile data	也使用移动数据	src/ui/screens/backups.js:195	
+uhtk71	draft	No limit	不限	src/ui/screens/backups.js:197	
+b69cje	draft	Looking…	正在查找…	src/ui/screens/backups.js:209	
+fdmwqv	draft	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:212	
+hcu7jn	draft	encrypted	已加密	src/ui/screens/backups.js:215	
+17hpvne	draft	Show the backups here	显示这里的备份	src/ui/screens/backups.js:222	
+lqkwe8	draft	How to set it up	如何设置	src/ui/screens/backups.js:225	
+14gwhko	draft	Where	位置	src/ui/screens/backups.js:229	
+6yqmdh	draft	Passphrase	密码短语	src/ui/screens/backups.js:236	
+bdzmld	draft	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	请把密码短语保存在安全的地方：没有它，这些备份就无法打开。annai 会把它保存在此设备上，以便自动备份。	src/ui/screens/backups.js:237	
+1l5dtm7	draft	Keep this many of this device's backups here	在这里保留此设备的备份数量	src/ui/screens/backups.js:239	
+552cet	draft	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	每次备份后，此设备在这里留下的较早备份会被删除。其他设备的备份永远不会被删除。	src/ui/screens/backups.js:240	
+l5nax	draft	When	时间	src/ui/screens/backups.js:245	
+xxa9v2	draft	Upload without asking up to, MB	无需询问即可上传的上限（MB）	src/ui/screens/backups.js:247	
+4fiyr5	draft	Restore	恢复	src/ui/screens/backups.js:253	
+12kqj5m	draft	Open a backup from here on the import screen, where you choose what comes in.	在导入页面打开这里的备份，由你选择导入哪些内容。	src/ui/screens/backups.js:255	
+yzcijn	draft	Browser access	浏览器访问	src/ui/screens/backups.js:277	
+13bzcw5	draft	Copied	已复制	src/ui/screens/backups.js:286	
+cdidgs	draft	Copying didn't work here: it is selected, so copy it yourself.	这里无法复制：内容已选中，请自己复制。	src/ui/screens/backups.js:289	
+s6g5lw	draft	Copy	复制	src/ui/screens/backups.js:292	
+15ef6mt	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:302	
+9nqmyo	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），自动备份不论大小都不询问直接进行。输入数字即可设置上限。	src/ui/screens/backups.js:303	
+w51f7d	draft	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	此浏览器不会告诉 annai 是否连着 Wi-Fi：大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:306	{0} = most
+1rx8b6y	draft	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	在不会告诉 annai 是否连着 Wi-Fi 的浏览器上（iPhone 上的 Safari 浏览器），大于 {0} 的自动备份会等你同意，除非开启了“也使用移动数据”。留空则不限。	src/ui/screens/backups.js:307	{0} = most
+9patw8	draft	annai stops backing up here. The backups already there stay.	annai 会停止备份到这里。已经在那里的备份会保留。	src/ui/screens/backups.js:313	
+1hx8faa	draft	Tap again to remove it	再点一次以移除	src/ui/screens/backups.js:314	
+78xlh8	draft	Remove this place	移除此位置	src/ui/screens/backups.js:314	
 8icj76	draft	Plan	行程	src/ui/screens/booking.js:17	
 nq6gpo	draft	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:21	
 19h3yfj	draft	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被删除或重命名。行程中列出了现有的预订。	src/ui/screens/booking.js:22	
@@ -1330,10 +1339,8 @@ w2ndgc	draft	nothing yet	暂时没有	src/ui/screens/plugin-install.js:120
 rgr1rj	draft	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = place
 a41hrh	draft	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:175	
 19apr1m	draft	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:190	{0} = n
-1tdxuf	draft	the skill {0}	技能 {0}	src/ui/screens/plugin-install.js:190	{0} = n
 cdbbto	draft	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:190	{0} = n
 o0687u	draft	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:190	{0} = n
-1j0uwka	draft	the personality {0}	性格 {0}	src/ui/screens/plugin-install.js:191	{0} = n
 540qyj	draft	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:191	{0} = n
 snr298	draft	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:191	{0} = n
 18lyuvn	draft	the dock	底栏	src/ui/screens/plugin-install.js:193	
@@ -1722,7 +1729,7 @@ mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:487
 va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:499	
 19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:500	
 czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:501	
-1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:511	{0} = String(/** @type {any} */ (e)?.message ?? e)
+1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:511	{0} = messageOf(e)
 1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:514	
 3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:514	
 mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:514	

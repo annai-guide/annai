@@ -53,6 +53,12 @@ export function holdWords(h) {
 }
 
 /**
+ * A hold kept before holds said what they were (no said, no offline): its words are the English annai wrote then, which a screen
+ * shows as a line of their own, marked English, never inside a sentence of the screens' language. @param {any} h
+ */
+export const oldHold = (h) => h?.kind === 'error' && !h.said && !h.offline;
+
+/**
  * One of annai's own errors: the screens' words, with its English for the log and the hold, and what it was.
  * @param {ConstructorParameters<typeof TargetError>[0]} kind @param {string} en @param {Said} said @param {ConstructorParameters<typeof TargetError>[2]} [extra]
  */
