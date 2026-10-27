@@ -25,6 +25,17 @@
       "name": "OpenAI Responses",
       "description": "连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。"
     },
+    "provider-another-address": {
+      "name": "自定义提供商",
+      "description": "任何其他服务器：OpenAI 兼容的服务器、路由或代理，或你自己运行的服务器。填写它的地址，annai 会免费查看它提供什么。",
+      "keywords": [
+        "OpenAI 兼容",
+        "路由",
+        "自定义",
+        "代理",
+        "自托管"
+      ]
+    },
     "provider-anthropic": {
       "name": "Anthropic",
       "description": "通过 Anthropic 的 Messages API 使用 Claude 模型，支持网页搜索，缓存最长可保留一小时。"
