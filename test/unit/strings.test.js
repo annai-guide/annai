@@ -434,7 +434,7 @@ async function officialPlugin(dir, more = {}) {
     id: 'demo-tides', name: 'Tide tables', version: '1.0.0', api: 1, l10n: ['ja'], description: 'Tides where you are.', keywords: ['tides', 'sea'],
     settings: { type: 'object', properties: { depth: { type: 'string', title: 'Depth', oneOf: [{ const: 'a', title: 'Basic' }] } } }, ...more,
   }, null, 2));
-  await writeFile(`${dir}/plugins-official/demo-tides/index.js`, "export function activate(annai) {\n  const { l10n } = annai;\n  return [l10n.t`Low tide at ${'4:12'}.`, annai.l10n.both`No station.`, l10n.plural(2, '# tide', '# tides'), l10n.tc('verb')`Open`];\n}\n");
+  await writeFile(`${dir}/plugins-official/demo-tides/index.js`, "export function activate(annai) {\n  const { l10n } = annai;\n  const { t } = l10n;\n  return [l10n.t`Low tide at ${'4:12'}.`, annai.l10n.both`No station.`, l10n.plural(2, '# tide', '# tides'), l10n.tc('verb')`Open`, t`High tide.`];\n}\n");
 }
 
 test("an official plugin's words are rows of the same files, keyed by its id: its manifest's fields and its code's annai.l10n (localization L7)", async () => {
@@ -447,10 +447,11 @@ test("an official plugin's words are rows of the same files, keyed by its id: it
       ['demo-tides:@name', 'Tide tables'], ['demo-tides:@description', 'Tides where you are.'], ['demo-tides:@keywords.0', 'tides'], ['demo-tides:@keywords.1', 'sea'],
       ['demo-tides:@settings.properties.depth.title', 'Depth'], ['demo-tides:@settings.properties.depth.oneOf.0.title', 'Basic'],
       [`demo-tides:${key('Low tide at {0}.')}`, 'Low tide at {0}.'], [`demo-tides:${key('No station.')}`, 'No station.'], [`demo-tides:${key('# tide\0# tides')}`, '# tide\0# tides'], [`demo-tides:${key('Open', 'verb')}`, 'Open'],
+      [`demo-tides:${key('High tide.')}`, 'High tide.'],
     ]);
     assert.equal(mine[1].file, 'plugins-official/demo-tides/annai-plugin.json');
     assert.ok(mine[1].line > 1, 'the line its English is on');
-    assert.equal(mine.at(-1)?.context, 'verb');
+    assert.equal(mine.at(-2)?.context, 'verb');
     // One that doesn't list l10n doesn't speak annai's languages yet: none of its words are rows.
     await officialPlugin(dir, { l10n: undefined });
     assert.equal([...(await extract(dir)).messages.keys()].filter((k) => k.startsWith('demo-tides:')).length, 0);
