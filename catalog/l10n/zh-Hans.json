@@ -24,6 +24,10 @@
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
+    },
+    "speech-openai": {
+      "name": "OpenAI 兼容语音",
+      "description": "通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。"
     }
   }
 }

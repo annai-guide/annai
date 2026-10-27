@@ -24,6 +24,10 @@
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
+    },
+    "speech-openai": {
+      "name": "OpenAI 互換の音声",
+      "description": "OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。"
     }
   }
 }
