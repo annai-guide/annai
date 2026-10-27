@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "Anthropic の Messages API を通じた Claude のモデル。Web 検索と、最長1時間もつキャッシュ付き。",
+    "name": "Anthropic"
+  },
+  "messages": {}
+}

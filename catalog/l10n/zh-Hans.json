@@ -21,6 +21,10 @@
       "name": "OpenAI Responses",
       "description": "连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。"
     },
+    "provider-anthropic": {
+      "name": "Anthropic",
+      "description": "通过 Anthropic 的 Messages API 使用 Claude 模型，支持网页搜索，缓存最长可保留一小时。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
