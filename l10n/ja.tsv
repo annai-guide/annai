@@ -2084,57 +2084,55 @@ rfzxba	ok	What you say goes to the first of these that can hear it; what she say
 283rev	ok	What you say	あなたの言葉	src/ui/screens/voice.js:175	
 127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の中だけにとどめるには、キーボードのマイクキーで入力してください。iPhone と多くの Android のキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:177	
 bewa4v	ok	What she says	Shiori の言葉	src/ui/screens/voice.js:178	
-12fg67m	ok	Searching the web	Web 検索	src/ui/screens/welcome.js:23	
-13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:23	
-1okgje1	ok	What annai can do	annai でできること	src/ui/screens/welcome.js:23	
-1sfqzn2	ok	Get started	はじめる	src/ui/screens/welcome.js:23	
-9dx265	ok	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:23	
-18wuq59	ok	Change	変更	src/ui/screens/welcome.js:43	Note: The welcome's link to Settings → Shiori → Languages, after the screens' language.
-pxr3y5	ok	annai's screens: {0} · {1}	annai の表示言語：{0} · {1}	src/ui/screens/welcome.js:44	{0} = name; {1} = change; Note: {0} is the screens' language by its own name (日本語), {1} the link 変更; worded as the setting it opens (annai の表示言語).
-1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai は、スマートフォンの中で動く、無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:52	Note: スマートフォン, as the other screens say it (not スマホ).
-119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:53	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:54	
-1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai の名前は、日本語の「案内」（人を案内すること、連れて回ること）から来ています。	src/ui/screens/welcome.js:55	Note: "案内 is Japanese for…" reads circular to a Japanese reader, so it says where the name comes from; keeps 案内 as the glossary asks.
-u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:62	
-5swud	ok	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:64	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
-qhkarb	ok	talks with you and answers at once.	はあなたと話し、すぐに答えます。	src/ui/screens/welcome.js:64	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
-ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}）	src/ui/screens/welcome.js:65	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
-vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	はじっくり考えて作業をします。計画、検索、予約の読み取りなどです。	src/ui/screens/welcome.js:65	Note: follows Kokoro's name in bold.
-1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	話しかけるのは Shiori だけです。Kokoro が作業している間、Koe があなたの相手をし、Kokoro が答えを見つけたら伝えます。2人のやりとりは会話に表示されます。設定 → Shiori で隠せます。	src/ui/screens/welcome.js:66	
-1px4lo	ok	Plans and bookings.	予定と予約。	src/ui/screens/welcome.js:71	
-syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	Shiori といっしょに1日ずつ旅を計画し、予約確認を追加できます。PDF、ウォレットのパス、スクリーンショットなどです。予約するのはあなたで、annai が代わりに予約することはありません。	src/ui/screens/welcome.js:71	
-1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:72	
-pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	GPS をオンにすると、annai は現在地をたどり、出発するとき、着いたとき、遅れそうなときなど、ちょうどいい時間と場所でリマインドします。	src/ui/screens/welcome.js:72	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	車の中でもトレイルでも、手を使わずに Shiori と話せます。	src/ui/screens/welcome.js:73	
-sb3fh1	ok	Voice.	音声。	src/ui/screens/welcome.js:73	
-1f1esb6	ok	Offline places.	オフラインの場所。	src/ui/screens/welcome.js:74	
-q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	予定に沿った OpenStreetMap の場所、Wikipedia の要約、Wikivoyage のガイド。電波がないときのために。	src/ui/screens/welcome.js:74	
-1nibb44	ok	Show Shiori what you see, and ask about it.	見ているものを Shiori に見せて、質問できます。	src/ui/screens/welcome.js:75	
-8buk0q	ok	Photos.	写真。	src/ui/screens/welcome.js:75	
-oet5z2	ok	Backups.	バックアップ。	src/ui/screens/welcome.js:76	
-wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	ファイルをエクスポートするか、GitHub、Forgejo や Gitea のサーバー、S3 バケット、WebDAV フォルダーに自動でバックアップできます。	src/ui/screens/welcome.js:76	
-1gocoxs	ok	Plugins and MCP servers.	プラグインとMCPサーバー。	src/ui/screens/welcome.js:77	
-rokix6	ok	Skills, tools and screens that others make.	ほかの人が作ったスキル、ツール、画面。	src/ui/screens/welcome.js:77	
-1ab3kpy	ok	Recap and replay.	振り返りとリプレイ。	src/ui/screens/welcome.js:78	
-1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅のあとに、旅の振り返りと、たどったルートの再生。	src/ui/screens/welcome.js:78	
-lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai は、あなたのキーとデータがあなたのものであり続けるように作られています。その仕組みと、その限界をここで正確に説明します。	src/ui/screens/welcome.js:80	
-13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori は、無料のサービスを使って、始めてすぐに Web を検索できます。キーも設定も不要です。	src/ui/screens/welcome.js:84	
-1yy7iex	ok	These are on. Untick any you would rather not use.	これらはオンになっています。使いたくないものはチェックを外してください。	src/ui/screens/welcome.js:85	
-10sp6fm	ok	A model set up here, in Safari, stays in Safari.	ここ Safari で設定したモデルは、Safari の中だけで使えます。	src/ui/screens/welcome.js:106	
-1dr4k8j	ok	Connect a model, so Shiori can think.	Shiori が考えられるように、モデルをつなぎましょう。	src/ui/screens/welcome.js:106	
-uy1icp	ok	Connect a model there, so Shiori can think.	Shiori が考えられるように、そこでモデルをつなぎましょう。	src/ui/screens/welcome.js:106	
-f7oh8p	ok	You can also install annai as an app from your browser's menu.	ブラウザのメニューから、annai をアプリとしてインストールすることもできます。	src/ui/screens/welcome.js:116	
-u8au6d	ok	First, install annai	まず、annai をインストール	src/ui/screens/welcome.js:120	
-fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari は、7日間アクセスがないと annai のデータを消すことがあります。また、ホーム画面のアプリは別にデータを持ちます。annai をホーム画面に追加し、そこでモデルを設定してください。	src/ui/screens/welcome.js:123	
-1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空き容量が少なくなると、ブラウザが annai のデータを消すことがあります。旅を守るために annai をインストールしてください。	src/ui/screens/welcome.js:124	
-hophvo	ok	Then, in the Home Screen app	次に、ホーム画面のアプリで	src/ui/screens/welcome.js:129	
-s3y93q	ok	Then	次に	src/ui/screens/welcome.js:129	
-1padbm0	ok	Next	次へ	src/ui/screens/welcome.js:143	
-1hzmxtu	ok	Back	戻る	src/ui/screens/welcome.js:144	
-1hpqu3m	ok	Skip	スキップ	src/ui/screens/welcome.js:145	
-186hb75	ok	Look around first	まず見てみる	src/ui/screens/welcome.js:150	
-zzldle	ok	Set up a model	モデルを設定	src/ui/screens/welcome.js:151	
-dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:157	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
+12fg67m	ok	Searching the web	Web 検索	src/ui/screens/welcome.js:22	
+13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:22	
+1okgje1	ok	What annai can do	annai でできること	src/ui/screens/welcome.js:22	
+1sfqzn2	ok	Get started	はじめる	src/ui/screens/welcome.js:22	
+9dx265	ok	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:22	
+1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai は、スマートフォンの中で動く、無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:47	Note: スマートフォン, as the other screens say it (not スマホ).
+119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:48	
+1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:49	
+1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai の名前は、日本語の「案内」（人を案内すること、連れて回ること）から来ています。	src/ui/screens/welcome.js:50	Note: "案内 is Japanese for…" reads circular to a Japanese reader, so it says where the name comes from; keeps 案内 as the glossary asks.
+u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:58	
+5swud	ok	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:60	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
+qhkarb	ok	talks with you and answers at once.	はあなたと話し、すぐに答えます。	src/ui/screens/welcome.js:60	Note: follows Koe's name in bold: "Koe (声, voice) talks with you…".
+ov7jwy	ok	Kokoro ({0}, heart and mind)	Kokoro（{0}）	src/ui/screens/welcome.js:61	{0} = KOKORO; Note: {0} is 心, Kokoro's name in Japanese; ja needs no gloss.
+vd6kvu	ok	thinks things through and does the work: planning, searching, reading your bookings.	はじっくり考えて作業をします。計画、検索、予約の読み取りなどです。	src/ui/screens/welcome.js:61	Note: follows Kokoro's name in bold.
+1709cs4	ok	You only talk to Shiori. While Kokoro works, Koe keeps you company, and tells you when Kokoro has the answer. What they tell each other shows in the conversation; Settings → Shiori can hide it.	話しかけるのは Shiori だけです。Kokoro が作業している間、Koe があなたの相手をし、Kokoro が答えを見つけたら伝えます。2人のやりとりは会話に表示されます。設定 → Shiori で隠せます。	src/ui/screens/welcome.js:62	
+1px4lo	ok	Plans and bookings.	予定と予約。	src/ui/screens/welcome.js:67	
+syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	Shiori といっしょに1日ずつ旅を計画し、予約確認を追加できます。PDF、ウォレットのパス、スクリーンショットなどです。予約するのはあなたで、annai が代わりに予約することはありません。	src/ui/screens/welcome.js:67	
+1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:68	
+pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	GPS をオンにすると、annai は現在地をたどり、出発するとき、着いたとき、遅れそうなときなど、ちょうどいい時間と場所でリマインドします。	src/ui/screens/welcome.js:68	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	車の中でもトレイルでも、手を使わずに Shiori と話せます。	src/ui/screens/welcome.js:69	
+sb3fh1	ok	Voice.	音声。	src/ui/screens/welcome.js:69	
+1f1esb6	ok	Offline places.	オフラインの場所。	src/ui/screens/welcome.js:70	
+q7rfrz	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.	予定に沿った OpenStreetMap の場所、Wikipedia の要約、Wikivoyage のガイド。電波がないときのために。	src/ui/screens/welcome.js:70	
+1nibb44	ok	Show Shiori what you see, and ask about it.	見ているものを Shiori に見せて、質問できます。	src/ui/screens/welcome.js:71	
+8buk0q	ok	Photos.	写真。	src/ui/screens/welcome.js:71	
+oet5z2	ok	Backups.	バックアップ。	src/ui/screens/welcome.js:72	
+wyjtal	ok	Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.	ファイルをエクスポートするか、GitHub、Forgejo や Gitea のサーバー、S3 バケット、WebDAV フォルダーに自動でバックアップできます。	src/ui/screens/welcome.js:72	
+1gocoxs	ok	Plugins and MCP servers.	プラグインとMCPサーバー。	src/ui/screens/welcome.js:73	
+rokix6	ok	Skills, tools and screens that others make.	ほかの人が作ったスキル、ツール、画面。	src/ui/screens/welcome.js:73	
+1ab3kpy	ok	Recap and replay.	振り返りとリプレイ。	src/ui/screens/welcome.js:74	
+1kbrdr7	ok	Afterwards, a recap of the trip, and its route played back.	旅のあとに、旅の振り返りと、たどったルートの再生。	src/ui/screens/welcome.js:74	
+lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, and where that stops.	annai は、あなたのキーとデータがあなたのものであり続けるように作られています。その仕組みと、その限界をここで正確に説明します。	src/ui/screens/welcome.js:76	
+13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori は、無料のサービスを使って、始めてすぐに Web を検索できます。キーも設定も不要です。	src/ui/screens/welcome.js:80	
+1yy7iex	ok	These are on. Untick any you would rather not use.	これらはオンになっています。使いたくないものはチェックを外してください。	src/ui/screens/welcome.js:81	
+10sp6fm	ok	A model set up here, in Safari, stays in Safari.	ここ Safari で設定したモデルは、Safari の中だけで使えます。	src/ui/screens/welcome.js:102	
+1dr4k8j	ok	Connect a model, so Shiori can think.	Shiori が考えられるように、モデルをつなぎましょう。	src/ui/screens/welcome.js:102	
+uy1icp	ok	Connect a model there, so Shiori can think.	Shiori が考えられるように、そこでモデルをつなぎましょう。	src/ui/screens/welcome.js:102	
+f7oh8p	ok	You can also install annai as an app from your browser's menu.	ブラウザのメニューから、annai をアプリとしてインストールすることもできます。	src/ui/screens/welcome.js:112	
+u8au6d	ok	First, install annai	まず、annai をインストール	src/ui/screens/welcome.js:116	
+fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	Safari は、7日間アクセスがないと annai のデータを消すことがあります。また、ホーム画面のアプリは別にデータを持ちます。annai をホーム画面に追加し、そこでモデルを設定してください。	src/ui/screens/welcome.js:119	
+1jemfd1	ok	Your browser may clear what annai keeps when space runs low. Install annai to keep your trips safe.	空き容量が少なくなると、ブラウザが annai のデータを消すことがあります。旅を守るために annai をインストールしてください。	src/ui/screens/welcome.js:120	
+hophvo	ok	Then, in the Home Screen app	次に、ホーム画面のアプリで	src/ui/screens/welcome.js:125	
+s3y93q	ok	Then	次に	src/ui/screens/welcome.js:125	
+1padbm0	ok	Next	次へ	src/ui/screens/welcome.js:139	
+1hzmxtu	ok	Back	戻る	src/ui/screens/welcome.js:140	
+1hpqu3m	ok	Skip	スキップ	src/ui/screens/welcome.js:141	
+186hb75	ok	Look around first	まず見てみる	src/ui/screens/welcome.js:146	
+zzldle	ok	Set up a model	モデルを設定	src/ui/screens/welcome.js:147	
+dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:153	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
 1jrfsn4	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	無料検索は、検索を Exa、Parallel、Firecrawl に送ります。送るのは検索した言葉だけで、ファイルや居場所は送りません。Exa はほかでは読めないページも読むので、そのページのアドレスも送ります。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索内容をモデルの学習に使うことがあるので、検索に名前や住所を入れないでください。その後ろには常に有効な最後の手段があり、同じ言葉を Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは「検索の方法：オフ」だけです。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
 16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	チェックしたものには、Shiori が検索する言葉だけが送られ、Exa には Shiori のために読むページのアドレスも送られます。ファイルや居場所は送りません。どれも変わったり終わったりしうる無料枠で、Exa と Parallel は検索をモデルの学習に使うことがあるので、名前や住所は入れないでください。その後ろでは、最後の手段として常に Wikimedia（Wikivoyage と Wikipedia）と OpenStreetMap（Nominatim）に問い合わせます。止められるのは設定 → ツール → 検索の方法：オフだけです。これらはすべてそこで変更できます。	src/ui/search-panel.js:15	Note: "she" is written as Shiori: 彼女 reads distant in Japanese.
 1fn0bdg	ok	Use	使う	src/ui/search-panel.js:31	

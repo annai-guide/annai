@@ -416,14 +416,21 @@ test('Distances: Kilometres on an American phone shows kilometres at once and af
   await expect(distances()).toHaveValue('');
 });
 
-test("the welcome's first step says the screens' language by its own name, and Change opens Settings → Shiori (localization L6)", async ({ page }) => {
+test("the welcome's first step has the screens' language to choose, and choosing 日本語 restarts annai on the welcome, in Japanese (L6 review 2)", async ({ page }) => {
   await openApp(page, '#/welcome');
-  const line = page.locator('main p', { hasText: "annai's screens:" });
-  await expect(line).toHaveText("annai's screens: English · Change");
-  await expect(line.locator('span[lang="en"]')).toHaveText('English');
-  await line.getByRole('link', { name: 'Change' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
+  const screens = page.locator('main').getByLabel(SCREENS);
+  await expect(screens).toHaveValue('');
+  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文']);
+  const restarted = page.waitForEvent('load');
+  await screens.selectOption('ja');
+  await restarted;
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(JA[key('Welcome to annai')]);
+  await expect(page.locator('main #language-ui')).toHaveValue('ja');
+  // The rest of the welcome goes on from there.
+  await page.getByRole('button', { name: JA[key('Next')] }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(JA[key('Shiori, Koe and Kokoro')]);
 });
 
 test('choosing 日本語 keeps its words, restarts annai in Japanese, and it stays Japanese offline', async ({ page }, testInfo) => {
@@ -466,12 +473,11 @@ test('choosing 日本語 keeps its words, restarts annai in Japanese, and it sta
 
 test.describe('on a phone set to Japanese', () => {
   test.use({ locale: 'ja-JP' });
-  test('As this phone is set opens annai in Japanese with its region, ja-JP, and the welcome says so; choosing 日本語 itself needs no restart (localization L6)', async ({ page }) => {
+  test('As this phone is set opens annai in Japanese with its region, ja-JP, and the welcome offers it; choosing 日本語 itself needs no restart (localization L6)', async ({ page }) => {
     await openApp(page, '#/welcome');
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(JA[key('Welcome to annai')]);
-    const said = JA[key("annai's screens: {0} · {1}")].replace('{0}', '日本語').replace('{1}', JA[key('Change')]);
-    await expect(page.locator('main p', { hasText: said })).toHaveText(said);
+    await expect(page.locator('main #language-ui option').first()).toHaveText(JA[key('As this phone is set ({0})')].replace('{0}', '日本語'));
     await page.evaluate(() => { location.hash = '#/trips'; });
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(TRIPS_JA);
     await page.evaluate(() => { location.hash = '#/shiori'; });

@@ -176,8 +176,8 @@ export function languagesSection(ctx, app) {
       note, error, hint));
 }
 
-/** "annai's screens in": the phone's, then each language by its own name; unfinished ones only while Experimental allows (a chosen one always shows). @param {any} ctx @param {Record<string, any>} app */
-function screensRow(ctx, app) {
+/** "annai's screens in": the phone's, then each language by its own name; unfinished ones only while Experimental allows (a chosen one always shows). Also on the welcome's first step. @param {any} ctx @param {Record<string, any>} app */
+export function screensRow(ctx, app) {
   const phone = navigator.languages ?? [];
   const chosen = chosenUi(app);
   const offered = [...SHIPPED, ...(app.experimental?.unfinishedTranslations === true ? EXPERIMENTAL : [])];
