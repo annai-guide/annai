@@ -452,9 +452,10 @@ test("an official plugin's words are rows of the same files, keyed by its id: it
     assert.equal(mine[1].file, 'plugins-official/demo-tides/annai-plugin.json');
     assert.ok(mine[1].line > 1, 'the line its English is on');
     assert.equal(mine.at(-2)?.context, 'verb');
-    // One that doesn't list l10n doesn't speak annai's languages yet: none of its words are rows.
+    // One that doesn't list l10n has no rows, and the check says it must list annai's languages.
     await officialPlugin(dir, { l10n: undefined });
     assert.equal([...(await extract(dir)).messages.keys()].filter((k) => k.startsWith('demo-tides:')).length, 0);
+    assert.ok((await check(dir, [])).problems.some((p) => p.file === 'plugins-official/demo-tides/annai-plugin.json' && /its l10n must be \["ja"\]/.test(p.message)));
   });
 });
 

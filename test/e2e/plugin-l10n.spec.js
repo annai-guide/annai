@@ -53,4 +53,23 @@ test.describe('on Japanese screens', () => {
     await page.goto('/#/plugins/hello');
     await expect(page.locator('p[lang="en"]', { hasText: 'Test plugin' })).toBeVisible();
   });
+
+  test("annai's own plugins on Add are in Japanese, their descriptive names too; a brand's name stays as written", async ({ page }) => {
+    await openApp(page, '#/add');
+    const custom = page.locator('li.card', { hasText: 'カスタムプロバイダー' });
+    await expect(custom.locator('p.sub').first()).toContainText('そのほかのあらゆるサーバー');
+    expect(await custom.locator('p.sub').first().getAttribute('lang')).toBeNull();
+    await expect(page.locator('li.card', { hasText: 'Mistral' }).locator('p.sub').first()).toHaveText('Mistral のモデル。');
+    // Its Japanese keywords find it too.
+    await page.locator('.finder input[type="search"]').fill('セルフホスト');
+    await expect(page.locator('li.card', { hasText: 'SearXNG 検索' })).toBeVisible();
+  });
+
+  test("OpenRouter's sign-in on Models speaks Japanese (the draft review found it in English)", async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'Safari on an iPhone sets a model up in the Home Screen app');
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await expect(page.getByText('すると、1つのキーで多くのモデルを使えます。', { exact: false })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: 'OpenRouter でサインイン' })).toBeVisible();
+  });
 });

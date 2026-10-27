@@ -640,9 +640,10 @@ export async function check(root, files = EXTRACTED, { glossaryAll = false } = {
       }
     }
   }
-  // Each official plugin lists every language annai has, as its l10n.
+  // Each official plugin lists every language annai has, as its l10n: its words are annai's own.
   const tags = JSON.stringify(list.map((l) => l.tag));
-  for (const id of await pluginIds(root)) {
+  const all = existsSync(`${root}/${PLUGINS}`) ? (await readdir(`${root}/${PLUGINS}`, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name) : [];
+  for (const id of all) {
     const file = `${PLUGINS}/${id}/annai-plugin.json`;
     if (JSON.stringify(JSON.parse(await readFile(`${root}/${file}`, 'utf8')).l10n ?? []) !== tags) problems.push({ file, line: 1, message: `its l10n must be ${tags}, the languages in l10n/languages.json` });
   }
