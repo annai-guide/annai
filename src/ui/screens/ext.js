@@ -1,4 +1,4 @@
-import { h, crumb, t } from '../dom.js';
+import { h, crumb, t, linkIn } from '../dom.js';
 import { mount, slotEntries } from '../slots.js';
 
 /**
@@ -16,11 +16,12 @@ const crumbs = (href, label) => h('p', { class: 'crumbs' }, crumb(href, label));
  */
 function missing(ctx, pluginId, id, href, label) {
   const on = ctx.plugins?.active?.get(pluginId);
+  const plugins = t`Settings → Plugins`;
   return h('div', { class: 'screen' }, crumbs(href, label),
-    h('h1', { class: 'title', text: "This page isn't here" }),
+    h('h1', { class: 'title', text: t`This page isn't here` }),
     on && !ctx.registry?.isDisabled(pluginId)
-      ? h('p', { text: `${on.manifest?.name ?? pluginId} is on, but it has no page called ${id}.` })
-      : h('p', {}, "This page belongs to a plugin that isn't on. Turn it on in ", h('a', { href: '#/plugins' }, 'Settings → Plugins'), '.'));
+      ? h('p', { text: t`${on.manifest?.name ?? pluginId} is on, but it has no page called ${id}.` })
+      : h('p', {}, ...linkIn(t`This page belongs to a plugin that isn't on. Turn it on in ${plugins}.`, h('a', { href: '#/plugins', text: plugins }))));
 }
 
 /**
@@ -32,8 +33,9 @@ function page(ctx, kind, pluginId, id, back, backLabel, more = []) {
   if (!e) return missing(ctx, pluginId, id, back, backLabel);
   const body = h('div', { class: 'ext-body' });
   // A drawing that fails leaves words, not a blank page (minors 11).
-  const failed = h('p', { hidden: true }, "This page couldn't be drawn; the plugin's error is in ", h('a', { href: '#/trace?kind=Plugins' }, 'Trace'), '.');
-  mount(ctx, e, body, (ui) => e.item.render(body, ui, ...more), { what: `${kind.slice(3)} ${id}`, onFail: () => { failed.hidden = false; } });
+  const trace = t`Trace`;
+  const failed = h('p', { hidden: true }, ...linkIn(t`This page couldn't be drawn; the plugin's error is in ${trace}.`, h('a', { href: '#/trace?kind=Plugins', text: trace })));
+  mount(ctx, e, body, (ui) => e.item.render(body, ui, ...more), { what: /* en */ `${kind.slice(3)} ${id}`, onFail: () => { failed.hidden = false; } });
   return h('div', { class: 'screen ext' }, crumbs(back, backLabel), h('h1', { class: 'title', text: String(e.item.title) }), body, failed);
 }
 
@@ -50,7 +52,7 @@ export async function renderPluginPage(ctx, route) {
 /** A trip tab a plugin adds; its drawing gets the trip's id as a third argument. @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderTripTab(ctx, route) {
   const trip = route.parts[1];
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(trip)).catch(() => null);
+  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(trip)).catch(() => null);
   const label = scope ? scope.title : t`Trips`;
   return page(ctx, 'ui:trip-tab', route.parts[3], route.parts[4], scope ? `#/trip/${encodeURIComponent(trip)}` : '#/trips', label, [{ trip }]);
 }

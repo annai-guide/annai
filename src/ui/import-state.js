@@ -1,3 +1,5 @@
+import { t, plural } from '../core/l10n.js';
+import { list } from '../core/intl.js';
 /**
  * Files picked or dropped on one screen and opened on the import screen (hash routes can't carry files).
  * @typedef {{ target: string, remote: import('../core/backup-targets.js').RemoteBackup }} From a backup opened from a backup place
@@ -42,6 +44,6 @@ export function leaveSignal(target = globalThis) {
  */
 export function toldIfLeft(ctx, left, titles, place) {
   if (!left.aborted) return;
-  const what = titles.length > 2 ? `${titles.length} trips` : titles.join(' and ');
-  ctx.notices?.toast(`Imported${what ? ` ${what}` : ''}${place ? ` from ${place}` : ''}.`);
+  const what = titles.length > 2 ? plural(titles.length, '# trip', '# trips') : list(titles);
+  ctx.notices?.toast(what ? (place ? t`Imported ${what} from ${place}.` : t`Imported ${what}.`) : place ? t`Imported from ${place}.` : t`Imported.`);
 }

@@ -5,7 +5,7 @@ import { addListedModel, addModelById } from '../../core/llm/providers.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
-import { sourceLine } from './plugin-install.js';
+import { sourceLine, sourceHost } from './plugin-install.js';
 import { addressProblem, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
 import { pricesAt } from '../../core/llm/cost.js';
@@ -142,7 +142,8 @@ export async function renderProvider(ctx, id) {
     : going.plugin ? t`Removes its key, its models and their places in roles, and the ${plugin} plugin.`
       : protocols.length ? t`Removes its key, its models and their places in roles, with ${list(protocols)}, which nothing else needs.`
         : t`Removes its key, its models and their places in roles.`];
-  if (!others && installed?.source === 'url') removes.push(t`To add it back, you'll need its address again: ${sourceLine(installed).replace(/^From /, '')}.`);
+  const host = installed ? sourceHost(installed) : null;
+  if (!others && host) removes.push(t`To add it back, you'll need its address again: ${host}.`);
   if (!others && installed?.source === 'file') removes.push(installed.file ? t`To add it back, you'll need its file again (${installed.file}).` : t`To add it back, you'll need its file again.`);
   const view = { ctx, id, tunablesFor, desc, protocolName };
   const removing = h('p', { class: 'sub', role: 'status' });

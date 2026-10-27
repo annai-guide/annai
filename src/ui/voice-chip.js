@@ -1,8 +1,8 @@
-import { h } from './dom.js';
+import { h, t, tc } from './dom.js';
 import { chipText, koeWords } from '../core/voice/mode.js';
 
-const SETTINGS = /** @type {const} */ ([['auto', 'Auto'], ['on', 'On'], ['off', 'Off']]);
-const KOE_MODES = /** @type {const} */ ([['realtime', 'Realtime'], ['classic', 'Classic']]);
+const SETTINGS = /** @type {const} */ ([['auto', t`Auto`], ['on', t`On`], ['off', t`Off`]]);
+const KOE_MODES = /** @type {const} */ ([['realtime', t`Realtime`], ['classic', t`Classic`]]);
 
 /**
  * @typedef {{ mode: 'realtime' | 'classic', using: 'realtime' | 'classic', why: string, koe: boolean, split: boolean, path: string | null }} Way
@@ -22,7 +22,7 @@ const KOE_MODES = /** @type {const} */ ([['realtime', 'Realtime'], ['classic', '
 export function voiceChip(ctx) {
   const voice = ctx.voice;
   const chip = h('button', { class: 'chip voice-chip', type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'true', 'aria-controls': 'voice-menu', text: chipText(voice.mode) });
-  const menu = h('div', { id: 'voice-menu', class: 'voice-menu', role: 'group', 'aria-label': 'Voice', hidden: true });
+  const menu = h('div', { id: 'voice-menu', class: 'voice-menu', role: 'group', 'aria-label': tc('voice mode')`Voice`, hidden: true });
   /** A tap anywhere else closes it, as the live menu does. @param {Event} e */
   const outside = (e) => { if (!el.contains(/** @type {Node} */ (e.target))) close(); };
   const close = () => {
@@ -48,7 +48,7 @@ export function voiceChip(ctx) {
       },
     }, label)));
     // Koe's two lists (Settings → Models): which one talks while voice is on.
-    const koe = way?.koe ? row({ role: 'group', 'aria-label': 'Koe' }, h('span', { class: 'voice-menu-label', text: 'Koe' }), ...KOE_MODES.map(([mode, label]) => h('button', {
+    const koe = way?.koe ? row({ role: 'group', 'aria-label': /* en */ 'Koe' }, h('span', { class: 'voice-menu-label', text: /* en */ 'Koe' }), ...KOE_MODES.map(([mode, label]) => h('button', {
       class: 'btn', type: 'button', 'aria-pressed': String(way?.mode === mode),
       onclick: async () => {
         close();
@@ -76,7 +76,7 @@ export function voiceChip(ctx) {
   const say = () => {
     const words = koeWords(way, voice.mode.on);
     // The reason stays on one line: a narrow phone wraps before it, never inside its parentheses.
-    if (live === 'listening') chip.textContent = 'Listening live';
+    if (live === 'listening') chip.textContent = t`Listening live`;
     else chip.replaceChildren(`${chipText(voice.mode)}${words.text}`, ...(words.reason ? [' ', h('span', { class: 'voice-chip-why', text: words.reason })] : []));
     chip.classList.toggle('listening', live === 'listening');
     if (!menu.hidden && what() !== drawn) draw();

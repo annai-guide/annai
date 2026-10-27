@@ -45,7 +45,7 @@ test('a watch fires and Shiori answers: she is told why, and annai shows no remi
   await k.to(at('10:00'));
   assert.equal(k.requests.length, 1);
   assert.match(k.requests[0].tail, new RegExp(`woke for: Your watch ${w.id} \\(at [^)]+\\) fired: the time came`));
-  assert.deepEqual((await k.events(['wake']))[0].data.reasons.map((/** @type {any} */ r) => r.kind), ['trigger']);
+  assert.deepEqual((await k.events(['wake']))[0].data.reasons.map((/** @type {any} */ r) => [r.kind, r.titles]), [['trigger', ['Tea time.']]], 'what fired, for the line the screens make');
   assert.deepEqual(await k.events(['reminder']), []);
   assert.deepEqual(k.notices, []);
 });

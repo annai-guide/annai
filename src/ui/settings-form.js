@@ -1,4 +1,4 @@
-import { h, field, savedField, savedCheck, savingNote, messageOf } from './dom.js';
+import { h, t, field, savedField, savedCheck, savingNote, messageOf } from './dom.js';
 import { numField, parseNum } from './format.js';
 import { validate } from '../core/schema.js';
 import { SYS_SETTINGS } from '../core/scopes.js';
@@ -41,9 +41,10 @@ export function formFields(schema) {
 
 /**
  * What the form holds, read and checked: values (null clears one), secrets apart (an empty secret
- * field leaves the saved one), and what is wrong, in plain words.
+ * field leaves the saved one), and what is wrong: annai's plain words for a number that isn't one, else the schema's refusals,
+ * in its English (schema: true).
  * @param {any} schema @param {Record<string, string | boolean>} raw
- * @returns {{ values: Record<string, any>, secrets: Record<string, string>, errors: string[] }}
+ * @returns {{ values: Record<string, any>, secrets: Record<string, string>, errors: string[], schema?: boolean }}
  */
 export function readForm(schema, raw) {
   /** @type {Record<string, any>} */
@@ -63,28 +64,29 @@ export function readForm(schema, raw) {
       values[f.key] = Boolean(v);
       continue;
     }
-    const t = String(v ?? '').trim();
+    const text = String(v ?? '').trim();
     if (f.kind === 'number' || f.kind === 'integer') {
-      if (!t) {
+      if (!text) {
         values[f.key] = null;
         continue;
       }
-      const n = parseNum(t);
+      const n = parseNum(text);
       if (!Number.isFinite(n) || (f.kind === 'integer' && !Number.isInteger(n))) {
-        errors.push(`${f.label} is ${f.kind === 'integer' ? 'a whole number' : 'a number'}.`);
+        errors.push(f.kind === 'integer' ? t`${f.label} is a whole number.` : t`${f.label} is a number.`);
         continue;
       }
       values[f.key] = n;
       continue;
     }
-    values[f.key] = t === '' ? null : String(v);
+    values[f.key] = text === '' ? null : String(v);
   }
   // Checked against the schema without its secrets, and without required: an empty field is allowed.
   const { required: _r, ...rest } = schema ?? {};
   const properties = Object.fromEntries(Object.entries(rest.properties ?? {}).filter(([, p]) => !(/** @type {any} */ (p)?.writeOnly)));
   const set = Object.fromEntries(Object.entries(values).filter(([, x]) => x !== null));
-  if (!errors.length) errors.push(...validate({ ...rest, properties }, set));
-  return { values, secrets, errors };
+  if (errors.length) return { values, secrets, errors };
+  const refused = validate({ ...rest, properties }, set);
+  return { values, secrets, errors: refused, ...(refused.length ? { schema: true } : {}) };
 }
 
 /**
@@ -93,7 +95,7 @@ export function readForm(schema, raw) {
  * @param {any} ctx @param {string} pluginId @param {any} schema @returns {Promise<HTMLElement>}
  */
 export async function settingsForm(ctx, pluginId, schema) {
-  const path = `/plugin-settings/${pluginId}.json`;
+  const path = /* en */ `/plugin-settings/${pluginId}.json`;
   const saved = (await ctx.ws.readJSON(SYS_SETTINGS, path).catch(() => null)) ?? {};
   const rows = [];
   for (const f of formFields(schema)) {
@@ -101,30 +103,30 @@ export async function settingsForm(ctx, pluginId, schema) {
     const now = saved[f.key] ?? f.default;
     const hint = f.hint ? h('p', { class: 'sub', text: f.hint }) : null;
     if (f.kind === 'unsupported') {
-      rows.push(h('p', { class: 'sub', text: `${f.label}: annai can't show this setting.` }));
+      rows.push(h('p', { class: 'sub', text: t`${f.label}: annai can't show this setting.` }));
       continue;
     }
     if (f.kind === 'secret') {
-      const has = await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.getSecret(`plugin:${pluginId}:${f.key}`)).catch(() => undefined);
-      const input = h('input', { id, type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: has === undefined ? '' : 'saved' });
+      const has = await ctx.store.tx(['secrets'], 'readonly', (/** @type {any} */ tx) => tx.getSecret(`plugin:${pluginId}:${f.key}`)).catch(() => undefined);
+      const input = h('input', { id, type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: has === undefined ? '' : t`saved` });
       const note = h('span', { class: 'sub', role: 'status' });
       const error = h('p', { class: 'error', role: 'alert', hidden: true });
       const save = h('button', {
         class: 'btn', type: 'button',
         onclick: () => input.value && savingNote(note, async () => {
           try {
-            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
+            await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ tx) => tx.putSecret(`plugin:${pluginId}:${f.key}`, input.value));
           } catch (e) {
-            error.textContent = `${f.label} wasn't saved: ${messageOf(e)}`;
+            error.textContent = t`${f.label} wasn't saved: ${messageOf(e)}`;
             error.hidden = false;
             return;
           }
           error.hidden = true;
           input.value = '';
-          input.placeholder = 'saved';
-          note.textContent = 'Saved';
+          input.placeholder = t`saved`;
+          note.textContent = t`Saved`;
         }),
-      }, 'Save');
+      }, t`Save`);
       rows.push(field(f.label, input), hint, h('div', { class: 'acts' }, save, note), error);
       continue;
     }
@@ -132,8 +134,9 @@ export async function settingsForm(ctx, pluginId, schema) {
     const one = { type: 'object', properties: { [f.key]: schema.properties[f.key] } };
     /** @param {string | boolean} raw */
     const value = (raw) => {
-      const { values, errors } = readForm(one, { [f.key]: raw });
-      if (errors.length) throw new Error(errors.join(' '));
+      const { values, errors, schema: refused } = readForm(one, { [f.key]: raw });
+      // A schema's refusal is shown in its English, marked so (showError, decision 11).
+      if (errors.length) throw Object.assign(new Error(errors.join(' ')), refused ? { errors } : {});
       return values[f.key];
     };
     /** @param {any} v */

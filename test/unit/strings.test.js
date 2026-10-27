@@ -146,8 +146,13 @@ test('--find lists what reads as words and is not marked', () => {
   assert.equal(readsAsWords('Saved'), true);
   assert.equal(readsAsWords('btn pri'), true);
   for (const s of ['btn', 'application/json', 'https://example.com/x', 'dateStyle', '', '→', '#/trip/', 'MAX_SIZE', 'rgba(0,0,0,.5)']) assert.equal(readsAsWords(s), false, s);
+  // A hash link made of parts, and CSS functions, are code too.
+  for (const s of ['#/trip/ /replay', 'translate( px,  px) scale( )', 'translateY( px)']) assert.equal(readsAsWords(s), false, s);
   const src = "import { h } from './dom.js';\nconst a = 'Hello there';\nconst b = x === 'Not words here';\n/* en */ const c = 'Kept English';\nconst d = h('p', { class: 'a-b' }, `Sentence ${a}`);\n";
   assert.deepEqual(findWords('src/ui/x.js', src).map((w) => [w.line, w.text]), [[2, 'Hello there'], [5, 'Sentence']]);
+  // A class chosen by a condition, and an SVG attribute's value, are code wherever the choice is made.
+  const code = "import { h } from './dom.js';\nh('b', { class: on ? 'btn' : 'btn pri' });\nh('b', { class: ['btn pri', x || 'chip warn'] });\nsvg('svg', { preserveAspectRatio: 'xMidYMid meet', viewBox: `0 0 ${w} ${h}` });\n";
+  assert.deepEqual(findWords('src/ui/x.js', code), []);
 });
 
 test('--find reads files and folders, and says who it guesses reads them', async () => {
