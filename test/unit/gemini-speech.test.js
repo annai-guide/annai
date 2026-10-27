@@ -7,6 +7,7 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { decodeWav, encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
 import { ulawToPcm } from '../../src/core/voice/g711.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
+import { pluginWords } from './l10n-kit.js';
 
 // Gemini's transcription and voices (G3), through the Interactions API, read from what Google sent on 2026-10-20
 // (test/fixtures/gemini/tts-*, transcribe-lite.json; their audio cut short).
@@ -254,7 +255,7 @@ test("on an annai from before G.711 and WAV were its own, chat and transcription
   const { sse } = await import('../../src/core/llm/sse.js');
   /** @type {Map<string, any>} */
   const old = new Map();
-  activate({ providers: { register: (/** @type {any} */ t) => { old.set(t.type, t); return () => {}; } }, helpers: { sse, ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
+  activate({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { old.set(t.type, t); return () => {}; } }, helpers: { sse, ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
   assert.deepEqual([...old.keys()], ['gemini', 'gemini-transcription', 'gemini-speech']);
   assert.ok(old.get('gemini-transcription').transcribeRequest({ ...spec(hear, 'gemini-3.5-transcribe'), audio: { data: new Uint8Array(1), mediaType: 'audio/ogg' } }).body);
   assert.throws(() => old.get('gemini-speech').speechRequest({ ...spec(say, 'gemini-3.8-flash-lite-tts'), text: 'Hi.' }), /needs a newer annai: restart annai to update it/);

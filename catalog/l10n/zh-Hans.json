@@ -9,6 +9,10 @@
       "name": "Chat Completions",
       "description": "连接 OpenAI 风格的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。"
     },
+    "gemini-api": {
+      "name": "Gemini API",
+      "description": "通过 Gemini 自己的 API（Interactions）进行聊天、语音转文字和声音：支持所有音频格式，原样保留 Gemini 3 的思考签名，用量包含缓存和思考 token，声音可流式播放，对话由 Google 在轮次之间保存，因此每次只发送新内容；付费密钥还可使用 Google 搜索，答案按 Google 给出的样子显示。"
+    },
     "gemini-live": {
       "name": "Gemini Live",
       "description": "连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。"

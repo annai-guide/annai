@@ -3,6 +3,12 @@ anthropic-messages:@name	draft	Anthropic Messages	Anthropic Messages	plugins-off
 anthropic-messages:@description	draft	Talks to Anthropic's Messages API and to endpoints that speak it.	Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。	plugins-official/anthropic-messages/annai-plugin.json:8	
 chat-completions:@name	draft	Chat Completions	Chat Completions	plugins-official/chat-completions/annai-plugin.json:3	
 chat-completions:@description	draft	Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.	OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。	plugins-official/chat-completions/annai-plugin.json:8	
+gemini-api:@name	draft	Gemini API	Gemini API	plugins-official/gemini-api/annai-plugin.json:3	
+gemini-api:@description	draft	Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.	Gemini 独自の API（Interactions）で、チャット、文字起こし、声を扱います：あらゆる音声形式、Gemini 3 の思考シグネチャをそのまま引き継ぎ、キャッシュと思考のトークンを含む使用量を数え、声はストリーミングし、ターン間の会話は Google が保持するので毎回新しい部分だけを送り、有料キーなら Google 検索も使えます（その答えは Google が返したとおりに表示します）。	plugins-official/gemini-api/annai-plugin.json:8	
+gemini-api:14fnhz7	draft	Phone quality, 8 kHz (about 0.8 MB a minute)	電話品質、8 kHz（1分あたり約 0.8 MB）	plugins-official/gemini-api/speech.js:205	
+gemini-api:1dvvwok	draft	Sound	音質	plugins-official/gemini-api/speech.js:205	
+gemini-api:e230no	draft	Full quality (the most data: about 4 MB a minute of speech)	最高品質（データ量が最も多い：話す1分あたり約 4 MB）	plugins-official/gemini-api/speech.js:205	
+gemini-api:1naj6ho	draft	Stream her voice, so she starts sooner (off: each sentence arrives whole first)	声をストリーミングして、早く話し始める（オフ：各文が丸ごと届いてから）	plugins-official/gemini-api/speech.js:206	
 gemini-live:@name	draft	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	draft	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。	plugins-official/gemini-live/annai-plugin.json:8	
 openai-realtime:@name	draft	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
