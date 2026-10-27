@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -17,6 +19,7 @@ import { text } from '../../src/core/bytes.js';
 import { startForgejo, READ_TOKEN, USER_TOKEN } from '../fakes/forgejo.js';
 import { browserFetch as browserAt } from '../fakes/browser-fetch.js';
 import { everything } from './backup-kit.js';
+import { pluginWords } from './l10n-kit.js';
 
 const REPO = 'me/annai-backup';
 const ORIGIN = 'https://annai.guide';
@@ -29,6 +32,7 @@ function forgejo(mod = { activate }) {
   /** @type {any} */
   let type = null;
   mod.activate({
+    l10n: pluginWords(),
     helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } },
     net: { fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => { sent.push({ url, init }); return browserFetch(url, init); } },
     storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } },
@@ -465,7 +469,7 @@ test('a backup larger than one request goes as several commits; only the last is
     const net = { fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => (init?.method === 'POST' && ++posts >= failFrom ? Promise.reject(new TypeError('Failed to fetch')) : browserFetch(url, init)) };
     /** @type {any} */
     let type = null;
-    activate({ helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } }, net, storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } } });
+    activate({ l10n: pluginWords(), helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } }, net, storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } } });
     const d = await device();
     for (let i = 0; i < 4; i++) await d.ws.write(d.trip, `/files/p${i}.jpg`, binary(4000), { author: 'user' });
     const a = await archive(d);
@@ -518,7 +522,7 @@ test('a request too large for the server, or a proxy in front, goes again in hal
     assert.equal(fj.commits(REPO)[0].sha, put.id);
     // A photo too large for any request stops the backup with its name and size; what was there stays.
     await d.ws.write(d.trip, '/files/huge.jpg', binary(20_000), { author: 'user' });
-    await assert.rejects(type.put(ctx(fj), await archive(d), opts({ base: put.id })), refused('refused', /didn't take \/files\/huge\.jpg \(20 KB\).*client_max_body_size/));
+    await assert.rejects(type.put(ctx(fj), await archive(d), opts({ base: put.id })), refused('refused', /didn't take \/files\/huge\.jpg \(20 kB\).*client_max_body_size/));
     assert.equal((await type.list(ctx(fj)))[0].id, put.id);
   } finally {
     await fj.stop();
@@ -569,7 +573,7 @@ test("what git can't hold, or the place won't take, stops the backup with its na
   try {
     const { type } = forgejo();
     const d = await device();
-    await assert.rejects(type.put(ctx(fj), await archive(d), opts({ maxFile: 1000 })), refused('refused', /\/files\/gate\.jpg is 3 KB/));
+    await assert.rejects(type.put(ctx(fj), await archive(d), opts({ maxFile: 1000 })), refused('refused', /\/files\/gate\.jpg is 2\.9 kB/));
     await assert.rejects(type.put(ctx(fj), await archive(d), opts({ maxUpload: 10 })), (/** @type {any} */ e) => refused('large')(e) && e.bytes > 3000);
     await d.ws.write(d.trip, '/notes/.git/config', 'x', { author: 'user' });
     await assert.rejects(type.put(ctx(fj), await archive(d), opts()), refused('refused', /\.git.*Rename it in annai/));
@@ -627,7 +631,8 @@ async function throughAnnai() {
   const dir = new URL('../../plugins-official/storage-forgejo/', import.meta.url);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
-  for (const name of await readdir(dir)) files.set(name, new Uint8Array(await readFile(new URL(name, dir))));
+  // Its files, its translations' folder too.
+  for (const e of await readdir(dir, { recursive: true, withFileTypes: true })) if (e.isFile()) { const name = relative(fileURLToPath(dir), join(e.parentPath, e.name)); files.set(name, new Uint8Array(await readFile(new URL(name, dir)))); }
   const served = '/plugins/storage-forgejo/';
   const host = new PluginHost({ registry, workspace: ws, importModule: (url) => import(url.startsWith(served) ? new URL(url.slice(served.length), dir).href : url) });
   await host.install(files, { source: 'official' });

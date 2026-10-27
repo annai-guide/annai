@@ -12,6 +12,7 @@ import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { utf8, text } from '../../src/core/bytes.js';
 import { startGitHub } from '../fakes/github.js';
+import { pluginWords } from './l10n-kit.js';
 
 const REPO = 'me/annai-backup';
 
@@ -22,6 +23,7 @@ function github(mod = { activate }) {
   /** @type {any} */
   let type = null;
   mod.activate({
+    l10n: pluginWords(),
     helpers: { TargetError, readAnswer, zip: { ZipReader, ZipWriter } },
     net: { fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => { sent.push({ url, init }); return fetch(url, init); } },
     storage: { register: (/** @type {any} */ t) => { type = t; return () => {}; } },
@@ -241,7 +243,7 @@ test("what GitHub can't hold stops the backup with its name; a backup too large 
   try {
     const { type } = github();
     const d = await device();
-    await assert.rejects(type.put(ctx(gh), await archive(d), opts({ maxFile: 1000 })), refused('refused', /over 1 KB, and \/files\/gate\.jpg is 3 KB/));
+    await assert.rejects(type.put(ctx(gh), await archive(d), opts({ maxFile: 1000 })), refused('refused', /over 1,000 bytes, and \/files\/gate\.jpg is 2\.9 kB/));
     await assert.rejects(type.put(ctx(gh), await archive(d), opts({ maxUpload: 10 })), (/** @type {any} */ e) => refused('large')(e) && e.bytes > 3000);
     assert.equal(gh.count('POST', '/git/blobs') + gh.count('POST', '/git/trees') + gh.count('POST', '/git/commits'), 0);
     await d.ws.write(d.trip, '/notes/.git/config', 'x', { author: 'user' });
