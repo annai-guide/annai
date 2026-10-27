@@ -118,3 +118,23 @@ test("an annai error a backup meets keeps its English in the hold and the log, w
   const logged = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.error'] }));
   assert.doesNotMatch(JSON.stringify([hold, logged]), JA);
 });
+
+test("a GitHub place whose token was revoked: the plugin's own words show as its words, never as an older hold's English", async () => {
+  const { TargetError } = await import('../../src/core/storage-types.js');
+  const { placeStatus, holdNote } = await import('../../src/ui/format.js');
+  const place = memoryPlace();
+  const d = await device(place, 'iPhone');
+  const id = await placeOn(d);
+  await d.backups.check(id);
+  const refusal = "GitHub didn't accept the access token. Make a new one, paste it here, and save.";
+  place.failNext(new TargetError('auth', refusal));
+  await d.backups.backUp(id).catch(() => {});
+  const target = /** @type {any} */ (await d.backups.get(id));
+  assert.equal(target.hold.said, null, 'a hold kept now says what it was, or that it was nothing of annai\'s');
+  assert.equal(holdNote(target), '');
+  assert.match(placeStatus(target, null), new RegExp(`前回の試行は失敗しました：${refusal.replace(/[.]/g, '\\.')}`));
+  // One kept before holds said what they were: its English on a line of its own.
+  const old = { ...target, hold: { kind: 'error', message: 'GitHub had a problem.', at: 1, count: 1, retryAt: 1, needsYou: false } };
+  assert.equal(holdNote(old), 'GitHub had a problem.');
+  assert.match(placeStatus(old, null), /前回の試行は失敗しました。$/);
+});
