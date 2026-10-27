@@ -180,11 +180,11 @@ export class PluginHost {
    * Reads a package and checks that it can be installed here (spec §5.2, choice 1): not one of annai's
    * own ids, not a package of the other kind. A skill name Shiori already has is no reason to refuse:
    * the skill isn't used until the user chooses it. previous: the installed version this package would replace, and where it came from.
-   * @param {Map<string, Uint8Array>} files @param {{ official?: boolean }} [o] official: annai's own, from its catalog
+   * @param {Map<string, Uint8Array>} files
    * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added, from: { source: string, file?: string, url?: string } } | null }>}
    */
-  async inspect(files, { official = false } = {}) {
-    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes, official });
+  async inspect(files) {
+    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
     const id = pkg.id;
     if (this.builtins.has(id)) {
       /* en */
@@ -267,7 +267,7 @@ export class PluginHost {
    * @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts]
    */
   async install(files, { source = 'file', file, url } = {}) {
-    const pkg = await this.inspect(files, { official: source === 'official' });
+    const pkg = await this.inspect(files);
     const id = pkg.id;
     /** @type {Map<string, Uint8Array>} */
     const toWrite = new Map([...pkg.files].map(([rel, bytes]) => [`/${id}/${rel}`, bytes]));

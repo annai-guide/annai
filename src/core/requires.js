@@ -178,7 +178,7 @@ export async function checkPackageId(host, id, source, env = {}) {
  * @returns {Promise<any>} its manifest
  */
 export async function installWith(host, files, opts, env = {}) {
-  const pkg = await host.inspect(files, { official: opts.source === 'official' });
+  const pkg = await host.inspect(files);
   await checkPackageId(host, pkg.id, opts.source, env);
   await installRequirements(host, pkg.requires, env, { who: pkg.name, id: pkg.id, install: () => host.install(files, opts) });
   return pkg.manifest;

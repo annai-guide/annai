@@ -22,9 +22,10 @@ import { size, sentences, list } from './intl.js';
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
  *   files: Map<string, Uint8Array>, code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[],
  *   provider: import('./llm/provider-desc.js').ProviderDesc | null, search: SearchDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
- *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string }} Package
+ *   description: string, author?: string, homepage?: string, license?: string, fingerprint: string, left: { tag: string, why: string }[] }} Package
  *   files: by name inside the package (its top folder taken off); shownVersion: '' for a skill without a version;
- *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace
+ *   provider: a model provider's description (data); category: '' when the manifest gives none; replaces: names it means to replace;
+ *   left: the translations left out, and why (leftOut)
  */
 
 export const API_VERSION = 1;
@@ -86,8 +87,7 @@ export function checkManifest(manifest) {
     const wrong = checkProviderDesc(manifest.provider);
     if (wrong.length) throw new PluginError(id, /* en */ `its provider isn't valid: ${wrong.join('; ')}`);
   }
-  for (const tag of [manifest.language ?? 'en', ...(manifest.l10n ?? [])]) if (!canonical(tag)) /* en */ throw new PluginError(id, `"${tag}" isn't a language tag as written canonically, such as ja or zh-Hans`);
-  if (new Set(manifest.l10n).size !== (manifest.l10n?.length ?? 0)) /* en */ throw new PluginError(id, 'its l10n lists a language twice');
+  if (manifest.language !== undefined && !canonical(manifest.language)) /* en */ throw new PluginError(id, `its language "${manifest.language}" isn't a language tag, such as en, ja or zh-Hans`);
   if (manifest.search !== undefined) {
     const wrong = checkSearchDesc(manifest.search, manifest);
     if (wrong.length) throw new PluginError(id, /* en */ `its search isn't valid: ${wrong.join('; ')}`);
@@ -95,21 +95,21 @@ export function checkManifest(manifest) {
   }
 }
 
-/** A language tag as Intl writes it ("ja", "zh-Hans"). @param {string} tag */
+/** A language tag as Intl writes it ("ja", "zh-Hans" for "zh-hans"), or '' for one that is none. @param {unknown} tag */
 function canonical(tag) {
   try {
-    return Intl.getCanonicalLocales(tag)[0] === tag;
+    return typeof tag === 'string' ? Intl.getCanonicalLocales(tag)[0] ?? '' : '';
   } catch {
-    return false;
+    return '';
   }
 }
 
 export const L10N_MAX_BYTES = 256 * 1024;
 /**
  * The fields a translation may give (localization design, section 8), by path (* any key or index), with their limits; keywords are
- * added to the English. name only for annai's own: a third party's is shown as written everywhere (decision 10). @type {[string, number][]}
+ * added to the English. A name is shown only for annai's own: a third party's is shown as written everywhere (decision 10). @type {[string, number][]}
  */
-export const TRANSLATED = [['description', 500], ['featured', 200], ['keywords', 40], ['provider.note', 1000], ['provider.abilities.*.name', 80],
+export const TRANSLATED = [['name', 80], ['description', 500], ['featured', 200], ['keywords', 40], ['provider.note', 1000], ['provider.abilities.*.name', 80],
   ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['search.key.note', 300], ['settings.properties.*.title', 200],
   ['settings.properties.*.description', 1000], ['settings.properties.*.oneOf.*.title', 200]];
 /** The value at a path. @param {any} o @param {string[]} keys */
@@ -119,10 +119,12 @@ const object = (/** @type {any} */ o) => o && typeof o === 'object' && !Array.is
 /**
  * What is wrong with a plugin's l10n/<tag>.json, for its developer, or null: only manifest and messages; each manifest key a field
  * this manifest has that a translation may give, within its limit; each message text, or plural forms of the language, up to 2,000.
- * @param {any} manifest @param {string} tag @param {Uint8Array | undefined} bytes @param {boolean} [official] annai's own
+ * One with anything wrong is left out, never a reason to refuse the plugin (fail working); an empty text is no translation.
+ * @param {any} manifest @param {string} tag as listed @param {Uint8Array | undefined} bytes
  */
-export function checkTranslation(manifest, tag, bytes, official = false) {
+export function checkTranslation(manifest, tag, bytes) {
   /* en */ const file = `its l10n/${tag}.json`;
+  if (!canonical(tag)) /* en */ return `"${tag}" isn't a language tag, such as ja or zh-Hans`;
   if (!bytes) /* en */ return `${file}, listed in l10n, is missing`;
   if (bytes.byteLength > L10N_MAX_BYTES) /* en */ return `${file} is larger than 256 KiB`;
   /** @type {any} */
@@ -135,13 +137,13 @@ export function checkTranslation(manifest, tag, bytes, official = false) {
   if (!object(json) || Object.keys(json).some((k) => k !== 'manifest' && k !== 'messages')) /* en */ return `${file} must be an object with only manifest and messages`;
   for (const [path, value] of Object.entries(json.manifest ?? {})) {
     const keys = path.split('.');
-    const max = official && path === 'name' ? 80 : TRANSLATED.find(([p]) => p.split('.').every((x, i, all) => all.length === keys.length && (x === '*' || x === keys[i])))?.[1];
+    const max = TRANSLATED.find(([p]) => p.split('.').every((x, i, all) => all.length === keys.length && (x === '*' || x === keys[i])))?.[1];
     if (!max) /* en */ return `${file} translates ${path}, which isn't a field a translation may give`;
     if (path !== 'keywords' && typeof at(manifest, keys) !== 'string') /* en */ return `${file} translates ${path}, which this manifest doesn't have`;
-    const ok = (/** @type {unknown} */ x) => typeof x === 'string' && x !== '' && x.length <= max;
+    const ok = (/** @type {unknown} */ x) => typeof x === 'string' && x.length <= max;
     if (path === 'keywords' ? !Array.isArray(value) || value.length > 20 || !value.every(ok) : !ok(value)) /* en */ return `${file}'s ${path} must be text of up to ${max} characters${path === 'keywords' ? ', up to 20' : ''}`;
   }
-  const kinds = new Intl.PluralRules(tag).resolvedOptions().pluralCategories;
+  const kinds = new Intl.PluralRules(canonical(tag)).resolvedOptions().pluralCategories;
   for (const [k, m] of Object.entries(json.messages ?? {})) {
     /** @type {[string, unknown][]} */
     const forms = typeof m === 'string' ? [['other', m]] : object(m) ? Object.entries(m) : [];
@@ -157,8 +159,27 @@ export function checkTranslation(manifest, tag, bytes, official = false) {
  * same language and script. @param {any} manifest @param {string} [tag] @returns {string | null}
  */
 export function translationFor(manifest, tag = lang()) {
-  const listed = sameLanguage(manifest?.language ?? 'en', tag) ? [] : manifest?.l10n ?? [];
-  return listed.find((/** @type {string} */ x) => x === tag) ?? listed.find((/** @type {string} */ x) => sameLanguage(x, tag)) ?? null;
+  const listed = sameLanguage(canonical(manifest?.language) || 'en', tag) ? [] : (manifest?.l10n ?? []).filter(canonical);
+  return listed.find((/** @type {string} */ x) => canonical(x) === tag) ?? listed.find((/** @type {string} */ x) => sameLanguage(canonical(x), tag)) ?? null;
+}
+
+/**
+ * The translations a package lists that are left out, each with why in its developer's English: no tag, a language listed twice,
+ * or one that fails checkTranslation. The install screen says so; the rest are used. @param {any} manifest @param {(path: string) => Uint8Array | undefined} read
+ * @returns {{ tag: string, why: string }[]}
+ */
+export function leftOut(manifest, read) {
+  /** @type {Set<string>} */
+  const seen = new Set();
+  /** @type {{ tag: string, why: string }[]} */
+  const out = [];
+  for (const tag of manifest?.l10n ?? []) {
+    const twice = seen.has(canonical(tag));
+    seen.add(canonical(tag));
+    /* en */ const why = twice ? `its l10n lists ${canonical(tag)} twice` : checkTranslation(manifest, tag, read(`l10n/${tag}.json`));
+    if (why) out.push({ tag, why });
+  }
+  return out;
 }
 
 /**
@@ -168,20 +189,16 @@ export function translationFor(manifest, tag = lang()) {
  */
 export function wordsOf(manifest, read) {
   const tag = translationFor(manifest);
-  /** @type {any} */
-  let json = null;
-  try {
-    json = tag && JSON.parse(text(/** @type {Uint8Array} */ (read(`l10n/${tag}.json`))));
-  } catch {
-    // its own words
-  }
-  if (!json) return { lang: manifest?.language ?? 'en', messages: null, manifest };
+  const bytes = tag ? read(`l10n/${tag}.json`) : undefined;
+  // One that fails a check is left out here too, as at install: a stored package may hold one.
+  const json = tag && !checkTranslation(manifest, tag, bytes) ? JSON.parse(text(/** @type {Uint8Array} */ (bytes))) : null;
+  if (!json) return { lang: canonical(manifest?.language) || 'en', messages: null, manifest };
   const shown = structuredClone(manifest);
   for (const [path, value] of Object.entries(json.manifest ?? {})) {
     const keys = path.split('.');
     const last = /** @type {string} */ (keys.pop());
-    if (path === 'keywords') shown.keywords = [...new Set([...(shown.keywords ?? []), ...value])];
-    else if (typeof at(shown, [...keys, last]) === 'string') at(shown, keys)[last] = value;
+    if (path === 'keywords') shown.keywords = [...new Set([...(shown.keywords ?? []), ...value.filter(Boolean)])];
+    else if (value && typeof at(shown, [...keys, last]) === 'string') at(shown, keys)[last] = value;
   }
   return { lang: lang(), messages: json.messages ?? null, manifest: shown };
 }
@@ -288,10 +305,9 @@ function rootOf(names, file) {
 /**
  * Reads a package from its files (e.g. an unzipped one) and checks everything a later step needs:
  * the manifest or the skill, the files it names, its skills, personalities and provider description.
- * @param {Map<string, Uint8Array>} raw @param {{ maxBytes?: number, official?: boolean }} [o] official: annai's own, from its catalog
- * @returns {Promise<Package>}
+ * @param {Map<string, Uint8Array>} raw @param {{ maxBytes?: number }} [o] @returns {Promise<Package>}
  */
-export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES, official = false } = {}) {
+export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) {
   const all = [...raw].filter(([n]) => !isJunk(n));
   const names = all.map(([n]) => n);
   /** @type {'plugin' | 'skill'} */
@@ -336,7 +352,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES, officia
     }
     if (total > maxBytes) throw new PluginError(id, t`is too large: it unpacks to more than ${size(maxBytes)}`);
   };
-  return kind === 'skill' ? skillPackage(files, checkNames) : pluginPackage(files, checkNames, official);
+  return kind === 'skill' ? skillPackage(files, checkNames) : pluginPackage(files, checkNames);
 }
 
 /** @param {Map<string, Uint8Array>} files @param {(id: string) => void} checkNames @returns {Promise<Package>} */
@@ -353,14 +369,14 @@ async function skillPackage(files, checkNames) {
   const manifest = skillManifest(skill);
   return {
     kind: 'skill', id: skill.name, name: skill.name, version: manifest.version, shownVersion: skill.metadata.version ?? '', manifest, files, code: false,
-    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, search: null, requires: [], category: '', keywords: [], replaces: [], description: skill.description,
+    skills: [{ name: skill.name, description: skill.description, folder: '' }], personalities: [], provider: null, search: null, requires: [], category: '', keywords: [], replaces: [], description: skill.description, left: [],
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}), ...(skill.license ? { license: skill.license } : {}),
     fingerprint: await fingerprint(files),
   };
 }
 
-/** @param {Map<string, Uint8Array>} files @param {(id: string) => void} checkNames @param {boolean} official @returns {Promise<Package>} */
-async function pluginPackage(files, checkNames, official) {
+/** @param {Map<string, Uint8Array>} files @param {(id: string) => void} checkNames @returns {Promise<Package>} */
+async function pluginPackage(files, checkNames) {
   /** @type {any} */
   let manifest;
   try {
@@ -373,10 +389,6 @@ async function pluginPackage(files, checkNames, official) {
   if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, /* en */ `its entry file ${manifest.entry} is missing`);
   checkNames(id);
   for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, /* en */ `its file ${f}, listed in files, is missing`);
-  for (const tag of manifest.l10n ?? []) {
-    const wrong = checkTranslation(manifest, tag, files.get(`l10n/${tag}.json`), official);
-    if (wrong) throw new PluginError(id, wrong);
-  }
   const props = manifest.settings?.properties;
   if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, /* en */ 'its settings must be a JSON Schema object with properties');
   /** @type {SkillInfo[]} */
@@ -408,7 +420,7 @@ async function pluginPackage(files, checkNames, official) {
   return {
     kind: 'plugin', id, name: manifest.name, version: manifest.version, shownVersion: manifest.version, manifest, files, code: Boolean(manifest.entry),
     skills, personalities, provider: manifest.provider ?? null, search: manifest.search ?? null, requires: manifest.requires ?? [], category: manifest.category ?? '', keywords: manifest.keywords ?? [], replaces: manifest.replaces ?? [],
-    description: manifest.description ?? '',
+    description: manifest.description ?? '', left: leftOut(manifest, (f) => files.get(f)),
     ...(manifest.author ? { author: manifest.author } : {}), ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
     fingerprint: await fingerprint(files),
   };
@@ -528,7 +540,9 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       add(`${folder}${SKILL_FILE}`);
     }
     for (const f of Array.isArray(manifest.personalities) ? manifest.personalities : []) add(f);
-    for (const tag of Array.isArray(manifest.l10n) ? manifest.l10n : []) if (typeof tag === 'string') add(`l10n/${tag}.json`);
+    // Its translations, each left out when it can't be had (fail working).
+    const l10n = new Set((Array.isArray(manifest.l10n) ? manifest.l10n : []).filter((x) => typeof x === 'string' && fileName(`l10n/${x}.json`)).map((x) => `l10n/${x}.json`));
+    for (const f of l10n) add(f);
     names.delete(MANIFEST_FILE);
     if (names.size + 1 > ADDRESS_MAX_FILES) throw tooMany();
     /** @type {Map<string, URL>} */
@@ -542,6 +556,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(u));
       } catch (e) {
+        if (l10n.has(name) && /** @type {any} */ (e)?.name !== 'AbortError') continue;
         // Which file the site lacks (minors 21).
         const status = /** @type {any} */ (e)?.status;
         throw status ? new Error(t`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
