@@ -102,6 +102,10 @@
     "storage-s3": {
       "name": "S3 兼容存储",
       "description": "把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。"
+    },
+    "storage-webdav": {
+      "name": "WebDAV",
+      "description": "把所有内容备份到允许浏览器访问的 WebDAV 服务器上的文件夹，每次备份一个归档文件。"
     }
   }
 }

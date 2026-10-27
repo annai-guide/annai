@@ -829,7 +829,7 @@
     {
       "id": "storage-webdav",
       "name": "WebDAV",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -837,7 +837,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 9638,
+      "size": 14803,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -845,8 +845,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "75888749b25d4b7fdb188dd3b94b1236d6dec357b738389fe2d8a635e6966171",
-        "index.js": "495d3c27c4e4ef4a132d75ea57f2ff30046f19389cfafc9cc44b9c665740481a"
+        "annai-plugin.json": "b745c410226f872b9e25fadba2719a28d24e869886b7b166bf60c2104de0ec4c",
+        "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
+        "l10n/ja.json": "35b42bbeb0df7a9cadc552ae2361b880287b910633dfc348ce9271312946da9a",
+        "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
       }
     }
   ]
