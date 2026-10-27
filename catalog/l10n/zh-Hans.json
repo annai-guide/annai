@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "plugins": {
+    "provider-mistral": {
+      "name": "Mistral",
+      "description": "Mistral 的模型。"
+    }
+  }
+}

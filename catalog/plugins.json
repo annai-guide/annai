@@ -376,7 +376,7 @@
     {
       "id": "provider-mistral",
       "name": "Mistral",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Mistral's models.",
       "category": "providers",
       "keywords": [],
@@ -386,7 +386,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 540,
+      "size": 974,
       "requires": [
         {
           "id": "chat-completions",
@@ -395,7 +395,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "8e907e7e22c967e71c6817baf20558d56f18c2ff9f4caafe5504c98c6ed1c20f"
+        "annai-plugin.json": "10fe899a2ee5db8dfcbc72db119ae97a1c598160f608f98e611bdb70218ec5ae",
+        "l10n/ja.json": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
+        "l10n/zh-Hans.json": "6e3d8d19e51b48a482a5e54c734b26a9f9a78b93db61907baf9588b53795d568"
       }
     },
     {
