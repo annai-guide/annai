@@ -118,10 +118,10 @@ elkw42	draft	The voice's audio couldn't be played.	読み上げの音声を再�
 9gdjo3	draft	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	draft	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:579	
 1l4zitw	draft	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:120	
+1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:119	
 scnz2y	draft	Web tools	Web ツール	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	draft	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch は Web ページを読みます。サイトが Web アプリからの読み込みを許可しないときは、Jina Reader か Exa を通します。web_search は検索プロバイダーで検索します。順番は設定 → ツールで決まり、最初は無料のものです。	src/plugins/web/index.js:15	
-b4g7z9	draft	needs a key (Settings → Tools)	キーが必要（設定 → ツール）	src/plugins/web/index.js:190	
+b4g7z9	draft	needs a key (Settings → Tools)	キーが必要（設定 → ツール）	src/plugins/web/index.js:188	
 ew9em3	draft	Cancel	キャンセル	src/ui/ask.js:21	
 7fxcga	draft	Back up this phone over it	この端末でバックアップを上書き	src/ui/auto-backup.js:64	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
 qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai はこの端末が Wi-Fi につながっているか判断できないため、大きなバックアップはあなたの OK を待ちます。	src/ui/auto-backup.js:64	
@@ -1719,10 +1719,10 @@ a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia �
 sbfb3o	draft	ready	準備完了	src/ui/search-panel.js:51	
 qx2onv	draft	couldn't check	確認できませんでした	src/ui/search-panel.js:54	
 1lhwd5p	draft	not ready	準備ができていません	src/ui/search-panel.js:57	
-1j0itop	draft	Search	検索	src/ui/search-panel.js:86	
-hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search はこれらを上から試し、最初に答えたものを使います。失敗したものはしばらく休んでから、また試されます。使うのをやめるには、チェックを外してください。	src/ui/search-panel.js:88	
-1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	ほかの検索プロバイダーはプラグインです。カタログから追加でき（Tavily、Serper、自分の SearXNG）、キーはそれぞれのページで設定します。	src/ui/search-panel.js:91	
-f2eaqi	draft	Find a search plugin	検索プラグインを探す	src/ui/search-panel.js:92	
+1j0itop	draft	Search	検索	src/ui/search-panel.js:87	
+hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search はこれらを上から試し、最初に答えたものを使います。失敗したものはしばらく休んでから、また試されます。使うのをやめるには、チェックを外してください。	src/ui/search-panel.js:89	
+1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	ほかの検索プロバイダーはプラグインです。カタログから追加でき（Tavily、Serper、自分の SearXNG）、キーはそれぞれのページで設定します。	src/ui/search-panel.js:92	
+f2eaqi	draft	Find a search plugin	検索プラグインを探す	src/ui/search-panel.js:93	
 1le6ymq	draft	{0} is a whole number.	{0}は整数です。	src/ui/settings-form.js:75	{0} = f.label
 1ulakkp	draft	{0} is a number.	{0}は数値です。	src/ui/settings-form.js:75	{0} = f.label
 do1m5o	draft	{0}: annai can't show this setting.	{0}：annai ではこの設定を表示できません。	src/ui/settings-form.js:106	{0} = f.label

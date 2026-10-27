@@ -114,14 +114,14 @@ gec6zp	draft	Built-in skills	内置技能	src/plugins/skills/index.js:15
 1t0u9tp	draft	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
 fsfyxb	draft	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:68	
 wp5yx4	draft	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
-elkw42	draft	The voice's audio couldn't be played.	无法播放该声音的音频。	src/plugins/voice-browser/index.js:456	Note: The voice is one in Settings → Models → Speech out: 声音, as the glossary's voice.
+elkw42	draft	The voice's audio couldn't be played.	无法播放朗读的音频。	src/plugins/voice-browser/index.js:456	Note: The voice is a Speech out voice: the glossary's 読み上げ / 朗读.
 9gdjo3	draft	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:515	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	draft	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:579	
 1l4zitw	draft	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:677	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:120	
+1435xg0	draft	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:119	
 scnz2y	draft	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	draft	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	
-b4g7z9	draft	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:190	
+b4g7z9	draft	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:188	
 ew9em3	draft	Cancel	取消	src/ui/ask.js:21	
 7fxcga	draft	Back up this phone over it	用这部手机的备份覆盖它	src/ui/auto-backup.js:64	Note: ja 端末 for phone, as the other device sentences say this device (この端末).
 qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 无法判断这部手机是否连着 Wi-Fi，所以较大的备份会等你同意。	src/ui/auto-backup.js:64	
@@ -1719,10 +1719,10 @@ a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia �
 sbfb3o	draft	ready	就绪	src/ui/search-panel.js:51	
 qx2onv	draft	couldn't check	无法检查	src/ui/search-panel.js:54	
 1lhwd5p	draft	not ready	未就绪	src/ui/search-panel.js:57	
-1j0itop	draft	Search	搜索	src/ui/search-panel.js:86	
-hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 从上往下尝试这些，第一个回答的胜出。失败的会休息一阵，之后再试。取消勾选即可停用。	src/ui/search-panel.js:88	
-1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜索提供商是插件：从目录中添加一个（Tavily、Serper、你自己的 SearXNG），它的密钥在它自己的页面上设置。	src/ui/search-panel.js:91	
-f2eaqi	draft	Find a search plugin	查找搜索插件	src/ui/search-panel.js:92	
+1j0itop	draft	Search	搜索	src/ui/search-panel.js:87	
+hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 从上往下尝试这些，第一个回答的胜出。失败的会休息一阵，之后再试。取消勾选即可停用。	src/ui/search-panel.js:89	
+1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜索提供商是插件：从目录中添加一个（Tavily、Serper、你自己的 SearXNG），它的密钥在它自己的页面上设置。	src/ui/search-panel.js:92	
+f2eaqi	draft	Find a search plugin	查找搜索插件	src/ui/search-panel.js:93	
 1le6ymq	draft	{0} is a whole number.	{0}须为整数。	src/ui/settings-form.js:75	{0} = f.label
 1ulakkp	draft	{0} is a number.	{0}须为数字。	src/ui/settings-form.js:75	{0} = f.label
 do1m5o	draft	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:106	{0} = f.label
