@@ -110,7 +110,7 @@ test("an annai error a backup meets keeps its English in the hold and the log, w
   const d = await device(place, 'iPhone');
   const id = await placeOn(d);
   await d.backups.check(id);
-  place.failNext(new ArchiveError('The content of /files/a.jpg is missing from storage.', { shown: 'このファイルの内容がありません。' }));
+  place.failNext(new ArchiveError('The content of /files/a.jpg is missing from storage.', { said: { code: 'content-missing', path: '/files/a.jpg' }, shown: 'このファイルの内容がありません。' }));
   const e = await d.backups.backUp(id).then(() => null, (x) => x);
   assert.equal(e?.shown, 'このファイルの内容がありません。');
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);

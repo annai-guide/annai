@@ -880,7 +880,7 @@ export class PluginHost {
       }),
       ui: Object.freeze({
         card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions, lang: shownIn }),
-        toast: (/** @type {string} */ text) => need('notices').toast(String(text), shownIn),
+        toast: (/** @type {string} */ text) => need('notices').toast(String(text), { lang: shownIn }),
         // What a plugin adds to annai's screens (spec §16.4), checked first; it goes when the plugin stops.
         slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
           const wrong = checkSlot(slot, item);

@@ -175,7 +175,7 @@ test("a plugin's card and toast carry its words' language", async () => {
   const k = await hostKit();
   /** @type {any[]} */
   const seen = [];
-  k.host.connect({ notices: { card: (/** @type {any} */ c) => seen.push(c), toast: (/** @type {string} */ text, /** @type {string} */ lang) => seen.push({ text, lang }) } });
+  k.host.connect({ notices: { card: (/** @type {any} */ c) => seen.push(c), toast: (/** @type {string} */ text, /** @type {{ lang: string }} */ o) => seen.push({ text, lang: o.lang }) } });
   await k.host.install(codePlugin('plain', "annai.ui.card({ title: 'Tides' }); annai.ui.toast('Low tide');"));
   setWords('ja', {});
   await k.host.start('plain');
