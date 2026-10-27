@@ -250,14 +250,14 @@ mlh3jc	draft	Main	メイン	src/core/llm/check.js:134
 1q9bibx	draft	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
 1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
-17ifucf	draft	Transcription	文字起こし	src/core/llm/config.js:92	
-9kdcjv	draft	Chat	チャット	src/core/llm/config.js:92	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	draft	Voice	声	src/core/llm/config.js:92	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	draft	Live voice	ライブ音声	src/core/llm/config.js:92	
-1nuav0n	draft	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:376	
-1qjc2dh	draft	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:378	{0} = rec.ability
-4iiule	draft	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:381	
-3i9i3z	draft	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:385	{0} = name
+17ifucf	draft	Transcription	文字起こし	src/core/llm/config.js:97	
+9kdcjv	draft	Chat	チャット	src/core/llm/config.js:97	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	draft	Voice	声	src/core/llm/config.js:97	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	draft	Live voice	ライブ音声	src/core/llm/config.js:97	
+1nuav0n	draft	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:380	
+1qjc2dh	draft	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:382	{0} = rec.ability
+4iiule	draft	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:385	
+3i9i3z	draft	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:389	{0} = name
 1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:97	
 1do8abu	draft	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:98	
 99g6ol	draft	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:99	
@@ -1254,35 +1254,35 @@ j4kt4t	draft	{0} wasn't removed	{0}を削除できませんでした	src/ui/scre
 3kaxmm	draft	Provider model id	プロバイダーのモデル ID	src/ui/screens/model.js:78	
 h1nzmw	draft	This model no longer exists	このモデルはもうありません	src/ui/screens/model.js:94	
 u1a0kf	draft	Back to Models	モデルに戻る	src/ui/screens/model.js:94	
-emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（オフ）	src/ui/screens/model.js:102	{0} = ep.name; {1} = ability.name
-1xvdzwo	draft	Takes photos	写真を受け付ける	src/ui/screens/model.js:109	
-1r9uewq	draft	Takes PDFs	PDF を受け付ける	src/ui/screens/model.js:110	
-1kimkqd	draft	Calls tools	ツールを呼び出す	src/ui/screens/model.js:111	
-vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	キャッシュの保持時間は 5m、1h、またはその両方です。	src/ui/screens/model.js:117	
-107rbay	draft	Model	モデル	src/ui/screens/model.js:125	
-iklo8r	draft	Each setting is saved as you change it.	設定は変更するたびに保存されます。	src/ui/screens/model.js:126	
-5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	コンテキストウィンドウはトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:130	
-tdcgnl	draft	Context window (tokens)	コンテキストウィンドウ（トークン）	src/ui/screens/model.js:130	
-13r1phn	draft	Maximum output (tokens)	最大出力（トークン）	src/ui/screens/model.js:131	
-k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大出力はトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:131	
-1kqdeet	draft	Prices, USD per million tokens (JSON)	料金（100万トークンあたりの USD、JSON）	src/ui/screens/model.js:132	
-pmkq6x	draft	Cache lifetimes (5m, 1h)	キャッシュの保持時間（5m、1h）	src/ui/screens/model.js:133	
-1abbjex	draft	Empty: it is asked for five minutes.	空の場合：5分を求めます。	src/ui/screens/model.js:134	
-i6hz4y	draft	Photo limits (JSON)	写真の上限（JSON）	src/ui/screens/model.js:136	
-dnuqbz	draft	Reasoning levels (JSON)	推論レベル（JSON）	src/ui/screens/model.js:137	
-181p6me	draft	Tunables (JSON)	調整項目（JSON）	src/ui/screens/model.js:138	
-12ylk5m	draft	Extra request fields (JSON)	リクエストの追加フィールド（JSON）	src/ui/screens/model.js:139	
-1b0m2g4	draft	Remove model	モデルを削除	src/ui/screens/model.js:142	
-15qwlpp	draft	This voice can't take a style: it is kept, not sent.	この声はスタイルを受け付けません。保存はしますが、送りません。	src/ui/screens/model.js:168	
-a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	どう話してほしいか、短い言葉で。たとえば、落ち着いて、温かく、親しみやすく。	src/ui/screens/model.js:168	
-1gq0a8x	draft	A transcription model: it turns what you say into text.	文字起こしのモデル：話した言葉を文字にします。	src/ui/screens/model.js:188	
-1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	ライブ音声：Koe として、1つのストリームで聞いて話します。	src/ui/screens/model.js:188	
-1r9buge	draft	A voice: Shiori speaks with it.	声：Shiori はこれで話します。	src/ui/screens/model.js:188	
-15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	すべてのリクエストと一緒に送ります。空にすると、モデルの既定値（灰色）を使います。何も送らないようにするには、リクエストの追加フィールドに "voice": null と書いてください。	src/ui/screens/model.js:194	
-nf3vcm	draft	Style	スタイル	src/ui/screens/model.js:195	
-18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	料金（100万トークンあたりの USD、JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
-1wo5fes	draft	Prices, USD (JSON: perMillionChars)	料金（USD、JSON：perMillionChars）	src/ui/screens/model.js:197	
-heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	料金（USD、JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
+emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（オフ）	src/ui/screens/model.js:103	{0} = ep.name; {1} = named
+1xvdzwo	draft	Takes photos	写真を受け付ける	src/ui/screens/model.js:110	
+1r9uewq	draft	Takes PDFs	PDF を受け付ける	src/ui/screens/model.js:111	
+1kimkqd	draft	Calls tools	ツールを呼び出す	src/ui/screens/model.js:112	
+vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	キャッシュの保持時間は 5m、1h、またはその両方です。	src/ui/screens/model.js:118	
+107rbay	draft	Model	モデル	src/ui/screens/model.js:126	
+iklo8r	draft	Each setting is saved as you change it.	設定は変更するたびに保存されます。	src/ui/screens/model.js:127	
+5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	コンテキストウィンドウはトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:131	
+tdcgnl	draft	Context window (tokens)	コンテキストウィンドウ（トークン）	src/ui/screens/model.js:131	
+13r1phn	draft	Maximum output (tokens)	最大出力（トークン）	src/ui/screens/model.js:132	
+k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大出力はトークン数の整数です。わからないときは空にしてください。	src/ui/screens/model.js:132	
+1kqdeet	draft	Prices, USD per million tokens (JSON)	料金（100万トークンあたりの USD、JSON）	src/ui/screens/model.js:133	
+pmkq6x	draft	Cache lifetimes (5m, 1h)	キャッシュの保持時間（5m、1h）	src/ui/screens/model.js:134	
+1abbjex	draft	Empty: it is asked for five minutes.	空の場合：5分を求めます。	src/ui/screens/model.js:135	
+i6hz4y	draft	Photo limits (JSON)	写真の上限（JSON）	src/ui/screens/model.js:137	
+dnuqbz	draft	Reasoning levels (JSON)	推論レベル（JSON）	src/ui/screens/model.js:138	
+181p6me	draft	Tunables (JSON)	調整項目（JSON）	src/ui/screens/model.js:139	
+12ylk5m	draft	Extra request fields (JSON)	リクエストの追加フィールド（JSON）	src/ui/screens/model.js:140	
+1b0m2g4	draft	Remove model	モデルを削除	src/ui/screens/model.js:143	
+15qwlpp	draft	This voice can't take a style: it is kept, not sent.	この声はスタイルを受け付けません。保存はしますが、送りません。	src/ui/screens/model.js:169	
+a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	どう話してほしいか、短い言葉で。たとえば、落ち着いて、温かく、親しみやすく。	src/ui/screens/model.js:169	
+1gq0a8x	draft	A transcription model: it turns what you say into text.	文字起こしのモデル：話した言葉を文字にします。	src/ui/screens/model.js:189	
+1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	ライブ音声：Koe として、1つのストリームで聞いて話します。	src/ui/screens/model.js:189	
+1r9buge	draft	A voice: Shiori speaks with it.	声：Shiori はこれで話します。	src/ui/screens/model.js:189	
+15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	すべてのリクエストと一緒に送ります。空にすると、モデルの既定値（灰色）を使います。何も送らないようにするには、リクエストの追加フィールドに "voice": null と書いてください。	src/ui/screens/model.js:195	
+nf3vcm	draft	Style	スタイル	src/ui/screens/model.js:196	
+18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	料金（100万トークンあたりの USD、JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:198	
+1wo5fes	draft	Prices, USD (JSON: perMillionChars)	料金（USD、JSON：perMillionChars）	src/ui/screens/model.js:198	
+heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	料金（USD、JSON：perMinute、minSeconds）	src/ui/screens/model.js:198	
 1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · リアルタイム：1つのストリームで聞いて話す	src/ui/screens/models.js:16	
 k0393o	draft	Main: talks with you	メイン：あなたと話す	src/ui/screens/models.js:16	
 mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · クラシック：チャットモデルに聞き取りと読み上げを組み合わせる	src/ui/screens/models.js:16	
@@ -1572,51 +1572,51 @@ cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its o
 9djdxp	draft	Install it	インストールする	src/ui/screens/provider.js:289	
 17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン{0}がインストールされていないため、annai は何ができるかを表示できません。	src/ui/screens/provider.js:290	{0} = entry.name
 mf1onk	draft	This provider no longer exists.	このプロバイダーはもうありません。	src/ui/screens/provider.js:303	
-r4y7q	draft	Use {0}	{0}を使う	src/ui/screens/provider.js:328	{0} = a.name
-1o304we	draft	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:335	
-1k5huc5	draft	the provider's: {0}	プロバイダーのもの：{0}	src/ui/screens/provider.js:355	{0} = providerOf(rec).baseUrl
-1ppqeqd	draft	the provider's: none yet	プロバイダーのもの：まだなし	src/ui/screens/provider.js:355	
-12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:362	
-1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	{0}にターン間の会話を保持させる：毎回の送信量が減ります。	src/ui/screens/provider.js:367	{0} = who
-l91m05	draft	Its own address	独自のアドレス	src/ui/screens/provider.js:386	
-9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	空の場合：プロバイダーのアドレス。ここの設定は変更するたびに保存されます。	src/ui/screens/provider.js:392	
-1ajunu1	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：そのサーバーが保持する限り。	src/ui/screens/provider.js:396	{0} = who
-1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：{1}。	src/ui/screens/provider.js:397	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
-1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：無料のキーでは1日、有料のキーでは最長#日。	src/ui/screens/provider.js:398	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
-1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、これをオフにしたときに、annai が削除します。	src/ui/screens/provider.js:400	
-1iorloe	draft	Off, each turn sends the whole conversation.	オフにすると、毎ターン会話全体を送ります。	src/ui/screens/provider.js:400	
-1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、毎ターン会話全体を送ります。	src/ui/screens/provider.js:401	
-72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため、annai は送れません。	src/ui/screens/provider.js:402	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたときに annai が送ります。	src/ui/screens/provider.js:403	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	draft	Test {0}	{0}をテスト	src/ui/screens/provider.js:414	{0} = first.name
-1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:431	{0} = who
-1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:432	{0} = who
-1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:432	{0} = who; {1} = tool.name
-11x4tx3	draft	This needs the {0} plugin, which isn't running.	これには{0}プラグインが必要ですが、動いていません。	src/ui/screens/provider.js:438	{0} = name
-4nyk49	draft	This needs a plugin that isn't running.	これには動いていないプラグインが必要です。	src/ui/screens/provider.js:438	
-15hdhx3	draft	the provider's model id	プロバイダーのモデル ID	src/ui/screens/provider.js:460	
-1oz4euh	draft	Add model	モデルを追加	src/ui/screens/provider.js:473	
-tbmsa5	draft	Asking for its models…	モデルを問い合わせています…	src/ui/screens/provider.js:478	
-1yko1my#other	draft	# models.	モデル#個。	src/ui/screens/provider.js:481	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	draft	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:489	
-1scr2ml	draft	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:492	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	draft	Its models	モデル	src/ui/screens/provider.js:494	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	draft	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:495	
-pnxisg	draft	Add a model by id	ID でモデルを追加	src/ui/screens/provider.js:496	
-1mod47e	draft	for example: haiku	例：haiku	src/ui/screens/provider.js:510	
-uizt0x	draft	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:520	{0} = named
-1w6mxym	draft	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:521	{0} = on
-l7fn8k	draft	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:521	
-19ai2z0	draft	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:532	
-11pl9jr	draft	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:540	
-vam64u	draft	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:540	
-1b2yx8m	draft	Suggested models	おすすめのモデル	src/ui/screens/provider.js:541	
-1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにモデルをおすすめします。その音声のモデルは、無料の端末の音声入力とブラウザの声より前に入るので、有料のものがそれより先に試されます。	src/ui/screens/provider.js:542	{0} = src.name
-1x5hwmk	draft	{0} suggests a model for each role.	{0}は役割ごとにモデルをおすすめします。	src/ui/screens/provider.js:543	{0} = src.name
-1iffu2j	draft	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:550	{0} = n
-1szeqxt	draft	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:550	
-1egvjs1	draft	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:551	{0} = f.name; {1} = messageOf(f.error)
-wlh055	draft	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:557	{0} = which
+r4y7q	draft	Use {0}	{0}を使う	src/ui/screens/provider.js:329	{0} = shownName
+1o304we	draft	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:336	
+1k5huc5	draft	the provider's: {0}	プロバイダーのもの：{0}	src/ui/screens/provider.js:356	{0} = providerOf(rec).baseUrl
+1ppqeqd	draft	the provider's: none yet	プロバイダーのもの：まだなし	src/ui/screens/provider.js:356	
+12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:363	
+1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	{0}にターン間の会話を保持させる：毎回の送信量が減ります。	src/ui/screens/provider.js:368	{0} = who
+l91m05	draft	Its own address	独自のアドレス	src/ui/screens/provider.js:387	
+9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	空の場合：プロバイダーのアドレス。ここの設定は変更するたびに保存されます。	src/ui/screens/provider.js:393	
+1ajunu1	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：そのサーバーが保持する限り。	src/ui/screens/provider.js:397	{0} = who
+1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：{1}。	src/ui/screens/provider.js:398	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
+1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shiori との会話を、その写真、ボイスメッセージ、彼女が知っているあなたの居場所と一緒に保持します：無料のキーでは1日、有料のキーでは最長#日。	src/ui/screens/provider.js:399	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
+1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、これをオフにしたときに、annai が削除します。	src/ui/screens/provider.js:401	
+1iorloe	draft	Off, each turn sends the whole conversation.	オフにすると、毎ターン会話全体を送ります。	src/ui/screens/provider.js:401	
+1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、毎ターン会話全体を送ります。	src/ui/screens/provider.js:402	
+72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため、annai は送れません。	src/ui/screens/provider.js:403	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたときに annai が送ります。	src/ui/screens/provider.js:404	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	draft	Test {0}	{0}をテスト	src/ui/screens/provider.js:415	{0} = first.name
+1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:432	{0} = who
+1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:433	{0} = who
+1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:433	{0} = who; {1} = tool.name
+11x4tx3	draft	This needs the {0} plugin, which isn't running.	これには{0}プラグインが必要ですが、動いていません。	src/ui/screens/provider.js:439	{0} = name
+4nyk49	draft	This needs a plugin that isn't running.	これには動いていないプラグインが必要です。	src/ui/screens/provider.js:439	
+15hdhx3	draft	the provider's model id	プロバイダーのモデル ID	src/ui/screens/provider.js:461	
+1oz4euh	draft	Add model	モデルを追加	src/ui/screens/provider.js:474	
+tbmsa5	draft	Asking for its models…	モデルを問い合わせています…	src/ui/screens/provider.js:479	
+1yko1my#other	draft	# models.	モデル#個。	src/ui/screens/provider.js:482	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	draft	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:490	
+1scr2ml	draft	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:493	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	draft	Its models	モデル	src/ui/screens/provider.js:495	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	draft	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:496	
+pnxisg	draft	Add a model by id	ID でモデルを追加	src/ui/screens/provider.js:497	
+1mod47e	draft	for example: haiku	例：haiku	src/ui/screens/provider.js:511	
+uizt0x	draft	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:521	{0} = named
+1w6mxym	draft	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:522	{0} = on
+l7fn8k	draft	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:522	
+19ai2z0	draft	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:533	
+11pl9jr	draft	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:541	
+vam64u	draft	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:541	
+1b2yx8m	draft	Suggested models	おすすめのモデル	src/ui/screens/provider.js:542	
+1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにモデルをおすすめします。その音声のモデルは、無料の端末の音声入力とブラウザの声より前に入るので、有料のものがそれより先に試されます。	src/ui/screens/provider.js:543	{0} = src.name
+1x5hwmk	draft	{0} suggests a model for each role.	{0}は役割ごとにモデルをおすすめします。	src/ui/screens/provider.js:544	{0} = src.name
+1iffu2j	draft	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:551	{0} = n
+1szeqxt	draft	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:551	
+1egvjs1	draft	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:552	{0} = f.name; {1} = messageOf(f.error)
+wlh055	draft	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:558	{0} = which
 1tu8lgg	draft	Writing it: {0} is reading the trip. This can take a minute.	作成中：{0}が旅を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:32	{0} = m.name
 1lrfe9k	draft	Write the recap	振り返りを書く	src/ui/screens/recap.js:34	
 h6huep	draft	Write it again	もう一度書く	src/ui/screens/recap.js:34	

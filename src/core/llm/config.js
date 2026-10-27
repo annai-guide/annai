@@ -38,8 +38,9 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ id: string, provider: string, ability: string, template: { id: string, version: string, values: ModelValues } | null, user: ModelValues,
  *   verified?: Record<string, any>, created: number }} ModelRecord
  *   template.id: "<plugin>/<ability>/<provider model id>" from a description, "list/<provider model id>" from a list (version '')
- * @typedef {{ id: string, kind: string, type: string, name: string, on: boolean, baseUrl: string, tunables: Record<string, any>,
+ * @typedef {{ id: string, kind: string, type: string, name: string, named: boolean, on: boolean, baseUrl: string, tunables: Record<string, any>,
  *   extraBody: Record<string, any>, modelDefaults: ModelValues }} Ability
+ *   name: its description's, else its kind's in annai's English (what a model and the log read); named: its description gives it one
  * @typedef {{ id: string, plugin: string, name: string, baseUrl: string, headers: Record<string, string>, keyHeader: string,
  *   abilities: Record<string, Ability>, free: boolean, local: boolean }} Provider
  * @typedef {{ id: string, provider: string, ability: string, type: string, name: string, baseUrl: string, headers: Record<string, string>,
@@ -85,11 +86,15 @@ const modelPath = (/** @type {string} */ id) => /* en */ `/llm/models/${id}.json
 const ROLES_PATH = '/llm/roles.json';
 const UPLOADS_PATH = '/llm/uploads.json';
 const secretId = (/** @type {string} */ providerId) => `llm:${providerId}`;
+/** What each kind of ability is called when its description gives no name, in annai's English: a model and the log read it. */
+/* en */
+const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' });
+
 /**
- * What each kind of ability is called, when its description gives no name: annai's own descriptive name, in the screens' words
- * (decision 10), as the Add screen names them. @param {string} kind @returns {string | undefined}
+ * An ability's name as a screen shows it: its description's, else its kind's, annai's own descriptive name in the screens' words
+ * (decision 10), as the Add screen names them. @param {Pick<Ability, 'name' | 'named' | 'kind'>} a
  */
-const kindName = (kind) => (/** @type {Record<string, string>} */ ({ chat: t`Chat`, transcription: t`Transcription`, voice: t`Voice`, realtime: t`Live voice` }))[kind];
+export const abilityName = (a) => (a.named ? a.name : (/** @type {Record<string, string>} */ ({ chat: t`Chat`, transcription: t`Transcription`, voice: t`Voice`, realtime: t`Live voice` }))[a.kind] ?? a.name);
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},
@@ -206,10 +211,9 @@ function build(rec, tunablesFor, withUser) {
     /** @type {AbilityValues} */
     const eff = mergePatch(mergePatch({ tunables: tunablesFor(type) }, tpl.abilities?.[id] ?? {}), usr.abilities?.[id] ?? {});
     const kind = String(eff.kind ?? '');
-    const named = kindName(kind);
-    if (!type || !named) continue; // what is left of an ability a description no longer has
+    if (!type || !KIND_NAMES[kind]) continue; // what is left of an ability a description no longer has
     abilities[id] = {
-      id, kind, type, name: eff.name || named, on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
+      id, kind, type, name: eff.name || KIND_NAMES[kind], named: Boolean(eff.name), on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
       tunables: eff.tunables ?? {}, extraBody: eff.extraBody ?? {}, modelDefaults: eff.modelDefaults ?? {},
     };
   }
