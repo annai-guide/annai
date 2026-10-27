@@ -16,10 +16,15 @@ function make(Ctor, options = {}) {
   return f;
 }
 
-/** Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. @param {...string} parts */
+/** A full stop at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
+const ENDED = /[。．！？!?.][)\]）」』"'”’]*$/;
+/**
+ * Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. A part that doesn't end in a full stop
+ * (a plugin's error, say) keeps a space after it in every language, so the next sentence doesn't run into it. @param {...string} parts
+ */
 export function sentences(...parts) {
   const some = parts.filter(Boolean);
-  return some.length ? some.reduce((a, b) => tc('sentences')`${a} ${b}`) : '';
+  return some.length ? some.reduce((a, b) => (ENDED.test(a) ? tc('sentences')`${a} ${b}` : `${a} ${b}`)) : '';
 }
 /** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
 export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');

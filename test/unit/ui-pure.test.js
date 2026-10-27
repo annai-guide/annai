@@ -2,13 +2,13 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, withArticle, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, wokeTitles, reminderParts } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -251,14 +251,18 @@ test('a backup place in a few words, and the newer backup at it (spec §12.4)', 
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 120, total: 650 }, now), 'Getting files: 120 of 650');
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 1 }, now), 'Getting the backup…', 'one file is no count');
   assert.equal(placeStatus(t(), { phase: 'downloading', done: 0, total: 0 }, now), 'Getting the backup…');
-  assert.deepEqual(['iPhone', 'iPad', 'Android phone', 'computer'].map(withArticle), ['an iPhone', 'an iPad', 'an Android phone', 'a computer']);
   assert.equal(placeHref('bt-1 2'), '#/backups/place?id=bt-1%202');
   const held = t({ last: { ...last, at: now - 86_400_000 }, hold: { kind: 'newer', remote: { id: 'x', at: now - 3_600_000, label: 'Android phone' } } });
   assert.equal(newerText(held, { where: 'me/annai-backup', noun: 'phone', tree: true }, now),
-    "An Android phone backed up to me/annai-backup 1 hour ago, after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it (the other backup stays in its history).");
+    "An Android phone backed up to me/annai-backup 1 hour ago. That was after this phone's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this phone over it. The other backup stays in its history.");
   assert.equal(newerText(t({ hold: { kind: 'newer', remote: { id: 'x', at: now } } }), { where: 'x', noun: 'computer', tree: false }, now),
     'Another device backed up to x just now. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this computer over it.');
   assert.equal(newerText(t(), { where: 'x', noun: 'phone', tree: true }, now), '');
+  // Whole sentences for each kind of device; one annai doesn't name is "another device".
+  assert.equal(newerText(t({ last, hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'iPad' } } }), { where: 'x', noun: 'iPad', tree: false }, now),
+    "An iPad backed up to x just now. That was after this iPad's last backup. Automatic backups there are paused, so neither device overwrites the other. Import it as a copy to bring its trips here, or back up this iPad over it.");
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'toaster' } } }), null, now), 'Paused: there is a newer backup from another device');
+  assert.equal(placeStatus(t({ hold: { kind: 'newer', remote: { id: 'x', at: now, label: 'computer' } } }), null, now), 'Paused: there is a newer backup from a computer');
   assert.deepEqual(parseHash('#/backups/place?id=bt-1'), { name: 'backups', parts: ['backups', 'place'], params: { id: 'bt-1' } });
 });
 
@@ -497,7 +501,7 @@ test("a pack whose manifest doesn't say when it was downloaded says only that it
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
   assert.equal(downloadedWhen(''), '');
   assert.equal(downloadedWhen('not a time'), '');
-  assert.equal(downloadedWhen(new Date().toISOString()), ' just now');
+  assert.equal(downloadedWhen(new Date().toISOString()), 'just now');
 });
 
 test('the trace says what each offline pack download did', () => {
@@ -723,6 +727,25 @@ test('the announcer reads her lines as "Shiori: …": a spoken line, a card (a p
   assert.equal(announcement('note', '', 'Koe to Kokoro: …'), '');
 });
 
+test('a wake in the conversation says why from its kinds, never the words the model was given; a reminder line says what it is', () => {
+  assert.equal(wokeText([{ kind: 'trigger', text: 'Your watch w1 (at 17:00) fired: it is 17:00.' }]), 'Shiori woke for a reminder, or something she watches for.');
+  // What fired and which files, from the wake's data; an older wake has none and is said by its kind.
+  assert.equal(wokeText([{ kind: 'trigger', text: 'x', titles: ['Tea time.'] }]), 'Shiori woke for a reminder, or something she watches for: Tea time.');
+  assert.equal(wokeText([{ kind: 'trigger', text: 'x', titles: ['Tea time', 'Hearst Castle tour'] }]), 'Shiori woke for 2 reminders, or things she watches for: Tea time and Hearst Castle tour.');
+  assert.deepEqual(wokeTitles([{ kind: 'trigger', titles: ['Tea time'] }, { kind: 'file', titles: ['no'] }]), ['Tea time']);
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/hotel.pdf'] }]), 'Shiori woke to look at the file you added: hotel.pdf.');
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/a.jpg', '/files/b.jpg', '/files/c.jpg', '/files/d.jpg'] }]), 'Shiori woke to look at the 4 files you added.');
+  assert.equal(wokeText([{ kind: 'file', text: 'x' }]), 'Shiori woke to look at the files you added.');
+  assert.equal(wokeText([{ kind: 'recap', text: 'x' }, { kind: 'plugin', plugin: 'trail', text: 'y' }], (id) => `${id}!`), 'Shiori woke to tell you the recap. Shiori woke for the plugin trail!.');
+  /** The line's parts, its words as the attributes they get. @param {any} d */
+  const line = (d) => reminderParts({ text: 'Tea.', ...d }, () => ({ lang: 'mine' }), (_, a) => `${a.text}@${a.lang}`);
+  assert.deepEqual(line({}), ['Reminder: ', 'Tea.@mine', '']);
+  assert.deepEqual(line({ aloud: true }), ['Reminder, said aloud: ', 'Tea.@mine', '']);
+  assert.deepEqual(line({ title: "Shiori's answer", aloud: false }), ["Shiori's answer: ", 'Tea.@mine', '']);
+  assert.deepEqual(line({ title: 'Reminder', aloud: true }), ['Reminder, said aloud: ', 'Tea.@mine', ''], 'any other title is a reminder');
+  assert.deepEqual(line({ watch: 'plan:hearst:leave' }), ['Reminder: ', 'Tea.@en', ''], "a plan watch's words are annai's English, as stored");
+});
+
 test("the price line says a change that is coming: from its date, the price then", () => {
   const doubling = { input: 0.75, output: 3.75, schedule: [{ from: '2027-01-01', input: 1.5, output: 7.5 }] };
   assert.equal(priceLine(doubling, Date.parse('2026-10-23T00:00:00Z')), '$0.75 in, $3.75 out per million tokens (from 2027-01-01: $1.5 in, $7.5 out)');
@@ -751,4 +774,18 @@ test('linkIn puts each link where the words say it, in the order the words have 
   // A translation may put the links in another order; each is still where its words are.
   assert.deepEqual(linkIn('OpenStreetMapのデータ、Get a keyで', a, b), ['', b, 'のデータ、', a, 'で']);
   assert.deepEqual(linkIn('Map data from OpenStreetMap.', b, c), ['Map data from ', b, '.', ' ', c]);
+});
+
+test("the Trace's line marks what an entry keeps as written (English) apart from annai's words: errors, reasons, a model's notes, tools' results; never the user's words", async () => {
+  const { traceStored, traceSummary } = await import('../../src/ui/screens/trace.js');
+  const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data });
+  assert.deepEqual(traceStored(e('error', { kind: 'budget', message: 'Steps used up.' })), ['budget: Steps used up.']);
+  assert.deepEqual(traceStored(e('live.session', { state: 'closed', why: 'the socket closed' })), ['the socket closed']);
+  assert.deepEqual(traceStored(e('net.request', { kind: 'web', tool: 'fetch', url: 'https://x.test/', error: 'Failed to fetch' })), ['Failed to fetch']);
+  assert.deepEqual(traceStored(e('wake', { reasons: [{ kind: 'user', text: 'typed' }, { kind: 'file', text: 'A new file' }] })), ['A new file']);
+  assert.deepEqual(traceStored(e('heard', { text: 'どこで食べる？', ms: 900 })), []);
+  // Each is in the line as the line shows it, so it can be marked where it is.
+  for (const x of [e('error', { kind: 'budget', message: 'x'.repeat(150) }), e('backup.peek', { type: 's3', backup: 'c2', problem: '$.files[0].hash: does not match' })]) {
+    for (const kept of traceStored(x)) assert.ok(traceSummary(x).includes(kept), kept);
+  }
 });

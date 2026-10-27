@@ -19,7 +19,7 @@ import { moveOver } from '../core/llm/move-over.js';
 import { splitOldKoe } from '../core/llm/config.js';
 import { finishReturn } from '../ui/provider-setup.js';
 import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
-import { disabledCard, reloadCard, startCards, NEEDS_RELOAD } from '../ui/plugin-cards.js';
+import { disabledCard, reloadCard, startCards, NEEDS_RELOAD, pluginsHeld } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
 import { codec } from '../ui/photo-codec.js';
@@ -103,14 +103,16 @@ async function boot() {
   await plugins.addBuiltin(new URL('../plugins/sensors/index.js', import.meta.url).href);
   /** @type {(v?: unknown) => void} */
   let pluginsStarted = () => {};
-  // On a page no service worker took (claim.js), plugins can't load: what needs one says so, and one card offers a reload.
+  // On a page no service worker took (claim.js), plugins can't load: what needs one says so, and one card offers a reload. What a
+  // model or the log is told is English (pluginsHeld); the screens say it in theirs (NEEDS_RELOAD).
   let gaveUp = false;
-  const whyNoPlugins = () => (gaveUp && !navigator.serviceWorker?.controller ? NEEDS_RELOAD : undefined);
+  const whyNoPlugins = () => pluginsHeld(gaveUp, Boolean(navigator.serviceWorker?.controller));
   let offerReload = (/** @type {string[]} */ _names) => {};
   const canLoad = async () => {
-    if (whyNoPlugins() || !(await controllerReady())) {
+    const why = whyNoPlugins();
+    if (why || !(await controllerReady())) {
       offerReload([]);
-      throw new Error(NEEDS_RELOAD);
+      throw new Error(why ?? pluginsHeld(true, false));
     }
   };
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: canLoad, whyNoPlugins });
@@ -277,7 +279,7 @@ async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
   setInterval(() => updates.auto().catch(() => {}), DAILY);
   // A sign-in comes back to annai's address, for the plugin that started it (decision 16).
-  finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: whyNoPlugins, go: (/** @type {string} */ hash) => { location.hash = hash; } })
+  finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: () => (whyNoPlugins() ? NEEDS_RELOAD : undefined), go: (/** @type {string} */ hash) => { location.hash = hash; } })
     .then((was) => { if (was) shell.render(); });
 }
 

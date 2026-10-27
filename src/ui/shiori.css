@@ -124,7 +124,6 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .voice-row .chip:hover { color: var(--ink); }
 .voice-row .chip.listening { color: var(--risk); font-weight: 600; }
 .ib-svg { display: block; }
-.voice-chip-wrap { position: relative; }
 .voice-chip, .voice-row .chip { cursor: pointer; font: inherit; }
 .voice-menu { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; padding: 6px;
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
@@ -133,10 +132,11 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .voice-menu-note { margin: 0; max-width: 16em; font-size: 13px; color: var(--ink-2); }
 .voice-chip-why { white-space: nowrap; }
 .voice-menu .btn { min-height: 44px; min-width: 64px; }
+/* A row menu shrinks to its narrowest, and Japanese and Chinese break anywhere: オン would go one kana a line. The live menu's long items still wrap. */
+.voice-menu:not(.live-menu) .btn { white-space: nowrap; }
 .voice-menu .btn[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .live-chip.on { border-color: var(--ai); color: var(--ai); }
-/* The live menu sits above the dock, centred on the screen, so a narrow phone shows all of it. */
-.live-wrap { position: static; }
+/* The voice and live menus sit above the dock, centred on the screen, so a narrow phone shows all of them, in longer words too. */
 .live-menu { flex-direction: column; align-items: stretch; width: min(260px, calc(100vw - 24px)); max-height: 60vh; overflow-y: auto; }
 .live-menu .sub { margin: 4px 6px 0; }
 .caption { position: relative; max-width: 560px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 16px; background: var(--ai-wash); border: 0; font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }

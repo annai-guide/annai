@@ -54,7 +54,7 @@ test('llama.cpp through its plugin: its address and key, Fetch model list, a mod
     await expect(words).toHaveText(/^Hello!/);
     await expect(tryIt.getByRole('button', { name: 'Stop' }), 'still writing').toBeVisible();
     await expect(words).toHaveText('Hello! Where would you like to go today?');
-    await expect(tryIt.getByText(/^\d+ tokens · /)).toBeVisible();
+    await expect(tryIt.getByText(/^[\d,]+ tokens · /)).toBeVisible();
     expect(s.requests.filter((r) => r.method === 'POST').at(-1)?.body.chat_template_kwargs, "Try this model asks at main's level, thinking on").toEqual({ enable_thinking: true });
     expect(await page.content()).not.toContain(key);
   } finally {
@@ -85,7 +85,7 @@ test("a router that never streams, through Custom provider's Chat Completions: T
     await tryIt.getByLabel('Message', { exact: true }).fill('When does Nepenthe close?');
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(tryIt.locator('.talk-text').last()).toHaveText('Here you are: Nepenthe is open till 10.');
-    await expect(tryIt.getByText(/^\d+ tokens · /)).toBeVisible();
+    await expect(tryIt.getByText(/^[\d,]+ tokens · /)).toBeVisible();
     // Each request with a model (not Custom provider's empty look at what the server offers).
     expect(s.requests.filter((r) => r.method === 'POST' && r.body?.model).every((r) => r.body.stream === true), 'a stream is still asked for').toBe(true);
   } finally {
