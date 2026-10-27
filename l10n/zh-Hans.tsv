@@ -83,61 +83,63 @@ akjf4d	draft	Working on …	处理中…	src/core/agent/loop.js:110
 izy3tv	draft	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:110	
 1080xlr	draft	Working on {0}	处理中：{0}	src/core/agent/loop.js:534	{0} = detail; Note: label: value, {0} is what she works on, in her words.
 1h2c64o	draft	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:534	
-87ybzy#other	draft	The plugin {0} woke her more than the # times an hour you allow: {1}	插件 {0} 唤醒她的次数超过了你允许的每小时#次：{1}	src/core/agent/loop.js:843	plural; # = budgets.wakesPerHour; {0} = w.plugin; {1} = w.text; English: "The plugin {0} woke her more than the # time an hour you allow: {1}" (one), "The plugin {0} woke her more than the # times an hour you allow: {1}" (other)
-1a5prky#other	draft	Something woke her more than the # times an hour you allow: {0}	有东西唤醒她的次数超过了你允许的每小时#次：{0}	src/core/agent/loop.js:844	plural; # = budgets.wakesPerHour; {0} = w.text; English: "Something woke her more than the # time an hour you allow: {0}" (one), "Something woke her more than the # times an hour you allow: {0}" (other)
-19793n8	draft	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:845	
-16ny0z2	draft	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1068	
-1sxm1ou	draft	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1068	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	draft	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1100	
-oeaxaa	draft	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1100	
-x10s30	draft	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1233	
-1ds0zov	draft	Reminder	提醒	src/core/agent/loop.js:1431	
-1szzjml	draft	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1431	
-nxpady	draft	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1529	
-sp1muy	draft	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1529	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	draft	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1529	
-311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1582	
-1b4988h	draft	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1845	
-pydksy	draft	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1845	
-1nvuxc8	draft	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1882	Note: "Her" is Shiori's in ja.
-2bgbpn	draft	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1886	
-1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1949	
-1m0gt56	draft	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1977	{0} = names; {1} = names
-1uhz9dg	draft	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2032	
-vjxaph	draft	Your turn	轮到你了	src/core/agent/loop.js:2393	
-19tfckg	draft	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2535	
-guullf	draft	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2535	
-1h2ina6	draft	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2536	
-1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读 中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2536	
-1r1dhd7	draft	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2674	
-8wd0xv	draft	Listening stopped	收听已停止	src/core/agent/loop.js:2809	
-43klog	draft	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2983	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	draft	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2984	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	draft	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2985	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	draft	only {0}	仅限{0}	src/core/agent/loop.js:2986	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2987	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2988	
-vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在 设置 → 模型 中检查模型，或稍后再试。	src/core/agent/loop.js:2995	
-4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:70	
-am2v0c	draft	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:160	
-13a6l3r	draft	There is nothing to export.	没有可导出的内容。	src/core/archive.js:167	
-4ngq1	draft	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:267	{0} = why; Note: {0} is a developer's detail, in English.
-gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:341	{0} = path
-1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:355	
-q7ee2s	draft	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:359	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:362	{0} = path
-hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:387	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:389	
-j0v5kk	draft	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:396	
-lfeohr#other	draft	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:402	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	draft	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:418	
-1aqa7w5	draft	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:430	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	draft	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:435	{0} = name
-21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:461	{0} = i + 1; {1} = name
-1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:465	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	draft	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:545	
-qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
-cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:650	
+19793n8	draft	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:843	
+16ny0z2	draft	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1066	
+1sxm1ou	draft	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1066	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	draft	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1098	
+oeaxaa	draft	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1098	
+x10s30	draft	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1231	
+1ds0zov	draft	Reminder	提醒	src/core/agent/loop.js:1429	
+1szzjml	draft	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1429	
+nxpady	draft	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1527	
+sp1muy	draft	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1527	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	draft	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1527	
+311xl2	draft	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1580	
+1b4988h	draft	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1843	
+pydksy	draft	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1843	
+1nvuxc8	draft	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1880	Note: "Her" is Shiori's in ja.
+2bgbpn	draft	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1884	
+1mjdfzn	draft	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1947	
+1m0gt56	draft	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1975	{0} = names; {1} = names
+1uhz9dg	draft	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2030	
+vjxaph	draft	Your turn	轮到你了	src/core/agent/loop.js:2391	
+19tfckg	draft	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2533	
+guullf	draft	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2533	
+1h2ina6	draft	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2534	
+1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读 中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2534	
+1r1dhd7	draft	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2672	
+8wd0xv	draft	Listening stopped	收听已停止	src/core/agent/loop.js:2807	
+43klog	draft	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2981	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	draft	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2982	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	draft	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2983	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	draft	only {0}	仅限{0}	src/core/agent/loop.js:2984	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2986	
+vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在 设置 → 模型 中检查模型，或稍后再试。	src/core/agent/loop.js:2993	
+1bwbvkk#other	draft	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3003	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other); English was: The plugin {0} woke her more than the # times an hour you allow: {1}
+1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
+1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:69	
+am2v0c	draft	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:159	
+13a6l3r	draft	There is nothing to export.	没有可导出的内容。	src/core/archive.js:166	
+4ngq1	draft	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:266	{0} = why; Note: {0} is a developer's detail, in English.
+gtgen1	draft	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:340	{0} = path
+1oint3e	draft	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:354	
+q7ee2s	draft	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:358	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	draft	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:361	{0} = path
+hwph32	draft	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:386	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	draft	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:388	
+j0v5kk	draft	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:395	
+lfeohr#other	draft	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:401	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	draft	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:417	
+1aqa7w5	draft	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:429	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	draft	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:434	{0} = name
+21t6o3	draft	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:460	{0} = i + 1; {1} = name
+1ln7rqe	draft	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:464	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	draft	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:544	
+qf3pcd	draft	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:648	
+cr2az9	draft	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:649	
 pak6iu	draft	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置并将其开启。	src/core/backup.js:36	{0} = s.name
 al82au	draft	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:37	{0} = s.name
 1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:38	{0} = size(s.bytes ?? 0)
@@ -190,7 +192,7 @@ bgn4sv	draft	Shiori answers in the language you speak to her	Shiori 用你对她
 1qt7a9v	draft	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:327	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	draft	The language you speak to her	你对她说的语言	src/core/languages.js:328	
 au82n5	draft	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:329	
-1dyfzsg	draft	A simulation is already running.	模拟已在运行。	src/core/live/live.js:243	
+1dyfzsg	draft	A simulation is already running.	模拟已在运行。	src/core/live/live.js:244	
 157qf8n	draft	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	draft	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
 1d0bfhb	draft	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
