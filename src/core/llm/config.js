@@ -4,6 +4,7 @@ import { mergePatch, diffPatch } from '../patch.js';
 import { ValidationError, NotFoundError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
+import { kindWords } from './contract.js';
 
 /**
  * Providers, their models and roles (spec §9.2, §9.6), as files in the settings scope; one API key per
@@ -94,7 +95,7 @@ const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transc
  * An ability's name as a screen shows it: its description's, else its kind's, annai's own descriptive name in the screens' words
  * (decision 10), as the Add screen names them. @param {Pick<Ability, 'name' | 'named' | 'kind'>} a
  */
-export const abilityName = (a) => (a.named ? a.name : (/** @type {Record<string, string>} */ ({ chat: t`Chat`, transcription: t`Transcription`, voice: t`Voice`, realtime: t`Live voice` }))[a.kind] ?? a.name);
+export const abilityName = (a) => (a.named ? a.name : kindWords(a.kind) ?? a.name);
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},

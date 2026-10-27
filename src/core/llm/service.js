@@ -23,6 +23,12 @@ import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
 
 /**
+ * An ability in a provider error's data: its name where its description gives one, else its kind, which the screens name (saidWords).
+ * @param {import('./config.js').Ability} a
+ */
+const saidAbility = (a) => (a.named ? { ability: a.name } : { abilityKind: a.kind });
+
+/**
  * Everything the UI needs to talk to models (spec §9): providers and their settings, the protocol
  * plugins they need installed when they are set up (never by a call: decision 9), and role calls
  * with fallback, traced.
@@ -143,7 +149,7 @@ export function createLlm({
     const held = whyNoPlugins();
     if (!type && held) throw new ProviderError('type-missing', held, { said: { code: 'held' } });
     /* en */
-    if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`, { said: { code: 'no-plugin', name: provider.name, ability: ability.name } });
+    if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`, { said: { code: 'no-plugin', name: provider.name, ...saidAbility(ability) } });
     return { rec, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
   };
   /**
@@ -699,7 +705,7 @@ export function createLlm({
       /** The protocol's own list. @returns {Promise<import('./contract.js').ListedModel[]>} */
       const protocolList = async () => {
         if (type.list) return type.list({ endpoint, key });
-        if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', /* en */ `${ability.name} can't list its models here. Add them by id.`, { said: { code: 'no-list', ability: ability.name } });
+        if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', /* en */ `${ability.name} can't list its models here. Add them by id.`, { said: { code: 'no-list', ...saidAbility(ability) } });
         const r = type.listRequest({ endpoint, key });
         const res = await send(r.url, { headers: r.headers });
         if (!res.ok) {

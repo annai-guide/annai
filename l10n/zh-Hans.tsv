@@ -251,14 +251,10 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:134
 1q9bibx	ok	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-17ifucf	ok	Transcription	语音转文字	src/core/llm/config.js:97	
-9kdcjv	ok	Chat	对话	src/core/llm/config.js:97	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note names them.
-b1qn4p	ok	Voice	声音	src/core/llm/config.js:97	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	实时语音	src/core/llm/config.js:97	
-1nuav0n	draft	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:380	
-1qjc2dh	draft	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:382	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:385	
-3i9i3z	draft	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:389	{0} = name
+1nuav0n	draft	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:381	
+1qjc2dh	draft	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:383	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:386	
+3i9i3z	draft	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:390	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:97	
 1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:98	Note: Credit is a prepaid balance (余额), not a quota (额度).
 99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:99	
@@ -279,24 +275,28 @@ r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Setti
 19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:114	
 1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	{0} = provider
 sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:116	
-izfolc	draft	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:136	
-13fumpt	draft	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:137	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:138	
-b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:139	
-1e0qpon	draft	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:140	
-6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:141	{0} = name; {1} = ability; {2} = name
-11neb14	draft	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:142	{0} = name
-akhc81	draft	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:143	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	draft	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:144	{0} = name
-x31pwm	draft	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:145	
-il3b75	draft	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:146	
-1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:148	{0} = host
-10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:149	{0} = host
-16osh89	draft	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:150	{0} = ability
-1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:151	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:152	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:153	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:154	{0} = name
+17ifucf	ok	Transcription	语音转文字	src/core/llm/contract.js:134	
+9kdcjv	ok	Chat	对话	src/core/llm/contract.js:134	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note names them.
+b1qn4p	ok	Voice	声音	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:134	
+izfolc	draft	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:144	
+13fumpt	draft	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:145	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:146	
+b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:147	
+1e0qpon	draft	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:148	
+6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name
+11neb14	draft	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:150	{0} = name
+akhc81	draft	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	draft	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:152	{0} = name
+x31pwm	draft	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:153	
+il3b75	draft	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:154	
+1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:156	{0} = host
+10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:157	{0} = host
+16osh89	draft	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:158	{0} = ability
+1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:162	{0} = name
 g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	价格是一个对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	在一个阶梯中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
 z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	在计划中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
@@ -339,12 +339,12 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类�
 557vva	draft	{0} isn't a web address: give it with https:// in front.	{0} 不是网址：请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 只连接你网络上的 https 地址，所以另一台电脑上的服务器需要一个 https 地址。Tailscale Serve 可以提供：{0}。服务器还必须允许来自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1).	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。	src/core/llm/provider-desc.js:166	
-ja1k8e	draft	is turned off.	已关闭。	src/core/llm/service.js:242	Note: said of a plugin named before it on the screen.
-1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:244	Note: said of a plugin named before it on the screen.
-sejc5h	draft	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:257	{0} = name
-sv2i3h	draft	didn't provide a model provider.	没有提供模型提供商。	src/core/llm/service.js:258	Note: said of a plugin.
-b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	它的插件不是 annai 自己的。请从原来的来源重新安装。	src/core/llm/service.js:331	
-1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:340	
+ja1k8e	draft	is turned off.	已关闭。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
+1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
+sejc5h	draft	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:263	{0} = name
+sv2i3h	draft	didn't provide a model provider.	没有提供模型提供商。	src/core/llm/service.js:264	Note: said of a plugin.
+b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	它的插件不是 annai 自己的。请从原来的来源重新安装。	src/core/llm/service.js:337	
+1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:346	
 3ds0qg	draft	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
 1rb0o7n	draft	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	draft	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
