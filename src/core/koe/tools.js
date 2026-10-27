@@ -5,9 +5,9 @@ export const KOE_TOOLS = Object.freeze(['watch_set', 'watch_list', 'watch_cancel
 const LIGHT = ['write', 'edit', 'patch'];
 const OFFLINE = ['nearby', 'guide'];
 const MOVABLE = ['start', 'end', 'notes', 'priority'];
-export const BIGGER = "That's a bigger change: ask Kokoro with tell_kokoro.";
+/* en */ export const BIGGER = "That's a bigger change: ask Kokoro with tell_kokoro.";
 /** Koe settles a note of Kokoro's it has told the user already (§6.8), text or live: annai doesn't show it for Koe. */
-export const ALREADY_TOLD = Object.freeze({
+/* en */ export const ALREADY_TOLD = Object.freeze({
   name: 'already_told', pluginId: 'core', group: 'Talk',
   description: "Kokoro's latest note adds nothing to what you have already told the user: call this instead of saying it again, so annai doesn't show it for you. It never answers the user: when they speak, answer them.",
   input: { type: 'object', properties: {} },
@@ -55,18 +55,18 @@ function recordOf(content) {
  * @returns {import('../agent/loop.js').LoopTool[]}
  */
 export function koeTools({ find, ws }) {
-  return KOE_TOOLS.map((name) => ({
+  /* en */ return KOE_TOOLS.map((name) => ({
     name, pluginId: 'core', group: 'Koe',
     get description() {
       const d = find(name)?.description;
-      return d && LIGHT.includes(name) ? `${d} Koe: only light changes: a note in /trip/notes/, one flexible plan item's start, end, notes or priority, or one new flexible plan item (fixed: false). Anything bigger: ask Kokoro.` : /** @type {string} */ (d);
+      /* en */ return d && LIGHT.includes(name) ? `${d} Koe: only light changes: a note in /trip/notes/, one flexible plan item's start, end, notes or priority, or one new flexible plan item (fixed: false). Anything bigger: ask Kokoro.` : /** @type {string} */ (d);
     },
     get input() {
       return /** @type {Record<string, any>} */ (find(name)?.input);
     },
     run: async (/** @type {any} */ i, /** @type {any} */ call) => {
       const tool = find(name);
-      if (!tool) throw new Error(`There is no ${name} tool now.`);
+      if (!tool) /* en */ throw new Error(`There is no ${name} tool now.`);
       const no = LIGHT.includes(name) ? await lightChange(name, i, { ws, trip: call.trip }) : null;
       if (no) return { content: no, isError: true };
       return tool.run(i, OFFLINE.includes(name) ? { ...call, offline: true } : call);

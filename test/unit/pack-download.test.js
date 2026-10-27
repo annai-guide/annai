@@ -73,7 +73,13 @@ test("the second Overpass server when the first fails; a part that fails is note
   });
   const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 1 });
   assert.ok(asked.some((a) => a.url.includes('overpass.private.coffee')));
-  assert.deepEqual(m.failed, [{ label: 'OpenStreetMap between Bixby Creek Bridge and Nepenthe', why: "OpenStreetMap didn't answer (overpass.private.coffee answered 504)." }]);
+  // The log's English, and what the panel makes its words from (localization L5h): which part, and what went wrong, as data.
+  assert.deepEqual(m.failed, [{
+    label: 'OpenStreetMap between Bixby Creek Bridge and Nepenthe', why: "OpenStreetMap didn't answer (overpass.private.coffee answered 504).",
+    part: { source: 'osm', place: { how: 'between', names: ['Bixby Creek Bridge', 'Nepenthe'] } },
+    said: { code: 'osm', inner: { code: 'status', where: 'overpass.private.coffee', status: 504 }, message: 'overpass.private.coffee answered 504' },
+  }]);
+  assert.deepEqual((await readManifest(ws, trip))?.failed, m.failed, 'kept as it was written');
   assert.equal(m.stopped, false);
   assert.equal(m.files.filter((f) => f.kind === 'osm').length, 2);
   assert.equal(m.guides.length, 2);

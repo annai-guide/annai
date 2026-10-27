@@ -1,12 +1,12 @@
 import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
-import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
+import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine, sourceHost } from './plugin-install.js';
-import { addressProblem, localNote } from '../../core/llm/provider-desc.js';
+import { addressShown, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
 import { pricesAt } from '../../core/llm/cost.js';
 import { list, money, num, sentences } from '../format.js';
@@ -110,7 +110,7 @@ export async function renderProvider(ctx, id) {
       savingNote(saving, async () => {
         try {
           // Checked as a description's is: a typed address without its scheme would send the key to annai's own site (fix pass).
-          const wrong = url.value.trim() ? addressProblem(url.value.trim()) : null;
+          const wrong = url.value.trim() ? addressShown(url.value.trim()) : null;
           if (wrong) throw new Error(wrong);
           const typed = key?.value.trim() ?? '';
           const write = async () => {
@@ -325,13 +325,14 @@ async function abilityPanel(view, abilityId, added) {
   const body = h('div', {});
   // replaceChildren, unlike h, would show a null as the word.
   const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
-  const use = savedCheck(t`Use ${a.name}`, a.on, async (on) => {
+  const shownName = abilityName(a);
+  const use = savedCheck(t`Use ${shownName}`, a.on, async (on) => {
     await ctx.llm.setAbility(id, abilityId, on);
     await draw();
   });
   await draw();
-  return h('section', { class: 'panel', 'aria-label': a.name, onredraw: draw },
-    h('h2', { class: 'section', text: a.name }),
+  return h('section', { class: 'panel', 'aria-label': shownName, onredraw: draw },
+    h('h2', { class: 'section', text: shownName }),
     h('p', { class: 'sub', text: [view.protocolName(a.type), added && !a.on ? t`New in the last update` : null].filter(Boolean).join(' · ') }),
     use.el,
     body);
@@ -385,7 +386,7 @@ async function abilityBody(view, abilityId) {
   return [
     h('div', { class: 'saving' }, field(t`Its own address`, address), ...autosave(address, () => {
       const v = address.value.trim();
-      const wrong = v ? addressProblem(v) : null;
+      const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
     }, (v) => (keep ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first

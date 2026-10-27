@@ -58,7 +58,7 @@ export async function speechCall(c) {
     clearTimeout(t);
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), timeoutMs);
   };
-  limit('No answer in time.');
+  limit(/* en */ 'No answer in time.');
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
@@ -71,8 +71,9 @@ export async function speechCall(c) {
   });
   /** @param {unknown} e */
   const failed = async (e) => {
-    const err = asProviderError(e, signal, type, c.registry);
-    if (err.kind === 'timeout' && firstMs !== null) err.message = 'The voice stopped arriving for longer than its wait.';
+    // A voice that started, then stalled: what it was, as it is made (the said its words come from), never a message patched after.
+    const stalled = firstMs !== null && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
+    const err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than its wait.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
     await trace(err.kind, err.message);
     return err;
   };
@@ -94,8 +95,8 @@ export async function speechCall(c) {
     if (streams) {
       const pieces = /** @type {NonNullable<EndpointType['readSpeechStream']>} */ (type.readSpeechStream)(res, spec)[Symbol.asyncIterator]();
       const first = await pieces.next();
-      if (first.done) throw new ProviderError('server', 'The voice sent back no audio.');
-      if (!playable(first.value) || !(first.value.rate >= 3000)) throw new ProviderError('server', 'The voice sent no sound annai can play.');
+      if (first.done) throw new ProviderError('server', /* en */ 'The voice sent back no audio.');
+      if (!playable(first.value) || !(first.value.rate >= 3000)) throw new ProviderError('server', /* en */ 'The voice sent no sound annai can play.');
       firstMs = now() - started;
       handed = true;
       return { stream: { rate: first.value.rate, chunks: rest(first.value, pieces) }, cost, ms: now() - started };
@@ -117,16 +118,16 @@ export async function speechCall(c) {
    * @param {{ pcm: Int16Array, rate: number }} head @param {AsyncIterator<{ pcm: Int16Array, rate: number }>} pieces @returns {AsyncGenerator<Int16Array>}
    */
   async function* rest(head, pieces) {
-    sound = { format: `streamed PCM at ${head.rate / 1000} kHz`, bytes: head.pcm.byteLength };
+    sound = { format: /* en */ `streamed PCM at ${head.rate / 1000} kHz`, bytes: head.pcm.byteLength };
     let settled = false;
     try {
       yield head.pcm;
       for (;;) {
-        limit('The voice stopped arriving.');
+        limit(/* en */ 'The voice stopped arriving.');
         const next = await pieces.next();
         clearTimeout(t);
         if (next.done) break;
-        if (!playable(next.value)) throw new ProviderError('server', 'The voice sent no sound annai can play.');
+        if (!playable(next.value)) throw new ProviderError('server', /* en */ 'The voice sent no sound annai can play.');
         sound.bytes += next.value.pcm.byteLength;
         yield next.value.pcm;
       }

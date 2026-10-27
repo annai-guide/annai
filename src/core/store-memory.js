@@ -51,8 +51,8 @@ const ekey = (/** @type {string} */ scope, /** @type {number} */ seq) => `${scop
 function makeTx(d, mode, allowed) {
   /** @param {keyof ReturnType<typeof emptyData>} name @param {boolean} [write] */
   const use = (name, write = false) => {
-    if (!allowed.has(name)) throw new DOMException(`store "${name}" is not part of this transaction`, 'NotFoundError');
-    if (write && mode !== 'readwrite') throw new DOMException('the transaction is read-only', 'ReadOnlyError');
+    if (!allowed.has(name)) /* en */ throw new DOMException(`store "${name}" is not part of this transaction`, 'NotFoundError');
+    if (write && mode !== 'readwrite') /* en */ throw new DOMException('the transaction is read-only', 'ReadOnlyError');
     return d[name];
   };
   const out = (/** @type {any} */ v) => (v === undefined ? undefined : structuredClone(v));

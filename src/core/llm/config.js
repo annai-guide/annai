@@ -1,8 +1,10 @@
 import { validate } from '../schema.js';
+import { t } from '../l10n.js';
 import { mergePatch, diffPatch } from '../patch.js';
 import { ValidationError, NotFoundError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
 import { LEVELS, ROLE_LEVELS } from './reasoning.js';
+import { kindWords } from './contract.js';
 
 /**
  * Providers, their models and roles (spec §9.2, §9.6), as files in the settings scope; one API key per
@@ -37,8 +39,9 @@ import { LEVELS, ROLE_LEVELS } from './reasoning.js';
  * @typedef {{ id: string, provider: string, ability: string, template: { id: string, version: string, values: ModelValues } | null, user: ModelValues,
  *   verified?: Record<string, any>, created: number }} ModelRecord
  *   template.id: "<plugin>/<ability>/<provider model id>" from a description, "list/<provider model id>" from a list (version '')
- * @typedef {{ id: string, kind: string, type: string, name: string, on: boolean, baseUrl: string, tunables: Record<string, any>,
+ * @typedef {{ id: string, kind: string, type: string, name: string, named: boolean, on: boolean, baseUrl: string, tunables: Record<string, any>,
  *   extraBody: Record<string, any>, modelDefaults: ModelValues }} Ability
+ *   name: its description's, else its kind's in annai's English (what a model and the log read); named: its description gives it one
  * @typedef {{ id: string, plugin: string, name: string, baseUrl: string, headers: Record<string, string>, keyHeader: string,
  *   abilities: Record<string, Ability>, free: boolean, local: boolean }} Provider
  * @typedef {{ id: string, provider: string, ability: string, type: string, name: string, baseUrl: string, headers: Record<string, string>,
@@ -79,13 +82,20 @@ export const STAND_INS = Object.freeze({
 /** "Send audio to the model", then phone dictation (§10.3); speech-out ends with the browser voice (§9.6). @type {Readonly<Record<string, readonly string[]>>} */
 export const SPEECH_DEFAULTS = Object.freeze({ 'speech-in': Object.freeze(['send-audio', 'dictation']), 'speech-out': Object.freeze(['browser-voice']) });
 
-const providerPath = (/** @type {string} */ id) => `/llm/providers/${id}.json`;
-const modelPath = (/** @type {string} */ id) => `/llm/models/${id}.json`;
+const providerPath = (/** @type {string} */ id) => /* en */ `/llm/providers/${id}.json`;
+const modelPath = (/** @type {string} */ id) => /* en */ `/llm/models/${id}.json`;
 const ROLES_PATH = '/llm/roles.json';
 const UPLOADS_PATH = '/llm/uploads.json';
 const secretId = (/** @type {string} */ providerId) => `llm:${providerId}`;
-/** What each kind of ability is called, when its description gives no name. @type {Record<string, string>} */
-const KIND_NAMES = { chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' };
+/** What each kind of ability is called when its description gives no name, in annai's English: a model and the log read it. */
+/* en */
+const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' });
+
+/**
+ * An ability's name as a screen shows it: its description's, else its kind's, annai's own descriptive name in the screens' words
+ * (decision 10), as the Add screen names them. @param {Pick<Ability, 'name' | 'named' | 'kind'>} a
+ */
+export const abilityName = (a) => (a.named ? a.name : kindWords(a.kind) ?? a.name);
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},
@@ -204,7 +214,7 @@ function build(rec, tunablesFor, withUser) {
     const kind = String(eff.kind ?? '');
     if (!type || !KIND_NAMES[kind]) continue; // what is left of an ability a description no longer has
     abilities[id] = {
-      id, kind, type, name: eff.name || KIND_NAMES[kind], on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
+      id, kind, type, name: eff.name || KIND_NAMES[kind], named: Boolean(eff.name), on: eff.on !== false, baseUrl: eff.baseUrl || v.baseUrl || '',
       tunables: eff.tunables ?? {}, extraBody: eff.extraBody ?? {}, modelDefaults: eff.modelDefaults ?? {},
     };
   }
@@ -366,13 +376,18 @@ async function checkModel(ws, rec) {
   check(MODEL_SCHEMA, rec, path);
   const cfg = await readConfig(ws);
   const provider = cfg.providers[rec.provider];
-  if (!provider) throw new ValidationError(path, ['$.provider: that provider no longer exists']);
-  if (!providerOf(provider).abilities[rec.ability]) throw new ValidationError(path, [`$.ability: that provider has no ability called ${rec.ability}`]);
+  // Each refusal by the shown rule: the record's English for the log, the screens' words for the model's page.
+  /* en */
+  if (!provider) throw Object.assign(new ValidationError(path, ['$.provider: that provider no longer exists']), { shown: t`That provider no longer exists.` });
+  /* en */
+  if (!providerOf(provider).abilities[rec.ability]) throw Object.assign(new ValidationError(path, [`$.ability: that provider has no ability called ${rec.ability}`]), { shown: t`That provider has no ability called ${rec.ability}.` });
   const name = modelOf(rec).name;
-  if (!name) throw new ValidationError(path, ["$.providerId: give the provider's model id"]);
+  /* en */
+  if (!name) throw Object.assign(new ValidationError(path, ["$.providerId: give the provider's model id"]), { shown: t`Give the provider's model id.` });
   for (const other of Object.values(cfg.models)) {
     if (other.id !== rec.id && modelOf(other).name.toLowerCase() === name.toLowerCase()) {
-      throw new ValidationError(path, [`$.name: "${name}" is already used by another model`]);
+      /* en */
+      throw Object.assign(new ValidationError(path, [`$.name: "${name}" is already used by another model`]), { shown: t`"${name}" is already used by another model` });
     }
   }
 }
@@ -442,7 +457,7 @@ export async function splitOldKoe(ws) {
 
 /** Chooses Koe's mode (the voice chip's switch); the lists stay as they are. @param {Workspace} ws @param {KoeMode} mode */
 export async function saveKoeMode(ws, mode) {
-  if (!KOE_MODES.includes(mode)) throw new ValidationError(ROLES_PATH, [`$.${MODE_KEY}: realtime or classic`]);
+  if (!KOE_MODES.includes(mode)) /* en */ throw new ValidationError(ROLES_PATH, [`$.${MODE_KEY}: realtime or classic`]);
   await saveRoles(ws, (await readConfig(ws)).roles, { koeMode: mode });
 }
 

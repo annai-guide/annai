@@ -3,6 +3,8 @@ import { NO_USAGE, costOf, addCost } from '../llm/cost.js';
 import { addressProblem } from '../llm/provider-desc.js';
 import { isPluginBug } from '../registry.js';
 import { utf8 } from '../bytes.js';
+import { t, plural } from '../l10n.js';
+import { sentences } from '../intl.js';
 
 /**
  * Live sessions (the Koe and Kokoro design, "Realtime sessions"; spec §15). annai opens the WebSocket itself, only at
@@ -76,9 +78,9 @@ export function openLive(c) {
   // The key as given, and as an address escapes it (a protocol may put it in the query): an echo of either is blanked.
   const forms = key ? [...new Set([key, encodeURIComponent(key), new URLSearchParams({ k: key }).toString().slice(2)])].sort((a, b) => b.length - a.length) : [];
   for (const f of forms) trace?.secret(f);
-  const blank = (/** @type {string} */ t) => forms.reduce((x, f) => x.split(f).join('«key»'), t);
+  const blank = (/** @type {string} */ s) => forms.reduce((x, f) => x.split(f).join(/* en */ '«key»'), s);
   /** A bug in the protocol's code counts against its plugin (spec §5.5). @param {string} what @param {unknown} e */
-  const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, `live ${what}`, e); };
+  const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, /* en */ `live ${what}`, e); };
   /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */
   const build = (tunables) => {
     /** @type {any} */
@@ -87,7 +89,8 @@ export function openLive(c) {
       r = /** @type {NonNullable<EndpointType['open']>} */ (type.open)({ endpoint, model, key, tunables });
     } catch (e) {
       bug('open', e);
-      throw e instanceof ProviderError ? e : new ProviderError('plugin', `${type.name} couldn't start a live session.`);
+      // A live session's own words are the log's: its screens say its kind (whyWords, testLive).
+      throw e instanceof ProviderError ? e : new ProviderError('plugin', /* en */ `${type.name} couldn't start a live session.`);
     }
     liveOrigin(endpoint, String(r?.url));
     return r;
@@ -137,7 +140,7 @@ export function openLive(c) {
       try {
         fn(e);
       } catch (err) {
-        console.warn('a live session listener failed', err);
+        console.warn(/* en */ 'a live session listener failed', err);
       }
     }
   };
@@ -157,7 +160,7 @@ export function openLive(c) {
         ws = socket(r.url, r.protocols ?? []);
       } catch (e) {
         // The browser refused at once (its security policy); its words may hold the address, so only their name is kept.
-        return down(new ProviderError('unreachable', `annai couldn't open a live session with ${host} (${/** @type {any} */ (e)?.name ?? 'error'}).`), 1006, '');
+        return down(new ProviderError('unreachable', /* en */ `annai couldn't open a live session with ${host} (${/** @type {any} */ (e)?.name ?? 'error'}).`), 1006, '');
       }
       const s = ws;
       s.binaryType = 'arraybuffer';
@@ -166,7 +169,8 @@ export function openLive(c) {
         bug(what, e);
         st.broken = true;
         // A refusal the protocol read (K6): the session ends with its kind and words.
-        if (e instanceof ProviderError) down(new ProviderError(e.kind, blank(e.message)), 1000, e.message);
+        // Its words go with it: what it was (said), or the words it carries (shown), keys blanked.
+        if (e instanceof ProviderError) down(Object.assign(new ProviderError(e.kind, blank(e.message), { said: e.said, provider: e.provider }), e.shown === undefined ? {} : { shown: blank(e.shown) }), 1000, e.message);
         s.close(1000);
       };
       s.addEventListener('open', () => {
@@ -218,7 +222,9 @@ export function openLive(c) {
         }
         /** @type {ErrorKind} */
         const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason);
+        /* en */
         const words = { timeout: "The live session didn't start in time.", unreachable: `annai couldn't reach ${host}.`, plugin: `${type.name} couldn't start a live session.` }[/** @type {string} */ (kind)];
+        /* en */
         return down(new ProviderError(kind, words ?? (blank(reason) || `The live session closed (${e.code}).`)), e.code, reason);
       });
       return undefined;
@@ -258,8 +264,8 @@ export function openLive(c) {
   return session;
 }
 
-/** What a Test says once a session is ready. @type {import('../llm/check.js').TestStep[]} */
-const OPENED = [{ step: 'access', ok: true, detail: 'annai can open a live session at this address from the browser.' }, { step: 'key', ok: true, detail: 'The key works.' }];
+/** What a Test says once a session is ready, in the screens' words. @returns {import('../llm/check.js').TestStep[]} */
+const opened = () => [{ step: 'access', ok: true, detail: t`annai can open a live session at this address from the browser.` }, { step: 'key', ok: true, detail: t`The key works.` }];
 
 /**
  * A realtime model's Test (K4): asked "Say OK.", the session must answer aloud, in words, within ms; then it closes.
@@ -284,14 +290,15 @@ export async function testLive(session, { onAudio, ms = 10_000 } = {}) {
     await session.ready;
     const timer = setTimeout(() => ended('late'), ms);
     session.closed.then(({ kind }) => ended(kind ?? 'closed'));
-    session.text('Say OK.');
+    session.text(/* en */ 'Say OK.'); // the model's words
     const how = await end;
     clearTimeout(timer);
     const words = said.replace(/[.!\s]+$/, '').trim();
     const ok = Boolean(heard && words);
-    const detail = ok ? `It answered aloud: ${words}.` : how === 'late' ? `It didn't answer aloud within ${ms / 1000} seconds.`
-      : KINDS.has(how) ? `The session closed before it answered. ${explain(new ProviderError(/** @type {any} */ (how), ''))}` : 'It answered, but not aloud in words.';
-    return { ok, steps: [...OPENED, { step: 'live', ok, detail }] };
+    // The Test's own words, in the screens' language; what the model said, as it said it.
+    const detail = ok ? t`It answered aloud: ${words}.` : how === 'late' ? plural(ms / 1000, "It didn't answer aloud within # second.", "It didn't answer aloud within # seconds.")
+      : KINDS.has(how) ? sentences(t`The session closed before it answered.`, explain(new ProviderError(/** @type {any} */ (how), ''))) : t`It answered, but not aloud in words.`;
+    return { ok, steps: [...opened(), { step: 'live', ok, detail }] };
   } catch (e) {
     const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
     return { ok: false, steps: [{ step: err.kind === 'auth' || err.kind === 'credit' ? 'key' : 'access', ok: false, detail: explain(err) }] };

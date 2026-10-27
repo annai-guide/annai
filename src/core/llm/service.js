@@ -1,5 +1,5 @@
 import { SYS } from '../scopes.js';
-import { readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
+import { abilityName, readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
 import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
@@ -9,7 +9,9 @@ import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders, useSuggestion } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins, makesProvider } from './official.js';
-import { PluginError, NOT_OWN, TURN_ON, isPluginBug } from '../registry.js';
+import { PluginError, NOT_OWN, TURN_ON, isPluginBug, notOwnShown, turnOnShown } from '../registry.js';
+import { t } from '../l10n.js';
+import { sentences, list } from '../intl.js';
 import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
@@ -19,6 +21,12 @@ import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
+
+/**
+ * An ability in a provider error's data: its name where its description gives one, else its kind, which the screens name (saidWords).
+ * @param {import('./config.js').Ability} a
+ */
+const saidAbility = (a) => (a.named ? { ability: a.name } : { abilityKind: a.kind });
 
 /**
  * Everything the UI needs to talk to models (spec §9): providers and their settings, the protocol
@@ -82,7 +90,7 @@ export function createLlm({
   const drainFor = async (ms) => {
     if ((await kept.count()).waiting) await within(drainKept(AbortSignal.timeout(ms)), ms);
   };
-  ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
+  /* en */ ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
   /** After a trip went or a switch went off: its turns, deleted. @param {{ scope?: string, endpoint?: string }} which */
   const forgetSoon = async (which) => {
     const queued = await kept.queue(which);
@@ -133,11 +141,15 @@ export function createLlm({
     const pRec = rec ? cfg.providers[rec.provider] : undefined;
     const provider = pRec ? providerOf(pRec) : null;
     const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
-    if (!rec || !pRec || !provider || !ability) throw new ProviderError('not-found', 'That model no longer exists.');
+    if (!rec || !pRec || !provider || !ability) throw new ProviderError('not-found', /* en */ 'That model no longer exists.', { said: { code: 'model-gone' } });
     if (install) await ensure(ability.type);
     else await ready;
     const type = types().get(ability.type);
-    if (!type) throw new ProviderError('type-missing', whyNoPlugins() ?? `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`);
+    // Held for a reload: pluginsHeld's English, and what it was (held), from which the screens make theirs.
+    const held = whyNoPlugins();
+    if (!type && held) throw new ProviderError('type-missing', held, { said: { code: 'held' } });
+    /* en */
+    if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`, { said: { code: 'no-plugin', name: provider.name, ...saidAbility(ability) } });
     return { rec, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
   };
   /**
@@ -158,7 +170,8 @@ export function createLlm({
    */
   const speechOf = async (modelId, dir, scope = SYS) => {
     const { type, endpoint, model, key, secret } = await resolve(modelId);
-    if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`);
+    /* en */
+    if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`, { said: { code: dir === 'in' ? 'not-in' : 'not-out', name: model.name } });
     const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
     // The trace learns the key, though a keyHeader gives the protocol none (fix pass).
     const trace = modelTrace(store, scope);
@@ -198,11 +211,11 @@ export function createLlm({
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let syncing;
   ready.then(() => {
-    sync().catch((e) => console.warn("providers couldn't be brought up to date", e));
+    /* en */ sync().catch((e) => console.warn("providers couldn't be brought up to date", e));
     // After each change of what plugins provide (a provider plugin updated, started or stopped), once things settle.
     plugins.registry.onChange(() => {
       clearTimeout(syncing);
-      syncing = setTimeout(() => { sync().catch((e) => console.warn("providers couldn't be brought up to date", e)); }, 250);
+      syncing = setTimeout(() => { /* en */ sync().catch((e) => console.warn("providers couldn't be brought up to date", e)); }, 250);
       /** @type {any} */ (syncing)?.unref?.();
     });
   });
@@ -229,9 +242,12 @@ export function createLlm({
       const running = () => providers().find((p) => p.plugin === plugin);
       const state = (await plugins.installed())[plugin];
       if (state && state.source !== 'official') {
-        if (official) throw new PluginError(plugin, NOT_OWN);
+        if (official) throw new PluginError(plugin, NOT_OWN, { shown: notOwnShown() });
         if (running()) return /** @type {import('./providers.js').ProviderSource} */ (running());
-        throw new PluginError(plugin, state.enabled === false ? `is turned off. ${TURN_ON}` : "isn't running. Look at it in Settings → Plugins.");
+        /* en */
+        if (state.enabled === false) throw new PluginError(plugin, `is turned off. ${TURN_ON}`, { shown: sentences(t`is turned off.`, turnOnShown()) });
+        /* en */
+        throw new PluginError(plugin, "isn't running. Look at it in Settings → Plugins.", { shown: t`isn't running. Look at it in Settings → Plugins.` });
       }
       if (state && running()) {
         // Hash-checked against the catalog when it can be reached; offline, it was checked when it was installed.
@@ -242,8 +258,10 @@ export function createLlm({
       await addFromCatalog(plugins, plugin, { fetch: get, base, tap });
       const src = running();
       // Not a tap: one annai switched off after errors stays off (§5.5), said in words, by its name.
-      if (!src && plugins.registry.isDisabled(plugin)) throw new Error(`${(await plugins.installed())[plugin]?.name ?? plugin} was switched off after errors. ${TURN_ON}`);
-      if (!src) throw new PluginError(plugin, "didn't provide a model provider.");
+      const name = (await plugins.installed())[plugin]?.name ?? plugin;
+      /* en */
+      if (!src && plugins.registry.isDisabled(plugin)) throw Object.assign(new Error(`${name} was switched off after errors. ${TURN_ON}`), { shown: sentences(t`${name} was switched off after errors.`, turnOnShown()) });
+      if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`didn't provide a model provider.` });
       return src;
     },
     /**
@@ -266,7 +284,7 @@ export function createLlm({
         if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
         throw e;
       }
-      await tidy().catch((e) => console.warn("a provider plugin with no provider couldn't be removed", e));
+      /* en */ await tidy().catch((e) => console.warn("a provider plugin with no provider couldn't be removed", e));
       return id;
     }),
     /**
@@ -316,7 +334,7 @@ export function createLlm({
         if (entry) return makesProvider(entry);
         if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
         if (!Array.isArray(catalog)) throw catalog;
-        throw new Error("its plugin isn't annai's own. Install it again from where it came from.");
+        throw Object.assign(new Error(/* en */ "its plugin isn't annai's own. Install it again from where it came from."), { shown: t`its plugin isn't annai's own. Install it again from where it came from.` });
       };
       /** @type {Map<string, string[]>} each reason, and the providers it holds back */
       const failed = new Map();
@@ -324,17 +342,20 @@ export function createLlm({
         const p = providerOf(rec);
         if (imported && had[rec.plugin]?.enabled === false) continue;
         try {
-          if (!(await isProvider(rec.plugin))) throw new Error("the plugin it names doesn't provide models, so it wasn't installed.");
+          /* en */
+          if (!(await isProvider(rec.plugin))) throw Object.assign(new Error("the plugin it names doesn't provide models, so it wasn't installed."), { shown: t`the plugin it names doesn't provide models, so it wasn't installed.` });
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {
-          const why = String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '');
+          // The screens' words where the error has them: these lines are for the import screen alone.
+          const shown = /** @type {any} */ (e)?.shown;
+          const why = typeof shown === 'string' ? shown : String(/** @type {any} */ (e)?.message ?? e).replace(/^[\w.-]+: /, '');
           failed.set(why, [...(failed.get(why) ?? []), p.name]);
         }
         if (!had[rec.plugin] && (await plugins.installed())[rec.plugin] && !providers().some((x) => x.plugin === rec.plugin)) await drop(rec.plugin).catch(() => {});
       }
       const now = await plugins.installed();
-      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed: [...failed].map(([why, names]) => `${names.join(', ')}: ${why}`) };
+      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed: [...failed].map(([why, names]) => t`${list(names, 'plain')}: ${why}`) };
     }),
     /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a
@@ -389,7 +410,7 @@ export function createLlm({
       const find = async () => {
         const rec = (await readConfig(ws)).providers[providerId];
         const a = rec ? providerOf(rec).abilities[abilityId] : undefined;
-        if (!rec || !a) throw new ProviderError('not-found', 'That provider or ability no longer exists.');
+        if (!rec || !a) throw new ProviderError('not-found', /* en */ 'That provider or ability no longer exists.', { said: { code: 'provider-gone' } });
         return { rec, a };
       };
       if (on) await ensure((await find()).a.type);
@@ -409,7 +430,7 @@ export function createLlm({
       const cfg = await readConfig(ws);
       const rec = cfg.providers[providerId];
       const src = providers().find((s) => s.plugin === rec?.plugin);
-      if (!rec || !src) throw new ProviderError('not-found', "That provider no longer exists, or its plugin isn't running.");
+      if (!rec || !src) throw new ProviderError('not-found', /* en */ "That provider no longer exists, or its plugin isn't running.", { said: { code: 'provider-off' } });
       // Only roles this annai knows switch an ability on (one it doesn't is skipped, as the description check has it).
       const named = new Set(Object.entries(src.provider.roles?.[which] ?? {}).filter(([r]) => ROLE_KINDS[r] || OLD_KOE[r]).flatMap(([, ids]) => ids));
       /** @type {{ on: string[], failed: { name: string, error: unknown }[] }} */
@@ -419,9 +440,9 @@ export function createLlm({
         if (!Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) continue;
         try {
           await service.setAbility(providerId, a.id, true);
-          out.on.push(a.name);
+          out.on.push(abilityName(a));
         } catch (error) {
-          out.failed.push({ name: a.name, error });
+          out.failed.push({ name: abilityName(a), error });
         }
       }
       await useSuggestion({ ws }, providerId, src, which);
@@ -433,7 +454,7 @@ export function createLlm({
      */
     async setFree(providerId, on) {
       const rec = (await readConfig(ws)).providers[providerId];
-      if (!rec) throw new ProviderError('not-found', 'That provider no longer exists.');
+      if (!rec) throw new ProviderError('not-found', /* en */ 'That provider no longer exists.', { said: { code: 'provider-removed' } });
       const { free: _, ...user } = rec.user ?? {};
       await saveProvider(ws, { ...rec, user: on ? { ...user, free: true } : user });
     },
@@ -544,7 +565,7 @@ export function createLlm({
      */
     async live(modelId, setup, { scope = SYS, wake, output } = {}) {
       const { type, endpoint, model, key, secret } = await resolve(modelId);
-      if (!type.realtime || !type.audio) throw new ProviderError('bad-request', `${model.name} isn't a live voice model.`);
+      if (!type.realtime || !type.audio) throw new ProviderError('bad-request', /* en */ `${model.name} isn't a live voice model.`, { said: { code: 'not-live', name: model.name } });
       const trace = modelTrace(store, scope);
       if (secret) trace.secret(secret);
       const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
@@ -620,7 +641,7 @@ export function createLlm({
       const { roles } = await readConfig(ws);
       const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { id: r, level: roles[r].level } : undefined;
-      const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
+      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
@@ -650,7 +671,7 @@ export function createLlm({
       const rec = (await readConfig(ws)).providers[providerId];
       const provider = rec ? providerOf(rec) : null;
       const ability = provider?.abilities[abilityId];
-      if (!rec || !provider || !ability) throw new ProviderError('not-found', 'That provider or ability no longer exists.');
+      if (!rec || !provider || !ability) throw new ProviderError('not-found', /* en */ 'That provider or ability no longer exists.', { said: { code: 'provider-gone' } });
       await ensure(ability.type);
       const { type, endpoint, key } = /** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(rec, abilityId));
       /**
@@ -664,16 +685,19 @@ export function createLlm({
         try {
           res = await get(url, { ...init, redirect: 'manual' });
         } catch (e) {
-          let host = 'this address';
+          let host = '';
           try {
             host = new URL(url).host;
           } catch {
-            // not an address: the words say "this address"
+            // not an address: the words say "this address", the kind's
           }
+          /* en */
+          const at = host || 'this address';
           if (await probe(url)) {
-            throw new ProviderError('blocked', `${host} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e });
+            /* en */
+            throw new ProviderError('blocked', `${at} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.`, { cause: e, said: host ? { code: 'cors', host } : { code: 'kind' } });
           }
-          throw new ProviderError('unreachable', `annai couldn't reach ${host}. Check the address and your connection.`, { cause: e });
+          throw new ProviderError('unreachable', /* en */ `annai couldn't reach ${at}. Check the address and your connection.`, { cause: e, said: host ? { code: 'unreachable', host } : { code: 'kind' } });
         }
         noRedirect(res, endpoint);
         return res;
@@ -681,7 +705,7 @@ export function createLlm({
       /** The protocol's own list. @returns {Promise<import('./contract.js').ListedModel[]>} */
       const protocolList = async () => {
         if (type.list) return type.list({ endpoint, key });
-        if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', `${ability.name} can't list its models here. Add them by id.`);
+        if (!type.listRequest || !type.readList) throw new ProviderError('bad-request', /* en */ `${ability.name} can't list its models here. Add them by id.`, { said: { code: 'no-list', ...saidAbility(ability) } });
         const r = type.listRequest({ endpoint, key });
         const res = await send(r.url, { headers: r.headers });
         if (!res.ok) {
@@ -697,7 +721,7 @@ export function createLlm({
         return (Array.isArray(got) ? got : []).filter((m) => typeof m?.providerId === 'string' && m.providerId);
       } catch (e) {
         if (!isPluginBug(e)) throw e;
-        plugins.registry.fail(rec.plugin, 'provider list', e);
+        /* en */ plugins.registry.fail(rec.plugin, 'provider list', e);
         return protocolList();
       }
     },

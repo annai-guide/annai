@@ -154,9 +154,10 @@ export function jsonField(label, id, value) {
  * for a plugin's error, without the plugin's id it starts with for the logs ("chat-completions: "). @param {any} e
  */
 export function messageOf(e) {
+  // The screens' words where an error carries them (shown), else its message or a schema's refusals (LESSONS 2026-10-27).
+  if (typeof e?.shown === 'string') return e.shown;
   if (!Array.isArray(e?.errors)) {
-    // The screens' words where an error carries them (shown), else its message (LESSONS 2026-10-27).
-    const m = String(e?.shown ?? e?.message ?? e);
+    const m = String(e?.message ?? e);
     return typeof e?.pluginId === 'string' && m.startsWith(`${e.pluginId}: `) ? m.slice(e.pluginId.length + 2) : m;
   }
   return e.errors.map((/** @type {string} */ x) => {
@@ -193,7 +194,7 @@ export function linkIn(text, ...links) {
  */
 export function showError(el, e) {
   const text = messageOf(e);
-  el.replaceChildren(Array.isArray(/** @type {any} */ (e)?.errors) ? h('span', { lang: 'en', text }) : text);
+  el.replaceChildren(Array.isArray(/** @type {any} */ (e)?.errors) && typeof /** @type {any} */ (e).shown !== 'string' ? h('span', { lang: 'en', text }) : text);
 }
 
 /**

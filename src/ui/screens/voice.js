@@ -5,7 +5,7 @@ import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
 import { modelOf, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
 import { sample, speechProblem } from '../speech-check.js';
-import { withoutSecrets } from '../../core/agent/net.js';
+import { shownWithoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
 
 /** @param {string} title @param {...any} children */
@@ -71,7 +71,7 @@ export async function renderVoice(ctx) {
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
           : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
             // A provider's own words may hold a key (spec §9.9), as in a model's Test.
-            : await withoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${f.name} couldn't speak: ${speechProblem(f.error)}`),
+            : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${f.name} couldn't speak: ${speechProblem(f.error)}`),
               r.voices.length ? t`Spoken by ${r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
         sayStatus.textContent = speechProblem(e);

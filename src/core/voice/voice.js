@@ -400,7 +400,8 @@ export class Voice {
     const cfg = await this.llm.config();
     const accepts = plain ? ['wav'] : audioIn(cfg, this.llm.types(), id);
     const audio = await audioFor(kept, accepts, this.platform?.encoder);
-    if (!audio) throw new ProviderError('bad-request', /* en */ `${modelOf(cfg.models[id]).name} takes no audio format this phone makes (${accepts.join(', ')}).`);
+    const name = modelOf(cfg.models[id]).name;
+    if (!audio) throw new ProviderError('bad-request', /* en */ `${name} takes no audio format this phone makes (${accepts.join(', ')}).`, { said: { code: 'formats', name, formats: accepts } });
     for (let retry = 0; ; retry++) {
       try {
         const hints = modelLanguages(await this.languages());

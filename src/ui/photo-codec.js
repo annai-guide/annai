@@ -1,4 +1,5 @@
 import { fitSize } from '../core/photos.js';
+import { t } from '../core/l10n.js';
 
 /**
  * The browser's own image encoders (spec §4.8): decoding a photo upright, and writing it in the
@@ -68,7 +69,7 @@ export async function encodePhoto(source, opts) {
     for (;;) {
       const c = canvas(width, height);
       const g = /** @type {OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null} */ (c.getContext('2d'));
-      if (!g) throw new Error('this browser could not draw the photo');
+      if (!g) throw Object.assign(new Error(/* en */ 'this browser could not draw the photo'), { shown: t`This browser could not draw the photo.` });
       if (type === 'image/jpeg') {
         g.fillStyle = '#fff'; // JPEG has no transparency
         g.fillRect(0, 0, width, height);
@@ -76,7 +77,7 @@ export async function encodePhoto(source, opts) {
       g.imageSmoothingQuality = 'high';
       g.drawImage(bitmap, box.x, box.y, box.width, box.height, 0, 0, width, height);
       const blob = await toBlob(c, type, quality);
-      if (!blob || blob.type !== type) throw new Error(`this browser could not write ${type}`);
+      if (!blob || blob.type !== type) throw Object.assign(new Error(/* en */ `this browser could not write ${type}`), { shown: t`This browser could not write ${type}.` });
       if (opts.maxBytes === null || blob.size <= opts.maxBytes || Math.max(width, height) <= 64) {
         return { bytes: new Uint8Array(await blob.arrayBuffer()), type, width, height };
       }

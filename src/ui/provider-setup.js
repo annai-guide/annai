@@ -3,7 +3,7 @@ import { made } from './slots.js';
 import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
-import { descOrigins, addressProblem } from '../core/llm/provider-desc.js';
+import { descOrigins, addressShown } from '../core/llm/provider-desc.js';
 import { officialPlugins, makesProvider } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
@@ -70,7 +70,7 @@ export function setupUi(ctx, pluginId, { added } = {}) {
       const m = await ctx.plugins.manifestOf(pluginId);
       const where = descOrigins(m?.provider);
       for (const u of [baseUrl, ...Object.values(abilities ?? {}).map((a) => a?.baseUrl)].filter(Boolean)) {
-        const wrong = addressProblem(String(u));
+        const wrong = addressShown(String(u));
         if (wrong) throw new Error(wrong);
         const at = new URL(String(u)).origin;
         const who = m?.name ?? pluginId;

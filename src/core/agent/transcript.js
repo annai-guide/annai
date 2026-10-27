@@ -15,9 +15,9 @@ import { strayNote } from '../languages.js';
  * @typedef {'one' | 'kokoro' | 'koe'} HalfName  whose rules (the Koe and Kokoro design): Kokoro reads labelled blocks, Koe a window with Kokoro's notes
  */
 
-export const RESTARTED = 'interrupted by app restart';
+/* en */ export const RESTARTED = 'interrupted by app restart';
 /** A tool's result when the user stopped her turn (spec §6.7). */
-export const STOPPED = 'Stopped by the user.';
+/* en */ export const STOPPED = 'Stopped by the user.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
@@ -102,14 +102,14 @@ export class Transcript {
       this.compaction = e.seq;
       this.from = e.seq;
       // Koe starts again with its window; Kokoro has the summary.
-      if (!koe && d.mode === 'fresh') this.#add('user', [{ type: 'text', text: `[Started fresh: at the user's request, the conversation before this point (events ${d.from}–${d.to}) is not in your context. It is all still in the log, and recall brings back the exact words]` }]);
-      else if (!koe) this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
+      if (!koe && d.mode === 'fresh') /* en */ this.#add('user', [{ type: 'text', text: `[Started fresh: at the user's request, the conversation before this point (events ${d.from}–${d.to}) is not in your context. It is all still in the log, and recall brings back the exact words]` }]);
+      else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
-        this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: `[annai] ${this.half === 'one' ? w.text : quote(w.text)}` })));
+        this.#line(others.map((/** @type {any} */ w) => ({ type: 'text', text: /* en */ `[annai] ${this.half === 'one' ? w.text : quote(w.text)}` })));
         this.unanswered = true;
         this.waiting = 'wake';
       }
@@ -121,7 +121,7 @@ export class Transcript {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         const typed = koe ? theirs(texts.text) : texts.text;
-        this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images]);
+        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -191,7 +191,7 @@ export class Transcript {
         if (d.dismissed && this.half !== 'one') this.#aside.add(d.id);
         return;
       }
-      const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
+      /* en */ const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
       // Koe answers what it heard: Kokoro owes nothing for it.
       if (!d.dismissed && (own || this.half === 'koe')) {
@@ -221,12 +221,12 @@ export class Transcript {
       // A reminder annai showed (and said) by itself, the model out of reach or her turn silent (spec §11.3): she knows, so she doesn't repeat it.
       if (!texts.text) return;
       const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
-      this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached"}: ${said}` }]);
+      /* en */ this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached"}: ${said}` }]);
     } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).flatMap((/** @type {string} */ id) => {
         const p = this.#heard.get(id) ?? /** @type {Part} */ ({ type: 'speech', id });
-        return this.#aside.has(id) ? [{ type: /** @type {const} */ ('text'), text: '[heard, not meant for you]' }, p] : [p];
+        /* en */ return this.#aside.has(id) ? [{ type: /** @type {const} */ ('text'), text: '[heard, not meant for you]' }, p] : [p];
       });
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();

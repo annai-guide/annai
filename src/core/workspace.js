@@ -22,7 +22,7 @@ export { StorageFullError } from './errors.js';
 export class ValidationError extends Error {
   /** @param {string} path @param {string[]} errors */
   constructor(path, errors) {
-    super(`${path} isn't valid: ${errors.join('; ')}`);
+    /* en */ super(`${path} isn't valid: ${errors.join('; ')}`);
     this.name = 'ValidationError';
     this.path = path;
     this.errors = errors;
@@ -32,7 +32,7 @@ export class ValidationError extends Error {
 export class NotFoundError extends Error {
   /** @param {string} what */
   constructor(what) {
-    super(`${what} doesn't exist`);
+    /* en */ super(`${what} doesn't exist`);
     this.name = 'NotFoundError';
   }
 }
@@ -71,7 +71,7 @@ export class Workspace {
       const entry = await t.getFile(scope, p);
       if (!entry) return undefined;
       const blob = await t.getBlob(entry.hash);
-      if (!blob) throw new Error(`the content of ${p} is missing from storage`);
+      if (!blob) /* en */ throw new Error(`the content of ${p} is missing from storage`);
       return { entry, bytes: new Uint8Array(blob.data) };
     });
   }
@@ -219,7 +219,7 @@ export class Workspace {
         };
       });
       if (held) await refused(this.store, scope, hash, 'restore');
-      if (!blob) throw new NotFoundError(`that version of ${p}`);
+      if (!blob) /* en */ throw new NotFoundError(`that version of ${p}`);
       const saved = events.find((e) => e.data?.path === p && e.data?.new === hash);
       const type = typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(p);
       // A photo's metadata describes the photo, not one version of its bytes: keep it.
@@ -293,7 +293,7 @@ export class Workspace {
       try {
         await fn(change);
       } catch (e) {
-        console.warn('a workspace change listener failed', e);
+        /* en */ console.warn('a workspace change listener failed', e);
       }
     }
   }
@@ -319,7 +319,7 @@ function parseJSON(path, bytes) {
   try {
     return JSON.parse(text(bytes));
   } catch (e) {
-    throw new ValidationError(path, [`not valid JSON (${/** @type {Error} */ (e).message})`]);
+    /* en */ throw new ValidationError(path, [`not valid JSON (${/** @type {Error} */ (e).message})`]);
   }
 }
 
@@ -333,7 +333,7 @@ function contentBytes(content) {
 /** @param {Tx} t @param {string} scope @param {number} now */
 async function touchScope(t, scope, now) {
   const rec = await t.getScope(scope);
-  if (!rec) throw new NotFoundError(`the trip or area "${scope}"`);
+  if (!rec) /* en */ throw new NotFoundError(`the trip or area "${scope}"`);
   await t.putScope({ ...rec, updated: now });
 }
 

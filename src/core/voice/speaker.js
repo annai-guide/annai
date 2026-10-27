@@ -2,6 +2,7 @@ import { Sentences } from './sentences.js';
 import { readyToStart, estimateSeconds } from './stream-start.js';
 import { modelOf, speechKind, SPEECH_DEFAULTS } from '../llm/config.js';
 import { anySignal } from '../signals.js';
+import { t } from '../l10n.js';
 import { STAND_IN_NAMES } from './where.js';
 
 /**
@@ -114,7 +115,7 @@ export class Arrivals {
 }
 
 /** What a stream player that can't play sound gives: the page may not play sound now, as a refused clip says. */
-const notAllowed = () => new DOMException('The page may not play sound now.', 'NotAllowedError');
+const notAllowed = () => new DOMException(/* en */ 'The page may not play sound now.', 'NotAllowedError');
 
 /**
  * A stream played through the stream player, started once readyToStart says the rest will be in before
@@ -128,7 +129,7 @@ const notAllowed = () => new DOMException('The page may not play sound now.', 'N
  * @returns {Promise<{ ended: boolean, fraction: number }>}
  */
 export async function playStream(player, a, { signal, onLevel, estimatedS, now, stallMs = 3000 }) {
-  if (!player.stream) throw new Error("This browser can't play a voice as it arrives.");
+  if (!player.stream) throw Object.assign(new Error(/* en */ "This browser can't play a voice as it arrives."), { shown: t`This browser can't play a voice as it arrives.` });
   /** @type {import('./platform.js').PlayerStream | null} */
   let out = null;
   let pushed = 0;

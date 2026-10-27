@@ -18,14 +18,14 @@ const BAD_CHARS = /[\u0000-\u001f\u007f\\]/;
  * @returns {string}
  */
 export function normPath(path) {
-  if (typeof path !== 'string') throw new PathError('the path must be text');
+  if (typeof path !== 'string') /* en */ throw new PathError('the path must be text');
   let p = path.trim().normalize('NFC');
   if (!p.startsWith('/')) p = '/' + p;
-  if (p.length > MAX) throw new PathError(`the path is longer than ${MAX} characters`);
-  if (BAD_CHARS.test(p)) throw new PathError('the path contains a control character or a backslash');
+  if (p.length > MAX) /* en */ throw new PathError(`the path is longer than ${MAX} characters`);
+  if (BAD_CHARS.test(p)) /* en */ throw new PathError('the path contains a control character or a backslash');
   const segs = p.split('/').slice(1);
-  if (segs.some((s) => s === '' || s === '.' || s === '..')) throw new PathError(`"${p}" has an empty, "." or ".." part`);
-  if (segs[0] === '.annai') throw new PathError('the folder ".annai" is reserved');
+  if (segs.some((s) => s === '' || s === '.' || s === '..')) /* en */ throw new PathError(`"${p}" has an empty, "." or ".." part`);
+  if (segs[0] === '.annai') /* en */ throw new PathError('the folder ".annai" is reserved');
   return p;
 }
 

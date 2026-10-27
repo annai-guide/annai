@@ -31,11 +31,11 @@ const MIN = 60_000;
 /** @param {unknown} v @param {number} lo @param {number} hi */
 const num = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
 /** @param {any} w */
-const minutesWrong = (w) => (num(w?.minutes, 1, 1440) ? null : 'minutes must be a number from 1 to 1440');
+const minutesWrong = (w) => (num(w?.minutes, 1, 1440) ? null : /* en */ 'minutes must be a number from 1 to 1440');
 /** @param {any} w */
 function placeWrong(w) {
-  if (!num(w?.lat, -90, 90) || !num(w?.lng, -180, 180)) return 'it needs lat and lng';
-  if (w.radius !== undefined && !num(w.radius, 25, 50_000)) return 'radius is in meters, from 25 to 50000';
+  if (!num(w?.lat, -90, 90) || !num(w?.lng, -180, 180)) /* en */ return 'it needs lat and lng';
+  if (w.radius !== undefined && !num(w.radius, 25, 50_000)) /* en */ return 'radius is in meters, from 25 to 50000';
   return null;
 }
 /** @param {any} w @returns {number} */
@@ -43,11 +43,11 @@ const radius = (w) => w.radius ?? 200;
 /** GPS jitter at the edge doesn't refire a circle (spec §11.3): inside within the radius, outside only beyond this margin. @param {number} r */
 export const margin = (r) => Math.max(25, r / 4);
 /** @param {any} w */
-const named = (w) => (w.name ? String(w.name) : `the place at ${w.lat.toFixed(4)}, ${w.lng.toFixed(4)}`);
+const named = (w) => (w.name ? String(w.name) : /* en */ `the place at ${w.lat.toFixed(4)}, ${w.lng.toFixed(4)}`);
 /** @param {any} w @returns {Place} */
 const placeOf = (w) => ({ ...(w.name ? { name: String(w.name) } : {}), lat: w.lat, lng: w.lng });
 /** @param {string} a */
-const words = (a) => (a === 'moving-fast' ? 'moving fast' : a === 'unknown' ? 'not known yet' : a);
+const words = (a) => (a === 'moving-fast' ? /* en */ 'moving fast' : a === 'unknown' ? /* en */ 'not known yet' : a);
 
 /** Inside, outside, or can't tell (in the margin, or the fix too vague for this circle). @param {any} w @param {Fix} fix */
 function side(w, fix) {
@@ -87,7 +87,7 @@ function startSide(w, m, mem) {
 }
 
 /** @type {TriggerType} */
-const TIME = {
+/* en */ const TIME = {
   type: 'time', gps: false, summary: 'time {at}: once, at an ISO date-time with an offset',
   validate: (w) => (typeof w?.at === 'string' && /(?:[zZ]|[+-]\d\d:\d\d)$/.test(w.at) && Number.isFinite(Date.parse(w.at))
     ? null : 'at must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00'),
@@ -97,19 +97,19 @@ const TIME = {
 };
 
 /** @type {TriggerType} */
-const EVERY = {
+/* en */ const EVERY = {
   type: 'every', gps: false, summary: 'every {minutes}: at an interval, until cancelled or expired',
   validate: minutesWrong,
   describe: (w) => `every ${w.minutes} min`,
   next: (w, m, mem) => (mem.lastAt ?? mem.set) + w.minutes * MIN,
   check: (w, m, mem) => {
     const due = (mem.lastAt ?? mem.set) + w.minutes * MIN;
-    return m.now >= due ? { text: `${w.minutes} min since ${mem.lastAt ? 'it last fired' : 'you set it'}`, at: due } : null;
+    /* en */ return m.now >= due ? { text: `${w.minutes} min since ${mem.lastAt ? 'it last fired' : 'you set it'}`, at: due } : null;
   },
 };
 
 /** @type {TriggerType} */
-const ENTER = {
+/* en */ const ENTER = {
   type: 'enter', gps: true, summary: 'enter {lat, lng, radius?, name?}: on coming inside a circle around a place (radius in meters, 200 if not given)',
   validate: placeWrong,
   describe: (w) => `on entering ${named(w)} (${radius(w)} m)`,
@@ -118,7 +118,7 @@ const ENTER = {
 };
 
 /** @type {TriggerType} */
-const LEAVE = {
+/* en */ const LEAVE = {
   type: 'leave', gps: true, summary: 'leave {lat, lng, radius?, name?}: on going out of that circle',
   validate: placeWrong,
   describe: (w) => `on leaving ${named(w)} (${radius(w)} m)`,
@@ -127,7 +127,7 @@ const LEAVE = {
 };
 
 /** @type {TriggerType} */
-const DWELL = {
+/* en */ const DWELL = {
   type: 'dwell', gps: true, summary: 'dwell {lat, lng, radius?, minutes, name?}: after that long inside a place, once a visit',
   validate: (w) => placeWrong(w) ?? minutesWrong(w),
   describe: (w) => `after ${w.minutes} min at ${named(w)}`,
@@ -137,12 +137,12 @@ const DWELL = {
     crossing(w, m, mem);
     if (m.past || !mem.inside || mem.done || !mem.since || m.now - mem.since < w.minutes * MIN) return null;
     mem.done = true;
-    return { text: `you've been at ${named(w)} for ${w.minutes} min`, at: mem.since + w.minutes * MIN, place: placeOf(w) };
+    /* en */ return { text: `you've been at ${named(w)} for ${w.minutes} min`, at: mem.since + w.minutes * MIN, place: placeOf(w) };
   },
 };
 
 /** @type {TriggerType} */
-const ARRIVED = {
+/* en */ const ARRIVED = {
   type: 'arrived', gps: true, summary: 'arrived {minutes?}: on stopping somewhere new for that long (5 min if not given)',
   validate: (w) => (w?.minutes === undefined || num(w.minutes, 1, 240) ? null : 'minutes must be a number from 1 to 240'),
   describe: (w) => `on stopping somewhere new for ${w.minutes ?? 5} min`,
@@ -157,33 +157,33 @@ const ARRIVED = {
     const from = mem.from ?? mem.lastPlace;
     if (from && meters(from, s) < NEW_PLACE_M) return null;
     mem.from = { lat: s.lat, lng: s.lng };
-    return { text: `you've stopped for ${Math.round((m.now - s.since) / MIN)} min somewhere new`, at: s.since + need, place: { lat: s.lat, lng: s.lng } };
+    /* en */ return { text: `you've stopped for ${Math.round((m.now - s.since) / MIN)} min somewhere new`, at: s.since + need, place: { lat: s.lat, lng: s.lng } };
   },
 };
 
 /** @type {TriggerType} */
-const MOVED = {
+/* en */ const MOVED = {
   type: 'moved', gps: true, summary: 'moved {km}: after travelling that far since your last wake',
   validate: (w) => (num(w?.km, 0.1, 1000) ? null : 'km must be a number from 0.1 to 1000'),
   describe: (w) => `after ${w.km} km travelled`,
   check: (w, m, mem) => {
     const done = m.odometer - (mem.km0 ?? m.odometer);
-    return done >= w.km ? { text: `you have travelled ${done.toFixed(1)} km since your last wake` } : null;
+    /* en */ return done >= w.km ? { text: `you have travelled ${done.toFixed(1)} km since your last wake` } : null;
   },
 };
 
 /** @type {TriggerType} */
-const ACTIVITY = {
+/* en */ const ACTIVITY = {
   type: 'activity', gps: true, summary: 'activity {activity: still | walking | moving-fast, edge?: start | stop}: when it starts (or, with edge stop, stops)',
   validate: (w) => {
-    if (!['still', 'walking', 'moving-fast'].includes(w?.activity)) return 'activity is still, walking or moving-fast';
-    return w.edge === undefined || w.edge === 'start' || w.edge === 'stop' ? null : 'edge is start or stop';
+    if (!['still', 'walking', 'moving-fast'].includes(w?.activity)) /* en */ return 'activity is still, walking or moving-fast';
+    /* en */ return w.edge === undefined || w.edge === 'start' || w.edge === 'stop' ? null : 'edge is start or stop';
   },
   describe: (w) => `when ${words(w.activity)} ${w.edge === 'stop' ? 'stops' : 'starts'}`,
   check: (w, m) => {
     const c = m.change;
     if (!c || (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity)) return null;
-    return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };
+    /* en */ return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };
   },
 };
 

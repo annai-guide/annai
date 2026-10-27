@@ -1,6 +1,6 @@
 import { h, settled, t, messageOf } from './dom.js';
 import { relTime, outcomeText, list } from './format.js';
-import { withoutSecrets } from '../core/agent/net.js';
+import { shownWithoutSecrets } from '../core/agent/net.js';
 
 /** What a test checks, by its result's key, in the screens' words. @type {Record<string, string>} */
 const CHECKS = { key: t`key`, tools: t`tools`, images: t`images`, upload: t`upload`, live: t`live` };
@@ -40,7 +40,7 @@ export function testPanel(ctx, modelId, verified, title = t`Test`, live = false)
         await voice?.done;
       } catch (e) {
         voice?.stop();
-        status.textContent = await withoutSecrets(ctx.store, messageOf(e));
+        status.textContent = await shownWithoutSecrets(ctx.store, messageOf(e));
       } finally {
         run.disabled = false;
       }
@@ -56,7 +56,7 @@ export function testPanel(ctx, modelId, verified, title = t`Test`, live = false)
         status.textContent = r.length ? t`Reasoning levels:` : t`This model has no reasoning levels to try.`;
         show(r.map(([level, outcome]) => ({ ok: outcome === 'ok', text: outcome === 'ok' ? t`${LEVELS[level] ?? level}: works` : t`${LEVELS[level] ?? level}: ${outcomeText(outcome)}` })));
       } catch (e) {
-        status.textContent = await withoutSecrets(ctx.store, messageOf(e));
+        status.textContent = await shownWithoutSecrets(ctx.store, messageOf(e));
       } finally {
         levels.disabled = false;
       }

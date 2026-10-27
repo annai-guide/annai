@@ -1,7 +1,7 @@
 import { h, crumb, t, field, savedField, savedRadios, numberIn, queueSave, plural } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { wantedTtl } from '../../core/agent/warmth.js';
-import { providerOf, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
+import { providerOf, abilityName, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
@@ -92,7 +92,7 @@ function providersSection(ctx, cfg) {
   const rows = Object.values(cfg.providers).sort((a, b) => a.created - b.created).map((rec) => {
     const p = providerOf(rec, (t) => types.get(t)?.tunables ?? {});
     const n = Object.values(cfg.models).filter((m) => m.provider === rec.id).length;
-    const on = Object.values(p.abilities).filter((a) => a.on).map((a) => a.name);
+    const on = Object.values(p.abilities).filter((a) => a.on).map(abilityName);
     return h('li', {}, h('a', { class: 'card', href: `#/models/provider?id=${encodeURIComponent(rec.id)}` },
       h('span', { class: 'name', text: p.name }),
       h('span', { class: 'sub', text: [on.length ? listOf(on, 'plain') : t`Nothing switched on`, plural(n, '# model', '# models')].join(' · ') })));

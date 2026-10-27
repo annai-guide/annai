@@ -50,12 +50,16 @@ export async function addressUpdates(host, { fetch, failed }) {
 export async function updateFromAddress(host, id, { fetch, agreed, official = {} }) {
   const s = (await host.installed())[id];
   const address = await host.address(id);
-  if (!s || !address) throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update");
+  /* en */
+  if (!s || !address) throw new PluginError(id, "wasn't installed from an address, so annai has nowhere to look for an update", { shown: t`wasn't installed from an address, so annai has nowhere to look for an update` });
   const files = await fetchPackage(address, { fetch });
   const pkg = await host.inspect(files);
-  if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
+  /* en */
+  if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`, { shown: t`the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.` });
   const added = pkg.previous?.added ?? addedParts(await host.installedParts(id), pkg);
-  if (!agreedTo(agreed, added)) throw new PluginError(id, t`this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
+  // The log's English says that it adds parts; the screens' words say which.
+  /* en */
+  if (!agreedTo(agreed, added)) throw new PluginError(id, "this update adds parts you haven't agreed to. Check for updates again and look at what it adds.", { shown: t`this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.` });
   await checkPackageId(host, id, 'url', official); // annai's own names stay annai's (security review)
   if (pkg.requires.length) await installRequirements(host, pkg.requires, { ...official, tap: true }, { who: pkg.name, id }); // Update is the user's tap
   const wasOn = s.enabled !== false;

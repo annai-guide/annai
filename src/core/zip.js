@@ -39,7 +39,7 @@ export async function inflateRaw(data, limit = Infinity) {
     if (done) break;
     if (total + value.byteLength > limit) {
       await reader.cancel().catch(() => {});
-      throw new ZipError('is larger than it says (it may be a zip bomb), so annai stopped reading it');
+      /* en */ throw new ZipError('is larger than it says (it may be a zip bomb), so annai stopped reading it');
     }
     if (out) out.set(value, total);
     else chunks.push(value);
@@ -66,8 +66,8 @@ export class ZipWriter {
    * @param {{ compress?: boolean, mtime?: number }} [opts]
    */
   async add(name, bytes, opts = {}) {
-    if (this.#names.has(name)) throw new ZipError(`the archive already has an entry called ${name}`);
-    if (this.#central.length >= 0xffff) throw new ZipError('too many files for one archive');
+    if (this.#names.has(name)) /* en */ throw new ZipError(`the archive already has an entry called ${name}`);
+    if (this.#central.length >= 0xffff) /* en */ throw new ZipError('too many files for one archive');
     this.#names.add(name);
     const nameBytes = utf8(name);
     const crc = crc32(bytes);
@@ -80,7 +80,7 @@ export class ZipWriter {
         data = packed;
       }
     }
-    if (this.#offset + 30 + nameBytes.length + data.length > 0xffffffff) throw new ZipError('the archive would be larger than 4 GiB');
+    if (this.#offset + 30 + nameBytes.length + data.length > 0xffffffff) /* en */ throw new ZipError('the archive would be larger than 4 GiB');
     const { time, date } = dosTime(opts.mtime ?? Date.now());
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, LOCAL, true);
@@ -205,12 +205,12 @@ export class ZipReader {
         break;
       }
     }
-    if (end < 0) throw new ZipError('this is not a zip archive');
+    if (end < 0) /* en */ throw new ZipError('this is not a zip archive');
     const count = tv.getUint16(end + 10, true);
     const cdSize = tv.getUint32(end + 12, true);
     const cdOffset = tv.getUint32(end + 16, true);
-    if (count === 0xffff || cdOffset === 0xffffffff) throw new ZipError('zip64 archives are not supported');
-    if (cdOffset + cdSize > tailStart + end) throw new ZipError('the archive index is damaged');
+    if (count === 0xffff || cdOffset === 0xffffffff) /* en */ throw new ZipError('zip64 archives are not supported');
+    if (cdOffset + cdSize > tailStart + end) /* en */ throw new ZipError('the archive index is damaged');
     const cd = await bytesOf(file.slice(cdOffset, cdOffset + cdSize));
     const v = view(cd);
     /** @type {Map<string, Entry>} */
@@ -218,9 +218,9 @@ export class ZipReader {
     let total = 0;
     let p = 0;
     for (let i = 0; i < count; i++) {
-      if (p + 46 > cd.length || v.getUint32(p, true) !== CENTRAL) throw new ZipError('the archive index is damaged');
+      if (p + 46 > cd.length || v.getUint32(p, true) !== CENTRAL) /* en */ throw new ZipError('the archive index is damaged');
       const nlen = v.getUint16(p + 28, true);
-      if (p + 46 + nlen > cd.length) throw new ZipError('the archive index is damaged');
+      if (p + 46 + nlen > cd.length) /* en */ throw new ZipError('the archive index is damaged');
       const name = text(cd.subarray(p + 46, p + 46 + nlen));
       /** @type {Entry} */
       const entry = {
@@ -233,14 +233,14 @@ export class ZipReader {
       };
       p += 46 + nlen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
       if (name.endsWith('/')) continue;
-      if (entries.has(name)) throw new ZipError(`the archive has two entries called ${name}`);
-      if (entry.usize > maxEntry) throw new ZipError(`${name} is too large to open here (over ${Math.floor(maxEntry / 1048576)} MB)`);
+      if (entries.has(name)) /* en */ throw new ZipError(`the archive has two entries called ${name}`);
+      if (entry.usize > maxEntry) /* en */ throw new ZipError(`${name} is too large to open here (over ${Math.floor(maxEntry / 1048576)} MB)`);
       total += entry.usize;
       entries.set(name, entry);
     }
-    if (total > maxTotal) throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
+    if (total > maxTotal) /* en */ throw new ZipError(`this archive is too large to open here (over ${Math.floor(maxTotal / 1048576)} MB uncompressed)`);
     if (total > maxRatio * file.size + RATIO_ALLOWANCE) {
-      throw new ZipError('this archive says it unpacks to far more than its own size, the way a zip bomb does, so annai won\'t open it');
+      /* en */ throw new ZipError('this archive says it unpacks to far more than its own size, the way a zip bomb does, so annai won\'t open it');
     }
     return new ZipReader(file, entries);
   }
@@ -273,14 +273,14 @@ export class ZipReader {
   /** Reads, inflates and checks one entry. @param {string} name @returns {Promise<Uint8Array>} */
   async read(name) {
     const e = this.#entries.get(name);
-    if (!e) throw new ZipError(`the archive has no entry called ${name}`);
-    if (e.flags & 1) throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
+    if (!e) /* en */ throw new ZipError(`the archive has no entry called ${name}`);
+    if (e.flags & 1) /* en */ throw new ZipError(`${name} is encrypted with zip encryption, which annai does not read`);
     // A large entry's header is read alone: a window of the file is for a run of small entries.
     const head = e.csize > WINDOW ? await bytesOf(this.#file.slice(e.local, e.local + 30)) : await this.#range(e.local, e.local + 30);
     const hv = view(head);
-    if (head.length < 30 || hv.getUint32(0, true) !== LOCAL) throw new ZipError(`the entry ${name} is damaged`);
+    if (head.length < 30 || hv.getUint32(0, true) !== LOCAL) /* en */ throw new ZipError(`the entry ${name} is damaged`);
     const start = e.local + 30 + hv.getUint16(26, true) + hv.getUint16(28, true);
-    if (start + e.csize > this.#file.size) throw new ZipError(`the entry ${name} is damaged`);
+    if (start + e.csize > this.#file.size) /* en */ throw new ZipError(`the entry ${name} is damaged`);
     /** @type {Uint8Array} */
     let bytes;
     if (e.method === 0) {
@@ -293,11 +293,11 @@ export class ZipReader {
           : await inflateRaw(this.#file.slice(start, start + e.csize), e.usize);
       } catch (err) {
         if (err instanceof ZipError) throw new ZipError(`${name} ${err.message}`);
-        if (err instanceof RangeError) throw new ZipError(`${name} is larger than it says (it may be a zip bomb), so annai stopped reading it`);
-        throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
+        if (err instanceof RangeError) /* en */ throw new ZipError(`${name} is larger than it says (it may be a zip bomb), so annai stopped reading it`);
+        /* en */ throw new ZipError(`${name} is corrupted (it cannot be decompressed)`);
       }
-    } else throw new ZipError(`${name} uses compression method ${e.method}, which annai does not read`);
-    if (bytes.length !== e.usize || crc32(bytes) !== e.crc) throw new ZipError(`${name} is corrupted (checksum mismatch)`);
+    } else /* en */ throw new ZipError(`${name} uses compression method ${e.method}, which annai does not read`);
+    if (bytes.length !== e.usize || crc32(bytes) !== e.crc) /* en */ throw new ZipError(`${name} is corrupted (checksum mismatch)`);
     return bytes;
   }
 }

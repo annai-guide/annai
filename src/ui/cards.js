@@ -46,10 +46,19 @@ export function cardWho(ctx, card) {
 }
 
 /**
- * @param {any} card @param {{ ctx: any, onChoice?: (option: string) => void, say?: (text: string) => Record<string, any> }} o
- *   say: the attributes that mark someone's words (their language, their direction), for every piece of the card that is the model's words
+ * A card Shiori showed (an out.show event's data), drawn on any screen: a tuning's title is annai's, made here from the event's data in
+ * the screens' words (the stored one is the model's English). @param {any} d @param {Parameters<typeof renderCard>[1]} o
  */
-export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
+export function shownCard(d, o) {
+  return d.tune ? renderCard({ ...d.card, title: t`I adjusted my personality` }, { ...o, ours: true }) : renderCard(d.card ?? {}, o);
+}
+
+/**
+ * @param {any} card @param {{ ctx: any, onChoice?: (option: string) => void, say?: (text: string) => Record<string, any>, ours?: boolean }} o
+ *   say: the attributes that mark someone's words (their language, their direction), for every piece of the card that is the model's words;
+ *   ours: the title is annai's, in the screens' language
+ */
+export function renderCard(card, { ctx, onChoice, say = () => ({}), ours = false }) {
   // A plugin's kind of card is drawn by its plugin (full trust, its own UI); annai draws the title as text.
   const typed = typeOf(ctx, card);
   if (typed) {
@@ -58,7 +67,7 @@ export function renderCard(card, { ctx, onChoice, say = () => ({}) }) {
     return h('div', { class: 'card card-typed' }, card.title ? h('strong', { ...say(String(card.title)), class: 'card-title', text: String(card.title) }) : null, body);
   }
   const parts = [];
-  if (card.title) parts.push(h('strong', { ...say(String(card.title)), class: 'card-title', text: String(card.title) }));
+  if (card.title) parts.push(h('strong', { ...(ours ? {} : say(String(card.title))), class: 'card-title', text: String(card.title) }));
   if (card.text) parts.push(renderMarkdown(String(card.text), say(String(card.text))));
   if (card.place?.name) {
     const p = card.place;

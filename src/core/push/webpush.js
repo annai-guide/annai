@@ -11,7 +11,7 @@ const RS = 4096;
 /** The most plaintext one push carries: 4096 bytes, less the 86-byte header, the delimiter and the 16-byte tag (RFC 8291 §4). */
 export const PLAINTEXT_MAX = 3993;
 const P256 = { name: 'ECDH', namedCurve: 'P-256' };
-const BAD_KEY = "The subscription's key isn't a P-256 public key.";
+/* en */ const BAD_KEY = "The subscription's key isn't a P-256 public key.";
 
 /** HKDF-SHA-256 (RFC 5869): len bytes. @param {Uint8Array} salt @param {Uint8Array} ikm @param {Uint8Array} info @param {number} len */
 async function hkdf(salt, ikm, info, len) {
@@ -30,9 +30,9 @@ async function hkdf(salt, ikm, info, len) {
  */
 export async function encryptPush(to, plaintext, { pad, salt = crypto.getRandomValues(new Uint8Array(16)), keys } = {}) {
   if (!(to?.p256dh instanceof Uint8Array) || to.p256dh.length !== 65 || to.p256dh[0] !== 4) throw new Error(BAD_KEY);
-  if (!(to.auth instanceof Uint8Array) || to.auth.length !== 16) throw new Error("The subscription's auth secret isn't 16 bytes.");
+  if (!(to.auth instanceof Uint8Array) || to.auth.length !== 16) /* en */ throw new Error("The subscription's auth secret isn't 16 bytes.");
   const room = Math.min(pad ?? PLAINTEXT_MAX + 1, PLAINTEXT_MAX + 1);
-  if (plaintext.length + 1 > room) throw new Error(`A push message holds at most ${room - 1} bytes.`);
+  if (plaintext.length + 1 > room) /* en */ throw new Error(`A push message holds at most ${room - 1} bytes.`);
   /** @type {CryptoKey} */
   let ua;
   try {
@@ -43,9 +43,9 @@ export async function encryptPush(to, plaintext, { pad, salt = crypto.getRandomV
   const pair = keys ?? /** @type {CryptoKeyPair} */ (await crypto.subtle.generateKey(P256, true, ['deriveBits']));
   const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
   const secret = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: ua }, pair.privateKey, 256));
-  const ikm = await hkdf(to.auth, secret, concat([utf8('WebPush: info\0'), to.p256dh, asPublic]), 32);
-  const cek = await hkdf(salt, ikm, utf8('Content-Encoding: aes128gcm\0'), 16);
-  const nonce = await hkdf(salt, ikm, utf8('Content-Encoding: nonce\0'), 12);
+  /* en */ const ikm = await hkdf(to.auth, secret, concat([utf8('WebPush: info\0'), to.p256dh, asPublic]), 32);
+  /* en */ const cek = await hkdf(salt, ikm, utf8('Content-Encoding: aes128gcm\0'), 16);
+  /* en */ const nonce = await hkdf(salt, ikm, utf8('Content-Encoding: nonce\0'), 12);
   const record = new Uint8Array(pad ?? plaintext.length + 1);
   record.set(plaintext);
   record[plaintext.length] = 2; // the last record's delimiter; the zeros after it are padding (RFC 8188 §2)

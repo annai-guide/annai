@@ -12,7 +12,7 @@ import { keepBlob } from '../workspace.js';
  * @typedef {{ kind?: string, endpoint: string, model: string, providerModel: string, url: string, status: number, ms: number, firstMs: number | null,
  *   outcome: string, error?: string, usage: any, cost?: number, wake?: string, seconds?: number, chars?: number }} RequestInfo
  *   kind: "model" unless given ("speech-in", "speech-out"); seconds or chars: how much speech was sent
- * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string, restsUntil?: number }} Attempt
+ * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string, said?: import('./contract.js').Said, restsUntil?: number }} Attempt
  * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
  *   tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, citations?: { url: string, title?: string }[] }} TurnInfo
  *   tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
@@ -70,7 +70,7 @@ export function modelTrace(store, scope) {
   const scrub = (/** @type {unknown} */ s) => {
     let out = String(s ?? '');
     // Longest first, so a secret that contains another is blanked whole.
-    for (const k of [...secrets].sort((a, b) => b.length - a.length)) out = out.split(k).join('«key»');
+    for (const k of [...secrets].sort((a, b) => b.length - a.length)) /* en */ out = out.split(k).join('«key»');
     return out;
   };
   /**
@@ -92,7 +92,7 @@ export function modelTrace(store, scope) {
       }
       await store.tx(['blobs', 'events'], 'readwrite', async (t) => {
         for (const k of kept) {
-          await keepBlob(t, k.hash, 'text/plain; charset=utf-8', k.bytes);
+          /* en */ await keepBlob(t, k.hash, 'text/plain; charset=utf-8', k.bytes);
         }
         await t.appendEvent(scope, { ...ev, data: { ...ev.data, stored: kept.map((k) => k.name) }, refs: kept.map((k) => k.hash) });
       });

@@ -29,7 +29,7 @@ export async function keepUiFrom(ws) {
 /** Asks the worker to keep a language's words; with no worker, checks they can be fetched. @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o] */
 export async function keepWords(tag, { worker = navigator.serviceWorker?.controller, limitMs = 30_000 } = {}) {
   if (!worker) {
-    try { return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
+    try { /* en */ return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
   }
   return new Promise((resolve) => {
     const { port1, port2 } = new MessageChannel();

@@ -97,7 +97,7 @@ export async function addTarget(ws, { type, name, config = {}, auto = 'changes',
 export function setTarget(ws, id, fields) {
   return change(ws, (v) => {
     const t = v.targets[id];
-    if (!t) throw new NotFoundError(`backup place ${id}`);
+    if (!t) /* en */ throw new NotFoundError(`backup place ${id}`);
     v.targets[id] = { ...t, ...fields };
     return v.targets[id];
   });
