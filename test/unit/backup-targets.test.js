@@ -21,13 +21,13 @@ async function device() {
 test('where this device backs up lives in its own scope, which no export carries (spec §12.4)', async () => {
   const a = await device();
   await createTrip(a.ws, { title: 'Big Sur' });
-  const id = await addTarget(a.ws, { type: 'github', name: 'GitHub', config: { repo: 'me/annai-backup' } });
+  const id = await addTarget(a.ws, { type: 'github', config: { repo: 'me/annai-backup' } });
   await setTargetSecret(a.store, id, { token: 'ghp_never_in_an_archive_0001' });
   const dev = await deviceId(a.ws);
   assert.match(dev, /^[0-9a-z]{10,}$/);
   assert.equal(await deviceId(a.ws), dev);
   assert.deepEqual((await listTargets(a.ws)).map((t) => [t.id, t.type, t.name, t.config.repo, t.auto, t.mobileData, t.checked, t.last, t.hold]),
-    [[id, 'github', 'GitHub', 'me/annai-backup', 'changes', false, null, null, null]]);
+    [[id, 'github', undefined, 'me/annai-backup', 'changes', false, null, null, null]], 'no name of its own: it is named by its kind');
   assert.equal((await a.store.tx(['scopes'], 'readonly', (t) => t.getScope(SYS_DEVICE)))?.title, 'This device');
 
   const { blob, manifest } = await exportArchive(a.store, { kind: 'everything', include: { ...PRESETS.backup }, app: 'test' });
@@ -63,7 +63,7 @@ test("an archive that holds another device's own scope never brings it in", asyn
 
 test('a place keeps its settings and its last backup apart, changed one at a time; removing it forgets its secret', async () => {
   const a = await device();
-  const id = await addTarget(a.ws, { type: 'github', name: 'GitHub' });
+  const id = await addTarget(a.ws, { type: 'github' });
   await Promise.all([
     setTarget(a.ws, id, { config: { repo: 'me/x' } }),
     setTarget(a.ws, id, { last: { id: 'c1', at: 5, seqs: { me: 3 }, bytes: 10 } }),

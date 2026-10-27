@@ -275,30 +275,52 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
 });
 
-test("a default-named place's hold keeps no screens' words: its said names no place, and its kind is named where it is shown", async () => {
+test("every place is named by its kind, as the screens name it: an old place and a new one alike, and a hold keeps only the kind (data, not words)", async () => {
   const { memoryPlace, device } = await import('./backup-kit.js');
-  const { setTarget } = await import('../../src/core/backup-targets.js');
+  const { setTarget, getTarget } = await import('../../src/core/backup-targets.js');
   const { holdWords } = await import('../../src/core/backup.js');
   setWords('ja', {});
   const place = memoryPlace();
   // A kind named in the screens' words, as S3-compatible storage is: S3 互換ストレージ.
   Object.assign(place.type, { name: 'メモリー', stores: 'file' });
   const d = await device(place);
+  const old = await d.backups.add('memory');
+  await setTarget(d.ws, old, { name: 'Memory' }); // stored by an annai from before
   const id = await d.backups.add('memory');
+  assert.deepEqual((await d.backups.list()).map((p) => p.name), ['メモリー', 'メモリー']);
   await setTarget(d.ws, id, { encrypt: true });
   await assert.rejects(d.backups.backUp(id), (e) => /メモリー/.test(/** @type {any} */ (e).shown) && !/メモリー/.test(/** @type {any} */ (e).message));
-  const raw = /** @type {any} */ ((await import('../../src/core/backup-targets.js')).getTarget);
-  const hold = (await raw(d.ws, id)).hold;
+  const hold = /** @type {any} */ (await getTarget(d.ws, id))?.hold;
   assert.doesNotMatch(JSON.stringify(hold), /[\p{Script=Katakana}\p{Script=Han}]/u);
-  assert.deepEqual(hold.said, { code: 'passphrase', name: '', type: 'memory' });
+  assert.deepEqual(hold.said, { code: 'passphrase', type: 'memory' });
   const shown = /** @type {any} */ (await d.backups.get(id));
   assert.match(holdWords(shown.hold, shown.name), /メモリー/);
-  // On English screens (a backup restored there), the kind's name as that device names it.
   setWords('en', null);
   assert.equal(holdWords(shown.hold, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
-  // A hold from before, with the place's name stored, says it.
-  assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'Home NAS' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Home NAS, then save.');
+  // A hold from before, with a name in its said, shows by its kind too.
+  assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'S3-compatible storage' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
 });
+
+test("a place whose plugin is installed but off is named by that plugin, not its id; annai's own by its own translation; the full-access warning names it", async () => {
+  const { createBackups } = await import('../../src/core/backup.js');
+  const { addTarget, setTargetSecret } = await import('../../src/core/backup-targets.js');
+  const { keyNames } = await import('../../src/ui/screens/plugin-install.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  const place = (/** @type {string} */ id, /** @type {any} */ more = {}) => files({ 'annai-plugin.json': JSON.stringify({ id, name: 'Acme Vault', version: '1.0.0', api: 1, provides: { 'storage-type': [`${id}-kind`] }, ...more }) });
+  await k.host.install(place('acme-vault'));
+  const official = place('acme-own', { name: 'Own vault', l10n: ['ja'] });
+  official.set('l10n/ja.json', new TextEncoder().encode(JSON.stringify({ manifest: { name: '自分の金庫' } })));
+  await k.host.install(official, { source: 'official' });
+  const backups = createBackups({ store: k.store, ws: k.ws, registry: k.registry, plugins: k.host, app: 'test', label: 'iPhone' });
+  const a = await addTarget(k.ws, { type: 'acme-vault-kind' });
+  const b = await addTarget(k.ws, { type: 'acme-own-kind' });
+  assert.deepEqual((await backups.list()).map((p) => p.name), ['Acme Vault', '自分の金庫']);
+  await setTargetSecret(k.store, a, { password: 'hunter2-hunter2' });
+  assert.ok((await keyNames(k.host)).includes('Acme Vault'), 'the warning names the place by its kind');
+  assert.ok(b);
+});
+
 
 test("an installed official plugin is named from its own translation on the device, with no request: pluginName", async () => {
   const { pluginName } = await import('../../src/core/llm/official.js');
