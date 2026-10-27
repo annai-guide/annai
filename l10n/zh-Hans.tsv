@@ -279,21 +279,22 @@ r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Se
 1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	{0} = provider
 sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:116	
 izfolc	draft	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:136	
-b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:137	
-1e0qpon	draft	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:138	
-6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:139	{0} = name; {1} = ability; {2} = name
-11neb14	draft	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:140	{0} = name
-akhc81	draft	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:141	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	draft	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:142	{0} = name
-x31pwm	draft	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:143	
-il3b75	draft	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:144	
-1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:146	{0} = host
-10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:147	{0} = host
-16osh89	draft	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:148	{0} = ability
-1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:149	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:150	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:152	{0} = name
+13fumpt	draft	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:137	
+b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:138	
+1e0qpon	draft	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:139	
+6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:140	{0} = name; {1} = ability; {2} = name
+11neb14	draft	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:141	{0} = name
+akhc81	draft	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:142	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	draft	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:143	{0} = name
+x31pwm	draft	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:144	
+il3b75	draft	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:145	
+1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:147	{0} = host
+10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:148	{0} = host
+16osh89	draft	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:149	{0} = ability
+1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:150	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:152	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:153	{0} = name
 g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	价格是一个对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	在一个阶梯中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
 z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	在计划中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
@@ -317,11 +318,11 @@ uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.
 1i0eq06	draft	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
 10vxomx	draft	It was removed.	它已被删除。	src/core/llm/fallback.js:110	
 s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
-13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:135	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:145	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:196	Note: the role by its screen name (メイン / 主要).
+13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:130	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:153	
+1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 辅助).
+d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:203	
+1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
@@ -414,12 +415,12 @@ ido0tg	draft	The phone's push service says this subscription no longer exists.	�
 1eeb6fm	draft	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回了 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	draft	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中继发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	draft	The relay at {0} refused it ({1}).	{0} 的中继拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	draft	The key works.	密钥有效。	src/core/realtime/open.js:267	
-r6odk7	draft	annai can open a live session at this address from the browser.	annai 可以从浏览器在这个地址打开实时会话。	src/core/realtime/open.js:267	
-1gyqcn2	draft	It answered aloud: {0}.	它用声音回答了：{0}。	src/core/realtime/open.js:298	{0} = words
-ip7w4y#other	draft	It didn't answer aloud within # seconds.	没有在 # 秒内用声音回答。	src/core/realtime/open.js:298	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	draft	The session closed before it answered.	回答前会话就关闭了。	src/core/realtime/open.js:299	
-9sqs1k	draft	It answered, but not aloud in words.	它回答了，但没有用声音说出话来。	src/core/realtime/open.js:299	
+3hb2ch	draft	The key works.	密钥有效。	src/core/realtime/open.js:268	
+r6odk7	draft	annai can open a live session at this address from the browser.	annai 可以从浏览器在这个地址打开实时会话。	src/core/realtime/open.js:268	
+1gyqcn2	draft	It answered aloud: {0}.	它用声音回答了：{0}。	src/core/realtime/open.js:299	{0} = words
+ip7w4y#other	draft	It didn't answer aloud within # seconds.	没有在 # 秒内用声音回答。	src/core/realtime/open.js:299	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	draft	The session closed before it answered.	回答前会话就关闭了。	src/core/realtime/open.js:300	
+9sqs1k	draft	It answered, but not aloud in words.	它回答了，但没有用声音说出话来。	src/core/realtime/open.js:300	
 ntqu7n	draft	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自己的插件使用这个名称，所以来自别处的包不能使用它。请让作者改名。	src/core/registry.js:16	
 1euv2cd	draft	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的插件使用这个名称，但已安装的那个来自别处，所以 annai 不会使用它。请在设置 → 插件中删除它，然后再试一次。	src/core/registry.js:17	
 oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/registry.js:18	
@@ -2165,10 +2166,10 @@ edrwuk	draft	annai's storage is full	annai 的存储空间已满	src/ui/storage-
 dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	没有保存了一半的内容。要腾出空间，请删除不再需要的旅行（请先备份），或释放此设备上的空间。	src/ui/storage-full.js:14	
 1yr1lra	draft	Export a backup	导出备份	src/ui/storage-full.js:16	
 8a7h7a#other	draft	# tokens · {0}	# 个 token · {0}	src/ui/talk-panel.js:14	plural; # = n; {0} = formatCost(result.cost); English: "# token · {0}" (one), "# tokens · {0}" (other)
-q69pp5	draft	{0} didn't answer: {1}. No other model was asked.	{0}没有回答：{1}。没有询问其他模型。	src/ui/talk-panel.js:21	{0} = name; {1} = why
-1cam7ic	draft	Message	消息	src/ui/talk-panel.js:72	
-vy4apn	draft	Try this model	试用这个模型	src/ui/talk-panel.js:73	
-1k3coi2	draft	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和这个模型的简短对话：失败时不会有其他模型回答。每条回复都会显示 token 数和费用。除了记录，什么都不保留。	src/ui/talk-panel.js:75	
+q69pp5	draft	{0} didn't answer: {1}. No other model was asked.	{0}没有回答：{1}。没有询问其他模型。	src/ui/talk-panel.js:22	{0} = name; {1} = why
+1cam7ic	draft	Message	消息	src/ui/talk-panel.js:73	
+vy4apn	draft	Try this model	试用这个模型	src/ui/talk-panel.js:74	
+1k3coi2	draft	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和这个模型的简短对话：失败时不会有其他模型回答。每条回复都会显示 token 数和费用。除了记录，什么都不保留。	src/ui/talk-panel.js:76	
 1sva5r0	draft	The check took too long. Check the connection, and try again.	检查用时过长。请检查网络连接，然后重试。	src/ui/updates.js:122	
 14d6ut8	draft	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:140	
 16l98jx	draft	annai couldn't check for a new version of itself. Check the connection and try again.	annai 无法检查自身的新版本。请检查网络连接，然后重试。	src/ui/updates.js:141	

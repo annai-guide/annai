@@ -107,7 +107,7 @@ test('the first piece must come within the time limit, and then no gap may be lo
   await assert.rejects(speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 60, trace, fetch: slowFetch([{ at: 150 }]) }),
     (e) => e instanceof ProviderError && e.kind === 'timeout');
   const gap = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 60, trace, fetch: slowFetch([{ at: 0 }, { at: 200 }]) });
-  await assert.rejects(drain(/** @type {any} */ (gap.stream).chunks), (e) => e instanceof ProviderError && e.kind === 'timeout' && /stopped arriving/.test(e.message));
+  await assert.rejects(drain(/** @type {any} */ (gap.stream).chunks), (e) => e instanceof ProviderError && e.kind === 'timeout' && /stopped arriving/.test(e.message) && /stopped arriving/.test(String(e.shown)) && e.said?.code === 'stalled');
   const slow = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 60, trace,
     fetch: slowFetch([{ at: 0 }, { at: 30 }, { at: 60 }, { at: 90 }, { at: 120 }]) });
   assert.equal(await drain(/** @type {any} */ (slow.stream).chunks), 5 * PIECE);

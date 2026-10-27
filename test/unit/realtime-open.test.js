@@ -394,6 +394,11 @@ test("a protocol's ready that fails with a ProviderError says why: its kind and 
   const closed = (await events(store)).find((e) => e.type === 'live.session' && e.data.state === 'closed');
   assert.equal(closed?.data.kind, 'auth');
   assert.ok(!JSON.stringify(await events(store)).includes(KEY));
+  // What it was, and words the protocol gave, go with it (review 6): the card keeps its reason.
+  const said = openLive({ type: failing(new ProviderError('bad-request', 'gone', { said: { code: 'model-gone' } })), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
+  await assert.rejects(said.ready, (e) => e instanceof ProviderError && e.said?.code === 'model-gone' && e.shown === 'That model no longer exists.');
+  const words = openLive({ type: failing(Object.assign(new ProviderError('bad-request', 'no'), { shown: `Its own words, with ${KEY}.` })), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
+  await assert.rejects(words.ready, (e) => e instanceof ProviderError && e.shown === 'Its own words, with «key».');
   const broken = openLive({ type: failing(new TypeError("Cannot read properties of undefined (reading 'x')")), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
   await assert.rejects(broken.ready, (e) => e instanceof ProviderError && e.kind === 'plugin');
   assert.deepEqual(failed, ['live ready']);
