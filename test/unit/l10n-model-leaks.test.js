@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { setWords } from '../../src/core/l10n.js';
 import { liveKit, at, iso, LA } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
+import { agentKit, until } from './agent-kit.js';
+import { useClock } from './clock.js';
 
 // What reaches a model stays annai's English under Japanese screens (the L5f review's probes, made tests): the next plan reminder
 // in Koe's view, an opened notification in Shiori's catch-up, and why the microphone stopped while she listened.
@@ -35,4 +37,16 @@ test("a plan reminder opened from its notification: Shiori's catch-up quotes its
   assert.match(woke, /opened the reminder "In 15 min: Tea at the inn at 16:00\."/);
   assert.doesNotMatch(woke, KANA);
   again.dispose();
+});
+
+test('the microphone stops while speak listens: the card in Japanese, the tool result in English', async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { dictation: true, speechIn: ['dictation', 'm-hear'], micFails: 'NotAllowedError' } });
+  k.agent.send('Thanks');
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.dictation.fail('network');
+  await k.agent.idle();
+  const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
+  assert.doesNotMatch(String(speak?.data.content), KANA);
+  assert.ok(k.notices.some((/** @type {any} */ n) => KANA.test(n.title)), JSON.stringify(k.notices.map((/** @type {any} */ n) => n.title)));
 });
