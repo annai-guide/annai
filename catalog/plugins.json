@@ -29,7 +29,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.9.1",
+      "version": "0.10.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -37,7 +37,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19923,
+      "size": 20438,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -45,8 +45,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "5ca89e39454a427aea3fe63703f7cc27a6c3e441c1d16f12a6cfbb5b357429d9",
-        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b"
+        "annai-plugin.json": "c996ae9fc7276f071ae9369866e725707fbfa9a2eab650f71433e49960b38fcf",
+        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b",
+        "l10n/ja.json": "549e6b39331df19eca883923129a4295e19c3a46e7d556f59afbbb83b73f4efd",
+        "l10n/zh-Hans.json": "c6a14e04bf5429e1d74d7fc47cb0ac4c2bd742c4f1de11860cb71509e2e57905"
       }
     },
     {

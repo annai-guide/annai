@@ -5,6 +5,10 @@
       "name": "Anthropic Messages",
       "description": "Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。"
     },
+    "chat-completions": {
+      "name": "Chat Completions",
+      "description": "OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"

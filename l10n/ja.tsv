@@ -1,6 +1,8 @@
 key	state	en	text	where	note
 anthropic-messages:@name	draft	Anthropic Messages	Anthropic Messages	plugins-official/anthropic-messages/annai-plugin.json:3	
 anthropic-messages:@description	draft	Talks to Anthropic's Messages API and to endpoints that speak it.	Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。	plugins-official/anthropic-messages/annai-plugin.json:8	
+chat-completions:@name	draft	Chat Completions	Chat Completions	plugins-official/chat-completions/annai-plugin.json:3	
+chat-completions:@description	draft	Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.	OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。	plugins-official/chat-completions/annai-plugin.json:8	
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral のモデル。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	モデルは「モデルの一覧を取得」で追加します。	plugins-official/provider-mistral/annai-plugin.json:23	
