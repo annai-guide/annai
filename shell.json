@@ -1,5 +1,5 @@
 {
-  "build": "d21a82d2c7e5",
+  "build": "b5586b814378",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -219,7 +219,7 @@
     "/src/ui/photo-viewer.js": "b886168a8b88",
     "/src/ui/platform.js": "d92cd56df069",
     "/src/ui/privacy.js": "fbe514b232cf",
-    "/src/ui/plugin-cards.js": "c697e1272270",
+    "/src/ui/plugin-cards.js": "507679b4b182",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "35fae79af4f2",
     "/src/ui/plugin-updates.js": "2d92abf4c8df",
@@ -230,7 +230,7 @@
     "/src/ui/settings-form.js": "870a1569af2b",
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "b143023a3b9d",
-    "/src/ui/screens/backups.js": "96dcf72b2f7a",
+    "/src/ui/screens/backups.js": "c2ddfe97efb0",
     "/src/ui/screens/booking.js": "7d8929b16f75",
     "/src/ui/screens/drive.js": "848c6708316d",
     "/src/ui/screens/experimental.js": "e3849ae7faee",
