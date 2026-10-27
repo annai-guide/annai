@@ -171,7 +171,7 @@ export class PluginHost {
       files = await readZip(bytes, { maxTotal: this.maxPackageBytes });
     } catch (e) {
       const why = /** @type {any} */ (e)?.message ?? e;
-      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}` });
+      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}`, en: String(why) });
     }
     return this.install(files, opts);
   }
@@ -879,7 +879,7 @@ export class PluginHost {
         fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => tracedFetch(this.ws.store, SYS, { tool: `plugin:${id}` }, this.#services.fetch)(url, init),
       }),
       ui: Object.freeze({
-        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body, tone: c?.tone, actions: c?.actions, lang: shownIn }),
+        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body == null ? undefined : String(c.body), tone: c?.tone, actions: c?.actions, lang: shownIn }),
         toast: (/** @type {string} */ text) => need('notices').toast(String(text), { lang: shownIn }),
         // What a plugin adds to annai's screens (spec §16.4), checked first; it goes when the plugin stops.
         slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
