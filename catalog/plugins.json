@@ -425,7 +425,7 @@
     {
       "id": "provider-ollama",
       "name": "Ollama",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on Ollama, with their thinking switched off for quick decisions.",
       "category": "providers",
       "keywords": [],
@@ -435,7 +435,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4179,
+      "size": 6919,
       "requires": [
         {
           "id": "chat-completions",
@@ -444,8 +444,10 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "68d7913ac22c2d02686839b70e59dad4f1497fcebd9b64bd3cc6c5418f0a0e9d",
-        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
+        "annai-plugin.json": "e447076b9025c2694d581133fd84fc83791000a7a18b9c0dea11a098e6207814",
+        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb",
+        "l10n/ja.json": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
+        "l10n/zh-Hans.json": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825"
       }
     },
     {

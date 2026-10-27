@@ -59,6 +59,10 @@
       "name": "Mistral",
       "description": "Mistral のモデル。"
     },
+    "provider-ollama": {
+      "name": "Ollama",
+      "description": "Ollama のモデル。クイック判定では思考をオフにします。"
+    },
     "provider-scripted": {
       "name": "台本どおりのモデル（テスト用）",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
