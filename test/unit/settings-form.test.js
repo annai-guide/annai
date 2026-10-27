@@ -63,3 +63,9 @@ test("a choice with words: JSON Schema's oneOf of consts shows each one's title,
   assert.equal(formFields(schema)[0].kind, 'select');
   assert.deepEqual(readForm(schema, { depth: 'advanced' }).values, { depth: 'advanced' });
 });
+
+test('a oneOf that validates, not chooses (an entry without a const), stays the field its type gives', () => {
+  const schema = { type: 'object', properties: { url: { type: 'string', title: 'Address', oneOf: [{ pattern: '^https://' }, { const: '' }] } } };
+  assert.equal(formFields(schema)[0].kind, 'text');
+  assert.equal(formFields(schema)[0].options, undefined);
+});
