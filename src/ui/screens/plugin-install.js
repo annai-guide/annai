@@ -1,9 +1,9 @@
-import { h, crumb, t, tc, linkIn, messageOf as message } from '../dom.js';
+import { h, crumb, t, tc, linkIn, otherLang, messageOf as message } from '../dom.js';
 import { list, sentences } from '../format.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
-import { addsAnything } from '../../core/packages.js';
+import { addsAnything, wordsOf } from '../../core/packages.js';
 import { descOrigins } from '../../core/llm/provider-desc.js';
 import { officialPlugins } from '../../core/llm/official.js';
 import { checkRequires, installWith, checkPackageId } from '../../core/requires.js';
@@ -239,6 +239,10 @@ export async function renderPluginInstall(ctx) {
       h('p', {}, ...linkIn(sentences(t`There's nothing to install.`, again), h('a', { href: to, text: again }))));
   }
   const { pkg, from } = p;
+  // Its description and notes in the screens' language where it has them; its name as written, in every language (decision 10).
+  const words = wordsOf(pkg.manifest, (f) => pkg.files.get(f));
+  const shownIn = otherLang(words.lang);
+  const keyInfo = searchKeyInfo(words.manifest);
   const line = packageLine(pkg);
   const home = webAddress(pkg.homepage);
   const needs = await needsOf(ctx, pkg);
@@ -264,7 +268,7 @@ export async function renderPluginInstall(ctx) {
     h('h1', { class: 'title', text: t`Install ${pkg.name}?` }),
     h('p', { class: 'sub', text: line }),
     home ? h('p', {}, h('a', { href: home, target: '_blank', rel: 'noopener noreferrer', text: home })) : null,
-    pkg.description ? h('p', { text: pkg.description }) : null,
+    words.manifest.description ? h('p', { text: words.manifest.description, lang: shownIn }) : null,
     h('p', { class: 'sub', text: sourceLine(from) }),
     taken ? h('p', { class: 'error', role: 'alert', text: taken }) : null,
     h('section', { class: 'panel', 'aria-label': t`What it brings` },
@@ -281,7 +285,7 @@ export async function renderPluginInstall(ctx) {
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: t`It can't run anything: it is data that tells annai how to reach a model provider.` }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: t`A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.` }),
     // A search plugin's free-tier line is its own words (L7's); the link is annai's.
-    searchKeyInfo(pkg) ? h('p', { class: 'sub' }, `${searchKeyInfo(pkg)?.text ?? ''} `, searchKeyInfo(pkg)?.url ? h('a', { href: searchKeyInfo(pkg)?.url, target: '_blank', rel: 'noopener noreferrer', text: t`Get a key` }) : null) : null,
+    keyInfo ? h('p', { class: 'sub' }, h('span', { text: keyInfo.text, lang: shownIn }), ' ', keyInfo.url ? h('a', { href: keyInfo.url, target: '_blank', rel: 'noopener noreferrer', text: t`Get a key` }) : null) : null,
     pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,
     // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
     pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': t`New in this version` },

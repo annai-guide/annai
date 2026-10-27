@@ -185,3 +185,19 @@ test("a backup place's plugin refusing in the screens' words: the hold keeps its
   await assert.rejects(d.backups.backUp(id));
   assert.equal('shown' in /** @type {any} */ ((await d.backups.get(id))?.hold), false);
 });
+
+test("the catalog's words for the screens: none in English; an entry in their words, keywords added, or its English marked so", async () => {
+  const { catalogWords, shownEntry } = await import('../../src/core/llm/official.js');
+  /** @type {string[]} */
+  const asked = [];
+  const fetch = async (/** @type {string} */ url) => { asked.push(url); return new Response(JSON.stringify({ format: 1, plugins: { 'search-tavily': { description: 'AIエージェント向けのウェブ検索。', keywords: ['検索'] } } })); };
+  assert.equal(await catalogWords({ fetch }), null);
+  assert.deepEqual(asked, [], 'no download for English');
+  setWords('ja', {});
+  const words = await catalogWords({ fetch });
+  assert.deepEqual(asked, ['/catalog/l10n/ja.json']);
+  const entry = { id: 'search-tavily', name: 'Tavily Search', description: 'Web search made for AI agents.', keywords: ['Tavily'] };
+  assert.deepEqual(shownEntry(entry, words), { ...entry, description: 'AIエージェント向けのウェブ検索。', keywords: ['Tavily', '検索'], lang: 'ja' });
+  assert.equal(shownEntry({ ...entry, id: 'search-serper' }, words).lang, 'en');
+  assert.equal(await catalogWords({ fetch: async () => new Response('', { status: 404 }) }), null, "words that can't be had: English");
+});

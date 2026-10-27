@@ -1,4 +1,4 @@
-import { h, crumb, t, twoStep, linkIn, messageOf } from '../dom.js';
+import { h, crumb, t, twoStep, linkIn, otherLang, messageOf } from '../dom.js';
 import { list, sentences } from '../format.js';
 import { settingsForm, formFields } from '../settings-form.js';
 import { sourceLine, FULL_ACCESS, thingWords, ownerName, packageLine } from './plugin-install.js';
@@ -96,7 +96,7 @@ export async function renderPlugin(ctx, id) {
     h('h1', { class: 'title', text: r.name }),
     h('p', { class: 'sub', text: line }),
     home ? h('p', {}, h('a', { href: home, target: '_blank', rel: 'noopener noreferrer', text: home })) : null,
-    r.description ? h('p', { text: r.description }) : null,
+    r.description ? h('p', { text: r.description, lang: otherLang(r.lang) }) : null,
     h('p', { class: 'sub', text: `${stateOf(r)}${r.builtin ? '' : ` · ${sourceLine(r)}`}` }),
     !r.builtin && r.code ? h('p', { class: 'risk-note', text: FULL_ACCESS }) : null,
     told?.providers.length ? h('section', { class: 'panel', 'aria-label': t`Providers` }, h('h2', { class: 'section', text: t`Providers` }),
@@ -109,8 +109,8 @@ export async function renderPlugin(ctx, id) {
       h('ul', { class: 'brings' }, ...tools.map((name) => h('li', { text: name })))) : null,
     namesPart(ctx, id, rows),
     r.settings || reset || note ? h('section', { class: 'panel', 'aria-label': t`Settings` }, h('h2', { class: 'section', text: t`Settings` }),
-      r.settings ? await settingsForm(ctx, id, r.settings) : null, reset, note ? h('p', { class: 'sub', role: 'status', text: note }) : null) : null,
+      r.settings ? await settingsForm(ctx, id, r.settings, { lang: r.lang }) : null, reset, note ? h('p', { class: 'sub', role: 'status', text: note }) : null) : null,
     pages.length ? h('section', { class: 'panel', 'aria-label': t`Its pages` }, h('h2', { class: 'section', text: t`Its pages` }),
-      h('ul', { class: 'file-list' }, ...pages.map((e) => h('li', {}, h('a', { href: `#/plugin-page/${encodeURIComponent(id)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) }))))) : null,
+      h('ul', { class: 'file-list' }, ...pages.map((e) => h('li', {}, h('a', { href: `#/plugin-page/${encodeURIComponent(id)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title), lang: otherLang(r.lang) }))))) : null,
     r.builtin ? null : pluginActions(ctx, r, await updateFor(ctx, id)));
 }

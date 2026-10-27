@@ -1,4 +1,4 @@
-import { h, t, plural } from './dom.js';
+import { h, t, plural, otherLang } from './dom.js';
 import { num } from './format.js';
 
 /** @typedef {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement>, said: HTMLElement, show: HTMLElement, all: HTMLElement }} Stack */
@@ -130,14 +130,15 @@ let lone = 0;
   /**
    * Cards of one kind (the same title and tone) fold into one card, "Reminder (3)", that shows each when opened, with one
    * Dismiss all, and each can still be dismissed alone.
-   * @param {{ title: string, body?: string, en?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean }} n
-   *   en: English kept from before the screens spoke other languages, a line of its own marked so
+   * @param {{ title: string, body?: string, en?: string, tone?: 'info'|'ok'|'warn'|'risk', actions?: { label: string, run: () => void, primary?: boolean }[], toast?: boolean, lang?: string }} n
+   *   en: English kept from before the screens spoke other languages, a line of its own marked so; lang: the language of a plugin's
+   *   title and body, marked when it isn't the screens'
    * toast: said briefly, as a toast, with no card to dismiss
    * @returns {() => void} dismiss
    */
-  function card({ title, body, en, tone = 'info', actions = [], toast: brief }) {
+  function card({ title, body, en, tone = 'info', actions = [], toast: brief, lang }) {
     if (brief) {
-      toast(title);
+      toast(title, lang);
       return () => {};
     }
     // A card with anything to do but Dismiss (Try again, Open Trace, Install) is never folded away.
@@ -149,8 +150,8 @@ let lone = 0;
       el.classList.toggle('opened', Boolean(el.querySelector('.notice.open')));
     }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
-      h('strong', { text: title }),
-      body ? h('p', { text: body }) : null,
+      h('strong', { text: title, lang: otherLang(lang) }),
+      body ? h('p', { text: body, lang: otherLang(lang) }) : null,
       en ? h('p', { lang: 'en', text: en }) : null,
       body ? more : null,
       h('div', { class: 'acts' },
@@ -162,9 +163,9 @@ let lone = 0;
     fitters.get(node)?.();
     return dismiss;
   }
-  /** @param {string} text */
-  function toast(text) {
-    const shown = h('div', { class: 'toast', text });
+  /** @param {string} text @param {string} [lang] a plugin's words' language, marked when it isn't the screens' */
+  function toast(text, lang) {
+    const shown = h('div', { class: 'toast', text, lang: otherLang(lang) });
     toasts.append(shown);
     setTimeout(() => shown.remove(), 3500);
   }

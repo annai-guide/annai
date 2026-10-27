@@ -1,7 +1,7 @@
 import { sha256Hex } from '../hash.js';
 import { PluginError, NOT_OWN, TURN_ON, notOwnShown, turnOnShown } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
-import { t } from '../l10n.js';
+import { t, lang } from '../l10n.js';
 import { sentences } from '../intl.js';
 
 /**
@@ -31,6 +31,31 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
   const json = await res.json();
   return Array.isArray(json?.plugins) ? json.plugins : [];
+}
+
+/**
+ * The catalog's words for the screens (localization design, section 8): each official plugin's name, description, featured sentence and
+ * keywords, from catalog/l10n/<tag>.json; null in English, or when they can't be had. @param {FetchOptions} [opts]
+ * @returns {Promise<Record<string, { name?: string, description?: string, featured?: string, keywords?: string[] }> | null>}
+ */
+export async function catalogWords({ fetch: get = defaultFetch, base = '' } = {}) {
+  if (lang() === 'en') return null;
+  try {
+    const res = await get(`${base}/catalog/l10n/${lang()}.json`, { cache: 'no-cache' });
+    const json = res.ok ? await res.json() : null;
+    return json?.plugins && typeof json.plugins === 'object' ? json.plugins : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A catalog entry as the screens show it, keywords added; lang: its words' language. @template {{ id: string, keywords: string[] }} E
+ * @param {E} entry @param {Awaited<ReturnType<typeof catalogWords>>} words @returns {E & { lang: string }}
+ */
+export function shownEntry(entry, words) {
+  const w = words?.[entry.id];
+  return w ? { ...entry, ...w, keywords: [...new Set([...entry.keywords, ...(w.keywords ?? [])])], lang: lang() } : { ...entry, lang: 'en' };
 }
 
 /**

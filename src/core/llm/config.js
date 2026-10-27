@@ -92,10 +92,11 @@ const secretId = (/** @type {string} */ providerId) => `llm:${providerId}`;
 const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transcription: 'Transcription', voice: 'Voice', realtime: 'Live voice' });
 
 /**
- * An ability's name as a screen shows it: its description's, else its kind's, annai's own descriptive name in the screens' words
- * (decision 10), as the Add screen names them. @param {Pick<Ability, 'name' | 'named' | 'kind'>} a
+ * An ability's name as a screen shows it: its description's, in its plugin's words for the screens where they have it (shown: the
+ * description as the screens show it, PluginHost.shownOf), else its kind's, annai's own descriptive name in the screens' words
+ * (decision 10), as the Add screen names them. @param {Pick<Ability, 'id' | 'name' | 'named' | 'kind'>} a @param {{ shown?: any }} [o]
  */
-export const abilityName = (a) => (a.named ? a.name : kindWords(a.kind) ?? a.name);
+export const abilityName = (a, { shown } = {}) => (a.named ? shown?.abilities?.[a.id]?.name ?? a.name : kindWords(a.kind) ?? a.name);
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},

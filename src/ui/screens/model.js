@@ -99,7 +99,7 @@ export async function renderModel(ctx, id) {
   const ep = endpointOf(pRec, rec.ability, ctx.llm.types().get(ability.type)?.tunables);
   const back = `#/models/provider?id=${encodeURIComponent(rec.provider)}`;
   // Its provider and ability, as the provider's page names them.
-  const named = abilityName(ability);
+  const named = abilityName(ability, { shown: ctx.plugins.shownOf(pRec.plugin)?.provider });
   const of = h('p', { class: 'sub', text: ability.on ? `${ep.name} · ${named}` : t`${ep.name} · ${named} (switched off)` });
   const speech = ability.kind === 'transcription' ? 'in' : ability.kind === 'voice' ? 'out' : ability.kind === 'realtime' ? 'live' : null;
   if (speech) return renderSpeechModel(ctx, rec, speech, ep, back, of);
