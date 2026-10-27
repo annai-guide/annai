@@ -274,7 +274,7 @@
     {
       "id": "provider-groq",
       "name": "Groq",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Fast open models, and fast Whisper transcription.",
       "category": "providers",
       "keywords": [],
@@ -285,7 +285,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1607,
+      "size": 2383,
       "requires": [
         {
           "id": "chat-completions",
@@ -298,7 +298,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "2bbac45f89c61ad0faa40c9422dd54e457398cd6359143347312b4d8de258aa3"
+        "annai-plugin.json": "27659613c07538d9bd78a5e2538f1945a49496adf0565fe39ee6b41a6bc5a5f9",
+        "l10n/ja.json": "971743244bdf7d3855a8504df4f841a039c245a7964b28fb1771f1afaa8d62fc",
+        "l10n/zh-Hans.json": "2df41f6c26b6b9045204a55871a814a2cb806b05336db9e20ee587bd4eff3b31"
       }
     },
     {

@@ -14,6 +14,10 @@ provider-anthropic:@description	draft	Claude models through Anthropic's Messages
 provider-deepseek:@name	draft	DeepSeek	DeepSeek	plugins-official/provider-deepseek/annai-plugin.json:3	
 provider-deepseek:@description	draft	DeepSeek's models, with their reasoning shown as they think.	DeepSeek 的模型，思考时会显示推理过程。	plugins-official/provider-deepseek/annai-plugin.json:7	
 provider-deepseek:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-deepseek/annai-plugin.json:26	
+provider-groq:@name	draft	Groq	Groq	plugins-official/provider-groq/annai-plugin.json:3	
+provider-groq:@description	draft	Fast open models, and fast Whisper transcription.	快速的开放模型，以及快速的 Whisper 语音转文字。	plugins-official/provider-groq/annai-plugin.json:7	
+provider-groq:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-groq/annai-plugin.json:27	
+provider-groq:@provider.abilities.transcription.note	draft	Fast Whisper. Groq bills each request as at least 10 seconds.	快速的 Whisper。Groq 对每次请求至少按 10 秒计费。	plugins-official/provider-groq/annai-plugin.json:32	
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	

@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "高速なオープンモデルと、高速な Whisper の文字起こし。",
+    "name": "Groq",
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。",
+    "provider.abilities.transcription.note": "高速な Whisper。Groq はリクエストごとに最低10秒分を請求します。"
+  },
+  "messages": {}
+}

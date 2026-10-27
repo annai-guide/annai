@@ -29,6 +29,10 @@
       "name": "DeepSeek",
       "description": "DeepSeek 的模型，思考时会显示推理过程。"
     },
+    "provider-groq": {
+      "name": "Groq",
+      "description": "快速的开放模型，以及快速的 Whisper 语音转文字。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"
