@@ -5,6 +5,11 @@ on:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    # The image the e2e runs in locally: its browsers and their system packages come with it, so no apt mirror is in the way
+    # (one stalled for an hour on 2026-10-27), and CI's browsers are the local runs' own.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -17,7 +22,7 @@ jobs:
       - run: npm run size
       - run: node scripts/stamp.mjs --check
       - run: node scripts/catalog.mjs --check
-      - run: npx playwright install --with-deps chromium webkit
+      - run: node scripts/strings.mjs --check
       - run: npx playwright test
         env:
           CI: '1'
