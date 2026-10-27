@@ -1,7 +1,7 @@
 {
   "id": "storage-forgejo",
   "name": "Forgejo / Gitea",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "api": 2,
   "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",

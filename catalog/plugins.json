@@ -54,7 +54,7 @@
     {
       "id": "gemini-api",
       "name": "Gemini API",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
       "category": "developer",
       "keywords": [],
@@ -72,7 +72,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "6af5e09054aecd448073d966a5b3c5d1ceced3cd37e12bc0bf83d57fececaed5",
+        "annai-plugin.json": "fbbc55badef496ef12e0bc0c51541a58e4fc94eaad7696acbe72b07b15476e98",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
@@ -162,7 +162,7 @@
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -186,7 +186,7 @@
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "74170dd3c1af2348638602d52e48e22347a4a86422c610239fb10c05a4e24f3d",
+        "annai-plugin.json": "542c2f7fc702766109df7128dc1b3b917e25a1752c367ed0317145bef917383c",
         "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
         "l10n/ja.json": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
         "l10n/zh-Hans.json": "41efd6d62eb08676ec4ddbc45020bddeaa0aafe561de265aecd009773d9560a0",
@@ -493,7 +493,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.3.0",
+      "version": "2.3.1",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -519,7 +519,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "44542cd65d9056467ba736b64d48c1429d30aff3eadb15464a95777fd83c0233",
+        "annai-plugin.json": "5ab033c6104922996a966b95ee661fed244f88f8ff0846883738ae6624c7089b",
         "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
         "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
         "l10n/zh-Hans.json": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7"
@@ -610,7 +610,7 @@
     {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
       "category": "developer",
       "keywords": [],
@@ -622,7 +622,7 @@
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "038af7fd0debf77f4c3b2a5f32756cc852a98f39d63fcc9c4ffac9fe1fd45998",
+        "annai-plugin.json": "d3e02eeb3a91c53768bab46f06e784b5c12ed1ffe92aa6f4d203b4540bf6c5a2",
         "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
         "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
         "l10n/zh-Hans.json": "2f4d8f6cfbe005329a034ac011752b06a7fe22538a6c0eba646aa87f2bf78308"
@@ -656,7 +656,7 @@
     {
       "id": "search-searxng",
       "name": "SearXNG Search",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.",
       "category": "tools",
       "keywords": [
@@ -675,7 +675,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "555d60bf907e3d6c22593cd36336215e671dc6807fc517d5601a9f9d7633e709",
+        "annai-plugin.json": "648534ab0f746cebbf9bcb7e7e68b09d3923d46eebdde1115b46370c8c13745f",
         "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
         "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
         "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2"
@@ -684,7 +684,7 @@
     {
       "id": "search-serper",
       "name": "Serper Search",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
       "category": "tools",
       "keywords": [
@@ -703,7 +703,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "e69d59c3ec6035a43f2d3d35ba1042829c2a0f1efd5a25c78b4f7a39f110799e",
+        "annai-plugin.json": "67a08454ac86c582c9fc3490cb554ae1d25099e73529783e5684b8f06ba93b30",
         "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
         "l10n/ja.json": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
         "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a"
@@ -712,7 +712,7 @@
     {
       "id": "search-tavily",
       "name": "Tavily Search",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.",
       "category": "tools",
       "keywords": [
@@ -730,7 +730,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "be3c2e3888657bd158279cf6c384c658cf1235e7885b312e59c402f1397e2881",
+        "annai-plugin.json": "96d27bc60bc0c8a4d59a11ef07eace61d0156205fa4e86b3dea93697a54dafcc",
         "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
         "l10n/ja.json": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
         "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08"
@@ -765,7 +765,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -781,7 +781,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "6ddf878c7a823e1e93c5a497c2f6689a9c045524fee9b274ad079c952b03b93c",
+        "annai-plugin.json": "95625bd71cc796bfd15277223a3a37a691ec4156dfec0a352b6822ac4e14769e",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
         "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541",
         "l10n/ja.json": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
@@ -791,7 +791,7 @@
     {
       "id": "storage-github",
       "name": "GitHub",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -807,7 +807,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "7194a41ed4c0d3ee79f8011dfe9d8159bcfc486e142e012871a171301af871a6",
+        "annai-plugin.json": "6129ac32ec40bba71856dfa75fa80d7fbf77a3eee31180304611480c80d48251",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
         "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190",
         "l10n/ja.json": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
@@ -817,7 +817,7 @@
     {
       "id": "storage-s3",
       "name": "S3-compatible storage",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Backs up everything to a bucket on AWS S3, Cloudflare R2, Backblaze B2 or any S3-compatible storage, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -833,7 +833,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "486e239ef7d448b25691ab3b17d3b9e56f3e1fbf4690857fce10642ea3519566",
+        "annai-plugin.json": "562b055c1ae027e1cb4a7e399f5503b17e6cc75807e607c68181e272953fe2ea",
         "index.js": "84570a4a5184db62e47f67e4b8ef4642b363742546cfbc244dd95b596922c76e",
         "l10n/ja.json": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
         "l10n/zh-Hans.json": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
@@ -843,7 +843,7 @@
     {
       "id": "storage-webdav",
       "name": "WebDAV",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.",
       "category": "backup",
       "keywords": [],
@@ -859,7 +859,7 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "13dfc4c9bdf5923f6cd5d0ec6c92bdee55daf8139387036ca04657f25f312ba2",
+        "annai-plugin.json": "c37142ac68f7de4351c96d8bddc4638d22ccfc0156e0611999b8acdeff30a4d1",
         "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
         "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
         "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
