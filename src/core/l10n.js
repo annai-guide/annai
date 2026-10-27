@@ -101,14 +101,6 @@ export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /**
 export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => (speaks ? t(strings, ...values) : english(strings, values));
 
 /**
- * An Error whose words are annai's own developer English (decision 11): a screen shows them marked lang="en" (dom.js englishOf).
- * en: true when all its words are English, or the part of its shown words that is.
- */
-export class EnglishError extends Error {
-  /** @type {boolean | string} */ en = true;
-}
-
-/**
  * plural(n, '# stamp', '# stamps'): `#` is n, formatted for the language; {0}… are the other values. The words give a text per
  * plural category of the language (Japanese one, English two, Arabic six).
  * @param {number} n @param {string} one @param {string} other @param {...unknown} values

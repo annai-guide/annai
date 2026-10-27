@@ -13,19 +13,31 @@ class El extends Node {
     this.tag = tag;
     /** @type {Record<string, string>} */ this.attrs = {};
     /** @type {any[]} */ this.children = [];
+    /** @type {El | null} */ this.parent = null;
     this.dataset = {};
     this.offsetHeight = 0;
     this.classList = { add() {}, remove() {}, toggle() {}, contains: () => false };
   }
   querySelector() { return null; }
-  querySelectorAll() { return []; }
+  /** @param {string} sel tags, "a, b" @returns {any[]} */
+  querySelectorAll(sel) {
+    const tags = sel.split(',').map((x) => x.trim());
+    return this.children.flatMap((c) => (c instanceof El ? [...(tags.includes(c.tag) ? [c] : []), ...c.querySelectorAll(sel)] : []));
+  }
+  cloneNode() {
+    const c = new El(this.tag);
+    c.attrs = { ...this.attrs };
+    c.children = this.children.map((k) => (k instanceof El ? k.cloneNode() : { ...k }));
+    return c;
+  }
   getBoundingClientRect() { return { height: 0 }; }
   remove() {}
-  replaceWith() {}
+  /** @param {any} other */
+  replaceWith(other) { const parent = this.parent; const at = parent?.children.indexOf(this) ?? -1; if (parent && at >= 0) { other.parent = parent; parent.children[at] = other; } }
   /** @param {string} k @param {string} v */
   setAttribute(k, v) { this.attrs[k] = v; }
   /** @param {...any} cs */
-  append(...cs) { this.children.push(...cs); }
+  append(...cs) { for (const c of cs) c.parent = this; this.children.push(...cs); }
   /** @param {...any} cs */
   replaceChildren(...cs) { this.children = []; for (const c of cs) this.children.push(typeof c === 'string' ? { text: c } : c); }
   set textContent(v) { this.children = [{ text: v }]; }
@@ -35,8 +47,8 @@ class El extends Node {
 Object.assign(globalThis, { Node, addEventListener() {}, scrollY: 0, scrollTo() {}, document: { createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
 
 const { PluginError } = await import('../../src/core/registry.js');
-const { EnglishError } = await import('../../src/core/l10n.js');
-const { englishOf, englishIn, showError } = await import('../../src/ui/dom.js');
+const { EnglishError } = await import('../../src/core/errors.js');
+const { englishOf, englishIn, showError, messageOf } = await import('../../src/ui/dom.js');
 const { createNotices } = await import('../../src/ui/notices.js');
 const { startCards } = await import('../../src/ui/plugin-cards.js');
 const { inspectPackage } = await import('../../src/core/packages.js');
@@ -114,4 +126,55 @@ test('the notice card marks an error\'s English where the body holds it, and a b
   const [, body] = first.children;
   assert.deepEqual(parts(body), [['Not installed: ', null], ['its entry file x.js is missing', 'en'], ['. Try again.', null]]);
   assert.deepEqual(parts(second.children[1]), [['The server said no', null]]);
+});
+
+test('englishIn: the same English twice is each marked where it stands, never added after; one inside another\'s is left out, not doubled', () => {
+  const x = new EnglishError('its entry file x.js is missing');
+  assert.deepEqual(parts({ children: englishIn('P1: its entry file x.js is missing. P2: its entry file x.js is missing.', x, x) }),
+    [['P1: ', null], ['its entry file x.js is missing', 'en'], ['. P2: ', null], ['its entry file x.js is missing', 'en'], ['.', null]]);
+  // The text holds it once: the second has no place, so it is not put anywhere.
+  assert.deepEqual(parts({ children: englishIn('P1: its entry file x.js is missing.', x, x) }), [['P1: ', null], ['its entry file x.js is missing', 'en'], ['.', null]]);
+  // One error's English inside another's: the first takes its place, the second finds none after it.
+  const inner = new EnglishError('is missing');
+  assert.deepEqual(parts({ children: englishIn('P1: its entry file x.js is missing.', x, inner) }), [['P1: ', null], ['its entry file x.js is missing', 'en'], ['.', null]]);
+  const text = 'P1: its entry file x.js is missing. P2: is missing.';
+  assert.deepEqual(parts({ children: englishIn(text, x, inner) }).map(([w]) => w).join(''), text);
+  assert.equal(parts({ children: englishIn(text, x, inner) }).filter(([, lang]) => lang).length, 2);
+});
+
+test('guard: a plugin\'s error is wrapped with only annai\'s frame in English; annai\'s own words keep their screens\' words beside it', async () => {
+  const { Registry } = await import('../../src/core/registry.js');
+  const reg = new Registry();
+  const own = await reg.guard('p', 'starting', () => { throw new Error('their words'); })().catch((e) => e);
+  assert.equal(own.en, 'starting failed');
+  assert.equal(englishOf(own), 'starting failed');
+  assert.equal(own.shown, undefined);
+  const late = await reg.guard('p', 'starting', () => { throw Object.assign(new Error("it didn't finish starting within 10 seconds"), { shown: '10 秒以内に始まりませんでした' }); })().catch((e) => e);
+  assert.equal(late.shown, 'starting failed: 10 秒以内に始まりませんでした');
+  assert.equal(englishOf(late), 'starting failed');
+  assert.equal(messageOf(late), 'starting failed: 10 秒以内に始まりませんでした');
+  const ours = await reg.guard('p', 'starting', () => { throw new PluginError('p', 'its module has no activate() function'); })().catch((e) => e);
+  assert.equal(ours.en, true);
+});
+
+test('a plugin\'s card body that is not a string is shown as text, not thrown at the plugin', async () => {
+  const { hostKit, codePlugin } = await import('./package-kit.js');
+  const k = await hostKit();
+  /** @type {any[]} */
+  const seen = [];
+  k.host.connect({ notices: { card: (/** @type {any} */ c) => seen.push(c), toast() {} } });
+  await k.host.install(codePlugin('numbers', "annai.ui.card({ title: 'Count', body: 42 }); annai.ui.card({ title: 'None' });"));
+  await k.host.start('numbers');
+  assert.deepEqual(seen.map((c) => c.body), ['42', undefined]);
+});
+
+test('cards folded into a stack are announced from their title and words, copied with their lang, not as flat text with the buttons', () => {
+  const notices = createNotices();
+  const error = new PluginError('hello', 'its entry file x.js is missing');
+  notices.card({ title: 'Hello wasn\'t installed', body: 'Not installed: its entry file x.js is missing.', errors: [error] });
+  notices.card({ title: 'Hello wasn\'t installed', body: 'Not installed: its entry file x.js is missing.', errors: [error] });
+  const stack = notices.el.children[0];
+  const said = stack.children.find((/** @type {any} */ c) => c.className === 'visually-hidden');
+  assert.deepEqual(parts(said.children[1]), [['Not installed: ', null], ['its entry file x.js is missing', 'en'], ['.', null]]);
+  assert.ok(said.children.every((/** @type {any} */ c) => ['strong', 'p'].includes(c.tag)), 'no buttons');
 });

@@ -82,6 +82,8 @@ let lone = 0;
     st.show.setAttribute('aria-label', st.list.hidden ? plural(n, 'Show the # card: {0}', 'Show the # cards: {0}', title) : plural(n, 'Hide the # card: {0}', 'Hide the # cards: {0}', title));
     st.all.setAttribute('aria-label', plural(n, 'Dismiss the # card: {0}', 'Dismiss all # cards: {0}', title));
   };
+  /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
+  const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
   /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
   function place(kind, title, node) {
     const stack = stacks.get(kind);
@@ -90,7 +92,7 @@ let lone = 0;
       stack.members.add(node);
       stack.list.append(node);
       recount(stack);
-      stack.said.textContent = node.textContent;
+      announce(stack, node);
     } else if (lone) {
       const made = makeStack(kind, title);
       stacks.set(kind, made);
@@ -101,7 +103,7 @@ let lone = 0;
         made.list.append(m);
       }
       recount(made);
-      made.said.textContent = node.textContent;
+      announce(made, node);
     } else {
       singles.set(kind, node);
       el.append(node);

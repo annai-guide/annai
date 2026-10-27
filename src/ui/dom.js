@@ -206,7 +206,19 @@ export function englishOf(e) {
  * text (made of messageOf(e) for each error) as parts, with each error's English in a span marked lang="en", where its words stand.
  * @param {string} text @param {...unknown} errors @returns {(string | HTMLElement)[]}
  */
-export const englishIn = (text, ...errors) => linkIn(text, ...errors.map(englishOf).filter(Boolean).map((en) => h('span', { lang: 'en', text: en })));
+export function englishIn(text, ...errors) {
+  /** @type {(string | HTMLElement)[]} */
+  const parts = [];
+  let from = 0;
+  // Each in the errors' order, after the last; one the text doesn't hold is left out, never put after it.
+  for (const en of errors.map(englishOf).filter(Boolean)) {
+    const i = text.indexOf(en, from);
+    if (i < 0) continue;
+    parts.push(text.slice(from, i), h('span', { lang: 'en', text: en }));
+    from = i + en.length;
+  }
+  return [...parts, text.slice(from)];
+}
 
 /** Shows what went wrong (messageOf) in el, a developer's English marked lang="en". The next words shown there replace it. @param {HTMLElement} el @param {unknown} e */
 export const showError = (el, e) => el.replaceChildren(...englishIn(messageOf(e), e));
