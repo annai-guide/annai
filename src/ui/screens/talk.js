@@ -139,7 +139,8 @@ export function errorWords(d) {
   if (d.kind === 'budget' && (d.which === 'steps' ? typeof d.steps === 'number' : typeof d.perDay === 'number')) return budgetWords(d).body;
   if (d.kind === 'silent') return t`Her model finished without saying anything to you.`;
   if (d.kind === 'stuck') return t`Three identical tool calls in a row with identical results.`;
-  if (d.kind === 'trigger' && d.type && d.watch) return t`The ${String(d.type)} watch ${String(d.watch)} can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
+  // A watch is named by its reminder, as the user knows it, never by its id or its trigger's code.
+  if (d.kind === 'trigger' && typeof d.reminder === 'string') return t`The watch for "${d.reminder.replace(/[.!?。！？]+$/u, '')}" can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
   return null;
 }
 

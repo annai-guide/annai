@@ -139,3 +139,9 @@ test("an error a model may read keeps annai's English in message; the screens sh
   assert.match(whyWords(why), /^この端末の annai の保存領域がいっぱいです/);
   assert.equal(whyWords(why, true), new StorageFullError().message);
 });
+
+test("a watch that can't be checked is named by its reminder in the Conversation, never by its id or its trigger's code", () => {
+  const line = errorWords({ kind: 'trigger', type: 'place', watch: 'w-abc', reminder: 'Tea at the inn.', why: 'its place is not a place', message: 'x' });
+  assert.match(String(line), /Tea at the inn/);
+  assert.doesNotMatch(String(line), /w-abc|place の/);
+});
