@@ -84,7 +84,7 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   const items = [{ path: '/plan/tea.json', item: { title: 'Tea at the inn', start: { at: new Date(at).toISOString(), tz: 'America/Los_Angeles' }, fixed: true } }];
   const [w] = planWatches(items, new Map(), { fallbackTz: 'UTC' });
   assert.equal(w.fallback, 'In 15 min: Tea at the inn at 12:00.');
-  assert.equal(planWords(/** @type {any} */ (w.say)), '15分後：Tea at the inn（12:00）。');
+  assert.equal(planWords(/** @type {any} */ (w.say)), 'あと15分：Tea at the inn（12:00）。');
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
   assert.equal(planWords(late), '遅れています：Lunch（12:00）。あと約36分の距離です。');
@@ -93,7 +93,7 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   const mine = () => ({});
   const make = (/** @type {string} */ _tag, /** @type {any} */ a) => `${a.lang ?? ''}|${a.text}`;
   const shown = reminderParts({ watch: 'plan:tea:coming-up', text: w.fallback, plan: w.say }, mine, make);
-  assert.deepEqual(shown, ['リマインダー：', '|15分後：Tea at the inn（12:00）。', '']);
+  assert.deepEqual(shown, ['リマインダー：', '|あと15分：Tea at the inn（12:00）。', '']);
   assert.deepEqual(reminderParts({ watch: 'plan:tea:coming-up', text: w.fallback }, mine, make), ['リマインダー：', 'en|In 15 min: Tea at the inn at 12:00.', '']);
   // Her answer annai shows for her is called so from its data, as an older entry's title called it.
   assert.equal(reminderParts({ watch: '', text: 'Tea.', answer: true }, mine, make)[0], 'Shiori の答え：');

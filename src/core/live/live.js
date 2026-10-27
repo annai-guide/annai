@@ -37,7 +37,7 @@ import { t } from '../l10n.js';
  * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number, what?: string }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
  *   text: the user's words (a plan's in the screens' language, made from its data; Shiori's as she wrote them); start and what: a
- *   "coming up" item's, for the minutes left, and the item in the screens' words without them
+ *   "coming up" item's, for the minutes left and the item in the screens' words, which the service worker words (sw.js)
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */

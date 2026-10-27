@@ -1,4 +1,5 @@
 import { startAutoBackup, TIMINGS } from '../core/backup-auto.js';
+import { holdWords } from '../core/backup.js';
 import { connectionOf } from './platform.js';
 import { setPendingImport } from './import-state.js';
 import { t } from './dom.js';
@@ -94,7 +95,7 @@ function holdCard(ctx, target) {
   } else if (h?.kind === 'error') {
     const where = whereOf(ctx, target);
     ctx.notices.card({ tone: 'warn', title: where === target.name ? t`Backups to ${target.name} stopped` : t`Backups to ${target.name} (${where}) stopped`,
-      body: sentences(h.message, t`Open Backups to fix it.`), actions: [open] });
+      body: sentences(holdWords(h), t`Open Backups to fix it.`), actions: [open] });
   }
 }
 
