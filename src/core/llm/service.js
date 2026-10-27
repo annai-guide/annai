@@ -1,5 +1,5 @@
 import { SYS } from '../scopes.js';
-import { readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
+import { abilityName, readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
 import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
@@ -433,9 +433,9 @@ export function createLlm({
         if (!Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === a.id && named.has(modelOf(m).providerId))) continue;
         try {
           await service.setAbility(providerId, a.id, true);
-          out.on.push(a.name);
+          out.on.push(abilityName(a));
         } catch (error) {
-          out.failed.push({ name: a.name, error });
+          out.failed.push({ name: abilityName(a), error });
         }
       }
       await useSuggestion({ ws }, providerId, src, which);

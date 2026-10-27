@@ -1,5 +1,5 @@
 import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural } from '../dom.js';
-import { providerOf, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
+import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
 import { officialPlugins } from '../../core/llm/official.js';
@@ -325,13 +325,14 @@ async function abilityPanel(view, abilityId, added) {
   const body = h('div', {});
   // replaceChildren, unlike h, would show a null as the word.
   const draw = async () => body.replaceChildren(...(await abilityBody(view, abilityId)).filter((n) => n !== null));
-  const use = savedCheck(t`Use ${a.name}`, a.on, async (on) => {
+  const shownName = abilityName(a);
+  const use = savedCheck(t`Use ${shownName}`, a.on, async (on) => {
     await ctx.llm.setAbility(id, abilityId, on);
     await draw();
   });
   await draw();
-  return h('section', { class: 'panel', 'aria-label': a.name, onredraw: draw },
-    h('h2', { class: 'section', text: a.name }),
+  return h('section', { class: 'panel', 'aria-label': shownName, onredraw: draw },
+    h('h2', { class: 'section', text: shownName }),
     h('p', { class: 'sub', text: [view.protocolName(a.type), added && !a.on ? t`New in the last update` : null].filter(Boolean).join(' · ') }),
     use.el,
     body);

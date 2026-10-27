@@ -139,3 +139,12 @@ test("a hold whose said this annai doesn't know is shown as an old hold, never a
   assert.equal(oldHold(later), true);
   assert.equal(holdWords(/** @type {any} */ (later)), 'Something a later annai said.');
 });
+
+test("review 2: an ability its description doesn't name keeps the kind's English for models and the log; the screens name the kind", async () => {
+  const { providerOf, abilityName } = await import('../../src/core/llm/config.js');
+  const rec = /** @type {any} */ ({ id: 'p1', plugin: 'provider-x', template: { values: { name: 'X', abilities: { chat: { kind: 'chat', type: 'openai-chat' }, talk: { kind: 'chat', type: 'openai-chat', name: 'Talk' } } } }, user: {} });
+  const { chat, talk } = providerOf(rec).abilities;
+  assert.equal(chat.name, 'Chat', "what a model and the log read: annai's English");
+  assert.equal(abilityName(chat), 'チャット');
+  assert.equal(abilityName(talk), 'Talk', "a description's own name, as written");
+});

@@ -1,5 +1,5 @@
 import { h, crumb, savedField, savedCheck, autosave, twoStep, jsonField, numberIn, t } from '../dom.js';
-import { modelOf, modelBase, providerOf, endpointOf, updateModel, removeModel, diffLayer } from '../../core/llm/config.js';
+import { modelOf, abilityName, modelBase, providerOf, endpointOf, updateModel, removeModel, diffLayer } from '../../core/llm/config.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { tryPanel } from '../talk-panel.js';
@@ -99,7 +99,8 @@ export async function renderModel(ctx, id) {
   const ep = endpointOf(pRec, rec.ability, ctx.llm.types().get(ability.type)?.tunables);
   const back = `#/models/provider?id=${encodeURIComponent(rec.provider)}`;
   // Its provider and ability, as the provider's page names them.
-  const of = h('p', { class: 'sub', text: ability.on ? `${ep.name} · ${ability.name}` : t`${ep.name} · ${ability.name} (switched off)` });
+  const named = abilityName(ability);
+  const of = h('p', { class: 'sub', text: ability.on ? `${ep.name} · ${named}` : t`${ep.name} · ${named} (switched off)` });
   const speech = ability.kind === 'transcription' ? 'in' : ability.kind === 'voice' ? 'out' : ability.kind === 'realtime' ? 'live' : null;
   if (speech) return renderSpeechModel(ctx, rec, speech, ep, back, of);
   const save = fieldSaver(ctx, id);

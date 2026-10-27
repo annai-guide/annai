@@ -250,14 +250,14 @@ mlh3jc	draft	Main	主要	src/core/llm/check.js:134
 1q9bibx	draft	It also answers at {0}'s level ({1}).	在{0}的级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	在{0}的级别（{1}）下，这个模型拒绝了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
 1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低{0}的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
-17ifucf	draft	Transcription	语音转文字	src/core/llm/config.js:92	
-9kdcjv	draft	Chat	聊天	src/core/llm/config.js:92	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	draft	Voice	声音	src/core/llm/config.js:92	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	draft	Live voice	实时语音	src/core/llm/config.js:92	
-1nuav0n	draft	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:376	
-1qjc2dh	draft	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:378	{0} = rec.ability
-4iiule	draft	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:381	
-3i9i3z	draft	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:385	{0} = name
+17ifucf	draft	Transcription	语音转文字	src/core/llm/config.js:97	
+9kdcjv	draft	Chat	聊天	src/core/llm/config.js:97	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	draft	Voice	声音	src/core/llm/config.js:97	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	draft	Live voice	实时语音	src/core/llm/config.js:97	
+1nuav0n	draft	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:380	
+1qjc2dh	draft	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:382	{0} = rec.ability
+4iiule	draft	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:385	
+3i9i3z	draft	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:389	{0} = name
 1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:97	
 1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:98	
 99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:99	
@@ -1254,35 +1254,35 @@ j4kt4t	draft	{0} wasn't removed	{0}未能移除	src/ui/screens/mcp.js:100	{0} = 
 3kaxmm	draft	Provider model id	提供商的模型 ID	src/ui/screens/model.js:78	
 h1nzmw	draft	This model no longer exists	该模型已不存在	src/ui/screens/model.js:94	
 u1a0kf	draft	Back to Models	返回模型	src/ui/screens/model.js:94	
-emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（已关闭）	src/ui/screens/model.js:102	{0} = ep.name; {1} = ability.name
-1xvdzwo	draft	Takes photos	接受照片	src/ui/screens/model.js:109	
-1r9uewq	draft	Takes PDFs	接受 PDF	src/ui/screens/model.js:110	
-1kimkqd	draft	Calls tools	调用工具	src/ui/screens/model.js:111	
-vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	缓存时长为 5m、1h，或两者都要。	src/ui/screens/model.js:117	
-107rbay	draft	Model	模型	src/ui/screens/model.js:125	
-iklo8r	draft	Each setting is saved as you change it.	每项设置都会在更改时保存。	src/ui/screens/model.js:126	
-5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	上下文窗口是整数个 token；不知道时请留空。	src/ui/screens/model.js:130	
-tdcgnl	draft	Context window (tokens)	上下文窗口（token）	src/ui/screens/model.js:130	
-13r1phn	draft	Maximum output (tokens)	最大输出（token）	src/ui/screens/model.js:131	
-k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大输出是整数个 token；不知道时请留空。	src/ui/screens/model.js:131	
-1kqdeet	draft	Prices, USD per million tokens (JSON)	价格，每百万 token 的美元（JSON）	src/ui/screens/model.js:132	
-pmkq6x	draft	Cache lifetimes (5m, 1h)	缓存时长（5m、1h）	src/ui/screens/model.js:133	
-1abbjex	draft	Empty: it is asked for five minutes.	留空：按五分钟请求。	src/ui/screens/model.js:134	
-i6hz4y	draft	Photo limits (JSON)	照片限制（JSON）	src/ui/screens/model.js:136	
-dnuqbz	draft	Reasoning levels (JSON)	推理级别（JSON）	src/ui/screens/model.js:137	
-181p6me	draft	Tunables (JSON)	可调参数（JSON）	src/ui/screens/model.js:138	
-12ylk5m	draft	Extra request fields (JSON)	额外请求字段（JSON）	src/ui/screens/model.js:139	
-1b0m2g4	draft	Remove model	移除模型	src/ui/screens/model.js:142	
-15qwlpp	draft	This voice can't take a style: it is kept, not sent.	这个声音不支持风格：会保存，但不发送。	src/ui/screens/model.js:168	
-a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	她该怎样说话，用几个词描述，比如平静、温暖、友好。	src/ui/screens/model.js:168	
-1gq0a8x	draft	A transcription model: it turns what you say into text.	语音转文字模型：把你说的话变成文字。	src/ui/screens/model.js:188	
-1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	实时语音：作为 Koe，在同一个流中边听边说。	src/ui/screens/model.js:188	
-1r9buge	draft	A voice: Shiori speaks with it.	声音：Shiori 用它说话。	src/ui/screens/model.js:188	
-15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	随每个请求发送。清空后使用模型的默认值（灰色）；如果什么都不想发送，请在额外请求字段中写 "voice": null。	src/ui/screens/model.js:194	
-nf3vcm	draft	Style	风格	src/ui/screens/model.js:195	
-18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	价格，每百万 token 的美元（JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:197	
-1wo5fes	draft	Prices, USD (JSON: perMillionChars)	价格，美元（JSON：perMillionChars）	src/ui/screens/model.js:197	
-heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	价格，美元（JSON：perMinute、minSeconds）	src/ui/screens/model.js:197	
+emgb9q	draft	{0} · {1} (switched off)	{0} · {1}（已关闭）	src/ui/screens/model.js:103	{0} = ep.name; {1} = named
+1xvdzwo	draft	Takes photos	接受照片	src/ui/screens/model.js:110	
+1r9uewq	draft	Takes PDFs	接受 PDF	src/ui/screens/model.js:111	
+1kimkqd	draft	Calls tools	调用工具	src/ui/screens/model.js:112	
+vfmqeo	draft	Cache lifetimes are 5m, 1h, or both.	缓存时长为 5m、1h，或两者都要。	src/ui/screens/model.js:118	
+107rbay	draft	Model	模型	src/ui/screens/model.js:126	
+iklo8r	draft	Each setting is saved as you change it.	每项设置都会在更改时保存。	src/ui/screens/model.js:127	
+5jwtx2	draft	The context window is a whole number of tokens; leave it empty when you don't know it.	上下文窗口是整数个 token；不知道时请留空。	src/ui/screens/model.js:131	
+tdcgnl	draft	Context window (tokens)	上下文窗口（token）	src/ui/screens/model.js:131	
+13r1phn	draft	Maximum output (tokens)	最大输出（token）	src/ui/screens/model.js:132	
+k3tavg	draft	The maximum output is a whole number of tokens; leave it empty when you don't know it.	最大输出是整数个 token；不知道时请留空。	src/ui/screens/model.js:132	
+1kqdeet	draft	Prices, USD per million tokens (JSON)	价格，每百万 token 的美元（JSON）	src/ui/screens/model.js:133	
+pmkq6x	draft	Cache lifetimes (5m, 1h)	缓存时长（5m、1h）	src/ui/screens/model.js:134	
+1abbjex	draft	Empty: it is asked for five minutes.	留空：按五分钟请求。	src/ui/screens/model.js:135	
+i6hz4y	draft	Photo limits (JSON)	照片限制（JSON）	src/ui/screens/model.js:137	
+dnuqbz	draft	Reasoning levels (JSON)	推理级别（JSON）	src/ui/screens/model.js:138	
+181p6me	draft	Tunables (JSON)	可调参数（JSON）	src/ui/screens/model.js:139	
+12ylk5m	draft	Extra request fields (JSON)	额外请求字段（JSON）	src/ui/screens/model.js:140	
+1b0m2g4	draft	Remove model	移除模型	src/ui/screens/model.js:143	
+15qwlpp	draft	This voice can't take a style: it is kept, not sent.	这个声音不支持风格：会保存，但不发送。	src/ui/screens/model.js:169	
+a9aiht	draft	How she should sound, in a few words, such as calm, warm and friendly.	她该怎样说话，用几个词描述，比如平静、温暖、友好。	src/ui/screens/model.js:169	
+1gq0a8x	draft	A transcription model: it turns what you say into text.	语音转文字模型：把你说的话变成文字。	src/ui/screens/model.js:189	
+1jork18	draft	A live voice: it hears and speaks in one stream, as Koe.	实时语音：作为 Koe，在同一个流中边听边说。	src/ui/screens/model.js:189	
+1r9buge	draft	A voice: Shiori speaks with it.	声音：Shiori 用它说话。	src/ui/screens/model.js:189	
+15fymnc	draft	Sent with every request. Emptied, the model's default (grey) is used; to send none, put "voice": null in Extra request fields.	随每个请求发送。清空后使用模型的默认值（灰色）；如果什么都不想发送，请在额外请求字段中写 "voice": null。	src/ui/screens/model.js:195	
+nf3vcm	draft	Style	风格	src/ui/screens/model.js:196	
+18b8wh7	draft	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	价格，每百万 token 的美元（JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:198	
+1wo5fes	draft	Prices, USD (JSON: perMillionChars)	价格，美元（JSON：perMillionChars）	src/ui/screens/model.js:198	
+heq2kw	draft	Prices, USD (JSON: perMinute, minSeconds)	价格，美元（JSON：perMinute、minSeconds）	src/ui/screens/model.js:198	
 1oqe6zr	draft	Koe · Realtime: hears you and speaks in one stream	Koe · 实时：在同一个流中听你说并说话	src/ui/screens/models.js:16	
 k0393o	draft	Main: talks with you	主要：与你交谈	src/ui/screens/models.js:16	
 mcznv1	draft	Koe · Classic: a chat model, with Speech in and Speech out	Koe · 经典：聊天模型，配合语音识别和朗读	src/ui/screens/models.js:16	
@@ -1572,51 +1572,51 @@ cgpzg8	draft	Or add {0} as it is, and set up its key and what it offers on its o
 9djdxp	draft	Install it	安装	src/ui/screens/provider.js:289	
 17vxyyo	draft	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:290	{0} = entry.name
 mf1onk	draft	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:303	
-r4y7q	draft	Use {0}	使用{0}	src/ui/screens/provider.js:328	{0} = a.name
-1o304we	draft	New in the last update	上次更新新增	src/ui/screens/provider.js:335	
-1k5huc5	draft	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:355	{0} = providerOf(rec).baseUrl
-1ppqeqd	draft	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:355	
-12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:362	
-1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:367	{0} = who
-l91m05	draft	Its own address	自己的地址	src/ui/screens/provider.js:386	
-9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:392	
-1ajunu1	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:396	{0} = who
-1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:397	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
-1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:398	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
-1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:400	
-1iorloe	draft	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:400	
-1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:401	
-72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:402	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:403	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	draft	Test {0}	测试{0}	src/ui/screens/provider.js:414	{0} = first.name
-1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:431	{0} = who
-1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:432	{0} = who
-1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:432	{0} = who; {1} = tool.name
-11x4tx3	draft	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:438	{0} = name
-4nyk49	draft	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:438	
-15hdhx3	draft	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:460	
-1oz4euh	draft	Add model	添加模型	src/ui/screens/provider.js:473	
-tbmsa5	draft	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:478	
-1yko1my#other	draft	# models.	# 个模型。	src/ui/screens/provider.js:481	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	draft	Fetch model list	获取模型列表	src/ui/screens/provider.js:489	
-1scr2ml	draft	{0}K context	{0}K 上下文	src/ui/screens/provider.js:492	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	draft	Its models	它的模型	src/ui/screens/provider.js:494	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	draft	No models yet.	还没有模型。	src/ui/screens/provider.js:495	
-pnxisg	draft	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:496	
-1mod47e	draft	for example: haiku	例如：haiku	src/ui/screens/provider.js:510	
-uizt0x	draft	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:520	{0} = named
-1w6mxym	draft	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:521	{0} = on
-l7fn8k	draft	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:521	
-19ai2z0	draft	Filter the list	筛选列表	src/ui/screens/provider.js:532	
-11pl9jr	draft	Use the free models	使用免费模型	src/ui/screens/provider.js:540	
-vam64u	draft	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:540	
-1b2yx8m	draft	Suggested models	推荐的模型	src/ui/screens/provider.js:541	
-1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:542	{0} = src.name
-1x5hwmk	draft	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:543	{0} = src.name
-1iffu2j	draft	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:550	{0} = n
-1szeqxt	draft	Roles updated.	已更新角色。	src/ui/screens/provider.js:550	
-1egvjs1	draft	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:551	{0} = f.name; {1} = messageOf(f.error)
-wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:557	{0} = which
+r4y7q	draft	Use {0}	使用{0}	src/ui/screens/provider.js:329	{0} = shownName
+1o304we	draft	New in the last update	上次更新新增	src/ui/screens/provider.js:336	
+1k5huc5	draft	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:356	{0} = providerOf(rec).baseUrl
+1ppqeqd	draft	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:356	
+12dfi3i	draft	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:363	
+1qia4dd	draft	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:368	{0} = who
+l91m05	draft	Its own address	自己的地址	src/ui/screens/provider.js:387	
+9umgdw	draft	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:393	
+1ajunu1	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:397	{0} = who
+1jtdu56	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:398	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.
+1fcg7pg#other	draft	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:399	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other)
+1gugeu9	draft	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:401	
+1iorloe	draft	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:401	
+1wdiu43	draft	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:402	
+72k1cn#other	draft	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:403	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	draft	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:404	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	draft	Test {0}	测试{0}	src/ui/screens/provider.js:415	{0} = first.name
+1eqfcih	draft	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:432	{0} = who
+1cmq8ob	draft	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:433	{0} = who
+1k4v7dk	draft	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:433	{0} = who; {1} = tool.name
+11x4tx3	draft	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:439	{0} = name
+4nyk49	draft	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:439	
+15hdhx3	draft	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:461	
+1oz4euh	draft	Add model	添加模型	src/ui/screens/provider.js:474	
+tbmsa5	draft	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:479	
+1yko1my#other	draft	# models.	# 个模型。	src/ui/screens/provider.js:482	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	draft	Fetch model list	获取模型列表	src/ui/screens/provider.js:490	
+1scr2ml	draft	{0}K context	{0}K 上下文	src/ui/screens/provider.js:493	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	draft	Its models	它的模型	src/ui/screens/provider.js:495	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	draft	No models yet.	还没有模型。	src/ui/screens/provider.js:496	
+pnxisg	draft	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:497	
+1mod47e	draft	for example: haiku	例如：haiku	src/ui/screens/provider.js:511	
+uizt0x	draft	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:521	{0} = named
+1w6mxym	draft	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:522	{0} = on
+l7fn8k	draft	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:522	
+19ai2z0	draft	Filter the list	筛选列表	src/ui/screens/provider.js:533	
+11pl9jr	draft	Use the free models	使用免费模型	src/ui/screens/provider.js:541	
+vam64u	draft	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:541	
+1b2yx8m	draft	Suggested models	推荐的模型	src/ui/screens/provider.js:542	
+1r7d69l	draft	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:543	{0} = src.name
+1x5hwmk	draft	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:544	{0} = src.name
+1iffu2j	draft	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:551	{0} = n
+1szeqxt	draft	Roles updated.	已更新角色。	src/ui/screens/provider.js:551	
+1egvjs1	draft	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:552	{0} = f.name; {1} = messageOf(f.error)
+wlh055	draft	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:558	{0} = which
 1tu8lgg	draft	Writing it: {0} is reading the trip. This can take a minute.	正在撰写：{0}正在阅读这个旅行。可能需要一分钟。	src/ui/screens/recap.js:32	{0} = m.name
 1lrfe9k	draft	Write the recap	撰写回顾	src/ui/screens/recap.js:34	
 h6huep	draft	Write it again	重新撰写	src/ui/screens/recap.js:34	
