@@ -1,5 +1,5 @@
 {
-  "build": "d38c13edd14f",
+  "build": "bb0399e84936",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -115,7 +115,7 @@
     "/src/core/now.js": "c47b701f7e42",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
-    "/src/core/packages.js": "4e01a009efb2",
+    "/src/core/packages.js": "e4725e11045c",
     "/src/core/requires.js": "f2fedb607798",
     "/src/core/pack/download.js": "4823640428e0",
     "/src/core/pack/keeper.js": "b03982f77e3a",
@@ -129,7 +129,7 @@
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b71b076bdd08",
     "/src/core/plan.js": "c20d69e5d251",
-    "/src/core/plugins.js": "dac3c0df7540",
+    "/src/core/plugins.js": "f0cf492361ca",
     "/src/core/push/mirror.js": "e8f1f106cd02",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
@@ -277,7 +277,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "dab8998c3ea8",
-    "/l10n/zh-Hans.json": "9ce802f28729"
+    "/l10n/ja.json": "aa8d352c5425",
+    "/l10n/zh-Hans.json": "2523547e5f3d"
   }
 }
