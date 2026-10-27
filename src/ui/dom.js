@@ -1,6 +1,9 @@
 export { t, tc, plural, asUser } from '../core/l10n.js';
-import { t } from '../core/l10n.js';
+import { t, lang } from '../core/l10n.js';
 import { parseNum } from '../core/intl.js';
+
+/** A lang attribute for words in a language that may not be the screens' (a plugin's): the tag, else none. @param {string} [tag] */
+export const otherLang = (tag) => (tag && tag !== lang() ? tag : undefined);
 
 /**
  * Builds DOM without innerHTML (the CSP and spec §15 forbid it).

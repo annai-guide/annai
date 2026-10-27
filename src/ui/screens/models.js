@@ -92,7 +92,8 @@ function providersSection(ctx, cfg) {
   const rows = Object.values(cfg.providers).sort((a, b) => a.created - b.created).map((rec) => {
     const p = providerOf(rec, (t) => types.get(t)?.tunables ?? {});
     const n = Object.values(cfg.models).filter((m) => m.provider === rec.id).length;
-    const on = Object.values(p.abilities).filter((a) => a.on).map(abilityName);
+    const shown = ctx.plugins.shownOf(rec.plugin)?.provider;
+    const on = Object.values(p.abilities).filter((a) => a.on).map((a) => abilityName(a, { shown }));
     return h('li', {}, h('a', { class: 'card', href: `#/models/provider?id=${encodeURIComponent(rec.id)}` },
       h('span', { class: 'name', text: p.name }),
       h('span', { class: 'sub', text: [on.length ? listOf(on, 'plain') : t`Nothing switched on`, plural(n, '# model', '# models')].join(' · ') })));
