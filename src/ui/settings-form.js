@@ -31,7 +31,8 @@ export function formFields(schema) {
     // puts one into a file (fix pass 8b-5).
     if (p?.writeOnly) return { ...base, kind: /** @type {'secret' | 'unsupported'} */ (p.type === 'string' ? 'secret' : 'unsupported') };
     /** @type {any[] | null} */
-    const choices = p?.type !== 'string' ? null : Array.isArray(p.oneOf) ? p.oneOf : Array.isArray(p.enum) ? p.enum.map((/** @type {unknown} */ v) => ({ const: v })) : null;
+    const choices = p?.type !== 'string' ? null : Array.isArray(p.oneOf) && p.oneOf.every((/** @type {any} */ o) => o && 'const' in o) ? p.oneOf
+      : Array.isArray(p.enum) ? p.enum.map((/** @type {unknown} */ v) => ({ const: v })) : null;
     if (choices) return { ...base, kind: /** @type {const} */ ('select'), options: choices.map((o) => /** @type {[string, string]} */ ([String(o?.const), String(o?.title || o?.const)])) };
     if (p?.type === 'string') return { ...base, kind: /** @type {const} */ ('text') };
     if (p?.type === 'number' || p?.type === 'integer') {
