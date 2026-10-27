@@ -9,6 +9,10 @@
       "name": "Chat Completions",
       "description": "OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。"
     },
+    "gemini-live": {
+      "name": "Gemini Live",
+      "description": "Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
