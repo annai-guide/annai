@@ -435,7 +435,10 @@ export async function callRole(c) {
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
-      attempts.push({ model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}), ...(why && skip === 'benched' ? { restsUntil: bench.until(id) } : {}) });
+      attempts.push({
+        model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}), ...(why && skip === 'benched' ? { restsUntil: bench.until(id) } : {}),
+        ...(why && skip === 'type-missing' ? { said: /** @type {import('./contract.js').Said} */ ({ code: 'held' }) } : {}),
+      });
       continue;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it

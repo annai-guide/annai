@@ -112,7 +112,7 @@ async function boot() {
     const why = whyNoPlugins();
     if (why || !(await controllerReady())) {
       offerReload([]);
-      throw new Error(why ?? pluginsHeld(true, false));
+      throw Object.assign(new Error(why ?? pluginsHeld(true, false)), { shown: NEEDS_RELOAD });
     }
   };
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: canLoad, whyNoPlugins });

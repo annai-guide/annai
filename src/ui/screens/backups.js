@@ -4,12 +4,11 @@ import { offeredTypes } from '../../core/llm/official.js';
 import { connectionOf } from '../platform.js';
 import { restoreFrom, whereOf, thisDevice } from '../auto-backup.js';
 import { leaveSignal } from '../import-state.js';
-import { heldOnScreen } from '../plugin-cards.js';
 
 /** What a place's test said, shown once on its screen as it opens again. @type {Map<string, string>} */
 const notes = new Map();
-/** What went wrong, as this screen shows it: a place's plugin that can't load on this page says so in the screens' language. @param {unknown} e */
-const failed = (e) => heldOnScreen(messageOf(e));
+/** What went wrong, as this screen shows it. @param {unknown} e */
+const failed = (e) => messageOf(e);
 
 /** Which device a backup came from, by the label it was made with (platform.js's deviceName); another device for any other. */
 const FROM_DEVICE = /** @type {Record<string, string>} */ ({ iPhone: t`From an iPhone`, iPad: t`From an iPad`, 'Android phone': t`From an Android phone`, computer: t`From a computer` });

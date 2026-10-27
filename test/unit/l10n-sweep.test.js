@@ -163,3 +163,14 @@ test("review 3 and 4: a failed attempt's words come from what it was, in the Try
   assert.equal(whyWords(why), '時間内に出力が始まりませんでした。');
   assert.equal(whyWords(why, true), 'The model took too long to start answering.');
 });
+
+test("review 8: models held for a reload say so in the screens' words, from what it was, with no English matched", async () => {
+  const { explain } = await import('../../src/core/llm/contract.js');
+  const { attemptWhy } = await import('../../src/core/llm/fallback.js');
+  const EN = "annai needs a reload: it opened without its offline service, so its plugins can't start.";
+  const held = new ProviderError('type-missing', EN, { said: { code: 'held' } });
+  assert.equal(held.message, EN);
+  assert.match(explain(held), KANA);
+  assert.match(attemptWhy({ name: 'Haiku', outcome: 'type-missing', error: EN, said: { code: 'held' } }), KANA);
+  assert.equal(attemptWhy({ name: 'Haiku', outcome: 'type-missing', error: EN, said: { code: 'held' } }, { plain: true }), EN);
+});
