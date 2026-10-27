@@ -1,4 +1,4 @@
-import { h, whenGone, t } from '../dom.js';
+import { h, whenGone, t, plural, linkIn } from '../dom.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { renderCard, cardWho, cardKind } from '../cards.js';
@@ -80,9 +80,9 @@ export function replacements(events) {
 }
 
 /**
- * Why Shiori woke, in the screens' words: made from each reason's kind (and a plugin's name), never from the words the model was
- * given for it, which are English and hers (the localization design, "Store data, not words"). Each kind is said once.
- * @param {{ kind: string, plugin?: string, text?: string }[]} reasons the wake's, but the lines of their own (NOT_WOKE); their text is the model's, unread here
+ * Why Shiori woke, in the screens' words, from each reason's kind and data (files, what fired, a plugin), never the model's English
+ * reason ("Store data, not words"). Each line once; an older wake, with no data, by its kind.
+ * @param {{ kind: string, plugin?: string, text?: string, files?: string[], titles?: string[] }[]} reasons the wake's, but the lines of their own (NOT_WOKE); their text is the model's, unread here
  * @param {(id: string) => string} [nameOf] a plugin's name
  */
 export function wokeText(reasons, nameOf = (id) => id) {
@@ -96,9 +96,20 @@ export function wokeText(reasons, nameOf = (id) => id) {
     live: t`Shiori woke because you turned GPS on.`,
     recap: t`Shiori woke to tell you the recap.`,
   };
-  const said = new Set(reasons.map((r) => (r.kind === 'plugin' ? t`Shiori woke for the plugin ${nameOf(String(r.plugin ?? ''))}.` : WHY[r.kind] ?? t`Shiori woke.`)));
-  return sentences(...said);
+  /** @param {(typeof reasons)[number]} r */
+  const line = (r) => {
+    const files = (r.kind === 'file' && r.files) || [];
+    const titles = wokeTitles([r]);
+    if (files.length > 3) return plural(files.length, 'Shiori woke to look at the file you added.', 'Shiori woke to look at the # files you added.');
+    if (files.length) return plural(files.length, 'Shiori woke to look at the file you added: {0}.', 'Shiori woke to look at the # files you added: {0}.', listed(files.map((p) => p.split('/').pop() ?? p)));
+    if (titles.length) return plural(titles.length, 'Shiori woke for a reminder, or something she watches for: {0}.', 'Shiori woke for # reminders, or things she watches for: {0}.', listed(titles));
+    return r.kind === 'plugin' ? t`Shiori woke for the plugin ${nameOf(String(r.plugin ?? ''))}.` : WHY[r.kind] ?? t`Shiori woke.`;
+  };
+  return sentences(...new Set(reasons.map(line)));
 }
+
+/** What fired, each to be marked with its language; the line ends them. @param {{ kind: string, titles?: string[] }[]} reasons */
+export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
  * A reminder annai showed by itself, from its data: the words before and after its text. The one title annai gives one is
@@ -304,7 +315,9 @@ export async function renderTalk(ctx) {
       // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
       if (d.half === 'kokoro') return null;
       const others = (d.reasons ?? []).filter((/** @type {any} */ r) => !NOT_WOKE.includes(r.kind));
-      return others.length ? h('li', { class: 'system-line', text: wokeText(others, (id) => String(ctx.plugins?.active?.get(id)?.manifest?.name ?? id)) }) : null;
+      if (!others.length) return null;
+      const said = wokeText(others, (id) => String(ctx.plugins?.active?.get(id)?.manifest?.name ?? id));
+      return h('li', { class: 'system-line' }, ...linkIn(said, ...wokeTitles(others).map((w) => h('span', { ...hers(w), text: w }))));
     }
     // Made from its type: the words stored with it are the card's English.
     if (e.type === 'paused') return h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });

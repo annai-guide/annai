@@ -32,6 +32,11 @@ test('a wake is shown from its kind in the screens\' words, each kind once; the 
   assert.equal(wokeText([plugin, plugin, { kind: 'live', text: 'The user turned GPS on.' }], () => 'Trail'),
     'プラグイン Trail により Shiori が起動しました。GPS がオンになったので、Shiori が起動しました。');
   assert.equal(wokeText([{ kind: 'someday', text: 'Something new.' }]), 'Shiori が起動しました。');
+  // What fired and which files come from the wake's data; the model still reads its English reason.
+  const fired = { kind: 'trigger', text: 'Your watch w1 (at 15:00) fired: the time came. Its reminder: "お茶の時間"', titles: ['お茶の時間'] };
+  assert.equal(wokeText([fired]), 'リマインダーか見守っていたこと1件（お茶の時間）のため、Shiori が起動しました。');
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/hotel.pdf'] }]), '追加されたファイル1件（hotel.pdf）を見るため、Shiori が起動しました。');
+  assert.equal(lastLine({ type: 'wake', data: { id: 'w-2', reasons: [fired] } }), `[annai] ${fired.text}`);
 });
 
 test('a reminder line is made from its data, said aloud or not, a reminder or her answer; the model is told in English', () => {

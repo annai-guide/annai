@@ -29,7 +29,7 @@ export async function bringIn(ctx, scope, files, progress) {
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
   if (paths.length && main.length && ctx.agent) {
     // For a trip that isn't open, the wake is written into its conversation: wait, so it's there when the trip opens.
-    await ctx.agent.wake({ kind: 'file', scope, text: newFilesText(paths.map((p) => ({ path: p, type: typeOf.get(p) ?? 'application/octet-stream' })), planned) });
+    await ctx.agent.wake({ kind: 'file', scope, files: paths, text: newFilesText(paths.map((p) => ({ path: p, type: typeOf.get(p) ?? 'application/octet-stream' })), planned) });
   }
   return { paths, notes, problems, planned };
 }
