@@ -253,52 +253,53 @@ storage-forgejo:17nk9ra	draft	The repository's own	仓库自己的默认分支	p
 storage-forgejo:19gzx45	draft	Branch	分支	plugins-official/storage-forgejo/index.js:117	
 storage-forgejo:z1mfie	draft	Access token	访问令牌	plugins-official/storage-forgejo/index.js:119	
 storage-forgejo:1jg6jh4	draft	First make a new private repository on the server for annai's backups: annai doesn't make one. Then make an access token for it (your Settings, then Applications) with Repository: Read and write, and paste it here. Leave Owner and Repository empty, and annai finds the private repository the token can change. The token stays on this device; it is never in a backup. On Codeberg, the server address is https://codeberg.org.	请先在服务器上为 annai 的备份新建一个私有仓库：annai 不会自己创建。然后为它创建一个具有 Repository: Read and write 权限的访问令牌（在你的 Settings → Applications 中），并粘贴到这里。把“所有者”和“仓库”留空，annai 会找到令牌能修改的私有仓库。令牌只保存在本设备上，绝不会进入备份。Codeberg 的服务器地址是 https://codeberg.org。	plugins-official/storage-forgejo/index.js:120	
-storage-forgejo:12zsu7y	draft	The server must let web apps at {0} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.	服务器必须允许 {0} 上的网页应用使用它的 API。请把以下几行加到它的 app.ini 中，然后重启服务器。Codeberg 已经允许了。	plugins-official/storage-forgejo/index.js:126	{0} = origin
-storage-forgejo:js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} 返回了 annai 无法读取的内容。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:151	{0} = g.host
-storage-forgejo:1479rne	draft	annai couldn't reach {0}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.	annai 无法连接 {0}。如果本设备在线，可能是服务器还不允许网页应用使用它的 API：请查看此备份位置页面上的“浏览器访问”。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:154	{0} = g.host
-storage-forgejo:fufehm	draft	Check the server's address: it must be a web address that starts with https://.	请检查服务器地址：它必须是以 https:// 开头的网址。	plugins-official/storage-forgejo/index.js:204	
-storage-forgejo:xxxgmz	draft	Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.	请轻点“保存并测试”：annai 会根据令牌找到所有者和仓库。也可以自己填写，例如 you 和 annai-backup。	plugins-official/storage-forgejo/index.js:206	
-storage-forgejo:a57ijt	draft	Type the owner and the repository's name, for example you and annai-backup.	请填写所有者和仓库名称，例如 you 和 annai-backup。	plugins-official/storage-forgejo/index.js:208	
-storage-forgejo:qnr55p	draft	Check the branch's name, or leave it empty for the repository's own.	请检查分支名称，或者留空以使用仓库自己的默认分支。	plugins-official/storage-forgejo/index.js:209	
-storage-forgejo:nb61qg	draft	Paste an access token for the repository, then save.	请粘贴该仓库的访问令牌，然后保存。	plugins-official/storage-forgejo/index.js:210	
-storage-forgejo:921ywo	draft	The access token has letters no token has. Paste it again, then save.	访问令牌中含有令牌不会有的字符。请重新粘贴，然后保存。	plugins-official/storage-forgejo/index.js:211	
-storage-forgejo:1hwhu5k	draft	{0} didn't accept the access token. Make a new one, paste it here, and save.	{0} 不接受这个访问令牌。请新建一个，粘贴到这里并保存。	plugins-official/storage-forgejo/index.js:252	{0} = g.host
-storage-forgejo:zgntl5	draft	The access token isn't allowed to change {0} on {1}. Make one with Repository: Read and write, and check that the branch isn't protected.	这个访问令牌无权修改 {1} 上的 {0}。请创建一个具有 Repository: Read and write 权限的令牌，并确认该分支没有被保护。	plugins-official/storage-forgejo/index.js:253	{0} = named(g); {1} = g.host
-storage-forgejo:gpe7i2	draft	There is no repository {0} on {1} that this token can see. Create a private repository named {2} there first (annai doesn't make one), or check the owner and the name.	{1} 上没有这个令牌能看到的仓库 {0}。请先在那里创建一个名为 {2} 的私有仓库（annai 不会自己创建），或者检查所有者和名称。	plugins-official/storage-forgejo/index.js:254	{0} = named(g); {1} = g.host; {2} = g.repo
-storage-forgejo:d13y2m	draft	Your account on {0} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.	你在 {0} 上的账户空间已满：配额已用完。请在那里腾出空间，或请服务器管理员增加配额，然后再备份。	plugins-official/storage-forgejo/index.js:255	{0} = g.host
-storage-forgejo:1ceq40h	draft	{0} on {1} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.	{1} 上的 {0} 已归档，无法再添加任何内容。请在仓库设置中取消归档，或选择另一个仓库。	plugins-official/storage-forgejo/index.js:256	{0} = named(g); {1} = g.host
-storage-forgejo:14cnjoa#other	draft	{0} is busy. annai tries again in about # minutes.	{0} 正忙。annai 会在约 # 分钟后再试。	plugins-official/storage-forgejo/index.js:262	plural; # = m; {0} = g.host; English: "{0} is busy. annai tries again in about # minute." (one), "{0} is busy. annai tries again in about # minutes." (other)
-storage-forgejo:d276v8	draft	{0} had a problem (HTTP {1}: {2}). annai tries again later.	{0} 出了问题（HTTP {1}：{2}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:266	{0} = g.host; {1} = res.status; {2} = said
-storage-forgejo:s23xfw	draft	{0} had a problem (HTTP {1}). annai tries again later.	{0} 出了问题（HTTP {1}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:266	{0} = g.host; {1} = res.status
-storage-forgejo:1wxl4rv	draft	{0} refused this (HTTP {1}: {2}). annai tries again later.	{0} 拒绝了此操作（HTTP {1}：{2}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status; {2} = said
-storage-forgejo:h8lnld	draft	{0} refused this (HTTP {1}). annai tries again later.	{0} 拒绝了此操作（HTTP {1}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status
-storage-forgejo:15txwh7	draft	{0} on {1} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.	{1} 上的 {0} 是公开的，任何人都能读到其中你的旅行。请把它设为私有（在仓库设置中），或选择一个私有仓库。	plugins-official/storage-forgejo/index.js:284	{0} = r.full_name; {1} = g.host
-storage-forgejo:cbvpyg	draft	The access token can read {0} but not change it. Make one with Repository: Read and write.	这个访问令牌能读取 {0}，但不能修改它。请创建一个具有 Repository: Read and write 权限的令牌。	plugins-official/storage-forgejo/index.js:287	{0} = r.full_name
-storage-forgejo:1wtqmrj	draft	{0} has no branch {1}. Leave Branch empty to use {2}, or make the branch on {3} first.	{0} 没有分支 {1}。请把“分支”留空以使用 {2}，或先在 {3} 上创建该分支。	plugins-official/storage-forgejo/index.js:296	{0} = repo.full_name; {1} = branch; {2} = repo.default_branch; {3} = g.host
-storage-forgejo:et4che	draft	The access token can't list repositories on {0}. Make one with Repository: Read and write, and paste it here.	这个访问令牌无法列出 {0} 上的仓库。请创建一个具有 Repository: Read and write 权限的令牌，并粘贴到这里。	plugins-official/storage-forgejo/index.js:324	{0} = g.host
-storage-forgejo:1qf9gnl#other	draft	This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name.	这个令牌可以修改 {0} 上的 # 个私有仓库。请选择用于 annai 备份的那个，或填写它的所有者和名称。	plugins-official/storage-forgejo/index.js:341	plural; # = pool.length; {0} = g.host; English: "This token can change # private repository on {0}. Choose the one for annai's backups, or type its owner and name." (one), "This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name." (other)
-storage-forgejo:11h7pl0	draft	There is no private repository named {0} on {1} that this token can change. Create it there first (annai doesn't make one), or check the name.	{1} 上没有这个令牌能修改的名为 {0} 的私有仓库。请先在那里创建它（annai 不会自己创建），或检查名称。	plugins-official/storage-forgejo/index.js:346	{0} = g.repo; {1} = g.host
-storage-forgejo:1nnora8	draft	This token can't change any private repository of {0} on {1}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	这个令牌无法修改 {1} 上 {0} 的任何私有仓库。请先在那里创建一个私有仓库（例如命名为 annai-backup；annai 不会自己创建），然后再次“保存并测试”。	plugins-official/storage-forgejo/index.js:347	{0} = g.owner; {1} = g.host
-storage-forgejo:1fgblug	draft	This token can't change any private repository on {0}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	这个令牌无法修改 {0} 上的任何私有仓库。请先在那里创建一个私有仓库（例如命名为 annai-backup；annai 不会自己创建），然后再次“保存并测试”。	plugins-official/storage-forgejo/index.js:348	{0} = g.host
-storage-forgejo:bycc1b	draft	Works: annai can reach {0} on {1}, a private repository.	可以使用：annai 能访问 {1} 上的私有仓库 {0}。	plugins-official/storage-forgejo/index.js:361	{0} = r.full_name; {1} = g.host
-storage-forgejo:1ihsbj	draft	It is the only private repository of {0} this token can change, so annai filled it in.	这是该令牌能修改的 {0} 的唯一私有仓库，所以 annai 已把它填入。	plugins-official/storage-forgejo/index.js:363	{0} = filled.of
-storage-forgejo:2o5148	draft	annai filled in its owner, {0}.	annai 已填入它的所有者：{0}。	plugins-official/storage-forgejo/index.js:363	{0} = filled.owner
-storage-forgejo:gg50v4	draft	It is the only private repository this token can change, so annai filled it in.	这是该令牌能修改的唯一私有仓库，所以 annai 已把它填入。	plugins-official/storage-forgejo/index.js:364	
-storage-forgejo:1i52hlb	draft	{0} holds more files than annai reads, so annai can't use it. Choose a new private repository.	{0} 中的文件多于 annai 能读取的数量，所以 annai 无法使用它。请选择一个新的私有仓库。	plugins-official/storage-forgejo/index.js:387	{0} = named(g)
-storage-forgejo:1qqlp9q	draft	{0} holds other files ({1}), so annai won't back up into it. Make a new private repository for annai's backups.	{0} 中有其他文件（{1}），所以 annai 不会备份到这里。请为 annai 的备份新建一个私有仓库。	plugins-official/storage-forgejo/index.js:480	{0} = name; {1} = g.l10n.format.list(foreign.slice(0, 3), 'plain')
-storage-forgejo:998w7o	draft	There is a newer backup in {0}.	{0} 中有更新的备份。	plugins-official/storage-forgejo/index.js:504	{0} = repo.full_name
-storage-forgejo:zy9dwb	draft	annai sends files of up to {0} to this kind of place, and {1} is {2}. Remove it from annai, or back up to another kind of place.	annai 向这种备份位置发送的文件最大为 {0}，而 {1} 有 {2}。请把它从 annai 中删除，或者备份到另一种备份位置。	plugins-official/storage-forgejo/index.js:516	{0} = format.size(maxFile); {1} = shown(path); {2} = format.size(n)
-storage-forgejo:8wvxp8	draft	This backup has no annai-archive.json, so annai didn't send it. annai tries again later.	此备份没有 annai-archive.json，所以 annai 没有发送它。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:545	
-storage-forgejo:1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	plugins-official/storage-forgejo/index.js:553	{0} = format.size(bytes)
-storage-forgejo:1q8ijd2	draft	{0} didn't take {1} ({2}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.	{0} 没有接收 {1}（{2}）：它或它前面的代理不接受这么大的上传。请提高上限（nginx 为 client_max_body_size），然后再备份。	plugins-official/storage-forgejo/index.js:596	{0} = g.host; {1} = shown(op.path); {2} = format.size(op.size)
-storage-forgejo:eqdmta	draft	Another device backed up to {0} at the same moment.	另一台设备在同一时刻备份到了 {0}。	plugins-official/storage-forgejo/index.js:604	{0} = repo.full_name
-storage-forgejo:gtzba8	draft	{0} changed while annai backed up. annai tries again later.	annai 备份期间 {0} 发生了变化。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:605	{0} = repo.full_name
-storage-forgejo:1wsxcht	draft	The branch {0} of {1} was deleted while annai backed up to it, so this backup stopped. Make it again on {2}, or leave Branch empty to back up to {3}, then back up again.	annai 备份期间 {1} 的分支 {0} 被删除了，所以这次备份已停止。请在 {2} 上重新创建它，或者把“分支”留空以备份到 {3}，然后再备份。	plugins-official/storage-forgejo/index.js:609	{0} = branch; {1} = repo.full_name; {2} = g.host; {3} = repo.default_branch
-storage-forgejo:18ueum0	draft	That backup isn't in {0} on {1}.	{1} 上的 {0} 中没有这个备份。	plugins-official/storage-forgejo/index.js:638	{0} = named(g); {1} = g.host
-storage-forgejo:1spzqqr	draft	That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.	这个提交只是中途中断的备份的一部分，所以无法打开。请打开一个完整的备份。	plugins-official/storage-forgejo/index.js:643	
-storage-forgejo:1ljvup9	draft	This backup is damaged: its annai-archive.json is not readable.	此备份已损坏：无法读取其 annai-archive.json。	plugins-official/storage-forgejo/index.js:652	
-storage-forgejo:9mtyxq	draft	That commit isn't an annai backup.	这个提交不是 annai 的备份。	plugins-official/storage-forgejo/index.js:669	
-storage-forgejo:1vyk6qz	draft	This backup is damaged: {0} is missing from {1}.	此备份已损坏：{1} 中缺少 {0}。	plugins-official/storage-forgejo/index.js:691	{0} = shown(name); {1} = named(g)
+storage-forgejo:zrv4ev	draft	the server	服务器	plugins-official/storage-forgejo/index.js:124	
+storage-forgejo:12zsu7y	draft	The server must let web apps at {0} use its API. Add these lines to its app.ini, then restart it. Codeberg allows this already.	服务器必须允许 {0} 上的网页应用使用它的 API。请把以下几行加到它的 app.ini 中，然后重启服务器。Codeberg 已经允许了。	plugins-official/storage-forgejo/index.js:127	{0} = origin
+storage-forgejo:js7fdy	draft	{0} answered something annai can't read. annai tries again later.	{0} 返回了 annai 无法读取的内容。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:152	{0} = g.host
+storage-forgejo:1479rne	draft	annai couldn't reach {0}. If this device is online, the server may not let web apps use its API yet: see Browser access on this place's screen. annai tries again later.	annai 无法连接 {0}。如果本设备在线，可能是服务器还不允许网页应用使用它的 API：请查看此备份位置页面上的“浏览器访问”。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:155	{0} = g.host
+storage-forgejo:fufehm	draft	Check the server's address: it must be a web address that starts with https://.	请检查服务器地址：它必须是以 https:// 开头的网址。	plugins-official/storage-forgejo/index.js:205	
+storage-forgejo:xxxgmz	draft	Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.	请轻点“保存并测试”：annai 会根据令牌找到所有者和仓库。也可以自己填写，例如 you 和 annai-backup。	plugins-official/storage-forgejo/index.js:207	
+storage-forgejo:a57ijt	draft	Type the owner and the repository's name, for example you and annai-backup.	请填写所有者和仓库名称，例如 you 和 annai-backup。	plugins-official/storage-forgejo/index.js:209	
+storage-forgejo:qnr55p	draft	Check the branch's name, or leave it empty for the repository's own.	请检查分支名称，或者留空以使用仓库自己的默认分支。	plugins-official/storage-forgejo/index.js:210	
+storage-forgejo:nb61qg	draft	Paste an access token for the repository, then save.	请粘贴该仓库的访问令牌，然后保存。	plugins-official/storage-forgejo/index.js:211	
+storage-forgejo:921ywo	draft	The access token has letters no token has. Paste it again, then save.	访问令牌中含有令牌不会有的字符。请重新粘贴，然后保存。	plugins-official/storage-forgejo/index.js:212	
+storage-forgejo:1hwhu5k	draft	{0} didn't accept the access token. Make a new one, paste it here, and save.	{0} 不接受这个访问令牌。请新建一个，粘贴到这里并保存。	plugins-official/storage-forgejo/index.js:253	{0} = g.host
+storage-forgejo:zgntl5	draft	The access token isn't allowed to change {0} on {1}. Make one with Repository: Read and write, and check that the branch isn't protected.	这个访问令牌无权修改 {1} 上的 {0}。请创建一个具有 Repository: Read and write 权限的令牌，并确认该分支没有被保护。	plugins-official/storage-forgejo/index.js:254	{0} = named(g); {1} = g.host
+storage-forgejo:gpe7i2	draft	There is no repository {0} on {1} that this token can see. Create a private repository named {2} there first (annai doesn't make one), or check the owner and the name.	{1} 上没有这个令牌能看到的仓库 {0}。请先在那里创建一个名为 {2} 的私有仓库（annai 不会自己创建），或者检查所有者和名称。	plugins-official/storage-forgejo/index.js:255	{0} = named(g); {1} = g.host; {2} = g.repo
+storage-forgejo:d13y2m	draft	Your account on {0} is out of space: its quota is used up. Free some there, or ask whoever runs the server for more, then back up again.	你在 {0} 上的账户空间已满：配额已用完。请在那里腾出空间，或请服务器管理员增加配额，然后再备份。	plugins-official/storage-forgejo/index.js:256	{0} = g.host
+storage-forgejo:1ceq40h	draft	{0} on {1} is archived, so nothing can be added to it. Unarchive it in the repository's settings, or choose another.	{1} 上的 {0} 已归档，无法再添加任何内容。请在仓库设置中取消归档，或选择另一个仓库。	plugins-official/storage-forgejo/index.js:257	{0} = named(g); {1} = g.host
+storage-forgejo:14cnjoa#other	draft	{0} is busy. annai tries again in about # minutes.	{0} 正忙。annai 会在约 # 分钟后再试。	plugins-official/storage-forgejo/index.js:263	plural; # = m; {0} = g.host; English: "{0} is busy. annai tries again in about # minute." (one), "{0} is busy. annai tries again in about # minutes." (other)
+storage-forgejo:d276v8	draft	{0} had a problem (HTTP {1}: {2}). annai tries again later.	{0} 出了问题（HTTP {1}：{2}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status; {2} = said
+storage-forgejo:s23xfw	draft	{0} had a problem (HTTP {1}). annai tries again later.	{0} 出了问题（HTTP {1}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:267	{0} = g.host; {1} = res.status
+storage-forgejo:1wxl4rv	draft	{0} refused this (HTTP {1}: {2}). annai tries again later.	{0} 拒绝了此操作（HTTP {1}：{2}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:268	{0} = g.host; {1} = res.status; {2} = said
+storage-forgejo:h8lnld	draft	{0} refused this (HTTP {1}). annai tries again later.	{0} 拒绝了此操作（HTTP {1}）。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:268	{0} = g.host; {1} = res.status
+storage-forgejo:15txwh7	draft	{0} on {1} is public, so anyone could read your trips there. Make it private (the repository's settings), or choose a private repository.	{1} 上的 {0} 是公开的，任何人都能读到其中你的旅行。请把它设为私有（在仓库设置中），或选择一个私有仓库。	plugins-official/storage-forgejo/index.js:285	{0} = r.full_name; {1} = g.host
+storage-forgejo:cbvpyg	draft	The access token can read {0} but not change it. Make one with Repository: Read and write.	这个访问令牌能读取 {0}，但不能修改它。请创建一个具有 Repository: Read and write 权限的令牌。	plugins-official/storage-forgejo/index.js:288	{0} = r.full_name
+storage-forgejo:1wtqmrj	draft	{0} has no branch {1}. Leave Branch empty to use {2}, or make the branch on {3} first.	{0} 没有分支 {1}。请把“分支”留空以使用 {2}，或先在 {3} 上创建该分支。	plugins-official/storage-forgejo/index.js:297	{0} = repo.full_name; {1} = branch; {2} = repo.default_branch; {3} = g.host
+storage-forgejo:et4che	draft	The access token can't list repositories on {0}. Make one with Repository: Read and write, and paste it here.	这个访问令牌无法列出 {0} 上的仓库。请创建一个具有 Repository: Read and write 权限的令牌，并粘贴到这里。	plugins-official/storage-forgejo/index.js:325	{0} = g.host
+storage-forgejo:1qf9gnl#other	draft	This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name.	这个令牌可以修改 {0} 上的 # 个私有仓库。请选择用于 annai 备份的那个，或填写它的所有者和名称。	plugins-official/storage-forgejo/index.js:342	plural; # = pool.length; {0} = g.host; English: "This token can change # private repository on {0}. Choose the one for annai's backups, or type its owner and name." (one), "This token can change # private repositories on {0}. Choose the one for annai's backups, or type its owner and name." (other)
+storage-forgejo:11h7pl0	draft	There is no private repository named {0} on {1} that this token can change. Create it there first (annai doesn't make one), or check the name.	{1} 上没有这个令牌能修改的名为 {0} 的私有仓库。请先在那里创建它（annai 不会自己创建），或检查名称。	plugins-official/storage-forgejo/index.js:347	{0} = g.repo; {1} = g.host
+storage-forgejo:1nnora8	draft	This token can't change any private repository of {0} on {1}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	这个令牌无法修改 {1} 上 {0} 的任何私有仓库。请先在那里创建一个私有仓库（例如命名为 annai-backup；annai 不会自己创建），然后再次“保存并测试”。	plugins-official/storage-forgejo/index.js:348	{0} = g.owner; {1} = g.host
+storage-forgejo:1fgblug	draft	This token can't change any private repository on {0}. Create a private repository there first, named annai-backup for example (annai doesn't make one), then Save and test again.	这个令牌无法修改 {0} 上的任何私有仓库。请先在那里创建一个私有仓库（例如命名为 annai-backup；annai 不会自己创建），然后再次“保存并测试”。	plugins-official/storage-forgejo/index.js:349	{0} = g.host
+storage-forgejo:bycc1b	draft	Works: annai can reach {0} on {1}, a private repository.	可以使用：annai 能访问 {1} 上的私有仓库 {0}。	plugins-official/storage-forgejo/index.js:362	{0} = r.full_name; {1} = g.host
+storage-forgejo:1ihsbj	draft	It is the only private repository of {0} this token can change, so annai filled it in.	这是该令牌能修改的 {0} 的唯一私有仓库，所以 annai 已把它填入。	plugins-official/storage-forgejo/index.js:364	{0} = filled.of
+storage-forgejo:2o5148	draft	annai filled in its owner, {0}.	annai 已填入它的所有者：{0}。	plugins-official/storage-forgejo/index.js:364	{0} = filled.owner
+storage-forgejo:gg50v4	draft	It is the only private repository this token can change, so annai filled it in.	这是该令牌能修改的唯一私有仓库，所以 annai 已把它填入。	plugins-official/storage-forgejo/index.js:365	
+storage-forgejo:1i52hlb	draft	{0} holds more files than annai reads, so annai can't use it. Choose a new private repository.	{0} 中的文件多于 annai 能读取的数量，所以 annai 无法使用它。请选择一个新的私有仓库。	plugins-official/storage-forgejo/index.js:388	{0} = named(g)
+storage-forgejo:1qqlp9q	draft	{0} holds other files ({1}), so annai won't back up into it. Make a new private repository for annai's backups.	{0} 中有其他文件（{1}），所以 annai 不会备份到这里。请为 annai 的备份新建一个私有仓库。	plugins-official/storage-forgejo/index.js:481	{0} = name; {1} = g.l10n.format.list(foreign.slice(0, 3), 'plain')
+storage-forgejo:998w7o	draft	There is a newer backup in {0}.	{0} 中有更新的备份。	plugins-official/storage-forgejo/index.js:505	{0} = repo.full_name
+storage-forgejo:zy9dwb	draft	annai sends files of up to {0} to this kind of place, and {1} is {2}. Remove it from annai, or back up to another kind of place.	annai 向这种备份位置发送的文件最大为 {0}，而 {1} 有 {2}。请把它从 annai 中删除，或者备份到另一种备份位置。	plugins-official/storage-forgejo/index.js:517	{0} = format.size(maxFile); {1} = shown(path); {2} = format.size(n)
+storage-forgejo:8wvxp8	draft	This backup has no annai-archive.json, so annai didn't send it. annai tries again later.	此备份没有 annai-archive.json，所以 annai 没有发送它。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:546	
+storage-forgejo:1cm4kmv	draft	This backup would upload {0}.	此次备份将上传 {0}。	plugins-official/storage-forgejo/index.js:554	{0} = format.size(bytes)
+storage-forgejo:1q8ijd2	draft	{0} didn't take {1} ({2}): it, or a proxy in front of it, takes no uploads this large. Raise its limit (for nginx, client_max_body_size), then back up again.	{0} 没有接收 {1}（{2}）：它或它前面的代理不接受这么大的上传。请提高上限（nginx 为 client_max_body_size），然后再备份。	plugins-official/storage-forgejo/index.js:597	{0} = g.host; {1} = shown(op.path); {2} = format.size(op.size)
+storage-forgejo:eqdmta	draft	Another device backed up to {0} at the same moment.	另一台设备在同一时刻备份到了 {0}。	plugins-official/storage-forgejo/index.js:605	{0} = repo.full_name
+storage-forgejo:gtzba8	draft	{0} changed while annai backed up. annai tries again later.	annai 备份期间 {0} 发生了变化。annai 稍后会再试。	plugins-official/storage-forgejo/index.js:606	{0} = repo.full_name
+storage-forgejo:1wsxcht	draft	The branch {0} of {1} was deleted while annai backed up to it, so this backup stopped. Make it again on {2}, or leave Branch empty to back up to {3}, then back up again.	annai 备份期间 {1} 的分支 {0} 被删除了，所以这次备份已停止。请在 {2} 上重新创建它，或者把“分支”留空以备份到 {3}，然后再备份。	plugins-official/storage-forgejo/index.js:610	{0} = branch; {1} = repo.full_name; {2} = g.host; {3} = repo.default_branch
+storage-forgejo:18ueum0	draft	That backup isn't in {0} on {1}.	{1} 上的 {0} 中没有这个备份。	plugins-official/storage-forgejo/index.js:639	{0} = named(g); {1} = g.host
+storage-forgejo:1spzqqr	draft	That commit is only part of a backup that was cut off half way, so it can't be opened. Open a whole backup instead.	这个提交只是中途中断的备份的一部分，所以无法打开。请打开一个完整的备份。	plugins-official/storage-forgejo/index.js:644	
+storage-forgejo:1ljvup9	draft	This backup is damaged: its annai-archive.json is not readable.	此备份已损坏：无法读取其 annai-archive.json。	plugins-official/storage-forgejo/index.js:653	
+storage-forgejo:9mtyxq	draft	That commit isn't an annai backup.	这个提交不是 annai 的备份。	plugins-official/storage-forgejo/index.js:670	
+storage-forgejo:1vyk6qz	draft	This backup is damaged: {0} is missing from {1}.	此备份已损坏：{1} 中缺少 {0}。	plugins-official/storage-forgejo/index.js:692	{0} = shown(name); {1} = named(g)
 storage-github:@name	draft	GitHub	GitHub	plugins-official/storage-github/annai-plugin.json:3	
 storage-github:@description	draft	Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.	把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。	plugins-official/storage-github/annai-plugin.json:8	
 storage-github:1yf590i	draft	git can't hold "{0}": it has an empty, "." or ".." part. Rename it in annai, then back up again.	git 无法保存“{0}”：它含有空的、“.”或“..”的部分。请在 annai 中改名后再备份。	plugins-official/storage-github/git.js:28	{0} = e.path
@@ -549,14 +550,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:50	
 1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:61	
 16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:148	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:351	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:368	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:379	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:387	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:388	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	可以使用。	src/core/backup.js:432	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:483	
-173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:484	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:349	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:366	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:377	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:385	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:386	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	可以使用。	src/core/backup.js:430	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:481	
+173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:482	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	Note: 移除, as the trip's own button, Remove trip (移除旅行).
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
 gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
@@ -708,14 +709,14 @@ d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Ko
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:76	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:78	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:80	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:181	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:183	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:194	{0} = entry.name
-tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:203	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:205	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:91	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:93	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:95	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:196	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:198	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:209	{0} = entry.name
+tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:218	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:220	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是网址：请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 只连接你网络上的 https 地址，所以另一台电脑上的服务器需要一个 https 地址。Tailscale Serve 可以提供：{0}。服务器还必须允许来自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -740,24 +741,24 @@ aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-u
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	它不是从地址安装的，所以 annai 没有地方查找更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在放的是另一个包（{0}），所以没有更新。如果你想要它，请删除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:309	
-is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:316	{0} = file; {1} = folder
-1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:317	{0} = file; {1} = folder
-1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:319	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:337	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:421	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:454	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:463	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:475	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:491	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:547	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:558	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:568	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:609	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:610	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:611	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:612	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:612	{0} = o; Note: one of a list of what an update adds.
+1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:325	
+is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:332	{0} = file; {1} = folder
+1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:333	{0} = file; {1} = folder
+1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:335	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:353	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:433	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:466	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:475	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:487	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:503	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:562	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:573	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:583	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:624	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:625	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:626	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/core/plugins.js:174	{0} = why
@@ -808,17 +809,17 @@ ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't h
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的插件使用这个名称，但已安装的那个来自别处，所以 annai 不会使用它。请在设置 → 插件中删除它，然后再试一次。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/registry.js:18	
 f1c9to	ok	is switched off after repeated errors	因多次出错已被关闭	src/core/registry.js:217	
-1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会让 {1} 无法运行：它需要 {2} {3}。请先更新 {4}，或保留这个版本。	src/core/requires.js:48	{0} = version; {1} = other; {2} = name; {3} = r.version; {4} = other
-189pevd	ok	needs {0}, which you turned off.	需要你已关闭的 {0}。	src/core/requires.js:73	{0} = named
-1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	需要尚未安装的 {0}。请先从 {1} 安装，然后再试一次。	src/core/requires.js:76	{0} = r.id; {1} = r.homepage
-j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	需要尚未安装的 {0}。请先安装，然后再试一次。	src/core/requires.js:78	{0} = r.id
-13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:80	{0} = r.id; {1} = r.version; {2} = s.version
-111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	需要 annai 的 {0}（{1}），但已安装的 {2} 来自别处，不是 annai 自己的。请在设置 → 插件中删除它，然后再试一次。	src/core/requires.js:84	{0} = e.name; {1} = r.id; {2} = r.id
-18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}（已安装 {3}）。等 annai 有合适的版本后再试一次。	src/core/requires.js:87	{0} = e.name; {1} = r.version; {2} = e.version; {3} = s.version
-9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}。等 annai 有合适的版本后再试一次。	src/core/requires.js:89	{0} = e.name; {1} = r.version; {2} = e.version
-gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:195	
-olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:198	
-seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:200	{0} = entry.name
+1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会让 {1} 无法运行：它需要 {2} {3}。请先更新 {4}，或保留这个版本。	src/core/requires.js:48	{0} = version; {1} = other; {2} = officialName(id, name); {3} = r.version; {4} = other
+189pevd	ok	needs {0}, which you turned off.	需要你已关闭的 {0}。	src/core/requires.js:75	{0} = shown
+1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	需要尚未安装的 {0}。请先从 {1} 安装，然后再试一次。	src/core/requires.js:78	{0} = r.id; {1} = r.homepage
+j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	需要尚未安装的 {0}。请先安装，然后再试一次。	src/core/requires.js:80	{0} = r.id
+13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.version; {2} = s.version
+111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	需要 annai 的 {0}（{1}），但已安装的 {2} 来自别处，不是 annai 自己的。请在设置 → 插件中删除它，然后再试一次。	src/core/requires.js:86	{0} = shown; {1} = r.id; {2} = r.id
+18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}（已安装 {3}）。等 annai 有合适的版本后再试一次。	src/core/requires.js:89	{0} = shown; {1} = r.version; {2} = e.version; {3} = s.version
+9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}。等 annai 有合适的版本后再试一次。	src/core/requires.js:91	{0} = shown; {1} = r.version; {2} = e.version
+gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:197	
+olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:200	
+seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:202	{0} = officialName(entry.id, entry.name)
 stkvyf	ok	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	系统日志	src/core/scopes.js:42	
 ktdb8o	ok	Settings	设置	src/core/scopes.js:43	
@@ -1260,26 +1261,26 @@ fzpt3w	ok	Reload now	立即重新加载	src/ui/plugin-cards.js:31
 1vgaaah	ok	It didn't start the last few times annai opened: {0}	最近几次打开 annai 时，它都没有启动：{0}	src/ui/plugin-cards.js:46	{0} = why
 11arkb9	ok	You can turn it off in Settings → Plugins.	可以在设置 → 插件中关闭它。	src/ui/plugin-cards.js:47	
 1jz4o49	ok	The plugin "{0}" didn't start	插件“{0}”没有启动	src/ui/plugin-cards.js:47	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（带来新内容：会先询问你）	src/ui/plugin-updates.js:68	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（带来新内容：会先询问你）	src/ui/plugin-updates.js:68	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:69	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:69	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	插件更新已就绪	src/ui/plugin-updates.js:75	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什么都不会改变。正在运行的插件更新后，会在 annai 重启前保持关闭。	src/ui/plugin-updates.js:76	
-1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:76	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	更新	src/ui/plugin-updates.js:77	
-1agymuw	ok	Some plugins weren't updated	有些插件没有更新	src/ui/plugin-updates.js:109	
-1vsv4vh	ok	Restart annai to use the new versions	重启 annai 以使用新版本	src/ui/plugin-updates.js:113	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}无法使用。	src/ui/plugin-updates.js:114	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:114	
-nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:115	
-1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:118	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 带来新内容	src/ui/plugin-updates.js:134	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:135	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	只有在你信任它的来源时才更新。	src/ui/plugin-updates.js:135	
-1dfe53s	ok	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:136	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:138	
-c9wfke	ok	Not now	暂不	src/ui/plugin-updates.js:139	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（带来新内容：会先询问你）	src/ui/plugin-updates.js:72	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（带来新内容：会先询问你）	src/ui/plugin-updates.js:72	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:73	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:73	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	插件更新已就绪	src/ui/plugin-updates.js:79	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什么都不会改变。正在运行的插件更新后，会在 annai 重启前保持关闭。	src/ui/plugin-updates.js:80	
+1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:80	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	更新	src/ui/plugin-updates.js:81	
+1agymuw	ok	Some plugins weren't updated	有些插件没有更新	src/ui/plugin-updates.js:113	
+1vsv4vh	ok	Restart annai to use the new versions	重启 annai 以使用新版本	src/ui/plugin-updates.js:117	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}无法使用。	src/ui/plugin-updates.js:118	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:118	
+nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:119	
+1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:122	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 带来新内容	src/ui/plugin-updates.js:138	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:139	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	只有在你信任它的来源时才更新。	src/ui/plugin-updates.js:139	
+1dfe53s	ok	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:140	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:142	
+c9wfke	ok	Not now	暂不	src/ui/plugin-updates.js:143	
 1cjjnaq	ok	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:22	
@@ -1304,30 +1305,30 @@ hirfin	ok	What the model provider you connect charges is yours to pay. What you 
 1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}无法在 {1} 添加提供商：它不向任何地方发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
 rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}无法在 {1} 添加提供商：它只向 {2} 发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
 1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:88	
-1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:90	{0} = mine
-13upi6b	ok	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:118	{0} = entry.name
-17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:118	
-1p012cf	ok	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:148	
-14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:157	{0} = finishing
-yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:162	{0} = f.name
-15aq08d	ok	The quickest start	最快的开始方式	src/ui/provider-setup.js:164	
-w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:164	
-edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:168	
-1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:198	
-sv1qqk	ok	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:198	
-gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:212	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:218	{0} = name
-1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:226	
-v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:226	
-w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:226	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥属于免费额度，请在此页面打开“此密钥为免费额度”：这样它的模型就不收费。	src/ui/provider-setup.js:245	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:246	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:246	
-1r0x31s	ok	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
-1llun41	ok	The provider	提供商	src/ui/provider-setup.js:253	Note: "The provider" stands where a provider's name is unknown.
+1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:91	{0} = mine
+13upi6b	ok	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:119	{0} = entry.name
+17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:119	
+1p012cf	ok	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:149	
+14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:158	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:163	{0} = f.name
+15aq08d	ok	The quickest start	最快的开始方式	src/ui/provider-setup.js:165	
+w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:165	
+edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:169	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:199	
+sv1qqk	ok	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:199	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:213	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:219	{0} = name
+1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:227	
+v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:227	
+w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:227	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:243	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:244	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:245	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥属于免费额度，请在此页面打开“此密钥为免费额度”：这样它的模型就不收费。	src/ui/provider-setup.js:246	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:247	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
+1r0x31s	ok	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:248	
+1llun41	ok	The provider	提供商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	中继的密钥不是 annai 能用的。	src/ui/push.js:78	
@@ -1867,17 +1868,17 @@ s0ybug	ok	Install, keep what's used now	安装，保留当前使用的	src/ui/sc
 wjgdl3	ok	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:263	
 1eg7xgh	ok	Install anyway	仍然安装	src/ui/screens/plugin-install.js:264	
 3i7of3	ok	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:268	{0} = pkg.name
-1kg68qt	ok	What it brings	它带来的内容	src/ui/screens/plugin-install.js:274	
-owkvwp	ok	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:278	
-170p2zc	ok	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:280	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:282	
-1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:285	
-i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:286	
-1q0ylpv	ok	Get a key	获取密钥	src/ui/screens/plugin-install.js:288	
-syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:291	
-6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:335	{0} = pkg.name
-7gzgtw	ok	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:343	{0} = pkg.name
-qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:343	
+1kg68qt	ok	What it brings	它带来的内容	src/ui/screens/plugin-install.js:276	
+owkvwp	ok	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:280	
+170p2zc	ok	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:282	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:284	
+1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:287	
+i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:288	
+1q0ylpv	ok	Get a key	获取密钥	src/ui/screens/plugin-install.js:290	
+syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:293	
+6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:337	{0} = pkg.name
+7gzgtw	ok	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:345	{0} = pkg.name
+qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:345	
 16v75nb	ok	Cleared its settings ({0}) and its secrets ({1}).	已清除它的设置（{0}）和机密（{1}）。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	ok	Cleared its settings and its secrets ({0}).	已清除它的设置和机密（{0}）。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	ok	Cleared its settings ({0}).	已清除它的设置（{0}）。	src/ui/screens/plugin.js:32	{0} = keys
@@ -1930,81 +1931,81 @@ k02514#other	ok	First, annai asks {0} to delete the # turns of your conversation
 lcyovi#other	ok	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	离线时更换密钥或地址，或点“移除密钥”，{0}保留的 # 轮对话会一直留到过期为止，最长 {1}。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	ok	{0} keeps # turns until they expire, up to {1}.	{0}会保留 # 轮对话到过期为止，最长 {1}。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	ok	This provider no longer exists	该提供商已不存在	src/ui/screens/provider.js:80	
-17c1dhc	ok	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:105	
-1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:143	{0} = plugin; {1} = list(protocols)
-5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:144	{0} = plugin
-mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:145	{0} = list(protocols)
-1ue57qi	ok	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:146	
-1rtug95	ok	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:148	{0} = host
-nfdm8v	ok	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:149	
-u40nrw	ok	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:149	{0} = installed.file
-1tqi1rr	ok	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:160	{0} = list(k.who)
-evz7q4	ok	Provider	提供商	src/ui/screens/provider.js:177	
-2r1h4p	ok	Connection	连接	src/ui/screens/provider.js:179	
-1swq770	ok	API key	API 密钥	src/ui/screens/provider.js:182	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:191	
-12td532	ok	Remove key	移除密钥	src/ui/screens/provider.js:194	
-1qapi39	ok	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:194	
-5bt3jk	ok	Key removed	已移除密钥	src/ui/screens/provider.js:197	
-1r04n6e	ok	Remove provider	移除提供商	src/ui/screens/provider.js:206	
-11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:227	{0} = src.name
-ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请在“添加”页面添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:227	Note: "from Add" is the Add screen, quoted.
-u91wwi	ok	Add by hand	手动添加	src/ui/screens/provider.js:245	
-1nqeyot	ok	By hand	手动	src/ui/screens/provider.js:250	
-cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:251	{0} = src.name
-1lckuuy	ok	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:269	
-10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:270	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:274	
-6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:275	
-1e1obo4	ok	Installing…	正在安装…	src/ui/screens/provider.js:282	
-9djdxp	ok	Install it	安装	src/ui/screens/provider.js:291	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:292	{0} = entry.name
-mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:308	
-r4y7q	ok	Use {0}	使用{0}	src/ui/screens/provider.js:334	{0} = shownName
-1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:341	
-1k5huc5	ok	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:361	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:361	
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:368	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:373	{0} = who
-l91m05	ok	Its own address	自己的地址	src/ui/screens/provider.js:392	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:398	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:402	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:403	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:404	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:406	
-1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:406	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:407	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:408	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:409	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	测试{0}	src/ui/screens/provider.js:420	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:437	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:438	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:438	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:444	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:444	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:466	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:479	
-tbmsa5	ok	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:484	
-1yko1my#other	ok	# models.	# 个模型。	src/ui/screens/provider.js:487	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:495	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:498	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	它的模型	src/ui/screens/provider.js:500	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:501	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:502	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:516	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:526	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:527	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:527	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:538	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:546	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:546	
-1b2yx8m	ok	Suggested models	推荐的模型	src/ui/screens/provider.js:547	
-1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:548	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:549	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:556	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:556	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:557	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:563	{0} = which
+17c1dhc	ok	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:107	
+1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:145	{0} = plugin; {1} = list(protocols)
+5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:146	{0} = plugin
+mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:147	{0} = list(protocols)
+1ue57qi	ok	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:148	
+1rtug95	ok	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:150	{0} = host
+nfdm8v	ok	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:151	
+u40nrw	ok	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:151	{0} = installed.file
+1tqi1rr	ok	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:162	{0} = list(k.who)
+evz7q4	ok	Provider	提供商	src/ui/screens/provider.js:179	
+2r1h4p	ok	Connection	连接	src/ui/screens/provider.js:181	
+1swq770	ok	API key	API 密钥	src/ui/screens/provider.js:184	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:193	
+12td532	ok	Remove key	移除密钥	src/ui/screens/provider.js:196	
+1qapi39	ok	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:196	
+5bt3jk	ok	Key removed	已移除密钥	src/ui/screens/provider.js:199	
+1r04n6e	ok	Remove provider	移除提供商	src/ui/screens/provider.js:208	
+11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:232	{0} = src.name
+ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请在“添加”页面添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:232	Note: "from Add" is the Add screen, quoted.
+u91wwi	ok	Add by hand	手动添加	src/ui/screens/provider.js:250	
+1nqeyot	ok	By hand	手动	src/ui/screens/provider.js:255	
+cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:256	{0} = src.name
+1lckuuy	ok	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:274	
+10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:275	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:279	
+6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:280	
+1e1obo4	ok	Installing…	正在安装…	src/ui/screens/provider.js:287	
+9djdxp	ok	Install it	安装	src/ui/screens/provider.js:296	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:297	{0} = entry.name
+mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:313	
+r4y7q	ok	Use {0}	使用{0}	src/ui/screens/provider.js:339	{0} = shownName
+1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:346	
+1k5huc5	ok	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:366	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:366	
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:373	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:378	{0} = who
+l91m05	ok	Its own address	自己的地址	src/ui/screens/provider.js:397	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:403	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:407	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:408	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:409	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:411	
+1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:411	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:412	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:413	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:414	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	测试{0}	src/ui/screens/provider.js:425	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:442	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:443	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:443	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:449	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:449	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:471	
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:484	
+tbmsa5	ok	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:489	
+1yko1my#other	ok	# models.	# 个模型。	src/ui/screens/provider.js:492	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:500	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:503	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	它的模型	src/ui/screens/provider.js:505	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:506	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:507	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:521	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:531	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:532	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:532	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:543	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:551	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:551	
+1b2yx8m	ok	Suggested models	推荐的模型	src/ui/screens/provider.js:552	
+1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:553	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:554	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:561	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:561	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:562	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:568	{0} = which
 1tu8lgg	ok	Writing it: {0} is reading the trip. This can take a minute.	正在撰写：{0}正在阅读这个旅行。可能需要一分钟。	src/ui/screens/recap.js:32	{0} = m.name
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:34	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:34	
@@ -2527,11 +2528,11 @@ qx2onv	ok	couldn't check	无法检查	src/ui/search-panel.js:54
 hdu04k	ok	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 从上往下尝试这些，第一个回答的胜出。失败的会休息一阵，之后再试。取消勾选即可停用。	src/ui/search-panel.js:89	
 1a1oz0p	ok	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜索提供商是插件：从目录中添加一个（Tavily、Serper、你自己的 SearXNG），它的密钥在它自己的页面上设置。	src/ui/search-panel.js:92	
 f2eaqi	ok	Find a search plugin	查找搜索插件	src/ui/search-panel.js:93	
-1le6ymq	ok	{0} is a whole number.	{0}须为整数。	src/ui/settings-form.js:78	{0} = f.label
-1ulakkp	ok	{0} is a number.	{0}须为数字。	src/ui/settings-form.js:78	{0} = f.label
-do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:116	{0} = f.label
-1qrgqx0	ok	saved	已保存	src/ui/settings-form.js:121	
-phutrz	ok	{0} wasn't saved: {1}	{0}未保存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
+1le6ymq	ok	{0} is a whole number.	{0}须为整数。	src/ui/settings-form.js:79	{0} = f.label
+1ulakkp	ok	{0} is a number.	{0}须为数字。	src/ui/settings-form.js:79	{0} = f.label
+do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:117	{0} = f.label
+1qrgqx0	ok	saved	已保存	src/ui/settings-form.js:122	
+phutrz	ok	{0} wasn't saved: {1}	{0}未保存：{1}	src/ui/settings-form.js:131	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:257	
 1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:349	
 gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:349	

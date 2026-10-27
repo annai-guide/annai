@@ -765,7 +765,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -773,7 +773,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 65170,
+      "size": 65351,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -781,11 +781,11 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "76cb4ba46aaf877c78fd073cea15608f787a78d3215d815fe9974c10da0800d4",
+        "annai-plugin.json": "e368078ef64035440971853864b70a6eec3d78750af5f0d430d3ce71e62ce8e8",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
-        "index.js": "cd726eccbbdef49de3413195630851e65e76efa9412a354a615f0c02c6428e2c",
-        "l10n/ja.json": "0fda56ab6af7cf2e3abb3ab812868530abd950574511d7bf3c4ffb0dabc5cc50",
-        "l10n/zh-Hans.json": "43b857754dbd5e4caa2b215546dc6776b63c1579df88743cbf19a91553bf7aed"
+        "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541",
+        "l10n/ja.json": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
+        "l10n/zh-Hans.json": "ad3a1ea271448fbc485e62471da2cd9a5597ad6e42bb1769db60f2ae13777dbe"
       }
     },
     {
