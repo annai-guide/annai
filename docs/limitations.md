@@ -23,3 +23,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** annai verifies an official plugin by every file the catalog lists. A plugin downloaded with only the screens' language would look like a changed copy and be offered as an update forever. A language change would also need a fetch. For two languages the cost is small.
 - **Revisit when:** a third language ships. Then move official plugins' translations to a per-language fetch, as `catalog/l10n/<tag>.json` already does for the catalog's own words.
 - **Approved:** 2026-10-27, the user: "Defer to a 3rd language".
+
+### A non-English value quoted in a developer's English is read in an English voice
+- **Kind:** known limitation.
+- **What the user sees:** with a screen reader on Japanese or Chinese screens, a developer's English error (a broken plugin's manifest, skill or package check; a Simulate itinerary error) is read in an English voice. A non-English value it quotes, such as a manifest's `"language": "日本語"`, a Japanese stop name in an itinerary, or a zip entry's name, is read in that English voice too. Before the errors were marked, the whole sentence was read in a Japanese voice.
+- **Why:** the mark covers annai's English sentence as a whole. Marking each quoted value with its own language needs every error that quotes a value to carry it as a separate part, which is more moving parts for a rare case on a developer's message.
+- **Revisit when:** a screen-reader user reports it.
+- **Approved:** 2026-10-27, the user: "Accept as known limitation".
