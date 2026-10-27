@@ -1,6 +1,10 @@
 {
   "format": 1,
   "plugins": {
+    "anthropic-messages": {
+      "name": "Anthropic Messages",
+      "description": "Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
