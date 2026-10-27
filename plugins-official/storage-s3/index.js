@@ -51,7 +51,8 @@ export function activate(annai) {
   const { t } = annai.l10n;
   return annai.storage.register({
     type: 's3',
-    name: 'S3-compatible storage',
+    // Shown, never stored: a new place keeps no name, and shows its kind's.
+    name: t`S3-compatible storage`,
     stores: 'file',
     fields: [
       { key: 'endpoint', label: t`S3 address`, placeholder: 'https://s3.us-east-1.amazonaws.com' },

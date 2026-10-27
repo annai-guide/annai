@@ -88,9 +88,12 @@ if (wrong.length) {
 const text = JSON.stringify({ format: 1, plugins }, null, 2) + '\n';
 const keyed = Object.fromEntries([...KEYED].sort().map((kind) => [kind, Object.fromEntries(plugins.flatMap((p) => (p.provides?.[kind] ?? []).map((n) => [n, p.id])))]));
 const namesOut = join(root, 'src', 'core', 'official-names.js');
+// A kind of backup place's English name, by its type: a place shows it while its plugin isn't running (backup.js).
+const storage = Object.fromEntries(plugins.flatMap((p) => (p.provides?.['storage-type'] ?? []).map((n) => [n, p.name])).sort());
 const names = `// Written by scripts/catalog.mjs: the names of the kinds handed keys that annai's official plugins provide (spec §5.6),
-// so none is a third party's, even before annai's own is installed.
+// so none is a third party's, even before annai's own is installed; and its kinds of backup place's English names.
 export const OFFICIAL_NAMES = Object.freeze(${JSON.stringify(keyed)});
+export const STORAGE_NAMES = Object.freeze(${JSON.stringify(storage)});
 `;
 const wordsDir = join(root, 'catalog', 'l10n');
 const wordsOut = Object.entries(words).map(([tag, w]) => [join(wordsDir, `${tag}.json`), `${JSON.stringify({ format: 1, plugins: w }, null, 2)}\n`]);

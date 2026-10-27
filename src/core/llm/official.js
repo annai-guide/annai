@@ -222,9 +222,9 @@ async function ensureNow(host, kind, type, opts) {
 }
 
 /**
- * The types of a kind annai's catalog offers, each with the name of the plugin that brings it.
+ * The types of a kind annai's catalog offers, each with the name of the plugin that brings it, in the screens' words.
  * @param {string} kind @param {FetchOptions} [opts] @returns {Promise<{ type: string, name: string }[]>}
  */
 export async function offeredTypes(kind, opts = {}) {
-  return (await officialPlugins(opts)).flatMap((p) => (p.provides?.[kind] ?? []).map((type) => ({ type, name: p.name })));
+  return (await officialPlugins(opts)).flatMap((p) => (p.provides?.[kind] ?? []).map((type) => ({ type, name: officialName(p.id, p.name) })));
 }

@@ -82,6 +82,7 @@ export async function deviceId(ws) {
 
 /**
  * @param {Workspace} ws @param {{ type: string, name: string, config?: Record<string, string>, auto?: Auto, mobileData?: boolean }} t
+ *   name: '' for a new place, whose name is its kind's, made where it is shown (backup.js)
  * @returns {Promise<string>} the new place's id
  */
 export async function addTarget(ws, { type, name, config = {}, auto = 'changes', mobileData = false }) {
