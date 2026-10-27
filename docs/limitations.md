@@ -30,3 +30,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the mark covers annai's English sentence as a whole. Marking each quoted value with its own language needs every error that quotes a value to carry it as a separate part, which is more moving parts for a rare case on a developer's message.
 - **Revisit when:** a screen-reader user reports it.
 - **Approved:** 2026-10-27, the user: "Accept as known limitation".
+
+### A page on an older annai refuses plugins that need plugin API 2 until it restarts
+- **Kind:** known limitation.
+- **What the user sees:** a page still running release 7f0dc027 or older, before it restarts into the new annai, can't add or update the official plugins that say `api: 2`: OpenRouter, Custom provider, Gemini, the four backup kinds, the three search providers and Remote trace. Tapping Update says "was made for plugin API 2; this version of annai supports API 1", keeps the version it has, and offers it again at the next check. Other updates apply, nothing retries on its own, and a restart into the new annai fixes it.
+- **Why:** these plugins use `annai.l10n`, which pre-L7 annai doesn't give, so an older annai has to refuse them rather than start them broken. A 7f0dc027 page has `annai.l10n` but predates API 2, and its words can't be changed now.
+- **Revisit when:** a user reports being stuck, which shouldn't happen once the page restarts.
+- **Approved:** 2026-10-27, the user: "Accept as known limitation".
