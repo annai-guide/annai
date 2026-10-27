@@ -108,16 +108,16 @@ vjxaph	draft	Your turn	轮到你了	src/core/agent/loop.js:2391
 19tfckg	draft	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2533	
 guullf	draft	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2533	
 1h2ina6	draft	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2534	
-1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读 中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2534	
+1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2534	
 1r1dhd7	draft	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2672	
 8wd0xv	draft	Listening stopped	收听已停止	src/core/agent/loop.js:2807	
 43klog	draft	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2981	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 1kuidu6#other	draft	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2982	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
 1u7e776#other	draft	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2983	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
 5a8qix	draft	only {0}	仅限{0}	src/core/agent/loop.js:2984	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在 设置 → 照片 → 发给 Shiori 的照片 中改用更小的照片，或在 设置 → 模型 中换一个模型。	src/core/agent/loop.js:2986	
-vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在 设置 → 模型 中检查模型，或稍后再试。	src/core/agent/loop.js:2993	
+1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2986	
+vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:2993	
 1bwbvkk#other	draft	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3003	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other); English was: The plugin {0} woke her more than the # times an hour you allow: {1}
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
@@ -227,16 +227,16 @@ dhnf3r	draft	It didn't see the red square (it said {0}).	它没有看到红色�
 d9hh16	draft	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:127	
 1u5s6ep	draft	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:129	
 1uj9pv4	draft	annai will send photos in each request instead.	annai 会改为在每次请求中发送照片。	src/core/llm/check.js:129	
-v1mado	draft	It also answers at Koe · Classic's level ({0}).	在 Koe · 经典 的级别（{0}）下也能回答。	src/core/llm/check.js:135	{0} = level
+v1mado	draft	It also answers at Koe · Classic's level ({0}).	在 Koe · 经典的级别（{0}）下也能回答。	src/core/llm/check.js:135	{0} = level
 3yw8ae	draft	It also answers at Utility's level ({0}).	在辅助的级别（{0}）下也能回答。	src/core/llm/check.js:136	{0} = level
 uovis3	draft	It also answers at Main's level ({0}).	在主要的级别（{0}）下也能回答。	src/core/llm/check.js:137	{0} = level
-verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	在 Koe · 经典 的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
+verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	在 Koe · 经典的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
 bw2yzp	draft	At Utility's level ({0}), this model refused: {1}	在辅助的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:142	{0} = level; {1} = said
 x22xp2	draft	At Main's level ({0}), this model refused: {1}	在主要的级别（{0}）下，这个模型拒绝了：{1}	src/core/llm/check.js:143	{0} = level; {1} = said
-1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	请在 设置 → 模型 中降低 Koe · 经典 的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:147	
-s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	请在 设置 → 模型 中降低辅助的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:148	
-10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	请在 设置 → 模型 中降低主要的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:149	
-1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在 设置 → 模型 中检查。	src/core/llm/contract.js:96	
+1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低 Koe · 经典的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:147	
+s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低辅助的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:148	
+10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中降低主要的级别，或在这个模型的页面上修改它的推理级别。	src/core/llm/check.js:149	
+1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:96	
 1do8abu	draft	This account is out of credit.	这个账户的额度已用完。	src/core/llm/contract.js:97	
 99g6ol	draft	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:98	
 1f1gofm	draft	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:99	
@@ -252,7 +252,7 @@ z0xde1	draft	The provider doesn't know this model or address. Check the model id
 vfwfwf	draft	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:109	
 5x3mf4	draft	Stopped.	已停止。	src/core/llm/contract.js:110	
 1jk8mhk	draft	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:111	
-r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在 设置 → 模型 中打开它的提供商来安装。	src/core/llm/contract.js:112	
+r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:112	
 19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:113	
 1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:114	{0} = provider
 sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	
@@ -269,9 +269,9 @@ uxj42v	draft	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.
 s8uown	draft	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
 22cbmy	draft	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:144	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典 没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:194	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在 设置 → 模型 中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
+1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
+d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:194	
+1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
 g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	draft	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
@@ -280,7 +280,7 @@ zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下�
 1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
 1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	draft	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:166	{0} = entry.name
-oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在 设置 → 插件 中把它打开，然后再试一次。	src/core/llm/official.js:166	
+oabrye	draft	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/llm/official.js:166	
 8lvx94	draft	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 tkgxjx	draft	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
@@ -345,8 +345,8 @@ wd3hcp	draft	Sunset {0}	日落 {0}	src/core/sun.js:86	{0} = hm(sunset)
 z7v0ig	draft	Golden hour {0}	黄金时刻 {0}	src/core/sun.js:90	{0} = hm(golden)
 12l7fk6	draft	Golden hour now	正值黄金时刻	src/core/sun.js:92	
 bxt142	draft	Dusk {0}	黄昏 {0}	src/core/sun.js:93	{0} = hm(sun.dusk)
-1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	在 iPhone 上：打开 设置 → App → Safari 浏览器 → 麦克风，选择“询问”或“允许”，然后回来再试一次。	src/core/voice/mic.js:13	
-h8lp19	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	在 Android 上：轻点地址左边的图标（在已安装的应用中：长按 annai 图标，然后 应用信息 → 权限），允许麦克风，然后再试一次。	src/core/voice/mic.js:15	
+1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	在 iPhone 上：打开设置 → App → Safari 浏览器 → 麦克风，选择“询问”或“允许”，然后回来再试一次。	src/core/voice/mic.js:13	
+h8lp19	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	在 Android 上：轻点地址左边的图标（在已安装的应用中：长按 annai 图标，然后应用信息 → 权限），允许麦克风，然后再试一次。	src/core/voice/mic.js:15	
 17920wl	draft	Allow the microphone for this site in your browser's site settings, then try again.	在浏览器的网站设置中允许这个网站使用麦克风，然后再试一次。	src/core/voice/mic.js:16	
 3o9sc5	draft	annai can't use the microphone	annai 无法使用麦克风	src/core/voice/mic.js:17	
 9xy2uc	draft	It wasn't allowed.	未获允许。	src/core/voice/mic.js:17	
@@ -357,16 +357,16 @@ h8lp19	draft	On Android: tap the icon left of the address (in the installed app:
 1mv2ac5	draft	Try again; if it keeps happening, restart annai.	请再试一次；如果反复出现，请重启 annai。	src/core/voice/mic.js:23	
 8ycwt2	draft	The microphone didn't start	麦克风未能启动	src/core/voice/mic.js:23	
 1r1k76k	draft	Realtime	实时	src/core/voice/mode.js:65	
-1kmd589	draft	Realtime off	实时 已关闭	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
-599lim	draft	Realtime resting	实时 休息中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
+1kmd589	draft	Realtime off	实时已关闭	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
+599lim	draft	Realtime resting	实时休息中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
 v13cxh	draft	Shiori answers directly until it can.	在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:68	
-1xyn0at	draft	Classic unavailable	经典 不可用	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
-2nakam	draft	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 经典 现在无法回答。在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:69	
-1qzc99v	draft	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 经典 没有模型，所以 Shiori 独自回答。请在 设置 → 模型 中添加。	src/core/voice/mode.js:71	
+1xyn0at	draft	Classic unavailable	经典不可用	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
+2nakam	draft	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 经典现在无法回答。在它恢复之前，由 Shiori 直接回答。	src/core/voice/mode.js:69	
+1qzc99v	draft	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 经典没有模型，所以 Shiori 独自回答。请在设置 → 模型中添加。	src/core/voice/mode.js:71	
 nr2jvc	draft	(no model)	（无模型）	src/core/voice/mode.js:71	
 y7erjn	draft	Classic	经典	src/core/voice/mode.js:71	
 1jfshdf	draft	(no Realtime model)	（无实时模型）	src/core/voice/mode.js:73	
-pfn1mf	draft	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	实时没有模型：请在 设置 → 模型 的 Koe · 实时 下添加。在此期间由经典说话。	src/core/voice/mode.js:73	
+pfn1mf	draft	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	实时没有模型：请在设置 → 模型的 Koe · 实时下添加。在此期间由经典说话。	src/core/voice/mode.js:73	
 1fq5gan	draft	(Realtime resting)	（实时休息中）	src/core/voice/mode.js:74	
 1iee2u1	draft	Realtime is resting after a failure. Classic talks until it can.	实时在出错后正在休息。在它恢复之前，由经典说话。	src/core/voice/mode.js:74	
 1p1eu5	draft	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	实时的实时语音已关闭，或它的插件没有运行。在此期间由经典说话。	src/core/voice/mode.js:75	
@@ -378,11 +378,11 @@ dra7tz	draft	moving	移动中	src/core/voice/mode.js:81	Note: why Auto turned vo
 bxwivy	draft	Voice auto · off	语音自动 · 关闭	src/core/voice/mode.js:94	
 46l9so	draft	Voice off	语音关闭	src/core/voice/mode.js:95	
 1o81qfq	draft	Voice on	语音开启	src/core/voice/mode.js:96	
-xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在 设置 → 模型 → 语音识别 中添加一项。	src/core/voice/resolve.js:156	
-et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。请在 设置 → 模型 中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:163	{0} = name
-1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在 设置 → 模型 中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:164	{0} = name
-1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。请在 设置 → 模型 中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
-dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在 设置 → 模型 中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:166	
+xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:156	
+et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:163	{0} = name
+1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:164	{0} = name
+1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
+dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型（这个浏览器也没有手机语音输入）。请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:166	
 jo5o9d	draft	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:314	
 ocv5zw	draft	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:359	
 pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	

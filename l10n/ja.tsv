@@ -108,16 +108,16 @@ vjxaph	draft	Your turn	あなたの番	src/core/agent/loop.js:2391
 19tfckg	draft	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2533	
 guullf	draft	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2533	
 1h2ina6	draft	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2534	
-1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げ のどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2534	
+1mfe42u	draft	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2534	
 1r1dhd7	draft	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2672	
 8wd0xv	draft	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2807	
 43klog	draft	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:2981	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 1kuidu6#other	draft	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:2982	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
 1u7e776#other	draft	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:2983	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
 5a8qix	draft	only {0}	{0}のみ	src/core/agent/loop.js:2984	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真 で写真を小さくするか、設定 → モデル で別のモデルを試してください。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真 で写真を小さくするか、設定 → モデル で別のモデルを試してください。	src/core/agent/loop.js:2986	
-vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデル でモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:2993	
+1ekvk87	draft	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:2985	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	draft	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:2986	
+vbsaso	draft	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:2993	
 1bwbvkk#other	draft	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3003	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other); English was: The plugin {0} woke her more than the # times an hour you allow: {1}
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
@@ -160,7 +160,7 @@ mdqb8a	draft	annai couldn't start the plugin for this kind of backup place. Try 
 lpnyhw	draft	Type a number of megabytes, or leave it empty for no limit.	メガバイト数を入力するか、上限なしなら空欄にしてください。	src/core/backup.js:354	
 1t8pkx9	draft	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:365	
 tzkuq7	draft	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:373	
-230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「パスフレーズでバックアップを暗号化」にチェックを入れてください。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
+230717	draft	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API キーは暗号化バックアップにしか入りません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:374	Note: the checkbox's own words; keep them as its row says them.
 107ikf9	draft	Works.	動作しています。	src/core/backup.js:418	Note: the result of Save and test when the place says nothing itself.
 173rmiu	draft	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:469	
 1w4k6nl	draft	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:469	
@@ -227,16 +227,16 @@ dhnf3r	draft	It didn't see the red square (it said {0}).	赤い四角が見え�
 d9hh16	draft	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	写真のアップロードは使えます：写真は1枚につき1回アップロードされ、48時間で期限が切れます。	src/core/llm/check.js:127	
 1u5s6ep	draft	Uploading photos didn't work with this key.	このキーでは写真をアップロードできませんでした。	src/core/llm/check.js:129	
 1uj9pv4	draft	annai will send photos in each request instead.	代わりに、annai はリクエストごとに写真を送ります。	src/core/llm/check.js:129	
-v1mado	draft	It also answers at Koe · Classic's level ({0}).	Koe · クラシック のレベル（{0}）でも答えます。	src/core/llm/check.js:135	{0} = level
-3yw8ae	draft	It also answers at Utility's level ({0}).	補助 のレベル（{0}）でも答えます。	src/core/llm/check.js:136	{0} = level
-uovis3	draft	It also answers at Main's level ({0}).	メイン のレベル（{0}）でも答えます。	src/core/llm/check.js:137	{0} = level
-verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	Koe · クラシック のレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
-bw2yzp	draft	At Utility's level ({0}), this model refused: {1}	補助 のレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:142	{0} = level; {1} = said
-x22xp2	draft	At Main's level ({0}), this model refused: {1}	メイン のレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:143	{0} = level; {1} = said
-1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデル で Koe · クラシック のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:147	
-s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデル で 補助 のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:148	
-10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデル で メイン のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:149	
-1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデル で確認してください。	src/core/llm/contract.js:96	
+v1mado	draft	It also answers at Koe · Classic's level ({0}).	Koe · クラシックのレベル（{0}）でも答えます。	src/core/llm/check.js:135	{0} = level
+3yw8ae	draft	It also answers at Utility's level ({0}).	補助のレベル（{0}）でも答えます。	src/core/llm/check.js:136	{0} = level
+uovis3	draft	It also answers at Main's level ({0}).	メインのレベル（{0}）でも答えます。	src/core/llm/check.js:137	{0} = level
+verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	Koe · クラシックのレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
+bw2yzp	draft	At Utility's level ({0}), this model refused: {1}	補助のレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:142	{0} = level; {1} = said
+x22xp2	draft	At Main's level ({0}), this model refused: {1}	メインのレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:143	{0} = level; {1} = said
+1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで Koe · クラシックのレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:147	
+s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで 補助のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:148	
+10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで メインのレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:149	
+1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:96	
 1do8abu	draft	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:97	
 99g6ol	draft	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:98	
 1f1gofm	draft	The provider is overloaded right now.	プロバイダーは今、混み合っています。	src/core/llm/contract.js:99	
@@ -252,7 +252,7 @@ z0xde1	draft	The provider doesn't know this model or address. Check the model id
 vfwfwf	draft	The model took too long to start answering.	モデルが答え始めるまでに時間がかかりすぎました。	src/core/llm/contract.js:109	
 5x3mf4	draft	Stopped.	停止しました。	src/core/llm/contract.js:110	
 1jk8mhk	draft	The plugin for this model's protocol failed.	このモデルのプロトコルのプラグインが失敗しました。	src/core/llm/contract.js:111	
-r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	このモデルのプロトコルのプラグインが動いていません。設定 → モデル でプロバイダーを開いてインストールしてください。	src/core/llm/contract.js:112	
+r34ccn	draft	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	このモデルのプロトコルのプラグインが動いていません。設定 → モデルでプロバイダーを開いてインストールしてください。	src/core/llm/contract.js:112	
 19gg4yk	draft	The provider no longer has the earlier turns; annai sends the conversation whole.	プロバイダーには以前のターンがもう残っていません。annai は会話全体を送ります。	src/core/llm/contract.js:113	
 1bhiyow	draft	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} はリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:114	{0} = provider
 sek2pk	draft	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:115	
@@ -269,9 +269,9 @@ uxj42v	draft	It doesn't take audio.	音声を受け付けません。	src/core/l
 s8uown	draft	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:111	
 13y0hea	draft	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:134	{0} = at; Note: {0} is a time, or a weekday and a time.
 22cbmy	draft	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:144	
-1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	補助 の役割にモデルが設定されていません。設定 → モデル で追加してください。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
-d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシック にモデルが設定されていません。設定 → モデル で追加してください。	src/core/llm/fallback.js:194	
-1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	メイン の役割にモデルが設定されていません。設定 → モデル で追加してください。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
+1av83fe	draft	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:193	Note: the role by its screen name (補助 / 辅助).
+d34x39	draft	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:194	
+1a34oxt	draft	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:195	Note: the role by its screen name (メイン / 主要).
 g4h5be	draft	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:29	
 2vsb85	draft	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:31	{0} = res.status
 mprjic	draft	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:51	Note: said of a plugin, whose name is the card's title.
@@ -280,7 +280,7 @@ zkivre	draft	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウン�
 1en96uv	draft	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:155	Note: said of a kind of backup place, whose id comes before it in the log.
 1vh2cz2	draft	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:156	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	draft	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:166	{0} = entry.name
-oabrye	draft	Turn it on in Settings → Plugins, then try again.	設定 → プラグイン でオンにしてから、もう一度試してください。	src/core/llm/official.js:166	
+oabrye	draft	Turn it on in Settings → Plugins, then try again.	設定 → プラグインでオンにしてから、もう一度試してください。	src/core/llm/official.js:166	
 8lvx94	draft	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 tkgxjx	draft	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:173	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	draft	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
@@ -345,7 +345,7 @@ wd3hcp	draft	Sunset {0}	日の入り {0}	src/core/sun.js:86	{0} = hm(sunset)
 z7v0ig	draft	Golden hour {0}	ゴールデンアワー {0}	src/core/sun.js:90	{0} = hm(golden)
 12l7fk6	draft	Golden hour now	今ゴールデンアワー	src/core/sun.js:92	
 bxt142	draft	Dusk {0}	薄暮 {0}	src/core/sun.js:93	{0} = hm(sun.dusk)
-1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	iPhone では：設定 → アプリ → Safari → マイク を開いて「確認」か「許可」を選び、戻ってからもう一度試してください。	src/core/voice/mic.js:13	
+1p63zkc	draft	On iPhone: open Settings → Apps → Safari → Microphone, choose Ask or Allow, then come back and try again.	iPhone では：設定 → アプリ → Safari → マイクを開いて「確認」か「許可」を選び、戻ってからもう一度試してください。	src/core/voice/mic.js:13	
 h8lp19	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions), allow the microphone, then try again.	Android では：アドレスの左のアイコンをタップし（インストールしたアプリでは、annai のアイコンを長押しして アプリ情報 → 権限）、マイクを許可してから、もう一度試してください。	src/core/voice/mic.js:15	
 17920wl	draft	Allow the microphone for this site in your browser's site settings, then try again.	ブラウザのサイトの設定でこのサイトのマイクを許可してから、もう一度試してください。	src/core/voice/mic.js:16	
 3o9sc5	draft	annai can't use the microphone	annai はマイクを使えません	src/core/voice/mic.js:17	
@@ -361,12 +361,12 @@ h8lp19	draft	On Android: tap the icon left of the address (in the installed app:
 599lim	draft	Realtime resting	リアルタイム 休止中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
 v13cxh	draft	Shiori answers directly until it can.	使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:68	
 1xyn0at	draft	Classic unavailable	クラシック 利用不可	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
-2nakam	draft	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · クラシック は今答えられません。使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:69	
-1qzc99v	draft	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · クラシック にモデルがないため、Shiori は1人で答えます。設定 → モデル で追加してください。	src/core/voice/mode.js:71	
+2nakam	draft	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · クラシックは今答えられません。使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:69	
+1qzc99v	draft	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · クラシックにモデルがないため、Shiori は1人で答えます。設定 → モデルで追加してください。	src/core/voice/mode.js:71	
 nr2jvc	draft	(no model)	（モデルなし）	src/core/voice/mode.js:71	
 y7erjn	draft	Classic	クラシック	src/core/voice/mode.js:71	
 1jfshdf	draft	(no Realtime model)	（リアルタイムのモデルなし）	src/core/voice/mode.js:73	
-pfn1mf	draft	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	リアルタイムにモデルがありません：設定 → モデル の Koe · リアルタイム で追加してください。その間はクラシックが話します。	src/core/voice/mode.js:73	
+pfn1mf	draft	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	リアルタイムにモデルがありません：設定 → モデルの Koe · リアルタイムで追加してください。その間はクラシックが話します。	src/core/voice/mode.js:73	
 1fq5gan	draft	(Realtime resting)	（リアルタイム休止中）	src/core/voice/mode.js:74	
 1iee2u1	draft	Realtime is resting after a failure. Classic talks until it can.	リアルタイムはエラーの後で休んでいます。使えるようになるまで、クラシックが話します。	src/core/voice/mode.js:74	
 1p1eu5	draft	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	リアルタイムのライブ音声がオフか、そのプラグインが動いていません。その間はクラシックが話します。	src/core/voice/mode.js:75	
@@ -378,11 +378,11 @@ dra7tz	draft	moving	移動中	src/core/voice/mode.js:81	Note: why Auto turned vo
 bxwivy	draft	Voice auto · off	音声自動 · オフ	src/core/voice/mode.js:94	
 46l9so	draft	Voice off	音声オフ	src/core/voice/mode.js:95	
 1o81qfq	draft	Voice on	音声オン	src/core/voice/mode.js:96	
-xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取り で追加してください。	src/core/voice/resolve.js:156	
-et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデル で OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:163	{0} = name
-1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデル で OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	{0} = name
-1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデル で OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:165	
-dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデル で OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:166	
+xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取りで追加してください。	src/core/voice/resolve.js:156	
+et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:163	{0} = name
+1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	{0} = name
+1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:165	
+dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:166	
 jo5o9d	draft	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:314	
 ocv5zw	draft	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:359	
 pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
