@@ -7,7 +7,7 @@ import { keysAndData, finePrint } from '../privacy.js';
 import { STEPS as INSTALL_STEPS, installButton } from '../install.js';
 import { platform, isStandalone } from '../platform.js';
 import { readyFeatured } from '../provider-setup.js';
-import { officialPlugins } from '../../core/llm/official.js';
+import { officialPlugins, catalogWords, shownEntry } from '../../core/llm/official.js';
 import { freeTicks, WELCOME_SEARCH } from '../search-panel.js';
 
 /**
@@ -102,9 +102,10 @@ function start(ctx) {
     lead.textContent = sentences(inSafari() ? t`Connect a model there, so Shiori can think.` : t`Connect a model, so Shiori can think.`, featured, inSafari() ? t`A model set up here, in Safari, stays in Safari.` : '');
   };
   say('');
-  Promise.all([officialPlugins(), ctx.llm.config()]).then(([list, cfg]) => {
+  // Its sentence in the screens' language, where annai's catalog has it.
+  Promise.all([officialPlugins(), catalogWords(), ctx.llm.config()]).then(([list, words, cfg]) => {
     const f = list.find((x) => typeof x.featured === 'string' && x.featured);
-    if (f && !Object.keys(cfg.providers).length) say(String(f.featured));
+    if (f && !Object.keys(cfg.providers).length) say(String(shownEntry(f, words).featured));
   }, () => {});
   if (!inSafari()) readyFeatured(ctx).catch(() => {});
   const model = [lead];

@@ -86,6 +86,11 @@
       "name": "OpenAI",
       "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のための Realtime の声も、1つのキーで使えます。"
     },
+    "provider-openrouter": {
+      "name": "OpenRouter",
+      "description": "1つのキーで多くのモデル（無料のものも含む）、さらに文字起こしと声も使えます。「OpenRouter でサインイン」するか、キーを入力してください。",
+      "featured": "「OpenRouter でサインイン」がいちばん手早い方法で、無料のモデルから始められます。"
+    },
     "provider-scripted": {
       "name": "台本どおりのモデル（テスト用）",
       "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"

@@ -10,14 +10,14 @@
  * await before it. The key goes to annai, which keeps it for one provider; this plugin never stores it.
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
+ * @typedef {any} L10n annai.l10n: its words on annai's screens, where every one of these goes (none is kept or read by a model)
  */
 export const AUTH_URL = 'https://openrouter.ai/auth';
 export const KEYS_URL = 'https://openrouter.ai/api/v1/auth/keys';
 const SLOT = 'annai.openrouter';
 const MAX_AGE = 15 * 60_000;
-const AGAIN = 'Tap Sign in with OpenRouter to start again.';
-/** Where its speech models go, and how to use them. */
-const BEHIND = "behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles";
+/** A sentence, then how to start again. @param {L10n} l10n @param {string} what */
+const again = (l10n, what) => l10n.format.sentences(what, l10n.t`Tap Sign in with OpenRouter to start again.`);
 
 /** The sign-in waiting in storage, or null. @param {KeyValue} storage @returns {any} */
 function waiting(storage) {
@@ -81,19 +81,20 @@ export function tapCode(url, { storage = localStorage, now = Date.now() } = {}) 
  * Trades the code for a key. The verifier is used once. A code that came back in the address must carry
  * the state this browser sent (otherwise anyone could hand annai a code for their own account: login CSRF);
  * a pasted code is taken only in a sign-in that asked for one.
- * @param {{ code: string, state: string | null, pasted?: boolean, fetch?: Fetch, storage?: KeyValue, now?: number }} c
+ * @param {{ code: string, state: string | null, pasted?: boolean, fetch?: Fetch, storage?: KeyValue, now?: number, l10n: L10n }} c
  * @returns {Promise<string>} the key
  */
-export async function exchange({ code, state, pasted = false, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now() }) {
-  if (!code.trim()) throw new Error('Paste the code OpenRouter showed you, then tap Connect.');
+export async function exchange({ code, state, pasted = false, fetch: get = (url, init) => fetch(url, init), storage = localStorage, now = Date.now(), l10n }) {
+  const { t } = l10n;
+  if (!code.trim()) throw new Error(t`Paste the code OpenRouter showed you, then tap Connect.`);
   const saved = waiting(storage);
-  if (!saved) throw new Error('annai has no sign-in waiting for this code: it was used already, or began in another browser.');
+  if (!saved) throw new Error(t`annai has no sign-in waiting for this code: it was used already, or began in another browser.`);
   if (now - saved.at > MAX_AGE) {
     storage.removeItem(SLOT); // so the next tap starts a new one
-    throw new Error(`This sign-in has expired. ${AGAIN}`);
+    throw new Error(again(l10n, t`This sign-in has expired.`));
   }
   const ours = pasted ? saved.mode === 'code' : saved.mode === 'callback' && typeof state === 'string' && state === saved.state;
-  if (!ours) throw new Error("This sign-in didn't start in this browser, so annai ignored it.");
+  if (!ours) throw new Error(t`This sign-in didn't start in this browser, so annai ignored it.`);
   /** @type {Response} */
   let res;
   try {
@@ -104,14 +105,14 @@ export async function exchange({ code, state, pasted = false, fetch: get = (url,
       redirect: 'manual', // the code and verifier buy a key (fix pass)
     });
   } catch {
-    throw new Error("annai couldn't reach OpenRouter. Check the connection and try again.");
+    throw new Error(t`annai couldn't reach OpenRouter. Check the connection and try again.`);
   }
-  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) throw new Error(`OpenRouter answered with a redirect, which annai doesn't follow with your sign-in. ${AGAIN}`);
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) throw new Error(again(l10n, t`OpenRouter answered with a redirect, which annai doesn't follow with your sign-in.`));
   // 403: the code is wrong, used or older than 10 minutes. The same sign-in takes a new code.
-  if (res.status === 403) throw new Error("OpenRouter didn't take the code: a code works once, for 10 minutes. Tap Sign in with OpenRouter to get a new one.");
-  if (!res.ok) throw new Error(`OpenRouter didn't accept the sign-in (HTTP ${res.status}). ${AGAIN}`);
+  if (res.status === 403) throw new Error(t`OpenRouter didn't take the code: a code works once, for 10 minutes. Tap Sign in with OpenRouter to get a new one.`);
+  if (!res.ok) throw new Error(again(l10n, t`OpenRouter didn't accept the sign-in (HTTP ${res.status}).`));
   const body = await res.json().catch(() => ({}));
-  if (typeof body?.key !== 'string' || !body.key) throw new Error(`OpenRouter didn't send a key. ${AGAIN}`);
+  if (typeof body?.key !== 'string' || !body.key) throw new Error(again(l10n, t`OpenRouter didn't send a key.`));
   storage.removeItem(SLOT);
   return body.key;
 }
@@ -128,14 +129,16 @@ export function freeLimit(_status, body) {
   }
 }
 
-/** @param {unknown} e */
-const words = (e) => String(/** @type {any} */ (e)?.message ?? e);
+/** An error's words for the screen: annai's own carry them (shown). @param {unknown} e */
+const words = (e) => String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e);
 
 /**
- * The setup annai.providers.setup takes. env: annai.ui.card, and the browser's storage and fetch, stood in for in tests.
- * @param {{ card?: (c: { tone?: string, title: string, body?: string }) => void, storage?: KeyValue, fetch?: Fetch }} [env]
+ * The setup annai.providers.setup takes. env: annai.l10n, annai.ui.card, and the browser's storage and fetch, stood in for in tests.
+ * @param {{ l10n: L10n, card?: (c: { tone?: string, title: string, body?: string }) => void, storage?: KeyValue, fetch?: Fetch }} env
  */
-export function openRouter(env = {}) {
+export function openRouter(env) {
+  const { l10n } = env;
+  const { t } = l10n;
   const store = () => env.storage ?? localStorage;
   /** A sign-in coming back is being finished: its button waits. */
   let finishing = false;
@@ -154,11 +157,12 @@ export function openRouter(env = {}) {
       if (provider) await ui.keep(provider, key);
       else await ui.add({ key, roles: 'free' });
     } catch (e) {
-      throw asked ? e : new Error(`${words(e).replace(/[.\s]*$/, '.')} Nothing was sent to OpenRouter yet: try again.`);
+      throw asked ? e : new Error(l10n.format.sentences(words(e), t`Nothing was sent to OpenRouter yet: try again.`));
     }
     env.card?.({
-      tone: 'ok', title: 'Signed in with OpenRouter',
-      body: provider ? "annai keeps the new key for OpenRouter's chat, transcription and voices." : `Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, ${BEHIND}.`,
+      tone: 'ok', title: t`Signed in with OpenRouter`,
+      body: provider ? t`annai keeps the new key for OpenRouter's chat, transcription and voices.`
+        : t`Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.`,
     });
   };
   return {
@@ -166,12 +170,12 @@ export function openRouter(env = {}) {
     /** annai's address came back with OpenRouter's code. @param {URLSearchParams} params @param {any} ui */
     async returned(params, ui) {
       const code = params.get('code');
-      if (!code) throw new Error(`OpenRouter sent no code back. ${AGAIN}`);
+      if (!code) throw new Error(again(l10n, t`OpenRouter sent no code back.`));
       const provider = waiting(store())?.provider ?? null;
       finishing = true;
       ui.render();
       try {
-        await connect(ui, provider, () => exchange({ code, state: params.get('state'), fetch: env.fetch, storage: store() }));
+        await connect(ui, provider, () => exchange({ code, state: params.get('state'), fetch: env.fetch, storage: store(), l10n }));
       } finally {
         finishing = false;
       }
@@ -180,7 +184,7 @@ export function openRouter(env = {}) {
     panel(ui, provider) {
       const { h } = ui;
       const target = provider?.id ?? null;
-      const label = provider?.key ? 'Sign in again' : 'Sign in with OpenRouter';
+      const label = provider?.key ? t`Sign in again` : t`Sign in with OpenRouter`;
       const status = h('p', { class: 'sub', role: 'status' });
       const codeSlot = h('div', {});
       /** @type {HTMLElement} */
@@ -202,9 +206,9 @@ export function openRouter(env = {}) {
             class: 'btn pri', type: 'button',
             onclick: async () => {
               go.disabled = true;
-              status.textContent = 'Connecting to OpenRouter…';
+              status.textContent = t`Connecting to OpenRouter…`;
               try {
-                await connect(ui, waiting(store())?.provider ?? target, () => exchange({ code: code.value, state: null, pasted: true, fetch: env.fetch, storage: store() }));
+                await connect(ui, waiting(store())?.provider ?? target, () => exchange({ code: code.value, state: null, pasted: true, fetch: env.fetch, storage: store(), l10n }));
                 ui.render();
               } catch (e) {
                 status.textContent = words(e);
@@ -212,10 +216,10 @@ export function openRouter(env = {}) {
                 await prepare(); // an expired sign-in makes way for a new one
               }
             },
-          }, 'Connect');
+          }, t`Connect`);
           return h('div', {},
-            h('p', { class: 'sub', text: 'OpenRouter opens in Safari. Sign in there; it then shows a code, which works for 10 minutes. Copy it, come back to annai, and paste it here.' }),
-            h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'field-label', text: 'Paste the code OpenRouter showed you' }), code), h('div', { class: 'acts' }, go)));
+            h('p', { class: 'sub', text: t`OpenRouter opens in Safari. Sign in there; it then shows a code, which works for 10 minutes. Copy it, come back to annai, and paste it here.` }),
+            h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'field-label', text: t`Paste the code OpenRouter showed you` }), code), h('div', { class: 'acts' }, go)));
         };
         link.addEventListener('click', (/** @type {Event} */ e) => {
           const href = link.getAttribute('href');
@@ -223,7 +227,7 @@ export function openRouter(env = {}) {
           // annai's 15 minutes start now. No sign-in waits for this address (it was used, or dropped): a new one, for the next tap.
           if (!tapCode(href, { storage: store() })) {
             e.preventDefault();
-            status.textContent = `annai has made a new sign-in: tap ${provider?.key ? 'it' : label} again.`;
+            status.textContent = provider?.key ? t`annai has made a new sign-in: tap it again.` : t`annai has made a new sign-in: tap Sign in with OpenRouter again.`;
             return prepare();
           }
           if (!codeSlot.firstChild) codeSlot.replaceChildren(paste());
@@ -245,8 +249,8 @@ export function openRouter(env = {}) {
         }, label);
       }
       return h('div', {},
-        h('p', provider ? { class: 'sub', text: provider.key ? 'Sign in again for a new key, in place of the one saved.' : 'Sign in with OpenRouter for a key, or give one below.' }
-          : { text: "Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the phone's own dictation and voice stay first." }),
+        h('p', provider ? { class: 'sub', text: provider.key ? t`Sign in again for a new key, in place of the one saved.` : t`Sign in with OpenRouter for a key, or give one below.` }
+          : { text: t`Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the phone's own dictation and voice stay first.` }),
         h('div', { class: 'acts' }, btn),
         codeSlot,
         status);
@@ -256,5 +260,5 @@ export function openRouter(env = {}) {
 
 /** @param {any} annai */
 export function activate(annai) {
-  return annai.providers.setup(openRouter({ fetch: annai.net.fetch, card: annai.ui.card }));
+  return annai.providers.setup(openRouter({ fetch: annai.net.fetch, card: annai.ui.card, l10n: annai.l10n }));
 }
