@@ -7,6 +7,8 @@ gemini-live:@name	draft	Gemini Live	Gemini Live	plugins-official/gemini-live/ann
 gemini-live:@description	draft	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。	plugins-official/gemini-live/annai-plugin.json:8	
 openai-realtime:@name	draft	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
 openai-realtime:@description	draft	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。	plugins-official/openai-realtime/annai-plugin.json:8	
+openai-responses:@name	draft	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
+openai-responses:@description	draft	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。	plugins-official/openai-responses/annai-plugin.json:8	
 provider-mistral:@name	draft	Mistral	Mistral	plugins-official/provider-mistral/annai-plugin.json:3	
 provider-mistral:@description	draft	Mistral's models.	Mistral 的模型。	plugins-official/provider-mistral/annai-plugin.json:7	
 provider-mistral:@provider.abilities.chat.note	draft	Add models with Fetch model list.	用“获取模型列表”添加模型。	plugins-official/provider-mistral/annai-plugin.json:23	

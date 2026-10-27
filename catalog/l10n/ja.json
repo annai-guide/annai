@@ -17,6 +17,10 @@
       "name": "OpenAI Realtime",
       "description": "OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
     },
+    "openai-responses": {
+      "name": "OpenAI Responses",
+      "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral のモデル。"
