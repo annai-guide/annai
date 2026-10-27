@@ -129,10 +129,12 @@ export function reminderParts(d, mine, make = h) {
   return around(message, make('span', { ...marked, text: words }));
 }
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
 /** A reminder's first sentence, about 80 characters at most, with no full stop: a watch's name in a line. @param {string} text */
 const brief = (text) => {
   const first = (/^.+?(?:[.!?](?=\s|$)|[。！？])/su.exec(text.trim())?.[0] ?? text.trim()).replace(/[.!?。！？]+$/u, '');
-  const chars = Array.from(first); // by characters, so an emoji is never cut in half
+  const chars = Array.from(graphemes.segment(first), (g) => g.segment); // whole characters: an emoji (a flag, a family) is never cut apart
   return chars.length > 80 ? `${chars.slice(0, 79).join('')}…` : first;
 };
 
