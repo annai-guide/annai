@@ -60,7 +60,7 @@ esglmt	ok	{0} · {1} · stamp	{0} · {1} · スタンプ	src/core/after/replay.j
 2xd7wx	ok	Walked {0} · {1}	徒歩 {0} · {1}	src/core/after/replay.js:125	{0} = far; {1} = long
 1lwm8i6	ok	Drove {0} · {1} (partly unseen: the phone was locked)	運転 {0} · {1}（一部記録なし：端末がロックされていました）	src/core/after/replay.js:126	{0} = far; {1} = long
 s3mlgp	ok	Drove {0} · {1}	運転 {0} · {1}	src/core/after/replay.js:126	{0} = far; {1} = long
-rqx5bo	draft	I adjusted my personality	性格を調整しました	src/core/after/replay.js:130	Note: Shiori's card, in her first person.
+rqx5bo	ok	I adjusted my personality	性格を調整しました	src/core/after/replay.js:130	Note: Shiori's card, in her first person.
 1szxw8q	ok	a card	カード	src/core/after/replay.js:131	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
 ngwtmh	ok	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cut(String(words), 120) : t`a card`; Note: read by a screen reader; {0} is what she said or showed.
 1ot96wv	ok	You said: {0}	あなた（音声）：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120); Note: what you said aloud, beside "You: {0}" for what you typed.
@@ -123,16 +123,16 @@ vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Che
 1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
 1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
-1ptx7ob	draft	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
-157dl17	draft	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
-13g1wjf	draft	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
-1izvp43	draft	Agree	同意する	src/core/agent/personalities.js:131	
-myk8x4	draft	annai couldn't reach {0} ({1}). Is the device offline?	annai は {0} につながりませんでした（{1}）。この端末はオフラインですか？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
-uc7dg2	draft	annai couldn't reach {0}. Is the device offline?	annai は {0} につながりませんでした。この端末はオフラインですか？	src/core/answer.js:18	{0} = where
-15czcef	draft	{0} answered {1}.	{0} が {1} を返しました。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
-1nhf5ew	draft	{0} sent an answer annai can't read.	{0} から annai が読めない応答が届きました。	src/core/answer.js:20	{0} = where
-17yvnnz	draft	{0} sent more than annai reads ({1}).	{0} から annai が読める量（{1}）を超える応答が届きました。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
-9rf9qv	draft	{0}'s answer was cut off.	{0} の応答が途中で切れました。	src/core/answer.js:22	{0} = where
+1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
+157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
+13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
+1izvp43	ok	Agree	同意する	src/core/agent/personalities.js:131	
+myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	annai は {0} につながりませんでした（{1}）。この端末はオフラインですか？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
+uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai は {0} につながりませんでした。この端末はオフラインですか？	src/core/answer.js:18	{0} = where
+15czcef	ok	{0} answered {1}.	{0} が {1} を返しました。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
+1nhf5ew	ok	{0} sent an answer annai can't read.	{0} から annai が読めない応答が届きました。	src/core/answer.js:20	{0} = where
+17yvnnz	ok	{0} sent more than annai reads ({1}).	{0} から annai が読める量（{1}）を超える応答が届きました。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
+9rf9qv	ok	{0}'s answer was cut off.	{0} の応答が途中で切れました。	src/core/answer.js:22	{0} = where
 1im1t3t	ok	Enter a passphrase to encrypt the file.	ファイルを暗号化するパスフレーズを入力してください。	src/core/archive-crypto.js:66	
 1bw0b6k	ok	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
@@ -157,7 +157,7 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊�
 syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:561	
 qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:665	
 cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:666	
-e0756x	draft	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:40	
+e0756x	ok	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:40	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:42	{0} = s.name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:43	{0} = s.name
 1cm4kmv	ok	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	src/core/backup.js:44	{0} = size(s.bytes ?? 0)
@@ -229,12 +229,12 @@ ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live
 112i693	ok	You've stopped somewhere that isn't on the plan.	予定にない場所で止まっています。	src/core/live/plan-watches.js:158	
 1hf686i	ok	Nothing more is on the plan.	予定はこれ以上ありません。	src/core/live/plan-watches.js:159	
 1jsyqjn	ok	Next on the plan: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
-1jok3pb	draft	A simulation is already running. Stop it first.	シミュレーションはすでに実行中です。先に止めてください。	src/core/live/sim-run.js:90	
-enf0f5	draft	A simulated trip	シミュレーションの旅	src/core/live/sim-run.js:237	Note: a new trip's default name, before "(simulation)" is added.
-1426icm	draft	That trip isn't on this device any more.	その旅はもうこの端末にありません。	src/core/live/sim-run.js:277	
-1o5lnqs	draft	{0} (simulation {1})	{0}（シミュレーション {1}）	src/core/live/sim-run.js:311	{0} = stem; {1} = num(n)
-1vpfjix	draft	{0} (simulation)	{0}（シミュレーション）	src/core/live/sim-run.js:311	{0} = stem; Note: a trip's title; it becomes the user's own once made.
-1cvk0p6	draft	That trip has no recorded track yet: GPS records one while it is on.	その旅にはまだ記録された経路がありません：GPS がオンのあいだに記録されます。	src/core/live/simulate.js:112	
+1jok3pb	ok	A simulation is already running. Stop it first.	シミュレーションはすでに実行中です。先に止めてください。	src/core/live/sim-run.js:90	
+enf0f5	ok	A simulated trip	シミュレーションの旅	src/core/live/sim-run.js:237	Note: a new trip's default name, before "(simulation)" is added.
+1426icm	ok	That trip isn't on this device any more.	その旅はもうこの端末にありません。	src/core/live/sim-run.js:277	
+1o5lnqs	ok	{0} (simulation {1})	{0}（シミュレーション {1}）	src/core/live/sim-run.js:311	{0} = stem; {1} = num(n)
+1vpfjix	ok	{0} (simulation)	{0}（シミュレーション）	src/core/live/sim-run.js:311	{0} = stem; Note: a trip's title; it becomes the user's own once made.
+1cvk0p6	ok	That trip has no recorded track yet: GPS records one while it is on.	その旅にはまだ記録された経路がありません：GPS がオンのあいだに記録されます。	src/core/live/simulate.js:112	
 h8yuqy	ok	annai can reach this address from the browser.	annai はブラウザからこのアドレスにつながります。	src/core/llm/check.js:60	
 152u1pq	ok	The key works. The model said: "{0}".	キーは使えます。モデルの答え：「{0}」。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
 iiy1hf	ok	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	モデルはテスト用ツールを呼ぶ前に出力の上限に達しました。答える前に長く考えるのかもしれません。推論レベルを下げてみてください。	src/core/llm/check.js:88	
@@ -251,10 +251,10 @@ mlh3jc	ok	Main	メイン	src/core/llm/check.js:134
 1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:140	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-1nuav0n	draft	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:381	
-1qjc2dh	draft	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:383	{0} = rec.ability
+1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:381	
+1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:383	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:386	
-3i9i3z	draft	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:390	{0} = name
+3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:390	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:97	
 1do8abu	ok	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:98	
 99g6ol	ok	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:99	
@@ -277,38 +277,38 @@ r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Setti
 sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:116	
 17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:134	
 9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:134	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	ok	Voice	声	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.; Note: Settings' Voice section and its button (settings.js:49) use this same message, where the screen's name 音声 is meant: they show 声 until the code says tc('screen') there (proposed).
+b1qn4p	ok	Voice	声	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
 su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:134	
-izfolc	draft	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:144	
-13fumpt	draft	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:145	
+izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:144	
+13fumpt	ok	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:145	
 1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:146	
-b4ie5	draft	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:147	
-1e0qpon	draft	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:148	
-6e3b54	draft	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} には、動いていないプラグインが必要です。インストールするには設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name
-11neb14	draft	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:150	{0} = name
-akhc81	draft	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	draft	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:152	{0} = name
-x31pwm	draft	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:153	
-il3b75	draft	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:154	
-1urfnpy	draft	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:156	{0} = host
-10qbfg	draft	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:157	{0} = host
-16osh89	draft	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:158	{0} = ability
-1cdx16o	draft	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	draft	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	draft	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	draft	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:162	{0} = name
-g63xkc	draft	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
-m0hi3r	draft	In a tier, {0} is not a price: it is a number, not below 0.	段階の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts.
-z6957a	draft	In the schedule, {0} is not a price: it is a number, not below 0.	予定の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is prices that start on a date.
-e0jbhd	draft	{0} is not a price: it is a number, not below 0.	{0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:98	{0} = f.key
-1mrick8	draft	"tiers" is a list: [{"above": 200000, "input": 2}].	"tiers" はリストです：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:99	
-1c4vzsd	draft	A tier's "above" is a number of tokens: [{"above": 200000, "input": 2}].	段階の "above" はトークン数です：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:100	
-1h4915v	draft	"{0}" isn't a price annai knows.	「{0}」は annai が知っている料金ではありません。	src/core/llm/cost.js:101	{0} = f.key
-w1fuif	draft	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	予定はリストです：[{"from": "2027-01-01", "input": 2}]。	src/core/llm/cost.js:102	
-1cvqmj	draft	A schedule's "from" {0} is not a date: write it like 2027-01-01.	予定の "from" の {0} は日付ではありません：2027-01-01 のように書いてください。	src/core/llm/cost.js:103	{0} = f.from
-zo2if3	draft	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	予定の "from" がありません：各項目は 2027-01-01 のような日付で始まります。	src/core/llm/cost.js:104	
-1k2ht3r	draft	The schedule has {0} twice: put what changes that day in one entry.	予定に {0} が2回あります：その日に変わるものは1つの項目にまとめてください。	src/core/llm/cost.js:105	{0} = f.from
-1dfcj24	draft	The schedule names "{0}", which isn't a price annai knows.	予定に「{0}」がありますが、annai が知っている料金ではありません。	src/core/llm/cost.js:106	{0} = f.key
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:147	
+1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:148	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} にはプラグインが必要ですが、動いていません。インストールするには、設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
+11neb14	ok	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:150	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:152	{0} = name
+x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:153	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:154	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:156	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:157	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:158	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:162	{0} = name
+g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
+m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	"tiers" の段階にある {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
+z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	"schedule" の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 予定 is the Plan screen's word.
+e0jbhd	ok	{0} is not a price: it is a number, not below 0.	{0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:98	{0} = f.key
+1mrick8	ok	"tiers" is a list: [{"above": 200000, "input": 2}].	"tiers" はリストです：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:99	
+1c4vzsd	ok	A tier's "above" is a number of tokens: [{"above": 200000, "input": 2}].	段階の "above" はトークン数です：[{"above": 200000, "input": 2}]。	src/core/llm/cost.js:100	
+1h4915v	ok	"{0}" isn't a price annai knows.	「{0}」は annai が知っている料金ではありません。	src/core/llm/cost.js:101	{0} = f.key
+w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedule" はリストです：[{"from": "2027-01-01", "input": 2}]。	src/core/llm/cost.js:102	Note: "schedule" is the JSON key, named as typed (予定 is the Plan screen's word).
+1cvqmj	ok	A schedule's "from" {0} is not a date: write it like 2027-01-01.	"schedule" の "from" にある {0} は日付ではありません：2027-01-01 のように書いてください。	src/core/llm/cost.js:103	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
+zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" の項目に "from" がありません：各項目は 2027-01-01 のような日付で始まります。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
+1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" に {0} が2回あります：その日に変わるものは1つの項目にまとめてください。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
+1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" に「{0}」がありますが、annai が知っている料金ではありません。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
 4zknwy	ok	It is resting for a few minutes after an error.	エラーの後、数分間休んでいます。	src/core/llm/fallback.js:101	
 9bk0c8	ok	It doesn't take photos.	写真を受け付けません。	src/core/llm/fallback.js:102	
 12h1lml	ok	It doesn't read PDFs.	PDF を読めません。	src/core/llm/fallback.js:103	
@@ -336,28 +336,28 @@ brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした 
 tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:178	{0} = type; Note: said of a plugin, whose name is the card's title.
 8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:180	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
-557vva	draft	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
-y6rxxs	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
-1qpfdfv	draft	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。	src/core/llm/provider-desc.js:166	
-ja1k8e	draft	is turned off.	オフになっています。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
-1e19ie2	draft	isn't running. Look at it in Settings → Plugins.	動いていません。設定 → プラグインで確認してください。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
-sejc5h	draft	{0} was switched off after errors.	{0} はエラーが続いたためオフになりました。	src/core/llm/service.js:263	{0} = name
-sv2i3h	draft	didn't provide a model provider.	モデルのプロバイダーを提供しませんでした。	src/core/llm/service.js:264	Note: said of a plugin.
-b2gd9w	draft	its plugin isn't annai's own. Install it again from where it came from.	そのプラグインは annai 自身のものではありません。入手した場所から、もう一度インストールしてください。	src/core/llm/service.js:337	
-1fpv184	draft	the plugin it names doesn't provide models, so it wasn't installed.	名前の挙がったプラグインはモデルを提供しないため、インストールしませんでした。	src/core/llm/service.js:346	
-3ds0qg	draft	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
-1rb0o7n	draft	OpenStreetMap around {0}	{0} 周辺の OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	draft	OpenStreetMap between {0} and {1}	{0} と {1} のあいだの OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
-1ff3ec8	draft	Wikipedia near {0}	{0} 付近の Wikipedia	src/core/pack/download.js:73	{0} = a
-i9ok5g	draft	Wikipedia between {0} and {1}	{0} と {1} のあいだの Wikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
-1qn6l15	draft	{0} didn't answer in time.	{0} が時間内に応答しませんでした。	src/core/pack/download.js:79	{0} = s.where
-16rip5y	draft	{0} stopped early: {1}.	{0} が途中で止まりました：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-cvcpkl	draft	OpenStreetMap didn't answer ({0}).	OpenStreetMap が応答しませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
-rhruvr	draft	{0} said: {1}.	{0} の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	draft	Wikivoyage sent no text for {0}.	Wikivoyage から {0} の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
+557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
+y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
+1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。	src/core/llm/provider-desc.js:166	
+ja1k8e	ok	is turned off.	オフになっています。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
+1e19ie2	ok	isn't running. Look at it in Settings → Plugins.	動いていません。設定 → プラグインで確認してください。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0} はエラーが続いたためオフになりました。	src/core/llm/service.js:263	{0} = name
+sv2i3h	ok	didn't provide a model provider.	モデルのプロバイダーを提供しませんでした。	src/core/llm/service.js:264	Note: said of a plugin.
+b2gd9w	ok	its plugin isn't annai's own. Install it again from where it came from.	そのプラグインは annai 自身のものではありません。入手した場所から、もう一度インストールしてください。	src/core/llm/service.js:337	
+1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	名前の挙がったプラグインはモデルを提供しないため、インストールしませんでした。	src/core/llm/service.js:346	
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周辺の OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} と {1} のあいだの OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 付近の Wikipedia	src/core/pack/download.js:73	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} と {1} のあいだの Wikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} が時間内に応答しませんでした。	src/core/pack/download.js:79	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} が途中で止まりました：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap が応答しませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage から {0} の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	{0} を確認できませんでした：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-mlem3w	draft	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールされていないため、annai には更新を探す場所がありません	src/core/package-updates.js:54	
-1nrhfbi	draft	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスには今は別のパッケージ（{0}）があるため、更新しませんでした。必要なら、これを削除してそちらをインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
+mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールされていないため、annai には更新を探す場所がありません	src/core/package-updates.js:54	
+1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスには今は別のパッケージ（{0}）があるため、更新しませんでした。必要なら、これを削除してそちらをインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	この更新には、まだ同意していない部分が加わります：{0}。もう一度アップデートを確認し、何が加わるかを見てください。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
 1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	この zip には複数のスキルが入っています。1つずつインストールするか、それらを一覧にした annai-plugin.json を追加してください。	src/core/packages.js:213	
 is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} が {1} にあり、深すぎます。annai は zip の一番上か、その中の1つのフォルダーの中から読みます。そのフォルダーだけを zip にしてください。	src/core/packages.js:220	{0} = file; {1} = folder
@@ -380,17 +380,17 @@ tqmba2	ok	an address your searches are sent to: {0}	検索が送られるアド�
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは {0} を変換できないため、annai はそのまま残しました。Safari でしか表示されないことがあります。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」は annai が知らないものです。{1}で表示しています。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルは annai が開けるプラグインのパッケージではありません：{0}	src/core/plugins.js:169	{0} = why
-hs0rw0	draft	is a name annai uses for one of its own parts, so a skill can't have it.	annai が自分の一部に使っている名前なので、スキルには使えません。	src/core/plugins.js:186	
-85vpp4	draft	has the same id as a plugin built into annai	annai に組み込まれたプラグインと同じ ID です	src/core/plugins.js:187	
-d18gob	draft	its name, "{0}", is annai's own name, or one of its parts'. Ask its author to rename it.	その名前「{0}」は annai 自身かその一部の名前です。作者に名前を変えるよう頼んでください。	src/core/plugins.js:191	{0} = pkg.name
-1vbpaus	draft	is installed already as a plugin. Remove it first.	すでにプラグインとしてインストールされています。先に削除してください。	src/core/plugins.js:197	
-qo4woi	draft	is installed already as a skill. Remove it first.	すでにスキルとしてインストールされています。先に削除してください。	src/core/plugins.js:197	
-1idb6oe	draft	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} には入力したキーが渡されるため、使われるのは annai 自身のもの、なければ最初にインストールしたものです。	src/core/plugins.js:248	{0} = name
-7ot8m8	draft	{0} is annai's own, so no plugin replaces it.	{0} は annai 自身のものなので、プラグインで置き換えられません。	src/core/plugins.js:250	{0} = name
-n5bfxm	draft	is being removed	削除中です	src/core/plugins.js:442	
-5wicvq	draft	was updated. Restart annai to run the new version.	更新されました。新しいバージョンを動かすには annai を再起動してください。	src/core/plugins.js:443	
-1jrheem	draft	keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています：サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:570	
-rhqr7k#other	draft	it didn't finish starting within # seconds	#秒以内に起動が終わりませんでした	src/core/plugins.js:763	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
+hs0rw0	ok	is a name annai uses for one of its own parts, so a skill can't have it.	annai が自分の一部に使っている名前なので、スキルには使えません。	src/core/plugins.js:186	
+85vpp4	ok	has the same id as a plugin built into annai	annai に組み込まれたプラグインと同じ ID です	src/core/plugins.js:187	
+d18gob	ok	its name, "{0}", is annai's own name, or one of its parts'. Ask its author to rename it.	その名前「{0}」は annai 自身かその一部の名前です。作者に名前を変えるよう頼んでください。	src/core/plugins.js:191	{0} = pkg.name; Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
+1vbpaus	ok	is installed already as a plugin. Remove it first.	すでにプラグインとしてインストールされています。先に削除してください。	src/core/plugins.js:197	
+qo4woi	ok	is installed already as a skill. Remove it first.	すでにスキルとしてインストールされています。先に削除してください。	src/core/plugins.js:197	
+1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} には入力したキーが渡されるため、使われるのは annai 自身のもの、なければ最初にインストールしたものです。	src/core/plugins.js:248	{0} = name
+7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} は annai 自身のものなので、プラグインで置き換えられません。	src/core/plugins.js:250	{0} = name
+n5bfxm	ok	is being removed	削除中です	src/core/plugins.js:442	
+5wicvq	ok	was updated. Restart annai to run the new version.	更新されました。新しいバージョンを動かすには annai を再起動してください。	src/core/plugins.js:443	
+1jrheem	ok	keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています：サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:570	
+rhqr7k#other	ok	it didn't finish starting within # seconds	#秒以内に起動が終わりませんでした	src/core/plugins.js:763	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annai を閉じている間、リマインダーはこのように届きます。	src/core/push/mirror.js:74	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annai を閉じている間、リマインダーはこのように届きます。	src/core/push/mirror.js:75	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	annai からリマインダーがあります。annai を開いて見てください。	src/core/push/mirror.js:82	Note: a notification for a reminder the phone couldn't read.
@@ -417,27 +417,27 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	端�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} に annai のプッシュ中継はありません（404 と応答しました）。中継のアドレスを確認してください。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} の中継から、annai が使えないキーが届きました。annai のプッシュ中継のアドレスで合っていますか？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0} の中継に断られました（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	draft	The key works.	キーは有効です。	src/core/realtime/open.js:268	
-r6odk7	draft	annai can open a live session at this address from the browser.	annai はブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:268	
-1gyqcn2	draft	It answered aloud: {0}.	声で答えました：{0}。	src/core/realtime/open.js:299	{0} = words
-ip7w4y#other	draft	It didn't answer aloud within # seconds.	#秒以内に声で答えませんでした。	src/core/realtime/open.js:299	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	draft	The session closed before it answered.	答える前にセッションが閉じました。	src/core/realtime/open.js:300	
-9sqs1k	draft	It answered, but not aloud in words.	答えましたが、声の言葉ではありませんでした。	src/core/realtime/open.js:300	
-ntqu7n	draft	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自身のプラグインがこの名前を使っているため、ほかから来たパッケージには使えません。作者に名前を変えるよう頼んでください。	src/core/registry.js:16	
-1euv2cd	draft	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自身のプラグインがこの名前を使っていますが、インストールされているものはほかから来たため、annai は使いません。設定 → プラグインで削除してから、もう一度試してください。	src/core/registry.js:17	
+3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:268	
+r6odk7	ok	annai can open a live session at this address from the browser.	annai はブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:268	
+1gyqcn2	ok	It answered aloud: {0}.	声で答えました：{0}。	src/core/realtime/open.js:299	{0} = words
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒以内に声で答えませんでした。	src/core/realtime/open.js:299	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	答える前にセッションが閉じました。	src/core/realtime/open.js:300	
+9sqs1k	ok	It answered, but not aloud in words.	答えましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:300	Note: It answered, but not in spoken words (text, or sound with no words).
+ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自身のプラグインがこの名前を使っているため、ほかから来たパッケージには使えません。作者に名前を変えるよう頼んでください。	src/core/registry.js:16	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
+1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自身のプラグインがこの名前を使っていますが、インストールされているものはほかから来たため、annai は使いません。設定 → プラグインで削除してから、もう一度試してください。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	設定 → プラグインでオンにしてから、もう一度試してください。	src/core/registry.js:18	
-f1c9to	draft	is switched off after repeated errors	エラーが続いたためオフになっています	src/core/registry.js:217	
-1t55x9w	draft	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン {0} にすると {1} が動かなくなります：{1} には {2} {3} が必要です。先に {4} を更新するか、このバージョンのままにしてください。	src/core/requires.js:48	{0} = version; {1} = other; {2} = name; {3} = r.version; {4} = other
-189pevd	draft	needs {0}, which you turned off.	オフにした {0} が必要です。	src/core/requires.js:73	{0} = named
-1i0uac3	draft	needs {0}, which isn't installed. Install it from {1} first, then try again.	インストールされていない {0} が必要です。先に {1} からインストールして、もう一度試してください。	src/core/requires.js:76	{0} = r.id; {1} = r.homepage
-j773ua	draft	needs {0}, which isn't installed. Install it first, then try again.	インストールされていない {0} が必要です。先にインストールして、もう一度試してください。	src/core/requires.js:78	{0} = r.id
-13cz3da	draft	needs {0} {1}, and version {2} is installed. Update it, then try again.	{0} {1} が必要ですが、インストールされているのはバージョン {2} です。更新してから、もう一度試してください。	src/core/requires.js:80	{0} = r.id; {1} = r.version; {2} = s.version
-111jct3	draft	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	annai の {0}（{1}）が必要ですが、インストールされている {2} はほかから来たもので、annai 自身のものではありません。設定 → プラグインで削除してから、もう一度試してください。	src/core/requires.js:84	{0} = e.name; {1} = r.id; {2} = r.id
-18yy3kp	draft	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です（インストール済みは {3}）。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:87	{0} = e.name; {1} = r.version; {2} = e.version; {3} = s.version
-9ntdzt	draft	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:89	{0} = e.name; {1} = r.version; {2} = e.version
-gvuaip	draft	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:195	
-olo1mq	draft	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:198	
-seoih8	draft	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:200	{0} = entry.name
+f1c9to	ok	is switched off after repeated errors	エラーが続いたためオフになっています	src/core/registry.js:217	
+1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン {0} にすると {1} が動かなくなります：{1} には {2} {3} が必要です。先に {4} を更新するか、このバージョンのままにしてください。	src/core/requires.js:48	{0} = version; {1} = other; {2} = name; {3} = r.version; {4} = other
+189pevd	ok	needs {0}, which you turned off.	オフにした {0} が必要です。	src/core/requires.js:73	{0} = named
+1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	インストールされていない {0} が必要です。先に {1} からインストールして、もう一度試してください。	src/core/requires.js:76	{0} = r.id; {1} = r.homepage
+j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	インストールされていない {0} が必要です。先にインストールして、もう一度試してください。	src/core/requires.js:78	{0} = r.id
+13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	{0} {1} が必要ですが、インストールされているのはバージョン {2} です。更新してから、もう一度試してください。	src/core/requires.js:80	{0} = r.id; {1} = r.version; {2} = s.version
+111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	annai の {0}（{1}）が必要ですが、インストールされている {2} はほかから来たもので、annai 自身のものではありません。設定 → プラグインで削除してから、もう一度試してください。	src/core/requires.js:84	{0} = e.name; {1} = r.id; {2} = r.id
+18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です（インストール済みは {3}）。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:87	{0} = e.name; {1} = r.version; {2} = e.version; {3} = s.version
+9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	{0} {1} が必要ですが、annai のカタログにあるのはバージョン {2} です。合うバージョンが annai に入ってから、もう一度試してください。	src/core/requires.js:89	{0} = e.name; {1} = r.version; {2} = e.version
+gvuaip	ok	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:195	
+olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:198	
+seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:200	{0} = entry.name
 stkvyf	ok	Me	自分	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	システムログ	src/core/scopes.js:42	
 ktdb8o	ok	Settings	設定	src/core/scopes.js:43	
@@ -489,7 +489,7 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:164	
 1oy92m8	ok	This browser has no phone dictation either.	このブラウザには端末の音声入力もありません。	src/core/voice/resolve.js:165	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	設定 → モデルで、OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:165	
-m5s9f4	draft	This browser can't play a voice as it arrives.	このブラウザでは、届くそばから声を再生できません。	src/core/voice/speaker.js:132	
+m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、届くそばから声を再生できません。	src/core/voice/speaker.js:132	
 jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:314	
 ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:359	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
@@ -859,8 +859,8 @@ qdh58i	ok	No offline pack for this trip yet.	この旅のオフラインパッ�
 ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 dbm7fe	ok	Open a trip someone sent you	送られてきた旅を開く	src/ui/open-file.js:6	
-ow6fak	draft	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:72	
-11dn6um	draft	This browser could not write {0}.	このブラウザでは {0} を書き出せませんでした。	src/ui/photo-codec.js:80	{0} = type
+ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:72	
+11dn6um	ok	This browser could not write {0}.	このブラウザでは {0} を書き出せませんでした。	src/ui/photo-codec.js:80	{0} = type
 1l0xxoj	ok	Close	閉じる	src/ui/photo-viewer.js:32	
 1s1o4yb	ok	Show Shiori this part	この部分を Shiori に見せる	src/ui/photo-viewer.js:33	
 u3xlwb	ok	The plugin "{0}" was turned off	プラグイン「{0}」はオフになりました	src/ui/plugin-cards.js:12	{0} = name
@@ -1069,6 +1069,7 @@ hcu7jn	ok	encrypted	暗号化済み	src/ui/screens/backups.js:214
 17hpvne	ok	Show the backups here	ここのバックアップを表示	src/ui/screens/backups.js:221	
 lqkwe8	ok	How to set it up	設定のしかた	src/ui/screens/backups.js:224	
 14gwhko	ok	Where	場所	src/ui/screens/backups.js:228	
+15pm71a	ok	More	詳細設定	src/ui/screens/backups.js:231	context: advanced fields; Note: A backup place's advanced fields, folded under this summary; not the long card's 続きを表示.
 6yqmdh	ok	Passphrase	パスフレーズ	src/ui/screens/backups.js:235	
 bdzmld	ok	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	パスフレーズは安全な場所に控えてください。ないと、これらのバックアップは開けません。annai は自分でバックアップできるよう、この端末に保存しています。	src/ui/screens/backups.js:236	
 1l5dtm7	ok	Keep this many of this device's backups here	ここに残すこの端末のバックアップの数	src/ui/screens/backups.js:238	
@@ -1656,6 +1657,7 @@ j4z771	ok	Pause	一時停止	src/ui/screens/replay.js:176
 k12u1x	ok	Updates	アップデート	src/ui/screens/settings.js:45	
 1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai は起動時と、あなたが戻ってきたときに、自分とプラグインの新しいバージョンを探します。今すぐ確認するか、動いているビルドを確認できます。	src/ui/screens/settings.js:46	
 1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori が使うプロバイダーとモデル、各役割が試す順番、1日に使える額、キャッシュ、要約するタイミング。	src/ui/screens/settings.js:48	
+1kkulsa	ok	Voice	音声	src/ui/screens/settings.js:49	context: screen
 qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori の話し方と聞き取り。それぞれにテストがあります。	src/ui/screens/settings.js:49	
 1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai を閉じている間のリマインダー。プッシュ中継を通じて届き、中継が知ることも説明します。	src/ui/screens/settings.js:50	
 1vex33	ok	Backup	バックアップ	src/ui/screens/settings.js:51	
@@ -2047,7 +2049,6 @@ u495xc	ok	Writing it down…	文字にしています…	src/ui/screens/voice.js
 1rec7os	ok	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、設定 → モデルで文字起こしモデルを追加してください。	src/ui/screens/voice.js:124	
 5uf1sa	ok	Test the microphone	マイクをテスト	src/ui/screens/voice.js:135	
 1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:137	
-1kkulsa	ok	Voice	音声	src/ui/screens/voice.js:140	context: screen
 1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori の話し方と、あなたの声の聞き方です。どの声とどの文字起こしモデルを、どの順で使うかは、設定 → モデルにあります。	src/ui/screens/voice.js:141	
 1nt5zac	ok	On or off	オンとオフ	src/ui/screens/voice.js:142	
 hsuie9	ok	Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. The chip on the dock changes it too.	自動：車内、ヘッドホン、高速で移動中はオン。端末のスピーカーではオフ。annai が判断できないときは前回の選択に従います。オン：Shiori が声に出して話し、あなたの返事を聞きます。オフ：Shiori は文字で書き、あなたは入力します。ドックのボタンでも切り替えられます。	src/ui/screens/voice.js:143	
