@@ -125,6 +125,7 @@ export function transcriptionType(annai) {
 /** @param {any} annai */
 export function speechType(annai) {
   const { sse, ProviderError, base64, g711, wav } = annai.helpers;
+  const { t } = annai.l10n;
 
   /**
    * A reader of Google's audio blocks as 16-bit PCM at their rate. Its PCM is little-endian; a piece that ends
@@ -201,8 +202,8 @@ export function speechType(annai) {
     voices: VOICES,
     // Data a minute of speech, as measured on the wire, streamed (2026-10-20): 239 KB for 3.6 s at full quality, 42 KB for 3.15 s at phone quality.
     choices: {
-      format: { label: 'Sound', options: { pcm24: 'Full quality (the most data: about 4 MB a minute of speech)', mulaw8: 'Phone quality, 8 kHz (about 0.8 MB a minute)' } },
-      stream: { label: 'Stream her voice, so she starts sooner (off: each sentence arrives whole first)' },
+      format: { label: t`Sound`, options: { pcm24: t`Full quality (the most data: about 4 MB a minute of speech)`, mulaw8: t`Phone quality, 8 kHz (about 0.8 MB a minute)` } },
+      stream: { label: t`Stream her voice, so she starts sooner (off: each sentence arrives whole first)` },
     },
     /** The style is input text, billed with the text. @param {any} c */
     extraChars: ({ tunables: t }) => styleOf(t).length,

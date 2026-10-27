@@ -10,6 +10,7 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
+import { pluginWords } from './l10n-kit.js';
 
 const root = new URL('../../', import.meta.url);
 const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8')).plugins;
@@ -278,7 +279,7 @@ test('every official transcription and Chat Completions ability declares the aud
   const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
   (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
   (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
-  (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers, l10n: pluginWords() });
   assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");
   const known = ['ogg', 'webm', 'mp4', 'aac', 'mp3', 'flac', 'wav'];
   /** @type {Record<string, any>} */
