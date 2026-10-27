@@ -1,7 +1,7 @@
 {
   "id": "provider-another-address",
   "name": "Custom provider",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "catchAll": true,
   "api": 2,
   "l10n": ["ja", "zh-Hans"],
