@@ -43,14 +43,16 @@ export class TargetError extends Error {
   /**
    * @param {'newer'|'large'|'rate'|'auth'|'refused'|'missing'|'setup'|'other'} kind
    * @param {string} message what happened and what to do next
-   * @param {{ remote?: RemoteBackup, bytes?: number, retryAt?: number, choices?: Choice[] }} [extra]
+   * @param {{ remote?: RemoteBackup, bytes?: number, retryAt?: number, choices?: Choice[], shown?: string }} [extra]
    *   remote: the newer backup ("newer"); bytes: what the upload would be ("large"); retryAt: when to try again ("rate");
-   *   choices: what the user may pick from, for a field left empty ("setup")
+   *   choices: what the user may pick from, for a field left empty ("setup"); shown: the screens' words, message staying English
+   *   for the log and a hold (the shown rule; a plugin's annai.l10n.both gives both)
    */
   constructor(kind, message, extra = {}) {
     super(message);
     this.name = 'TargetError';
     this.kind = kind;
+    this.shown = extra.shown;
     this.remote = extra.remote;
     this.bytes = extra.bytes;
     this.retryAt = extra.retryAt;
