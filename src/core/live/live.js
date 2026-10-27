@@ -33,9 +33,9 @@ import { SIMULATION } from './simulate.js';
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
- * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number }} Mirrored
+ * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number, what?: string }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
- *   start: a "coming up" item's, for the minutes left
+ *   start and what: a "coming up" item's, for the minutes left and the item, which the service worker words (sw.js)
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
@@ -494,7 +494,7 @@ export class Live {
         } catch {
           due = null;
         }
-        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined } : {}) });
+        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: /** @type {any} */ (w.when).what } : {}) });
       }
       return out.sort((a, b) => a.due - b.due);
     });

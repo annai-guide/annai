@@ -12,11 +12,11 @@ test('the replay: the timeline, the route on a flat map and in words, scrubbing 
   await expect(page.getByRole('heading', { name: 'Replay' })).toBeVisible();
   const timeline = page.getByRole('list', { name: 'Timeline' });
   await expect(timeline.getByRole('button')).toHaveText([
-    /^\d\d:\d\dDrove \d+\.\d km · 30 min$/, /Bixby Creek Bridge · 20 min · stamp/, /^09:35Shiori: Bixby Creek Bridge$/,
-    /^09:36You: Sam wants to see the sea lions\.$/, /^09:45Photo 2026-11-27-0945\.jpg$/, /^\d\d:\d\dDrove .*partly unseen/, /^16:40–18:15Hearst Castle · 1 h 35 min$/,
+    /^\d\d:\d\dDrove \d+(\.\d)? mi · 30 min$/, /Bixby Creek Bridge · 20 min · stamp/, /^09:35Shiori: Bixby Creek Bridge$/,
+    /^09:36You: Sam wants to see the sea lions\.$/, /^09:45Photo 2026-11-27-0945\.jpg$/, /^\d\d:\d\dDrove .*partly unseen/, /^16:40–18:15Hearst Castle · 1 hr, 35 min$/,
   ]);
   await expect(timeline.locator('li.card')).toHaveCount(0); // a card entry isn't drawn as a card box
-  const map = page.getByRole('img', { name: /^The route: \d+\.\d km on the road, from Bixby Creek Bridge to Hearst Castle, with 2 stops and 1 stamp\.$/ });
+  const map = page.getByRole('img', { name: /^The route: \d+(\.\d)? mi on the road, from Bixby Creek Bridge to Hearst Castle, with 2 stops and 1 stamp\.$/ });
   await expect(map).toBeVisible();
   expect((await page.locator('svg.route-map polyline.route-all').first().getAttribute('points'))?.split(' ').length).toBeGreaterThan(100);
   await expect(page.locator('svg.route-map line.route-jump')).toHaveCount(1);
@@ -57,7 +57,7 @@ test("the moment's spoken line never tells another moment than the scrubber's, a
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
   await expect(told).toHaveText(''); // stopped at the end, past the moment last told: the scrubber says it
   const timeline = page.getByRole('list', { name: 'Timeline' });
-  await timeline.getByRole('button', { name: /Hearst Castle · 1 h 35 min/ }).click(); // a tap on a stop: that moment, told
+  await timeline.getByRole('button', { name: /Hearst Castle · 1 hr, 35 min/ }).click(); // a tap on a stop: that moment, told
   await expect(told).toHaveText('16:40, At Hearst Castle');
   await expect(scrub).toHaveAttribute('aria-valuetext', /16:40, At Hearst Castle$/);
   await scrub.fill(String(at('09:40'))); // a drag, paused

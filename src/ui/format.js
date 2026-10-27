@@ -1,5 +1,6 @@
 import { validZone } from '../core/time.js';
 import { TIMINGS } from '../core/backup-auto.js';
+import { holdWords } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
 import { t, tc, lang as screensLang, sameLanguage } from '../core/l10n.js';
 import { h } from './dom.js';
@@ -140,7 +141,7 @@ export function placeStatus(target, progress, now = Date.now()) {
   const at = target.last ? relTime(target.last.at, now) : '';
   const last = at ? t`Last backup ${at}.` : t`Not backed up yet.`;
   if (h?.kind === 'large') return sentences(last, t`Waiting for your OK to upload ${size(h.bytes)}`);
-  if (h?.kind === 'error') return sentences(last, t`The last try failed: ${h.message}`);
+  if (h?.kind === 'error') return sentences(last, t`The last try failed: ${holdWords(h)}`);
   if (!target.checked) return t`Not set up yet: fill it in, then Save and test`;
   if (target.auto === 'off') return sentences(last, t`Automatic backups are off`);
   return at ? t`Last backup ${at}` : t`Not backed up yet`;

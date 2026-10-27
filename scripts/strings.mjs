@@ -110,6 +110,21 @@ export const EXTRACTED = [
   'src/ui/ask.js',
   'src/ui/markdown.js',
   'src/ui/grounding.js',
+  // l10n-L5f2: data, files, after the trip, push and packages (the user-facing core files; zip.js, inflate.js, pkpass.js,
+  // request-photos.js and backup-auto.js hold only a developer's or a model's English, marked).
+  'src/core/push/mirror.js',
+  'src/core/push/relay-client.js',
+  'src/core/backup.js',
+  'src/core/archive.js',
+  'src/core/after/recap.js',
+  'src/core/after/replay.js',
+  'src/core/llm/official.js',
+  'src/core/packages.js',
+  'src/core/imports.js',
+  'src/core/ics.js',
+  'src/core/sun.js',
+  'src/core/plan.js',
+  'src/core/photos.js',
 ];
 /** Where messages are read from: every t, tc and plural under these folders. */
 const SCAN = ['src'];
