@@ -5,6 +5,10 @@
       "name": "Anthropic Messages",
       "description": "连接 Anthropic 的 Messages API，以及支持它的端点。"
     },
+    "chat-completions": {
+      "name": "Chat Completions",
+      "description": "连接 OpenAI 风格的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。"
+    },
     "provider-mistral": {
       "name": "Mistral",
       "description": "Mistral 的模型。"

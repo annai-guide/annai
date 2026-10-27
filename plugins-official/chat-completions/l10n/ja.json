@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。",
+    "name": "Chat Completions"
+  },
+  "messages": {}
+}
