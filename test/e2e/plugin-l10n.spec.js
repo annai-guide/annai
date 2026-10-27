@@ -24,6 +24,8 @@ test.describe('on Japanese screens', () => {
       ['tides', ['annai-plugin.json', 'index.js', 'l10n/ja.json'], '今いる海岸の潮汐表。'],
       ['hello', ['annai-plugin.json', 'index.js'], 'Test plugin: /hello/*.json files in a trip need a greeting.'],
     ])) {
+      // Add's own heading: Plugins, the screen the install ends on, has a finder too.
+      await expect(page.getByRole('heading', { level: 1, name: '追加' })).toBeVisible();
       await page.locator('#plugin-file').setInputFiles({ name: `${dir}.zip`, mimeType: 'application/zip', buffer: await fixtureZip(dir, names) });
       // The install screen: its name as written, its description in its words.
       await expect(page.locator('.plugin-install h1')).toContainText(dir === 'tides' ? 'Acme Tides' : 'Hello checks');
@@ -32,8 +34,9 @@ test.describe('on Japanese screens', () => {
       expect(await desc.getAttribute('lang')).toBe(dir === 'tides' ? null : 'en');
       await page.locator('.plugin-install .acts .btn.pri').click();
       await expect(page).toHaveURL(/#\/plugins$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'プラグイン' })).toBeVisible();
       await page.goto('/#/add');
-      await expect(page.locator('main.view .finder')).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: '追加' })).toBeVisible();
     }
     // The Add screen: the translated description, searchable by its Japanese keyword; the other's English, marked.
     const tides = page.locator('li.card', { hasText: 'Acme Tides' });
