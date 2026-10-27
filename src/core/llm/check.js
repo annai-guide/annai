@@ -130,24 +130,14 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
   }
 }
 
-/** A role's name and level in each sentence, whole (a role's name is no word to put into another sentence). @param {{ id: string, level: string }} role */
-function alsoAnswers({ id, level }) {
-  if (id === 'koe-classic') return t`It also answers at Koe · Classic's level (${level}).`;
-  if (id === 'utility') return t`It also answers at Utility's level (${level}).`;
-  return t`It also answers at Main's level (${level}).`;
-}
+/** A role by the name the screens give it, a label of its own. @param {{ id: string }} role */
+const roleName = ({ id }) => (id === 'koe-classic' ? t`Koe · Classic` : id === 'utility' ? t`Utility` : t`Main`);
+/** @param {{ id: string, level: string }} role */
+const alsoAnswers = (role) => t`It also answers at ${roleName(role)}'s level (${role.level}).`;
 /** @param {{ id: string, level: string }} role @param {string} said the model's refusal, as it gave it */
-function refusedAt({ id, level }, said) {
-  if (id === 'koe-classic') return t`At Koe · Classic's level (${level}), this model refused: ${said}`;
-  if (id === 'utility') return t`At Utility's level (${level}), this model refused: ${said}`;
-  return t`At Main's level (${level}), this model refused: ${said}`;
-}
+const refusedAt = (role, said) => t`At ${roleName(role)}'s level (${role.level}), this model refused: ${said}`;
 /** @param {{ id: string }} role */
-function lowerLevel({ id }) {
-  if (id === 'koe-classic') return t`Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.`;
-  if (id === 'utility') return t`Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.`;
-  return t`Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.`;
-}
+const lowerLevel = (role) => t`Lower ${roleName(role)}'s level in Settings → Models, or change this model's Reasoning levels on its page.`;
 
 /**
  * "The Test button can try each level and record which ones work" (spec §9.3).

@@ -66,7 +66,7 @@ export class PluginError extends Error {
 
 /** Why, in annai's English, as the log keeps it for the Trace. @param {DisabledWhy} why */
 /* en */
-const disabledReason = (why) => (why.kind === 'loop' ? `its hooks were handed more than ${why.entries} log entries in ${why.seconds} seconds, which looks like a loop` : `failed ${why.count} times in a row`);
+export const disabledReason = (why) => (why.kind === 'loop' ? `its hooks were handed more than ${why.entries} log entries in ${why.seconds} seconds, which looks like a loop` : `failed ${why.count} times in a row`);
 
 export class Registry {
   /** @type {Map<string, { pluginId: string, item: any, seq: number }[]>} */ #items = new Map();

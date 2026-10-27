@@ -227,15 +227,12 @@ dhnf3r	draft	It didn't see the red square (it said {0}).	赤い四角が見え�
 d9hh16	draft	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	写真のアップロードは使えます：写真は1枚につき1回アップロードされ、48時間で期限が切れます。	src/core/llm/check.js:127	
 1u5s6ep	draft	Uploading photos didn't work with this key.	このキーでは写真をアップロードできませんでした。	src/core/llm/check.js:129	
 1uj9pv4	draft	annai will send photos in each request instead.	代わりに、annai はリクエストごとに写真を送ります。	src/core/llm/check.js:129	
-v1mado	draft	It also answers at Koe · Classic's level ({0}).	Koe · クラシックのレベル（{0}）でも答えます。	src/core/llm/check.js:135	{0} = level
-3yw8ae	draft	It also answers at Utility's level ({0}).	補助のレベル（{0}）でも答えます。	src/core/llm/check.js:136	{0} = level
-uovis3	draft	It also answers at Main's level ({0}).	メインのレベル（{0}）でも答えます。	src/core/llm/check.js:137	{0} = level
-verjg5	draft	At Koe · Classic's level ({0}), this model refused: {1}	Koe · クラシックのレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:141	{0} = level; {1} = said
-bw2yzp	draft	At Utility's level ({0}), this model refused: {1}	補助のレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:142	{0} = level; {1} = said
-x22xp2	draft	At Main's level ({0}), this model refused: {1}	メインのレベル（{0}）では、このモデルは拒否しました：{1}	src/core/llm/check.js:143	{0} = level; {1} = said
-1kn8jl	draft	Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで Koe · クラシックのレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:147	
-s5t05	draft	Lower Utility's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで 補助のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:148	
-10p8a7a	draft	Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで メインのレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:149	
+16s9khr	draft	Utility	補助	src/core/llm/check.js:134	
+a5cd15	draft	Koe · Classic	Koe · クラシック	src/core/llm/check.js:134	
+mlh3jc	draft	Main	メイン	src/core/llm/check.js:134	
+1q9bibx	draft	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; English was: It also answers at Koe · Classic's level ({0}).; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	draft	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; English was: At Koe · Classic's level ({0}), this model refused: {1}; Note: {0} is a role's name as the screens give it.
+1f0dxr7	draft	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	設定 → モデルで{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:140	{0} = roleName(role); English was: Lower Koe · Classic's level in Settings → Models, or change this model's Reasoning levels on its page.; Note: {0} is a role's name as the screens give it.
 1lqr9y5	draft	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:96	
 1do8abu	draft	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:97	
 99g6ol	draft	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:98	
@@ -378,11 +375,11 @@ dra7tz	draft	moving	移動中	src/core/voice/mode.js:81	Note: why Auto turned vo
 bxwivy	draft	Voice auto · off	音声自動 · オフ	src/core/voice/mode.js:94	
 46l9so	draft	Voice off	音声オフ	src/core/voice/mode.js:95	
 1o81qfq	draft	Voice on	音声オン	src/core/voice/mode.js:96	
-xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取りで追加してください。	src/core/voice/resolve.js:156	
-et5xp4	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:163	{0} = name
-1m0smeu	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	{0} = name
-1u0un9u	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:165	
-dj6ye0	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません（このブラウザには端末の音声入力もありません）。設定 → モデルで OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:166	
+xi9ch6	draft	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取りで追加してください。	src/core/voice/resolve.js:157	
+1da2r7t	draft	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:163	{0} = model.name
+1j6uoln	draft	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:164	
+1oy92m8	draft	This browser has no phone dictation either.	このブラウザには端末の音声入力もありません。	src/core/voice/resolve.js:165	
+l80ifa	draft	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	設定 → モデルで、OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:165	
 jo5o9d	draft	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:314	
 ocv5zw	draft	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:359	
 pib2vo	draft	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
@@ -824,9 +821,7 @@ edml6o	draft	Getting the sign-in ready…	サインインを準備していま�
 sv1qqk	draft	A sign-in came back too late	サインインの戻りが遅すぎました	src/ui/provider-setup.js:198	
 gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}が動いていません。設定 → プラグインで確認してから、もう一度サインインしてください。	src/ui/provider-setup.js:212	{0} = name
 1fbojq2	draft	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:218	{0} = name
-16s9khr	draft	Utility	補助	src/ui/provider-setup.js:226	
 1fm7mjz	draft	Speech out	読み上げ	src/ui/provider-setup.js:226	
-mlh3jc	draft	Main	メイン	src/ui/provider-setup.js:226	
 v20s4a	draft	Quick decision	クイック判定	src/ui/provider-setup.js:226	
 w8niry	draft	Speech in	聞き取り	src/ui/provider-setup.js:226	
 eudybe#other	draft	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
@@ -1198,7 +1193,6 @@ dadv07	draft	Speech out: Shiori's voice	読み上げ：Shiori の声	src/ui/scre
 1u27rxd	draft	decide	クイック判定	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
 1u7wm22	draft	Koe · Realtime	Koe · リアルタイム	src/ui/screens/models.js:22	
 a363wx	draft	speech-in	聞き取り	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-a5cd15	draft	Koe · Classic	Koe · クラシック	src/ui/screens/models.js:22	
 12dmh42	draft	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	音声がオンで、音声ボタンでリアルタイムを選んでいる間、Koe はこれを使います。ここに答えられるものがなければ、クラシックが答えます。	src/ui/screens/models.js:28	
 1nrakqh	draft	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	クラシックを選んでいるとき、音声がオフのとき、リアルタイムが答えられないとき、Koe はこれを使います。聞き取りがあなたの声を聞き、読み上げが話します。	src/ui/screens/models.js:29	
 1htj30x	draft	the phone's own; usually goes to Google or Apple	端末に内蔵。たいてい Google か Apple に送られます	src/ui/screens/models.js:32	

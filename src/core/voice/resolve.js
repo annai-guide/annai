@@ -1,5 +1,6 @@
 import { toBase64 } from '../bytes.js';
 import { t } from '../l10n.js';
+import { sentences } from '../intl.js';
 import { pickFormat, formatOf, mediaTypeOf, rankOf } from './formats.js';
 import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
 
@@ -158,12 +159,10 @@ export function listenKind({ list, model, asr, dictation }) {
   const hearing = model ? `${model.name} doesn't take audio` : 'no main model is set';
   /* en */
   const why = `Shiori can't hear you yet: ${hearing}, and the speech-in list has no transcription model that works${dictation ? '' : ' (and this browser has no phone dictation)'}. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`;
-  // The user's card: the same words, each case a whole message.
-  const name = model?.name;
-  const words = name ? (dictation ? t`Shiori can't hear you yet: ${name} doesn't take audio, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`
-    : t`Shiori can't hear you yet: ${name} doesn't take audio, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`)
-    : dictation ? t`Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`
-      : t`Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works (and this browser has no phone dictation). Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`;
+  // The user's card: the same words, each part a sentence of its own.
+  const lacks = model ? t`Shiori can't hear you yet: ${model.name} doesn't take audio, and the speech-in list has no transcription model that works.`
+    : t`Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.`;
+  const words = sentences(lacks, dictation ? '' : t`This browser has no phone dictation either.`, t`Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`);
   return { kind: null, why, words };
 }
 
