@@ -10,7 +10,7 @@ import { setWords } from '../../src/core/l10n.js';
 setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
 after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
-const { wokeText, reminderLine, announced } = await import('../../src/ui/screens/talk.js');
+const { wokeText, reminderParts, announced } = await import('../../src/ui/screens/talk.js');
 const { SYSTEM } = await import('../../src/ui/talk-panel.js');
 const { sample } = await import('../../src/ui/speech-check.js');
 const { speaksScreens } = await import('../../src/ui/format.js');
@@ -40,9 +40,10 @@ test('a wake is shown from its kind in the screens\' words, each kind once; the 
 });
 
 test('a reminder line is made from its data, said aloud or not, a reminder or her answer; the model is told in English', () => {
-  assert.deepEqual(reminderLine({}), ['リマインダー：', '']);
-  assert.deepEqual(reminderLine({ aloud: true }), ['リマインダー（読み上げ）：', '']);
-  assert.deepEqual(reminderLine({ title: "Shiori's answer" }), ['Shiori の答え：', '']);
+  const line = (/** @type {any} */ d) => reminderParts({ text: 'Tea.', ...d }, () => ({}), (_, a) => a.text);
+  assert.deepEqual(line({}), ['リマインダー：', 'Tea.', '']);
+  assert.deepEqual(line({ aloud: true }), ['リマインダー（読み上げ）：', 'Tea.', '']);
+  assert.deepEqual(line({ title: "Shiori's answer" }), ['Shiori の答え：', 'Tea.', '']);
   assert.equal(lastLine({ type: 'reminder', data: { watch: 'w', text: 'Leave at 5.', aloud: true } }),
     '[annai] Shown and said aloud by annai itself, since you couldn\'t be reached: "Leave at 5."');
 });
