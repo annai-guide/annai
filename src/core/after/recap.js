@@ -11,7 +11,7 @@ import { photoSettings } from '../photos.js';
 import { readAppSettings } from '../settings.js';
 import { toBase64, fromBase64 } from '../bytes.js';
 import { ME } from '../scopes.js';
-import { AllFailedError } from '../llm/fallback.js';
+import { AllFailedError, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
@@ -158,12 +158,12 @@ export function recapText(j, { profile = '', memory = '', notes = [] } = {}) {
 /** Why the recap wasn't written, in plain words with what to do next. @param {unknown} e */
 export function recapError(e) {
   if (e instanceof AllFailedError) {
-    // Each model's own words, as its provider gave them.
-    const each = e.attempts.map((a) => `${a.name}: ${a.error ?? a.outcome}`).join('; ');
-    return e.attempts.length ? t`No model could write it: ${each}. Check Settings → Models, then try again.` : t`No model is set for the utility or main role. Add one in Settings → Models.`;
+    // Each model's failure in words, as a card says it (failedText): a provider's own, else annai's by its kind.
+    if (!e.attempts.length) return t`No model is set for the utility or main role. Add one in Settings → Models.`;
+    return sentences(t`No model could write it.`, ...failedText(e.attempts).split('\n'), t`Check Settings → Models, then try again.`);
   }
   if (e instanceof ProviderError) return sentences(explain(e), t`Try again in a while.`);
-  return String(/** @type {any} */ (e)?.message ?? e);
+  return String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e);
 }
 
 /**

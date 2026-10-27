@@ -28,8 +28,9 @@ gt9ssw	draft	annai couldn't start	annai を起動できませんでした	src/ap
 5lqjwd	draft	Shiori's cards and your words, typed or spoken, each shortened.	Shiori のカードと、あなたが入力したり話したりした言葉（それぞれ短くして）。	src/core/after/recap.js:55	
 nqzovd	draft	The trip's notes and memory, and your profile.	旅のメモと記憶、あなたのプロフィール。	src/core/after/recap.js:56	
 1nvz32n	draft	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。撮ったままの写真（設定 → 写真 → オリジナルを保存）には、撮影場所が残っていることがあります。	src/core/after/recap.js:57	{0} = RECAP_PHOTOS
-49tlsl	draft	No model could write it: {0}. Check Settings → Models, then try again.	どのモデルも書けませんでした：{0}。設定 → モデルを確認して、もう一度お試しください。	src/core/after/recap.js:163	{0} = each; Note: {0} is each model's name with its provider's own words, as given.
-rntcrc	draft	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。設定 → モデルで追加してください。	src/core/after/recap.js:163	
+rntcrc	draft	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。設定 → モデルで追加してください。	src/core/after/recap.js:162	
+1hy1f74	draft	No model could write it.	振り返りを書けるモデルがありませんでした。	src/core/after/recap.js:163	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	draft	Check Settings → Models, then try again.	設定 → モデルを確認してから、もう一度試してください。	src/core/after/recap.js:163	
 1ocmp3v	draft	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:165	
 11vzyc7	draft	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。設定 → モデルで追加してください。	src/core/after/recap.js:179	
 tbxeeg	draft	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、補助の役割で別のモデルを先頭にしてください（設定 → モデル）。	src/core/after/recap.js:221	

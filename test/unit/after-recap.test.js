@@ -111,7 +111,10 @@ test('an arrival whose stay the road doesn\'t show is "arrived" in the recap, no
 });
 
 test("why a recap wasn't written, in plain words with what to do next", () => {
-  assert.equal(recapError(new AllFailedError([{ model: 'm', name: 'Haiku', outcome: 'auth', ms: 1, error: 'invalid x-api-key' }])), 'No model could write it: Haiku: invalid x-api-key. Check Settings → Models, then try again.');
+  assert.equal(recapError(new AllFailedError([{ model: 'm', name: 'Haiku', outcome: 'auth', ms: 1, error: 'invalid x-api-key' }])), 'No model could write it. Haiku: Invalid x-api-key. Check Settings → Models, then try again.');
+  // Each model's failure in words, as the card says it: never an outcome's code (the L5f review).
+  assert.equal(recapError(new AllFailedError([{ model: 'a', name: 'a-model', outcome: 'benched', ms: 0 }, { model: 'b', name: 'b-model', outcome: 'auth', ms: 1 }])),
+    'No model could write it. a-model: It is resting for a few minutes after an error. b-model: The key was rejected. Check it in Settings → Models. Check Settings → Models, then try again.');
   assert.equal(recapError(new AllFailedError([])), 'No model is set for the utility or main role. Add one in Settings → Models.');
   assert.equal(recapError(new ProviderError('rate', 'slow down')), 'The provider says too many requests for now. Try again in a while.');
   assert.equal(recapError(new Error('The model sent back an empty recap.')), 'The model sent back an empty recap.');
