@@ -123,7 +123,7 @@ test('host: refuses bad packages and writes nothing', async () => {
     new Map([['index.js', utf8('export {}')]]),
     new Map([['annai-plugin.json', utf8('{not json')]]),
     variant({ id: 'Hello World' }),
-    variant({ api: 2 }),
+    variant({ api: 3 }),
     variant({ entry: 'missing.js' }),
     variant({ id: 'core-schemas' }),
     variant({}, { '../evil.js': 'export {}' }),

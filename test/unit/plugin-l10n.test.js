@@ -342,3 +342,18 @@ test("an update another plugin can't take names that plugin as the screens do: a
   await assert.rejects(refuseBreaking(k.host, 'chat-completions', '1.0.0', 'Chat Completions'),
     (e) => /アクメ潮汐/.test(/** @type {any} */ (e).shown) && /Acme Tides/.test(/** @type {any} */ (e).message));
 });
+
+test("annai.l10n is plugin API 2: annai runs API 1 and 2, refuses a newer one by its number, and each official plugin whose code reads annai.l10n says API 2", async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const base = { id: 'acme-tides', name: 'Acme Tides', version: '1.0.0' };
+  checkManifest({ ...base, api: 1 });
+  checkManifest({ ...base, api: 2 });
+  assert.throws(() => checkManifest({ ...base, api: 3 }), /was made for plugin API 3; this version of annai supports API 2 and older/);
+  const root = new URL('../../plugins-official/', import.meta.url);
+  for (const id of await readdir(root)) {
+    const manifest = JSON.parse(await readFile(new URL(`${id}/annai-plugin.json`, root), 'utf8'));
+    const code = (await readdir(new URL(`${id}/`, root), { recursive: true })).filter((f) => f.endsWith('.js'));
+    const reads = (await Promise.all(code.map((f) => readFile(new URL(`${id}/${f}`, root), 'utf8')))).some((s) => /\bl10n\b/.test(s));
+    assert.equal(manifest.api, reads ? 2 : 1, `${id}: an older annai refuses it by its API, in words, rather than run it without annai.l10n`);
+  }
+});

@@ -2,7 +2,7 @@
   "id": "storage-github",
   "name": "GitHub",
   "version": "0.3.0",
-  "api": 1,
+  "api": 2,
   "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",

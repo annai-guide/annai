@@ -541,27 +541,27 @@ syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损
 qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:665	
 cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:666	
 e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:45	
-pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:47	{0} = s.name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
-al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:48	{0} = s.name
+pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:47	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
+al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:48	{0} = name
 1cm4kmv	ok	This backup would upload {0}.	此次备份将上传 {0}。	src/core/backup.js:49	{0} = size(s.bytes ?? 0)
-3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:50	{0} = s.name
+3t4mx2	ok	There is a newer backup at {0}.	{0} 上有更新的备份。	src/core/backup.js:50	{0} = name
 1r146xn	ok	This phone is offline, so annai couldn't reach this place.	这部手机处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:52	
 1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	这台 iPad 处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:53	
 1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	这台电脑处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:54	
 bbv043	ok	This device is offline, so annai couldn't reach this place.	此设备处于离线状态，因此 annai 无法连接到此备份位置。	src/core/backup.js:55	
-1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:67	
-16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:173	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:377	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:394	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:405	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:413	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:414	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	可以使用。	src/core/backup.js:458	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:509	
-173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:510	
-14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:31	Note: 移除, as the trip's own button, Remove trip (移除旅行).
-1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:32	
-gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:33	
+1oqcoyx	ok	annai tries again once it's back online.	恢复联网后，annai 会再试一次。	src/core/backup.js:89	
+16b3dai	ok	That backup place was removed.	该备份位置已被移除。	src/core/backup.js:191	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	annai 无法启动此类备份位置的插件。请重试。	src/core/backup.js:395	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	请输入兆字节数，留空则不限。	src/core/backup.js:412	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	请把用户名和密码填在各自的字段中，而不是写在地址里。	src/core/backup.js:423	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加密备份的密码短语，然后保存。	src/core/backup.js:431	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 密钥只能放在加密备份中：请先勾选“用密码短语加密备份”。	src/core/backup.js:432	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	可以使用。	src/core/backup.js:476	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:527	
+173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:528	
+14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:39	Note: 移除, as the trip's own button, Remove trip (移除旅行).
+1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:40	
+gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:41	
 iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此日历中有超过 {0} 个事件。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
 10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:13	{0} = path
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
@@ -612,12 +612,12 @@ ub25px	ok	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/core/l
 112i693	ok	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:158	
 1hf686i	ok	Nothing more is on the plan.	行程中没有更多安排了。	src/core/live/plan-watches.js:159	
 1jsyqjn	ok	Next on the plan: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
-1jok3pb	ok	A simulation is already running. Stop it first.	模拟已在运行。请先停止它。	src/core/live/sim-run.js:90	
-enf0f5	ok	A simulated trip	模拟的旅行	src/core/live/sim-run.js:237	Note: a new trip's default name, before "(simulation)" is added.
-1426icm	ok	That trip isn't on this device any more.	这个旅行已不在这台设备上。	src/core/live/sim-run.js:277	
-1o5lnqs	ok	{0} (simulation {1})	{0}（模拟 {1}）	src/core/live/sim-run.js:311	{0} = stem; {1} = num(n)
-1vpfjix	ok	{0} (simulation)	{0}（模拟）	src/core/live/sim-run.js:311	{0} = stem; Note: a trip's title; it becomes the user's own once made.
-1cvk0p6	ok	That trip has no recorded track yet: GPS records one while it is on.	这个旅行还没有记录的轨迹：GPS 开启时才会记录。	src/core/live/simulate.js:112	
+1jok3pb	ok	A simulation is already running. Stop it first.	模拟已在运行。请先停止它。	src/core/live/sim-run.js:91	
+enf0f5	ok	A simulated trip	模拟的旅行	src/core/live/sim-run.js:238	Note: a new trip's default name, before "(simulation)" is added.
+1426icm	ok	That trip isn't on this device any more.	这个旅行已不在这台设备上。	src/core/live/sim-run.js:278	
+1o5lnqs	ok	{0} (simulation {1})	{0}（模拟 {1}）	src/core/live/sim-run.js:312	{0} = stem; {1} = num(n)
+1vpfjix	ok	{0} (simulation)	{0}（模拟）	src/core/live/sim-run.js:312	{0} = stem; Note: a trip's title; it becomes the user's own once made.
+1cvk0p6	ok	That trip has no recorded track yet: GPS records one while it is on.	这个旅行还没有记录的轨迹：GPS 开启时才会记录。	src/core/live/simulate.js:113	
 h8yuqy	ok	annai can reach this address from the browser.	annai 可以从浏览器连到这个地址。	src/core/llm/check.js:60	
 152u1pq	ok	The key works. The model said: "{0}".	密钥可用。模型说：“{0}”。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
 iiy1hf	ok	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型在调用测试工具之前就用完了输出空间；它可能会先思考很久。请试试更低的推理级别。	src/core/llm/check.js:88	
@@ -742,24 +742,24 @@ aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-u
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	它不是从地址安装的，所以 annai 没有地方查找更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在放的是另一个包（{0}），所以没有更新。如果你想要它，请删除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请再次检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:325	
-is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:332	{0} = file; {1} = folder
-1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:333	{0} = file; {1} = folder
-1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:335	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:353	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:433	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:466	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:475	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:487	{0} = url.host; {1} = (e)?.message ?? e; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:503	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:562	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:573	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:583	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:624	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:625	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:626	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:627	{0} = o; Note: one of a list of what an update adds.
+1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:331	
+is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，嵌套太深：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:339	{0} = file; {1} = folder
+1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位于 {1}，与其他文件并列：annai 只读取 zip 顶层或其唯一文件夹内的文件。请只压缩那个文件夹。	src/core/packages.js:340	{0} = file; {1} = folder
+1svq3gn	ok	there is no {0} or {1} in this package	此软件包中没有 {0} 或 {1}	src/core/packages.js:342	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解压后超过 {0}	src/core/packages.js:360	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:440	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	对于 GitHub 上的文件夹，请使用其 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:473	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 无法连接到 {0}。请检查地址，以及该网站是否允许网页应用读取。	src/core/packages.js:482	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法被 annai 打开：{1}	src/core/packages.js:495	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包的文件超过 {0} 个；annai 从地址安装的软件包最多 {1} 个文件。请改用 zip。	src/core/packages.js:511	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {3} 中列出的文件 {2} 返回了 {1}。	src/core/packages.js:570	{0} = u.host; {1} = status; {2} = name; {3} = MANIFEST_FILE
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:581	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:591	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:632	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:633	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:634	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:635	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	你的搜索会发送到的地址：{0}	src/core/packages.js:635	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此 annai 保留了原样。它可能只能在 Safari 浏览器中显示。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	时区“{0}”不是 annai 认识的时区；按 {1} 显示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/core/plugins.js:174	{0} = why
@@ -809,18 +809,18 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	没有在 # 秒内用�
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自己的插件使用这个名称，所以来自别处的包不能使用它。请让作者改名。	src/core/registry.js:16	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的插件使用这个名称，但已安装的那个来自别处，所以 annai 不会使用它。请在设置 → 插件中删除它，然后再试一次。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中把它打开，然后再试一次。	src/core/registry.js:18	
-f1c9to	ok	is switched off after repeated errors	因多次出错已被关闭	src/core/registry.js:217	
-1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会让 {1} 无法运行：它需要 {2} {3}。请先更新 {4}，或保留这个版本。	src/core/requires.js:48	{0} = version; {1} = other; {2} = officialName(id, name); {3} = r.version; {4} = other
-189pevd	ok	needs {0}, which you turned off.	需要你已关闭的 {0}。	src/core/requires.js:75	{0} = shown
-1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	需要尚未安装的 {0}。请先从 {1} 安装，然后再试一次。	src/core/requires.js:78	{0} = r.id; {1} = r.homepage
-j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	需要尚未安装的 {0}。请先安装，然后再试一次。	src/core/requires.js:80	{0} = r.id
-13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.version; {2} = s.version
-111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	需要 annai 的 {0}（{1}），但已安装的 {2} 来自别处，不是 annai 自己的。请在设置 → 插件中删除它，然后再试一次。	src/core/requires.js:86	{0} = shown; {1} = r.id; {2} = r.id
-18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}（已安装 {3}）。等 annai 有合适的版本后再试一次。	src/core/requires.js:89	{0} = shown; {1} = r.version; {2} = e.version; {3} = s.version
-9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}。等 annai 有合适的版本后再试一次。	src/core/requires.js:91	{0} = shown; {1} = r.version; {2} = e.version
-gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:197	
-olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:200	
-seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:202	{0} = officialName(entry.id, entry.name)
+f1c9to	ok	is switched off after repeated errors	因多次出错已被关闭	src/core/registry.js:221	
+1t55x9w	ok	version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会让 {1} 无法运行：它需要 {2} {3}。请先更新 {4}，或保留这个版本。	src/core/requires.js:51	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
+189pevd	ok	needs {0}, which you turned off.	需要你已关闭的 {0}。	src/core/requires.js:78	{0} = shown
+1i0uac3	ok	needs {0}, which isn't installed. Install it from {1} first, then try again.	需要尚未安装的 {0}。请先从 {1} 安装，然后再试一次。	src/core/requires.js:81	{0} = r.id; {1} = r.homepage
+j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	需要尚未安装的 {0}。请先安装，然后再试一次。	src/core/requires.js:83	{0} = r.id
+13cz3da	ok	needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:85	{0} = r.id; {1} = r.version; {2} = s.version
+111jct3	ok	needs annai's {0} ({1}), but the {2} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.	需要 annai 的 {0}（{1}），但已安装的 {2} 来自别处，不是 annai 自己的。请在设置 → 插件中删除它，然后再试一次。	src/core/requires.js:89	{0} = shown; {1} = r.id; {2} = r.id
+18yy3kp	ok	needs {0} {1}, and annai's catalog has version {2} ({3} is installed). Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}（已安装 {3}）。等 annai 有合适的版本后再试一次。	src/core/requires.js:92	{0} = shown; {1} = r.version; {2} = e.version; {3} = s.version
+9ntdzt	ok	needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 的目录中是版本 {2}。等 annai 有合适的版本后再试一次。	src/core/requires.js:94	{0} = shown; {1} = r.version; {2} = e.version
+gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:200	
+olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:203	
+seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:205	{0} = officialName(entry.id, entry.name)
 stkvyf	ok	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	系统日志	src/core/scopes.js:42	
 ktdb8o	ok	Settings	设置	src/core/scopes.js:43	
@@ -993,8 +993,8 @@ ky4lc5	ok	Stop	停止	src/ui/dock.js:210
 1s6dmy6	ok	Camera	相机	src/ui/dock.js:223	
 1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
-1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:235	
-12ek4is	ok	Saved	已保存	src/ui/dom.js:282	
+1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:258	
+12ek4is	ok	Saved	已保存	src/ui/dom.js:305	
 fj0t7x	ok	History (every version and the log)	历史（每个版本和日志）	src/ui/export-panel.js:21	
 oopaku	ok	Memory	记忆	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
 1l4mw9c	ok	Photos	照片	src/ui/export-panel.js:23	
@@ -1209,9 +1209,9 @@ icn7kg	ok	Dismiss all	全部关闭	src/ui/notices.js:69
 1w0wlmk#other	ok	Show the # cards: {0}	显示 # 张卡片：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
 1wucd5m#other	ok	Hide the # cards: {0}	隐藏 # 张卡片：{0}	src/ui/notices.js:82	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
 1dg2v9a#other	ok	Dismiss all # cards: {0}	关闭全部 # 张卡片：{0}	src/ui/notices.js:83	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	ok	Less	收起	src/ui/notices.js:148	Note: Closes a long card back to three lines.
-lz65mo	ok	More	展开	src/ui/notices.js:148	Note: Opens a long card to its full height.
-an1pf7	ok	Dismiss	关闭	src/ui/notices.js:159	
+18u3mqg	ok	Less	收起	src/ui/notices.js:151	Note: Closes a long card back to three lines.
+lz65mo	ok	More	展开	src/ui/notices.js:151	Note: Opens a long card to its full height.
+an1pf7	ok	Dismiss	关闭	src/ui/notices.js:162	
 16ujpkf#other	ok	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	ok	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	ok	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
@@ -1270,18 +1270,18 @@ i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:73	{0} = u.na
 1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什么都不会改变。正在运行的插件更新后，会在 annai 重启前保持关闭。	src/ui/plugin-updates.js:80	
 1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:80	{0} = list(updates.map(offerWords), 'plain')
 uk4kus	ok	Update	更新	src/ui/plugin-updates.js:81	
-1agymuw	ok	Some plugins weren't updated	有些插件没有更新	src/ui/plugin-updates.js:113	
-1vsv4vh	ok	Restart annai to use the new versions	重启 annai 以使用新版本	src/ui/plugin-updates.js:117	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}无法使用。	src/ui/plugin-updates.js:118	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:118	
-nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:119	
-1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:122	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 带来新内容	src/ui/plugin-updates.js:138	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:139	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	只有在你信任它的来源时才更新。	src/ui/plugin-updates.js:139	
-1dfe53s	ok	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:140	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:142	
-c9wfke	ok	Not now	暂不	src/ui/plugin-updates.js:143	
+1agymuw	ok	Some plugins weren't updated	有些插件没有更新	src/ui/plugin-updates.js:116	
+1vsv4vh	ok	Restart annai to use the new versions	重启 annai 以使用新版本	src/ui/plugin-updates.js:120	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}无法使用。	src/ui/plugin-updates.js:121	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:121	
+nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:122	
+1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:125	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 带来新内容	src/ui/plugin-updates.js:141	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:142	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	只有在你信任它的来源时才更新。	src/ui/plugin-updates.js:142	
+1dfe53s	ok	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:143	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:145	
+c9wfke	ok	Not now	暂不	src/ui/plugin-updates.js:146	
 1cjjnaq	ok	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:22	
@@ -1306,30 +1306,30 @@ hirfin	ok	What the model provider you connect charges is yours to pay. What you 
 1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}无法在 {1} 添加提供商：它不向任何地方发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
 rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}无法在 {1} 添加提供商：它只向 {2} 发送密钥。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
 1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:88	
-1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:91	{0} = mine
-13upi6b	ok	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:119	{0} = entry.name
-17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:119	
-1p012cf	ok	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:149	
-14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:158	{0} = finishing
-yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:163	{0} = f.name
-15aq08d	ok	The quickest start	最快的开始方式	src/ui/provider-setup.js:165	
-w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:165	
-edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:169	
-1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:199	
-sv1qqk	ok	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:199	
-gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:213	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:219	{0} = name
-1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:227	
-v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:227	
-w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:227	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:243	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:244	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:245	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥属于免费额度，请在此页面打开“此密钥为免费额度”：这样它的模型就不收费。	src/ui/provider-setup.js:246	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:247	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
-1r0x31s	ok	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:248	
-1llun41	ok	The provider	提供商	src/ui/provider-setup.js:255	Note: "The provider" stands where a provider's name is unknown.
+1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于{0}，所以不能为它保存密钥。	src/ui/provider-setup.js:90	{0} = mine
+13upi6b	ok	{0} isn't a model provider.	{0}不是模型提供商。	src/ui/provider-setup.js:118	{0} = entry.name
+17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:118	
+1p012cf	ok	Connect to the internet to sign in.	请连接互联网以登录。	src/ui/provider-setup.js:148	
+14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:157	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录。请改从“添加提供商”添加。	src/ui/provider-setup.js:162	{0} = f.name
+15aq08d	ok	The quickest start	最快的开始方式	src/ui/provider-setup.js:164	
+w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:164	
+edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:168	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登录返回了，但 annai 已不再等待：已超过 15 分钟，或已经完成。请从设置 → 模型重新开始。	src/ui/provider-setup.js:198	
+sv1qqk	ok	A sign-in came back too late	登录返回得太晚	src/ui/provider-setup.js:198	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}没有运行。请在设置 → 插件中查看，然后重新登录。	src/ui/provider-setup.js:212	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:218	{0} = name
+1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:226	
+v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:226	
+w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:226	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1}没有可先用的免费模型，而 Shiori 需要一个模型来回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的密钥属于免费额度，请在此页面打开“此密钥为免费额度”：这样它的模型就不收费。	src/ui/provider-setup.js:245	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	其语音识别模型排在免费项之后。	src/ui/provider-setup.js:246	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	其语音识别和朗读模型排在免费项之后。	src/ui/provider-setup.js:246	
+1r0x31s	ok	Its speech out models went behind the free entries.	其朗读模型排在免费项之后。	src/ui/provider-setup.js:247	
+1llun41	ok	The provider	提供商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	中继的密钥不是 annai 能用的。	src/ui/push.js:78	
@@ -1801,85 +1801,85 @@ dqozwm	ok	All day	全天	src/ui/screens/plan.js:117
 1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 撤销	src/ui/screens/plan.js:159	
 pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:170	{0} = distance(km)
 1gjwkfv	ok	Directions	路线	src/ui/screens/plan.js:171	
-1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此插件可以完全访问你的旅行和 API 密钥。	src/ui/screens/plugin-install.js:15	
-h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能读取 annai 中保存的每个密钥，并发送到任何地方：目前有你的 {0} 密钥。	src/ui/screens/plugin-install.js:41	{0} = list(names)
-7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能读取 annai 中保存的每个密钥，并发送到任何地方。	src/ui/screens/plugin-install.js:42	
-g9t5es	ok	Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.	插件通过 annai 的离线服务加载，但它还没有运行。请重新加载 annai 后再试。	src/ui/screens/plugin-install.js:45	
-w5due	ok	{0}; {1}	{0}；{1}	src/ui/screens/plugin-install.js:48	context: semicolons; {0} = a; {1} = b; Note: Items side by side, each of which may hold commas (in English a semicolon).
-u9eus5	ok	Code that runs in annai	在 annai 中运行的代码	src/ui/screens/plugin-install.js:57	
-17rzkwp	ok	Skill "{0}": {1}	技能“{0}”：{1}	src/ui/screens/plugin-install.js:58	{0} = s.name; {1} = s.description
-2kbcmd	ok	Personality "{0}"	性格“{0}”	src/ui/screens/plugin-install.js:59	{0} = p.name
-vq8vn6	ok	A model provider: {0}	模型提供商：{0}	src/ui/screens/plugin-install.js:60	{0} = abilityWords(pkg.provider)
-1f7spnt	ok	A search provider for web_search	web_search 的搜索提供商	src/ui/screens/plugin-install.js:61	
-hezgd5	ok	Its provider now sends keys you give it to {0}	它的提供商现在会把你给它的密钥发送到 {0}	src/ui/screens/plugin-install.js:64	{0} = list(keys, 'plain')
-18fhlh2	ok	Its searches now go to {0}	它的搜索现在会发送到 {0}	src/ui/screens/plugin-install.js:65	{0} = list(searches, 'plain')
-yqw4or	ok	Nothing annai uses yet	暂时没有 annai 会用到的内容	src/ui/screens/plugin-install.js:66	
-1jxklq1	ok	Keys you give this provider are sent to {0}.	你给此提供商的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:80	{0} = list(origins)
-nfrhzr	ok	Keys you give this provider are sent only to the address you give it.	你给此提供商的密钥只会发送到你给它的地址。	src/ui/screens/plugin-install.js:80	
-ee5xfy	ok	Your search words are sent only to the address you give it.	你搜索的词只会发送到你给它的地址。	src/ui/screens/plugin-install.js:84	
-162zx16	ok	Your search words and the key you give it are sent to {0}.	你搜索的词和你给它的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:85	{0} = list(o)
-1e5wf2u	ok	Your search words are sent to {0}.	你搜索的词会发送到 {0}。	src/ui/screens/plugin-install.js:85	{0} = list(o)
-1hlyxa4	ok	{0} (installed)	{0}（已安装）	src/ui/screens/plugin-install.js:108	{0} = state[r.id]?.name ?? r.id
-j7a5ne	ok	{0} (from annai, installed with it)	{0}（来自 annai，一并安装）	src/ui/screens/plugin-install.js:108	{0} = plan.find((e) => e.id === r.id)?.name
-140c8vb	ok	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:109	{0} = semicolons(each)
-1bay0n3	ok	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	无法加载 annai 的目录来查找它需要的内容。请连接互联网后再试。	src/ui/screens/plugin-install.js:111	
-1914xwr	ok	chat	对话	src/ui/screens/plugin-install.js:116	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note.
-1srbarg	ok	realtime	实时	src/ui/screens/plugin-install.js:116	
-j73cn3	ok	transcription	语音转文字	src/ui/screens/plugin-install.js:116	
-zen9ix	ok	voice	声音	src/ui/screens/plugin-install.js:116	Note: A provider's ability to speak: the glossary's voice (声 / 声音), not the Voice screen.
-w2ndgc	ok	nothing yet	暂时没有	src/ui/screens/plugin-install.js:120	
-1vmhfh0	ok	From a file: {0}	来自文件：{0}	src/ui/screens/plugin-install.js:157	{0} = value
-62wi84	ok	From annai	来自 annai	src/ui/screens/plugin-install.js:158	
-17ahsv6	ok	Version {0} is installed now. Installing replaces it.	当前已安装版本 {0}。安装会替换它。	src/ui/screens/plugin-install.js:170	{0} = v
-11t6hui	ok	an address	某个地址	src/ui/screens/plugin-install.js:173	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
-1wr9niq	ok	a file: {0}	文件 {0}	src/ui/screens/plugin-install.js:173	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
-rgr1rj	ok	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:174	{0} = v; {1} = place
-a41hrh	ok	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:175	
-19apr1m	ok	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:190	{0} = n
-cdbbto	ok	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:190	{0} = n
-o0687u	ok	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:190	{0} = n
-540qyj	ok	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:191	{0} = n
-snr298	ok	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:191	{0} = n
-18lyuvn	ok	the dock	底栏	src/ui/screens/plugin-install.js:193	
-18ybxd9	ok	how Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:193	
-1tyty7f	ok	how the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:193	
-lfbn6i	ok	the Now card	此刻卡片	src/ui/screens/plugin-install.js:193	
-1xqw6of	ok	the part {0}	部件 {0}	src/ui/screens/plugin-install.js:195	{0} = name
-1twwnld	ok	The browser keeps the old code until annai starts again.	在 annai 重新启动之前，浏览器会一直使用旧代码。	src/ui/screens/plugin-install.js:211	
-5nx73t	ok	Restart annai to run the new version of {0}.	重启 annai 以运行{0}的新版本。	src/ui/screens/plugin-install.js:211	{0} = name
-19ojpuq	ok	A model provider · has code	模型提供商 · 含代码	src/ui/screens/plugin-install.js:221	
-c2ihd5	ok	A skill	一个技能	src/ui/screens/plugin-install.js:221	
-i0bxaj	ok	A model provider · data only	模型提供商 · 仅数据	src/ui/screens/plugin-install.js:221	
-39jdhh	ok	A package without code	不含代码的包	src/ui/screens/plugin-install.js:222	
-5cnrzb	ok	A plugin	一个插件	src/ui/screens/plugin-install.js:222	
-kfpex	ok	version {0}	版本 {0}	src/ui/screens/plugin-install.js:223	{0} = p.shownVersion
-km7fp2	ok	by {0}	作者：{0}	src/ui/screens/plugin-install.js:223	{0} = p.author
-mska2u	ok	Go back to Add.	返回“添加”。	src/ui/screens/plugin-install.js:237	Note: The Add screen, quoted so it reads as the screen's name.
-8sh8rg	ok	Nothing to install	没有要安装的内容	src/ui/screens/plugin-install.js:238	
-1irgo0m	ok	There's nothing to install.	没有要安装的内容。	src/ui/screens/plugin-install.js:239	
-15gtrui	ok	Install anyway, keep its settings and keys	仍然安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:261	
-6o0r6s	ok	Install fresh	全新安装	src/ui/screens/plugin-install.js:261	
-r9by73	ok	Install, keep its settings and keys	安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:261	
-vxrnjh	ok	Install fresh anyway	仍然全新安装	src/ui/screens/plugin-install.js:261	
-3lj040	ok	Install anyway and use it	仍然安装并使用	src/ui/screens/plugin-install.js:262	
-pq5i3n	ok	Install and use it	安装并使用	src/ui/screens/plugin-install.js:262	
-4it78t	ok	Install anyway, keep what's used now	仍然安装，保留当前使用的	src/ui/screens/plugin-install.js:263	
-c455yu	ok	Install, keep annai's	安装，保留 annai 的	src/ui/screens/plugin-install.js:263	
-s0ybug	ok	Install, keep what's used now	安装，保留当前使用的	src/ui/screens/plugin-install.js:263	
-wjgdl3	ok	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:263	
-1eg7xgh	ok	Install anyway	仍然安装	src/ui/screens/plugin-install.js:264	
-3i7of3	ok	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:268	{0} = pkg.name
-1kg68qt	ok	What it brings	它带来的内容	src/ui/screens/plugin-install.js:276	
-owkvwp	ok	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:280	
-170p2zc	ok	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:282	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:284	
-1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:287	
-i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:288	
-1q0ylpv	ok	Get a key	获取密钥	src/ui/screens/plugin-install.js:290	
-syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:293	
-6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:337	{0} = pkg.name
-7gzgtw	ok	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:345	{0} = pkg.name
-qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:345	
+1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此插件可以完全访问你的旅行和 API 密钥。	src/ui/screens/plugin-install.js:16	
+h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能读取 annai 中保存的每个密钥，并发送到任何地方：目前有你的 {0} 密钥。	src/ui/screens/plugin-install.js:43	{0} = list(names)
+7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能读取 annai 中保存的每个密钥，并发送到任何地方。	src/ui/screens/plugin-install.js:44	
+g9t5es	ok	Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.	插件通过 annai 的离线服务加载，但它还没有运行。请重新加载 annai 后再试。	src/ui/screens/plugin-install.js:47	
+w5due	ok	{0}; {1}	{0}；{1}	src/ui/screens/plugin-install.js:50	context: semicolons; {0} = a; {1} = b; Note: Items side by side, each of which may hold commas (in English a semicolon).
+u9eus5	ok	Code that runs in annai	在 annai 中运行的代码	src/ui/screens/plugin-install.js:59	
+17rzkwp	ok	Skill "{0}": {1}	技能“{0}”：{1}	src/ui/screens/plugin-install.js:60	{0} = s.name; {1} = s.description
+2kbcmd	ok	Personality "{0}"	性格“{0}”	src/ui/screens/plugin-install.js:61	{0} = p.name
+vq8vn6	ok	A model provider: {0}	模型提供商：{0}	src/ui/screens/plugin-install.js:62	{0} = abilityWords(pkg.provider)
+1f7spnt	ok	A search provider for web_search	web_search 的搜索提供商	src/ui/screens/plugin-install.js:63	
+hezgd5	ok	Its provider now sends keys you give it to {0}	它的提供商现在会把你给它的密钥发送到 {0}	src/ui/screens/plugin-install.js:66	{0} = list(keys, 'plain')
+18fhlh2	ok	Its searches now go to {0}	它的搜索现在会发送到 {0}	src/ui/screens/plugin-install.js:67	{0} = list(searches, 'plain')
+yqw4or	ok	Nothing annai uses yet	暂时没有 annai 会用到的内容	src/ui/screens/plugin-install.js:68	
+1jxklq1	ok	Keys you give this provider are sent to {0}.	你给此提供商的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:82	{0} = list(origins)
+nfrhzr	ok	Keys you give this provider are sent only to the address you give it.	你给此提供商的密钥只会发送到你给它的地址。	src/ui/screens/plugin-install.js:82	
+ee5xfy	ok	Your search words are sent only to the address you give it.	你搜索的词只会发送到你给它的地址。	src/ui/screens/plugin-install.js:86	
+162zx16	ok	Your search words and the key you give it are sent to {0}.	你搜索的词和你给它的密钥会发送到 {0}。	src/ui/screens/plugin-install.js:87	{0} = list(o)
+1e5wf2u	ok	Your search words are sent to {0}.	你搜索的词会发送到 {0}。	src/ui/screens/plugin-install.js:87	{0} = list(o)
+1hlyxa4	ok	{0} (installed)	{0}（已安装）	src/ui/screens/plugin-install.js:110	{0} = state[r.id]?.name ?? r.id
+j7a5ne	ok	{0} (from annai, installed with it)	{0}（来自 annai，一并安装）	src/ui/screens/plugin-install.js:110	{0} = plan.find((e) => e.id === r.id)?.name
+140c8vb	ok	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:111	{0} = semicolons(each)
+1bay0n3	ok	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	无法加载 annai 的目录来查找它需要的内容。请连接互联网后再试。	src/ui/screens/plugin-install.js:113	
+1914xwr	ok	chat	对话	src/ui/screens/plugin-install.js:118	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note.
+1srbarg	ok	realtime	实时	src/ui/screens/plugin-install.js:118	
+j73cn3	ok	transcription	语音转文字	src/ui/screens/plugin-install.js:118	
+zen9ix	ok	voice	声音	src/ui/screens/plugin-install.js:118	Note: A provider's ability to speak: the glossary's voice (声 / 声音), not the Voice screen.
+w2ndgc	ok	nothing yet	暂时没有	src/ui/screens/plugin-install.js:122	
+1vmhfh0	ok	From a file: {0}	来自文件：{0}	src/ui/screens/plugin-install.js:159	{0} = value
+62wi84	ok	From annai	来自 annai	src/ui/screens/plugin-install.js:160	
+17ahsv6	ok	Version {0} is installed now. Installing replaces it.	当前已安装版本 {0}。安装会替换它。	src/ui/screens/plugin-install.js:172	{0} = v
+11t6hui	ok	an address	某个地址	src/ui/screens/plugin-install.js:175	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+1wr9niq	ok	a file: {0}	文件 {0}	src/ui/screens/plugin-install.js:175	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+rgr1rj	ok	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装版本 {0}，来自 {1}，与这个的来源不同。	src/ui/screens/plugin-install.js:176	{0} = v; {1} = place
+a41hrh	ok	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的话，它的设置、密钥和你为它的名称所做的选择会转给这个；全新安装的话，它们会被移除。	src/ui/screens/plugin-install.js:177	
+19apr1m	ok	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:192	{0} = n
+cdbbto	ok	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:192	{0} = n
+o0687u	ok	the protocol {0}	协议 {0}	src/ui/screens/plugin-install.js:192	{0} = n
+540qyj	ok	the search provider {0}	搜索提供商 {0}	src/ui/screens/plugin-install.js:193	{0} = n
+snr298	ok	the card type {0}	卡片类型 {0}	src/ui/screens/plugin-install.js:193	{0} = n
+18lyuvn	ok	the dock	底栏	src/ui/screens/plugin-install.js:195	
+18ybxd9	ok	how Shiori looks	Shiori 的外观	src/ui/screens/plugin-install.js:195	
+1tyty7f	ok	how the plan's rows look	行程各行的外观	src/ui/screens/plugin-install.js:195	
+lfbn6i	ok	the Now card	此刻卡片	src/ui/screens/plugin-install.js:195	
+1xqw6of	ok	the part {0}	部件 {0}	src/ui/screens/plugin-install.js:197	{0} = name
+1twwnld	ok	The browser keeps the old code until annai starts again.	在 annai 重新启动之前，浏览器会一直使用旧代码。	src/ui/screens/plugin-install.js:213	
+5nx73t	ok	Restart annai to run the new version of {0}.	重启 annai 以运行{0}的新版本。	src/ui/screens/plugin-install.js:213	{0} = name
+19ojpuq	ok	A model provider · has code	模型提供商 · 含代码	src/ui/screens/plugin-install.js:223	
+c2ihd5	ok	A skill	一个技能	src/ui/screens/plugin-install.js:223	
+i0bxaj	ok	A model provider · data only	模型提供商 · 仅数据	src/ui/screens/plugin-install.js:223	
+39jdhh	ok	A package without code	不含代码的包	src/ui/screens/plugin-install.js:224	
+5cnrzb	ok	A plugin	一个插件	src/ui/screens/plugin-install.js:224	
+kfpex	ok	version {0}	版本 {0}	src/ui/screens/plugin-install.js:225	{0} = p.shownVersion
+km7fp2	ok	by {0}	作者：{0}	src/ui/screens/plugin-install.js:225	{0} = p.author
+mska2u	ok	Go back to Add.	返回“添加”。	src/ui/screens/plugin-install.js:239	Note: The Add screen, quoted so it reads as the screen's name.
+8sh8rg	ok	Nothing to install	没有要安装的内容	src/ui/screens/plugin-install.js:240	
+1irgo0m	ok	There's nothing to install.	没有要安装的内容。	src/ui/screens/plugin-install.js:241	
+15gtrui	ok	Install anyway, keep its settings and keys	仍然安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:263	
+6o0r6s	ok	Install fresh	全新安装	src/ui/screens/plugin-install.js:263	
+r9by73	ok	Install, keep its settings and keys	安装，保留它的设置和密钥	src/ui/screens/plugin-install.js:263	
+vxrnjh	ok	Install fresh anyway	仍然全新安装	src/ui/screens/plugin-install.js:263	
+3lj040	ok	Install anyway and use it	仍然安装并使用	src/ui/screens/plugin-install.js:264	
+pq5i3n	ok	Install and use it	安装并使用	src/ui/screens/plugin-install.js:264	
+4it78t	ok	Install anyway, keep what's used now	仍然安装，保留当前使用的	src/ui/screens/plugin-install.js:265	
+c455yu	ok	Install, keep annai's	安装，保留 annai 的	src/ui/screens/plugin-install.js:265	
+s0ybug	ok	Install, keep what's used now	安装，保留当前使用的	src/ui/screens/plugin-install.js:265	
+wjgdl3	ok	Install anyway, keep annai's	仍然安装，保留 annai 的	src/ui/screens/plugin-install.js:265	
+1eg7xgh	ok	Install anyway	仍然安装	src/ui/screens/plugin-install.js:266	
+3i7of3	ok	Install {0}?	安装{0}？	src/ui/screens/plugin-install.js:270	{0} = pkg.name
+1kg68qt	ok	What it brings	它带来的内容	src/ui/screens/plugin-install.js:278	
+owkvwp	ok	What it replaces	它替换的内容	src/ui/screens/plugin-install.js:282	
+170p2zc	ok	It replaces {0} from {1}.	它会替换{1}的{0}。	src/ui/screens/plugin-install.js:284	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的来源时才安装。	src/ui/screens/plugin-install.js:286	
+1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能运行任何东西：它只是告诉 annai 如何连接模型提供商的数据。	src/ui/screens/plugin-install.js:289	
+i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是给 Shiori 的指示：当它们适合你问的内容时，她会阅读并照做。annai 从不运行其中的任何东西，所以请安装你信任的技能。	src/ui/screens/plugin-install.js:290	
+1q0ylpv	ok	Get a key	获取密钥	src/ui/screens/plugin-install.js:292	
+syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:295	
+6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持关闭。	src/ui/screens/plugin-install.js:339	{0} = pkg.name
+7gzgtw	ok	{0} was installed, but it didn't start	{0}已安装，但没有启动	src/ui/screens/plugin-install.js:347	{0} = pkg.name
+qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在设置 → 插件中关闭或移除它。	src/ui/screens/plugin-install.js:347	
 16v75nb	ok	Cleared its settings ({0}) and its secrets ({1}).	已清除它的设置（{0}）和机密（{1}）。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	ok	Cleared its settings and its secrets ({0}).	已清除它的设置和机密（{0}）。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	ok	Cleared its settings ({0}).	已清除它的设置（{0}）。	src/ui/screens/plugin.js:32	{0} = keys
@@ -1932,81 +1932,81 @@ k02514#other	ok	First, annai asks {0} to delete the # turns of your conversation
 lcyovi#other	ok	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	离线时更换密钥或地址，或点“移除密钥”，{0}保留的 # 轮对话会一直留到过期为止，最长 {1}。	src/ui/screens/provider.js:59	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	ok	{0} keeps # turns until they expire, up to {1}.	{0}会保留 # 轮对话到过期为止，最长 {1}。	src/ui/screens/provider.js:62	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	ok	This provider no longer exists	该提供商已不存在	src/ui/screens/provider.js:80	
-17c1dhc	ok	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:107	
-1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:145	{0} = plugin; {1} = list(protocols)
-5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:146	{0} = plugin
-mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:147	{0} = list(protocols)
-1ue57qi	ok	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:148	
-1rtug95	ok	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:150	{0} = host
-nfdm8v	ok	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:151	
-u40nrw	ok	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:151	{0} = installed.file
-1tqi1rr	ok	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:162	{0} = list(k.who)
-evz7q4	ok	Provider	提供商	src/ui/screens/provider.js:179	
-2r1h4p	ok	Connection	连接	src/ui/screens/provider.js:181	
-1swq770	ok	API key	API 密钥	src/ui/screens/provider.js:184	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:193	
-12td532	ok	Remove key	移除密钥	src/ui/screens/provider.js:196	
-1qapi39	ok	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:196	
-5bt3jk	ok	Key removed	已移除密钥	src/ui/screens/provider.js:199	
-1r04n6e	ok	Remove provider	移除提供商	src/ui/screens/provider.js:208	
-11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:232	{0} = src.name
-ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请在“添加”页面添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:232	Note: "from Add" is the Add screen, quoted.
-u91wwi	ok	Add by hand	手动添加	src/ui/screens/provider.js:250	
-1nqeyot	ok	By hand	手动	src/ui/screens/provider.js:255	
-cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:256	{0} = src.name
-1lckuuy	ok	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:274	
-10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:275	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:279	
-6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:280	
-1e1obo4	ok	Installing…	正在安装…	src/ui/screens/provider.js:287	
-9djdxp	ok	Install it	安装	src/ui/screens/provider.js:296	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:297	{0} = entry.name
-mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:313	
-r4y7q	ok	Use {0}	使用{0}	src/ui/screens/provider.js:339	{0} = shownName
-1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:346	
-1k5huc5	ok	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:366	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:366	
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:373	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:378	{0} = who
-l91m05	ok	Its own address	自己的地址	src/ui/screens/provider.js:397	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:403	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:407	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:408	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:409	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:411	
-1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:411	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:412	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:413	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:414	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	测试{0}	src/ui/screens/provider.js:425	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:442	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:443	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:443	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:449	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:449	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:471	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:484	
-tbmsa5	ok	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:489	
-1yko1my#other	ok	# models.	# 个模型。	src/ui/screens/provider.js:492	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:500	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:503	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	它的模型	src/ui/screens/provider.js:505	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:506	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:507	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:521	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:531	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:532	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:532	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:543	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:551	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:551	
-1b2yx8m	ok	Suggested models	推荐的模型	src/ui/screens/provider.js:552	
-1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:553	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:554	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:561	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:561	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:562	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:568	{0} = which
+17c1dhc	ok	Extra headers (JSON)	额外请求头（JSON）	src/ui/screens/provider.js:106	
+1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件和其他地方都不需要的{1}。	src/ui/screens/provider.js:144	{0} = plugin; {1} = list(protocols)
+5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	将移除它的密钥、模型及其在角色中的位置，以及{0}插件。	src/ui/screens/provider.js:145	{0} = plugin
+mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	将移除它的密钥、模型及其在角色中的位置，以及其他地方都不需要的{0}。	src/ui/screens/provider.js:146	{0} = list(protocols)
+1ue57qi	ok	Removes its key, its models and their places in roles.	将移除它的密钥、模型及其在角色中的位置。	src/ui/screens/provider.js:147	
+1rtug95	ok	To add it back, you'll need its address again: {0}.	要重新添加，你需要再次提供它的地址：{0}。	src/ui/screens/provider.js:149	{0} = host
+nfdm8v	ok	To add it back, you'll need its file again.	要重新添加，你需要再次提供它的文件。	src/ui/screens/provider.js:150	
+u40nrw	ok	To add it back, you'll need its file again ({0}).	要重新添加，你需要再次提供它的文件（{0}）。	src/ui/screens/provider.js:150	{0} = installed.file
+1tqi1rr	ok	Asking {0} to delete what it keeps…	正在请{0}删除它保留的内容…	src/ui/screens/provider.js:161	{0} = list(k.who)
+evz7q4	ok	Provider	提供商	src/ui/screens/provider.js:178	
+2r1h4p	ok	Connection	连接	src/ui/screens/provider.js:180	
+1swq770	ok	API key	API 密钥	src/ui/screens/provider.js:183	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	开启后，它的调用在记录中显示为免费，也不计入每日花费。	src/ui/screens/provider.js:192	
+12td532	ok	Remove key	移除密钥	src/ui/screens/provider.js:195	
+1qapi39	ok	Tap again to remove the key	再点一次以移除密钥	src/ui/screens/provider.js:195	
+5bt3jk	ok	Key removed	已移除密钥	src/ui/screens/provider.js:198	
+1r04n6e	ok	Remove provider	移除提供商	src/ui/screens/provider.js:207	
+11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}没有在这里添加的专属方式：请手动添加，再在它的页面上设置。	src/ui/screens/provider.js:230	{0} = src.name
+ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	该提供商的插件没有运行。请在“添加”页面添加，或在设置 → 插件中查看。	src/ui/screens/provider.js:230	Note: "from Add" is the Add screen, quoted.
+u91wwi	ok	Add by hand	手动添加	src/ui/screens/provider.js:248	
+1nqeyot	ok	By hand	手动	src/ui/screens/provider.js:253	
+cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接添加{0}，再在它自己的页面上设置密钥和功能。	src/ui/screens/provider.js:254	{0} = src.name
+1lckuuy	ok	Look at it in Settings → Plugins	在设置 → 插件中查看	src/ui/screens/provider.js:272	
+10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的插件{0}没有运行，所以 annai 无法显示它提供什么。{1}。	src/ui/screens/provider.js:273	{0} = installed.name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以 annai 无法获取它。请从你获得它的地方，在设置 → 插件 → 添加中重新安装，或移除此提供商。	src/ui/screens/provider.js:277	
+6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取它。请连接互联网后重新打开此页面。	src/ui/screens/provider.js:278	
+1e1obo4	ok	Installing…	正在安装…	src/ui/screens/provider.js:285	
+9djdxp	ok	Install it	安装	src/ui/screens/provider.js:294	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件{0}未安装，所以 annai 无法显示它提供什么。	src/ui/screens/provider.js:295	{0} = entry.name
+mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:311	
+r4y7q	ok	Use {0}	使用{0}	src/ui/screens/provider.js:337	{0} = shownName
+1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:344	
+1k5huc5	ok	the provider's: {0}	提供商的：{0}	src/ui/screens/provider.js:364	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	提供商的：暂无	src/ui/screens/provider.js:364	
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:371	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让{0}在两轮之间保留对话：每次发送更少。	src/ui/screens/provider.js:376	{0} = who
+l91m05	ok	Its own address	自己的地址	src/ui/screens/provider.js:395	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空：使用提供商的地址。这里的每项设置都会在更改时保存。	src/ui/screens/provider.js:401	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：只要那台服务器保留它们。	src/ui/screens/provider.js:405	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:406	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}会保留你与 Shiori 的对话，连同其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:407	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	当你移除对应的旅行、此提供商或全部内容（清除），更换或移除它的密钥，或关闭此项时，annai 会删除它们。	src/ui/screens/provider.js:409	
+1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:409	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	这需要此提供商的密钥：没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:410	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除等待中：没有此提供商的密钥，annai 无法发送。	src/ui/screens/provider.js:411	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除等待中：annai 能连上{0}时就会发送。	src/ui/screens/provider.js:412	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	测试{0}	src/ui/screens/provider.js:423	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}的免费额度不提供搜索。	src/ui/screens/provider.js:440	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}的免费额度不提供网页抓取。	src/ui/screens/provider.js:441	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}的免费额度不提供{1}。	src/ui/screens/provider.js:441	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	这需要{0}插件，但它没有运行。	src/ui/screens/provider.js:447	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	这需要一个没有运行的插件。	src/ui/screens/provider.js:447	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:469	
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:482	
+tbmsa5	ok	Asking for its models…	正在查询它的模型…	src/ui/screens/provider.js:487	
+1yko1my#other	ok	# models.	# 个模型。	src/ui/screens/provider.js:490	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:498	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:501	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	它的模型	src/ui/screens/provider.js:503	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:504	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:505	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:519	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:529	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加，在{0}上	src/ui/screens/provider.js:530	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加，在另一个提供商上	src/ui/screens/provider.js:530	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:541	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:549	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:549	
+1b2yx8m	ok	Suggested models	推荐的模型	src/ui/screens/provider.js:550	
+1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}为每个角色推荐了一个模型。它的语音模型随后会排在免费的手机语音输入和浏览器声音之前，所以收费的会先被尝试。	src/ui/screens/provider.js:551	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0}为每个角色推荐了一个模型。	src/ui/screens/provider.js:552	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启{0}。	src/ui/screens/provider.js:559	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:559	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:560	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:566	{0} = which
 1tu8lgg	ok	Writing it: {0} is reading the trip. This can take a minute.	正在撰写：{0}正在阅读这个旅行。可能需要一分钟。	src/ui/screens/recap.js:32	{0} = m.name
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:34	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:34	
@@ -2039,68 +2039,68 @@ hg5a8z	ok	Time in the trip	旅行中的时间	src/ui/screens/replay.js:173
 7xq6tu	ok	The trip in order	旅行经过	src/ui/screens/replay.js:175	Note: A screen reader's name for the timeline's section.
 djv8ja	ok	Timeline	时间线	src/ui/screens/replay.js:175	
 j4z771	ok	Pause	暂停	src/ui/screens/replay.js:176	
-17z59l7	ok	Plugin updates are ready: {0}.	插件更新已就绪：{0}。	src/ui/screens/settings.js:29	{0} = list(plugins.map((u) => u.name), 'plain')
-1ltn2ct	ok	A new version of annai is ready.	annai 的新版本已就绪。	src/ui/screens/settings.js:29	
-k12u1x	ok	Updates	更新	src/ui/screens/settings.js:45	
-1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 会在启动时和你回来时，查找自身及其插件的新版本。可以立即检查，或查看正在运行的构建。	src/ui/screens/settings.js:46	
-1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、每个角色尝试它们的顺序、她每天可花费的金额、缓存，以及何时总结。	src/ui/screens/settings.js:48	
-1kkulsa	ok	Voice	语音	src/ui/screens/settings.js:49	context: screen
-qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 如何说话和听你说话，各有一个测试。	src/ui/screens/settings.js:49	
-1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭期间的提醒，通过推送中继送达，以及中继会知道什么。	src/ui/screens/settings.js:50	
-1vex33	ok	Backup	备份	src/ui/screens/settings.js:51	
-1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:52	
-rpzgfn	ok	Last export {0}.	上次导出：{0}。	src/ui/screens/settings.js:52	{0} = relTime(app.lastExportAt)
-2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:53	
-zi2agh	ok	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:53	{0} = list(automatic, 'plain')
-1tpqgk3	ok	Automatic backups	自动备份	src/ui/screens/settings.js:57	
-706cmq	ok	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:59	
-8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:60	
-m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:61	
-11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和抓取，以及 Jina 密钥。	src/ui/screens/settings.js:63	Note: fetch → 抓取, as the other rows name it.
-hflnof	ok	Skills and code plugins: install, update, switch off or remove.	技能和代码插件：安装、更新、关闭或移除。	src/ui/screens/settings.js:64	
-ysihre	ok	Manage plugins	管理插件	src/ui/screens/settings.js:64	
-eop0jq	ok	Storage	存储空间	src/ui/screens/settings.js:65	
-1p1ce3s	ok	Protected from automatic clearing: no.	受保护，不会被自动清除：否。	src/ui/screens/settings.js:66	
-1q6azye	ok	Protected from automatic clearing: yes.	受保护，不会被自动清除：是。	src/ui/screens/settings.js:66	
-q3dcqq	ok	Using {0} of about {1}.	已使用约 {1} 中的 {0}。	src/ui/screens/settings.js:67	{0} = size(st.usage); {1} = size(st.quota)
-12kaphy	ok	Your data is now protected.	你的数据现已受到保护。	src/ui/screens/settings.js:72	
-16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	浏览器没有同意。把 annai 安装到主屏幕通常可以解决。	src/ui/screens/settings.js:72	
-o8v2vm	ok	Protect my data	保护我的数据	src/ui/screens/settings.js:75	
-1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：许可证、源代码、致谢，以及你的密钥和数据如何保存。	src/ui/screens/settings.js:76	{0} = ctx.version
-onrqou	ok	About	关于	src/ui/screens/settings.js:76	
-1stxhg7	ok	Diagnostics	诊断	src/ui/screens/settings.js:77	
-ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	一份最近的错误和系统事件报告，不含你的文件或密钥，可贴到问题报告中。	src/ui/screens/settings.js:78	
-2yd0qo	ok	Copy diagnostics	复制诊断信息	src/ui/screens/settings.js:79	
-5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模拟的旅行试试 GPS、回放和回顾。	src/ui/screens/settings.js:80	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在试验中的功能，例如在标签页之间滑动。每项在你开启前都是关闭的。	src/ui/screens/settings.js:81	
-3y74hh	ok	Erase	清除	src/ui/screens/settings.js:82	
-5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：完全按拍摄时的样子保存照片	src/ui/screens/settings.js:99	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（无法写入时用 JPEG）	src/ui/screens/settings.js:102	Note: Short, so the select box shows it whole on a phone.
-8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:117	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边为整数像素，至少 {0}。留空则不限。	src/ui/screens/settings.js:118	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的最大值至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:125	{0} = num(0.1)
-1ftv62v	ok	This browser writes WebP.	此浏览器可以写入 WebP。	src/ui/screens/settings.js:127	
-t33cgw	ok	The originals stay in your phone's photo library.	原图保留在你手机的照片图库中。	src/ui/screens/settings.js:127	
-xbsoea	ok	Each photo you add is stored once.	你添加的每张照片只保存一次。	src/ui/screens/settings.js:127	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器无法写入 WebP，所以照片保存为 JPEG。	src/ui/screens/settings.js:127	
-10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:130	
-ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:131	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	最长边，像素	src/ui/screens/settings.js:133	
-ehvdao	ok	Largest file, MB	最大文件，MB	src/ui/screens/settings.js:134	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大文件至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:134	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:135	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只制作一次，并与对话一起保存。仔细查看时总会发送更多细节，所以较小的设置也够用。	src/ui/screens/settings.js:136	
-1223a8b	ok	Longest side sent, pixels	发送的最长边，像素	src/ui/screens/settings.js:138	
-1iw8fgg	ok	Largest photo sent, MB	发送照片的最大值，MB	src/ui/screens/settings.js:139	
-10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:141	
-1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:142	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:157	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:159	
-ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:178	
-u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:199	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:205	
-1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:207	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
-199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:217	
+17z59l7	ok	Plugin updates are ready: {0}.	插件更新已就绪：{0}。	src/ui/screens/settings.js:30	{0} = list(plugins.map(updateName), 'plain')
+1ltn2ct	ok	A new version of annai is ready.	annai 的新版本已就绪。	src/ui/screens/settings.js:30	
+k12u1x	ok	Updates	更新	src/ui/screens/settings.js:46	
+1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 会在启动时和你回来时，查找自身及其插件的新版本。可以立即检查，或查看正在运行的构建。	src/ui/screens/settings.js:47	
+1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、每个角色尝试它们的顺序、她每天可花费的金额、缓存，以及何时总结。	src/ui/screens/settings.js:49	
+1kkulsa	ok	Voice	语音	src/ui/screens/settings.js:50	context: screen
+qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 如何说话和听你说话，各有一个测试。	src/ui/screens/settings.js:50	
+1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭期间的提醒，通过推送中继送达，以及中继会知道什么。	src/ui/screens/settings.js:51	
+1vex33	ok	Backup	备份	src/ui/screens/settings.js:52	
+1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:53	
+rpzgfn	ok	Last export {0}.	上次导出：{0}。	src/ui/screens/settings.js:53	{0} = relTime(app.lastExportAt)
+2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	还没有自动备份。请添加一个备份位置，例如私有的 GitHub 仓库。	src/ui/screens/settings.js:54	
+zi2agh	ok	Backing up automatically to {0}.	正在自动备份到{0}。	src/ui/screens/settings.js:54	{0} = list(automatic, 'plain')
+1tpqgk3	ok	Automatic backups	自动备份	src/ui/screens/settings.js:58	
+706cmq	ok	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:60	
+8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:61	
+m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:62	
+11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和抓取，以及 Jina 密钥。	src/ui/screens/settings.js:64	Note: fetch → 抓取, as the other rows name it.
+hflnof	ok	Skills and code plugins: install, update, switch off or remove.	技能和代码插件：安装、更新、关闭或移除。	src/ui/screens/settings.js:65	
+ysihre	ok	Manage plugins	管理插件	src/ui/screens/settings.js:65	
+eop0jq	ok	Storage	存储空间	src/ui/screens/settings.js:66	
+1p1ce3s	ok	Protected from automatic clearing: no.	受保护，不会被自动清除：否。	src/ui/screens/settings.js:67	
+1q6azye	ok	Protected from automatic clearing: yes.	受保护，不会被自动清除：是。	src/ui/screens/settings.js:67	
+q3dcqq	ok	Using {0} of about {1}.	已使用约 {1} 中的 {0}。	src/ui/screens/settings.js:68	{0} = size(st.usage); {1} = size(st.quota)
+12kaphy	ok	Your data is now protected.	你的数据现已受到保护。	src/ui/screens/settings.js:73	
+16iv67d	ok	The browser didn't agree. Installing annai to your Home Screen usually fixes this.	浏览器没有同意。把 annai 安装到主屏幕通常可以解决。	src/ui/screens/settings.js:73	
+o8v2vm	ok	Protect my data	保护我的数据	src/ui/screens/settings.js:76	
+1201gyc	ok	annai {0}: its licence, its source, the credits, and how your keys and data are kept.	annai {0}：许可证、源代码、致谢，以及你的密钥和数据如何保存。	src/ui/screens/settings.js:77	{0} = ctx.version
+onrqou	ok	About	关于	src/ui/screens/settings.js:77	
+1stxhg7	ok	Diagnostics	诊断	src/ui/screens/settings.js:78	
+ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	一份最近的错误和系统事件报告，不含你的文件或密钥，可贴到问题报告中。	src/ui/screens/settings.js:79	
+2yd0qo	ok	Copy diagnostics	复制诊断信息	src/ui/screens/settings.js:80	
+5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模拟的旅行试试 GPS、回放和回顾。	src/ui/screens/settings.js:81	
+xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在试验中的功能，例如在标签页之间滑动。每项在你开启前都是关闭的。	src/ui/screens/settings.js:82	
+3y74hh	ok	Erase	清除	src/ui/screens/settings.js:83	
+5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：完全按拍摄时的样子保存照片	src/ui/screens/settings.js:100	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（无法写入时用 JPEG）	src/ui/screens/settings.js:103	Note: Short, so the select box shows it whole on a phone.
+8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:118	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边为整数像素，至少 {0}。留空则不限。	src/ui/screens/settings.js:119	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的最大值至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:126	{0} = num(0.1)
+1ftv62v	ok	This browser writes WebP.	此浏览器可以写入 WebP。	src/ui/screens/settings.js:128	
+t33cgw	ok	The originals stay in your phone's photo library.	原图保留在你手机的照片图库中。	src/ui/screens/settings.js:128	
+xbsoea	ok	Each photo you add is stored once.	你添加的每张照片只保存一次。	src/ui/screens/settings.js:128	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器无法写入 WebP，所以照片保存为 JPEG。	src/ui/screens/settings.js:128	
+10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:131	
+ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:132	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	最长边，像素	src/ui/screens/settings.js:134	
+ehvdao	ok	Largest file, MB	最大文件，MB	src/ui/screens/settings.js:135	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大文件至少为 {0} MB。留空则不限。	src/ui/screens/settings.js:135	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:136	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只制作一次，并与对话一起保存。仔细查看时总会发送更多细节，所以较小的设置也够用。	src/ui/screens/settings.js:137	
+1223a8b	ok	Longest side sent, pixels	发送的最长边，像素	src/ui/screens/settings.js:139	
+1iw8fgg	ok	Largest photo sent, MB	发送照片的最大值，MB	src/ui/screens/settings.js:140	
+10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:142	
+1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:158	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:160	
+ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:179	
+u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:200	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:206	
+1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:208	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:218	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:18	
 1mlnwtl	ok	Shiori, asleep	Shiori，睡着了	src/ui/screens/shiori.js:18	
