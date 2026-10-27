@@ -18,7 +18,7 @@ import { createLlm } from '../core/llm/service.js';
 import { moveOver } from '../core/llm/move-over.js';
 import { splitOldKoe } from '../core/llm/config.js';
 import { finishReturn } from '../ui/provider-setup.js';
-import { secretFreeLog, tracedFetch, withoutSecrets } from '../core/agent/net.js';
+import { secretFreeLog, tracedFetch, shownWithoutSecrets } from '../core/agent/net.js';
 import { disabledCard, reloadCard, startCards, NEEDS_RELOAD, pluginsHeld } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
@@ -112,7 +112,7 @@ async function boot() {
     const why = whyNoPlugins();
     if (why || !(await controllerReady())) {
       offerReload([]);
-      throw new Error(why ?? pluginsHeld(true, false));
+      throw Object.assign(new Error(why ?? pluginsHeld(true, false)), { shown: NEEDS_RELOAD });
     }
   };
   const llm = createLlm({ store, ws, plugins, ready: new Promise((resolve) => { pluginsStarted = resolve; }), pluginsCanLoad: canLoad, whyNoPlugins });
@@ -216,7 +216,7 @@ async function boot() {
   registry.onDisabled(async (d) => {
     const row = (await plugins.describe().catch(() => [])).find((/** @type {any} */ r) => r.id === d.pluginId);
     shell.notices.card({
-      ...disabledCard({ name: row?.name ?? d.pluginId, why: d.why, message: await withoutSecrets(store, d.message) }),
+      ...disabledCard({ name: row?.name ?? d.pluginId, why: d.why, message: await shownWithoutSecrets(store, d.message) }),
       actions: [{ label: t`Plugins`, run: () => { location.hash = '#/plugins'; } }],
     });
   });

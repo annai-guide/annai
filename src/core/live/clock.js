@@ -200,7 +200,7 @@ export class PlayClock {
       try {
         fn();
       } catch (e) {
-        console.warn('a clock listener failed', e);
+        /* en */ console.warn('a clock listener failed', e);
       }
     }
   }

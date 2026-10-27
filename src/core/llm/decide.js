@@ -10,7 +10,7 @@
 
 export const DECIDE_THRESHOLD = 0.6;
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const SYSTEM = 'You make one quick decision. Answer with the letter of the best option and nothing else.';
+/* en */ const SYSTEM = 'You make one quick decision. Answer with the letter of the best option and nothing else.';
 
 /**
  * @param {{ prompt: string, options: Option[], threshold?: number, call: Call, logprobs?: boolean, parts?: import('./contract.js').Part[], fallback?: boolean }} c
@@ -19,11 +19,11 @@ const SYSTEM = 'You make one quick decision. Answer with the letter of the best 
  * @returns {Promise<{ probabilities: Record<string, number>, by: 'decide' | 'main' | 'unsure' }>}
  */
 export async function decide({ prompt, options, threshold = DECIDE_THRESHOLD, call, logprobs = false, parts = [], fallback = true }) {
-  if (options.length < 2 || options.length > LETTERS.length) throw new Error('A decision needs 2 to 26 options.');
+  if (options.length < 2 || options.length > LETTERS.length) /* en */ throw new Error('A decision needs 2 to 26 options.');
   const letters = LETTERS.slice(0, options.length).split('');
   const text = `${prompt}\n\n${options.map((o, i) => `${letters[i]}. ${o.label}`).join('\n')}`;
   const messages = [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text }, ...parts] }];
-  const tool = { name: 'decide', description: 'Choose one option by its letter.', input: { type: 'object', properties: { option: { enum: letters } }, required: ['option'] } };
+  /* en */ const tool = { name: 'decide', description: 'Choose one option by its letter.', input: { type: 'object', properties: { option: { enum: letters } }, required: ['option'] } };
   /** @type {Awaited<ReturnType<Call>> | null} */
   let first = null;
   try {

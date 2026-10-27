@@ -8,7 +8,7 @@
  * @param {{ type: string, actor?: string, data?: any, refs?: string[] }} ev
  */
 export async function logEvent(store, scope, ev, now = Date.now()) {
-  if (blobsOf(ev).length) throw new Error('A log entry that names stored content is written with record().');
+  if (blobsOf(ev).length) /* en */ throw new Error('A log entry that names stored content is written with record().');
   return store.tx(['events'], 'readwrite', (t) => t.appendEvent(scope, { ts: now, actor: 'system', ...ev }));
 }
 

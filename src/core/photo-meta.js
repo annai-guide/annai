@@ -218,7 +218,7 @@ function exifTime(s, offset) {
   if (!m) return undefined;
   const [y, mo, d, h, mi, se] = m.slice(1).map(Number);
   if (y < 1900 || mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 60) return undefined;
-  const local = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
+  /* en */ const local = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
   return offset && /^[+-]\d{2}:\d{2}$/.test(offset) ? local + offset : local;
 }
 

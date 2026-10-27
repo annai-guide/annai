@@ -44,7 +44,7 @@ const display = (in_, code, fallback) => {
   }
 };
 /** Names for itself a browser may lack, answering with the English name or the code: Chromium's ICU has none for Cantonese. */
-const OWN = /** @type {Record<string, string>} */ ({ yue: '粵語' });
+/* en */ const OWN = /** @type {Record<string, string>} */ ({ yue: '粵語' });
 /** A language's name for itself ("日本語"). @param {Language} l */
 export function nativeName(l) {
   const own = display(l.id, l.id, l.name);
@@ -190,8 +190,8 @@ export const tagFor = (l) => (l.id === 'zh' ? (/Hant|-(?:TW|HK|MO)\b/i.test(l.lo
 const SCRIPT_TAGS = /** @type {Record<string, string>} */ ({ Chinese: 'zh-Hans', Japanese: 'ja', Korean: 'ko', Thai: 'th', Arabic: 'ar', Hebrew: 'he', Greek: 'el', Hindi: 'hi', Russian: 'ru', Ukrainian: 'uk' });
 
 /** Characters only Simplified Chinese uses, all but the last 3 of them unused in Japanese too; and their Traditional forms. */
-const HANS = '这们个说时门东车马鸟书见长问间对开关现过还点发实经动样乐国会来';
-const HANT = '這們個說時門東車馬鳥書見長問間對開關現過還點發實經動樣樂國會來';
+/* en */ const HANS = '这们个说时门东车马鸟书见长问间对开关现过还点发实经动样乐国会来';
+/* en */ const HANT = '這們個說時門東車馬鳥書見長問間對開關現過還點發實經動樣樂國會來';
 /** How many of a text's characters are in a set. @param {string} text @param {string} set */
 const count = (text, set) => [...text].filter((c) => set.includes(c)).length;
 
@@ -205,7 +205,7 @@ function scriptOf(text) {
   const kana = n(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu);
   const hangul = n(/\p{Script=Hangul}/gu);
   const han = n(/\p{Script=Han}/gu);
-  if (han + kana + hangul > (text.replace(CJK, ' ').match(/\p{L}+/gu)?.length ?? 0)) return hangul > han + kana ? 'Korean' : kana ? 'Japanese' : 'Chinese';
+  if (han + kana + hangul > (text.replace(CJK, ' ').match(/\p{L}+/gu)?.length ?? 0)) /* en */ return hangul > han + kana ? 'Korean' : kana ? 'Japanese' : 'Chinese';
   const other = han + kana + hangul ? '' : languageOf(text);
   return SCRIPT_TAGS[other] ? other : '';
 }

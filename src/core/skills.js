@@ -35,9 +35,9 @@ const blank = (/** @type {string} */ l) => /^\s*$/.test(l);
  */
 export function frontMatter(text) {
   const lines = String(text ?? '').replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
-  if (!/^---[ \t]*$/.test(lines[0] ?? '')) throw new SkillError('SKILL.md starts with front matter: a line with just ---, then name: and description:, then another ---.');
+  if (!/^---[ \t]*$/.test(lines[0] ?? '')) /* en */ throw new SkillError('SKILL.md starts with front matter: a line with just ---, then name: and description:, then another ---.');
   const end = lines.findIndex((l, i) => i > 0 && /^(---|\.\.\.)[ \t]*$/.test(l));
-  if (end < 0) throw new SkillError("SKILL.md's front matter isn't closed: it needs a line with just --- after it.");
+  if (end < 0) /* en */ throw new SkillError("SKILL.md's front matter isn't closed: it needs a line with just --- after it.");
   return { data: block(lines.slice(1, end)), body: lines.slice(end + 1).join('\n').replace(/^\n+/, '') };
 }
 
@@ -139,10 +139,10 @@ function blockScalar(fold, more) {
 
 /** What is wrong with a skill's name, or null (the Agent Skills naming rules). @param {unknown} name @returns {string | null} */
 export function checkSkillName(name) {
-  if (typeof name !== 'string' || !name) return 'SKILL.md needs a name: lowercase letters, digits and dashes, like tide-pools.';
-  if (!/^[a-z0-9-]{1,64}$/.test(name)) return "A skill's name is 1 to 64 lowercase letters, digits and dashes, like tide-pools.";
-  if (name.startsWith('-') || name.endsWith('-')) return "A skill's name can't start or end with a dash.";
-  if (name.includes('--')) return "A skill's name can't have two dashes in a row.";
+  if (typeof name !== 'string' || !name) /* en */ return 'SKILL.md needs a name: lowercase letters, digits and dashes, like tide-pools.';
+  if (!/^[a-z0-9-]{1,64}$/.test(name)) /* en */ return "A skill's name is 1 to 64 lowercase letters, digits and dashes, like tide-pools.";
+  if (name.startsWith('-') || name.endsWith('-')) /* en */ return "A skill's name can't start or end with a dash.";
+  if (name.includes('--')) /* en */ return "A skill's name can't have two dashes in a row.";
   return null;
 }
 
@@ -153,8 +153,8 @@ export function parseSkill(text) {
   const wrong = checkSkillName(str(data.name));
   if (wrong) throw new SkillError(wrong);
   const description = str(data.description);
-  if (!description) throw new SkillError('SKILL.md needs a description: what the skill is for and when to use it.');
-  if (description.length > DESCRIPTION_MAX) throw new SkillError(`A skill's description is at most ${DESCRIPTION_MAX} characters; this one has ${description.length}.`);
+  if (!description) /* en */ throw new SkillError('SKILL.md needs a description: what the skill is for and when to use it.');
+  if (description.length > DESCRIPTION_MAX) /* en */ throw new SkillError(`A skill's description is at most ${DESCRIPTION_MAX} characters; this one has ${description.length}.`);
   const metadata = data.metadata && typeof data.metadata === 'object' ? { ...data.metadata } : {};
   /** @type {Skill} */
   const skill = { name: /** @type {string} */ (str(data.name)), description, metadata, body };

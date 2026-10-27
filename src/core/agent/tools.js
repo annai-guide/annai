@@ -35,10 +35,10 @@ const UNTIMED = [...TALK, 'task'];
 
 /** What is wrong with a tool, or null. @param {any} t @returns {string | null} */
 export function checkTool(t) {
-  if (typeof t?.name !== 'string' || !TOOL_NAME.test(t.name)) return `its name "${t?.name}" must be 1 to 64 letters, digits, "_" or "-"`;
-  if (typeof t.description !== 'string' || !t.description.trim()) return `the tool ${t.name} needs a description`;
-  if (!t.input || typeof t.input !== 'object' || Array.isArray(t.input)) return `the tool ${t.name} needs an input JSON Schema object`;
-  if (typeof t.run !== 'function') return `the tool ${t.name} has no run() function`;
+  if (typeof t?.name !== 'string' || !TOOL_NAME.test(t.name)) /* en */ return `its name "${t?.name}" must be 1 to 64 letters, digits, "_" or "-"`;
+  if (typeof t.description !== 'string' || !t.description.trim()) /* en */ return `the tool ${t.name} needs a description`;
+  if (!t.input || typeof t.input !== 'object' || Array.isArray(t.input)) /* en */ return `the tool ${t.name} needs an input JSON Schema object`;
+  if (typeof t.run !== 'function') /* en */ return `the tool ${t.name} has no run() function`;
   return null;
 }
 
@@ -79,7 +79,7 @@ function normalize(out) {
 /** @param {string} s */
 function cut(s) {
   if (s.length <= RESULT_MAX) return s;
-  return `${s.slice(0, RESULT_MAX)}\n… ${s.length - RESULT_MAX} more characters were cut.`;
+  /* en */ return `${s.slice(0, RESULT_MAX)}\n… ${s.length - RESULT_MAX} more characters were cut.`;
 }
 
 /**
@@ -93,10 +93,10 @@ export async function runTool(tool, input, call) {
   const late = new AbortController();
   /** @type {Promise<never>} */
   const stopped = new Promise((_, reject) => {
-    const why = () => reject(Object.assign(new Error('Stopped by the user.'), { stopped: true }));
+    const why = () => reject(Object.assign(new Error(/* en */ 'Stopped by the user.'), { stopped: true }));
     if (call.signal.aborted) why();
     else call.signal.addEventListener('abort', why, { once: true });
-    late.signal.addEventListener('abort', () => reject(new Error(`${tool.name} didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.`)));
+    /* en */ late.signal.addEventListener('abort', () => reject(new Error(`${tool.name} didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.`)));
   });
   const timer = limit ? setTimeout(() => late.abort(), limit) : undefined;
   /** @type {ToolOutput} */
@@ -105,7 +105,7 @@ export async function runTool(tool, input, call) {
     output = normalize(await Promise.race([Promise.resolve().then(() => tool.run(input, limit ? { ...call, signal: anySignal([call.signal, late.signal]) } : call)), stopped]));
   } catch (e) {
     const err = /** @type {any} */ (e);
-    output = { content: err?.stopped ? 'Stopped by the user.' : `Error: ${err?.message ?? err}`, isError: true };
+    /* en */ output = { content: err?.stopped ? 'Stopped by the user.' : `Error: ${err?.message ?? err}`, isError: true };
   } finally {
     clearTimeout(timer);
   }
@@ -132,12 +132,12 @@ export class Stuck {
 export function resolvePath(path, trip) {
   const p = String(path ?? '');
   const m = /^\/(trip|me)(\/.*)?$/.exec(p);
-  if (!m) throw new Error(`Paths start with /trip/ or /me/, not ${p || 'nothing'}.`);
-  if (m[1] === 'trip' && !trip) throw new Error('No trip is open, so /trip/ has nothing in it. Use /me/ for your own notes.');
+  if (!m) /* en */ throw new Error(`Paths start with /trip/ or /me/, not ${p || 'nothing'}.`);
+  if (m[1] === 'trip' && !trip) /* en */ throw new Error('No trip is open, so /trip/ has nothing in it. Use /me/ for your own notes.');
   // A folder keeps its trailing slash, and /trip or /me alone is the root.
   const raw = (m[2] || '/').replace(/\/{2,}/g, '/');
   const inner = raw === '/' ? '/' : `${normPath(raw.replace(/\/$/, ''))}${raw.endsWith('/') ? '/' : ''}`;
-  if (inner === '/.annai' || inner.startsWith('/.annai/')) throw new Error('/.annai is reserved for annai itself.');
+  if (inner === '/.annai' || inner.startsWith('/.annai/')) /* en */ throw new Error('/.annai is reserved for annai itself.');
   return { scope: m[1] === 'trip' ? /** @type {string} */ (trip) : ME, path: inner };
 }
 

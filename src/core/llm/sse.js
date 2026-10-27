@@ -42,7 +42,7 @@ export async function* sse(body) {
       } catch (e) {
         const name = /** @type {any} */ (e)?.name;
         if (name === 'AbortError' || name === 'TimeoutError') throw e;
-        throw new ProviderError('network', 'The connection dropped.', { cause: e });
+        throw new ProviderError('network', /* en */ 'The connection dropped.', { cause: e, said: { code: 'kind' } });
       }
       const { value, done } = chunk;
       buf += done ? decoder.decode() : decoder.decode(value, { stream: true });

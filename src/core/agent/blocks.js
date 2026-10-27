@@ -20,7 +20,7 @@ export const quote = (text) => JSON.stringify(String(text ?? ''));
 
 /** A note from Kokoro as Koe reads it, in the one marker Koe trusts. @param {string} text @param {string} nonce */
 export function wrapNote(text, nonce) {
-  return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
+  /* en */ return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
 }
 
 /** Koe's session nonce, fresh each time annai starts. */
@@ -54,14 +54,14 @@ export function blockFor(e, texts) {
   const d = e.data ?? {};
   const text = String(texts.text ?? '');
   if (e.type === 'msg.user' && d.split) {
-    if (d.chose) return `[the user chose] ${quote(text)}`;
-    if (d.images?.length) return text && text !== '(a photo)' ? `[the user sent a photo] ${quote(text)}` : '[the user sent a photo]';
-    return `[the user typed] ${quote(text)}`;
+    if (d.chose) /* en */ return `[the user chose] ${quote(text)}`;
+    if (d.images?.length) /* en */ return text && text !== '(a photo)' ? `[the user sent a photo] ${quote(text)}` : '[the user sent a photo]';
+    /* en */ return `[the user typed] ${quote(text)}`;
   }
-  if (d.half === 'koe' && e.type === 'out.speak') return `${d.voice ? '[Koe said aloud]' : '[Koe said]'} ${quote(text)}`;
-  if (d.half === 'koe' && e.type === 'out.show') return `[Koe showed] ${quote(cardText(d.card))}`;
-  if (d.half === 'koe' && e.type === 'out.ask') return `[Koe asked] ${askText(d)}`;
-  if (e.type === 'note' && d.from === 'koe') return `[Koe ${asksOrNotes(text)}] ${quote(text)}`;
+  if (d.half === 'koe' && e.type === 'out.speak') /* en */ return `${d.voice ? '[Koe said aloud]' : '[Koe said]'} ${quote(text)}`;
+  if (d.half === 'koe' && e.type === 'out.show') /* en */ return `[Koe showed] ${quote(cardText(d.card))}`;
+  if (d.half === 'koe' && e.type === 'out.ask') /* en */ return `[Koe asked] ${askText(d)}`;
+  if (e.type === 'note' && d.from === 'koe') /* en */ return `[Koe ${asksOrNotes(text)}] ${quote(text)}`;
   if (e.type === 'halves') return `[annai] ${text}`;
   return null;
 }
@@ -74,8 +74,8 @@ export function blockFor(e, texts) {
 export function saidWithout(e, texts) {
   const d = e.data ?? {};
   if (d.half === 'koe' && !d.live) return null;
-  if (e.type === 'out.speak') return `[said to the user] ${quote(texts.text)}`;
-  if (e.type === 'out.show') return `[shown to the user] ${quote(cardText(d.card))}`;
-  if (e.type === 'out.ask') return `[asked the user] ${askText(d)}`;
+  if (e.type === 'out.speak') /* en */ return `[said to the user] ${quote(texts.text)}`;
+  if (e.type === 'out.show') /* en */ return `[shown to the user] ${quote(cardText(d.card))}`;
+  if (e.type === 'out.ask') /* en */ return `[asked the user] ${askText(d)}`;
   return null;
 }

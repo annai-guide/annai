@@ -66,15 +66,15 @@ const FIELD_KEY = /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/;
 /** What is wrong with a storage type a plugin registers, or null. @param {any} t @returns {string | null} */
 export function checkStorageType(t) {
   if (typeof t?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(t.type)) {
-    return 'a kind of backup place needs a "type" id of lowercase letters, digits and dashes';
+    /* en */ return 'a kind of backup place needs a "type" id of lowercase letters, digits and dashes';
   }
-  const named = `the kind of backup place "${t.type}"`;
-  if (typeof t.name !== 'string' || !t.name.trim()) return `${named} needs a name`;
-  if (t.stores !== 'tree' && t.stores !== 'file') return `${named} must say whether it stores a "tree" of files or the archive "file"`;
+  /* en */ const named = `the kind of backup place "${t.type}"`;
+  if (typeof t.name !== 'string' || !t.name.trim()) /* en */ return `${named} needs a name`;
+  if (t.stores !== 'tree' && t.stores !== 'file') /* en */ return `${named} must say whether it stores a "tree" of files or the archive "file"`;
   for (const f of ['where', 'check', 'list', 'put', 'get']) if (typeof t[f] !== 'function') return `${named} needs ${f}()`;
-  if (t.delete !== undefined && typeof t.delete !== 'function') return `${named} has a delete that isn't a function`;
+  if (t.delete !== undefined && typeof t.delete !== 'function') /* en */ return `${named} has a delete that isn't a function`;
   for (const list of [t.fields ?? [], t.secret ?? []]) {
-    if (!Array.isArray(list) || list.some((f) => !FIELD_KEY.test(f?.key ?? '') || typeof f.label !== 'string')) return `${named} has a field without a key or a label`;
+    if (!Array.isArray(list) || list.some((f) => !FIELD_KEY.test(f?.key ?? '') || typeof f.label !== 'string')) /* en */ return `${named} has a field without a key or a label`;
   }
   return null;
 }
@@ -85,7 +85,7 @@ export function storageTypes(registry) {
 }
 
 /** The kinds of device annai backs up from, by the word in a whole-file backup's name. @type {Record<string, string>} */
-const KINDS = { iphone: 'iPhone', ipad: 'iPad', 'android-phone': 'Android phone', computer: 'computer' };
+/* en */ const KINDS = { iphone: 'iPhone', ipad: 'iPad', 'android-phone': 'Android phone', computer: 'computer' };
 
 /**
  * The name of a whole-file backup (stores: "file"): when it was made (UTC, to the millisecond), the
@@ -96,7 +96,7 @@ const KINDS = { iphone: 'iPhone', ipad: 'iPad', 'android-phone': 'Android phone'
 export function backupFileName({ at, label, device, encrypted }) {
   const stamp = new Date(at).toISOString().replace(/[-:.]/g, '');
   const kind = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'device';
-  return `annai-backup-${stamp}-${kind}-${device}${encrypted ? '.annai' : '.annai.zip'}`;
+  /* en */ return `annai-backup-${stamp}-${kind}-${device}${encrypted ? '.annai' : '.annai.zip'}`;
 }
 
 /** A whole-file backup as annai lists it, from its name; null for any other file. @param {string} name @returns {(RemoteBackup & { encrypted: boolean }) | null} */
@@ -122,7 +122,9 @@ export const TEXT_MAX = 8 * 1024 * 1024;
  * @returns {Promise<any>}
  */
 export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
-  const tooLarge = () => new TargetError('other', `${where} sent an answer larger than annai reads (${Math.round(max / 1048576)} MB). annai tries again later.`);
+  // What it was goes with it (said, answer.js's vocabulary): a hold keeps it, and the screens make its words.
+  const mb = Math.round(max / 1048576);
+  const tooLarge = () => Object.assign(new TargetError('other', /* en */ `${where} sent an answer larger than annai reads (${mb} MB). annai tries again later.`), { said: { code: 'too-much', where, mb } });
   try {
     if (how === 'blob') return await res.blob();
     if (how === 'arrayBuffer') return await res.arrayBuffer();
@@ -156,10 +158,10 @@ export async function readAnswer(res, how, where, { max = TEXT_MAX } = {}) {
     try {
       return JSON.parse(text);
     } catch {
-      throw new TargetError('other', `${where} answered something annai can't read. annai tries again later.`);
+      throw Object.assign(new TargetError('other', /* en */ `${where} answered something annai can't read. annai tries again later.`), { said: { code: 'unreadable', where } });
     }
   } catch (e) {
     if (e instanceof TargetError || /** @type {any} */ (e)?.name === 'AbortError') throw e;
-    throw new TargetError('other', `The connection to ${where} broke while annai read its answer. annai tries again later.`);
+    throw Object.assign(new TargetError('other', /* en */ `The connection to ${where} broke while annai read its answer. annai tries again later.`), { said: { code: 'cut', where } });
   }
 }

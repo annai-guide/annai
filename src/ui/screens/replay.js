@@ -4,7 +4,7 @@ import { replayOf, momentAt, entryLine, PLAY_SPEEDS } from '../../core/after/rep
 import { PlayClock } from '../../core/live/clock.js';
 import { loadPack } from '../../core/pack/read.js';
 import { timeIn } from '../../core/time.js';
-import { renderCard } from '../cards.js';
+import { shownCard } from '../cards.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { stampMarks } from '../stamps.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -98,7 +98,7 @@ export async function renderReplay(ctx, route) {
       return;
     }
     const when = h('span', { class: 'sub', text: timeIn(e.at, r.tz) });
-    if (e.kind === 'card') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: t`Shiori` }), renderCard(e.card, { ctx, say: hers }), when));
+    if (e.kind === 'card') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: t`Shiori` }), shownCard(e, { ctx, say: hers }), when));
     else if (e.kind === 'said') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: e.spoken ? t`You said` : t`You` }), h('p', { ...mine(e.text), text: e.text }), when));
     else {
       const img = h('img', { class: 'replay-photo', alt: t`Photo ${e.path.split('/').pop()}, ${timeIn(e.at, r.tz)}` });

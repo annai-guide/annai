@@ -1,4 +1,4 @@
-import { ProviderError, typeError, portable, sameOrigin, noRedirect } from './contract.js';
+import { ProviderError, typeError, portable, sameOrigin, noRedirect, saidWords } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
@@ -160,7 +160,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     // A stop during an upload is a stop, whether the caller stopped it or its deadline did (only an aborted call's upload throws; any
     // other failure is caught there and sends the photo as bytes): never a failure of the protocol's plugin or the model, which would bench it.
-    if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', 'Stopped.', { cause: e });
+    if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
     throw e;
   }
   const { request: sent, expires } = uploaded;
@@ -193,7 +193,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   };
   const started = now();
   const timer = new AbortController();
-  const late = () => timer.abort(new DOMException('No output in time.', 'TimeoutError'));
+  const late = () => timer.abort(/* en */ new DOMException('No output in time.', 'TimeoutError'));
   let t = setTimeout(late, firstOutputMs);
   const linked = signal ? anySignal([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
@@ -303,7 +303,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       // One gone within minutes of its chain's first turn may never have been stored (an account with no storage), or the error may be
       // passing: the server is asked whether it has it. Not there: nothing is kept there until annai starts again. There: once more.
       if (lost && type.keeps?.minLife && (await keeping.kept.ageOf(spec.kept.id).catch(() => Infinity)) < type.keeps.minLife) {
-        const why = 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
+        const why = /* en */ 'The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.';
         // The call's own line first, then the look-up it led to; a stop ends the look-up and the retry.
         await trace?.request({ ...info(), outcome: err.kind, error: err.message });
         traced = true;
@@ -313,6 +313,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
         } else if (found === 'gone') {
           keeping.kept.off(endpoint.id);
           err.message = why;
+          err.said = { code: 'zdr' };
+          err.shown = saidWords(err.said, err.kind);
         }
       }
       if (!err.again) {
@@ -389,11 +391,11 @@ export function cannotConnect(e, signal) {
 export function asProviderError(e, signal, type, registry) {
   if (e instanceof ProviderError) return e;
   const name = /** @type {any} */ (e)?.name;
-  if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', 'No output started in time.', { cause: e });
-  if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', 'Stopped.', { cause: e });
+  if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
+  if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
   // The plugin that registered the type is blamed, never a field the type carries.
   const by = registry?.owner('endpoint-type', type.type)?.pluginId;
-  if (by) registry?.fail(by, `endpoint type ${type.type}`, e);
+  if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
 }
 

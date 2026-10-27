@@ -28,10 +28,10 @@ export function shioriBooking(before, next) {
   if (!next || typeof next !== 'object' || Array.isArray(next)) return { value: next, note: '' }; // the format check says what is wrong
   const was = before && typeof before === 'object' ? before.status : undefined;
   if (next.status === 'confirmed' && was !== 'confirmed') {
-    throw new Error('Only the user confirms a booking. Write it with status "unverified"; the plan shows it as "Check this" until they confirm it.');
+    /* en */ throw new Error('Only the user confirms a booking. Write it with status "unverified"; the plan shows it as "Check this" until they confirm it.');
   }
   if (was === 'confirmed' && canonical({ ...before, status: null }) !== canonical({ ...next, status: null })) {
-    return { value: { ...next, status: 'unverified' }, note: ' The user had confirmed it; after your change it is unverified again, so they check it.' };
+    /* en */ return { value: { ...next, status: 'unverified' }, note: ' The user had confirmed it; after your change it is unverified again, so they check it.' };
   }
   return { value: next, note: '' };
 }

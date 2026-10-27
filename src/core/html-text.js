@@ -12,7 +12,7 @@ export const HTML_MAX = 2_000_000;
 /** The longest tag (with its attributes) that is read as a tag; anything longer is text. */
 const TAG_MAX = 4000;
 
-const NAMED = /** @type {Record<string, string>} */ ({
+/* en */ const NAMED = /** @type {Record<string, string>} */ ({
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—', ndash: '–', hellip: '…', rsquo: '’', lsquo: '‘',
   rdquo: '”', ldquo: '“', copy: '©', reg: '®', trade: '™', deg: '°', middot: '·', bull: '•', euro: '€', pound: '£', yen: '¥',
   eacute: 'é', egrave: 'è', agrave: 'à', uuml: 'ü', ouml: 'ö', auml: 'ä', ntilde: 'ñ', ccedil: 'ç', times: '×',

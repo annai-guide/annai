@@ -66,7 +66,7 @@ export function cutAt(items, { keepTokens, minExchanges = KEEP_EXCHANGES }) {
 
 /** What Shiori is asked to do, as the request's tail. @param {string} marker @param {string} language summaryLanguage's */
 export function instruction(marker, language) {
-  return `[annai: housekeeping] The conversation is getting long. Write a summary of it up to (not including) ${marker}, to replace that part. `
+  /* en */ return `[annai: housekeeping] The conversation is getting long. Write a summary of it up to (not including) ${marker}, to replace that part. `
     + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
     + 'For every photo, write one line with its path and what was said about it, like "/trip/files/2026-11-26-1904.webp: the Nepenthe menu, prices circled". '
     + 'Before you write it, you may move lasting facts into /me/memory.md or /trip/memory.md with your file tools; no other tool works now. Don\'t search the web now. '
@@ -74,9 +74,9 @@ export function instruction(marker, language) {
 }
 
 /** What the utility model is told. @param {string} language summaryLanguage's */
-export const coldSystem = (language) => 'You summarize a conversation between a traveler and Shiori, their guide in the annai app. '
-  + 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
-  + `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
+export const coldSystem = (language) => /* en */ 'You summarize a conversation between a traveler and Shiori, their guide in the annai app. '
+  + /* en */ 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
+  + /* en */ `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
 /**
  * The language a summary is written in, named (emulator pass: "the user's language" got a Spanish summary of an English
@@ -88,15 +88,15 @@ export const coldSystem = (language) => 'You summarize a conversation between a 
 export function summaryLanguage(said, languages) {
   const lines = (Array.isArray(said) ? said : [said]).map((x) => x.trim()).filter(Boolean);
   const last = lines.at(-1);
-  if (languages?.answer) return `${languages.answer.name}, the language Shiori answers in`;
+  if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
   if (languages?.explicit) {
     const guess = last ? languageOf(last) || languageOf(lines.join('\n')) : '';
     const wrote = guess ? listedFor(guess, languages.spoken) : null;
-    return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
+    /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
   }
-  if (!last) return "English, the app's language (the user hasn't written anything yet)";
+  if (!last) /* en */ return "English, the app's language (the user hasn't written anything yet)";
   const name = languageOf(last) || languageOf(lines.join('\n'));
-  return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
+  /* en */ return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
 }
 
 /** The most text a cold summary is written from when the utility model's window isn't known, in characters (about 100,000 tokens). */
@@ -110,7 +110,7 @@ export const SUMMARY_MAX_CHARS = 350_000;
 export function renderForSummary(messages, max = Infinity) {
   const full = asText(messages);
   if (full.length <= max) return full;
-  const marker = (/** @type {number} */ n) => `\n\n[… ${n} characters left out …]\n\n`;
+  const marker = (/** @type {number} */ n) => /* en */ `\n\n[… ${n} characters left out …]\n\n`;
   const room = Math.max(0, max - marker(full.length).length);
   const head = Math.floor(room / 2);
   const tail = room - head;
@@ -124,13 +124,13 @@ export const photoStub = (p) => `[photo${p.path ? ` ${p.path}` : ''}${p.region ?
 function asText(messages) {
   const cut = (/** @type {string} */ s, /** @type {number} */ n) => (s.length > n ? `${s.slice(0, n)}…` : s);
   return messages.map((m) => m.parts.map((p) => {
-    if (p.type === 'text') return `${m.role === 'user' ? 'User' : 'Shiori (notes)'}: ${p.text}`;
-    if (p.type === 'tool_call') return `Shiori → ${p.name}(${cut(JSON.stringify(p.input ?? {}), 300)})`;
+    if (p.type === 'text') /* en */ return `${m.role === 'user' ? 'User' : 'Shiori (notes)'}: ${p.text}`;
+    if (p.type === 'tool_call') /* en */ return `Shiori → ${p.name}(${cut(JSON.stringify(p.input ?? {}), 300)})`;
     if (p.type === 'tool_result') return `← ${cut(String(p.content), 1500)}`;
-    if (p.type === 'image') return m.role === 'user' ? `User: ${photoStub(p)}` : photoStub(p);
-    if (p.type === 'document') return '[a PDF]';
-    if (p.type === 'speech') return `User (spoke): ${p.text ?? NOT_TRANSCRIBED}`;
-    if (p.type === 'audio') return 'User: [audio]';
+    if (p.type === 'image') /* en */ return m.role === 'user' ? `User: ${photoStub(p)}` : photoStub(p);
+    if (p.type === 'document') /* en */ return '[a PDF]';
+    if (p.type === 'speech') /* en */ return `User (spoke): ${p.text ?? NOT_TRANSCRIBED}`;
+    if (p.type === 'audio') /* en */ return 'User: [audio]';
     return '';
   }).filter(Boolean).join('\n')).join('\n\n');
 }

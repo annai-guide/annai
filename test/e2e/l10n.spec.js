@@ -222,6 +222,23 @@ test('Shiori\'s cards, the card on Now and the recap carry the language of their
   await expect(page.locator('.recap-text .md')).toHaveAttribute('lang', 'ja');
 });
 
+test("a personality tuning's card is titled in the screens' words on Talk, Now and the replay, never the stored English (L5h review 7)", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto Spring');
+  await writeEvent(page, trip, { type: 'out.show', data: { id: 'tune-1', card: { title: 'I adjusted my personality', text: '少し短く話すことにしました。' }, tune: { name: 'default', old: null } } });
+  const title = accented('I adjusted my personality');
+  await page.goto('/?l10n=en-XA#/talk');
+  await expect(page.locator('.convo .card-title')).toHaveText(title);
+  await expect(page.locator('.convo .card-title')).not.toHaveAttribute('lang', /./);
+  await expect(page.locator('.convo .md')).toHaveAttribute('lang', 'ja');
+  await page.evaluate(() => { location.hash = '#/now'; });
+  await expect(page.locator('.shiori-card .card-title')).toHaveText(title);
+  await page.evaluate((id) => { location.hash = `#/trip/${encodeURIComponent(id)}/replay`; }, trip);
+  const timeline = page.locator('main ol, main ul').filter({ hasText: title }).first();
+  await timeline.getByRole('button', { name: new RegExp(title.slice(0, 8)) }).first().click();
+  await expect(page.locator('.replay-shown .card-title')).toHaveText(title);
+});
+
 test("the replay's card and the user's words carry their language, as in the Conversation", async ({ page }) => {
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Kyoto Spring');

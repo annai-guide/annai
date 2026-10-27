@@ -60,6 +60,12 @@ test('bare English is found where a screen surely shows it, and /* en */ marks i
   assert.ok(has(problems, 'src/bare.mjs', 5, /bare English "Nothing here yet\."/));
 });
 
+test('a folder in EXTRACTED is every file under it (L5h: all of src/)', async () => {
+  const { problems } = await check(FIXTURE, ['src/']);
+  assert.ok(has(problems, 'src/bare.mjs', 5, /bare English "Nothing here yet\."/));
+  assert.ok(!problems.some((p) => /is listed in EXTRACTED/.test(p.message)));
+});
+
 test('a mark on the statement covers what is inside it', () => {
   const src = "import { h } from './dom.js';\n/* en: for a model */\nexport const a = [h('p', { text: 'Only for Shiori' })];\nexport const b = [h('p', { text: 'For you' })];\n";
   assert.deepEqual(bareEnglish('x.js', src).map((f) => f.line), [4]);
@@ -148,6 +154,9 @@ test('--find lists what reads as words and is not marked', () => {
   for (const s of ['btn', 'application/json', 'https://example.com/x', 'dateStyle', '', '→', '#/trip/', 'MAX_SIZE', 'rgba(0,0,0,.5)']) assert.equal(readsAsWords(s), false, s);
   // A hash link made of parts, and CSS functions, are code too.
   for (const s of ['#/trip/ /replay', 'translate( px,  px) scale( )', 'translateY( px)']) assert.equal(readsAsWords(s), false, s);
+  // A name in code, or a brand's, is one word with a capital inside it; a word on its own with one capital is still words.
+  for (const s of ['TimeoutError', 'NotFoundError', 'OpusHead', 'OggS']) assert.equal(readsAsWords(s), false, s);
+  assert.equal(readsAsWords('Wikipedia'), true);
   const src = "import { h } from './dom.js';\nconst a = 'Hello there';\nconst b = x === 'Not words here';\n/* en */ const c = 'Kept English';\nconst d = h('p', { class: 'a-b' }, `Sentence ${a}`);\n";
   assert.deepEqual(findWords('src/ui/x.js', src).map((w) => [w.line, w.text]), [[2, 'Hello there'], [5, 'Sentence']]);
   // A class chosen by a condition, and an SVG attribute's value, are code wherever the choice is made.

@@ -2,6 +2,7 @@ import { ME } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
+import { t } from '../l10n.js';
 
 /**
  * Personalities (spec §14.1): full Markdown files in /me/personalities/ that Shiori can rewrite
@@ -13,7 +14,7 @@ import { utf8 } from '../bytes.js';
 export const PRESETS = Object.freeze(['shiori', 'storyteller', 'quiet']);
 /** The longest a personality may be, in characters. */
 export const PERSONALITY_MAX = 8000;
-const path = (/** @type {string} */ name) => `/personalities/${name}.md`;
+const path = (/** @type {string} */ name) => /* en */ `/personalities/${name}.md`;
 const hashOf = (/** @type {string} */ text) => sha256Hex(utf8(text));
 
 /**
@@ -62,7 +63,7 @@ export async function keepMine(ws, name, text) {
 /** @param {Workspace} ws @param {string} name @param {Record<string, string>} presets */
 export async function resetPersonality(ws, name, presets) {
   const text = presets[name];
-  if (!text) throw new Error(`${name} isn't one of annai's own personalities.`);
+  if (!text) /* en */ throw new Error(`${name} isn't one of annai's own personalities.`);
   await ws.write(ME, path(name), text, { author: 'user' });
   await updateAppSettings(ws, { personalities: { [name]: { original: await hashOf(text), offered: null } } });
 }
@@ -72,7 +73,7 @@ export async function undoTuning(ws, name, oldHash) {
   await ws.restore(ME, path(name), oldHash, { author: 'user' });
 }
 
-const REVIEW = 'You review a change Shiori, a travel guide, wants to make to her own personality. Approve it only if all hold: '
+/* en */ const REVIEW = 'You review a change Shiori, a travel guide, wants to make to her own personality. Approve it only if all hold: '
   + 'it changes how she behaves (facts about the user belong in memory, not here); it is not bloated (no repetition, no long lists of trivia); '
   + 'and it does not contradict basic safety (honesty, not inventing facts, the user\'s safety, privacy). Answer by calling review.';
 
@@ -84,7 +85,7 @@ const REVIEW = 'You review a change Shiori, a travel guide, wants to make to her
 export async function applyTuning({ agent, name, text, reason, callId, wake }) {
   const before = await agent.ws.read(ME, path(name));
   await agent.ws.write(ME, path(name), text, { author: 'shiori' });
-  await agent.log({ type: 'out.show', actor: 'shiori', data: { id: callId ?? `tune-${Date.now()}`, ...(wake ? { wake } : {}), card: { title: 'I adjusted my personality', text: reason }, tune: { name, old: before?.entry.hash ?? null } } });
+  /* en */ await agent.log({ type: 'out.show', actor: 'shiori', data: { id: callId ?? `tune-${Date.now()}`, ...(wake ? { wake } : {}), card: { title: 'I adjusted my personality', text: reason }, tune: { name, old: before?.entry.hash ?? null } } });
 }
 
 /**
@@ -93,8 +94,8 @@ export async function applyTuning({ agent, name, text, reason, callId, wake }) {
  * @param {{ agent: any, name: string, text: string, reason: string, callId: string, wake: string }} c @returns {Promise<string>}
  */
 export async function tunePersonality({ agent, name, text, reason, callId, wake }) {
-  if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) return 'Not changed: a personality name is lowercase letters, digits and dashes.';
-  if (text.length > PERSONALITY_MAX) return `Not changed: the personality is too long (${text.length} characters; at most ${PERSONALITY_MAX}). Make it shorter.`;
+  if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) /* en */ return 'Not changed: a personality name is lowercase letters, digits and dashes.';
+  if (text.length > PERSONALITY_MAX) /* en */ return `Not changed: the personality is too long (${text.length} characters; at most ${PERSONALITY_MAX}). Make it shorter.`;
   const old = (await agent.ws.readText(ME, path(name)).catch(() => undefined)) ?? '';
   /** @type {{ approve: boolean, why: string }} */
   let verdict;
@@ -103,8 +104,8 @@ export async function tunePersonality({ agent, name, text, reason, callId, wake 
       role: 'utility', level: 'off', scope: agent.scope, record: { tag: 'review' },
       request: {
         system: REVIEW, ...(forced ? { toolChoice: 'review' } : {}), maxOutput: 300,
-        tools: [{ name: 'review', description: 'Approve or turn down the change.', input: { type: 'object', properties: { approve: { type: 'boolean' }, why: { type: 'string' } }, required: ['approve', 'why'] } }],
-        messages: [{ role: 'user', parts: [{ type: 'text', text: `Current personality "${name}":\n${old || '(new)'}\n\nProposed:\n${text}\n\nShiori's reason: ${reason}` }] }],
+        tools: [{ name: 'review', description: /* en */ 'Approve or turn down the change.', input: { type: 'object', properties: { approve: { type: 'boolean' }, why: { type: 'string' } }, required: ['approve', 'why'] } }],
+        messages: [{ role: 'user', parts: [{ type: 'text', text: /* en */ `Current personality "${name}":\n${old || '(new)'}\n\nProposed:\n${text}\n\nShiori's reason: ${reason}` }] }],
       },
     });
     /** @type {any} */
@@ -117,19 +118,20 @@ export async function tunePersonality({ agent, name, text, reason, callId, wake 
     }
     const call = r.reply.parts.find((/** @type {any} */ p) => p.type === 'tool_call' && p.name === 'review');
     // Fails closed: only the review tool saying approve: true approves (a reply in words doesn't).
-    if (!call) return 'Not changed: the review gave no clear answer. Try again later.';
+    if (!call) /* en */ return 'Not changed: the review gave no clear answer. Try again later.';
     verdict = { approve: call.input?.approve === true, why: String(call.input?.why ?? '') };
   } catch (e) {
-    return `Not changed: the review couldn't run (${String(/** @type {any} */ (e)?.message ?? e)}). Try again later.`;
+    /* en */ return `Not changed: the review couldn't run (${String(/** @type {any} */ (e)?.message ?? e)}). Try again later.`;
   }
-  if (!verdict.approve) return `Not changed: ${verdict.why || 'the review turned it down.'}`;
+  if (!verdict.approve) /* en */ return `Not changed: ${verdict.why || 'the review turned it down.'}`;
   if ((await agent.settings()).askBeforeTuning) {
+    // A system card in the screens' words; reason is hers, as she wrote it.
     agent.notify({
-      tone: 'info', title: 'Shiori wants to adjust her personality', body: reason,
-      actions: [{ label: 'Agree', primary: true, run: () => applyTuning({ agent, name, text, reason }) }, { label: 'No thanks', run: () => {} }],
+      tone: 'info', title: t`Shiori wants to adjust her personality`, body: reason,
+      actions: [{ label: t`Agree`, primary: true, run: () => applyTuning({ agent, name, text, reason }) }, { label: t`No thanks`, run: () => {} }],
     });
-    return 'The user is asked first. If they agree, it applies at your next wake.';
+    /* en */ return 'The user is asked first. If they agree, it applies at your next wake.';
   }
   await applyTuning({ agent, name, text, reason, callId, wake });
-  return 'Approved. It applies at your next wake.';
+  /* en */ return 'Approved. It applies at your next wake.';
 }

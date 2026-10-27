@@ -36,7 +36,7 @@ export function encodeWav(pcm, sampleRate) {
 
 /** The format chunk and where the samples are. @param {Uint8Array} bytes */
 function chunks(bytes) {
-  if (bytes.length < 12 || tagAt(bytes, 0) !== 'RIFF' || tagAt(bytes, 8) !== 'WAVE') throw new Error('This is not a WAV file.');
+  if (bytes.length < 12 || tagAt(bytes, 0) !== 'RIFF' || tagAt(bytes, 8) !== 'WAVE') /* en */ throw new Error('This is not a WAV file.');
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   /** @type {{ format: number, channels: number, sampleRate: number, bits: number } | null} */
   let fmt = null;
@@ -46,12 +46,12 @@ function chunks(bytes) {
     const body = at + 8;
     if (id === 'fmt ') fmt = { format: dv.getUint16(body, true), channels: dv.getUint16(body + 2, true), sampleRate: dv.getUint32(body + 4, true), bits: dv.getUint16(body + 14, true) };
     else if (id === 'data') {
-      if (!fmt || fmt.format !== 1 || fmt.bits !== 16) throw new Error('Only 16-bit PCM WAV files can be read.');
+      if (!fmt || fmt.format !== 1 || fmt.bits !== 16) /* en */ throw new Error('Only 16-bit PCM WAV files can be read.');
       return { dv, fmt, body, size: Math.min(size, bytes.length - body) };
     }
     at = body + size + (size % 2);
   }
-  throw new Error('This WAV file has no sound in it.');
+  /* en */ throw new Error('This WAV file has no sound in it.');
 }
 
 /** The first channel of a 16-bit PCM WAV file. @param {Uint8Array} bytes @returns {{ sampleRate: number, pcm: Float32Array }} */

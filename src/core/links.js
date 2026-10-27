@@ -80,11 +80,11 @@ export function expandLink(format, values) {
  * @param {LinkCatalog} catalog @param {{ destination: string, origin?: string, mode?: string }} o @returns {Link[]}
  */
 export function mapsLinks(catalog, { destination, origin, mode = 'drive' }) {
-  if (!String(destination ?? '').trim()) throw new Error('maps_link needs a destination: a name, an address, or "lat,lng".');
+  if (!String(destination ?? '').trim()) /* en */ throw new Error('maps_link needs a destination: a name, an address, or "lat,lng".');
   // Own keys only: the mode comes from the model, and "toString" isn't a mode.
   const value = (/** @type {MapsFormat} */ m) => (Object.hasOwn(m.modes, mode) ? m.modes[mode] : null);
   const out = catalog.maps.filter((m) => value(m)).map((m) => ({ label: m.name, url: expandLink(m.directions, { destination, origin, mode: value(m) }) }));
-  if (!out.length) throw new Error(`No maps app here gives ${mode} directions. Try drive, walk or transit.`);
+  if (!out.length) /* en */ throw new Error(`No maps app here gives ${mode} directions. Try drive, walk or transit.`);
   return out;
 }
 
@@ -94,11 +94,11 @@ export function mapsLinks(catalog, { destination, origin, mode = 'drive' }) {
  */
 export function searchLinks(catalog, kind, params = {}) {
   const formats = Object.hasOwn(catalog.search, kind) ? catalog.search[kind] : null;
-  if (!formats?.length) throw new Error(`search_link knows ${Object.keys(catalog.search).join(', ')} searches, not "${kind}".`);
+  if (!formats?.length) /* en */ throw new Error(`search_link knows ${Object.keys(catalog.search).join(', ')} searches, not "${kind}".`);
   for (const [k, v] of Object.entries(params)) {
-    if (DATE_PARAMS.has(k) && v !== undefined && v !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v))) throw new Error(`${k} must be a date written YYYY-MM-DD, like 2026-11-25.`);
+    if (DATE_PARAMS.has(k) && v !== undefined && v !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v))) /* en */ throw new Error(`${k} must be a date written YYYY-MM-DD, like 2026-11-25.`);
   }
   const usable = formats.filter((f) => f.needs.every((n) => String(params[n] ?? '').trim()));
-  if (!usable.length) throw new Error(`A ${kind} search needs ${formats[0].needs.join(', ')}.`);
+  if (!usable.length) /* en */ throw new Error(`A ${kind} search needs ${formats[0].needs.join(', ')}.`);
   return usable.map((f) => ({ label: f.name, url: expandLink(f.url, params) }));
 }

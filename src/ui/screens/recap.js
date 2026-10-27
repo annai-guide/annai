@@ -3,7 +3,7 @@ import { renderMarkdown } from '../markdown.js';
 import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_SENDS } from '../../core/after/recap.js';
 import { loadPack } from '../../core/pack/read.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
-import { withoutSecrets } from '../../core/agent/net.js';
+import { shownWithoutSecrets } from '../../core/agent/net.js';
 import { text } from '../../core/bytes.js';
 import { codec } from '../photo-codec.js';
 import { fileHref, relTime, wording, sentenceGap } from '../format.js';
@@ -46,7 +46,7 @@ export async function renderRecap(ctx, route) {
       await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, signal: abort.signal });
       ctx.notices.toast(t`The recap is written.`);
     } catch (e) {
-      if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await withoutSecrets(ctx.store, recapError(e)) });
+      if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await shownWithoutSecrets(ctx.store, recapError(e)) });
     } finally {
       writing.delete(id);
       removeEventListener('hashchange', leave);

@@ -24,7 +24,7 @@ async function items(ws, trip, dir) {
  * @returns {Promise<string>} `<today>…</today>`, at most VIEW_MAX characters
  */
 export async function compactView({ ws, trip, now, timeZone, next }) {
-  if (!trip) return '<today>\nNo trip is open.\n</today>';
+  if (!trip) /* en */ return '<today>\nNo trip is open.\n</today>';
   const days = [local(now, timeZone).slice(0, 10), local(now + DAY, timeZone).slice(0, 10)];
   const at = (/** @type {any} */ t) => Date.parse(t?.at ?? '');
   const e = (/** @type {unknown} */ v) => escapeTags(String(v ?? ''));
@@ -36,16 +36,16 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)
     .sort((a, b) => at(a.start) - at(b.start))
     .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), e(b.status), e(b.confirmation)]);
-  const title = e((await ws.readJSON(trip, '/trip.json').catch(() => null))?.title ?? 'this trip');
+  /* en */ const title = e((await ws.readJSON(trip, '/trip.json').catch(() => null))?.title ?? 'this trip');
   /** @param {number} n how many plan rows */
   const render = (n) => [
     '<today>',
     `trip: ${title}`,
-    `plan for ${days.join(' and ')}:`,
-    plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : 'nothing planned',
-    'bookings in the next 48 hours:',
+    /* en */ `plan for ${days.join(' and ')}:`,
+    plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
+    /* en */ 'bookings in the next 48 hours:',
     bookings.length ? tsv(['start', 'kind', 'title', 'status', 'confirmation'], bookings) : 'none',
-    `next reminder: ${next ? `${local(next.due, timeZone)} ${e(next.text)}` : 'none'}`,
+    /* en */ `next reminder: ${next ? `${local(next.due, timeZone)} ${e(next.text)}` : 'none'}`,
     '</today>',
   ].join('\n');
   let n = plan.length;

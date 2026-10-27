@@ -1,4 +1,6 @@
 import { logEvent } from '../events.js';
+import { t } from '../l10n.js';
+import { answerWords } from '../answer.js';
 
 /**
  * Web requests by tools and plugins, each recorded as a net.request (spec §4.5, §15): the trace
@@ -14,7 +16,7 @@ import { logEvent } from '../events.js';
 export const CREDENTIAL = /key|token|secret|sig|auth|pass|session|credential|appid|app_id|code/i;
 /** Shorter stored values are not blanked: "ab" would wreck the trace, and no real key is that short. */
 const SECRET_MIN = 8;
-const BLANK = '«key»';
+/* en */ const BLANK = '«key»';
 
 /**
  * Every secret value annai keeps (keys for models and plugins), longest first. strict: when they can't be
@@ -36,7 +38,7 @@ export async function knownSecrets(store, { strict = false } = {}) {
       for (const id of await t.listSecretIds()) add(await t.getSecret(id));
     });
   } catch (e) {
-    if (strict) throw new Error("annai couldn't read the keys it keeps, so it couldn't blank them. Try again.", { cause: e });
+    if (strict) throw new Error(/* en */ "annai couldn't read the keys it keeps, so it couldn't blank them. Try again.", { cause: e }); // a plugin's
     // no secrets to read: nothing to blank
   }
   return [...out].sort((a, b) => b.length - a.length);
@@ -74,18 +76,22 @@ function blankAll(text, secrets) {
   return scrub(SHAPES.reduce((t, [re, to]) => t.replace(re, to), String(text ?? '')), secrets);
 }
 
+/* en */
 const HIDDEN = 'The message held a key, so it is not shown.';
 
 /**
- * Text for the user's eyes (a card, an error in the log) with every secret annai keeps blanked, and
- * anything shaped like a credential; when one might still show, a plain note instead (spec §9.9).
- * @param {Store} store @param {string} text
+ * Text kept or read (an error in the log, a hold, what a model reads) with every secret annai keeps blanked, and anything shaped like a
+ * credential; when one might still show, a plain note instead, in annai's English (spec §9.9). @param {Store} store @param {string} text
+ * @param {string} [hidden] that note
  */
-export async function withoutSecrets(store, text) {
+export async function withoutSecrets(store, text, hidden = HIDDEN) {
   const secrets = await knownSecrets(store);
   const out = blankAll(text, secrets);
-  return leaks(out, secrets) ? HIDDEN : out;
+  return leaks(out, secrets) ? hidden : out;
 }
+
+/** The same for the user's eyes (a card, a status line): the note in the screens' words. @param {Store} store @param {string} text */
+export const shownWithoutSecrets = (store, text) => withoutSecrets(store, text, t`The message held a key, so it is not shown.`);
 
 /**
  * A value with every text in it as withoutSecrets would show it. strict: reject when the secrets can't be read.
@@ -141,9 +147,9 @@ export function leaks(text, secrets) {
 /** The host of an address as the trace keeps it. @param {string} url */
 function hostOf(url) {
   try {
-    return new URL(url).host || 'the address';
+    /* en */ return new URL(url).host || 'the address';
   } catch {
-    return 'the address';
+    /* en */ return 'the address';
   }
 }
 
@@ -202,12 +208,18 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
     } catch (e) {
       const said = blankAll(String(/** @type {any} */ (e)?.message ?? e), secrets);
       const held = leaks(said, secrets);
-      const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
+      /* en */ const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
       // Marked a network failure (what a search provider rests on), with the browser's own error kept as its cause.
-      throw Object.assign(new Error(`annai couldn't reach ${hostOf(base.url)}${held ? '' : ` (${said})`}. Is the device offline?`, held ? undefined : { cause: e }), { kind: 'network' });
+      const host = hostOf(base.url);
+      /* en */
+      const en = `annai couldn't reach ${host}${held ? '' : ` (${said})`}. Is the device offline?`;
+      // What it was goes with it (answer.js's vocabulary): a hold or a pack's failure keeps it, and a screen says it in its words.
+      /** @type {import('../answer.js').AnswerSaid} */
+      const what = { code: 'unreachable', where: host, ...(held ? {} : { info: said }) };
+      throw Object.assign(new Error(en, held ? undefined : { cause: e }), { kind: 'network', said: what, shown: answerWords(what) });
     }
   };
 }

@@ -65,7 +65,7 @@ export function checkProviderDesc(desc) {
   const errors = validate(DESC, desc);
   if (errors.length) return errors;
   const abilities = Object.entries(desc.abilities);
-  if (!abilities.length) errors.push('$.abilities: a provider needs at least one ability');
+  if (!abilities.length) /* en */ errors.push('$.abilities: a provider needs at least one ability');
   // Every address a key may go to must be one (security review): none is dropped, and none is plain http to another machine.
   /** @param {string} at @param {string} url */
   const address = (at, url) => {
@@ -74,21 +74,21 @@ export function checkProviderDesc(desc) {
   };
   if (desc.baseUrl) address('$.baseUrl', desc.baseUrl);
   for (const [id, a] of abilities) {
-    if (!ABILITY_ID.test(id)) errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
-    if (a.baseUrl !== undefined) address(`$.abilities.${id}.baseUrl`, a.baseUrl);
+    if (!ABILITY_ID.test(id)) /* en */ errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
+    if (a.baseUrl !== undefined) /* en */ address(`$.abilities.${id}.baseUrl`, a.baseUrl);
     // A protocol joins these onto the address: each must be a path from it (fix pass, Critical).
     const paths = (/** @type {string} */ at, /** @type {any} */ t) => {
       for (const k of PATH_TUNABLES) {
         const v = t?.[k];
-        if (v !== undefined && (typeof v !== 'string' || !v.startsWith('/') || v.includes('//') || v.includes('@'))) errors.push(`${at}.tunables.${k}: a path from the address, starting with / (no // or @)`);
+        if (v !== undefined && (typeof v !== 'string' || !v.startsWith('/') || v.includes('//') || v.includes('@'))) /* en */ errors.push(`${at}.tunables.${k}: a path from the address, starting with / (no // or @)`);
       }
     };
-    paths(`$.abilities.${id}`, a.tunables);
-    paths(`$.abilities.${id}.modelDefaults`, a.modelDefaults?.tunables);
+    /* en */ paths(`$.abilities.${id}`, a.tunables);
+    /* en */ paths(`$.abilities.${id}.modelDefaults`, a.modelDefaults?.tunables);
     (a.models ?? []).forEach((/** @type {any} */ m, /** @type {number} */ i) => {
-      paths(`$.abilities.${id}.models[${i}]`, m.tunables);
+      /* en */ paths(`$.abilities.${id}.models[${i}]`, m.tunables);
       const wrong = m.prices === undefined || m.prices === null ? null : pricesProblem(m.prices);
-      if (wrong) errors.push(`$.abilities.${id}.models[${i}].prices: ${wrong}`);
+      if (wrong) /* en */ errors.push(`$.abilities.${id}.models[${i}].prices: ${wrong}`);
     });
   }
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
@@ -98,14 +98,14 @@ export function checkProviderDesc(desc) {
       // reason to refuse the whole description: an older tab can still offer an update that renames one.
       if (!kinds) continue;
       const have = new Set(abilities.filter(([, a]) => kinds.includes(a.kind)).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));
-      for (const p of ids) if (!have.has(p)) errors.push(`$.roles.${which}.${role}: ${p} isn't a ${kinds.join(' or ')} model of this provider`);
+      for (const p of ids) if (!have.has(p)) /* en */ errors.push(`$.roles.${which}.${role}: ${p} isn't a ${kinds.join(' or ')} model of this provider`);
     }
   }
   return errors;
 }
 
 /** The command both the note and the refusal give, for the port the server listens on (the user, 2026-10-22). @param {string | number} port */
-const serve = (port) => `tailscale serve --bg --https=8443 http://localhost:${port}`;
+const serve = (port) => /* en */ `tailscale serve --bg --https=8443 http://localhost:${port}`;
 /**
  * What a server you run's page says (its provider is local, or has a serverNote): a phone's localhost, https only and why, one way
  * to get it with that server's own port, the address to type, the tailnet, CORS, and Chrome's permission. annai's own security
@@ -124,21 +124,46 @@ export function localNote(baseUrl) {
 }
 
 /**
- * Why an address can't be one a key is sent to, in words, or null: it must parse, and be https, or http
- * only for localhost and 127.0.0.1, as annai's security policy allows (spec §15, connect-src). The
- * provider's page checks a typed address with it too (fix pass). @param {string} url @returns {string | null}
+ * Why an address can't be one a key is sent to, as data, or null: it must parse, and be https, or http only for localhost and
+ * 127.0.0.1, as annai's security policy allows (spec §15, connect-src). @param {string} url
+ * @returns {{ code: 'not-url' | 'scheme' } | { code: 'http', port: string } | null}
  */
-export function addressProblem(url) {
+function addressFault(url) {
   /** @type {URL} */
   let u;
   try {
     u = new URL(url);
   } catch {
-    return `${url} isn't a web address: give it with https:// in front.`;
+    return { code: 'not-url' };
   }
   if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
   // A server on the user's network: say how to reach it.
-  return `An address must start with https:// (http:// only for localhost or 127.0.0.1).${u.protocol === 'http:' ? ` Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(u.port || 80)}. The server must also allow CORS from annai.guide.` : ''}`;
+  return u.protocol === 'http:' ? { code: 'http', port: u.port || '80' } : { code: 'scheme' };
+}
+
+/**
+ * Why an address can't be one a key is sent to, in annai's English, for a description's errors and the log, or null. @param {string} url
+ * @returns {string | null}
+ */
+export function addressProblem(url) {
+  const f = addressFault(url);
+  /* en */
+  if (!f) return null;
+  /* en */
+  if (f.code === 'not-url') return `${url} isn't a web address: give it with https:// in front.`;
+  /* en */
+  const must = 'An address must start with https:// (http:// only for localhost or 127.0.0.1).';
+  /* en */
+  return f.code === 'http' ? `${must} Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(f.port)}. The server must also allow CORS from annai.guide.` : must;
+}
+
+/** The same, in the screens' words: the provider's page checks a typed address with it (fix pass). @param {string} url @returns {string | null} */
+export function addressShown(url) {
+  const f = addressFault(url);
+  if (!f) return null;
+  if (f.code === 'not-url') return t`${url} isn't a web address: give it with https:// in front.`;
+  return f.code === 'http' ? t`An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(f.port)}. The server must also allow CORS from annai.guide.`
+    : t`An address must start with https:// (http:// only for localhost or 127.0.0.1).`;
 }
 
 /** An address's origin (scheme, host and port); one that doesn't parse is kept as it is, never dropped. @param {string} url */
