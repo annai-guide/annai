@@ -178,65 +178,65 @@ provider-vllm:@description	ok	Models on a vLLM server you run, with their thinki
 provider-vllm:@provider.note	ok	vLLM listens on port 8000 unless --port says otherwise; give it a key with --api-key, or leave the key empty.	除非用 --port 另行指定，vLLM 监听 8000 端口；用 --api-key 给它设密钥，或者把密钥留空。	plugins-official/provider-vllm/annai-plugin.json:19	
 provider-vllm:@provider.abilities.chat.note	ok	Add models with Fetch model list: each comes with the context the server holds. Tool calls need --enable-auto-tool-choice --tool-call-parser <name>, and a model that thinks needs --reasoning-parser <name>; without them Shiori can't use her tools, and her thinking shows in her words.	用“获取模型列表”添加模型：每个模型都会带上服务器保有的上下文长度。工具调用需要 --enable-auto-tool-choice --tool-call-parser <name>，会思考的模型需要 --reasoning-parser <name>；没有它们，Shiori 无法使用工具，她的思考也会混进她的话里。	plugins-official/provider-vllm/annai-plugin.json:56	
 provider-vllm:@provider.abilities.transcription.note	ok	For a Whisper model on a vLLM server of its own: give that server's address as this ability's own, and add the model by id.	用于在单独的 vLLM 服务器上运行的 Whisper 模型：把那台服务器的地址填为此功能自己的地址，再按 ID 添加模型。	plugins-official/provider-vllm/annai-plugin.json:62	
-remote-trace:@name	draft	Remote trace (for developers)	远程记录（开发者）	plugins-official/remote-trace/annai-plugin.json:3	
-remote-trace:@description	draft	For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.	开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。从不发送密钥。	plugins-official/remote-trace/annai-plugin.json:9	
-remote-trace:@settings.properties.server.title	draft	Server address	服务器地址	plugins-official/remote-trace/annai-plugin.json:16	
-remote-trace:@settings.properties.server.description	draft	Where annai sends its trace: a server you run, such as annai's scripts/trace-sink.mjs. https://…, or http:// only for localhost or 127.0.0.1.	annai 发送记录的去处：你自己运行的服务器，例如 annai 的 scripts/trace-sink.mjs。用 https://…，http:// 只能用于 localhost 或 127.0.0.1。	plugins-official/remote-trace/annai-plugin.json:17	
-remote-trace:@settings.properties.token.title	draft	Token	令牌	plugins-official/remote-trace/annai-plugin.json:22	
-remote-trace:@settings.properties.token.description	draft	The server's token. annai sends it as Authorization: Bearer, and keeps it with your keys, never in a file.	服务器的令牌。annai 以 Authorization: Bearer 发送它，并和你的密钥一起保存，从不放进文件。	plugins-official/remote-trace/annai-plugin.json:23	
-remote-trace:@settings.properties.location.title	draft	Send location points	发送位置点	plugins-official/remote-trace/annai-plugin.json:28	
-remote-trace:@settings.properties.location.description	draft	Also send the location points annai records while GPS is on, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.	同时发送 GPS 开启时 annai 记录的位置点（驾驶时约每秒一个）。关闭时，其他条目仍可能包含地点，正如“记录”中显示的：天气请求的地址、工具的输入等。	plugins-official/remote-trace/annai-plugin.json:29	
-remote-trace:@settings.properties.send.title	draft	Send	发送	plugins-official/remote-trace/annai-plugin.json:34	
-remote-trace:@settings.properties.send.description	draft	On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once.	打开后，从现在起“记录”所记下的内容会在几秒内发送到服务器：你写的、Shiori 说的、她的工具、请求和错误。密钥会被遮盖，已保存的内容（照片、长文本）留在这里。关闭会立即停止。	plugins-official/remote-trace/annai-plugin.json:35	
-remote-trace:@settings.properties.device.title	draft	Device id	设备 ID	plugins-official/remote-trace/annai-plugin.json:40	
-remote-trace:@settings.properties.device.description	draft	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	随每批一起发送，让服务器能把本设备与其他设备区分开。annai 会在第一次发送时生成一个；你也可以自己起名。	plugins-official/remote-trace/annai-plugin.json:41	
-remote-trace:4clmw9	draft	It needs the address of your server.	需要你的服务器地址。	plugins-official/remote-trace/index.js:50	
-remote-trace:u2jqcp	draft	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	服务器地址必须以 https:// 开头（http:// 只能用于 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:56	
-remote-trace:15ggh6g	draft	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	服务器地址中含有名称或密码，请求无法携带它们。请把它们去掉，并把服务器的令牌填到“令牌”中。	plugins-official/remote-trace/index.js:58	
-remote-trace:rr1ir8	draft	Change it in Settings → Plugins → Remote trace (for developers).	请在 设置 → 插件 → 远程记录（开发者） 中更改。	plugins-official/remote-trace/index.js:138	
-remote-trace:1kwbgo3	draft	The phone is offline.	手机处于离线状态。	plugins-official/remote-trace/index.js:140	
-remote-trace:q62pwu	draft	Its token can't be sent.	令牌无法发送。	plugins-official/remote-trace/index.js:140	
-remote-trace:zr5o1w	draft	It has no token.	没有令牌。	plugins-official/remote-trace/index.js:140	
-remote-trace:14w66x9	draft	The server can't be reached.	无法连接服务器。	plugins-official/remote-trace/index.js:141	
-remote-trace:46d80m	draft	The server answered {0}.	服务器返回了 {0}。	plugins-official/remote-trace/index.js:141	{0} = p.status
-remote-trace:rt350m	draft	annai couldn't get the batch ready.	annai 无法准备好这一批。	plugins-official/remote-trace/index.js:141	
-remote-trace:1t53c9s	draft	Sending trace	正在发送记录	plugins-official/remote-trace/index.js:166	
-remote-trace:zzw26r#other	draft	Sending trace: # waiting.	正在发送记录：# 条等待中。	plugins-official/remote-trace/index.js:166	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
-remote-trace:ata72m	draft	Trace	记录	plugins-official/remote-trace/index.js:179	
-remote-trace:bbadl	draft	Remote trace isn't sending	远程记录没有在发送	plugins-official/remote-trace/index.js:276	
-remote-trace:s7tmcq	draft	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要服务器的令牌。请在 设置 → 插件 → 远程记录（开发者） 中添加。	plugins-official/remote-trace/index.js:304	
-remote-trace:1ahd84q	draft	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	令牌中含有请求无法携带的字符：只能用字母、数字和标点，不能有空格。	plugins-official/remote-trace/index.js:308	
-remote-trace:1qhwapr	draft	The trace server refuses what annai sends	记录服务器拒绝了 annai 发送的内容	plugins-official/remote-trace/index.js:357	
-remote-trace:18ckgf7	draft	{0} answered {1} {2} times in a row.	{0} 连续 {2} 次返回了 {1}。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:dslm8u	draft	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 连续 {2} 次返回了 {1}：令牌可能不对。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:16cfxwg	draft	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 会继续大约每分钟尝试一次，并保留最新的 {0} 条，直到发出为止。请在 设置 → 插件 → 远程记录（开发者） 中检查服务器地址和令牌，或在那里关闭“发送”。	plugins-official/remote-trace/index.js:359	{0} = kept
-remote-trace:m3chyg	draft	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:360	
+remote-trace:@name	ok	Remote trace (for developers)	远程记录（开发者）	plugins-official/remote-trace/annai-plugin.json:3	Note: As annai's own Experimental row names it (远程记录（开发者）); Trace is the glossary's 记录.
+remote-trace:@description	ok	For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.	开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。从不发送密钥。	plugins-official/remote-trace/annai-plugin.json:9	
+remote-trace:@settings.properties.server.title	ok	Server address	服务器地址	plugins-official/remote-trace/annai-plugin.json:16	
+remote-trace:@settings.properties.server.description	ok	Where annai sends its trace: a server you run, such as annai's scripts/trace-sink.mjs. https://…, or http:// only for localhost or 127.0.0.1.	annai 发送记录的去处：你自己运行的服务器，例如 annai 的 scripts/trace-sink.mjs。用 https://…，http:// 只能用于 localhost 或 127.0.0.1。	plugins-official/remote-trace/annai-plugin.json:17	
+remote-trace:@settings.properties.token.title	ok	Token	令牌	plugins-official/remote-trace/annai-plugin.json:22	
+remote-trace:@settings.properties.token.description	ok	The server's token. annai sends it as Authorization: Bearer, and keeps it with your keys, never in a file.	服务器的令牌。annai 以 Authorization: Bearer 发送它，并和你的密钥一起保存，从不放进文件。	plugins-official/remote-trace/annai-plugin.json:23	
+remote-trace:@settings.properties.location.title	ok	Send location points	发送位置点	plugins-official/remote-trace/annai-plugin.json:28	
+remote-trace:@settings.properties.location.description	ok	Also send the location points annai records while GPS is on, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.	同时发送 GPS 开启时 annai 记录的位置点（驾驶时约每秒一个）。关闭时，其他条目仍可能包含地点，正如“记录”中显示的：天气请求的地址、工具的输入等。	plugins-official/remote-trace/annai-plugin.json:29	
+remote-trace:@settings.properties.send.title	ok	Send	发送	plugins-official/remote-trace/annai-plugin.json:34	
+remote-trace:@settings.properties.send.description	ok	On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once.	打开后，从现在起“记录”所记下的内容会在几秒内发送到服务器：你写的、Shiori 说的、她的工具、请求和错误。密钥会被遮盖，已保存的内容（照片、长文本）留在这里。关闭会立即停止。	plugins-official/remote-trace/annai-plugin.json:35	
+remote-trace:@settings.properties.device.title	ok	Device id	设备 ID	plugins-official/remote-trace/annai-plugin.json:40	
+remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	随每批一起发送，让服务器能把本设备与其他设备区分开。annai 会在第一次发送时生成一个；你也可以自己起名。	plugins-official/remote-trace/annai-plugin.json:41	
+remote-trace:4clmw9	ok	It needs the address of your server.	需要你的服务器地址。	plugins-official/remote-trace/index.js:50	
+remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	服务器地址必须以 https:// 开头（http:// 只能用于 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:56	
+remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	服务器地址中含有用户名或密码，请求无法携带它们。请把它们去掉，并把服务器的令牌填到“令牌”中。	plugins-official/remote-trace/index.js:58	Note: "a name or password" in an address is its user name (https://user:pass@…), so 用户名.
+remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	请在设置 → 插件 → 远程记录（开发者）中更改。	plugins-official/remote-trace/index.js:138	Note: Settings paths sit in the sentence without spaces, as annai's rows write them.
+remote-trace:1kwbgo3	ok	The phone is offline.	手机处于离线状态。	plugins-official/remote-trace/index.js:140	
+remote-trace:q62pwu	ok	Its token can't be sent.	令牌无法发送。	plugins-official/remote-trace/index.js:140	
+remote-trace:zr5o1w	ok	It has no token.	没有令牌。	plugins-official/remote-trace/index.js:140	
+remote-trace:14w66x9	ok	The server can't be reached.	无法连接服务器。	plugins-official/remote-trace/index.js:141	
+remote-trace:46d80m	ok	The server answered {0}.	服务器返回了 {0}。	plugins-official/remote-trace/index.js:141	{0} = p.status
+remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai 无法准备好这一批。	plugins-official/remote-trace/index.js:141	
+remote-trace:1t53c9s	ok	Sending trace	正在发送记录	plugins-official/remote-trace/index.js:166	
+remote-trace:zzw26r#other	ok	Sending trace: # waiting.	正在发送记录：# 条等待中。	plugins-official/remote-trace/index.js:166	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
+remote-trace:ata72m	ok	Trace	记录	plugins-official/remote-trace/index.js:179	
+remote-trace:bbadl	ok	Remote trace isn't sending	远程记录没有在发送	plugins-official/remote-trace/index.js:276	
+remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要服务器的令牌。请在设置 → 插件 → 远程记录（开发者）中添加。	plugins-official/remote-trace/index.js:304	
+remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	令牌中含有请求无法携带的字符：只能用字母、数字和标点，不能有空格。	plugins-official/remote-trace/index.js:308	
+remote-trace:1qhwapr	ok	The trace server refuses what annai sends	记录服务器拒绝了 annai 发送的内容	plugins-official/remote-trace/index.js:357	
+remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} 连续 {2} 次返回了 {1}。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 连续 {2} 次返回了 {1}：令牌可能不对。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 会继续大约每分钟尝试一次，并保留最新的 {0} 条，直到发出为止。请在设置 → 插件 → 远程记录（开发者）中检查服务器地址和令牌，或在那里关闭“发送”。	plugins-official/remote-trace/index.js:359	{0} = kept
+remote-trace:m3chyg	ok	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:360	
 scripted-model:@name	ok	Scripted model	脚本模型	plugins-official/scripted-model/annai-plugin.json:3	Note: annai's own rows call it 脚本模型 (Simulate).
 scripted-model:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:8	
-search-searxng:@name	draft	SearXNG Search	SearXNG 搜索	plugins-official/search-searxng/annai-plugin.json:3	
-search-searxng:@description	draft	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。	plugins-official/search-searxng/annai-plugin.json:8	
-search-searxng:@keywords.0	draft	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
-search-searxng:@keywords.1	draft	self-hosted	自托管	plugins-official/search-searxng/annai-plugin.json:10	
-search-searxng:@settings.properties.url.title	draft	Your SearXNG address	你的 SearXNG 地址	plugins-official/search-searxng/annai-plugin.json:23	
-search-searxng:@settings.properties.url.description	draft	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	形如 https://search.example.com。在实例的 settings.yml 中，把 json 加到 search: formats: 下，并让它的网页服务器为 annai 的地址发送 Access-Control-Allow-Origin。不加密的 http 只能用于 localhost。	plugins-official/search-searxng/annai-plugin.json:24	
-search-searxng:xli1co	draft	needs the address of your instance (Settings → Plugins → SearXNG Search)	需要你的实例地址（设置 → 插件 → SearXNG 搜索）	plugins-official/search-searxng/index.js:15	
-search-serper:@name	draft	Serper Search	Serper 搜索	plugins-official/search-serper/annai-plugin.json:3	
-search-serper:@description	draft	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:8	
-search-serper:@keywords.0	draft	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
-search-serper:@keywords.1	draft	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
-search-serper:@search.key.note	draft	2,500 free searches on sign-up, no card.	注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:17	
-search-serper:@settings.properties.key.title	draft	Serper API key	Serper API 密钥	plugins-official/search-serper/annai-plugin.json:22	
-search-serper:nnxk8n	draft	needs a key (Settings → Plugins → Serper Search)	需要密钥（设置 → 插件 → Serper 搜索）	plugins-official/search-serper/index.js:16	
-search-tavily:@name	draft	Tavily Search	Tavily 搜索	plugins-official/search-tavily/annai-plugin.json:3	
-search-tavily:@description	draft	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。	plugins-official/search-tavily/annai-plugin.json:8	
-search-tavily:@keywords.0	draft	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	
-search-tavily:@search.key.note	draft	A free key gives 1,000 credits a month, no card. A basic search costs 1 credit, an advanced one 2.	免费密钥每月有 1,000 个额度，无需银行卡。基本搜索消耗 1 个额度，深入搜索消耗 2 个。	plugins-official/search-tavily/annai-plugin.json:17	
-search-tavily:@settings.properties.key.title	draft	Tavily API key	Tavily API 密钥	plugins-official/search-tavily/annai-plugin.json:22	
-search-tavily:@settings.properties.depth.description	draft	Basic costs 1 credit a search; advanced reads deeper for 2.	“基本”每次搜索消耗 1 个额度；“深入”读得更深，消耗 2 个。	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.oneOf.0.title	draft	Basic	基本	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.oneOf.1.title	draft	Advanced	深入	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:@settings.properties.depth.title	draft	Depth	深度	plugins-official/search-tavily/annai-plugin.json:23	
-search-tavily:1lf6xjz	draft	needs a key (Settings → Plugins → Tavily Search)	需要密钥（设置 → 插件 → Tavily 搜索）	plugins-official/search-tavily/index.js:16	
+search-searxng:@name	ok	SearXNG Search	SearXNG 搜索	plugins-official/search-searxng/annai-plugin.json:3	Note: annai translates its own plugins' descriptive word (decision 10): Search → 搜索; annai's credits rows name Tavily's and Serper's the same way.
+search-searxng:@description	ok	Searches through a SearXNG instance you run. No key, no limits but your own. The instance must allow JSON and web apps.	通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。	plugins-official/search-searxng/annai-plugin.json:8	
+search-searxng:@keywords.0	ok	SearXNG	SearXNG	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@keywords.1	ok	self-hosted	自托管	plugins-official/search-searxng/annai-plugin.json:10	
+search-searxng:@settings.properties.url.title	ok	Your SearXNG address	你的 SearXNG 地址	plugins-official/search-searxng/annai-plugin.json:23	
+search-searxng:@settings.properties.url.description	ok	Like https://search.example.com. In the instance's settings.yml, put json under search: formats:, and have its web server send Access-Control-Allow-Origin for annai's address. Plain http works only for localhost.	形如 https://search.example.com。在实例的 settings.yml 中，把 json 加到 search: formats: 下，并让它的网页服务器为 annai 的地址发送 Access-Control-Allow-Origin。不加密的 http 只能用于 localhost。	plugins-official/search-searxng/annai-plugin.json:24	Note: Access-Control-Allow-Origin is a header's name, kept as written; not the phone's Allow.
+search-searxng:xli1co	ok	needs the address of your instance (Settings → Plugins → SearXNG Search)	需要你的实例地址（设置 → 插件 → SearXNG 搜索）	plugins-official/search-searxng/index.js:15	
+search-serper:@name	ok	Serper Search	Serper 搜索	plugins-official/search-serper/annai-plugin.json:3	Note: annai translates its own plugins' descriptive word (decision 10): Search → 搜索, as the credits row now names it.
+search-serper:@description	ok	Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.	通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:8	Note: "no card" is a payment card: 银行卡, not the glossary's card (卡片).
+search-serper:@keywords.0	ok	Serper	Serper	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@keywords.1	ok	Google	Google	plugins-official/search-serper/annai-plugin.json:10	
+search-serper:@search.key.note	ok	2,500 free searches on sign-up, no card.	注册即送 2,500 次免费搜索，无需银行卡。	plugins-official/search-serper/annai-plugin.json:17	Note: "no card" is a payment card: 银行卡, not the glossary's card (卡片).
+search-serper:@settings.properties.key.title	ok	Serper API key	Serper API 密钥	plugins-official/search-serper/annai-plugin.json:22	
+search-serper:nnxk8n	ok	needs a key (Settings → Plugins → Serper Search)	需要密钥（设置 → 插件 → Serper 搜索）	plugins-official/search-serper/index.js:16	
+search-tavily:@name	ok	Tavily Search	Tavily 搜索	plugins-official/search-tavily/annai-plugin.json:3	Note: annai translates its own plugins' descriptive word (decision 10): Search → 搜索, as the credits row now names it.
+search-tavily:@description	ok	Web search made for AI agents, with a snippet of each page. 1,000 free credits a month, no card.	为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。	plugins-official/search-tavily/annai-plugin.json:8	Note: "no card" is a payment card: 银行卡, not the glossary's card (卡片). Tavily's credits are a monthly allowance, not a prepaid balance, so 额度, not 余额.
+search-tavily:@keywords.0	ok	Tavily	Tavily	plugins-official/search-tavily/annai-plugin.json:10	
+search-tavily:@search.key.note	ok	A free key gives 1,000 credits a month, no card. A basic search costs 1 credit, an advanced one 2.	免费密钥每月有 1,000 个额度，无需银行卡。基本搜索消耗 1 个额度，深入搜索消耗 2 个。	plugins-official/search-tavily/annai-plugin.json:17	Note: "no card" is a payment card: 银行卡. Tavily's credits are a monthly allowance, so 额度, not 余额.
+search-tavily:@settings.properties.key.title	ok	Tavily API key	Tavily API 密钥	plugins-official/search-tavily/annai-plugin.json:22	
+search-tavily:@settings.properties.depth.description	ok	Basic costs 1 credit a search; advanced reads deeper for 2.	“基本”每次搜索消耗 1 个额度；“深入”读得更深，消耗 2 个。	plugins-official/search-tavily/annai-plugin.json:23	Note: Quotes the choices' own titles, 基本 and 深入.
+search-tavily:@settings.properties.depth.oneOf.0.title	ok	Basic	基本	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:@settings.properties.depth.oneOf.1.title	ok	Advanced	深入	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:@settings.properties.depth.title	ok	Depth	深度	plugins-official/search-tavily/annai-plugin.json:23	
+search-tavily:1lf6xjz	ok	needs a key (Settings → Plugins → Tavily Search)	需要密钥（设置 → 插件 → Tavily 搜索）	plugins-official/search-tavily/index.js:16	
 speech-openai:@name	ok	OpenAI-compatible speech	OpenAI 兼容语音	plugins-official/speech-openai/annai-plugin.json:3	
 speech-openai:@description	ok	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	通过 OpenAI 音频 API 提供语音转文字和声音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本地服务器。	plugins-official/speech-openai/annai-plugin.json:8	
 storage-forgejo:@name	draft	Forgejo / Gitea	Forgejo / Gitea	plugins-official/storage-forgejo/annai-plugin.json:3	
@@ -975,8 +975,8 @@ g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's ge
 1g8sy5k	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天气预报，用于 Shiori 的 weather 工具。预报中的日出和日落也来自 Open-Meteo；此刻页面的黄金时刻，以及 Open-Meteo 无响应时的日出日落时间，都在手机上计算。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	为 web_search 提供免费网页搜索，并为 fetch 读取其他方式读不了的网页，仅在设置 → 工具中勾选时使用。只发送搜索的词或网页地址。	src/ui/credits.js:54	
 382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	为 web_search 提供免费网页搜索，仅在设置 → 工具中勾选时使用。只发送搜索的词。	src/ui/credits.js:61	
-138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	为 web_search 提供网页搜索，安装 Tavily Search 插件后用你的密钥。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).
-1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	为 web_search 提供网页搜索，安装 Serper Search 插件后用你的密钥。	src/ui/credits.js:82	
+138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	为 web_search 提供网页搜索，安装“Tavily 搜索”插件后用你的密钥。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).; Note: Names the plugin as its own zh name, Tavily 搜索 (L7).
+1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	为 web_search 提供网页搜索，安装“Serper 搜索”插件后用你的密钥。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜索 (L7).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并搜索网页，用于 Shiori 的 fetch 和 web_search 工具，按设置 → 工具的选择使用。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：为 annai 用 AI 图像生成设计，再描摹成矢量图。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	给 Shiori 的消息	src/ui/dock.js:43	
