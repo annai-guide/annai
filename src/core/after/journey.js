@@ -14,10 +14,10 @@ import { storedTexts } from '../agent/log.js';
  * @typedef {import('./stamps.js').Stamp} Stamp
  * @typedef {{ kind: 'stay', at: number, to: number, lat: number, lng: number, name: string | null, stamp: Stamp | null }
  *   | { kind: 'move', at: number, to: number, km: number, mode: 'drive' | 'walk', gap: boolean }
- *   | { kind: 'card', at: number, card: any }
+ *   | { kind: 'card', at: number, card: any, tune?: true }
  *   | { kind: 'said', at: number, text: string, spoken: boolean }
  *   | { kind: 'photo', at: number, path: string, hash: string, type: string, size: number, width: number | null, height: number | null,
- *       place: { lat: number, lng: number } | null }} Entry
+ *       place: { lat: number, lng: number } | null }} Entry  a card's tune: a personality tuning's, whose title the screens make
  * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, visited: boolean }} PlanLine
  * @typedef {{ trip: string, title: string, tz: string, info: any, points: Point[], legs: Leg[], stamps: Stamp[], entries: Entry[],
  *   plan: PlanLine[], from: number | null, to: number | null, days: string[] }} Journey
@@ -118,7 +118,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
   for (const e of events) {
     const d = e.data ?? {};
     if (e.type === 'out.show') {
-      if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card });
+      if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card, ...(d.tune ? { tune: true } : {}) });
     } else if (e.type === 'msg.user') {
       const text = String({ ...d, ...(d.stored ? await storedTexts(store, e) : {}) }.text ?? '').trim();
       if (text) entries.push({ kind: 'said', at: e.ts, text, spoken: false });

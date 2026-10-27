@@ -60,6 +60,7 @@ esglmt	draft	{0} · {1} · stamp	{0} · {1} · 纪念章	src/core/after/replay.j
 2xd7wx	draft	Walked {0} · {1}	步行 {0} · {1}	src/core/after/replay.js:125	{0} = far; {1} = long
 1lwm8i6	draft	Drove {0} · {1} (partly unseen: the phone was locked)	驾驶 {0} · {1}（部分未记录：手机已锁定）	src/core/after/replay.js:126	{0} = far; {1} = long
 s3mlgp	draft	Drove {0} · {1}	驾驶 {0} · {1}	src/core/after/replay.js:126	{0} = far; {1} = long
+rqx5bo	draft	I adjusted my personality	我调整了自己的性格	src/core/after/replay.js:130	Note: Shiori's card, in her first person.
 1szxw8q	draft	a card	一张卡片	src/core/after/replay.js:131	Note: read by a screen reader for a card with nothing else to read: "Shiori: a card".
 ngwtmh	draft	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cut(String(words), 120) : t`a card`; Note: read by a screen reader; {0} is what she said or showed.
 1ot96wv	draft	You said: {0}	你（语音）：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120); Note: what you said aloud, beside "You: {0}" for what you typed.
@@ -581,10 +582,10 @@ rs50uy	draft	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:1
 12sejli	draft	Waiting for the backup that's running to finish…	正在等待进行中的备份完成…	src/ui/auto-backup.js:144	
 1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
-1dn0kon	draft	Open in Maps	在地图中打开	src/ui/cards.js:68	
-io1qx	draft	Open the booking	打开预订	src/ui/cards.js:73	
-1ghy26u	draft	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:76	
-1hvdy8q	draft	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的类型（{0}）来自一个未开启的插件。	src/ui/cards.js:88	{0} = card.type
+1dn0kon	draft	Open in Maps	在地图中打开	src/ui/cards.js:77	
+io1qx	draft	Open the booking	打开预订	src/ui/cards.js:82	
+1ghy26u	draft	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
+1hvdy8q	draft	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的类型（{0}）来自一个未开启的插件。	src/ui/cards.js:97	{0} = card.type
 1qozjyj	draft	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地点，用于 Shiori 的 nearby 工具和离线包，通过 Overpass（overpass-api.de，繁忙时用 private.coffee 的服务器）查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	draft	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或说出某个位置的地名，用于 Shiori 的 geocode 和 reverse 工具；作为免费搜索的最后手段，也会查找地点的官网。annai 按其使用政策，每秒最多询问一次。	src/ui/credits.js:26	
 1jfh2kq	draft	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地点的文章，以及离线包中的摘要。Shiori 读到的每篇文章都附有地址。免费搜索始终开启的最后手段会用搜索的词向它查询。	src/ui/credits.js:33	
@@ -1816,37 +1817,36 @@ qjf670	draft	Three identical tool calls in a row with identical results.	连续�
 glbwh5	draft	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:235	{0} = formatCost(c.total)
 td8u17	draft	A photo you sent	你发送的照片	src/ui/screens/talk.js:262	
 9e5yo5	draft	(a photo)	（照片）	src/ui/screens/talk.js:274	
-rqx5bo	draft	I adjusted my personality	我调整了自己的性格	src/ui/screens/talk.js:310	Note: Shiori's card, in her first person.
-fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:330	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:330	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:342	Note: the divider where a fresh start began.
-3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:343	
-1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:351	
-1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:351	
-1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:366	Note: "Type" is the dock's button: its words must match it.
-4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:420	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:439	
-1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:469	
-bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:470	
-7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:484	
-12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:486	
-5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:486	
-u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:486	
-va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:486	
-mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:489	
-10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:494	
-va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:501	
-19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:502	
-czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:503	
-1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:513	{0} = messageOf(e)
-1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:516	
-3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:516	
-mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:516	
-p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:516	
-1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:536	
-18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:537	
-159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:552	
-16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:559	
+fv3xhc	draft	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:329	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	draft	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:329	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	draft	Started fresh	已重新开始	src/ui/screens/talk.js:341	Note: the divider where a fresh start began.
+3r1u8z	draft	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:342	
+1o41up	draft	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:350	
+1p4yyw7	draft	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:350	
+1m7l4ua	draft	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:365	Note: "Type" is the dock's button: its words must match it.
+4fzxin	draft	From {0}.	来自{0}。	src/ui/screens/talk.js:419	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	draft	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。从旅行中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:438	
+1ehg9ru	draft	Tidy up	整理	src/ui/screens/talk.js:468	
+bomkf4	draft	Tidy up the conversation	整理对话	src/ui/screens/talk.js:469	
+7flpxf	draft	Summarizing…	正在总结…	src/ui/screens/talk.js:483	
+12707g	draft	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:485	
+5x85ju	draft	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:485	
+u82uid	draft	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:485	
+va2k72	draft	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:485	
+mienoe	draft	Summarize now	立即总结	src/ui/screens/talk.js:488	
+10sfmur	draft	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:493	
+va77q0	draft	Start fresh?	重新开始？	src/ui/screens/talk.js:500	
+19vk5z3	draft	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:501	
+czdqlz	draft	Start fresh	重新开始	src/ui/screens/talk.js:502	
+1h9wwbn	draft	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:512	{0} = messageOf(e)
+1thzla3	draft	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:515	
+3fntk0	draft	Started fresh.	已重新开始。	src/ui/screens/talk.js:515	
+mg70bg	draft	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:515	
+p5pj7b	draft	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:515	
+1ggbtyi	draft	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:535	
+18xqtne	draft	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:536	
+159f82q	draft	Undone	已撤销	src/ui/screens/talk.js:551	
+16pl3gf	draft	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:558	
 11gkctr	draft	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	draft	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	draft	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

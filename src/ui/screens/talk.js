@@ -1,7 +1,7 @@
 import { h, whenGone, t, plural, linkIn, messageOf } from '../dom.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
-import { renderCard, cardWho, cardKind } from '../cards.js';
+import { shownCard, cardWho, cardKind } from '../cards.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
 import { whyWords } from '../../core/llm/fallback.js';
 import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
@@ -306,8 +306,7 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'out.show') {
-      // A tuning's title is annai's, made here from the event's data: the stored one is the model's English.
-      const card = renderCard(d.tune ? { ...d.card, title: t`I adjusted my personality` } : d.card ?? {}, { ctx, onChoice: (o) => agent.send(o), say: hers });
+      const card = shownCard(d, { ctx, onChoice: (o) => agent.send(o), say: hers });
       const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
       return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
     }

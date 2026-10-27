@@ -127,7 +127,7 @@ export function entryLine(e, tz) {
   }
   if (e.kind === 'card') {
     const c = e.card ?? {};
-    const words = [c.title, c.text, c.place?.name].find((x) => typeof x === 'string' && x.trim());
+    const words = e.tune ? t`I adjusted my personality` : [c.title, c.text, c.place?.name].find((x) => typeof x === 'string' && x.trim());
     return { when: at, text: t`Shiori: ${words ? cut(String(words), 120) : t`a card`}` };
   }
   if (e.kind === 'said') return { when: at, text: e.spoken ? t`You said: ${cut(e.text, 120)}` : t`You: ${cut(e.text, 120)}` };
