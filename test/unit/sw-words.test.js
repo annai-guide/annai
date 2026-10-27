@@ -167,6 +167,13 @@ test('without a choice, install takes the first of the worker\'s own languages t
   assert.deepEqual(await (await swKit({ phone: ['ja-JP'], settings: app({ spoken: ['en'] }) })).install(), ['/l10n/ja.json'], 'settings without a choice');
 });
 
+test('a phone that lists English before a language annai has gets English, as the page does: no catalog (L6 review 1)', async () => {
+  assert.deepEqual(await (await swKit({ phone: ['en-US', 'ja-JP'] })).install(), []);
+  assert.deepEqual(await (await swKit({ phone: ['en-GB', 'zh-CN'] })).install(), []);
+  assert.deepEqual(await (await swKit({ phone: ['fr-FR', 'en-US', 'ja-JP'] })).install(), [], 'French annai lacks: the next, English, decides');
+  assert.deepEqual(await (await swKit({ phone: ['fr-FR', 'ja-JP', 'en-US'] })).install(), ['/l10n/ja.json']);
+});
+
 test('a choice of English caches no catalog, and one annai no longer has is the phone\'s', async () => {
   assert.deepEqual(await (await swKit({ phone: ['ja-JP'], settings: app({ ui: 'en' }) })).install(), []);
   assert.deepEqual(await (await swKit({ phone: ['ja-JP'], settings: app({ ui: 'ko' }) })).install(), ['/l10n/ja.json']);
