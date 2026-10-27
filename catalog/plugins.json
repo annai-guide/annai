@@ -564,7 +564,7 @@
     {
       "id": "provider-vllm",
       "name": "vLLM",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Models on a vLLM server you run, with their thinking switched through the chat template, and Whisper models for transcription.",
       "category": "providers",
       "keywords": [],
@@ -575,7 +575,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 2349,
+      "size": 4474,
       "requires": [
         {
           "id": "chat-completions",
@@ -584,7 +584,9 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ff09a697526fcbd75e3eea088d766a8f2069f65536c31f4cdb8e6a84d8b89f40"
+        "annai-plugin.json": "ec1fe5eb5191c655864ee4de07bf2ec400b888495fd588379e8af132d0ae4d29",
+        "l10n/ja.json": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
+        "l10n/zh-Hans.json": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916"
       }
     },
     {
