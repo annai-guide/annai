@@ -1,5 +1,5 @@
 import { sha256Hex } from '../hash.js';
-import { PluginError, NOT_OWN, TURN_ON } from '../registry.js';
+import { PluginError, NOT_OWN } from '../registry.js';
 import { refuseBreaking, installRequirements } from '../requires.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
@@ -163,7 +163,7 @@ async function ensureNow(host, kind, type, opts) {
   if (state && state.version === entry.version && (await host.verifyOfficial(entry.id, entry))) {
     // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
-    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, TURN_ON));
+    if (!state.enabled && opts.keepOff) throw new PluginError(entry.id, sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, t`Turn it on in Settings → Plugins, then try again.`));
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
   } else {

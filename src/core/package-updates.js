@@ -1,4 +1,5 @@
 import { fetchPackage, addedParts, addsAnything, agreedTo, addedWords } from './packages.js';
+import { t } from './l10n.js';
 import { PluginError } from './registry.js';
 import { installRequirements, checkPackageId } from './requires.js';
 
@@ -32,7 +33,7 @@ export async function addressUpdates(host, { fetch, failed }) {
       out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
     } catch (e) {
       // not now: the next check asks again
-      failed?.push(`${s.name ?? id} couldn't be checked: ${/** @type {any} */ (e)?.message ?? e}`);
+      failed?.push(t`${s.name ?? id} couldn't be checked: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`);
     }
   }
   return out;
@@ -54,7 +55,7 @@ export async function updateFromAddress(host, id, { fetch, agreed, official = {}
   const pkg = await host.inspect(files);
   if (pkg.id !== id) throw new PluginError(id, `the address now holds another package (${pkg.id}), so it wasn't updated. Remove this one and install that one if you want it.`);
   const added = pkg.previous?.added ?? addedParts(await host.installedParts(id), pkg);
-  if (!agreedTo(agreed, added)) throw new PluginError(id, `this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
+  if (!agreedTo(agreed, added)) throw new PluginError(id, t`this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.`);
   await checkPackageId(host, id, 'url', official); // annai's own names stay annai's (security review)
   if (pkg.requires.length) await installRequirements(host, pkg.requires, { ...official, tap: true }, { who: pkg.name, id }); // Update is the user's tap
   const wasOn = s.enabled !== false;
