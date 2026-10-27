@@ -198,6 +198,25 @@ storage-s3:1oijivd	draft	The bucket refused this (HTTP {0}). annai tries again l
 storage-s3:1yhneka	draft	The bucket refused this (HTTP {0}: {1}). annai tries again later.	バケットがこれを拒否しました（HTTP {0}：{1}）。annai はあとでもう一度試します。	plugins-official/storage-s3/index.js:140	{0} = res.status; {1} = code
 storage-s3:14d0hy0	draft	annai couldn't reach {0}. If this device is online, the bucket doesn't allow browser access yet: paste the rules below into its CORS settings, then test again.	annai は {0} に接続できませんでした。この端末がオンラインなら、バケットがまだブラウザからのアクセスを許可していません：下のルールをバケットの CORS 設定に貼り付けてから、もう一度テストしてください。	plugins-official/storage-s3/index.js:153	{0} = s.bucket
 storage-s3:3rdj3o	draft	Works: annai can reach {0} and keep its backups in {1}.	動作しています：annai は {0} に接続でき、{1} にバックアップを保存できます。	plugins-official/storage-s3/index.js:156	{0} = s.bucket; {1} = s.prefix
+storage-webdav:@name	draft	WebDAV	WebDAV	plugins-official/storage-webdav/annai-plugin.json:3	
+storage-webdav:@description	draft	Backs up everything to a folder on a WebDAV server that allows browser access, one archive file per backup.	ブラウザからのアクセスを許可している WebDAV サーバーのフォルダーに、すべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。	plugins-official/storage-webdav/annai-plugin.json:8	
+storage-webdav:1jyz6k5	draft	Folder address	フォルダーのアドレス	plugins-official/storage-webdav/index.js:57	
+storage-webdav:p39jit	draft	User name	ユーザー名	plugins-official/storage-webdav/index.js:58	
+storage-webdav:cf437c	draft	Password	パスワード	plugins-official/storage-webdav/index.js:60	
+storage-webdav:xbula4	draft	Use a folder of its own for annai's backups; annai makes it if it isn't there. Where the server offers app passwords, use one rather than your own. The server must allow browser access: see below.	annai のバックアップ専用のフォルダーを使ってください。なければ annai が作ります。サーバーにアプリパスワードがあるなら、自分のパスワードではなくそれを使ってください。サーバーはブラウザからのアクセスを許可する必要があります：下を見てください。	plugins-official/storage-webdav/index.js:61	
+storage-webdav:1awrada	draft	The server must answer requests from {0} with these headers, and answer OPTIONS requests without asking for a password. For Apache with mod_headers, in the folder's configuration:	サーバーは {0} からのリクエストにこれらのヘッダーを付けて応答し、OPTIONS リクエストにはパスワードを求めずに応答する必要があります。mod_headers を使う Apache なら、フォルダーの設定に次のように書きます：	plugins-official/storage-webdav/index.js:64	{0} = origin
+storage-webdav:ytgds7	draft	Check the folder's address: it must be a web address that starts with https://.	フォルダーのアドレスを確認してください：https:// で始まる Web アドレスである必要があります。	plugins-official/storage-webdav/index.js:88	
+storage-webdav:7ozv75	draft	Type the user name and the password, then save.	ユーザー名とパスワードを入力して、保存してください。	plugins-official/storage-webdav/index.js:89	
+storage-webdav:i775ni	draft	{0} didn't accept the user name and password. Check them, then save.	{0} がユーザー名とパスワードを受け付けませんでした。確認して、保存してください。	plugins-official/storage-webdav/index.js:115	{0} = host
+storage-webdav:13udcwn	draft	{0} doesn't let this user change the folder. Use a folder the user may write to.	{0} ではこのユーザーはフォルダーを変更できません。このユーザーが書き込めるフォルダーを使ってください。	plugins-official/storage-webdav/index.js:116	{0} = host
+storage-webdav:fc4qro	draft	That backup is no longer in the folder.	そのバックアップはもうフォルダーにありません。	plugins-official/storage-webdav/index.js:117	
+storage-webdav:iwsy5a	draft	{0} is out of space. Free some there, or keep fewer backups.	{0} の容量がいっぱいです。そこで空きを作るか、保存するバックアップを減らしてください。	plugins-official/storage-webdav/index.js:118	{0} = host
+storage-webdav:pc1rn5	draft	{0} is busy. annai tries again in a few minutes.	{0} は混み合っています。annai は数分後にもう一度試します。	plugins-official/storage-webdav/index.js:119	{0} = host
+storage-webdav:h8lnld	draft	{0} refused this (HTTP {1}). annai tries again later.	{0} がこれを拒否しました（HTTP {1}）。annai はあとでもう一度試します。	plugins-official/storage-webdav/index.js:120	{0} = host; {1} = res.status
+storage-webdav:ibf8pj	draft	annai couldn't reach {0}. If this device is online, the server doesn't allow browser access yet: see what it needs below, then test again.	annai は {0} に接続できませんでした。この端末がオンラインなら、サーバーがまだブラウザからのアクセスを許可していません：必要な設定を下で確認してから、もう一度テストしてください。	plugins-official/storage-webdav/index.js:133	{0} = new URL(w.url).host
+storage-webdav:kpd7yy	draft	The folder above {0} doesn't exist on the server, so annai can't make this one. Check the address.	サーバーに {0} の上のフォルダーがないため、annai はこのフォルダーを作れません。アドレスを確認してください。	plugins-official/storage-webdav/index.js:137	{0} = shownOf(w.url)
+storage-webdav:nr7x2z	draft	Works: annai made the folder {0} and can keep its backups there.	動作しています：annai はフォルダー {0} を作り、そこにバックアップを保存できます。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
+storage-webdav:1hxwq6b	draft	Works: annai can keep its backups in {0}.	動作しています：annai は {0} にバックアップを保存できます。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	annai を開いています…	src/app/boot.js:32	
 1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:62	
 cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:63	

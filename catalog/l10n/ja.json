@@ -102,6 +102,10 @@
     "storage-s3": {
       "name": "S3 互換ストレージ",
       "description": "AWS S3、Cloudflare R2、Backblaze B2 など、S3 互換のストレージのバケットにすべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
+    },
+    "storage-webdav": {
+      "name": "WebDAV",
+      "description": "ブラウザからのアクセスを許可している WebDAV サーバーのフォルダーに、すべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
     }
   }
 }
