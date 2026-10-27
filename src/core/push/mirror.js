@@ -516,7 +516,8 @@ export class PushMirror {
       if (sendAt <= now + 5000 || sendAt > now + AHEAD_MS) continue; // about to be said on screen, or too far
       if (out.size >= room) break;
       const title = await this.#title(m.scope, titles);
-      const body = String(m.text).slice(0, 500);
+      // The user's words: a plan reminder's in the screens' language (shown), Shiori's as she wrote them.
+      const body = String(m.shown ?? m.text).slice(0, 500);
       out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`) });
     }
     return out;

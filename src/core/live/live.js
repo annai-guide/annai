@@ -34,10 +34,11 @@ import { t } from '../l10n.js';
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
- * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, start?: number, what?: string }} Mirrored
+ * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, shown?: string, start?: number, what?: string }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
- *   text: the user's words (a plan's in the screens' language, made from its data; Shiori's as she wrote them); start and what: a
- *   "coming up" item's, for the minutes left and the item in the screens' words, which the service worker words (sw.js)
+ *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown a plan's in the screens' words, made
+ *   from its data, for the push (the shown rule); start and what: a "coming up" item's, for the minutes left and the item in the screens'
+ *   words, which the service worker words (sw.js)
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
@@ -497,7 +498,7 @@ export class Live {
           due = null;
         }
         const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
-        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
+        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
       }
       return out.sort((a, b) => a.due - b.due);
     });
