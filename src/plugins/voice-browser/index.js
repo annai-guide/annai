@@ -1,6 +1,7 @@
 import { encodeWav } from '../../core/voice/pcm.js';
 import { oggOpus, webmOpus, adts, flacFile, cat } from '../../core/voice/mux.js';
 import { CODEC_ORDER, mediaTypeOf } from '../../core/voice/formats.js';
+import { t } from '../../core/l10n.js';
 
 /**
  * The device side of voice (spec §10), a built-in plugin (§19): one audio player for every voice
@@ -17,6 +18,7 @@ const CODECS = /** @type {[string, number, string[]][]} */ ([['opus', 24_000, ['
 const codecFor = (format) => CODECS.find((c) => c[2].includes(format))?.[0];
 /** MediaRecorder's types; plain audio/mp4 in case iOS refuses the codec string. */
 const RECORDS = [['audio/ogg;codecs=opus', 'ogg'], ['audio/webm;codecs=opus', 'webm'], ['audio/mp4;codecs=mp4a.40.2', 'mp4'], ['audio/mp4', 'mp4']];
+/* en */
 const PARAMS = /** @type {Record<string, string>} */ ({ ogg: '; codecs=opus', webm: '; codecs=opus', mp4: '; codecs=mp4a.40.2' });
 
 /**
@@ -51,16 +53,19 @@ async function encodeWith(pcm, rate, codec, ms) {
     data.close();
     const flushed = enc.flush();
     flushed.catch(() => {}); // closed below when it took too long
+    // An encoder's failure is passed over (the next format is tried): a developer's words, never shown.
+    /* en */
     await Promise.race([flushed, new Promise((_, no) => { timer = setTimeout(() => no(new Error(`The ${codec} encoder took too long.`)), ms); })]);
   } finally {
     clearTimeout(timer);
     if (enc.state !== 'closed') enc.close();
   }
   if (failed) throw failed;
+  /* en */
   if (!packets.length) throw new Error(`The ${codec} encoder made nothing.`);
   return { packets, description };
 }
-export const manifest = { id: 'voice-browser', name: 'Voice on this device', version: '0.1.0', api: 1, description: "The phone's speaker, microphone, voice and dictation." };
+export const manifest = { id: 'voice-browser', name: t`Voice on this device`, version: '0.1.0', api: 1, description: t`The phone's speaker, microphone, voice and dictation.` };
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -448,7 +453,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           ticker = setInterval(() => { if (levels) onLevel(levels[Math.floor(a.currentTime / 0.05)] ?? 0); }, 50);
           return await new Promise((resolve, reject) => {
             a.onended = () => resolve({ ended: true, fraction: 1 });
-            a.onerror = () => reject(new Error("The voice's audio couldn't be played."));
+            a.onerror = () => reject(new Error(t`The voice's audio couldn't be played.`));
             stop = () => {
               const fraction = a.duration > 0 ? a.currentTime / a.duration : 0;
               a.pause();
@@ -507,7 +512,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
             }
           };
           u.onend = () => finish(signal.aborted ? { ended: false, charIndex } : { ended: true, charIndex: text.length });
-          u.onerror = (e) => (e.error === 'interrupted' || e.error === 'canceled' ? finish({ ended: false, charIndex }) : finish(null, new Error(`The browser voice couldn't speak (${e.error}).`)));
+          u.onerror = (e) => (e.error === 'interrupted' || e.error === 'canceled' ? finish({ ended: false, charIndex }) : finish(null, new Error(t`The browser voice couldn't speak (${e.error}).`)));
           signal.addEventListener('abort', stop, { once: true });
           speechSynthesis.speak(u);
         });
@@ -524,6 +529,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         .filter((r, i, all) => all.findIndex((x) => x.format === r.format) === i)),
       async encode(pcm, rate, format) {
         const codec = codecFor(format);
+        /* en */
         if (!codec) throw new Error(`annai can't make ${format} here.`);
         const { packets: p, description: d } = await packetsOf(pcm, rate, codec).catch((e) => {
           broken.add(codec);
@@ -570,7 +576,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           node.port.onmessage = (e) => onFrames(e.data, c.sampleRate);
           source.connect(node);
           node.connect(silent).connect(c.destination); // some browsers run a node only when it leads somewhere
-          for (const t of stream.getAudioTracks()) t.onended = () => onError(new Error('The microphone stopped.'));
+          for (const track of stream.getAudioTracks()) track.onended = () => onError(new Error(t`The microphone stopped.`));
           const input = stream.getAudioTracks()[0];
           if (input) inputs.push(input);
           // A MediaRecorder alongside (decision 24), in files cut by take().
@@ -668,7 +674,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         r.onerror = (/** @type {any} */ e) => {
           if (e.error === 'no-speech' || e.error === 'aborted') return;
           closed = true;
-          onError(Object.assign(new Error(`Phone dictation stopped (${e.error}).`), { code: String(e.error) }));
+          onError(Object.assign(new Error(t`Phone dictation stopped (${e.error}).`), { code: String(e.error) }));
         };
         // Dictation ends by itself after a silence; while listening goes on, it starts again.
         r.onend = () => {

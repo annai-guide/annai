@@ -6,18 +6,22 @@ import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core
 import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn } from '../../core/nominatim.js';
+import { t as words } from '../../core/l10n.js';
 
 export { KINDS };
 
 export const manifest = {
   id: 'places',
-  name: 'Places tools',
+  name: words`Places tools`,
   version: VERSION,
   api: 1,
-  description: 'nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.',
+  description: words`nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.`,
 };
 
+// Below, Shiori's words: English (localization design, section 7).
+
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
+/* en */
 const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 export { NOMINATIM_GAP };
 /** Each request's time limit, so a server that never answers is left for the next: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
@@ -28,13 +32,16 @@ async function ask(call, url, init) {
   const late = AbortSignal.timeout(ASK_MS.ms);
   const where = new URL(url).hostname;
   try {
+    /* en */
     return await answerJSON(await call.fetch(url, { ...init, signal: anySignal([call.signal, late]) }), where === 'nominatim.openstreetmap.org' ? 'Nominatim' : where);
   } catch (e) {
+    /* en */
     if (late.aborted && !call.signal.aborted) throw new Error(`${where} didn't answer in time.`);
     throw e;
   }
 }
 
+/* en */
 const WEATHER = /** @type {Record<number, string>} */ ({
   0: 'clear', 1: 'mainly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'fog', 51: 'drizzle', 53: 'drizzle', 55: 'drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle',
   61: 'rain', 63: 'rain', 65: 'heavy rain', 66: 'freezing rain', 67: 'freezing rain', 71: 'snow', 73: 'snow', 75: 'heavy snow', 77: 'snow grains',
@@ -59,12 +66,17 @@ function sunOnly(i, e) {
   const noon = day ? Date.parse(`${day}T12:00:00Z`) - (i.lng / 15) * 3_600_000 : Date.now();
   const t = sunTimes(noon, i.lat, i.lng);
   const hm = (/** @type {number | null} */ x) => (x === null ? '' : timeIn(x, tz));
+  /* en */
   const head = `Open-Meteo didn't answer (${String(/** @type {any} */ (e)?.message ?? e).replace(/\.$/, '')}), so there is no forecast. Worked out on the phone, in this phone's time zone (${tz}): `;
+  /* en */
   if (t.polar === 'day') return `${head}the sun doesn't set that day.`;
+  /* en */
   if (t.polar === 'night') return `${head}the sun doesn't rise that day${t.dawn !== null ? `; twilight from ${hm(t.dawn)} to ${hm(t.dusk)}` : ''}.`;
+  /* en */
   const golden = t.goldenMorningEnd === null || t.goldenEveningStart === null
     ? 'the sun stays low, golden light all day'
     : `golden hour until ${hm(t.goldenMorningEnd)} in the morning and from ${hm(t.goldenEveningStart)} in the evening`;
+  /* en */
   return `${head}sunrise ${hm(t.sunrise)}, sunset ${hm(t.sunset)}, ${golden}.`;
 }
 
@@ -75,12 +87,15 @@ function sunOnly(i, e) {
  */
 function guideText(title, text, section, source) {
   const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
+  /* en */
   const from = `(${source}) https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
   if (!section) {
     const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
+    /* en */
     return `${title} ${from}\n\n${intro}${heads.length ? `\n\nSections: ${heads.map((m) => m[2]).join(', ')}. Ask for one with section.` : ''}`;
   }
   const k = heads.findIndex((m) => m[2].toLowerCase() === String(section).toLowerCase());
+  /* en */
   if (k < 0) return `${title} has no section "${section}". Its sections: ${heads.map((m) => m[2]).join(', ')}.`;
   const level = heads[k][1].length;
   const end = heads.slice(k + 1).find((m) => m[1].length <= level);
@@ -97,7 +112,7 @@ function extras(f) {
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
-const UNREADABLE = (where) => `${where} sent an answer annai can't read.`;
+const UNREADABLE = (where) => /* en */ `${where} sent an answer annai can't read.`;
 const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } };
 
 /** @param {any} annai */
@@ -113,6 +128,7 @@ export function activate(annai) {
   /** @param {string} url @param {any} call */
   const json = (url, call, init = {}) => ask(call, url, init);
 
+  /* en */
   const tools = [
     {
       name: 'nearby', group: 'Places',

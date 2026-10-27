@@ -331,9 +331,9 @@ test("minors 6 and 7: headers annai sets itself are refused, and so is a token o
     for (const name of ['Content-Type', 'accept', 'MCP-Protocol-Version', 'mcp-session-id']) {
       await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: `Authorization: Bearer ${TOKEN}\n${name}: text/plain` }), new RegExp(`annai sends ${name} itself`, 'i'), name);
     }
-    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: `${TOKEN}…` }), (/** @type {any} */ e) => /The token has a character a web request can't carry: U\+2026, its 21st/.test(e.message) && !/CORS/.test(e.message));
-    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: 'X-Api-Key: it’s-a-key' }), /The header X-Api-Key has a character a web request can't carry: U\+2019, its 3rd/);
-    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: 'abc\u0000def12345' }), /U\+0000, its 4th/);
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: `${TOKEN}…` }), (/** @type {any} */ e) => /The token has a character a web request can't carry: U\+2026, at character 21\./.test(e.message) && !/CORS/.test(e.message));
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, headers: 'X-Api-Key: it’s-a-key' }), /The header X-Api-Key has a character a web request can't carry: U\+2019, at character 3\./);
+    await assert.rejects(k.servers.add({ name: 'trail', url: s.url, token: 'abc\u0000def12345' }), /U\+0000, at character 4\./);
     assert.equal(s.requests.length, 0, 'nothing was sent');
     assert.deepEqual(await k.servers.list(), []);
     assert.equal(await k.store.tx(['secrets'], 'readonly', (t) => t.getSecret('plugin:mcp:trail')), undefined);

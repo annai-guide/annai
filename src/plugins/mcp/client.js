@@ -1,12 +1,15 @@
 import { answerJSON, ANSWER_MAX } from '../../core/answer.js';
 import { sse } from '../../core/llm/sse.js';
 import { isBase64 } from '../../core/bytes.js';
+import { t } from '../../core/l10n.js';
+import { num } from '../../core/intl.js';
 
 /**
  * annai's MCP client (spec §5.1): MCP's Streamable HTTP transport, as a web app speaks it. Each
  * request is one JSON-RPC message POSTed to the server's address; the answer comes as JSON or as an
  * SSE stream. What annai reads is guarded: whatever a server sends, a failure is an McpError in
- * words for the user, never a SyntaxError or TypeError (which would count against the plugin).
+ * words, never a SyntaxError or TypeError (which would count against the plugin): its message for Shiori, in English, and shown
+ * for the screen (localization design, section 7).
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  */
 
@@ -21,11 +24,15 @@ const IMAGE_MAX = 5 * 1024 * 1024;
 
 export class McpError extends Error {
   /** @type {number | undefined} */ status;
-  /** @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message @param {number} [status] the HTTP status a server answered with */
-  constructor(kind, message, status) {
+  /**
+   * @param {'auth' | 'cors' | 'session' | 'server' | 'answer' | 'network'} kind @param {string} message Shiori's words, English
+   * @param {string} shown the same in the screens' words @param {number} [status] the HTTP status a server answered with
+   */
+  constructor(kind, message, shown, status) {
     super(message);
-    this.name = 'McpError';
+    this.name = /* en */ 'McpError';
     this.kind = kind;
+    this.shown = shown;
     if (status !== undefined) this.status = status;
   }
 }
@@ -76,7 +83,10 @@ export class McpClient {
       throw this.#removed();
     }
     const v = String(result?.protocolVersion ?? '');
-    if (!SUPPORTED.includes(v)) throw new McpError('server', `The MCP server ${this.server} speaks MCP ${v || 'an unknown version'}; annai speaks 2025-03-26 to 2025-11-25.`);
+    if (!SUPPORTED.includes(v)) {
+      throw new McpError('server', /* en */ `The MCP server ${this.server} speaks MCP ${v || 'an unknown version'}; annai speaks 2025-03-26 to 2025-11-25.`,
+        v ? t`The MCP server ${this.server} speaks MCP ${v}; annai speaks 2025-03-26 to 2025-11-25.` : t`The MCP server ${this.server} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.`);
+    }
     this.#version = v;
     await this.#post({ jsonrpc: '2.0', method: 'notifications/initialized' }, null, o);
   }
@@ -158,9 +168,14 @@ export class McpClient {
     }
   }
 
+  /** A server's HTTP status, as a failure. @param {number} code @param {number} [status] kept on the error, for what judges it by */
+  #answered(code, status) {
+    return new McpError('server', /* en */ `The MCP server ${this.server} answered ${code}.`, t`The MCP server ${this.server} answered ${code}.`, status);
+  }
+
   /** What a call to a closed client says. */
   #removed() {
-    return new McpError('session', `The MCP server ${this.server} was removed.`);
+    return new McpError('session', /* en */ `The MCP server ${this.server} was removed.`, t`The MCP server ${this.server} was removed.`);
   }
 
   /** The server's full address. */
@@ -207,7 +222,11 @@ export class McpClient {
   async #request(method, params, o, init = false) {
     const id = ++this.#id;
     const m = await this.#post({ jsonrpc: '2.0', id, method, params }, id, o, init);
-    if (m?.error) throw new McpError('server', `The MCP server ${this.server} said: ${String(m.error.message ?? m.error.code ?? 'an error')}`);
+    if (m?.error) {
+      const said = m.error.message ?? m.error.code;
+      throw new McpError('server', /* en */ `The MCP server ${this.server} said: ${String(said ?? 'an error')}`,
+        said === undefined || said === null ? t`The MCP server ${this.server} answered with an error.` : t`The MCP server ${this.server} said: ${String(said)}`);
+    }
     return m?.result;
   }
 
@@ -217,7 +236,7 @@ export class McpClient {
    */
   async #post(body, id, { fetch, signal }, init = false) {
     /** @type {Record<string, string>} */
-    const headers = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...(await this.auth()) };
+    const headers = { 'Content-Type': 'application/json', Accept: /* en */ 'application/json, text/event-stream', ...(await this.auth()) };
     if (this.#version) headers['MCP-Protocol-Version'] = this.#version;
     if (this.#session) headers['Mcp-Session-Id'] = this.#session;
     /** @type {Response} */
@@ -227,43 +246,54 @@ export class McpClient {
     } catch (e) {
       if (stopOf(e, signal)) throw stopOf(e, signal);
       // A browser says no more than that a request failed; offline, it is no use to suggest CORS (minors 8).
-      if (globalThis.navigator?.onLine === false) throw new McpError('network', `annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`);
-      throw new McpError('cors', `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
+      if (globalThis.navigator?.onLine === false) {
+        throw new McpError('network', /* en */ `annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`,
+          t`annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`);
+      }
+      throw new McpError('cors', /* en */ `annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`,
+        t`annai couldn't reach the MCP server ${this.server}. Check its address, that it is running, and that it lets web apps call it (CORS).`);
     }
     if (res.status === 401 || res.status === 403) {
       // A server guarding against DNS rebinding refuses an Origin it doesn't know with 403, and says so (the SDK: "Invalid Origin header").
       if (res.status === 403 && /origin/i.test(await startOf(res, 2000))) {
         const here = globalThis.location?.origin;
-        throw new McpError('cors', `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`, 403);
+        throw new McpError('cors', /* en */ `The MCP server ${this.server} doesn't take requests from annai${here ? ` at ${here}` : "'s address"}: it checks the Origin they come from. Add ${here ?? "annai's address"} to the origins it allows.`,
+          here ? t`The MCP server ${this.server} doesn't take requests from annai at ${here}: it checks the Origin they come from. Add ${here} to the origins it allows.`
+            : t`The MCP server ${this.server} doesn't take requests from annai's address: it checks the Origin they come from. Add annai's address to the origins it allows.`, 403);
       }
       res.body?.cancel().catch(() => {});
-      throw new McpError('auth', `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`, res.status);
+      throw new McpError('auth', /* en */ `The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`,
+        t`The MCP server ${this.server} refused annai's key. Check its token or headers in Settings → Tools → MCP servers.`, res.status);
     }
     if (res.status === 404 && this.#session && !init) {
       res.body?.cancel().catch(() => {});
-      throw new McpError('session', `The MCP server ${this.server} ended annai's session.`);
+      throw new McpError('session', /* en */ `The MCP server ${this.server} ended annai's session.`, t`The MCP server ${this.server} ended annai's session.`);
     }
     if (res.status === 400 && !this.#session && this.#version && !init) {
       // Asked for a session the browser kept from annai: the server didn't expose its header (CORS).
       const said = await startOf(res, 2000);
-      if (/session/i.test(said)) throw new McpError('cors', `The MCP server ${this.server} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.`);
-      throw new McpError('server', `The MCP server ${this.server} answered 400.`);
+      if (/session/i.test(said)) {
+        throw new McpError('cors', /* en */ `The MCP server ${this.server} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.`,
+          t`The MCP server ${this.server} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.`);
+      }
+      throw this.#answered(400);
     }
     if (init) this.#session = res.headers.get('mcp-session-id') || null;
     if (id === null) {
       res.body?.cancel().catch(() => {});
-      if (!res.ok) throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
+      if (!res.ok) throw this.#answered(res.status, res.status);
       return null;
     }
     if (!res.ok) {
       res.body?.cancel().catch(() => {});
-      throw new McpError('server', `The MCP server ${this.server} answered ${res.status}.`, res.status);
+      throw this.#answered(res.status, res.status);
     }
-    const unreadable = () => new McpError('answer', `The MCP server ${this.server} sent an answer annai can't read.`);
+    const unreadable = () => new McpError('answer', /* en */ `The MCP server ${this.server} sent an answer annai can't read.`, t`The MCP server ${this.server} sent an answer annai can't read.`);
     if ((res.headers.get('content-type') ?? '').includes('text/event-stream')) {
       if (!res.body) throw unreadable();
       // Read no further than ANSWER_MAX, as a JSON answer is (fix pass 8c-4).
-      const tooMuch = () => new McpError('answer', `The MCP server ${this.server} sent more than annai reads (${ANSWER_MAX / 1_048_576} MB).`);
+      const tooMuch = () => new McpError('answer', /* en */ `The MCP server ${this.server} sent more than annai reads (${ANSWER_MAX / 1_048_576} MB).`,
+        t`The MCP server ${this.server} sent more than annai reads (${num(ANSWER_MAX / 1_048_576)} MB).`);
       let read = 0;
       let over = false;
       const counted = res.body.pipeThrough(new TransformStream({
@@ -363,7 +393,7 @@ export function mcpToolName(server, tool, taken) {
 
 /**
  * What a tool answered, for Shiori (choice 8): text as text, photos as photos, a resource's text,
- * other parts described, structured content as JSON when there is no text, and isError kept.
+ * other parts described, structured content as JSON when there is no text, and isError kept. Shiori's words: English.
  * @param {any} result @returns {{ content: string, images?: { mediaType: string, data: string }[], isError?: boolean }}
  */
 export function toolOutput(result) {
@@ -372,6 +402,7 @@ export function toolOutput(result) {
   const texts = [];
   /** @type {{ mediaType: string, data: string }[]} */
   const images = [];
+  /* en */
   for (const p of parts) {
     if (p?.type === 'text') texts.push(String(p.text ?? ''));
     else if (p?.type === 'image' && IMAGE_TYPES.includes(p.mimeType) && isBase64(p.data) && p.data.length * 0.75 <= IMAGE_MAX) {
@@ -387,6 +418,6 @@ export function toolOutput(result) {
   }
   let content = texts.join('\n\n');
   if (!content && result?.structuredContent !== undefined) content = JSON.stringify(result.structuredContent);
-  if (!content) content = 'The tool answered nothing.';
+  if (!content) content = /* en */ 'The tool answered nothing.';
   return { content, ...(images.length ? { images } : {}), ...(result?.isError ? { isError: true } : {}) };
 }
