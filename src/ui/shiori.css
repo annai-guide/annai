@@ -132,6 +132,8 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .voice-menu-note { margin: 0; max-width: 16em; font-size: 13px; color: var(--ink-2); }
 .voice-chip-why { white-space: nowrap; }
 .voice-menu .btn { min-height: 44px; min-width: 64px; }
+/* A row menu shrinks to its narrowest, and Japanese and Chinese break anywhere: オン would go one kana a line. The live menu's long items still wrap. */
+.voice-menu:not(.live-menu) .btn { white-space: nowrap; }
 .voice-menu .btn[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .live-chip.on { border-color: var(--ai); color: var(--ai); }
 /* The voice and live menus sit above the dock, centred on the screen, so a narrow phone shows all of them, in longer words too. */

@@ -789,3 +789,26 @@ for (const [spoken, sent] of /** @type {const} */ ([['en', 'Where can we eat alo
     }
   });
 }
+
+// On Japanese screens at 393 px the voice chip's menu broke オン and オフ one kana a line (the review of L5b and L5c, 2026-10-26):
+// a row menu shrinks to its narrowest, and CJK breaks anywhere. phone-fit looks for overflow, not for wrapping.
+test('under Japanese screens each of the voice menu\'s buttons is one line, at 393 px', async ({ page }) => {
+  needJapanese();
+  await page.setViewportSize({ width: 393, height: 852 });
+  await openApp(page, '#/trips');
+  await startTrip(page, 'Big Sur');
+  await page.evaluate(() => localStorage.setItem('annai.ui', 'ja'));
+  await page.goto('/#/talk');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await page.locator('.voice-chip').click();
+  const buttons = page.locator('#voice-menu .btn');
+  await expect(buttons.first()).toBeVisible();
+  const lines = await buttons.evaluateAll((all) => all.map((b) => {
+    const range = document.createRange();
+    range.selectNodeContents(b);
+    return `${b.textContent}: ${new Set([...range.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top))).size}`;
+  }));
+  expect(lines.length).toBeGreaterThan(1);
+  for (const l of lines) expect(l).toMatch(/: 1$/);
+});
