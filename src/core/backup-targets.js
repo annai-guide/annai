@@ -24,8 +24,9 @@ import { NotFoundError } from './workspace.js';
  *   the backup at the place this device builds on, one it made or took in; seqs: each scope's last log entry in it;
  *   known (whole-file places): the newest time of each device's backups there seen then, by its clock. A git place keeps
  *   none: its put decides by its history, timed by its own clock
- * @typedef {{ id: string, type: string, name: string, config: Record<string, string>, auto: Auto, mobileData: boolean,
+ * @typedef {{ id: string, type: string, name?: string, config: Record<string, string>, auto: Auto, mobileData: boolean,
  *   created: number, checked: number | null, last: LastBackup | null, hold: Hold | null, encrypt?: boolean, keys?: boolean, keep?: number, askAbove?: number | null }} Target
+ *   name: as Backups' list and get give it, its kind's name (backup.js kindNames); one an annai from before stored is never read;
  *   checked: when it last passed a test; automatic backups wait for one. For whole-file places: encrypt, the backups are
  *   encrypted with the passphrase in its secret; keys, and hold the API keys; keep, how many of this device's backups stay there.
  *   askAbove: the bytes an automatic backup may upload without asking on a connection the browser doesn't name
@@ -81,14 +82,14 @@ export async function deviceId(ws) {
 }
 
 /**
- * @param {Workspace} ws @param {{ type: string, name: string, config?: Record<string, string>, auto?: Auto, mobileData?: boolean }} t
- *   name: '' for a new place, whose name is its kind's, made where it is shown (backup.js)
+ * @param {Workspace} ws @param {{ type: string, config?: Record<string, string>, auto?: Auto, mobileData?: boolean }} t
+ *   a place has no name of its own: it is named by its kind where it is shown (backup.js kindNames)
  * @returns {Promise<string>} the new place's id
  */
-export async function addTarget(ws, { type, name, config = {}, auto = 'changes', mobileData = false }) {
+export async function addTarget(ws, { type, config = {}, auto = 'changes', mobileData = false }) {
   const id = newId('bt');
   await change(ws, (v) => {
-    v.targets[id] = { id, type, name, config, auto, mobileData, created: ws.now(), checked: null, last: null, hold: null, encrypt: false, keys: false, keep: 3 };
+    v.targets[id] = { id, type, config, auto, mobileData, created: ws.now(), checked: null, last: null, hold: null, encrypt: false, keys: false, keep: 3 };
   });
   return id;
 }

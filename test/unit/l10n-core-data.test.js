@@ -67,7 +67,7 @@ test("a backup that fails offline: its card and status in Japanese, made from wh
   const logged = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.error'] }));
   assert.equal(logged.at(-1)?.data.message, 'This phone is offline.');
   assert.doesNotMatch(JSON.stringify(logged), JA);
-  assert.equal(backupWords({ code: 'plugin-off', name: 'GitHub' }), 'GitHub のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。');
+  assert.equal(backupWords({ code: 'plugin-off', type: 'github' }, 'GitHub'), 'GitHub のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。');
 });
 
 test("an archive's errors in Japanese on the screens, with English where a backup's log keeps them, and a newer file told by data", async () => {

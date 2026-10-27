@@ -53,7 +53,7 @@ export function whereOf(ctx, target) {
   try {
     return String(ctx.backups.typeOf(target.type)?.where(target.config) || target.name);
   } catch {
-    return target.name;
+    return String(target.name);
   }
 }
 
