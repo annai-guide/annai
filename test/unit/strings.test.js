@@ -349,6 +349,28 @@ test('a row a reviewer accepted is not warned about the glossary again: only dra
   const row = (/** @type {string} */ state) => ({ key: 'k', state, en: 'Start a trip', text: '出発を始める', where: '', note: 'Note: 出発 reads better here.', line: 2 });
   assert.equal(glossaryWarnings(g, 'ja', [row('draft')]).length, 1);
   assert.equal(glossaryWarnings(g, 'ja', [row('ok')]).length, 0);
+  // After a glossary word changes, every row is read again on asking (--glossary-all; L6 review 7).
+  assert.equal(glossaryWarnings(g, 'ja', [row('ok')], { all: true }).length, 1);
+});
+
+test('strings --check --glossary-all warns about accepted rows too; plain --check only about drafts (L6 review 7)', async () => {
+  const dir = await mkdtemp(`${tmpdir()}/annai-strings-`);
+  try {
+    await cp(FIXTURE, dir, { recursive: true });
+    await update(dir);
+    await writeFile(`${dir}/l10n/glossary.tsv`, `${GLOSSARY}\n`);
+    const rows = readTsv(await readFile(`${dir}/l10n/ja.tsv`, 'utf8'));
+    const named = rows.find((r) => /\bHello\b/.test(r.en));
+    assert.ok(named);
+    await writeFile(`${dir}/l10n/glossary.tsv`, `${GLOSSARY}\nhello\tthing\tやあ\t你好\tsrc/a.mjs:1\t\n`);
+    await writeFile(`${dir}/l10n/ja.tsv`, writeTsv(rows.map((r) => (r.key === named.key ? { ...r, state: 'ok', text: 'こんにちは {0}' } : r))));
+    const plain = (await check(dir)).warnings.filter((w) => w.file === 'l10n/ja.tsv' && /"hello"/.test(w.message));
+    const all = (await check(dir, undefined, { glossaryAll: true })).warnings.filter((w) => w.file === 'l10n/ja.tsv' && /"hello"/.test(w.message));
+    assert.equal(plain.length, 0);
+    assert.equal(all.length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test('the check warns, and does not fail, for the glossary', async () => {

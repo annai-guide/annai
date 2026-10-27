@@ -5,6 +5,7 @@
 //   node scripts/strings.mjs                    updates the TSVs, the JSON files, src/core/l10n-list.js and sw.js's LANGS
 //   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
 //                                               and any bare English where a screen surely shows it (npm run check)
+//   node scripts/strings.mjs --check --glossary-all   the same, warning about the glossary on accepted rows too (after a glossary change)
 //   node scripts/strings.mjs --find [paths]     lists the literals that read as words and are not marked
 //   node scripts/strings.mjs --review <tag>     a language's drafts as a Markdown table
 import ts from 'typescript';
@@ -409,16 +410,17 @@ function naming(/** @type {string} */ english, /** @type {string[]} */ ens, neve
 /**
  * A language's drafts that name a glossary term in English and do not use the language's word for it: warnings, not failures (a
  * sentence may rightly turn a term into a verb). A `never` term (annai, Shiori, Koe) must stay as written. A row a reviewer accepted
- * (`ok`) is not warned again: its `Note:` says why it reads as it does (localization L6).
- * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @returns {Problem[]}
+ * (`ok`) is not warned again: its `Note:` says why it reads as it does (localization L6). all: every row with a text, as after a
+ * glossary word changed (--glossary-all).
+ * @param {Term[]} glossary @param {string} tag @param {(Omit<Row, 'line'> & { line?: number })[]} rows @param {{ all?: boolean }} [o] @returns {Problem[]}
  */
-export function glossaryWarnings(glossary, tag, rows) {
+export function glossaryWarnings(glossary, tag, rows, { all = false } = {}) {
   const termOf = (/** @type {Term} */ g) => g.terms[tag] || (g.kind === 'never' ? g.en : '');
   const usable = glossary.filter((g) => termOf(g));
   /** @type {Problem[]} */
   const out = [];
   for (const r of rows) {
-    if (!r.text || r.state !== 'draft') continue;
+    if (!r.text || r.state === 'new' || (!all && r.state !== 'draft')) continue;
     for (const en of naming(r.en, usable.map((g) => g.en), new Set(usable.filter((g) => g.kind === 'never').map((g) => g.en)))) {
       const g = /** @type {Term} */ (usable.find((x) => x.en === en));
       const term = termOf(g);
@@ -498,9 +500,10 @@ export function bareEnglish(file, text) {
 /**
  * Everything wrong with annai's words, by file and line, and how many drafts each language has.
  * @param {string} root @param {string[]} [files] the files whose bare English is refused
+ * @param {{ glossaryAll?: boolean }} [o] glossaryAll: the glossary's warnings for accepted rows too
  * @returns {Promise<{ problems: Problem[], warnings: Problem[], drafts: Record<string, { draft: number, ok: number }> }>}
  */
-export async function check(root, files = EXTRACTED) {
+export async function check(root, files = EXTRACTED, { glossaryAll = false } = {}) {
   const { messages, problems } = await extract(root);
   /** @type {Problem[]} */
   const warnings = [];
@@ -538,7 +541,7 @@ export async function check(root, files = EXTRACTED) {
       const m = messages.get(base);
       bag.push({ file, line: r.line, message: m?.kind === 'plural' ? `${tag} has no "${r.key.split('#')[1]}" form: its categories are ${categories(tag).join(', ')}` : `"${r.en}" is no longer in the code: run npm run strings` });
     }
-    warnings.push(...glossaryWarnings(glossary, tag, rows));
+    warnings.push(...glossaryWarnings(glossary, tag, rows, { all: glossaryAll }));
     if (listed) {
       const json = `l10n/${tag}.json`;
       if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows, glossaryNames(glossary, tag))) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
@@ -633,7 +636,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
   const args = process.argv.slice(2);
   if (args[0] === '--check') {
-    const { problems, warnings, drafts } = await check(root);
+    const { problems, warnings, drafts } = await check(root, EXTRACTED, { glossaryAll: args.includes('--glossary-all') });
     for (const w of warnings) console.warn(`warning ${w.file}:${w.line}: ${w.message}`);
     for (const p of problems) console.error(`${p.file}:${p.line}: ${p.message}`);
     for (const [tag, d] of Object.entries(drafts)) console.log(`${tag}: ${d.draft} drafts, ${d.ok} read`);
