@@ -373,13 +373,15 @@ export function readGlossary(text) {
 const glossaryOf = async (root) => (existsSync(`${root}/l10n/glossary.tsv`) ? readGlossary(await readFile(`${root}/l10n/glossary.tsv`, 'utf8')) : []);
 
 /**
- * The names Shiori is told when the screens are in a language (localization decision 7): the glossary's screens, modes, and things
- * named with a capital as a label shows them ("Speech in", "Start fresh"), "Settings (設定), Models (モデル), …", in the glossary's order.
- * @param {Term[]} glossary @param {string} tag
+ * The glossary's names Shiori is told when the screens aren't English: those she would say to a traveller finding their way in annai,
+ * not the developer's screens (Trace, Diagnostics, Simulate a trip…). The design allows the line about 100 to 300 tokens (decision 7):
+ * with these 31 it is 275 cl100k tokens in Japanese, 235 in Chinese (L6 review 4). A name added costs every user one cold cache.
  */
-export const glossaryNames = (glossary, tag) => glossary
-  .filter((g) => g.terms[tag] && (g.kind === 'screen' || g.kind === 'mode' || (g.kind === 'thing' && /^\p{Lu}/u.test(g.en))))
-  .map((g) => `${g.en} (${g.terms[tag]})`).join(', ');
+const TOLD = new Set(['Add', 'Backup', 'Booking', 'Conversation', 'Files', 'Languages', 'Models', 'Notifications', 'Now', 'Photos', 'Plan', 'Plugins',
+  'Recap', 'Replay', 'Settings', 'Tools', 'Trips', 'Updates', 'Voice', 'Archive', 'Check this', 'Main', 'Offline pack', 'Speech in', 'Speech out',
+  'Spend per day', 'Start fresh', 'Tidy up', 'Koe · Classic', 'Koe · Realtime', 'Voice on']);
+/** The names Shiori is told in a language (localization decision 7): "Settings (設定), Models (モデル), …", in the glossary's order. @param {Term[]} glossary @param {string} tag */
+export const glossaryNames = (glossary, tag) => glossary.filter((g) => g.terms[tag] && TOLD.has(g.en)).map((g) => `${g.en} (${g.terms[tag]})`).join(', ');
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
  * The terms a message names in English: whole words, with an s or es after, as the glossary writes them. A Capitalised term (a screen)
