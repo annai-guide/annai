@@ -261,7 +261,7 @@ Seven batches, each a commit or two and a merge of its own. For each batch:
 - Create: `docs/translating.md`.
 - Docs: the spec's §14.3 (the design's proposed text, as decided), §5.2 (`language`, `l10n`, for L7), §6.3 (the glossary line), §16.5, §18; README.
 - Tests: e2e `l10n.spec.js` (As this phone is set under `locale: 'ja-JP'` and `'zh-CN'` opens in Japanese and Chinese; `phone-fit` under `ja`); unit (the glossary line is stable and absent in English); the realtime check's multilingual scenario run once with Japanese screens, to see the answer language is unchanged (docs/testing/realtime-check.md).
-- [ ] The user reviews (`npm run strings -- --review ja`, then zh-Hans).
+- [ ] An Opus review of every ja and zh-Hans draft (wrong or misleading meaning first; data-loss, cost and trust wording exact; glossary), with fixes, replaces the user's read-through (decision 5 as changed on 2026-10-26).
 - [ ] The rest as above; `npm run check`, e2e, size. **Commit** per part.
 
 ---
@@ -298,7 +298,7 @@ From the design ("Decisions for the user"), with where they bite:
 | 2 | The interface language its own setting | Yes, "annai's screens in", defaulting to the phone's; not tied to "Languages you speak" | L4 |
 | 3 | Carried by backups, or this device only | The app settings, with a copy on the device | L4 |
 | 4 | Distances and formats: the profile (§14.3's letter) or a setting | The screens' language and the phone's region; a Distances choice; the profile's Units line hers to read | L2 (keeps today's rule), L6 |
-| 5 | Unreviewed drafts ship | Experimental until you've read them once; after that drafts ship with their feature | L4, L6 |
+| 5 | Unreviewed drafts ship | **Changed 2026-10-26:** ship after Opus has reviewed every draft (no read-through by the user); drafts ship with their feature after that | L4, L6 |
 | 6 | Shiori, Koe and Kokoro on Chinese and Japanese screens | Latin names; 声 and 心 explained in the welcome | L4's glossary |
 | 7 | Shiori told the screens' names | Yes, one stable glossary line | L6 |
 | 8 | Which languages next, and who reviews | zh-Hans and ja now; others only with a reader; is Simplified the Chinese you want? | L4 |
