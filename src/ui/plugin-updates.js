@@ -62,8 +62,8 @@ export async function knownAddressUpdates(host) {
   return (await knownUpdates(host)).filter((u) => u.url);
 }
 
-/** An update's plugin by name: annai's own in the screens' words, one from an address as written. @param {Update} u */
-const nameOf = (u) => (u.url ? u.name : officialName(u.id, u.name));
+/** An update's plugin by name: annai's own in the screens' words, one from an address as written. @param {{ id: string, name: string, url?: string }} u */
+export const nameOf = (u) => (u.url ? u.name : officialName(u.id, u.name));
 
 /** "Tides 1.0.0 → 1.1.0", or "tide-pools (changed)" when only its files did. @param {Update} u */
 export function offerWords(u) {

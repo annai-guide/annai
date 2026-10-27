@@ -12,6 +12,6 @@ test('Settings: what a user reaches for most often first, Erase last; Updates be
 test("Settings' Updates line says what waits", () => {
   assert.equal(waitingWords(false, []), null);
   assert.equal(waitingWords(true, []), 'A new version of annai is ready.');
-  assert.equal(waitingWords(false, [{ name: 'Remote trace' }, { name: 'tide-pools' }]), 'Plugin updates are ready: Remote trace, tide-pools.');
-  assert.equal(waitingWords(true, [{ name: 'Remote trace' }]), 'A new version of annai is ready. Plugin updates are ready: Remote trace.');
+  assert.equal(waitingWords(false, [{ id: 'Remote trace', name: 'Remote trace' }, { id: 'tide-pools', name: 'tide-pools' }]), 'Plugin updates are ready: Remote trace, tide-pools.');
+  assert.equal(waitingWords(true, [{ id: 'Remote trace', name: 'Remote trace' }]), 'A new version of annai is ready. Plugin updates are ready: Remote trace.');
 });

@@ -10,6 +10,7 @@ import { exportPanel } from '../export-panel.js';
 import { openFileButton } from '../open-file.js';
 import { slotEntries } from '../slots.js';
 import { warnKept } from './provider.js';
+import { nameOf as updateName } from '../plugin-updates.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -24,9 +25,9 @@ export function sectionOrder({ waiting }) {
     ...(waiting ? [] : ['updates']), 'about', 'diagnostics', 'developer', 'experimental', 'erase'];
 }
 
-/** What waits, in a line: a new version of annai, plugin updates; null when nothing does. @param {boolean} app @param {{ name: string }[]} plugins */
+/** What waits, in a line: a new version of annai, plugin updates (named as Updates names them); null when nothing does. @param {boolean} app @param {{ id: string, name: string, url?: string }[]} plugins */
 export function waitingWords(app, plugins) {
-  return sentences(app ? t`A new version of annai is ready.` : '', plugins.length ? t`Plugin updates are ready: ${list(plugins.map((u) => u.name), 'plain')}.` : '') || null;
+  return sentences(app ? t`A new version of annai is ready.` : '', plugins.length ? t`Plugin updates are ready: ${list(plugins.map(updateName), 'plain')}.` : '') || null;
 }
 
 /** @param {string} line @param {string} href @param {string} label */
