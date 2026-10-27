@@ -78,7 +78,7 @@ test('addresses that hold no package, or fail, say what to do; nothing half-read
     [`${T}/many/annai-plugin.json`, /more than 200 files/],
   ];
   for (const [address, why, max] of cases) {
-    await assert.rejects(fetchPackage(address, { fetch, ...(max ? { max } : {}) }), (e) => /** @type {any} */ (e).constructor === Error && why.test(/** @type {Error} */ (e).message), address);
+    await assert.rejects(fetchPackage(address, { fetch, ...(max ? { max } : {}) }), (e) => /** @type {any} */ (e).name === 'Error' && why.test(/** @type {Error} */ (e).message), address);
   }
 });
 
