@@ -99,7 +99,7 @@ test('a failure waits longer each time; one only the user can fix says so; a suc
   const hold = async () => /** @type {any} */ ((await d.backups.get(id))?.hold);
   place.failNext(new TargetError('other', 'The place had a problem.'));
   await assert.rejects(d.backups.backUp(id));
-  assert.deepEqual(await hold(), { kind: 'error', message: 'The place had a problem.', at: d.now(), count: 1, retryAt: d.now() + 15 * 60_000, needsYou: false });
+  assert.deepEqual(await hold(), { kind: 'error', message: 'The place had a problem.', said: null, at: d.now(), count: 1, retryAt: d.now() + 15 * 60_000, needsYou: false });
   place.failNext(new Error('offline'));
   await assert.rejects(d.backups.backUp(id));
   assert.deepEqual([(await hold()).count, (await hold()).retryAt - d.now()], [2, 30 * 60_000]);

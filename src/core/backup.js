@@ -45,7 +45,7 @@ export function backupWords(s) {
 
 /**
  * Why backups to a place stopped, as a screen says it: from what the hold keeps where annai wrote it; a place's or a plugin's own
- * words, and a hold kept before it said what it was, as they were written. @param {{ message: string, said?: Said, offline?: boolean }} h
+ * words, and a hold kept before it said what it was, as they were written. @param {{ message: string, said?: Said | null, offline?: boolean }} h
  */
 export function holdWords(h) {
   const why = h.said ? backupWords(h.said) : h.message;
@@ -53,10 +53,11 @@ export function holdWords(h) {
 }
 
 /**
- * A hold kept before holds said what they were (no said, no offline): its words are the English annai wrote then, which a screen
- * shows as a line of their own, marked English, never inside a sentence of the screens' language. @param {any} h
+ * A hold kept before holds said what they were: one kept now always has said (null for a place's or a plugin's own words), so an
+ * older one has neither said nor offline. Its words are the English annai wrote then, which a screen shows as a line of their own,
+ * marked English, never inside a sentence of the screens' language. @param {any} h
  */
-export const oldHold = (h) => h?.kind === 'error' && !h.said && !h.offline;
+export const oldHold = (h) => h?.kind === 'error' && !('said' in h) && !('offline' in h);
 
 /**
  * One of annai's own errors, by the shown rule: its English for the log and the hold (message), the screens' words (shown), and what
@@ -222,7 +223,7 @@ export function createBackups({ store, ws, registry, app, label, noun = 'device'
       const was = rec.hold?.kind === 'error' ? rec.hold.count : 0;
       const count = online() ? was + 1 : was;
       const said = /** @type {any} */ (e).said;
-      h = { kind: 'error', message: e.message, ...(said ? { said } : {}), ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
+      h = { kind: 'error', message: e.message, said: said ?? null, ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind) };
     }
     await setTarget(ws, rec.id, { hold: h }).catch(() => {});
     if (h.kind === 'newer') await log('backup.newer', { target: rec.id, type: rec.type, remote: h.remote });
