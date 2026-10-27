@@ -54,7 +54,7 @@ export async function stateOf(p) {
   const slow = new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, why: t`couldn't check` }), READY_MS.ms); });
   try {
     const ready = /** @type {any} */ (await Promise.race([Promise.resolve().then(() => p.ready()).catch(() => ({ ok: false, why: t`couldn't check` })), slow]));
-    return ready.ok ? (p.free ? t`free, no key` : t`ready`) : String(ready.why ?? t`not ready`);
+    return ready.ok ? (p.free ? t`free, no key` : t`ready`) : String(ready.shown ?? ready.why ?? t`not ready`);
   } finally {
     clearTimeout(timer);
   }
@@ -81,8 +81,9 @@ export async function searchPanel(ctx) {
     if (i >= 0 && next[i + by]) [next[i], next[i + by]] = [next[i + by], next[i]];
     return next;
   });
-  const items = await Promise.all(all.map(async (p, i) => reorderable('search', p.id, i, all.length, p.name, false, await stateOf(p), move, list,
-    p.always ? h('span', { class: 'sub', text: t`On` }) : tick(ctx.ws, p.id, p.name, !off.includes(p.id)))));
+  // A provider's name and why are Shiori's (English); shown is the screen's, where it has one.
+  const items = await Promise.all(all.map(async (p, i) => reorderable('search', p.id, i, all.length, p.shown ?? p.name, false, await stateOf(p), move, list,
+    p.always ? h('span', { class: 'sub', text: t`On` }) : tick(ctx.ws, p.id, p.shown ?? p.name, !off.includes(p.id)))));
   return h('section', { class: 'panel', 'aria-label': t`Search` },
     h('h2', { class: 'section', text: t`Search` }),
     h('p', { class: 'sub', text: t`web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.` }),

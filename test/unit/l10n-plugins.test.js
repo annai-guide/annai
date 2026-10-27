@@ -103,11 +103,29 @@ test("what the tools answer, and why they failed, stays English under Japanese s
     for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
   }
   const search = Object.fromEntries(k.registry.list('search').map((/** @type {any} */ p) => [p.id, p]));
-  assert.equal(search.wiki.name, 'Wikivoyage、Wikipedia、Nominatim');
-  assert.equal(search.wiki.en, 'Wikivoyage, Wikipedia and Nominatim');
+  assert.equal(search.wiki.name, 'Wikivoyage, Wikipedia and Nominatim');
+  assert.equal(search.wiki.shown, 'Wikivoyage、Wikipedia、Nominatim');
   const jina = await search.jina.ready();
-  assert.match(jina.why, JA);
-  assert.equal(jina.en, 'needs a key (Settings → Tools)');
+  assert.equal(jina.why, 'needs a key (Settings → Tools)');
+  assert.match(jina.shown, JA);
+});
+
+test("a search provider's name and why are Shiori's, in English; shown is the screen's, and without it the screen shows them as they are", async () => {
+  const k = await kit();
+  const { stateOf } = await import('../../src/ui/search-panel.js');
+  k.registry.add('tides', 'search', { id: 'tides', name: 'Tide Search', ready: async () => ({ ok: false, why: 'needs a key' }), search: async () => [] });
+  const search = Object.fromEntries(k.registry.list('search').map((/** @type {any} */ p) => [p.id, p]));
+  assert.equal(await stateOf(search.tides), 'needs a key');
+  assert.match(await stateOf(search.jina), JA);
+  cooldowns.rest('wiki');
+  try {
+    const why = await failure(k.run('web_search', { query: 'tide pools' }, down));
+    assert.match(why, /Tide Search needs a key;/);
+    assert.match(why, /Jina Search needs a key \(Settings → Tools\);/);
+    assert.doesNotMatch(why, JA);
+  } finally {
+    for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
+  }
 });
 
 test("an MCP server: the screen's refusals in its words, Shiori's in English", async () => {
