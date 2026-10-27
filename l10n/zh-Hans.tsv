@@ -23,6 +23,7 @@ c5yzsu	draft	annai kept running, but couldn't write down what happened, so it is
 gt9ssw	draft	annai couldn't start	annai 无法启动	src/app/main.js:379	
 6v646m	draft	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:381	
 982hh6	draft	Try again	重试	src/app/main.js:382	
+1u3dm1p	draft	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:70	
 1f8b0m5	draft	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:53	
 7m1pck	draft	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:54	
 5lqjwd	draft	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你输入或说出的话（各自缩短）。	src/core/after/recap.js:55	
@@ -121,6 +122,10 @@ vbsaso	draft	Until it is tidied up, the conversation is too long for her model. 
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1im1t3t	draft	Enter a passphrase to encrypt the file.	请输入用于加密文件的密码短语。	src/core/archive-crypto.js:66	
+1bw0b6k	draft	This file is not encrypted.	这个文件没有加密。	src/core/archive-crypto.js:90	
+1nzwtma	draft	This file is damaged.	这个文件已损坏。	src/core/archive-crypto.js:91	
+qh6gdt	draft	Wrong passphrase, or the file is damaged.	密码短语不对，或者文件已损坏。	src/core/archive-crypto.js:104	
 4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:69	
 am2v0c	draft	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:159	
 13a6l3r	draft	There is nothing to export.	没有可导出的内容。	src/core/archive.js:166	
@@ -167,6 +172,8 @@ iwgrsx	draft	This calendar has more than {0} events. Export only the trip's date
 5l9pv6	draft	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	draft	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	draft	just now	刚刚	src/core/intl.js:126	
+1g1ud28	draft	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:405	
+1ml2kgi	draft	Tap Shiori to talk over her	轻点即可打断 Shiori	src/core/koe/live.js:405	
 3fqfy0	draft	Languages	语言	src/core/languages.js:304	
 1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:305	
 1giusr1	draft	Languages you speak	你说的语言	src/core/languages.js:306	

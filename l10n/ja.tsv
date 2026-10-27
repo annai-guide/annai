@@ -23,6 +23,7 @@ c5yzsu	draft	annai kept running, but couldn't write down what happened, so it is
 gt9ssw	draft	annai couldn't start	annai を起動できませんでした	src/app/main.js:379	
 6v646m	draft	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:381	
 982hh6	draft	Try again	再試行	src/app/main.js:382	
+1u3dm1p	draft	This address holds a name or password before an @. Leave it out.	このアドレスには @ の前に名前かパスワードが含まれています。外してください。	src/core/address.js:70	
 1f8b0m5	draft	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	泊まった場所と滞在時間（名前で。名前のない場所は約100 mに丸めた位置で）。GPS の軌跡そのものは送りません。	src/core/after/recap.js:53	
 7m1pck	draft	How far you drove or walked between, the stamps, and the plan.	その間に車や徒歩で移動した距離、スタンプ、予定。	src/core/after/recap.js:54	
 5lqjwd	draft	Shiori's cards and your words, typed or spoken, each shortened.	Shiori のカードと、あなたが入力したり話したりした言葉（それぞれ短くして）。	src/core/after/recap.js:55	
@@ -121,6 +122,10 @@ vbsaso	draft	Until it is tidied up, the conversation is too long for her model. 
 1pk3esu#other	draft	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3004	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other); English was: Something woke her more than the # times an hour you allow: {0}
 1vvddnu#other	draft	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3005	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	draft	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3006	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1im1t3t	draft	Enter a passphrase to encrypt the file.	ファイルを暗号化するパスフレーズを入力してください。	src/core/archive-crypto.js:66	
+1bw0b6k	draft	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
+1nzwtma	draft	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
+qh6gdt	draft	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
 4ohc37	draft	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:69	
 am2v0c	draft	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを暗号化したバックアップだけです。	src/core/archive.js:159	
 13a6l3r	draft	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:166	
@@ -167,6 +172,8 @@ iwgrsx	draft	This calendar has more than {0} events. Export only the trip's date
 5l9pv6	draft	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	draft	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	draft	just now	たった今	src/core/intl.js:126	
+1g1ud28	draft	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:405	
+1ml2kgi	draft	Tap Shiori to talk over her	タップして Shiori の話をさえぎる	src/core/koe/live.js:405	
 3fqfy0	draft	Languages	言語	src/core/languages.js:304	
 1an5v4b	draft	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:305	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	draft	Languages you speak	話す言語	src/core/languages.js:306	
