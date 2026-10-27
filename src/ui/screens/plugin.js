@@ -63,10 +63,11 @@ function namesPart(ctx, id, rows) {
       const thing = thingWords(c.kind, c.name);
       const by = ownerName(rows, c.owner);
       const why = !c.reserved ? '' : KEYED.has(c.kind) ? t`It is handed the keys you give it, so it isn't switched: remove ${by} to use this one.` : t`annai keeps it for Shiori's own use.`;
-      const text = c.chosen ? (c.used ? t`${thingWords(c.kind, c.name, true)}: this one is used (your choice).` : t`${thingWords(c.kind, c.name, true)}: the one from ${by} is used (your choice).`)
+      // A chosen name's line starts with its thing, whose capital is CSS's (.cap), so a language without capitals is left alone.
+      const text = c.chosen ? (c.used ? t`${thing}: this one is used (your choice).` : t`${thing}: the one from ${by} is used (your choice).`)
         : sentences(t`Not used: ${thing} is already provided by ${by}.`, why);
       const button = c.chosen ? act(t`Undo`, c, null) : c.reserved ? null : act(t`Use this one instead`, c, id);
-      return h('li', {}, h('span', { text }), button ? ' ' : null, button);
+      return h('li', { class: c.chosen ? 'cap' : undefined }, h('span', { text }), button ? ' ' : null, button);
     })));
 }
 

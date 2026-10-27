@@ -13,7 +13,7 @@ let n = 0;
  * Export choices (spec §12.2). Building and saving are two taps, because the
  * share sheet needs a fresh tap and encrypting can take a few seconds.
  * @param {any} ctx
- * @param {{ kind: 'trip'|'everything', scopes?: string[], title: string }} what
+ * @param {{ kind: 'trip'|'everything', scopes?: string[], title?: string }} what
  */
 export function exportPanel(ctx, what) {
   const k = n++;
