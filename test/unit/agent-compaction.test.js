@@ -277,3 +277,33 @@ test('chatter the gate set aside (a dismissed heard line, and the words written 
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
 });
+
+test("a call that failed after reporting its prompt doesn't add to the next prompt's size: housekeeping isn't due early (the third review of phone-fixes-1, R3)", async () => {
+  /** @type {{ fn: () => void, ms: number }[]} */
+  const timers = [];
+  const enc = new TextEncoder();
+  const ev = (/** @type {string} */ name, /** @type {any} */ data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+  const start = (/** @type {string} */ id) => ev('message_start', { type: 'message_start', message: { id, usage: { input_tokens: 6000, output_tokens: 1 } } });
+  const block = (/** @type {number} */ index, /** @type {string} */ name, /** @type {string} */ json) => ev('content_block_start', { type: 'content_block_start', index, content_block: { type: 'tool_use', id: `tu${index}`, name, input: {} } })
+    + ev('content_block_delta', { type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: json } }) + ev('content_block_stop', { type: 'content_block_stop', index });
+  let n = 0;
+  // The first call reports a 6000-token prompt, then is overloaded; the same model is asked again and answers, at 6000.
+  const fetch = async () => {
+    n++;
+    const body = n === 1
+      ? start('m1') + ev('error', { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })
+      : start('m2') + block(0, 'speak', '{"text":"Hi."}') + block(1, 'sleep', '{}')
+        + ev('message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 10 } }) + ev('message_stop', { type: 'message_stop' });
+    return new Response(enc.encode(body), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+  const k = await agentKit([{ ability: { type: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', tunables: { cacheTtl: '5m' } } }], {
+    models: [{ providerId: 'claude-sonnet-5-5', contextWindow: 10000 }], fetch,
+    agent: { timers: { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => timers.push({ fn, ms }), clear: () => {} } },
+  });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(n, 2);
+  const [turn] = await k.events(['model.turn']);
+  assert.equal(turn.data.usage.input, 12000, "the turn's record counts both calls");
+  assert.equal(timers.length, 0, 'a 6000-token prompt in a 10000 window is not due for housekeeping (threshold 0.7)');
+});
