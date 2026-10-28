@@ -78,7 +78,7 @@ export function shownEntry(entry, words) {
   return w ? { ...entry, ...w, keywords: [...new Set([...entry.keywords, ...(w.keywords ?? [])])], lang: lang() } : { ...entry, lang: 'en' };
 }
 
-/** How many of an official plugin's files are fetched at once (PDF pages has about 190). */
+/** How many of an official plugin's files are fetched at once (PDF pages has 31). */
 export const DOWNLOADS_AT_ONCE = 6;
 
 /**

@@ -47,6 +47,58 @@ function blankCanvas(g, w, h) {
   return true;
 }
 
+/**
+ * The files of a pack (scripts/pack-pdfjs.mjs): one line of JSON naming each file's place, size and SHA-256, then their bytes.
+ * @param {Uint8Array} pack @returns {Map<string, { bytes: Uint8Array, sha256: string }>}
+ */
+export function unpack(pack) {
+  const nl = pack.indexOf(10);
+  const index = JSON.parse(new TextDecoder().decode(pack.subarray(0, nl)));
+  /** @type {Map<string, { bytes: Uint8Array, sha256: string }>} */
+  const out = new Map();
+  for (const [name, [at, size, sha256]] of Object.entries(index.files ?? {})) out.set(name, { bytes: pack.subarray(nl + 1 + at, nl + 1 + at + size), sha256 });
+  return out;
+}
+
+/** The CMap pack, fetched once, unpacked. @type {Promise<Map<string, { bytes: Uint8Array, sha256: string }>> | null} */
+let cmaps = null;
+
+/**
+ * Where PDF.js gets its CMaps and standard fonts (its BinaryDataFactory option): the CMaps from the plugin's one pack, so the catalog
+ * names one file for them, not 168 (the review of reading-files); the standard fonts from their own files, whose addresses PDF.js also
+ * puts in its fonts' sources. Each answer is a copy: PDF.js may hand it on to its worker, and the pack must stay whole.
+ */
+export class PackedData {
+  /** @param {{ standardFontDataUrl?: string | null }} o */
+  constructor({ standardFontDataUrl = null }) {
+    this.fonts = standardFontDataUrl;
+  }
+
+  /** @param {{ kind: string, filename: string }} o @returns {Promise<Uint8Array>} */
+  async fetch({ kind, filename }) {
+    if (kind === 'cMapUrl') {
+      cmaps ??= (async () => {
+        const res = await fetch(here('cmaps.pack'));
+        /* en */
+        if (!res.ok) throw new Error(`the CMaps couldn't be loaded (HTTP ${res.status})`);
+        return unpack(new Uint8Array(await res.arrayBuffer()));
+      })().catch((e) => { cmaps = null; throw e; });
+      const file = (await cmaps).get(filename);
+      /* en */
+      if (!file) throw new Error(`there is no CMap ${filename}`);
+      return file.bytes.slice();
+    }
+    if (kind === 'standardFontDataUrl' && this.fonts) {
+      const res = await fetch(`${this.fonts}${filename}`);
+      /* en */
+      if (!res.ok) throw new Error(`the font ${filename} couldn't be loaded (HTTP ${res.status})`);
+      return new Uint8Array(await res.arrayBuffer());
+    }
+    /* en */
+    throw new Error(`PDF pages doesn't give PDF.js ${kind} data`);
+  }
+}
+
 /** The longest side a page is drawn at, at most, as a multiple of its own size. */
 const MOST_SCALE = 4;
 
@@ -65,7 +117,7 @@ export async function pages(bytes, { from = 1, max, edge, signal }) {
   const m = await pdfjs();
   if (signal?.aborted) throw stopped();
   const task = m.getDocument({
-    data: bytes.slice(), cMapUrl: here('cmaps/'), cMapPacked: true, standardFontDataUrl: here('standard_fonts/'), wasmUrl: here('wasm/'),
+    data: bytes.slice(), cMapUrl: here('cmaps/'), cMapPacked: true, standardFontDataUrl: here('standard_fonts/'), wasmUrl: here('wasm/'), BinaryDataFactory: PackedData,
     useWasm: false, useWorkerFetch: false, enableXfa: false, verbosity: 0,
     // The browser's ImageDecoder drew a scanned page's JPEG blank in WebKit (PDF.js 6.4.299, measured): PDF.js's own decoder draws it.
     isImageDecoderSupported: false,
