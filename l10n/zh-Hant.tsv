@@ -708,14 +708,14 @@ d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Ko
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:35	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:147	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:149	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:151	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:254	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:256	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:268	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:277	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:279	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:148	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:150	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:152	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:255	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:257	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:269	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:278	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:280	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手機上，localhost 指的是手機本身。另一台電腦上的伺服器需要 https 網址：瀏覽器會攔截 https 頁面送出的普通 http 請求，所以 annai 只連線你網路上的 https 網址。一個辦法是用 Tailscale Serve，並讓手機加入你的 tailnet：在伺服器所在的電腦上執行 {0}，然後把 {1} 填給 annai。伺服器還必須允許來自 annai.guide 的 CORS。Chrome 142 及以後的版本可能會請你允許存取本機網路。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是網址：請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（http:// 只用於 localhost 或 127.0.0.1）。瀏覽器會攔截 https 頁面送出的普通 http 請求，而 annai 只連線你網路上的 https 網址，所以另一台電腦上的伺服器需要一個 https 網址。Tailscale Serve 可以提供：{0}。伺服器還必須允許來自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -1121,21 +1121,21 @@ uqmge3	ok	Open the browser menu (⋮).	開啟瀏覽器選單（⋮）。	src/ui/
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 可能會在 7 天未造訪後清除你的旅行，而且主畫面上的 App 會另外儲存旅行：在這裡開始的旅行不會出現在那裡。請將 annai 加入主畫面，並在那裡開始旅行。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空間不足時，瀏覽器可能會清除你的旅行。請安裝 annai，讓旅行安全儲存。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	檢視步驟	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:211	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:225	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:229	{0} = name
-1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:244	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:248	
-v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:251	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
-1c7q9dt	ok	Miles	英里	src/ui/languages.js:257	Note: A choice of Distances.
-86ef5k	ok	Kilometres	公里	src/ui/languages.js:257	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
-r122ro	ok	Automatic	自動	src/ui/languages.js:257	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	ok	Distances	距離單位	src/ui/languages.js:273	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:286	{0} = name
-dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:286	
-8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:293	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:294	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:295	
+n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:223	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:238	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:242	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:258	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:262	
+v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:265	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:271	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:271	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自動	src/ui/languages.js:271	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離單位	src/ui/languages.js:287	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:300	{0} = name
+dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:300	
+8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:307	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:308	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:309	
 15kmah9	ok	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	模擬 · 步行中	src/ui/live-chip.js:22	

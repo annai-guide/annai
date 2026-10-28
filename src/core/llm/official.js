@@ -87,17 +87,18 @@ export async function catalogWords(opts = {}) {
  * match their version, and the update brings the new one's). next: the language the next start
  * opens in (nextScreens), brought too; given, words in any language but tag, next and the screens' go (a check's clean-up; an
  * install, which can't know it, drops nothing). A plugin annai's catalog stops listing words for keeps its own.
- * @param {PluginHost} host @param {FetchOptions & { tag?: string, next?: string, ids?: string[], skip?: string[] }} [opts]
+ * Callers name each option: never a whole env (an Update tap's holds next as a function).
+ * @param {PluginHost} host
+ * @param {{ fetch?: FetchOptions['fetch'], base?: string, tag?: string, next?: string, ids?: string[], skip?: string[] }} [opts]
  */
-export async function fetchTranslations(host, { tag = lang(), next, ids, skip = [], ...opts } = {}) {
+export async function fetchTranslations(host, { fetch: get = defaultFetch, base = '', tag = lang(), next, ids, skip = [] } = {}) {
   try {
     const state = await host.installed();
     const own = Object.keys(state).filter((id) => state[id]?.source === 'official' && (!ids || ids.includes(id)));
     if (!own.length) return;
-    const lists = await Promise.all([...new Set([tag, next ?? tag])].filter((x) => x !== 'en').map(async (x) => /** @type {const} */ ([x, await catalogIn(x, opts)])));
+    const lists = await Promise.all([...new Set([tag, next ?? tag])].filter((x) => x !== 'en').map(async (x) => /** @type {const} */ ([x, await catalogIn(x, { fetch: get, base })])));
     // Add's words for this run too, so it doesn't ask again.
     for (const [x, json] of lists) if (x === lang() && json?.plugins && typeof json.plugins === 'object') names = json.plugins;
-    const { fetch: get = defaultFetch, base = '' } = opts;
     await Promise.all(own.map(async (id) => {
       try {
         const kept = await host.translations(id);
@@ -157,7 +158,7 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
 /** Downloads, checks and installs one official plugin, then starts it. @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] */
 export async function installOfficial(host, entry, opts = {}) {
   await host.install(await download(entry, opts), { source: 'official' });
-  await fetchTranslations(host, { ...opts, ids: [entry.id] });
+  await fetchTranslations(host, { fetch: opts.fetch, base: opts.base, ids: [entry.id] });
   await host.start(entry.id);
 }
 
@@ -194,7 +195,7 @@ export async function updateOfficial(host, entry, opts = {}) {
   if (entry.requires?.length) await installRequirements(host, entry.requires, { ...opts, tap: true }, { who: entry.name, id: entry.id });
   const wasOn = (await host.installed())[entry.id]?.enabled !== false;
   await host.install(files, { source: 'official' });
-  await fetchTranslations(host, { ...opts, ids: [entry.id] });
+  await fetchTranslations(host, { fetch: opts.fetch, base: opts.base, ids: [entry.id] });
   if (!wasOn) {
     await host.setEnabled(entry.id, false);
     return 'started';
