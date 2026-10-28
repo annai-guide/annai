@@ -28,20 +28,33 @@ export function readRefusal(message) {
   return Object.keys(out).length ? out : null;
 }
 
-/** The photos over the count, oldest first, sent as stubs. @param {Message[]} messages @param {number | null | undefined} maxCount */
+/**
+ * The photos over the count, oldest first, sent as stubs. Within one message, a PDF's page pictures go from its last page back, so a
+ * limit under a PDF's page count keeps page 1 and on, and the stub says which page didn't go (the re-check of reading-files).
+ * @param {Message[]} messages @param {number | null | undefined} maxCount
+ */
 export function limitImages(messages, maxCount) {
   if (!maxCount) return messages;
   const total = messages.reduce((n, m) => n + m.parts.filter((p) => p.type === 'image').length, 0);
   let drop = total - maxCount;
   if (drop <= 0) return messages;
-  return messages.map((m) => ({
-    role: m.role,
-    parts: m.parts.map((p) => {
-      if (p.type !== 'image' || drop <= 0) return p;
-      drop--;
-      /* en */ return { type: /** @type {const} */ ('text'), text: `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') };
-    }),
-  }));
+  return messages.map((m) => {
+    if (drop <= 0) return { role: m.role, parts: m.parts };
+    // This message's pictures in the order they go: photos first, as they come; then a PDF's pages, its last first.
+    const images = m.parts.flatMap((p, i) => (p.type === 'image' ? [{ p, i }] : []));
+    const order = [...images.filter(({ p }) => !p.page), ...images.filter(({ p }) => p.page).reverse()];
+    const gone = new Set(order.slice(0, drop).map(({ i }) => i));
+    drop -= gone.size;
+    return {
+      role: m.role,
+      parts: m.parts.map((p, i) => {
+        if (!gone.has(i) || p.type !== 'image') return p;
+        /* en */
+        if (p.page) return { type: /** @type {const} */ ('text'), text: `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` };
+        /* en */ return { type: /** @type {const} */ ('text'), text: `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') };
+      }),
+    };
+  });
 }
 
 /** The smaller of two limits each, for saving what a refusal taught. @param {Learned} a @param {Learned} b @returns {Learned} */
