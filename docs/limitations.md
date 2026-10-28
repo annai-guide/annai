@@ -44,3 +44,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a linked file is left out only when the site answers that it isn't there (404, 410, or 403). No answer fails the install, so a network blip can't silently drop a file and then offer the skill as changed. A site that hides its 404s looks like no answer. GitHub raw, GitHub Pages, jsDelivr and Hugging Face send the header on 404s, and are fine.
 - **Revisit when:** a user meets it on a site they can't change.
 - **Approved:** 2026-10-27, the user: "Accept as known limitation".
+
+### Claude's reasoning isn't carried between tool steps within a turn
+- **Kind:** deferred.
+- **What the user sees:** nothing on screen. Within one turn, a Claude model (Opus, Sonnet, Haiku) plans each tool step from what it sees, without the reasoning it wrote at the step before. Anthropic's documentation calls passing that reasoning back "Required" within a tool turn, for reasoning quality, though the API accepts a request without it.
+- **Why:** annai changes a request between steps (each step's now block, and each half's and tidy-up's own instructions). Anthropic binds a thinking block to everything before it, so every block sent back was refused with a 400, which put Kokoro on weak fallback models. So annai stopped sending thinking back (anthropic-messages 0.4.1).
+- **Revisit when:** next, after the bookings plans. Make each turn's requests append-only (keep each step's now block, and freeze the instructions and tools within a turn), then send Claude's thinking back again.
+- **Approved:** 2026-10-28, the user: "Defer, do it next".
+
+### A repeated note can be said twice in live voice
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on a live (realtime) model, if Kokoro sends a second note that repeats the first while Koe is already speaking, Koe may say it twice.
+- **Why:** live audio can't be cut and rerun the way a typed call can (Classic Koe's call is cut and rerun with both notes). The only guard in live voice is Koe's instruction to skip a note she has already said, which a weak model can ignore.
+- **Revisit when:** it happens on the user's phone with a live model.
+- **Approved:** 2026-10-28, the user: "Accept as known limitation".
