@@ -170,7 +170,7 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
 .tidy { position: relative; display: flex; justify-content: flex-end; }
-.tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
+.tidy-menu { position: absolute; bottom: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .tidy-menu[hidden] { display: none; }
 .tidy-menu .sub { margin: 4px 0 0; }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }

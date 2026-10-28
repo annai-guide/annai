@@ -445,11 +445,11 @@ export async function renderTalk(ctx) {
   showCost();
   const screen = h('div', { class: 'screen' },
     h('h1', { class: 'title', text: t`Conversation` }),
-    tidyMenu(ctx),
     h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     cost,
     list.childElementCount ? null : empty,
     list,
+    tidyMenu(ctx), // at the foot, under the last line (the user, 2026-10-28)
     announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
