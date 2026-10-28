@@ -42,8 +42,12 @@ export function createNotices() {
     const long = p.scrollHeight > p.clientHeight + 1;
     node.classList.toggle('clamp', long);
     more.hidden = !long;
-    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off).
+    const acts = /** @type {HTMLElement} */ (node.querySelector('.acts'));
+    acts.before(more);
+    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off); still
+    // too tall, More joins the buttons, where the card's own scroll can't hide it.
     for (let n = 2; long && n && node.scrollHeight > node.clientHeight + 1; n--) node.style.setProperty('--lines', String(n));
+    if (long && node.scrollHeight > node.clientHeight + 1) acts.append(more);
   };
   addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
