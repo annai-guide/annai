@@ -20,8 +20,19 @@ export function keepUiChoice(tag) {
   } catch { /* storage blocked: annai starts in English then */ }
 }
 
-/** The screens' language the next start opens in: the device's copy of the choice, else the phone's, as boot.js reads them. */
+let changing = '';
+/**
+ * A change of the screens' language under way: until the returned call (its choice kept, or failed), nextScreens is its language, so
+ * a check meanwhile keeps the words fetched for it. @param {string} tag @returns {() => void}
+ */
+export function changingScreens(tag) {
+  changing = tag;
+  return () => { if (changing === tag) changing = ''; };
+}
+
+/** The screens' language the next start opens in: one being changed to, else the device's choice, else the phone's (as boot.js). */
 export function nextScreens() {
+  if (changing) return changing;
   let own = null;
   try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
   return chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED).tag;
@@ -220,7 +231,8 @@ export function screensRow(ctx, app) {
     error.hidden = true;
     const next = chooseTag(pick || null, phone, offered, SHIPPED);
     const name = ownName(next.tag);
-    const back = (/** @type {string} */ why) => { select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
+    const done = changingScreens(next.tag);
+    const back = (/** @type {string} */ why) => { done(); select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
     if (next.tag !== 'en') {
       note.textContent = t`Getting ${name}…`;
       // annai's own plugins' words in it too, so they start in it after the restart; they never stop the change, nor hold it up past 30 s.
@@ -234,6 +246,7 @@ export function screensRow(ctx, app) {
       return back(messageOf(e));
     }
     keepUiChoice(pick);
+    done();
     shown = pick;
     // Already in it: nothing to restart into.
     if (document.documentElement.lang === (next.region ? `${next.tag}-${next.region}` : next.tag)) {

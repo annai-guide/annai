@@ -147,7 +147,7 @@ export async function installRequirements(host, requires, env, { who, id, instal
       if (!before[id]) fresh.push(id);
     }
     // annai's own come with their words in the screens' language, before they start (never a reason to stop).
-    await fetchTranslations(host, { ...env, ids: [...got.map(([e]) => e.id), id] });
+    await fetchTranslations(host, { fetch: env.fetch, base: env.base, ids: [...got.map(([e]) => e.id), id] });
     for (const x of [...requires.map((r) => r.id).filter((x) => x !== id), ...(install ? [id] : [])]) await running(host, x, { tap: env.tap, fresh: fresh.includes(x) });
   } catch (e) {
     for (const x of fresh.reverse()) await host.uninstall(x).catch(() => {});
