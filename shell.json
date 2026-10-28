@@ -1,5 +1,5 @@
 {
-  "build": "20f3c6695324",
+  "build": "cf55a8bf0211",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -123,6 +123,7 @@
     "/src/core/pack/plan.js": "cd89bf4374e8",
     "/src/core/pack/read.js": "d02793ca050b",
     "/src/core/patch.js": "e2e285dc5248",
+    "/src/core/pdf-pages.js": "92d9eef7e59b",
     "/src/core/photo-meta.js": "7021827cca8d",
     "/src/core/pkpass.js": "b3e3dc6d825a",
     "/src/core/photos.js": "04a6d604ae69",
