@@ -3,7 +3,6 @@
   "name": "DeepSeek",
   "version": "1.1.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "DeepSeek's models, with their reasoning shown as they think.",
   "category": "providers",
   "requires": [

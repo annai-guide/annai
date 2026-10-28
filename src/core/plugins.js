@@ -40,6 +40,8 @@ export const START_TIMEOUT = 10_000;
 /** Launches in a row a plugin may fail to start on before annai turns it off. */
 export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
+/** Where a package's translations are, inside it: l10n/<tag>.json. */
+const WORDS = 'l10n/';
 /** A package's secret holding the address it came from, keys and all (fix pass 8a-1); annai's alone, as a plugin's are plugin:<id>:… (Reset R1). @param {string} id */
 const ADDRESS = (id) => /* en */ `package:${id}:address`;
 /** A plugin's settings file in sys:settings (spec §5.4). @param {string} id */
@@ -263,10 +265,14 @@ export class PluginHost {
    * Installs (or replaces) a package from its files, e.g. an unzipped one. Everything is checked
    * first, then written in one transaction: all or nothing. A package's files keep no history
    * (choice 3): an install replaces them outright, and the space old versions took comes back.
+   * annai's own plugin's translations are no files of its package: they come from its catalog (fetchTranslations), so what is
+   * kept under l10n/ stays, and files under l10n/ handed to it are left out.
    * @param {Map<string, Uint8Array>} files
    * @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts]
    */
   async install(files, { source = 'file', file, url } = {}) {
+    const own = source === 'official';
+    if (own) files = new Map([...files].filter(([name]) => !name.startsWith(WORDS)));
     const pkg = await this.inspect(files);
     const id = pkg.id;
     /** @type {Map<string, Uint8Array>} */
@@ -288,7 +294,7 @@ export class PluginHost {
       ...(pkg.provider || pkg.search ? { origins: originsOf(pkg.manifest) } : {}), provides: pkg.manifest.provides ?? {},
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
-    const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path));
+    const gone = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !toWrite.has(f.path) && !(own && f.path.startsWith(`/${id}/${WORDS}`)));
     try {
       await this.ws.writeMany(SYS_PLUGINS, [
         ...gone.map((f) => ({ path: f.path, content: null })),
@@ -362,11 +368,11 @@ export class PluginHost {
   /**
    * Whether a plugin's stored files are exactly the ones annai's catalog lists for it (spec §5.3:
    * official plugins are checked against the catalog's SHA-256s). A copy that came any other way,
-   * such as a restored backup's, isn't official until it matches.
+   * such as a restored backup's, isn't official until it matches. Its translations (l10n/) are not its package: they never count.
    * @param {string} id @param {{ files: Record<string, string> }} entry
    */
   async verifyOfficial(id, entry) {
-    const stored = await this.ws.list(SYS_PLUGINS, `/${id}/`);
+    const stored = (await this.ws.list(SYS_PLUGINS, `/${id}/`)).filter((f) => !f.path.startsWith(`/${id}/${WORDS}`));
     const want = Object.entries(entry.files ?? {});
     if (stored.length !== want.length) return false;
     return want.every(([name, hash]) => stored.some((f) => f.path === `/${id}/${name}` && f.hash === hash));
@@ -474,12 +480,35 @@ export class PluginHost {
     this.registry.removePlugin(id);
   }
 
-  /** An installed plugin's words for the screens, from its stored files (wordsOf). @param {string} id @param {any} [manifest] as stored */
+  /**
+   * An installed plugin's words for the screens, from its stored files (wordsOf). annai's own plugin's are the screens' language's,
+   * when the device has fetched them from its catalog (fetchTranslations), whatever its manifest lists. @param {string} id @param {any} [manifest] as stored
+   */
   async words(id, manifest) {
     const m = manifest ?? (await this.manifestOf(id));
-    const tag = m ? translationFor(m) : null;
-    const bytes = tag ? (await this.ws.read(SYS_PLUGINS, `/${id}/l10n/${tag}.json`).catch(() => null))?.bytes : undefined;
-    return wordsOf(m, () => bytes);
+    const official = (this.#known[id] ?? (await this.installed())[id])?.source === 'official';
+    const tag = m ? translationFor(official ? { l10n: [lang()] } : m) : null;
+    const bytes = tag ? (await this.ws.read(SYS_PLUGINS, `/${id}/${WORDS}${tag}.json`).catch(() => null))?.bytes : undefined;
+    return wordsOf(m, () => bytes, { tag });
+  }
+
+  /** An installed plugin's kept translations: each one's SHA-256, by its tag. @param {string} id @returns {Promise<Record<string, string>>} */
+  async translations(id) {
+    const at = `/${id}/${WORDS}`;
+    return Object.fromEntries((await this.ws.list(SYS_PLUGINS, at)).filter((f) => f.path.endsWith('.json')).map((f) => [f.path.slice(at.length, -5), f.hash]));
+  }
+
+  /**
+   * Keeps or drops an installed plugin's translations (fetchTranslations), by tag (null drops it), in one write with no history; a
+   * running plugin's words are read again, so the screens and its annai.l10n use them from now on. One being removed gets none.
+   * @param {string} id @param {Map<string, Uint8Array | null>} changes
+   */
+  async keepTranslations(id, changes) {
+    if (this.#removing.has(id) || !(await this.installed())[id]) return;
+    const paths = [...changes.keys()].map((tag) => `/${id}/${WORDS}${tag}.json`);
+    await this.ws.writeMany(SYS_PLUGINS, [...changes.values()].map((bytes, i) => ({ path: paths[i], content: bytes, ...(bytes ? { type: 'application/json' } : {}) })), { author: 'system' });
+    await forget(this.ws.store, SYS_PLUGINS, { history: (p) => paths.includes(p) }).catch(() => {});
+    if (this.#words.has(id)) this.#words.set(id, await this.words(id));
   }
 
   /** A running plugin's manifest as the screens show it, or null. @param {string} id */
@@ -824,12 +853,11 @@ export class PluginHost {
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
     );
-    const words = this.#words.get(id);
     const shownIn = this.langOf(id);
     return Object.freeze({
       id,
       /** Its words in the screens' language, and the formats (localization design, section 8). */
-      l10n: Object.freeze({ lang: lang(), dir: dir(), ...wordsOver(words?.messages ?? null), format: FORMATS }),
+      l10n: Object.freeze({ lang: lang(), dir: dir(), ...wordsOver(() => this.#words.get(id)?.messages ?? null), format: FORMATS }),
       register: (/** @type {string} */ kind, /** @type {any} */ item) => {
         // A kind with a call of its own is checked and stamped there.
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';

@@ -3,7 +3,6 @@
   "name": "Gemini API",
   "version": "0.10.2",
   "api": 2,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "description": "Talks to Gemini's own API (Interactions) for chat, transcription and voices: every audio format, Gemini 3's thought signatures carried exactly, its usage with cached and thinking tokens, a voice that streams, Google keeping the conversation between turns, so each sends only what is new, and Google Search on a paid key, its answer shown as Google gave it.",
   "provides": { "endpoint-type": ["gemini", "gemini-transcription", "gemini-speech"] }

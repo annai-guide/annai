@@ -3,7 +3,6 @@
   "name": "Local speech server",
   "version": "1.3.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
   "category": "speech",
   "keywords": [

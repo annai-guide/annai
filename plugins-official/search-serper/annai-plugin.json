@@ -3,7 +3,6 @@
   "name": "Serper Search",
   "version": "0.2.2",
   "api": 2,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "description": "Google's results through Serper, with its answer box. 2,500 free searches on sign-up, no card.",
   "category": "tools",

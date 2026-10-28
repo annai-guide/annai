@@ -4,7 +4,6 @@
   "version": "2.2.2",
   "catchAll": true,
   "api": 2,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "files": [
     "probe.js"

@@ -154,5 +154,38 @@
       "name": "WebDAV",
       "description": "ブラウザからのアクセスを許可している WebDAV サーバーのフォルダーに、すべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
     }
+  },
+  "translations": {
+    "anthropic-messages": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
+    "chat-completions": "549e6b39331df19eca883923129a4295e19c3a46e7d556f59afbbb83b73f4efd",
+    "gemini-api": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
+    "gemini-live": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
+    "openai-realtime": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
+    "openai-responses": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
+    "provider-another-address": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
+    "provider-anthropic": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
+    "provider-deepseek": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
+    "provider-gemini": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
+    "provider-groq": "971743244bdf7d3855a8504df4f841a039c245a7964b28fb1771f1afaa8d62fc",
+    "provider-llamacpp": "361425bae75413a650931ae2dac1a74847a06bf3a27628364e79e1644865a032",
+    "provider-lmstudio": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
+    "provider-local-speech": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
+    "provider-mistral": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
+    "provider-ollama": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
+    "provider-openai": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
+    "provider-openrouter": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
+    "provider-scripted": "75a78e1a3a3b216317a2041eba975e7e7d34a02c5cd74799a3a5412aa59f6f8e",
+    "provider-sglang": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
+    "provider-vllm": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
+    "remote-trace": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
+    "scripted-model": "e311b1c502a9134d1f71c86cff7dd64e71eed6003f17c237d639124c550faf69",
+    "search-searxng": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
+    "search-serper": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
+    "search-tavily": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
+    "speech-openai": "a9b094294d25ea2bda1dea0be13887ffdbefc6d0735aee3f4af72ae4eb83002b",
+    "storage-forgejo": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
+    "storage-github": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
+    "storage-s3": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
+    "storage-webdav": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f"
   }
 }

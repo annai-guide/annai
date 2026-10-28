@@ -132,20 +132,33 @@ function count(words, n, one, other, values) {
 
 /**
  * A plugin's words (localization design, section 8): t, tc and plural over its messages for the screens (null: its own words), and
- * both, { message, shown }: English for what is kept or a model reads, and the screens' words (the shown rule). @param {Record<string, any> | null} words
+ * both, { message, shown }: English for what is kept or a model reads, and the screens' words (the shown rule). words: its messages,
+ * or how to read them now, so words that arrive while it runs (annai's own plugins' fetched translations) are used from then on.
+ * @param {Record<string, any> | null | (() => Record<string, any> | null)} words
  */
 export function wordsOver(words) {
+  const read = typeof words === 'function' ? words : () => words;
+  let had = read();
   /** @type {WeakMap<TemplateStringsArray, string>} */
-  const cache = new WeakMap();
-  /** @param {TemplateStringsArray} strings @param {...unknown} values */
-  const tr = (strings, ...values) => say(strings, values, undefined, words, cache);
+  let cache = new WeakMap();
+  /** The words now; what was made from others is made again. */
+  const now = () => {
+    const w = read();
+    if (w !== had) [had, cache] = [w, new WeakMap()];
+    return w;
+  };
+  /** @param {TemplateStringsArray} strings @param {unknown[]} values @param {string | undefined} context */
+  const tr = (strings, values, context) => {
+    const w = now();
+    return say(strings, values, context, w, cache);
+  };
   return {
-    t: tr,
+    t: (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => tr(strings, values, undefined),
     /** @param {string} context */
-    tc: (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => say(strings, values, context, words, cache),
+    tc: (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => tr(strings, values, context),
     /** @param {number} n @param {string} one @param {string} other @param {...unknown} values */
-    plural: (n, one, other, ...values) => count(words, n, one, other, values),
+    plural: (n, one, other, ...values) => count(now(), n, one, other, values),
     /** @param {TemplateStringsArray} strings @param {...unknown} values */
-    both: (strings, ...values) => ({ message: english(strings, values), shown: tr(strings, ...values) }),
+    both: (strings, ...values) => ({ message: english(strings, values), shown: tr(strings, values, undefined) }),
   };
 }
