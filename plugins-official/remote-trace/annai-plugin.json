@@ -1,8 +1,8 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.2.0",
-  "api": 1,
+  "version": "0.2.1",
+  "api": 2,
   "l10n": ["ja", "zh-Hans"],
   "category": "developer",
   "entry": "index.js",

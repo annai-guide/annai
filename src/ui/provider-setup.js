@@ -4,7 +4,7 @@ import { platform, isStandalone } from './platform.js';
 import { setKey } from '../core/llm/config.js';
 import { setupOf } from '../core/llm/setup.js';
 import { descOrigins, addressShown } from '../core/llm/provider-desc.js';
-import { officialPlugins, makesProvider, namesReady, pluginName } from '../core/llm/official.js';
+import { officialPlugins, makesProvider, pluginName, officialName } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
 import { NO_SERVICE } from './screens/plugin-install.js';
 import { list, sentences } from './format.js';
@@ -86,8 +86,7 @@ export function setupUi(ctx, pluginId, { added } = {}) {
     keep: async (providerId, key) => {
       const rec = (await ctx.llm.config()).providers[providerId];
       if (!rec) throw new Error(t`That provider no longer exists. Add it again in Settings → Models.`);
-      await namesReady();
-      const mine = pluginName((await ctx.plugins.installed())[pluginId], pluginId, ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId);
+      const mine = await pluginName(ctx.plugins, (await ctx.plugins.installed())[pluginId], pluginId, ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId);
       if (rec.plugin !== pluginId) throw new Error(t`That provider isn't one of ${mine}'s, so it can't keep a key for it.`);
       await setKey(ctx.store, providerId, await take(key));
       await ctx.llm.unbench(providerId);
@@ -116,7 +115,7 @@ export const isProviderEntry = makesProvider;
  * is data, and may name anything (review M1). One that then gives no provider is removed again. @param {any} ctx @param {any} entry
  */
 export async function installMissing(ctx, entry) {
-  if (!isProviderEntry(entry)) throw new Error(entry?.name ? t`${entry.name} isn't a model provider.` : t`That plugin isn't a model provider.`);
+  if (!isProviderEntry(entry)) throw new Error(entry?.name ? t`${officialName(entry.id, entry.name)} isn't a model provider.` : t`That plugin isn't a model provider.`);
   try {
     await ctx.llm.installProvider(entry.id, { official: true });
   } catch (e) {
@@ -252,7 +251,7 @@ export function filledWords(name, filled, costs = {}, freeTier = false) {
 export async function sayFilled(ctx, plugin, filled, costs = {}) {
   const src = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === plugin);
   // Its plugin by name: annai's own in the screens' words (decision 10).
-  const name = src ? pluginName((await ctx.plugins.installed())[plugin], plugin, src.name) : t`The provider`;
+  const name = src ? await pluginName(ctx.plugins, (await ctx.plugins.installed())[plugin], plugin, src.name) : t`The provider`;
   const words = filledWords(name, filled, costs, Boolean(src?.provider.freeTier));
   if (words) ctx.notices.toast(words);
 }

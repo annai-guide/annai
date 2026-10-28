@@ -4,7 +4,7 @@ import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
 import { NO_SERVICE } from './plugin-install.js';
 import { sayFilled } from '../provider-setup.js';
-import { officialPlugins, catalogWords, shownEntry } from '../../core/llm/official.js';
+import { officialPlugins, officialWords, shownEntry } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
 import { searchCatalog, squash } from '../../core/search.js';
 import { CATEGORIES } from '../../core/llm/provider-desc.js';
@@ -132,9 +132,9 @@ export function byKind(found, typed, item) {
 export async function renderAdd(ctx, route) {
   const { kind, ability, from } = route.params;
   const [back, backText] = Object.hasOwn(FROM, from) ? FROM[from] : ['#/plugins', t`Plugins`];
-  const [listed, words, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), catalogWords(), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
-  // annai's catalog in the screens' language, where its words are had; else in English, marked so.
-  const catalog = listed?.map((p) => shownEntry(p, words)) ?? null;
+  const [listed, installed, cfg] = await Promise.all([officialPlugins().catch(() => null), ctx.plugins.describe(), ctx.llm?.config().catch(() => null)]);
+  // annai's catalog in the screens' language, where its words are had (read beside it); else in English, marked so.
+  const catalog = listed?.map((p) => shownEntry(p, officialWords())) ?? null;
   /** @type {Record<string, number>} */
   const configured = {};
   for (const p of Object.values(cfg?.providers ?? {})) configured[p.plugin] = (configured[p.plugin] ?? 0) + 1;

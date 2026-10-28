@@ -10,6 +10,7 @@ import { checkRequires, installWith, checkPackageId } from '../../core/requires.
 import { NAMED } from '../../core/registry.js';
 import { readConfig, providerOf } from '../../core/llm/config.js';
 import { listTargets } from '../../core/backup-targets.js';
+import { kindNames } from '../../core/backup.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = t`This plugin gets full access to your trips and API keys.`;
@@ -22,7 +23,8 @@ export async function keyNames(plugins, only) {
   const ws = plugins.ws;
   const ids = only ?? /** @type {string[]} */ (await ws.store.tx(['secrets'], 'readonly', (/** @type {any} */ tx) => tx.listSecretIds()).catch(() => []));
   const providers = (await readConfig(ws).catch(() => null))?.providers ?? {};
-  const places = await listTargets(ws).catch(() => []);
+  // A place by its kind's name, as Backups names it.
+  const places = await Promise.all((await listTargets(ws).catch(() => [])).map(async (p) => ({ id: p.id, name: (await kindNames(plugins.registry, plugins, p.type)).shown })));
   const rows = await plugins.describe().catch(() => []);
   /** @type {Set<string>} */
   const names = new Set();

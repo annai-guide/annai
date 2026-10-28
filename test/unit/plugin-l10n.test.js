@@ -192,6 +192,24 @@ test('an address install brings the translations its manifest lists', async () =
   const without = await fetchPackage('https://x.example/p/annai-plugin.json', { fetch: get });
   assert.deepEqual([...without.keys()], ['annai-plugin.json']);
   assert.match((await inspectPackage(without)).left[0].why, /missing/);
+  // A request that gets no answer (a network blip) is no answer that it isn't there: the install fails, to be tried again.
+  site.set('https://x.example/p/l10n/ja.json', JSON.stringify(JA));
+  const blip = async (/** @type {string} */ url) => { if (url.endsWith('/l10n/ja.json')) throw new TypeError('Failed to fetch'); return get(url); };
+  // A file after the manifest is named: a 404 without CORS headers looks the same, and annai has just read the manifest from that site.
+  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: blip }), /annai couldn't read l10n\/ja.json from x.example, a file its annai-plugin.json names/);
+  // A connection that drops mid-file is no answer either, and names the file too.
+  const cut = async (/** @type {string} */ url) => {
+    if (!url.endsWith('/l10n/ja.json')) return get(url);
+    return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"messages":')); c.error(new TypeError('network error')); } }));
+  };
+  await assert.rejects(fetchPackage('https://x.example/p/annai-plugin.json', { fetch: cut }), /annai couldn't read l10n\/ja.json from x.example, a file its annai-plugin.json names/);
+  // Only an answer that it isn't there (404, 410, or 403 as S3 says it) leaves it out; a busy site (503, 429) fails, as a blip does.
+  for (const [status, out] of [[404, true], [410, true], [403, true], [503, false], [429, false], [500, false]]) {
+    const answer = async (/** @type {string} */ url) => (url.endsWith('/l10n/ja.json') ? new Response('', { status: /** @type {number} */ (status) }) : get(url));
+    const got = fetchPackage('https://x.example/p/annai-plugin.json', { fetch: answer });
+    if (out) assert.deepEqual([...(await got).keys()], ['annai-plugin.json']);
+    else await assert.rejects(got, new RegExp(`x.example answered ${status} for l10n/ja.json`));
+  }
 });
 
 test("a plugin's refusal is kept in its English, its words beside it with their language, shown only in that language", () => {
@@ -253,7 +271,7 @@ test("annai.l10n.format is the four formats official plugins use, with the signa
 });
 
 test("an official plugin is named in the screens' words wherever it is named: Updates, its card, and what a plugin needs", async () => {
-  const { namesReady, officialName, officialPlugins } = await import('../../src/core/llm/official.js');
+  const { officialName, officialPlugins } = await import('../../src/core/llm/official.js');
   const { offerWords } = await import('../../src/ui/plugin-updates.js');
   const { checkRequires } = await import('../../src/core/requires.js');
   setWords('ja', {});
@@ -261,36 +279,98 @@ test("an official plugin is named in the screens' words wherever it is named: Up
   const fetch = async (/** @type {string} */ url) => new Response(JSON.stringify(served.get(url) ?? {}), { status: served.has(url) ? 200 : 404 });
   assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'Remote trace (for developers)', 'before the catalog is read: its English');
   await officialPlugins({ fetch });
-  await namesReady({ fetch });
   assert.equal(officialName('remote-trace', 'Remote trace (for developers)'), 'リモート記録（開発者向け）');
   assert.match(offerWords({ id: 'remote-trace', name: 'Remote trace (for developers)', installed: '0.1.0', available: '0.2.0' }), /^リモート記録（開発者向け） 0\.1\.0 → 0\.2\.0$/);
   assert.equal(offerWords({ id: 'remote-trace', name: 'Their trace', installed: '1', available: '2', url: 'https://x.example/p' }), 'Their trace 1 → 2', "a third party's from an address: as written");
+  const { waitingWords } = await import('../../src/ui/screens/settings.js');
+  assert.match(String(waitingWords(false, [{ id: 'remote-trace', name: 'Remote trace (for developers)' }])), /リモート記録（開発者向け）/);
   const k = await hostKit();
   const entry = /** @type {any} */ ({ id: 'remote-trace', name: 'Remote trace (for developers)', version: '0.2.0', files: {} });
   await assert.rejects(checkRequires(k.host, [{ id: 'remote-trace', version: '^1' }], [entry], { who: 'Tides' }), (e) => /リモート記録（開発者向け）/.test(/** @type {any} */ (e).shown) && /Remote trace \(for developers\)/.test(/** @type {any} */ (e).message));
+  // A catalog entry that isn't a model provider, named on the provider page's tap.
+  const { installMissing } = await import('../../src/ui/provider-setup.js');
+  await assert.rejects(installMissing({}, entry), /^Error: リモート記録（開発者向け） isn't a model provider/);
 });
 
-test("a default-named place's hold keeps no screens' words: its said names no place, and its kind is named where it is shown", async () => {
+test("every place is named by its kind, as the screens name it: an old place and a new one alike, and a hold keeps only the kind (data, not words)", async () => {
   const { memoryPlace, device } = await import('./backup-kit.js');
-  const { setTarget } = await import('../../src/core/backup-targets.js');
+  const { setTarget, getTarget } = await import('../../src/core/backup-targets.js');
   const { holdWords } = await import('../../src/core/backup.js');
   setWords('ja', {});
   const place = memoryPlace();
   // A kind named in the screens' words, as S3-compatible storage is: S3 互換ストレージ.
   Object.assign(place.type, { name: 'メモリー', stores: 'file' });
   const d = await device(place);
+  const old = await d.backups.add('memory');
+  await setTarget(d.ws, old, { name: 'Memory' }); // stored by an annai from before
   const id = await d.backups.add('memory');
+  assert.deepEqual((await d.backups.list()).map((p) => p.name), ['メモリー', 'メモリー']);
   await setTarget(d.ws, id, { encrypt: true });
   await assert.rejects(d.backups.backUp(id), (e) => /メモリー/.test(/** @type {any} */ (e).shown) && !/メモリー/.test(/** @type {any} */ (e).message));
-  const raw = /** @type {any} */ ((await import('../../src/core/backup-targets.js')).getTarget);
-  const hold = (await raw(d.ws, id)).hold;
+  const hold = /** @type {any} */ (await getTarget(d.ws, id))?.hold;
   assert.doesNotMatch(JSON.stringify(hold), /[\p{Script=Katakana}\p{Script=Han}]/u);
-  assert.deepEqual(hold.said, { code: 'passphrase', name: '', type: 'memory' });
+  assert.deepEqual(hold.said, { code: 'passphrase', type: 'memory' });
   const shown = /** @type {any} */ (await d.backups.get(id));
   assert.match(holdWords(shown.hold, shown.name), /メモリー/);
-  // On English screens (a backup restored there), the kind's name as that device names it.
   setWords('en', null);
   assert.equal(holdWords(shown.hold, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
-  // A hold from before, with the place's name stored, says it.
-  assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'Home NAS' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Home NAS, then save.');
+  // A hold from before, with a name in its said, shows by its kind too.
+  assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'S3-compatible storage' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
+});
+
+test("a place whose plugin is installed but off is named by that plugin, not its id; annai's own by its own translation; the full-access warning names it", async () => {
+  const { createBackups } = await import('../../src/core/backup.js');
+  const { addTarget, setTargetSecret } = await import('../../src/core/backup-targets.js');
+  const { keyNames } = await import('../../src/ui/screens/plugin-install.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  const place = (/** @type {string} */ id, /** @type {any} */ more = {}) => files({ 'annai-plugin.json': JSON.stringify({ id, name: 'Acme Vault', version: '1.0.0', api: 1, provides: { 'storage-type': [`${id}-kind`] }, ...more }) });
+  await k.host.install(place('acme-vault'));
+  const official = place('acme-own', { name: 'Own vault', l10n: ['ja'] });
+  official.set('l10n/ja.json', new TextEncoder().encode(JSON.stringify({ manifest: { name: '自分の金庫' } })));
+  await k.host.install(official, { source: 'official' });
+  const backups = createBackups({ store: k.store, ws: k.ws, registry: k.registry, plugins: k.host, app: 'test', label: 'iPhone' });
+  const a = await addTarget(k.ws, { type: 'acme-vault-kind' });
+  const b = await addTarget(k.ws, { type: 'acme-own-kind' });
+  assert.deepEqual((await backups.list()).map((p) => p.name), ['Acme Vault', '自分の金庫']);
+  await setTargetSecret(k.store, a, { password: 'hunter2-hunter2' });
+  assert.ok((await keyNames(k.host)).includes('Acme Vault'), 'the warning names the place by its kind');
+  assert.ok(b);
+});
+
+
+test("an installed official plugin is named from its own translation on the device, running or off, with no request: pluginName", async () => {
+  const { pluginName } = await import('../../src/core/llm/official.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  await k.host.install(pkg(TIDES({ entry: undefined }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  const state = (await k.host.installed())['acme-tides'];
+  assert.equal(await pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐', 'not running');
+  await k.host.start('acme-tides');
+  assert.equal(await pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐');
+  assert.equal(await pluginName(k.host, { ...state, source: 'file' }, 'acme-tides', 'Acme Tides'), 'Acme Tides', "a third party's as written");
+});
+
+test("an update another plugin can't take names that plugin as the screens do: annai's own from its translation", async () => {
+  const { refuseBreaking } = await import('../../src/core/requires.js');
+  setWords('ja', {});
+  const k = await hostKit();
+  await k.host.install(pkg(TIDES({ entry: undefined, requires: [{ id: 'chat-completions', version: '^0' }] }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  await assert.rejects(refuseBreaking(k.host, 'chat-completions', '1.0.0', 'Chat Completions'),
+    (e) => /アクメ潮汐/.test(/** @type {any} */ (e).shown) && /Acme Tides/.test(/** @type {any} */ (e).message));
+});
+
+test("annai.l10n and helpers.addressShown are plugin API 2: annai runs API 1 and 2, refuses a newer one by its number, and each official plugin whose code uses them says API 2", async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const base = { id: 'acme-tides', name: 'Acme Tides', version: '1.0.0' };
+  checkManifest({ ...base, api: 1 });
+  checkManifest({ ...base, api: 2 });
+  assert.throws(() => checkManifest({ ...base, api: 3 }), /was made for plugin API 3; this version of annai supports API 2 and older/);
+  const root = new URL('../../plugins-official/', import.meta.url);
+  for (const id of await readdir(root)) {
+    const manifest = JSON.parse(await readFile(new URL(`${id}/annai-plugin.json`, root), 'utf8'));
+    const code = (await readdir(new URL(`${id}/`, root), { recursive: true })).filter((f) => f.endsWith('.js'));
+    const reads = (await Promise.all(code.map((f) => readFile(new URL(`${id}/${f}`, root), 'utf8')))).some((s) => /\bl10n\b|\baddressShown\b/.test(s));
+    assert.equal(manifest.api, reads ? 2 : 1, `${id}: an older annai refuses it by its API, in words, rather than run it without annai.l10n`);
+  }
 });
