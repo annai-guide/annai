@@ -48,11 +48,17 @@ import { screenToResume } from '../ui/resume.js';
 import { controllerReady as taken, pluginsMayLoad } from './claim.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
+/** This page's voice, once it has one: a reload waits for a tap's sound unlock (a reload while it starts deadlocks WebKit on Linux). */
+/** @type {Voice | null} */
+let voiceNow = null;
 /**
- * annai's one way to restart (the third review of phone-fixes-1): Updates.restart once it exists, which waits for Shiori's turn and a
- * tap's sound unlock (a reload while it starts deadlocks WebKit on Linux); a plain reload before then.
+ * A tab that has stopped (another took annai over) or never started reloads once a tap's sound unlock has settled: no turn to wait
+ * for, its store is closed, and no new version is swapped in (the reviews of phone-fixes-1). A running annai restarts with Updates.restart.
  */
-let restartNow = () => { location.reload(); };
+const reloadSettled = async () => {
+  await voiceNow?.settled();
+  location.reload();
+};
 // Whether the user has done anything on this page: annai never reloads itself over it (claim.js). Where the browser
 // doesn't say (Safari before 16.4), any tap or key since the page loaded counts.
 let acted = false;
@@ -74,7 +80,7 @@ async function boot() {
         title: t`annai was opened in another tab`,
         body: t`This tab has stopped, so your trips stay consistent.`,
         action: t`Use it here instead`,
-        onAction: () => restartNow(),
+        onAction: () => { reloadSettled(); },
       });
     },
   });
@@ -126,6 +132,7 @@ async function boot() {
   const voice = new Voice({ llm, ws, registry, store, locale: navigator.language, where: platform() });
   voice.refresh().catch(() => {});
   // Sound may play only after a tap (an iPhone rule, spec §10.1): every tap tries until one works.
+  voiceNow = voice;
   armUnlock(window, () => voice.unlock());
 
   // Shiori (spec §6), talking about the trip that was open last: one half, or two when a Koe model is set
@@ -203,12 +210,11 @@ async function boot() {
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }) } });
   updates.agent = agent;
   updates.voice = voice;
-  restartNow = () => updates.restart();
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
   updates.notices = shell.notices;
   offerReload = (names) => {
     offerReload = () => {};
-    shell.notices.card(reloadCard(names, () => restartNow()));
+    shell.notices.card(reloadCard(names, () => updates.restart()));
   };
   updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: t`Notifications`, run: () => { location.hash = '#/notifications'; } }] });
@@ -389,5 +395,5 @@ boot().catch((e) => {
     h('h1', { class: 'title', text: t`annai couldn't start` }),
     h('p', { text: messageOf(e) }),
     h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
-    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restartNow() }, t`Try again`))));
+    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => { reloadSettled(); } }, t`Try again`))));
 });

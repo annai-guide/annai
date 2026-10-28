@@ -232,8 +232,7 @@ export function screensRow(ctx, app) {
     }
     note.textContent = t`Saved. Restarting…`;
     // Called off ("Don't restart"): the row works again, and the change waits for the next restart.
-    if (!ctx.updates) location.reload();
-    else if (!(await ctx.updates.restart())) {
+    if (!(await ctx.updates.restart())) {
       select.disabled = false;
       note.textContent = t`Saved. It applies the next time annai restarts.`;
     }
