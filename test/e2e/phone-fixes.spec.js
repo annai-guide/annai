@@ -255,3 +255,24 @@ for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
     });
   }
 }
+
+test("the model's name is against the role's first model, and a line older than the last 400 model turns still has it (the review of item 12)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  await page.evaluate(async ({ trip }) => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { logEvent } = await import(at('/src/core/events.js'));
+    const store = await createIdbStore();
+    const log = (/** @type {string} */ type, /** @type {any} */ data) => logEvent(store, trip, { type, actor: 'system', data });
+    // The warm model answered first; the role's first is Opus.
+    await log('model.turn', { role: 'main', level: 'low', answeredBy: 'Claude Sonnet 5.5', first: 'Claude Opus 5.5', attempts: [{ name: 'Claude Sonnet 5.5', outcome: 'ok' }], wake: 'w-a' });
+    await log('out.speak', { id: 's1', wake: 'w-a', text: 'First line.' });
+    // A long piece of work with no lines: 450 turns of another wake.
+    for (let i = 0; i < 450; i++) await log('model.turn', { role: 'main', level: 'low', answeredBy: 'Claude Opus 5.5', first: 'Claude Opus 5.5', attempts: [{ name: 'Claude Opus 5.5', outcome: 'ok' }], wake: 'w-b' });
+    await log('out.speak', { id: 's2', wake: 'w-b', text: 'Done.' });
+    store.close();
+  }, { trip });
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo .by')).toHaveText(["Claude Sonnet 5.5 · Claude Opus 5.5 didn't answer", 'Claude Opus 5.5']);
+});

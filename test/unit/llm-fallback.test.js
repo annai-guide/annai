@@ -361,6 +361,14 @@ test('prefer: the model whose cache is warm is tried first (spec §9.6, switchin
   assert.equal((await call(s, { prefer: 'm-gone' })).reply.text, 'A.');
 });
 
+test("a model turn names the role's first model, whichever was tried first: the Conversation's \"· … didn't answer\" is against it (the review of phone-fixes-1)", async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]]);
+  await call(s, { prefer: 'm-1' });
+  await call(s);
+  const turns = (await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }))).map((e) => [e.data.answeredBy, e.data.first]);
+  assert.deepEqual(turns, [['model-1', 'model-0'], ['model-0', 'model-0']]);
+});
+
 test('an upload the provider no longer knows: the endpoint forgets its uploads, and the same model is tried once more (spec §9.9)', async () => {
   const s = setup([[{ error: 'upload', status: 404, message: 'File `file_1` not found.' }, { text: 'Seen.' }], [{ text: 'B.' }]]);
   let forgot = 0;

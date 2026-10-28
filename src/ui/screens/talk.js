@@ -280,7 +280,8 @@ export async function renderTalk(ctx) {
   const answered = new Map();
   /** @param {any} d a model turn's data */
   const heard = (d) => {
-    const first = d.attempts?.[0]?.name;
+    // The role's first model (since phone-fixes-1's review); an older turn has only the first one tried.
+    const first = 'first' in d ? d.first : d.attempts?.[0]?.name;
     if (d.wake && d.answeredBy) answered.set(d.wake, first && first !== d.answeredBy ? t`${d.answeredBy} · ${first} didn't answer` : d.answeredBy);
   };
   /** A line of hers, quietly naming the model that wrote it (the user, 2026-10-28), where a model turn of its wake is known. @param {any} d @param {HTMLElement} li */
@@ -414,9 +415,15 @@ export async function renderTalk(ctx) {
   let wasShown = false;
   const stop = await follow(agent, scope, {
     // The lines, and the model turns that name who wrote them, in the order they came.
-    read: async () => (await ctx.store.tx(['events'], 'readonly', async (/** @type {any} */ tx) => [
-      ...await tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }), ...await tx.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 400 }),
-    ])).sort((/** @type {any} */ a, /** @type {any} */ b) => a.seq - b.seq),
+    read: async () => {
+      const lines = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }));
+      const oldest = lines.at(-1)?.seq;
+      // The model turns behind them: all since the oldest line, and the last few before it (the turns that wrote the first lines).
+      const turns = oldest === undefined ? [] : await ctx.store.tx(['events'], 'readonly', async (/** @type {any} */ tx) => [
+        ...await tx.listEvents(scope, { types: ['model.turn'], before: oldest, reverse: true, limit: 20 }), ...await tx.listEvents(scope, { types: ['model.turn'], after: oldest }),
+      ]);
+      return [...lines, ...turns].sort((/** @type {any} */ a, /** @type {any} */ b) => a.seq - b.seq);
+    },
     show: async (e) => {
       if (e.type === 'model.turn') return void heard(e.data ?? {});
       if (!SHOWN.includes(e.type)) return;

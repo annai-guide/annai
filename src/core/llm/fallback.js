@@ -406,11 +406,13 @@ export async function callRole(c) {
    * @param {import('./contract.js').Part[]} [parts] @param {{ url: string, title?: string }[]} [citations]
    */
   const record = (answeredBy, text, stop, reasoning, parts, citations) => c.trace?.turn(
-    { role, level, answeredBy, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
+    { role, level, answeredBy, first, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
     text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
   const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (role === KOE_CLASSIC ? 8 : 30)) * 1000;
   const list = c.models ?? candidates(config, role);
+  // The role's first model, by name, whichever is tried first: the Conversation says when another answered (null: none).
+  const first = list[0] && config.models[list[0]] ? modelOf(config.models[list[0]]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
   let began = false;
