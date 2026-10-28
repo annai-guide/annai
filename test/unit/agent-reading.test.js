@@ -4,7 +4,10 @@ import { noReader, readerRoles } from '../../src/core/agent/reading.js';
 
 test('with nothing here that reads a PDF, the note names the setting, and the plugin only when asked to', () => {
   assert.equal(noReader('pdf', { plugin: false }), "No model here can read PDFs, so what it says can't be told. Tell the user what fixes it: a model that reads PDFs (Takes PDFs on its page in Settings → Models).");
-  assert.match(noReader('pdf', { plugin: true }), /Takes PDFs on its page in Settings → Models\), or the PDF pages plugin \(Settings → Plugins → Add\), which shows a PDF's pages to a model that sees photos\.$/);
+  // "Settings → Plugins", not "→ Add": it may be installed but off, or crashed (the review of reading-files).
+  assert.match(noReader('pdf', { plugin: true }), /Takes PDFs on its page in Settings → Models\), or the PDF pages plugin \(Settings → Plugins\), which shows a PDF's pages to a model that sees photos\.$/);
+  // The plugin runs, but nothing here sees photos: the other fix is a model that does.
+  assert.match(noReader('pdf', { photos: true }), /Takes PDFs on its page in Settings → Models\), or a model that sees photos \(Takes photos on its page in Settings → Models\), which the PDF pages plugin shows a PDF's pages to\.$/);
   assert.match(noReader('image', { plugin: true }), /^No model here can see photos, .*Takes photos on its page in Settings → Models\)\.$/);
   assert.doesNotMatch(noReader('image', { plugin: true }), /PDF pages/);
 });
