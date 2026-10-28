@@ -877,6 +877,11 @@ EOF
 
 ### Task 9: Check, size, catalog, docs
 
+**Approved limitations to write to `docs/limitations.md` in this task** (the user approved all three on 2026-10-28: "Accept"). Write one `### <short name>` each, with kind, what the user sees, why, revisit when, and approved (date and the user's words), in the file's existing style:
+1. **At most the first 10 pages** of a PDF are drawn, at 1600 px, for a model that sees photos but can't read PDFs. The model is told how many pages were left out. A model that reads PDFs itself gets the whole file. Revisit if a booking needs more.
+2. **JPEG 2000 and JBIG2 pictures** inside a PDF may come out blank when the plugin draws a page. The text still draws. Revisit if a booking PDF the user gets shows it.
+3. **iOS 16.4–17.3 is untested.** Where PDF.js can't run, the plugin says so in words instead of crashing, and Safari's own first-page preview still works. Revisit if someone on an older iPhone reports it.
+
 **Files:**
 - Modify: `scripts/size.mjs` (`BUDGET`, with a note), `README.md:35` (the confirmations line), `docs/superpowers/specs/2026-10-15-annai-design.md` (a last read of §5.1 Kinds, §6.5, §7.2, §9.6, §18), `docs/plugins.md` (a last read)
 
