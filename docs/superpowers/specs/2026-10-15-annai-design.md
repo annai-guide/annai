@@ -447,7 +447,7 @@ Shiori addresses the user **only** through output tools. Any plain text the mode
 | `wait(seconds)` | Keeps listening. | What was heard. |
 | `sleep()` | Ends the turn and turns the mic off. In the same response as `speak`, it stops `speak` from listening. | — |
 
-While Shiori is two halves (§6.8), these are Koe's; Kokoro's are gated in code while Koe talks, and Kokoro reaches the user through `tell_koe`. Koe also has `already_told()`, text or live: Kokoro's note adds nothing to what Koe has told the user, so it is settled without being said again, and annai doesn't show it (below).
+While Shiori is two halves (§6.8), these are Koe's; Kokoro's are gated in code while Koe talks, and Kokoro reaches the user through `tell_koe`. Koe also has `already_told()`, text or live: Kokoro's note adds nothing to what Koe has told the user, so it is settled without being said again, and annai doesn't show it (below). A note of Kokoro's that comes while Koe's model call is still answering an earlier one, before anything of that answer is out (Koe · Classic), cuts the call, which goes again with both, so Koe says them once (the user, 2026-10-28: Kokoro, on a weak model, said the same thing twice, and Koe said each).
 
 These rules make the loop work:
 - The `speak` result *is* the follow-up call, so there's always one unless she chose to sleep.
