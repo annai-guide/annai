@@ -697,7 +697,7 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
 
 ## Translations
 
-annai's screens speak the user's language (English, Japanese, Chinese (Simplified) now, and Chinese (Traditional) in draft; see [translating](translating.md)). A plugin
+annai's screens speak the user's language (English, Japanese, Chinese (Simplified) and Chinese (Traditional) now; see [translating](translating.md)). A plugin
 can speak it too: its description, its settings form, its provider's notes, and the words its code shows.
 
 ### What a plugin ships
