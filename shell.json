@@ -1,5 +1,5 @@
 {
-  "build": "5739be7d3b98",
+  "build": "3098e4a708eb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -271,7 +271,7 @@
     "/src/ui/tap-keeps-keyboard.js": "548810a75a20",
     "/src/ui/dock-hides.js": "5dc41158b534",
     "/src/ui/trip-rows.js": "2ed4ee25799b",
-    "/src/ui/tokens.css": "367ac5edecbd",
+    "/src/ui/tokens.css": "aad13be14dc5",
     "/src/ui/unlock.js": "53087aaba2c4",
     "/src/ui/updates.js": "2a4585a6ce98",
     "/src/ui/voice-chip.js": "276ef563bf58",
