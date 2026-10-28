@@ -9,7 +9,7 @@ test('with nothing here that reads a PDF, the note names the setting, and the pl
   assert.doesNotMatch(noReader('image', { plugin: true }), /PDF pages/);
 });
 
-test("the roles that read for a half: Koe's first for Kokoro, Kokoro's first for Koe; an empty Utility is Main's, and a role with no chat model on is left out", () => {
+test("the roles that read for a half: Koe's first for Kokoro; for Koe, Utility's, then Main's; an empty Utility is Main's, and a role with no chat model on is left out", () => {
   const chat = { kind: 'chat', type: 'scripted', on: true };
   /** @type {any} */
   const cfg = {
@@ -22,6 +22,7 @@ test("the roles that read for a half: Koe's first for Kokoro, Kokoro's first for
   assert.deepEqual(readerRoles(cfg, 'koe'), ['main', 'koe-classic']);
   cfg.roles.utility.models = ['u'];
   assert.deepEqual(readerRoles(cfg, 'kokoro'), ['koe-classic', 'utility', 'main']);
+  assert.deepEqual(readerRoles(cfg, 'koe'), ['utility', 'main', 'koe-classic'], "for Koe, Utility's first, then Main's (the coordinator's call, 2026-10-28)");
   cfg.roles.utility.models = ['a'];
   assert.deepEqual(readerRoles(cfg, 'kokoro'), ['koe-classic', 'utility'], "a list that is an earlier one's is left out");
   cfg.roles.utility.models = ['u'];
