@@ -175,7 +175,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, k
     h('h3', { class: 'role-name', text: ROLE_NAMES[role] ?? role }),
     items.length ? h('ol', { class: 'role-list' }, ...items) : h('p', { class: 'sub', text: empty }),
     KOE_NOTES[role] ? h('p', { class: 'sub', text: KOE_NOTES[role] }) : null,
-    role === 'utility' ? h('p', { class: 'sub', text: t`A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.` }) : null,
+    role === 'utility' ? h('p', { class: 'sub', text: t`When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.` }) : null,
     // The catalog, on providers that can hear you, or speak (spec §16.2).
     speech ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: `#/add?ability=${ROLE_KINDS[role][0]}&from=models`, 'aria-label': t`Add a provider for ${called}` }, t`Add a provider`)) : null,
     h('div', { class: 'row' },

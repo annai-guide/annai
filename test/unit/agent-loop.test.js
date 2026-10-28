@@ -10,6 +10,7 @@ import { Agent, UNANSWERED, FORCED_STEPS } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { useClock } from './clock.js';
+import { noReader } from '../../src/core/agent/reading.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
@@ -328,7 +329,7 @@ test("a model that reads no PDFs reads one: a model that does tells it in words,
   none.agent.send('When is check-in?');
   await none.agent.idle();
   const nr = (await none.events(['tool.result'])).find((e) => e.data.name === 'read');
-  assert.match(nr.data.content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
+  assert.equal(nr.data.content.split('\n').at(-1), noReader('pdf', { plugin: true }));
 });
 
 /** A Shiori whose model reads no PDFs, a Utility model that does, and a PDF in the trip. @param {any[]} script @param {any[]} utility */
@@ -422,6 +423,183 @@ test('a PDF read earlier does not close the conversation to a model that reads n
   assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"document"/);
   assert.match(JSON.stringify(asked.messages), /\[a PDF: booking\.pdf\]/);
   assert.equal(k.notices.length, 0);
+});
+
+// Reading files (the bookings design, goals 11 and 12): whoever can read a tool's PDF or photo reads it.
+const sleepStep = { toolCalls: [{ name: 'sleep', input: {} }] };
+/** A trip holding booking.pdf; Utility's model takes uInput when given. @param {any[]} scripts @param {any} opts @param {string[]} [uInput] */
+async function bookingKit(scripts, opts, uInput) {
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await agentKit(scripts, opts);
+  if (uInput) {
+    const u = (await k.llm.config()).models['m-u'];
+    await saveModel(k.ws, { ...u, user: { ...u.user, input: uInput } });
+  }
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  return k;
+}
+/** A fake PDF pages plugin that draws count pages (at most max), tiny JPEG bytes each; asked: what it was asked. @param {any} k @param {number} count */
+function fakePages(k, count) {
+  /** @type {any[]} */
+  const asked = [];
+  const page = (/** @type {number} */ i) => ({ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, i]), width: 1236, height: 1600 });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async (/** @type {Uint8Array} */ b, /** @type {any} */ o) => { asked.push(o); return { count, pages: Array.from({ length: Math.min(count - (o.from ?? 1) + 1, o.max) }, (_, i) => page(i)) }; } });
+  return asked;
+}
+/** Koe's model answering only a reading (a request with no wake line), with text. @param {any} reply */
+const koeReads = (reply) => ({ rules: [{ match: '^$', reply }] });
+
+test("Koe's model reads a PDF for Kokoro before Utility's does (bookings design, goal 11)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Check-in is at 3 PM.')]], { halves: true, models: [{ input: ['text', 'image'] }], koe: { type: koeReads({ text: 'Flight AN 123, SEA 08:05.' }), input: ['text', 'pdf'] }, utility: [{ text: 'never' }] }, ['text', 'pdf']);
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'kokoro');
+  assert.match(r.data.content, /\nWhat it says \(told by model-koe, as you can't read PDFs\): Flight AN 123, SEA 08:05\.$/);
+  assert.equal((k.sent['model-u'] ?? []).length, 0, 'Utility not asked');
+});
+
+test("with no Koe model that reads PDFs, Utility's reads it (the existing rule)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Check-in is at 3 PM.')]], { halves: true, models: [{ input: ['text', 'image'] }], koe: { type: koeReads({ text: 'never' }), input: ['text'] }, utility: [{ text: 'Flight AN 123.' }] }, ['text', 'pdf']);
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'kokoro');
+  assert.match(r.data.content, /told by model-u, as you can't read PDFs/);
+  assert.doesNotMatch(JSON.stringify(k.sent['model-koe'] ?? []), /"type":"document"/);
+});
+
+test("a reading has the reading's time, not the role's wait: Koe's short first-words wait doesn't cut a PDF", async (t) => {
+  useClock(t);
+  // A second is 100 ms here, so the PDF's 90 seconds are 9 s; Koe's wait for first words is 1 s (real time, as a role's wait is), and her reading takes 1.5 s.
+  const k = await bookingKit([[readPdf, say('Check-in is at 3 PM.')]], { halves: true, agent: { secondMs: 100 }, models: [{ input: ['text', 'image'] }], koe: { type: koeReads({ delayMs: 1500, text: 'Flight AN 123, SEA 08:05.' }), input: ['text', 'pdf'] } });
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { ...cfg.roles['koe-classic'], firstOutputSeconds: 1 } });
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'kokoro');
+  assert.match(r.data.content, /told by model-koe, as you can't read PDFs\): Flight AN 123/);
+  const describe = (await k.events(['model.turn'])).find((e) => e.data.tag === 'describe');
+  assert.deepEqual(describe.data.attempts.map((/** @type {any} */ a) => a.outcome), ['ok']);
+});
+
+test('Koe still hands a PDF she can\'t read to Kokoro at once', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[sleepStep]], { koe: { type: [readPdf, sleepStep], input: ['text'] }, utility: [{ text: 'Flight AN 123.' }] }, ['text', 'pdf']);
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  const koeRead = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'koe');
+  assert.match(koeRead.data.content, /\nYou can't read PDFs; ask Kokoro about it\.$/);
+  assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'describe' && e.data.wake === koeRead.data.wake).length, 0);
+});
+
+test('with no reader, a model that sees photos gets the PDF\'s pages as pictures, kept with the result (goal 12)', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Your flight leaves at 8:05.')]], { models: [{ input: ['text', 'image'] }] });
+  const asked = fakePages(k, 3);
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /^The PDF \/trip\/files\/booking\.pdf\.\nIts pages as pictures, as you can't read PDFs: pages 1–3 of 3\.$/);
+  assert.equal(r.data.document, undefined);
+  assert.equal(r.data.images.length, 3);
+  for (const i of r.data.images) assert.match(i.hash, /^[0-9a-f]{64}$/, 'each page is a blob the result names');
+  const next = k.sent['model-0'].at(-1).messages.at(-1).parts;
+  assert.equal(next.filter((/** @type {any} */ p) => p.type === 'image').length, 3);
+  assert.deepEqual(asked.map((/** @type {any} */ o) => [o.from ?? 1, o.max, o.edge]), [[1, 10, 1600]], 'the plugin was asked once, within the limits');
+});
+
+test('a PDF of 23 pages: the first 10 go, and the line says the rest weren\'t sent', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  fakePages(k, 23);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /pages 1–10 of 23; the rest weren't sent\.$/);
+  assert.equal(r.data.images.length, 10);
+});
+
+test('a model that sees no photos gets the pages told in words by a reader role\'s model that sees them', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123, SEA 08:05.' }] }, ['text', 'image']);
+  fakePages(k, 3);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /What it says \(told by model-u from pictures of its pages, as you can't read PDFs\): Flight AN 123, SEA 08:05\.$/);
+  assert.equal(r.data.images, undefined);
+  assert.equal(k.sent['model-u'][0].messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image').length, 3);
+});
+
+test('pages that take longer than the PDF\'s limit stop there, and the result says it couldn\'t be read in time', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  let sawAbort = false;
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'slow', pages: (/** @type {any} */ _b, /** @type {any} */ o) => new Promise((_, no) => o.signal.addEventListener('abort', () => { sawAbort = true; no(new Error('Stopped.')); })) });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.equal(sawAbort, true);
+  assert.match(r.data.content, /\nIt couldn't be described in time \(90 seconds\)\.$/);
+  assert.equal(r.data.images, undefined);
+});
+
+test('pages the plugin can\'t draw (a locked PDF) say why, and the note names the setting without the plugin', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'locked', pages: async () => { throw new Error("This PDF is locked with a password, so its pages can't be drawn."); } });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nThe PDF pages plugin couldn't draw its pages: This PDF is locked with a password, so its pages can't be drawn\.\nNo model here can read PDFs, .*Settings → Models\)\.$/s);
+  assert.equal(k.registry.isDisabled('pdf-pages'), false);
+});
+
+test('with nothing that reads it and no plugin, the note names Takes PDFs, and the plugin only when a model here sees photos', async (t) => {
+  useClock(t);
+  const seeingKit = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  const blindKit = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }] });
+  for (const k of [seeingKit, blindKit]) {
+    k.agent.send('Read it');
+    await k.agent.idle();
+  }
+  const last = async (/** @type {any} */ k) => (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'read').data.content.split('\n').at(-1);
+  assert.equal(await last(seeingKit), noReader('pdf', { plugin: true }));
+  assert.equal(await last(blindKit), noReader('pdf', { plugin: false }));
+});
+
+test('pages are drawn once per conversation, never given to another, and forgotten at Erase', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, readPdf, say('Done.'), readPdf, say('Done.'), readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  const calls = fakePages(k, 3);
+  k.agent.send('Read it twice');
+  await k.agent.idle();
+  assert.equal(calls.length, 1, 'drawn once in this conversation');
+  const [first, second] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.deepEqual(second.data.images.map((/** @type {any} */ i) => i.hash), first.data.images.map((/** @type {any} */ i) => i.hash));
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(other, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  await k.agent.open(other);
+  k.agent.send('And here?');
+  await k.agent.idle();
+  assert.equal(calls.length, 2, 'drawn afresh in the other trip');
+  k.agent.forgetTold(); // what Erase does (Halves.hush('erase'))
+  k.agent.send('Once more?');
+  await k.agent.idle();
+  assert.equal(calls.length, 3, 'once here, once in the other trip, once after Erase');
+});
+
+test('a live Koe is never asked to read: realtime models are not chat models', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], koe: { type: [sleepStep], input: ['text'] }, live: { origin: 'http://127.0.0.1:9' } });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'kokoro');
+  assert.equal(r.data.content.split('\n').at(-1), noReader('pdf', { plugin: false }));
+  const tried = (await k.events(['model.turn'])).filter((e) => e.data.tag === 'describe').flatMap((e) => e.data.attempts.map((/** @type {any} */ a) => a.model));
+  assert.ok(!tried.includes('m-live'), 'the realtime model was never asked to read');
 });
 
 test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async (t) => {
@@ -1011,7 +1189,7 @@ test("a model that can't see photos reads one, and no model here can: the result
   k.agent.send('What does the menu say?');
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
-  assert.match(r.data.content, /\nNo model here can see photos, so what it shows can't be told\.$/);
+  assert.equal(r.data.content.split('\n').at(-1), noReader('image', { plugin: false }));
   assert.equal(k.sent['model-u'], undefined);
 });
 
