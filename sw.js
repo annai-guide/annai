@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'c6440366540b';
+const BUILD = '9e6ece2417ee';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -369,17 +369,22 @@ function filesOf(parsed) {
 /** @param {string} tag */
 const wordsPath = (tag) => `/l10n/${tag}.json`;
 
-/** A tag's written language and script, as the page's l10n.js takes it: Cantonese is written Chinese (yue-HK is zh-Hant). @param {string} tag */
-function written(tag) {
-  const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue')).maximize();
-  return `${l.language === 'yue' ? 'zh' : l.language}-${l.script}`;
-}
-/** Whether two tags are one written language and script (zh-TW is zh-Hant, not zh-Hans; so is yue-HK). @param {string} a @param {string} b */
+/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
 function sameLanguage(a, b) {
   try {
-    return written(a) === written(b);
+    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
+    return x.language === y.language && x.script === y.script;
   } catch {
     return false;
+  }
+}
+/** A phone's language as the screens read it, as the page's screensTag: Cantonese is written Chinese, by its script (yue-HK is zh-Hant). @param {string} tag */
+function screensTag(tag) {
+  try {
+    const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue'));
+    return l.language === 'yue' ? new Intl.Locale('zh', { script: l.maximize().script, region: l.region }).toString() : tag;
+  } catch {
+    return tag;
   }
 }
 
@@ -409,7 +414,7 @@ function chosenWords(app) {
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(wanted, tag));
+    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(screensTag(wanted), tag));
     if (found) return found === 'en' ? null : found;
   }
   return null;

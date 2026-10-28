@@ -200,7 +200,7 @@ export function listedFor(guess, spoken) {
 /** Whether a locale is written in Traditional characters: its script when it names one (zh-Hans-HK is Simplified), else its region's. @param {string} locale */
 const traditional = (locale) => { try { return new Intl.Locale(locale).maximize().script === 'Hant'; } catch { return false; } };
 /** A language's BCP 47 tag, for `lang`: Chinese by script (a Traditional Chinese phone's is Traditional), Norwegian as Bokmål. @param {Language} l */
-export const tagFor = (l) => (l.id === 'zh' ? (traditional(l.locale) ? 'zh-Hant' : 'zh-Hans') : l.id === 'yue' ? 'yue-Hant' : l.id === 'no' ? 'nb' : l.id);
+export const tagFor = (l) => (l.id === 'zh' ? (traditional(l.locale) ? 'zh-Hant' : 'zh-Hans') : l.id === 'yue' ? (traditional(l.locale) ? 'yue-Hant' : 'yue-Hans') : l.id === 'no' ? 'nb' : l.id);
 /** What a script says when no listed language is its own (Han alone, with neither Chinese nor Japanese listed, is Chinese). */
 const SCRIPT_TAGS = /** @type {Record<string, string>} */ ({ Chinese: 'zh-Hans', Japanese: 'ja', Korean: 'ko', Thai: 'th', Arabic: 'ar', Hebrew: 'he', Greek: 'el', Hindi: 'hi', Russian: 'ru', Ukrainian: 'uk' });
 
@@ -234,7 +234,7 @@ function hanTag(text, l, ui) {
   const [hans, hant] = [count(text, HANS), count(text, HANT)];
   if (l?.id === 'ja' && !count(text, HANS.slice(0, -3))) return 'ja';
   if (hans > hant) return 'zh-Hans';
-  if (l?.id === 'yue') return 'yue-Hant';
+  if (l?.id === 'yue') return tagFor(l);
   return hant > hans || ui === 'zh-Hant' ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 

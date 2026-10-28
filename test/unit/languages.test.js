@@ -243,6 +243,9 @@ test('tagOf: a phone locale that names its script is that script, whatever its r
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-HK'), false, 'zh-Hans'), 'zh-Hant', 'a region alone still says Traditional');
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-MO'), false, 'en'), 'zh-Hant');
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-SG'), false, 'en'), 'zh-Hans');
+  assert.equal(tagOf('骨架', languageSettings({}, 'yue-CN'), false, 'zh-Hans'), 'yue-Hans', 'a Simplified Cantonese phone writes Simplified (Step on ae4c81db)');
+  assert.equal(tagOf('骨架', languageSettings({}, 'yue-Hans'), false, 'en'), 'yue-Hans');
+  assert.equal(tagOf('骨架', languageSettings({}, 'yue-HK'), false, 'en'), 'yue-Hant');
 });
 
 test('tagOf: Shiori\'s own lines take the answer language only where the text agrees with it', () => {
