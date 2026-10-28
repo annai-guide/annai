@@ -9,7 +9,7 @@ const sections = (page) => page.locator('main .screen > section.panel > h2').all
 test('Settings lists what a user reaches for most often first, and Erase last', async ({ page }) => {
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Photos', 'Tools', 'Plugins', 'Storage',
+  expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Languages', 'Photos', 'Tools', 'Plugins', 'Storage',
     'Updates', 'About', 'Diagnostics', 'Developer', 'Experimental', 'Erase']);
   // Open an annai file sits with Backup.
   await expect(page.locator('section.panel', { has: page.getByRole('heading', { name: 'Backup' }) }).getByText('Open an annai file')).toBeVisible();
