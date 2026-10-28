@@ -247,7 +247,7 @@ const cardsShown = (page) => page.evaluate(async () => {
   const run = () => {};
   /** @type {Record<string, (n: any) => void>} */
   const kinds = {
-    updates: (n) => offerCard({ notices: n, plugins: {} }, updates),
+    updates: (n) => offerCard({ notices: n, plugins: {} }, updates, { reload: () => {} }),
     backup: (n) => n.card({ tone: 'warn', title: t`A newer backup is on ${'GitHub'}`, body: newerText(target, { where: 'me/annai-backup', noun: 'phone', tree: true }),
       actions: [{ label: t`Import it as a copy`, primary: true, run }, { label: t`Back up this phone over it`, run }] }),
     personality: (n) => n.card({ title: t`A new version of the ${'Concise'} personality`, body: t`Yours has your own edits, so it was kept as it is.`,

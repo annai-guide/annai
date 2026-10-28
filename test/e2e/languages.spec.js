@@ -156,7 +156,7 @@ async function mountProbe(page) {
         writes.push(JSON.parse(JSON.stringify(changes)));
       },
     };
-    const el = languagesSection({ ws }, {});
+    const el = languagesSection({ ws, updates: { restart: async () => {} } }, {});
     el.id = 'probe';
     document.body.append(el);
   });
