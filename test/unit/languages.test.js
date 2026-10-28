@@ -50,6 +50,16 @@ test('Chinese (Traditional) is its own row: the default on a Traditional phone, 
   assert.deepEqual(modelLanguages(listed).spoken.map((l) => [l.iso, l.live, l.google]), [['zh', 'zh-Hant', 'cmn-Hant-TW'], ['en', 'en', 'en-US']]);
   assert.equal(tagOf('骨架', listed), 'zh-Hant');
   assert.equal(listedFor('Chinese', listed.spoken)?.id, 'zh-Hant');
+  const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
+  assert.equal(speechLocale(both, '我們去吃飯吧'), 'zh-TW', 'a Traditional sentence, both listed: the Traditional voice (the check of 18f87b78)');
+  assert.equal(speechLocale(both, '我们去吃饭吧'), 'zh-CN');
+  assert.equal(speechLocale(listed, '我们去吃饭吧'), 'zh-CN', 'a Simplified sentence with only Traditional listed: a Simplified voice');
+  assert.equal(speechLocale(languageSettings({ languages: { spoken: ['zh', 'en'] } }, 'en-US'), '我們去吃飯吧'), 'zh-TW');
+  assert.equal(speechLocale(both, '好的'), 'zh-CN', 'characters that tell nothing: the first listed');
+  for (const tag of ['zh-yue', 'zh-yue-HK']) {
+    const s = languageSettings({}, tag);
+    assert.deepEqual([s.spoken[0].id, s.spoken[0].locale], ['yue', tag.replace('zh-yue', 'yue')], `${tag} is Cantonese, as the screens take it`);
+  }
   assert.equal(languagesText(listed), "The user speaks Chinese (Traditional) and English; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.");
 });
 
