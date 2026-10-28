@@ -1803,7 +1803,9 @@ test('the same photo twice in one message is read once: one reader call, one kep
   await k.agent.idle();
   assert.equal(k.sent['model-u'].length, 1);
   assert.equal((await k.events(['reading'])).length, 1);
-  assert.equal((JSON.stringify(k.sent['model-0'][0].messages).match(/the fish is circled/g) ?? []).length, 2, 'both parts carry it');
+  const sent = JSON.stringify(k.sent['model-0'][0].messages);
+  assert.equal((sent.match(/the fish is circled/g) ?? []).length, 1, 'the first carries it');
+  assert.match(sent, /\[photo \/trip\/files\/[^,\]]+, the same as above\]/, 'the second is the same photo, said once');
 });
 
 test('two reads of one file in one step read it once (round 4)', async (t) => {
@@ -1831,4 +1833,17 @@ test("kept pages whose pictures are partly gone say which pages went (round 4)",
   const parts = k.sent['model-1'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts);
   assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image' && p.page).map((/** @type {any} */ p) => p.page), [1, 3]);
   assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /Of these, only pages 1 and 3 went; page 2 is no longer on this device\./.test(p.text)));
+});
+
+test('a forced re-read that draws the same pages sends each picture once a request: the later copies are stubs (the real-PDF check)', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  numberedPages(k, 3);
+  k.agent.send('Read it, and again');
+  await k.agent.idle();
+  const last = k.sent['model-0'].at(-1);
+  const images = last.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
+  assert.equal(images.length, 3);
+  assert.equal(new Set(images.map((/** @type {any} */ i) => i.hash)).size, 3);
+  assert.match(JSON.stringify(last.messages), /\[page 1 of the PDF, the same picture as above\]/);
 });

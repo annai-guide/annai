@@ -1,4 +1,4 @@
-import { t } from '../l10n.js';
+import { t, plural } from '../l10n.js';
 import { list } from '../intl.js';
 
 /**
@@ -122,9 +122,9 @@ function shown(kind, provider) {
 /**
  * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
- * @typedef {{ code: 'kind' | 'late' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
+ * @typedef {{ code: 'kind' | 'late' | 'paused' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
  *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
- *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
+ *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string, seconds?: number }} Said
  * ability: the ability's name where its description gives one; abilityKind: its kind, which the screens name otherwise.
  */
 
@@ -143,6 +143,7 @@ export function saidWords(s, kind, provider) {
   const ability = s.ability ?? kindWords(s.abilityKind) ?? s.abilityKind;
   switch (s.code) {
     case 'late': return t`No output started in time.`;
+    case 'paused': return plural(Number(s.seconds) || 0, 'Its output stopped for # second.', 'Its output stopped for # seconds.');
     case 'stalled': return t`The voice stopped arriving for longer than its wait.`;
     case 'held': return t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
     case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;

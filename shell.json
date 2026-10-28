@@ -1,5 +1,5 @@
 {
-  "build": "95389579d096",
+  "build": "ca67b43aebeb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,10 +43,10 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "a5c3db3dff31",
+    "/src/core/agent/loop.js": "77e89d9fcd50",
     "/src/core/agent/reading.js": "bfad2a2f638a",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
-    "/src/core/agent/refusals.js": "ae2e2faa749b",
+    "/src/core/agent/refusals.js": "06320f79a111",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
     "/src/core/agent/net.js": "da9a89765c53",
     "/src/core/agent/tools.js": "32f50a08ed24",
@@ -69,12 +69,12 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "d56e9df39c62",
+    "/src/core/llm/call.js": "11b2a766e9e2",
     "/src/core/llm/check.js": "aca61922774b",
     "/src/core/llm/config.js": "d32a97cf6da1",
-    "/src/core/llm/contract.js": "764639d77281",
+    "/src/core/llm/contract.js": "5b39e3ebc5d1",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "5c3f8dfe8dfb",
+    "/src/core/llm/fallback.js": "bd49b873d2d7",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "a416ecabe509",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
@@ -179,7 +179,7 @@
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
     "/src/plugins/core-schemas/schemas.js": "eb2402943012",
-    "/src/plugins/files/index.js": "2afe96a5abb3",
+    "/src/plugins/files/index.js": "965da6bf35b8",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "5b6ad6ee60a8",
     "/src/plugins/mcp/index.js": "094b457aa562",
@@ -280,7 +280,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "bc19f5f5e2c6",
-    "/l10n/zh-Hans.json": "0051fc3ee2ed"
+    "/l10n/ja.json": "20fb33f39399",
+    "/l10n/zh-Hans.json": "98723ea187ee"
   }
 }
