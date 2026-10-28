@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'c9ba563d5299';
+const BUILD = 'bddebbe2070c';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -369,11 +369,15 @@ function filesOf(parsed) {
 /** @param {string} tag */
 const wordsPath = (tag) => `/l10n/${tag}.json`;
 
-/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
+/** A tag's written language and script, as the page's l10n.js takes it: Cantonese is written Chinese (yue-HK is zh-Hant). @param {string} tag */
+function written(tag) {
+  const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue')).maximize();
+  return `${l.language === 'yue' ? 'zh' : l.language}-${l.script}`;
+}
+/** Whether two tags are one written language and script (zh-TW is zh-Hant, not zh-Hans; so is yue-HK). @param {string} a @param {string} b */
 function sameLanguage(a, b) {
   try {
-    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
-    return x.language === y.language && x.script === y.script;
+    return written(a) === written(b);
   } catch {
     return false;
   }

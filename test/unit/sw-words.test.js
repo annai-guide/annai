@@ -174,6 +174,8 @@ test('with Traditional Chinese shipped, a Taiwan or Hong Kong phone caches its c
   assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-HK', 'en-GB'] })).install(), ['/l10n/zh-Hant.json']);
   assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-CN'] })).install(), ['/l10n/zh-Hans.json']);
   assert.deepEqual(await (await swKit({ langs, network, shipped: ['ja', 'zh-Hans'], phone: ['zh-TW', 'ja-JP'] })).install(), ['/l10n/ja.json'], 'unfinished, it is not the phone\'s');
+  assert.deepEqual(await (await swKit({ langs, network, phone: ['yue-HK'] })).install(), ['/l10n/zh-Hant.json'], 'a Cantonese phone writes Traditional Chinese, as the page takes it (review F5)');
+  assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-yue'] })).install(), ['/l10n/zh-Hant.json']);
 });
 
 test('a phone that lists English before a language annai has gets English, as the page does: no catalog (L6 review 1)', async () => {
