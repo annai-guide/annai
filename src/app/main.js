@@ -48,6 +48,11 @@ import { screenToResume } from '../ui/resume.js';
 import { controllerReady as taken, pluginsMayLoad } from './claim.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
+/**
+ * annai's one way to restart (the third review of phone-fixes-1): Updates.restart once it exists, which waits for Shiori's turn and a
+ * tap's sound unlock (a reload while it starts deadlocks WebKit on Linux); a plain reload before then.
+ */
+let restartNow = () => { location.reload(); };
 // Whether the user has done anything on this page: annai never reloads itself over it (claim.js). Where the browser
 // doesn't say (Safari before 16.4), any tap or key since the page loaded counts.
 let acted = false;
@@ -69,7 +74,7 @@ async function boot() {
         title: t`annai was opened in another tab`,
         body: t`This tab has stopped, so your trips stay consistent.`,
         action: t`Use it here instead`,
-        onAction: () => location.reload(),
+        onAction: () => restartNow(),
       });
     },
   });
@@ -198,11 +203,12 @@ async function boot() {
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }) } });
   updates.agent = agent;
   updates.voice = voice;
+  restartNow = () => updates.restart();
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
   updates.notices = shell.notices;
   offerReload = (names) => {
     offerReload = () => {};
-    shell.notices.card(reloadCard(names, () => location.reload()));
+    shell.notices.card(reloadCard(names, () => restartNow()));
   };
   updates.changed = (waits) => { if (/^#\/updates\b/.test(location.hash) || (waits && /^#\/(settings|plugins)\b/.test(location.hash))) shell.redraw(); };
   pushCard = (n) => shell.notices.card({ tone: 'warn', title: n.title, body: n.body, actions: [{ label: t`Notifications`, run: () => { location.hash = '#/notifications'; } }] });
@@ -383,5 +389,5 @@ boot().catch((e) => {
     h('h1', { class: 'title', text: t`annai couldn't start` }),
     h('p', { text: messageOf(e) }),
     h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
-    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => location.reload() }, t`Try again`))));
+    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restartNow() }, t`Try again`))));
 });

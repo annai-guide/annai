@@ -1,5 +1,5 @@
 {
-  "build": "c8eaf2c1841a",
+  "build": "b42a0c75d90c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "0f29fc062d38",
     "/src/app/claim.js": "6b9f4f7eb997",
-    "/src/app/main.js": "34183679acb6",
+    "/src/app/main.js": "63df8a29e072",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "6ee60f3d1f0d",
     "/src/core/after/recap.js": "6238f6093ac3",
@@ -205,7 +205,7 @@
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
     "/src/ui/install.js": "2c4eb4214b7c",
-    "/src/ui/languages.js": "40b770d3ddd4",
+    "/src/ui/languages.js": "421921b4d13e",
     "/src/ui/live-chip.js": "1f44abeb7177",
     "/src/ui/live-help.js": "b59b03827f96",
     "/src/ui/markdown.js": "f07c8d58f557",
@@ -222,7 +222,7 @@
     "/src/ui/plugin-cards.js": "e1f898788ff7",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "a21503026263",
-    "/src/ui/plugin-updates.js": "ba5c3be7b3e5",
+    "/src/ui/plugin-updates.js": "d03d2b3f4c62",
     "/src/ui/push.js": "d86ed631d3b2",
     "/src/ui/resume.js": "bf9b0a3dbac0",
     "/src/ui/router.js": "16d5c9cdbaa0",

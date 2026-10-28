@@ -273,7 +273,7 @@ export function screensCards({ settings, kept, running, failed, phone = navigato
   const cards = [];
   if (failed) {
     const name = ownName(failed);
-    cards.push({ title: t`${name} couldn't be loaded`, body: t`annai shows English until it is online.`, actions: [{ label: t`Try again`, run: () => location.reload() }] });
+    cards.push({ title: t`${name} couldn't be loaded`, body: t`annai shows English until it is online.`, actions: [{ label: t`Try again`, run: restart }] });
   }
   if (settings === kept) return { copy: null, cards };
   const next = chooseTag(settings || null, phone, offered, shipped);
