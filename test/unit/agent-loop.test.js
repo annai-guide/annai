@@ -1516,3 +1516,25 @@ test("a reader that stalls before its first words has the longer of its role's w
   assert.equal(asked.length, 1, 'the pages were drawn');
   assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: pages 1–1 of 1\.$/);
 });
+
+test("pages that can't be drawn after a reader that failed: the result says both, and never that no model here reads PDFs (the review of reading-files)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }], utility: [{ error: 'credit', status: 402 }] }, ['text', 'pdf']);
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'locked', pages: async () => { throw new Error("This PDF is locked with a password, so its pages can't be drawn."); } });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIt couldn't be described: .+\nThe PDF pages plugin couldn't draw its pages: This PDF is locked with a password, so its pages can't be drawn\.$/);
+  assert.doesNotMatch(r.data.content, /No model here can read PDFs/);
+});
+
+test('with PDF pages running and nothing here that sees photos, no pages are drawn, and the note names Takes photos (the review of reading-files)', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }] });
+  const asked = fakePages(k, 3);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.equal(asked.length, 0, 'nothing drawn for no one');
+  assert.equal(r.data.content.split('\n').at(-1), noReader('pdf', { photos: true }));
+});

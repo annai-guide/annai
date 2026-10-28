@@ -55,15 +55,21 @@ export function readerRoles(cfg, half) {
 
 /**
  * The note when nothing here can read it, naming the setting (the bookings design: "Only when nothing can read it does she say
- * which setting fixes it"). @param {'image' | 'pdf'} kind @param {{ plugin: boolean }} o plugin: name the PDF pages plugin
+ * which setting fixes it"). @param {'image' | 'pdf'} kind @param {{ plugin?: boolean, photos?: boolean }} [o]
+ *   plugin: name the PDF pages plugin as the other fix (it isn't running, and a model here sees photos); photos: name a model that sees
+ *   photos as the other fix (the plugin runs, and nothing here sees photos)
  */
-export function noReader(kind, { plugin }) {
+export function noReader(kind, { plugin = false, photos = false } = {}) {
   /* en */
   if (kind === 'image') return "No model here can see photos, so what it shows can't be told. Tell the user what fixes it: a model that sees photos (Takes photos on its page in Settings → Models).";
   /* en */
   const base = "No model here can read PDFs, so what it says can't be told. Tell the user what fixes it: a model that reads PDFs (Takes PDFs on its page in Settings → Models)";
+  // Settings → Plugins, not its Add: the plugin may be installed but switched off, or crashed (the review of reading-files).
   /* en */
-  return plugin ? `${base}, or the PDF pages plugin (Settings → Plugins → Add), which shows a PDF's pages to a model that sees photos.` : `${base}.`;
+  if (plugin) return `${base}, or the PDF pages plugin (Settings → Plugins), which shows a PDF's pages to a model that sees photos.`;
+  /* en */
+  if (photos) return `${base}, or a model that sees photos (Takes photos on its page in Settings → Models), which the PDF pages plugin shows a PDF's pages to.`;
+  return `${base}.`;
 }
 
 /**
@@ -122,7 +128,7 @@ export async function readFile(file, model, o) {
       const r = await ask('image', [{ type: 'image', mediaType: file.mediaType, data: file.data }], DESCRIBE, /* en */ 'Describe this photo.', 600);
       /* en */
       if (r) return reading('told', `What it shows (described by ${r.answeredBy}, as you can't see photos): ${r.reply.text.trim()}`);
-      if (!stop.signal.aborted && !roles.some((role) => takes(role, 'image'))) return reading('none', noReader('image', { plugin: false }));
+      if (!stop.signal.aborted && !roles.some((role) => takes(role, 'image'))) return reading('none', noReader('image'));
     } else {
       const doc = { type: 'document', mediaType: file.mediaType, data: file.data, ...(file.name ? { name: file.name } : {}) };
       const r = await ask('pdf', [doc], DESCRIBE_PDF, /* en */ 'Give this PDF\'s content.', 3000);
@@ -131,7 +137,8 @@ export async function readFile(file, model, o) {
       const sees = Boolean(model.input?.includes('image'));
       const seer = roles.some((role) => takes(role, 'image'));
       const reader = roles.some((role) => takes(role, 'pdf'));
-      if (o.pages && !stop.signal.aborted) {
+      // Pages are drawn only for someone to see them: the model, or a reader role's model that sees photos.
+      if (o.pages && (sees || seer) && !stop.signal.aborted) {
         /** @type {import('../pdf-pages.js').Drawn} */
         let drawn;
         try {
@@ -139,7 +146,10 @@ export async function readFile(file, model, o) {
         } catch (e) {
           if (stop.signal.aborted) throw e;
           /* en */
-          return reading('failed', `The PDF pages plugin couldn't draw its pages: ${/** @type {any} */ (e)?.message ?? e}\n${noReader('pdf', { plugin: false })}`);
+          // What the readers said when they failed (out of credit, say) comes first; "no model here reads PDFs" only when none does.
+          /* en */
+          const why = `The PDF pages plugin couldn't draw its pages: ${/** @type {any} */ (e)?.message ?? e}`;
+          return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         }
         const images = drawn.pages.map((p) => ({ mediaType: p.type, data: toBase64(p.bytes) }));
         /* en */
@@ -151,8 +161,7 @@ export async function readFile(file, model, o) {
           /* en */
           if (told) return reading('told', `What it says (told by ${told.answeredBy} from pictures of its pages, as you can't read PDFs): ${told.reply.text.trim()}${told.reply.stop === 'length' ? GOES_ON : ''}`);
         }
-        if (!stop.signal.aborted && !reader && !seer) return reading('none', noReader('pdf', { plugin: false }));
-      } else if (!stop.signal.aborted && !reader) return reading('none', noReader('pdf', { plugin: sees || seer }));
+      } else if (!stop.signal.aborted && !reader) return reading('none', noReader('pdf', o.pages ? { photos: true } : { plugin: sees || seer }));
     }
   } catch {
     // stopped: said below
