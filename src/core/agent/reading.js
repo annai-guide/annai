@@ -152,8 +152,17 @@ export async function readFile(file, model, o) {
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         }
         const images = drawn.pages.map((p) => ({ mediaType: p.type, data: toBase64(p.bytes) }));
+        // A page with nothing drawn on it isn't sent (the review of reading-files: a booking's empty last page went as a picture every turn).
+        const blank = Array.isArray(drawn.blank) ? drawn.blank : [];
+        const last = images.length + blank.length;
+        const rest = drawn.count > last ? "; the rest weren't sent" : '';
         /* en */
-        const which = `pages 1–${images.length} of ${drawn.count}${drawn.count > images.length ? "; the rest weren't sent." : '.'}`;
+        const span = last === 1 ? `page 1 of ${drawn.count}` : `pages 1–${last} of ${drawn.count}`;
+        /* en */
+        if (!images.length && blank.length) return reading('told', `Its pages as pictures, as you can't read PDFs: ${span}, which ${last === 1 ? 'is blank' : 'are all blank'}, so nothing was sent${rest}.`);
+        /* en */
+        const blanks = !blank.length ? '' : blank.length === 1 ? `; page ${blank[0]} is blank and wasn't sent` : `; pages ${blank.slice(0, -1).join(', ')} and ${blank.at(-1)} are blank and weren't sent`;
+        const which = `${span}${blanks}${rest}.`;
         /* en */
         if (images.length && sees) return reading('pages', `Its pages as pictures, as you can't read PDFs: ${which}`, images);
         if (images.length) {

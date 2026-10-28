@@ -43,6 +43,12 @@ export default function (test, assert) {
     const [p] = (await pages(await fixture('scan.pdf'), { max: 1, edge: 800 })).pages;
     assert.deepEqual((await look(p, [[0.25, 0.5], [0.75, 0.5]])).colours, ['R', 'B']);
   });
+  test("a page with nothing drawn on it isn't sent: count counts it, and blank names it", async () => {
+    const r = await pages(await fixture('blank.pdf'), { max: 10, edge: 400 });
+    assert.equal(r.count, 2);
+    assert.equal(r.pages.length, 1);
+    assert.deepEqual(r.blank, [2]);
+  });
   test('the bytes given are still whole afterwards', async () => {
     const bytes = await fixture('booking.pdf');
     const length = bytes.byteLength;

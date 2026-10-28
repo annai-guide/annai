@@ -3,6 +3,7 @@
 // here, the same bytes on every run. Made-up words only; the repo is public, so never a real booking.
 //   booking.pdf: 3 US-letter pages of text in Helvetica (not embedded).
 //   scan.pdf: 1 page holding only test/fixtures/photos/upright.jpg (its left half red, its right half blue) drawn over the page.
+//   blank.pdf: a page of text, then a page with nothing drawn on it.
 // Run: node scripts/make-pdf-fixtures.mjs
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +57,17 @@ writeFileSync(`${out}booking.pdf`, pdf([
     `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${5 + i * 2} 0 R >>`,
     /** @type {[string, Uint8Array]} */ (['<< >>', text(lines)]),
   ]),
+]));
+
+// blank.pdf: a page of text, then a page with nothing drawn on it (as a real booking's last page was: two operators, no text, no picture).
+writeFileSync(`${out}blank.pdf`, pdf([
+  '<< /Type /Catalog /Pages 2 0 R >>',
+  '<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>',
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>',
+  ['<< >>', text(['Hotel TEST42 \xb7 Check-in 15:00'])],
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>',
+  ['<< >>', Buffer.from('q Q', 'latin1')],
 ]));
 
 const jpeg = readFileSync(fileURLToPath(new URL('../test/fixtures/photos/upright.jpg', import.meta.url)));

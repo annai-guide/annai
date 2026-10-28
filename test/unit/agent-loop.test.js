@@ -1520,7 +1520,7 @@ test("a reader that stalls before its first words has the longer of its role's w
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
   assert.equal(asked.length, 1, 'the pages were drawn');
-  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: pages 1–1 of 1\.$/);
+  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: page 1 of 1\.$/);
 });
 
 test("pages that can't be drawn after a reader that failed: the result says both, and never that no model here reads PDFs (the review of reading-files)", async (t) => {
@@ -1656,4 +1656,27 @@ test("a reading that failed is remembered for the rest of the call: the second p
   await k.agent.idle();
   assert.equal(k.sent['model-u'].length, 1, 'asked once');
   assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: [^\]]+\] It couldn't be described/);
+});
+
+test("a blank page isn't sent: the line says which were blank, and count still counts them (the review of reading-files)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  const page = (/** @type {number} */ i) => ({ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, i]), width: 1236, height: 1600 });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: 4, pages: [page(1), page(2)], blank: [3, 4] }) });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: pages 1–4 of 4; pages 3 and 4 are blank and weren't sent\.$/);
+  assert.equal(r.data.images.length, 2);
+});
+
+test('a PDF whose pages are all blank says so in words, with no pictures', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: 1, pages: [], blank: [1] }) });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: page 1 of 1, which is blank, so nothing was sent\.$/);
+  assert.equal(r.data.images, undefined);
 });
