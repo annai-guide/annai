@@ -197,26 +197,24 @@ test('a turn or a tidy-up every model failed is a line in the Conversation, Koko
   await expect(lines.getByRole('button', { name: 'Try again' })).toHaveCount(0);
 });
 
-test("each of Shiori's lines names the model that wrote it, and says so when it wasn't the first; Koe's and Kokoro's notes too (item 12)", async ({ page }) => {
+test("each of Shiori's lines names the model that wrote it, as written with it: the first model alone, another and that the first didn't answer or answered in its place; Koe's and Kokoro's notes too (item 12, and its second review)", async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Alaska');
-  const turn = (/** @type {string} */ wake, /** @type {string} */ role, /** @type {string} */ by, /** @type {any[]} */ attempts) => writeEvent(page, trip, { type: 'model.turn', data: { role, level: 'low', answeredBy: by, attempts, wake } });
+  const by = (/** @type {string} */ name, /** @type {string} */ first, tried = true) => ({ name, first, tried });
   await writeEvent(page, trip, { type: 'msg.user', data: { text: 'Where can I upload them?' } });
-  await turn('w-koe', 'koe-classic', 'Claude Sonnet 5.5', [{ name: 'Claude Sonnet 5.5', outcome: 'ok' }]);
-  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's1', wake: 'w-koe', text: "I'm checking." } });
-  await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', wake: 'w-koe', text: 'Where do bookings go?' } });
-  await turn('w-kokoro', 'main', 'Gemini 3.5 Flash Lite', [{ name: 'Claude Opus 5.5', outcome: 'bad-request' }, { name: 'Gemini 3.5 Flash Lite', outcome: 'ok' }]);
-  await writeEvent(page, trip, { type: 'note', data: { id: 'n2', from: 'kokoro', mode: 'append', why: 'tool', wake: 'w-kokoro', text: 'Tell them to start a trip first.' } });
-  await turn('w-koe', 'koe-classic', 'Qwen3.8 Flash', [{ name: 'Claude Sonnet 5.5', outcome: 'bad-request' }, { name: 'Qwen3.8 Flash', outcome: 'ok' }]);
-  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's2', wake: 'w-koe', text: 'Start a trip from Trips first.' } });
-  // A line no model turn stands for (an older one, or a live voice's) names nothing.
-  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's3', wake: 'w-live', text: 'Hello.' } });
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's1', wake: 'w-koe', text: "I'm checking.", by: by('Claude Sonnet 5.5', 'Claude Sonnet 5.5') } });
+  await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', wake: 'w-koe', text: 'Where do bookings go?', by: by('Claude Sonnet 5.5', 'Claude Sonnet 5.5') } });
+  await writeEvent(page, trip, { type: 'note', data: { id: 'n2', from: 'kokoro', mode: 'append', why: 'tool', wake: 'w-kokoro', text: 'Tell them to start a trip first.', by: by('Gemini 3.5 Flash Lite', 'Claude Opus 5.5') } });
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's2', wake: 'w-koe', text: 'Start a trip from Trips first.', by: by('Qwen3.8 Flash', 'Claude Sonnet 5.5', false) } });
+  // A line no model wrote (a live voice's, annai's own), and one written before lines named their model, name none.
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's3', wake: 'w-live', text: 'Hello.', by: null } });
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's4', wake: 'w-old', text: 'From before.' } });
   await page.goto('/#/talk');
-  const by = page.locator('.convo .by');
-  await expect(by).toHaveText(['Claude Sonnet 5.5', 'Claude Sonnet 5.5', "Gemini 3.5 Flash Lite · Claude Opus 5.5 didn't answer", "Qwen3.8 Flash · Claude Sonnet 5.5 didn't answer"]);
-  await expect(page.locator('.convo li', { hasText: 'Hello.' }).locator('.by')).toHaveCount(0);
+  const named = page.locator('.convo .by');
+  await expect(named).toHaveText(['Claude Sonnet 5.5', 'Claude Sonnet 5.5', "Gemini 3.5 Flash Lite · Claude Opus 5.5 didn't answer", 'Qwen3.8 Flash · instead of Claude Sonnet 5.5']);
+  for (const words of ['Hello.', 'From before.']) await expect(page.locator('.convo li', { hasText: words }).locator('.by')).toHaveCount(0);
   // Quiet: small, and not in what the announcer says of a line.
-  expect(await by.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
+  expect(await named.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
 });
 
 // The review of phone-fixes-1: in Japanese, 続きを表示 joined アップデート and 閉じる, the sticky row wrapped to two, and the title was hidden.
@@ -257,27 +255,6 @@ for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
     });
   }
 }
-
-test("the model's name is against the role's first model, and a line older than the last 400 model turns still has it (the review of item 12)", async ({ page }) => {
-  await openApp(page);
-  const trip = await startTrip(page, 'Alaska');
-  await page.evaluate(async ({ trip }) => {
-    const at = (/** @type {string} */ p) => p;
-    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
-    const { logEvent } = await import(at('/src/core/events.js'));
-    const store = await createIdbStore();
-    const log = (/** @type {string} */ type, /** @type {any} */ data) => logEvent(store, trip, { type, actor: 'system', data });
-    // The warm model answered first; the role's first is Opus.
-    await log('model.turn', { role: 'main', level: 'low', answeredBy: 'Claude Sonnet 5.5', first: 'Claude Opus 5.5', attempts: [{ name: 'Claude Sonnet 5.5', outcome: 'ok' }], wake: 'w-a' });
-    await log('out.speak', { id: 's1', wake: 'w-a', text: 'First line.' });
-    // A long piece of work with no lines: 450 turns of another wake.
-    for (let i = 0; i < 450; i++) await log('model.turn', { role: 'main', level: 'low', answeredBy: 'Claude Opus 5.5', first: 'Claude Opus 5.5', attempts: [{ name: 'Claude Opus 5.5', outcome: 'ok' }], wake: 'w-b' });
-    await log('out.speak', { id: 's2', wake: 'w-b', text: 'Done.' });
-    store.close();
-  }, { trip });
-  await page.goto('/#/talk');
-  await expect(page.locator('.convo .by')).toHaveText(["Claude Sonnet 5.5 · Claude Opus 5.5 didn't answer", 'Claude Opus 5.5']);
-});
 
 test("a file of a trip that isn't open goes back to its own trip's Plan, not the open trip's (the review of item 8)", async ({ page }) => {
   await openApp(page);
