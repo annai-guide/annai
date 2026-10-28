@@ -78,15 +78,24 @@ export function shownEntry(entry, words) {
   return w ? { ...entry, ...w, keywords: [...new Set([...entry.keywords, ...(w.keywords ?? [])])], lang: lang() } : { ...entry, lang: 'en' };
 }
 
+/** How many of an official plugin's files are fetched at once (PDF pages has about 190). */
+export const DOWNLOADS_AT_ONCE = 6;
+
 /**
- * Downloads one official plugin and checks every file against the catalog; nothing is returned
- * unless all of them match.
+ * Downloads one official plugin and checks every file against the catalog, DOWNLOADS_AT_ONCE at a time; nothing is returned
+ * unless all of them match. The first failure is the one thrown, once the requests already running have settled, and no new
+ * one starts after it. The files come back in the catalog's order.
  * @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<Map<string, Uint8Array>>}
  */
 export async function download(entry, { fetch: get = defaultFetch, base = '' } = {}) {
+  const names = Object.keys(entry.files);
   /** @type {Map<string, Uint8Array>} */
-  const files = new Map();
-  for (const [name, hash] of Object.entries(entry.files)) {
+  const got = new Map();
+  /** @type {unknown} */
+  let failed = null;
+  let next = 0;
+  /** @param {string} name */
+  const one = async (name) => {
     const url = /* en */ `${base}/plugins-official/${encodeURIComponent(entry.id)}/${name.split('/').map(encodeURIComponent).join('/')}`;
     /** @type {Response} */
     let res;
@@ -97,10 +106,21 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
     }
     if (!res.ok) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if ((await sha256Hex(bytes)) !== hash) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`wasn't installed: ${name} doesn't match annai's catalog` });
-    files.set(name, bytes);
-  }
-  return files;
+    if ((await sha256Hex(bytes)) !== entry.files[name]) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`wasn't installed: ${name} doesn't match annai's catalog` });
+    got.set(name, bytes);
+  };
+  const worker = async () => {
+    while (!failed && next < names.length) {
+      try {
+        await one(names[next++]);
+      } catch (e) {
+        failed ??= e;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(DOWNLOADS_AT_ONCE, names.length) }, worker));
+  if (failed) throw failed;
+  return new Map(names.map((n) => [n, /** @type {Uint8Array} */ (got.get(n))]));
 }
 
 /** Downloads, checks and installs one official plugin, then starts it. @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] */
