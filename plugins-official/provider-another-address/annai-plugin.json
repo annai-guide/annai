@@ -1,10 +1,10 @@
 {
   "id": "provider-another-address",
   "name": "Custom provider",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "catchAll": true,
   "api": 2,
-  "l10n": ["ja", "zh-Hans"],
+  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "files": [
     "probe.js"

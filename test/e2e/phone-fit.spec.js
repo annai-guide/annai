@@ -26,8 +26,8 @@ test.afterEach(async ({ page }) => {
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
   '#/languages', '#/about', '#/experimental', '#/welcome'];
 
-// In English, and in Japanese and Chinese (localization L6): short words, tall glyphs and no spaces to break at.
-for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 320], ['ja', 420], ['zh-Hans', 320], ['zh-Hans', 420]])) {
+// In English, and in Japanese and both Chinese (localization L6; Traditional, l10n-zh-Hant): short words, tall glyphs and no spaces to break at.
+for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 320], ['ja', 420], ['zh-Hans', 320], ['zh-Hans', 420], ['zh-Hant', 320], ['zh-Hant', 420]])) {
   test(`every screen fits a phone ${width} px wide: nothing scrolls sideways${ui ? `, in ${ui}` : ''}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     if (ui) await page.addInitScript((tag) => { try { localStorage.setItem('annai.ui', tag); } catch { /* storage blocked */ } }, ui);

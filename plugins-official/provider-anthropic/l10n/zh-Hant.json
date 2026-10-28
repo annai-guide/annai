@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "透過 Anthropic 的 Messages API 使用 Claude 模型，支援網頁搜尋，快取最長可保留一小時。",
+    "name": "Anthropic"
+  },
+  "messages": {}
+}

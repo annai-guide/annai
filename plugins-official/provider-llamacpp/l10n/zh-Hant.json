@@ -1,0 +1,14 @@
+{
+  "manifest": {
+    "description": "你自己執行的 llama.cpp 伺服器（llama-server）上的模型，或基於它的伺服器（如 Unsloth Studio、KoboldCpp）上的模型。快速判斷時會關閉思考。",
+    "name": "llama.cpp",
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型。對於伺服器已載入的模型，會讀取每段對話可用的上下文長度，以及模型能否讀圖（llama-server 的 /props）。其他模型請在其頁面上設定上下文視窗（llama-server 的 -c，或在 Unsloth Studio 中設定的上下文長度）；如果它能讀圖，請勾選「接受照片」。用 --tools 或 --agent 啟動的 llama-server 只允許同一台電腦上的頁面存取：請用 --cors-origins https://annai.guide 新增 annai 的網址。",
+    "provider.note": "除非用 --port 另行指定，llama-server 監聽 9931 埠；用 --api-key 給它設金鑰，或者把金鑰留空。Unsloth Studio 在自己的網址上提供服務（除非改過，埠為 8888），金鑰（sk-unsloth-…）在它的 Settings → API 中取得。",
+    "keywords": [
+      "Unsloth",
+      "LM Studio",
+      "KoboldCpp"
+    ]
+  },
+  "messages": {}
+}

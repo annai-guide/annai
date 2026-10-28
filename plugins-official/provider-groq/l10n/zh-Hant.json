@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "快速的開放模型，以及快速的 Whisper 語音轉文字。",
+    "name": "Groq",
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型。",
+    "provider.abilities.transcription.note": "快速的 Whisper。Groq 對每次請求至少按 10 秒計費。"
+  },
+  "messages": {}
+}

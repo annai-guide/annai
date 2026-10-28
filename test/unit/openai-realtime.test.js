@@ -328,7 +328,7 @@ test("openai-realtime is a protocol in annai's catalog: a keyed name, reserved a
   const catalog = JSON.parse(await readFile(new URL('../../catalog/plugins.json', import.meta.url), 'utf8')).plugins;
   const entry = catalog.find((/** @type {any} */ p) => p.id === 'openai-realtime');
   assert.deepEqual(entry.provides, { 'endpoint-type': ['openai-realtime'] });
-  assert.deepEqual(Object.keys(entry.files).sort(), ['annai-plugin.json', 'index.js', 'l10n/ja.json', 'l10n/zh-Hans.json']);
+  assert.deepEqual(Object.keys(entry.files).sort(), ['annai-plugin.json', 'index.js', 'l10n/ja.json', 'l10n/zh-Hans.json', 'l10n/zh-Hant.json']);
   const { OFFICIAL_NAMES } = await import('../../src/core/official-names.js');
   assert.equal(OFFICIAL_NAMES['endpoint-type']['openai-realtime'], 'openai-realtime');
 });

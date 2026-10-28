@@ -1,14 +1,14 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '20f3c6695324';
+const BUILD = 'e66da4e03176';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 // The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
-const LANGS = ['ja', 'zh-Hans'];
+const LANGS = ['ja', 'zh-Hans', 'zh-Hant'];
 // The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
 const SHIPPED_LANGS = ['ja', 'zh-Hans'];
 const SHELL = [
