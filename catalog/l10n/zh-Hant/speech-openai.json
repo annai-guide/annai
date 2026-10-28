@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "透過 OpenAI 音訊 API 提供語音轉文字和聲音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本機伺服器。",
+    "name": "OpenAI 相容語音"
+  },
+  "messages": {}
+}

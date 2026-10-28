@@ -697,7 +697,7 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
 
 ## Translations
 
-annai's screens speak the user's language (English, Japanese, Chinese (Simplified) now; see [translating](translating.md)). A plugin
+annai's screens speak the user's language (English, Japanese, Chinese (Simplified) and Chinese (Traditional) now; see [translating](translating.md)). A plugin
 can speak it too: its description, its settings form, its provider's notes, and the words its code shows.
 
 ### What a plugin ships
@@ -736,6 +736,16 @@ The manifest names the language its own words are written in (`language`, Englis
 - **Choices with words:** a setting's `enum` shows its values as they are. To show words, use JSON Schema's own
   `oneOf: [{ "const": "basic", "title": "Basic" }, { "const": "advanced", "title": "Advanced" }]`; its titles can be translated.
 - A plugin written in another language sets `language` (`"ja"`), and may list `en` among its translations.
+- **annai's own plugins** ship no translations in their packages, and list no `l10n`. Their words in each language, the same
+  `{ manifest, messages }`, are files beside annai's catalog, `catalog/l10n/<tag>/<id>.json`, whose SHA-256s
+  `catalog/l10n/<tag>.json` lists (`translations`). A phone fetches only its screens' language, for the official plugins it has:
+  at install and at update, when the screens' language changes, and at each check for updates when a hash changed. Each file is
+  checked against its hash and kept with the plugin (at `l10n/<tag>.json`, where yours are), so the words work offline, and
+  checked field by field: one file serves every version, so a field the installed version hasn't is skipped. A changed
+  translation is not an update: no new version, no restart. A plugin with an update waiting keeps the words it has until it
+  updates. The language the next start opens in is kept too (a change waiting for a restart). A translation that can't be had yet shows the plugin's
+  English, marked `lang="en"`, and is tried again at the next check; it never holds up an install, an update or a start.
+  annai's check that an official plugin is its own counts only its package's files, never these.
 
 ### What annai checks
 

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cp, mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { check, update, extract, readMessages, readGlossary, glossaryWarnings, glossaryNames, shippedJson, listFile, swWithLangs, bareEnglish, findWords, readsAsWords, readTsv, writeTsv, review, find, pluginJson } from '../../scripts/strings.mjs';
@@ -427,11 +428,11 @@ test('the line Shiori is told of the screens names at most 31 names in every lan
   for (const tag of ['ja', 'zh-Hans']) assert.ok(glossaryNames(g, tag).split('), ').length <= 31, tag);
 });
 
-/** An official plugin in a copy of the fixture: its manifest (l10n listed, or not) and code using annai.l10n. @param {string} dir @param {any} [more] */
+/** An official plugin in a copy of the fixture: its manifest and code using annai.l10n. @param {string} dir @param {any} [more] */
 async function officialPlugin(dir, more = {}) {
-  await mkdir(`${dir}/plugins-official/demo-tides/l10n`, { recursive: true });
+  await mkdir(`${dir}/plugins-official/demo-tides`, { recursive: true });
   await writeFile(`${dir}/plugins-official/demo-tides/annai-plugin.json`, JSON.stringify({
-    id: 'demo-tides', name: 'Tide tables', version: '1.0.0', api: 1, l10n: ['ja'], description: 'Tides where you are.', keywords: ['tides', 'sea'],
+    id: 'demo-tides', name: 'Tide tables', version: '1.0.0', api: 1, description: 'Tides where you are.', keywords: ['tides', 'sea'],
     settings: { type: 'object', properties: { depth: { type: 'string', title: 'Depth', oneOf: [{ const: 'a', title: 'Basic' }] } } }, ...more,
   }, null, 2));
   await writeFile(`${dir}/plugins-official/demo-tides/index.js`, "export function activate(annai) {\n  const { l10n } = annai;\n  const { t } = l10n;\n  return [l10n.t`Low tide at ${'4:12'}.`, annai.l10n.both`No station.`, l10n.plural(2, '# tide', '# tides'), l10n.tc('verb')`Open`, t`High tide.`];\n}\n");
@@ -452,14 +453,10 @@ test("an official plugin's words are rows of the same files, keyed by its id: it
     assert.equal(mine[1].file, 'plugins-official/demo-tides/annai-plugin.json');
     assert.ok(mine[1].line > 1, 'the line its English is on');
     assert.equal(mine.at(-2)?.context, 'verb');
-    // One that doesn't list l10n has no rows, and the check says it must list annai's languages.
-    await officialPlugin(dir, { l10n: undefined });
-    assert.equal([...(await extract(dir)).messages.keys()].filter((k) => k.startsWith('demo-tides:')).length, 0);
-    assert.ok((await check(dir, [])).problems.some((p) => p.file === 'plugins-official/demo-tides/annai-plugin.json' && /its l10n must be \["ja"\]/.test(p.message)));
   });
 });
 
-test("update writes each official plugin's translation from the rows, which annai's own catalog leaves out; check says when it is stale or its l10n isn't annai's languages", async () => {
+test("update writes each official plugin's words in each language beside the catalog, from the rows, which annai's own words leave out; check says when one is stale (plugin-l10n-fetch)", async () => {
   await inCopy(async (dir) => {
     await officialPlugin(dir);
     await update(dir);
@@ -467,7 +464,7 @@ test("update writes each official plugin's translation from the rows, which anna
     const filled = rows.map((r) => (r.key.startsWith('demo-tides:') ? { ...r, state: 'draft', text: r.key.endsWith('@description') ? '今いる場所の潮。' : r.key.includes('@keywords.') ? '潮' : `訳:${r.en.replace('{0}', '{0}')}` } : r));
     await writeFile(`${dir}/l10n/ja.tsv`, writeTsv(filled));
     await update(dir);
-    const own = JSON.parse(await readFile(`${dir}/plugins-official/demo-tides/l10n/ja.json`, 'utf8'));
+    const own = JSON.parse(await readFile(`${dir}/catalog/l10n/ja/demo-tides.json`, 'utf8'));
     assert.equal(own.manifest.description, '今いる場所の潮。');
     assert.deepEqual(own.manifest.keywords, ['潮'], 'once each');
     assert.equal(own.manifest['settings.properties.depth.oneOf.0.title'], '訳:Basic');
@@ -475,11 +472,10 @@ test("update writes each official plugin's translation from the rows, which anna
     assert.deepEqual(own.messages[key('# tide\0# tides')], { other: '訳:# tides' });
     assert.ok(!Object.keys(JSON.parse(await readFile(`${dir}/l10n/ja.json`, 'utf8'))).some((k) => k.includes(':')), "annai's catalog has none of a plugin's rows");
     assert.equal(pluginJson(filled, 'demo'), `${JSON.stringify({ manifest: {}, messages: {} }, null, 2)}\n`, 'another id is another plugin');
-    assert.ok(!(await check(dir, [])).problems.some((p) => p.file.startsWith('plugins-official/')));
-    await writeFile(`${dir}/plugins-official/demo-tides/l10n/ja.json`, '{}\n');
-    await officialPlugin(dir, { l10n: ['ja', 'zh-Hans'] });
+    assert.ok(!(await check(dir, [])).problems.some((p) => p.file.startsWith('catalog/') || p.file.startsWith('plugins-official/')));
+    assert.ok(!existsSync(`${dir}/plugins-official/demo-tides/l10n`), 'none in its package');
+    await writeFile(`${dir}/catalog/l10n/ja/demo-tides.json`, '{}\n');
     const { problems } = await check(dir, []);
-    assert.ok(problems.some((p) => p.file === 'plugins-official/demo-tides/l10n/ja.json' && /isn't what l10n\/ja\.tsv makes: run npm run strings, then npm run catalog/.test(p.message)));
-    assert.ok(problems.some((p) => p.file === 'plugins-official/demo-tides/annai-plugin.json' && /its l10n must be \["ja"\]/.test(p.message)));
+    assert.ok(problems.some((p) => p.file === 'catalog/l10n/ja/demo-tides.json' && /isn't what l10n\/ja\.tsv makes: run npm run strings, then npm run catalog/.test(p.message)));
   });
 });

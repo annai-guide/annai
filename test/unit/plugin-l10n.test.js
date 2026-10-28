@@ -109,6 +109,8 @@ test('which translation the screens use: none in its own language, else the one 
   assert.equal(translationFor(TIDES(), 'zh-Hans'), null);
   assert.equal(translationFor(TIDES({ l10n: ['zh'] }), 'zh-Hans'), 'zh', 'the same language and script');
   assert.equal(translationFor(TIDES({ l10n: ['zh-Hant'] }), 'zh-Hans'), null, 'Traditional is not Simplified');
+  assert.equal(translationFor(TIDES({ language: 'yue-Hant-HK', l10n: ['zh-Hant'] }), 'zh-Hant'), 'zh-Hant', 'Cantonese is not the Traditional Chinese a plugin translates into (Step on ae4c81db)');
+  assert.equal(translationFor(TIDES({ l10n: ['yue-Hant'] }), 'zh-Hant'), null, 'nor a Cantonese file the Traditional Chinese screens read');
   assert.equal(translationFor(TIDES({ language: 'ja', l10n: ['en'] }), 'ja'), null, 'written in Japanese');
   assert.equal(translationFor(TIDES({ language: 'ja', l10n: ['en'] }), 'en'), 'en');
 });
@@ -318,6 +320,9 @@ test("every place is named by its kind, as the screens name it: an old place and
   assert.equal(holdWords({ ...shown.hold, said: { code: 'passphrase', name: 'S3-compatible storage' } }, 'Memory'), 'Type the passphrase for the encrypted backups at Memory, then save.');
 });
 
+/** annai's own plugin's Japanese, kept with it as a fetch from annai's catalog keeps it. @param {any} host @param {string} id @param {any} words */
+const keepJa = (host, id, words) => host.keepTranslations(id, new Map([['ja', new TextEncoder().encode(JSON.stringify(words))]]));
+
 test("a place whose plugin is installed but off is named by that plugin, not its id; annai's own by its own translation; the full-access warning names it", async () => {
   const { createBackups } = await import('../../src/core/backup.js');
   const { addTarget, setTargetSecret } = await import('../../src/core/backup-targets.js');
@@ -326,9 +331,9 @@ test("a place whose plugin is installed but off is named by that plugin, not its
   const k = await hostKit();
   const place = (/** @type {string} */ id, /** @type {any} */ more = {}) => files({ 'annai-plugin.json': JSON.stringify({ id, name: 'Acme Vault', version: '1.0.0', api: 1, provides: { 'storage-type': [`${id}-kind`] }, ...more }) });
   await k.host.install(place('acme-vault'));
-  const official = place('acme-own', { name: 'Own vault', l10n: ['ja'] });
-  official.set('l10n/ja.json', new TextEncoder().encode(JSON.stringify({ manifest: { name: '自分の金庫' } })));
-  await k.host.install(official, { source: 'official' });
+  // annai's own: its words come from annai's catalog, kept with it on the device (fetchTranslations).
+  await k.host.install(place('acme-own', { name: 'Own vault' }), { source: 'official' });
+  await keepJa(k.host, 'acme-own', { manifest: { name: '自分の金庫' } });
   const backups = createBackups({ store: k.store, ws: k.ws, registry: k.registry, plugins: k.host, app: 'test', label: 'iPhone' });
   const a = await addTarget(k.ws, { type: 'acme-vault-kind' });
   const b = await addTarget(k.ws, { type: 'acme-own-kind' });
@@ -343,7 +348,8 @@ test("an installed official plugin is named from its own translation on the devi
   const { pluginName } = await import('../../src/core/llm/official.js');
   setWords('ja', {});
   const k = await hostKit();
-  await k.host.install(pkg(TIDES({ entry: undefined }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  await k.host.install(pkg(TIDES({ entry: undefined, l10n: undefined }), null), { source: 'official' });
+  await keepJa(k.host, 'acme-tides', { manifest: { name: 'アクメ潮汐' } });
   const state = (await k.host.installed())['acme-tides'];
   assert.equal(await pluginName(k.host, state, 'acme-tides', 'Acme Tides'), 'アクメ潮汐', 'not running');
   await k.host.start('acme-tides');
@@ -355,7 +361,8 @@ test("an update another plugin can't take names that plugin as the screens do: a
   const { refuseBreaking } = await import('../../src/core/requires.js');
   setWords('ja', {});
   const k = await hostKit();
-  await k.host.install(pkg(TIDES({ entry: undefined, requires: [{ id: 'chat-completions', version: '^0' }] }), { manifest: { name: 'アクメ潮汐' } }), { source: 'official' });
+  await k.host.install(pkg(TIDES({ entry: undefined, l10n: undefined, requires: [{ id: 'chat-completions', version: '^0' }] }), null), { source: 'official' });
+  await keepJa(k.host, 'acme-tides', { manifest: { name: 'アクメ潮汐' } });
   await assert.rejects(refuseBreaking(k.host, 'chat-completions', '1.0.0', 'Chat Completions'),
     (e) => /アクメ潮汐/.test(/** @type {any} */ (e).shown) && /Acme Tides/.test(/** @type {any} */ (e).message));
 });
