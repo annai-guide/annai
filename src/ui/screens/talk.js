@@ -276,9 +276,22 @@ export async function renderTalk(ctx) {
     }
     return out;
   };
+  /** A line of hers, quietly naming the model that wrote it, as written with it (the user, 2026-10-28). @param {any} d @param {HTMLElement} li */
+  const by = (d, li) => {
+    const b = d.by;
+    if (!b?.name) return li;
+    const who = !b.first || b.first === b.name ? b.name : b.tried ? t`${b.name} · ${b.first} didn't answer` : t`${b.name} · instead of ${b.first}`;
+    li.append(h('span', { class: 'sub by', text: who }));
+    return li;
+  };
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
+    const line = await itemOf(e, d);
+    return line && ['out.speak', 'out.show', 'out.ask', 'note'].includes(e.type) ? by(d, line) : line;
+  };
+  /** @param {any} e @param {any} d */
+  const itemOf = async (e, d) => {
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
     if (e.type === 'msg.user') {
       // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words.
@@ -351,14 +364,16 @@ export async function renderTalk(ctx) {
     // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
     if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', text: t`Started fresh` }); // a list item with its words: a separator has no name
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: t`Earlier conversation summarized. The full log is in Trace.` });
-    // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it).
-    if (e.type === 'error' && (d.quiet || d.aside)) return null;
+    // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it). A turn or a tidy-up every
+    // model failed shows all the same, Kokoro's too (the user, 2026-10-28: only the Trace had them); not Koe's, which Kokoro took over.
+    const failed = (d.kind === 'model' || d.kind === 'compaction') && !(d.quiet && d.half === 'koe');
+    if (e.type === 'error' && (d.quiet || d.aside) && !failed) return null;
     if (e.type === 'error') {
       // Out of sight of the card at the page's top: the note itself offers Try again, until something newer is in the conversation.
-      const again = d.kind === 'model' || d.kind === 'silent' ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
+      const again = (d.kind === 'model' || d.kind === 'silent') && !d.quiet && !d.aside ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
       // Made from its data; an older entry's message is as stored, in annai's English.
       const words = errorWords(d);
-      const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }),
+      const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'compaction' ? t`Shiori couldn't tidy up the conversation` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }),
         h('p', words === null ? { lang: 'en', text: String(d.message ?? '') } : { text: words }), again);
       retry?.again.remove();
       retry = again ? { li, again } : null;
@@ -420,7 +435,7 @@ export async function renderTalk(ctx) {
           else if (e.type === 'out.ask') words = String(e.data?.question ?? '');
           else if (e.type === 'out.show') {
             // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
-            words = textOf(node, pick.length ? /* en */ '.who, .card .acts button' : '.who');
+            words = textOf(node, pick.length ? /* en */ '.who, .by, .card .acts button' : '.who, .by');
           }
           // Her words carry their language; annai's labels, errors and notes around and beside them do not.
           const parts = announced(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {});
@@ -445,11 +460,11 @@ export async function renderTalk(ctx) {
   showCost();
   const screen = h('div', { class: 'screen' },
     h('h1', { class: 'title', text: t`Conversation` }),
-    tidyMenu(ctx),
     h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     cost,
     list.childElementCount ? null : empty,
     list,
+    tidyMenu(ctx), // at the foot, under the last line (the user, 2026-10-28)
     announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it

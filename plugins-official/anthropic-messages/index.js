@@ -1,7 +1,10 @@
 /**
  * The Anthropic Messages endpoint type (spec §9.1). Browsers may call Anthropic only with the
- * "anthropic-dangerous-direct-browser-access" header. Thinking comes back as signed blocks, which
- * are sent back unchanged to the model that wrote them (annai's core drops them for any other).
+ * "anthropic-dangerous-direct-browser-access" header. Thinking comes back as signed blocks; its words are kept for
+ * the trace (no signature, no redacted block, no empty block) and never sent back: a Claude 5.5 block is bound to the system prompt, the tools and every message before it, and
+ * annai's requests change those by design (the now block moves on each call, Koe and Kokoro have their own system prompts,
+ * tidy-up its own instruction), so a block sent back was refused (the iPhone trace, 2026-10-28). Without blocks, a request
+ * is never refused for them; the model plans each step again from what it can see.
  */
 const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
@@ -82,7 +85,7 @@ function build({ endpoint, model, key, tunables: t, request }) {
 
 /**
  * annai's messages as Messages API messages: one message per turn (messages of the same role are
- * joined), tool results first in a user turn, and thinking only when this model signed it.
+ * joined), tool results first in a user turn, and no thinking (see the top).
  * @param {any[]} messages @param {string} providerId
  */
 function wire(messages, providerId) {
@@ -97,10 +100,6 @@ function wire(messages, providerId) {
       // A call whose arguments were cut short kept them as text; the API takes only an object, so it gets an empty one.
       if (p.type === 'tool_call') return [{ type: 'tool_use', id: p.id, name: p.name, input: isObject(p.input) ? p.input : {} }];
       if (p.type === 'tool_result') return [{ type: 'tool_result', tool_use_id: p.id, content: p.content, ...(p.isError ? { is_error: true } : {}) }];
-      if (p.type === 'reasoning' && p.model === providerId) {
-        if (p.redacted) return [{ type: 'redacted_thinking', data: p.redacted }];
-        if (p.signature) return [{ type: 'thinking', thinking: p.text, signature: p.signature }];
-      }
       return [];
     });
     if (!blocks.length) continue;
@@ -142,7 +141,7 @@ async function* read(res, sse, ProviderError) {
       const u = e.message?.usage;
       if (u) yield { type: 'usage', usage: usageOf(u) };
     } else if (type === 'content_block_start') {
-      const b = { ...e.content_block, json: '', thinking: e.content_block?.thinking ?? '', signature: e.content_block?.signature ?? '' };
+      const b = { ...e.content_block, json: '', thinking: e.content_block?.thinking ?? '' };
       blocks.set(e.index, b);
       if (b.type === 'text' && b.text) yield { type: 'text', text: b.text };
       if (typeof b.type === 'string' && b.type.endsWith('_tool_result')) {
@@ -159,7 +158,6 @@ async function* read(res, sse, ProviderError) {
         b.thinking = (b.thinking ?? '') + d.thinking;
         if (d.thinking) yield { type: 'reasoning_delta', text: d.thinking };
       }
-      else if (d.type === 'signature_delta') b.signature = (b.signature ?? '') + d.signature;
       else if (d.type === 'input_json_delta') {
         b.json = (b.json ?? '') + d.partial_json;
         if (b.type === 'tool_use') yield { type: 'tool_input', id: b.id, name: b.name, partial: b.json };
@@ -168,9 +166,9 @@ async function* read(res, sse, ProviderError) {
       }
     } else if (type === 'content_block_stop') {
       const b = blocks.get(e.index);
-      if (b?.type === 'thinking') yield { type: 'reasoning', text: b.thinking, ...(b.signature ? { signature: b.signature } : {}) };
-      else if (b?.type === 'redacted_thinking') yield { type: 'reasoning', text: '', redacted: b.data };
-      else if (b?.type === 'tool_use') yield { type: 'tool_call', id: b.id, name: b.name, input: parseArgs(b.json) };
+      if (b?.type === 'thinking') {
+        if (b.thinking) yield { type: 'reasoning', text: b.thinking };
+      } else if (b?.type === 'tool_use') yield { type: 'tool_call', id: b.id, name: b.name, input: parseArgs(b.json) };
       else if (b?.type === 'server_tool_use') yield { type: 'provider', block: { type: 'server_tool_use', id: b.id, name: b.name, input: parseArgs(b.json) } };
     } else if (type === 'message_delta') {
       if (e.delta?.stop_reason) stop = e.delta.stop_reason;

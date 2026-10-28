@@ -11,6 +11,7 @@ import { openFileButton } from '../open-file.js';
 import { slotEntries } from '../slots.js';
 import { warnKept } from './provider.js';
 import { nameOf as updateName } from '../plugin-updates.js';
+import { LANGUAGE_WORDS as W } from '../../core/languages.js';
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
@@ -21,7 +22,7 @@ const section = (title, ...children) => h('section', { class: 'panel', 'aria-lab
  * @param {{ waiting: boolean }} o
  */
 export function sectionOrder({ waiting }) {
-  return [...(waiting ? ['updates'] : []), 'models', 'voice', 'notifications', 'backup', 'shiori', 'photos', 'tools', 'plugins', 'storage',
+  return [...(waiting ? ['updates'] : []), 'models', 'voice', 'notifications', 'backup', 'shiori', 'languages', 'photos', 'tools', 'plugins', 'storage',
     ...(waiting ? [] : ['updates']), 'about', 'diagnostics', 'developer', 'experimental', 'erase'];
 }
 
@@ -48,7 +49,7 @@ export async function renderSettings(ctx) {
   const app = await readAppSettings(ctx.ws);
   const exportSlot = h('div', {});
   const places = ctx.backups ? await ctx.backups.list() : [];
-  const waits = waitingWords(Boolean(ctx.updates?.waiting), (await ctx.updates?.plugins().catch(() => [])) ?? []);
+  const waits = waitingWords(Boolean(ctx.updates.waiting), await ctx.updates.plugins().catch(() => []));
   /** @type {Record<string, () => Promise<any> | any>} */
   const sections = {
     updates: () => section(t`Updates`,
@@ -68,6 +69,7 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: t`A trip someone sent you, or a backup to bring back:` }),
       openFileButton(ctx, t`Open an annai file`)),
     shiori: () => section(/* en */ 'Shiori', ...goTo(t`How she looks, her personality, and how often she acts on her own.`, '#/shiori', /* en */ 'Shiori')),
+    languages: () => section(W.heading, ...goTo(t`annai's screens, distances, the languages you speak, and the one Shiori answers in.`, '#/languages', W.heading)),
     photos: async () => section(t`Photos`, ...(await photoControls(ctx, app))),
     tools: () => section(t`Tools`, ...goTo(t`Switches for every tool Shiori has, web search and fetch, and the Jina key.`, '#/tools', t`Tools`)),
     plugins: async () => [section(t`Plugins`, ...goTo(t`Skills and code plugins: install, update, switch off or remove.`, '#/plugins', t`Manage plugins`)), await pluginPages(ctx)],

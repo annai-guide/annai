@@ -63,7 +63,7 @@ function browserLanguage(locale) {
 }
 
 /**
- * The setting (Settings → Shiori): app.json's `languages` — spoken, in order (picked from LANGUAGES), and answer ('follow', or one id) —
+ * The setting (Settings → Languages): app.json's `languages` — spoken, in order (picked from LANGUAGES), and answer ('follow', or one id) —
  * or, with none chosen, the browser's language (explicit: false), which is only what the phone is set to.
  * @param {Record<string, any>} app the app settings @param {string} [locale] the browser's language @returns {LanguageSettings}
  */
@@ -317,15 +317,11 @@ export const LANGUAGE_WORDS = {
   heading: t`Languages`,
   intro: t`The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.`,
   spokenLabel: t`Languages you speak`,
-  spokenHint: t`In order of use. Phone dictation listens in the first one only; models that take several are given all of them.`,
+  order: t`The first is the language phone dictation listens in; the order tells Shiori which you prefer.`,
   add: t`Add a language`,
   addButton: t`Add`,
   remove: t`Remove`,
-  moveUpText: '↑',
-  moveDownText: '↓',
   removeLabel: (/** @type {string} */ name) => t`Remove ${name}`,
-  moveUpLabel: (/** @type {string} */ name) => t`Move ${name} up`,
-  moveDownLabel: (/** @type {string} */ name) => t`Move ${name} down`,
   /** A language as the pickers show it: its English name, then its own. */
   option: (/** @type {string} */ name, /** @type {string} */ own) => t`${name} · ${own}`,
   added: (/** @type {string} */ name) => [t`Added ${name}`, t`Added ${name}. Saved`],
@@ -339,5 +335,5 @@ export const LANGUAGE_WORDS = {
   answeredFollow: () => [t`Shiori answers in the language you speak to her`, t`Shiori answers in the language you speak to her. Saved`],
   answerLabel: t`Shiori answers in`,
   follow: t`The language you speak to her`,
-  emptyHint: t`None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.`,
+  emptyHint: t`None picked: annai uses the browser’s language.`,
 };

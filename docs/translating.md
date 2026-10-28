@@ -79,6 +79,6 @@ A language is added to `l10n/languages.json` as `experimental`: it is offered on
 Unfinished translations. It becomes `shipped` once someone who reads the language has reviewed every row. Japanese
 and Chinese were reviewed by Opus, at the user's word (2026-10-26).
 
-Look at the screens in the language before marking rows `ok`: choose it under Settings → Shiori → Languages, or
+Look at the screens in the language before marking rows `ok`: choose it under Settings → Languages, or
 set `localStorage['annai.ui']` to its tag. The phone-fit test (`test/e2e/phone-fit.spec.js`) runs every screen at
 320 and 420 px in each shipped language.

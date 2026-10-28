@@ -138,7 +138,7 @@ export class Voice {
     }
   }
 
-  /** What the user speaks (Settings → Shiori), the browser's language until they choose. */
+  /** What the user speaks (Settings → Languages), the browser's language until they choose. */
   async languages() {
     return languageSettings(await readAppSettings(this.ws), this.locale);
   }
@@ -568,7 +568,7 @@ export class Voice {
     platform.session('play-and-record');
     try {
       const session = await listen({
-        // Web Speech takes one language: the first the user speaks (Settings → Shiori), else the browser's own.
+        // Web Speech takes one language: the first the user speaks (Settings → Languages), else the browser's own.
         platform, kind, pauseMs, lang: await this.dictationLocale(), now: this.now, onSpeech, onQuiet, onError, local, recording,
         onLevel: (x) => this.#level(x, 'you'),
         onSegment: (h) => {

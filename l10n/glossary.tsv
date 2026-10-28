@@ -11,7 +11,7 @@ Erase	screen	消去	清除	src/ui/screens/settings.js:83	Removes everything anna
 Experimental	screen	試験運用版	实验性功能	src/ui/screens/experimental.js:18	Chrome's own words for its flags page (試験運用版の機能 / 实验性功能), so a phone user may have seen them. ja 試験的な機能 or 実験的機能 are plainer alternatives; zh 实验功能 is shorter. Decision 5's switch, "Unfinished translations", will live here. For you: ja 試験運用版, or 試験的な機能.
 Files	screen	ファイル	文件	src/ui/screens/trip.js:130	A trip's files. The phones' own words (iOS's Files app is ファイル / 文件).
 History	screen	履歴	历史	src/ui/screens/file.js:103	A file's earlier versions. ja 履歴 as in 閲覧履歴; zh 历史 (历史版本). Kept apart from the Trace (記録 / 记录).
-Languages	screen	言語	语言	src/core/languages.js:272	Settings → Shiori → Languages. "Languages you speak" → 話す言語 / 你说的语言. The coming row "annai's screens in" is not on screen yet, so it is not here.
+Languages	screen	言語	语言	src/core/languages.js:272	Settings → Languages (Settings → Shiori → Languages until 2026-10-28). "Languages you speak" → 話す言語 / 你说的语言. The coming row "annai's screens in" is not on screen yet, so it is not here.
 MCP servers	screen	MCPサーバー	MCP 服务器	src/ui/screens/mcp.js:16	MCP stays as written (a protocol's name). ja サーバー with the long mark, as Microsoft and Apple write it; zh 服务器 with a space after the Latin.
 Models	screen	モデル	模型	src/ui/screens/models.js:43	ja モデル is the only word Japanese uses for an AI model; 模型 / 型 would be wrong. zh 模型 is the standard (大模型).
 Notifications	screen	通知	通知	src/ui/screens/notifications.js:144	The phone's own word in both languages (Settings → 通知).

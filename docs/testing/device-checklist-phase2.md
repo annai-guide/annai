@@ -31,7 +31,7 @@ Set up: voice on, the chip saying **Voice on · Realtime**, a quiet room, the ph
 
 `device-checklist-koe.md` already has the core of this, in its last section, "The languages you speak (phase 2, 2026-10-23)": short replies on the phone's speaker, the Trace, a real change of language, a fixed answer language, and dictation in the first language listed. Do those five first; they aren't repeated here. These add what that section doesn't cover.
 
-The setting is Settings → Shiori → Languages: "Languages you speak" (Add a language, then Add; ↑, ↓ and Remove on each), and "Shiori answers in" ("The language you speak to her", or one of those listed).
+The setting is Settings → Languages: "Languages you speak" (Add a language, then Add; each has a handle to drag it into order, or tap it for Move up and Move down, and Remove), and "Shiori answers in" ("The language you speak to her", or one of those listed).
 
 - [ ] **L1. Where `strayLanguage` shows.** In the koe section's Trace check, the flag isn't in a line's short summary: tap a `heard` line to open it. A flagged one has `"strayLanguage": "Spanish"` (or another language) in its details. Flags are only for replies of fewer than three words. Write down each flagged line's words, its language, and the room.
 - [ ] **L2. Short replies in Classic.** Choose **Classic** on the chip, with a transcription model first in Speech in (Groq's Whisper is free), and English, Chinese and Japanese listed. Reply "Yes.", "What?", "No." a few times. With several languages listed, annai sends Whisper no language and it guesses for itself. Trace → Type contains `heard`: are the words English? A flagged one carries `strayLanguage` on its `heard.text` line too. Then remove Chinese and Japanese, leaving English alone (Whisper is now told "en"), and reply again: misheard lines should stop.
@@ -67,7 +67,7 @@ Shiori searches the web out of the box through three free services, Exa, Paralle
 
 ## The font check
 
-The localization design (`docs/superpowers/specs/2026-10-23-localization-design.md`, "Fonts and CJK") and its step L3 changed how annai draws Chinese and Japanese. The font list no longer names a Japanese font, so a browser picks the font for a Han character by the line's language; and every line in the Conversation, the bubble over the dock, Shiori's cards and the recap now says its language (`lang`: kana is `ja`, Han characters alone are `zh-Hans`, or `ja` when Japanese is the only one of the two in Settings → Shiori → Languages). A phone set to Traditional Chinese gets `zh-Hant`. Latin text is never tagged. This check confirms what the iPhone does with it.
+The localization design (`docs/superpowers/specs/2026-10-23-localization-design.md`, "Fonts and CJK") and its step L3 changed how annai draws Chinese and Japanese. The font list no longer names a Japanese font, so a browser picks the font for a Han character by the line's language; and every line in the Conversation, the bubble over the dock, Shiori's cards and the recap now says its language (`lang`: kana is `ja`, Han characters alone are `zh-Hans`, or `ja` when Japanese is the only one of the two in Settings → Languages). A phone set to Traditional Chinese gets `zh-Hant`. Latin text is never tagged. This check confirms what the iPhone does with it.
 
 Type these three messages to Shiori, so all the lines are in the same conversation (whatever she answers):
 - Chinese: `直角三角形的骨架，这是我们说的。`

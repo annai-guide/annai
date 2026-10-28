@@ -8,9 +8,10 @@ import { list, sentences } from './format.js';
 /**
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
  * from there. Offered on one card, in Settings → Updates and in Settings → Plugins; nothing changes until the user taps Update.
- * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, reload?: () => unknown,
+ * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string,
  *   addressFetch?: (url: string, init?: RequestInit) => Promise<Response>, applied?: () => void }} Env
  *   fetch: for annai's own catalog and files; addressFetch: for addresses (traced, in the app); applied: after Update ran
+ * @typedef {Env & { reload: () => unknown }} Applying reload: annai's one restart (Updates.restart), for Restart now
  * @typedef {{ id: string, name: string, installed: string, available: string, entry?: any, url?: string, changed?: boolean,
  *   added?: import('../core/packages.js').Added, agreed?: boolean }} Update
  *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it
@@ -73,8 +74,8 @@ export function offerWords(u) {
   return changed ? t`${u.name} (changed)` : t`${u.name} ${u.installed} → ${u.available}`;
 }
 
-/** The card that offers updates; nothing changes until Update. @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Env} [env] @returns {() => void} dismiss */
-export function offerCard(ctx, updates, env = {}) {
+/** The card that offers updates; nothing changes until Update. @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Applying} env @returns {() => void} dismiss */
+export function offerCard(ctx, updates, env) {
   return ctx.notices.card({
     title: t`Plugin updates are ready`,
     body: sentences(t`New versions: ${list(updates.map(offerWords), 'plain')}.`, t`Nothing changes until you update. An updated plugin that is running now is off until annai restarts.`),
@@ -85,9 +86,9 @@ export function offerCard(ctx, updates, env = {}) {
 /**
  * Installs the updates the user accepted, and says what happened: done, done after a restart, or
  * which ones failed and why.
- * @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Env} [env]
+ * @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Applying} env
  */
-export async function applyUpdates(ctx, updates, env = {}) {
+export async function applyUpdates(ctx, updates, env) {
   /** @type {string[]} the ones that are off until annai restarts */
   const waiting = [];
   /** @type {string[]} */
@@ -119,7 +120,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
       tone: 'warn',
       title: t`Restart annai to use the new versions`,
       body: sentences(t`The update is installed and runs the next time annai starts.`, t`Until then, ${list(waiting)} can't be used.`),
-      actions: [{ label: t`Restart now`, primary: true, run: env.reload ?? (() => location.reload()) }],
+      actions: [{ label: t`Restart now`, primary: true, run: () => { env.reload(); } }],
     });
   } else if (!failed.length && applied) {
     ctx.notices.toast(t`Plugins updated.`);
@@ -130,7 +131,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
 /**
  * An update from an address that brings something new asks first, listing it (the coordinator's second
  * finding); new code asks with the install screen's full-trust words. Nothing changes until Update.
- * @param {{ plugins: any, notices: any }} ctx @param {Update} u @param {Env} env
+ * @param {{ plugins: any, notices: any }} ctx @param {Update} u @param {Applying} env
  */
 async function askFirst(ctx, u, env) {
   const added = /** @type {import('../core/packages.js').Added} */ (u.added);

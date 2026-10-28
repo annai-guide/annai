@@ -67,6 +67,24 @@ test('ask waits for a tap; a later step continues with the answer', async (t) =>
   assert.equal(k.requests.length, 2);
 });
 
+test('the dock is told "Waiting for your OK" only while an ask waits; a wait is the user\'s turn (phone-fixes-1 item 5: IMG_3017)', async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'wait', input: { seconds: 60 } }] }, { toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }] }, say('OK.')]]);
+  /** @type {string[]} */
+  const told = [];
+  k.agent.on('state', (/** @type {any} */ s) => { if (s.name === 'waiting') told.push(s.label); });
+  k.agent.send('Hello');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(told, ['Your turn'], 'what the dock was told, as it was told');
+  assert.equal(k.agent.state.label, 'Your turn');
+  k.agent.send('Still here');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(told, ['Your turn', 'Waiting for your OK']);
+  const asked = (await k.events(['tool.call'])).find((/** @type {any} */ e) => e.data.name === 'ask');
+  k.agent.answer(asked.data.id, 'Yes');
+  await k.agent.idle();
+});
+
 test('typing answers a pending ask, and is not repeated as its own message', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, say('OK.')]]);
@@ -1260,4 +1278,13 @@ test('describing is never started once the turn is stopped: an already-stopped s
   const out = await k.agent.describe({ content: 'A PDF.', document: { mediaType: 'application/pdf', data: toBase64(new TextEncoder().encode('%PDF-1.4 booking')) } }, 'w1', stopped.signal, { input: ['text'] });
   assert.equal((k.sent['model-u'] ?? []).length, 0);
   assert.match(out.content, /It wasn't described: /);
+});
+
+test("each of Shiori's lines carries the model that wrote it, the role's first, and whether that was tried (the second review of phone-fixes-1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }], [say('Hi.')]]);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  const [line] = await k.events(['out.speak']);
+  assert.deepEqual(line.data.by, { name: 'model-1', first: 'model-0', tried: true });
 });

@@ -92,9 +92,10 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     await expect(said.nth(0)).toContainText("I'm checking.");
     await expect(said.nth(1)).toContainText("It's open until ten tonight.");
     // The halves' notes to each other show by default (the user, 2026-10-23), as notes of their own; annai's blocks to them stay in the Trace.
+    // Kokoro's ends with the model that wrote it (phone-fixes-1 item 12); a live voice's names none.
     await expect(page.locator('.convo .halves-note')).toHaveText([
       'Koe to Kokoro: Is Nepenthe open now?',
-      'Kokoro to Koe: Nepenthe is open until 22:00 tonight (nepenthe.com).',
+      /^Kokoro to Koe: Nepenthe is open until 22:00 tonight \(nepenthe\.com\)\./,
     ]);
     // Voice off closes it, the microphone with it.
     await page.locator('.voice-chip').click();

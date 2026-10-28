@@ -4,7 +4,7 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.4.0",
+      "version": "0.4.2",
       "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
       "category": "developer",
       "keywords": [],
@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 13056,
+      "size": 12953,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,8 +20,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "687cfb64d82d1c3e978fec01da5ecb3a12af838fa50110c5ab34c1fc5052c1e5",
-        "index.js": "5f04053758ea694cab858bd4bc9ea40f0c40a246ffcb30c264de5c29afe9549f",
+        "annai-plugin.json": "041df956a9c967ec81cffdc8a334fa954e74bb49f7ed0adbd3e69125fc1a1cf6",
+        "index.js": "ea2c6f9a9c88a842994ee286327e26df76b6953017c236be2ece7d14fe372702",
         "l10n/ja.json": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
         "l10n/zh-Hans.json": "d0d84bb7c297830837be8c6ce2a59d96eddf7a4805ce66fef93359cf5969d37e"
       }
@@ -196,7 +196,7 @@
     {
       "id": "provider-anthropic",
       "name": "Anthropic",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
       "category": "providers",
       "keywords": [],
@@ -206,7 +206,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 9725,
+      "size": 9881,
       "requires": [
         {
           "id": "anthropic-messages",
@@ -215,7 +215,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "18746b1a2e8ea80a4b1caad209da1d913683716416b54e146b4fe232704e056a",
+        "annai-plugin.json": "240b4deb91499011607356a6a4fa9b1ff04c11518d3f78fac097e536bfe88f7f",
         "l10n/ja.json": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
         "l10n/zh-Hans.json": "97c82307fc7cb7fc51a42bf58fb7b8f746e304379aa720f5774b195878cd9229"
       }

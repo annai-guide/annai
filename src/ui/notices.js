@@ -33,14 +33,51 @@ export function createNotices() {
    * @type {WeakMap<HTMLElement, () => void>}
    */
   const fitters = new WeakMap();
-  /** @param {HTMLElement} node @param {HTMLElement} more */
+  /**
+   * A card in the box shows its title and every button, and none of its words behind them (the second review of phone-fixes-1: a
+   * choice that changes the user's data is never out of sight). Its words take fewer lines, down to one, while it is taller than the
+   * box; then More joins the buttons if their row stays one row, and the words go behind More (hidden to the eye only, so a screen
+   * reader still reads them); still too tall, the card grows past the quarter of the screen (cards scroll away with the page).
+   * @param {HTMLElement} node @param {HTMLElement} more
+   */
   const fit = (node, more) => () => {
-    const p = node.querySelector('p');
-    if (!p || !node.offsetHeight || node.classList.contains('open')) return;
-    node.classList.add('clamp');
-    const long = p.scrollHeight > p.clientHeight + 1;
-    node.classList.toggle('clamp', long);
-    more.hidden = !long;
+    if (!node.offsetHeight || node.classList.contains('open')) return;
+    const words = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(':scope > p')]);
+    const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
+    const focused = document.activeElement === more;
+    node.style.removeProperty('--lines');
+    node.classList.remove('brief', 'grow');
+    const cut = () => words.some((p) => p.scrollHeight > p.clientHeight + 1);
+    const over = () => node.scrollHeight > node.clientHeight + 1;
+    if (words.length) {
+      acts.before(more);
+      more.hidden = true; // measured without it: it comes back only where the words need it
+      node.classList.add('clamp');
+      more.hidden = !cut();
+      node.classList.toggle('clamp', !more.hidden);
+      if (over()) {
+        node.classList.add('clamp');
+        for (let n = 2; n && over(); n--) {
+          node.style.setProperty('--lines', String(n));
+          more.hidden = !cut();
+        }
+      }
+      if (over()) {
+        more.hidden = false;
+        const row = acts.offsetHeight;
+        acts.append(more);
+        if (acts.offsetHeight > row + 1) acts.before(more);
+        node.classList.add('brief');
+      }
+    }
+    if (over()) node.classList.add('grow');
+    // More moved to measure: a keyboard's focus on it stays (the review of phone-fixes-1).
+    if (focused && !more.hidden) more.focus({ preventScroll: true });
+  };
+  /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
+  const fitStack = (node) => () => {
+    node.classList.remove('grow');
+    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
   };
   addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
@@ -70,6 +107,7 @@ let lone = 0;
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
     /** @type {Stack} */
     const stack = { el, list, count, members: new Set(), said, show, all };
+    fitters.set(el, fitStack(el));
     stack.count.dataset.title = title;
     return stack;
   }
@@ -81,6 +119,7 @@ let lone = 0;
     st.el.setAttribute('aria-label', plural(n, '{0}, # card', '{0}, # cards', title));
     st.show.setAttribute('aria-label', st.list.hidden ? plural(n, 'Show the # card: {0}', 'Show the # cards: {0}', title) : plural(n, 'Hide the # card: {0}', 'Hide the # cards: {0}', title));
     st.all.setAttribute('aria-label', plural(n, 'Dismiss the # card: {0}', 'Dismiss all # cards: {0}', title));
+    fitters.get(st.el)?.();
   };
   /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
   const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
@@ -122,6 +161,7 @@ let lone = 0;
     if (stack.members.size === 1) {
       const [only] = stack.members;
       stack.el.replaceWith(only);
+      fitters.get(only)?.(); // a card again, in the box: fitted as one
       stacks.delete(kind);
       singles.set(kind, only);
     } else if (!stack.members.size) {
@@ -148,9 +188,9 @@ let lone = 0;
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const more = h('button', { class: 'btn ghost more', type: 'button', hidden: true, 'aria-expanded': 'false', onclick: () => keep(() => {
       const open = node.classList.toggle('open');
+      if (!open) fitters.get(node)?.(); // closed again, it fits the screen as it is now (it may have turned meanwhile)
       more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
-      el.classList.toggle('opened', Boolean(el.querySelector('.notice.open')));
     }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title, lang: otherLang(lang) }),
@@ -161,9 +201,12 @@ let lone = 0;
         ...actions.map((a) => h('button', { class: ['btn', a.primary && 'pri'], type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => dismiss() }, t`Dismiss`)));
     fitters.set(node, fit(node, more));
-    const dismiss = () => { if (node.isConnected) keep(() => { leave(kind, node); el.classList.toggle('opened', Boolean(el.querySelector('.notice.open'))); }); };
-    keep(() => place(kind, title, node));
-    fitters.get(node)?.();
+    const dismiss = () => { if (node.isConnected) keep(() => leave(kind, node)); };
+    // Fitted inside keep(): what it changes of the card's height is kept off what the user sees (scrolled down, the screen stays put).
+    keep(() => {
+      place(kind, title, node);
+      fitters.get(node)?.();
+    });
     return dismiss;
   }
   /** @param {string} text @param {{ lang?: string }} [o] lang: a plugin's words' language, marked when it isn't the screens' */

@@ -361,6 +361,16 @@ test('prefer: the model whose cache is warm is tried first (spec §9.6, switchin
   assert.equal((await call(s, { prefer: 'm-gone' })).reply.text, 'A.');
 });
 
+test("a model turn names the role's first model, whichever was tried first: the Conversation's \"· … didn't answer\" is against it (the review of phone-fixes-1)", async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { off: [] });
+  const warm = await call(s, { prefer: 'm-1' });
+  assert.deepEqual([warm.answeredBy, warm.first, warm.tried], ['model-1', 'model-0', false], 'a warm model answered in its place: it was never asked');
+  const plain = await call(s);
+  assert.deepEqual([plain.first, plain.tried], ['model-0', true]);
+  const turns = (await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }))).map((e) => [e.data.answeredBy, e.data.first]);
+  assert.deepEqual(turns, [['model-1', 'model-0'], ['model-0', 'model-0']]);
+});
+
 test('an upload the provider no longer knows: the endpoint forgets its uploads, and the same model is tried once more (spec §9.9)', async () => {
   const s = setup([[{ error: 'upload', status: 404, message: 'File `file_1` not found.' }, { text: 'Seen.' }], [{ text: 'B.' }]]);
   let forgot = 0;
@@ -486,4 +496,76 @@ test('a day limit\'s sentence is for models and code, so no language changes it;
   } finally {
     setWords('en', null);
   }
+});
+
+test("a call stopped part-way costs what its provider had reported: the model turn and the day's spend count it (the second review of phone-fixes-1)", async () => {
+  // A reply that reports its prompt's usage first (as Anthropic's message_start does), then is stopped before it finishes.
+  const hang = { type: 'hang', name: 'Hang', tail: true, async *run(/** @type {any} */ { signal }) {
+    yield { type: 'usage', usage: { input: 1_000_000, output: 0 } };
+    await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  } };
+  const s = setup([[{ text: 'unused' }]], { endpointTypes: ['hang'], types: [['hang', hang]] });
+  const stop = new AbortController();
+  const done = call(s, { signal: stop.signal });
+  setTimeout(() => stop.abort(), 20);
+  await assert.rejects(done, (/** @type {any} */ e) => e.kind === 'cancelled');
+  const [turn] = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
+  assert.equal(turn.data.cost, 1, '1M input tokens at $1 per million');
+  assert.equal(turn.data.usage.input, 1_000_000);
+});
+
+test("the first model a line names is one that can answer: a model whose chat ability is off is passed over (the second review of phone-fixes-1)", async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { off: [0] });
+  const r = await call(s);
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-1', true]);
+});
+
+test("the first model, tried and failed: the line says it didn't answer", async () => {
+  const s = setup([[{ error: 'auth', status: 401 }], [{ text: 'B.' }]]);
+  const r = await call(s);
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-0', true]);
+});
+
+test("a first model that never got the request (it can't read the PDF in it) wasn't tried: the line says another answered instead; a resting one was (third review of phone-fixes-1)", async () => {
+  const pdf = { messages: [{ role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBE', name: 'stay.pdf' }, { type: 'text', text: 'Read it' }] }] };
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { models: [{ input: ['text'] }, { input: ['text', 'pdf'] }] });
+  const r = await call(s, { request: pdf });
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-0', false]);
+  s.bench.bench('m-0', 60_000);
+  const rested = await call(s);
+  assert.deepEqual([rested.answeredBy, rested.first, rested.tried], ['model-1', 'model-0', true], 'resting: it "didn\'t answer"');
+});
+
+test("a call that times out or is cut off part-way costs what it had used too: the turn's cost counts it with the answer's (third review of phone-fixes-1)", async () => {
+  for (const kind of /** @type {const} */ (['timeout', 'network'])) {
+    const failing = { type: 'failing', name: 'Failing', tail: true, async *run() {
+      yield { type: 'usage', usage: { input: 1_000_000, output: 0 } };
+      throw new ProviderError(kind, `Scripted ${kind}.`);
+    } };
+    const s = setup([[{ text: 'unused' }], [{ text: 'B.', usage: { input: 0, output: 0 } }]], { endpointTypes: ['failing'], types: [['failing', failing]] });
+    const r = await call(s);
+    assert.equal(r.answeredBy, 'model-1');
+    // Each call to the first model (a network failure is tried again) used a million input tokens, at $1.
+    const first = r.attempts.filter((a) => a.model === 'm-0');
+    assert.ok(first.length >= 1);
+    assert.equal(r.cost, first.length, kind);
+    assert.ok(first.every((a) => a.cost === 1));
+  }
+});
+
+test("speech cut when another model starts over is named by the model that spoke it, not one passed over in between (the third review of phone-fixes-1, R1)", async () => {
+  const cutting = { type: 'cutting', name: 'Cutting', tail: true, async *run() {
+    yield { type: 'tool_input', id: 't1', name: 'speak', partial: '{"text":"Bixby Bridge is' };
+    yield { type: 'text', text: 'Bixby ' };
+    throw new ProviderError('network', 'The connection dropped.');
+  } };
+  const s = setup([[{ text: 'unused' }], [{ text: 'B.' }], [{ text: 'C.' }]], { endpointTypes: ['cutting'], types: [['cutting', cutting]] });
+  s.bench.bench('m-1', 600_000, Date.now());
+  /** @type {any[]} */
+  const restarts = [];
+  const r = await call(s, { onEvent: (/** @type {any} */ ev) => { if (ev.type === 'restart') restarts.push(ev.by); } });
+  assert.equal(r.answeredBy, 'model-2');
+  assert.ok(r.attempts.some((a) => a.model === 'm-1' && a.outcome === 'benched'), 'model-1 rested in between');
+  assert.ok(restarts.length >= 1);
+  assert.ok(restarts.every((by) => by.name === 'model-0'), JSON.stringify(restarts));
 });

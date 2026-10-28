@@ -1,5 +1,5 @@
 import { h, crumb, t, linkIn, showError } from '../dom.js';
-import { bookingLines, fileHref, sentences } from '../format.js';
+import { bookingLines, fileHref, bookingHref, sentences } from '../format.js';
 import { isBookingPath } from '../../core/bookings.js';
 import { normPath } from '../../core/paths.js';
 import { mapsUrl } from '../cards.js';
@@ -51,13 +51,13 @@ export async function renderBooking(ctx, route) {
     h('p', {}, confirmed ? h('span', { class: 'chip ok', text: t`Confirmed` }) : h('span', { class: 'chip check', text: t`Check this against the original, then confirm it.` })),
     h('dl', { class: 'facts' }, ...bookingLines(booking).flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
     booking.place?.name ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: mapsUrl(booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`)) : null,
-    await original(ctx, id, booking.source),
-    h('div', { class: 'acts' }, confirm, h('a', { class: 'btn', href: fileHref(id, path) }, t`Change it`)),
+    await original(ctx, id, booking.source, bookingHref(id, path)),
+    h('div', { class: 'acts' }, confirm, h('a', { class: 'btn', href: fileHref(id, path, bookingHref(id, path)) }, t`Change it`)),
     problem);
 }
 
-/** The original a booking was read from: a photo is shown, anything else is a link. @param {any} ctx @param {string} id @param {unknown} source */
-async function original(ctx, id, source) {
+/** The original a booking was read from: a photo is shown, anything else is a link, whose screen comes back here. @param {any} ctx @param {string} id @param {unknown} source @param {string} here */
+async function original(ctx, id, source, here) {
   const path = typeof source === 'string' ? source.replace(/^\/trip(?=\/)/, '') : '';
   /** @type {any} */
   let entry = null;
@@ -67,7 +67,7 @@ async function original(ctx, id, source) {
     entry = null; // not a path
   }
   if (!entry) return h('p', { class: 'sub warn', text: path ? t`The original, ${path}, isn't in the trip.` : t`This booking doesn't say which file it came from.` });
-  const link = h('a', { class: 'btn', href: fileHref(id, entry.path) }, t`Open the original`);
+  const link = h('a', { class: 'btn', href: fileHref(id, entry.path, here) }, t`Open the original`);
   if (!entry.type.startsWith('image/')) return h('div', { class: 'original' }, h('p', { class: 'sub', text: t`From ${entry.path}` }), h('div', { class: 'acts' }, link));
   const img = h('img', { class: 'card-image', alt: t`The original, ${entry.path}` });
   ctx.ws.read(id, entry.path).then((/** @type {any} */ got) => {
