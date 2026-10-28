@@ -31,7 +31,7 @@ import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
 import { planWords } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
-import { readFile, DESCRIBE_S, DESCRIBE_PDF_S } from './reading.js';
+import { readFile } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
 
 /**
@@ -137,8 +137,6 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
-/** How long a photo's description and a PDF's reading may take (reading.js). */
-export { DESCRIBE_S, DESCRIBE_PDF_S };
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
  * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
@@ -2230,7 +2228,7 @@ export class Agent {
   /**
    * A tool's photos and PDF for a model that can't see photos or read PDFs (emulator pass, 5b; the bookings design, goals 11 and 12):
    * read by whoever can (reading.js), the crop when a part was asked for, as that is what the tool returned; a PDF's pages, drawn for a
-   * model that sees photos, go with the result as its photos. It stops with the turn, and within DESCRIBE_S (DESCRIBE_PDF_S for a PDF);
+   * model that sees photos, go with the result as its photos. It stops with the turn, and within reading.js's DESCRIBE_S (DESCRIBE_PDF_S for a PDF);
    * either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
    * @param {Map<string, string>} [failed] a helper's readings that failed, by what was sent: not sent again in its task

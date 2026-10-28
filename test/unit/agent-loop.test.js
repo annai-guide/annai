@@ -397,7 +397,7 @@ test('Erase forgets the PDFs told this session (the fix pass\'s security review)
 
 test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async (t) => {
   useClock(t);
-  const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/loop.js');
+  const { DESCRIBE_S, DESCRIBE_PDF_S } = await import('../../src/core/agent/reading.js');
   assert.ok(DESCRIBE_PDF_S > DESCRIBE_S);
   // secondMs is 10 here: 30 seconds are 300 ms.
   const k = await pdfKit([readPdf, say('Check-in is at 3 PM.')], [{ delayMs: (DESCRIBE_S + 15) * 10, text: 'Hotel booking: check-in 3 PM.' }]);
@@ -1503,4 +1503,16 @@ test("Koe's turn has no second pass: a PDF in her newest message is never read f
   await k.agent.idle();
   assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'describe').length, 0, 'nobody was asked to read it for Koe');
   assert.equal((k.sent['model-u'] ?? []).length, 0);
+});
+
+test("a reader that stalls before its first words has the longer of its role's wait and a photo's 30 seconds, not the PDF's whole 90: the pages still get their turn", async (t) => {
+  useClock(t);
+  // A second is a second here (the clock is the test's): Utility's reader would take a minute to its first words.
+  const k = await bookingKit([[readPdf, say('Done.')]], { agent: { secondMs: 1000 }, models: [{ input: ['text', 'image'] }], utility: [{ delayMs: 60_000, text: 'Hotel.' }] }, ['text', 'pdf']);
+  const asked = fakePages(k, 1);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.equal(asked.length, 1, 'the pages were drawn');
+  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: pages 1–1 of 1\.$/);
 });
