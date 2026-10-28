@@ -1,5 +1,5 @@
 {
-  "build": "b8a7819e5a80",
+  "build": "4a4b4a746d0a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -73,7 +73,7 @@
     "/src/core/llm/config.js": "d32a97cf6da1",
     "/src/core/llm/contract.js": "19f2abcdfeb0",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "8119b472f0fb",
+    "/src/core/llm/fallback.js": "273bebf06336",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "8306b02c48bf",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
@@ -86,7 +86,7 @@
     "/src/core/llm/service.js": "485c4f21f5db",
     "/src/core/llm/speech.js": "5d91010f311e",
     "/src/core/llm/sse.js": "656d2989d833",
-    "/src/core/llm/trace.js": "7727b72d584c",
+    "/src/core/llm/trace.js": "256c3fe59b0f",
     "/src/core/llm/uploads.js": "7c2609587e19",
     "/src/core/llm/kept.js": "7becd6be398a",
     "/src/core/live/activity.js": "d8245a391342",
@@ -252,7 +252,7 @@
     "/src/ui/screens/settings.js": "bc2395afa70e",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
-    "/src/ui/screens/talk.js": "f0b7d7d5ce7d",
+    "/src/ui/screens/talk.js": "525b61b38ff7",
     "/src/ui/screens/tools.js": "a820f3ddec27",
     "/src/ui/screens/trace.js": "232ff7af2307",
     "/src/ui/screens/trip.js": "2ac01ae1599e",
