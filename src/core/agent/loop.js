@@ -1341,7 +1341,10 @@ export class Agent {
     this.#tidy = tidy;
     try {
       for (let step = 0; step < 4; step++) {
-        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
+        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools,
+          // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
+          // each as words, wherever it is (the user's session, 2026-10-28: a PDF just read kept every model from tidying up).
+          newestPhoto: false, newestDocument: false };
         const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
         const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
         if (!calls.length) return r.reply.text.trim() || null;
