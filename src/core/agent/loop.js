@@ -1833,7 +1833,8 @@ export class Agent {
       this.#heardBy = result.modelId;
       answered = true;
       owed = owed.filter((r) => !r.cue);
-      this.#lastPrompt = promptTokens(result.usage);
+      // The answering call's own prompt, not the turn's sum with calls that failed (the third review of phone-fixes-1).
+      this.#lastPrompt = promptTokens(result.reply.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
@@ -2511,9 +2512,9 @@ export class Agent {
   /**
    * Speech that streamed in and played but whose call never ran (the call was cut, or started over): what
    * was said aloud is written into the conversation, marked cut, named by the model whose speech it was.
-   * @param {string} wakeId @param {{ name: string, first: string | null, tried: boolean } | null} [by] @returns {Promise<string>} what was said
+   * @param {string} wakeId @param {{ name: string, first: string | null, tried: boolean } | null} by @returns {Promise<string>} what was said
    */
-  async #cutSpeech(wakeId, by = this.#by) {
+  async #cutSpeech(wakeId, by) {
     const begun = [...this.#utterances];
     this.#utterances.clear();
     this.#streaming = '';
