@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -94,4 +94,27 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await expect(tab()).toHaveText('Trips');
   await page.getByRole('main').locator('.crumbs a').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
+});
+
+// "for the ridy up button, maybe put at the bottom of conversation instead of top?"
+test('Tidy up is at the foot of the Conversation, under its last line, and its menu opens upward, in view (item 10)', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  for (let i = 0; i < 6; i++) {
+    await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+    await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+  }
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo .shiori')).toHaveCount(6);
+  const toggle = page.getByRole('button', { name: 'Tidy up' });
+  await toggle.scrollIntoViewIfNeeded();
+  const last = /** @type {any} */ (await page.locator('.convo > li').last().boundingBox());
+  const at = /** @type {any} */ (await toggle.boundingBox());
+  expect(at.y).toBeGreaterThanOrEqual(last.y + last.height);
+  await toggle.click();
+  const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+  await expect(menu).toBeInViewport({ ratio: 1 });
+  const m = /** @type {any} */ (await menu.boundingBox());
+  expect(m.y + m.height).toBeLessThanOrEqual(at.y + 1);
+  await expect(menu.getByRole('button', { name: 'Summarize now' })).toBeVisible();
 });
