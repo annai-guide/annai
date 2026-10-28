@@ -1,0 +1,13 @@
+{
+  "manifest": {
+    "description": "透過 Google 自己的 API 使用 Gemini 模型，付費金鑰可使用 Google 搜尋，另有 Google 的語音轉文字和聲音，以及用於語音對話的 Gemini Live。",
+    "name": "Google Gemini",
+    "provider.abilities.chat.noWindowNote": "從 2.0 版起，這裡走的是 Gemini 自己的 API，而不是它的 OpenAI 相容端點。這裡沒有上下文視窗的模型是在那之前或依 ID 新增的：如果它不回答，請移除後用「取得模型清單」重新新增。",
+    "provider.abilities.live.name": "即時語音",
+    "provider.abilities.live.note": "為 Koe 提供在單一串流中雙向語音的對話（Gemini Live）。連線開啟期間，你說的話會以音訊形式傳送給 Google。在 AI Studio 的免費額度內免費。Koe 在這裡也用 Sulafat 說話，也就是 Koe · 經典 的聲音（從 Gemini Live 協定 0.2 起，可在設定 → 更新中取得），所以她在兩種模式下聽起來一樣。",
+    "provider.abilities.transcription.note": "把你說的話轉成文字，供不接受音訊的模型使用。Gemini 3.5 Transcribe 是 Google 自己的；Flash Lite 在被要求時也能轉錄，價格更低。價格是根據 Google 的音訊費率（每秒約 25 個 token）估算的。",
+    "provider.abilities.voice.note": "Shiori 的聲音，一次一句，每句一次請求。它是串流的：一句寫出後約半秒她就開始說話；連線較弱時，她會等到不會卡頓再說。關閉串流播放後，每句會像其他聲音一樣完整到達後再說。使用免費額度時，Google 對這些聲音每個每天只允許 10 次請求、每分鐘 3 次：遠遠不夠一天的回覆，所以說完前幾句後會由清單中的下一個聲音來說。價格是根據 Google 的音訊費率（每秒 25 個 token）按字元估算的。除非這裡的可調參數指定了別的聲音，她的聲音是 Sulafat（Google 30 種聲音中溫暖的那個；Achird 友善，Vindemiatrix 溫柔，Kore 堅定），風格會作為 Google 自己的 speech_metadata 中的 style 傳送。",
+    "provider.note": "使用 Gemini 自己的 API。AI Studio 會顯示每個金鑰的層級：免費金鑰的請求有每分鐘和每天的次數限制。可用「取得模型清單」新增更多模型。"
+  },
+  "messages": {}
+}

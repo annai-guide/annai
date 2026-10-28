@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "連線 OpenAI 風格的 Chat Completions 端點：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本機伺服器。",
+    "name": "Chat Completions"
+  },
+  "messages": {}
+}

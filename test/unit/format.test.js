@@ -286,10 +286,13 @@ test('languageName: the language\'s name in the screens\' language, annai\'s Eng
 
 test('languageName: English screens keep annai\'s own English names, where the browser\'s differ', () => {
   as('en', 'en-US');
-  assert.equal(languageName('zh'), 'Chinese (Mandarin)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('zh'), 'Chinese (Simplified)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('zh-Hant'), 'Chinese (Traditional)');
   assert.equal(languageName('bn'), 'Bengali', 'not "Bangla"');
   as('ja', 'ja-JP');
-  assert.equal(languageName('zh'), '中国語');
+  assert.equal(languageName('zh'), new Intl.DisplayNames('ja', { type: 'language' }).of('zh-Hans'), 'the two Chinese rows are told apart (review F4)');
+  assert.equal(languageName('zh-Hant'), new Intl.DisplayNames('ja', { type: 'language' }).of('zh-Hant'));
+  assert.notEqual(languageName('zh'), languageName('zh-Hant'));
   assert.equal(languageName('bn'), 'ベンガル語');
 });
 
@@ -326,4 +329,15 @@ test('sentences: a part with no full stop of its own (a plugin\'s error, say) ke
   assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function 設定 → プラグインでオフにできます。');
   assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
   assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
+});
+
+test('under Traditional Chinese screens, formats follow the phone\'s region: Taiwan\'s, Hong Kong\'s, or a US phone\'s (l10n-zh-Hant)', () => {
+  as('zh-Hant', 'zh-TW');
+  assert.equal(locale(), 'zh-Hant-TW');
+  assert.equal(money(12.5, 'TWD'), new Intl.NumberFormat('zh-Hant-TW', { style: 'currency', currency: 'TWD' }).format(12.5));
+  as('zh-Hant', 'zh-HK');
+  assert.equal(locale(), 'zh-Hant-HK');
+  as('zh-Hant', 'en-US');
+  assert.equal(locale(), 'zh-Hant-US');
+  assert.equal(num(1234.5), '1,234.5');
 });

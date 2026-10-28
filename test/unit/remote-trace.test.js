@@ -683,6 +683,6 @@ test('the package: an official plugin with the settings form the brief asks for,
   assert.equal(typeof activate, 'function');
   const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
   const listed = catalog.plugins.find((/** @type {any} */ x) => x.id === 'remote-trace');
-  assert.deepEqual(Object.keys(listed.files).sort(), ['annai-plugin.json', 'index.js', 'l10n/ja.json', 'l10n/zh-Hans.json']);
+  assert.deepEqual(Object.keys(listed.files).sort(), ['annai-plugin.json', 'index.js'], 'its words are beside the catalog, not in its package');
   assert.ok(utf8(JSON.stringify(manifest)).length < 4000);
 });

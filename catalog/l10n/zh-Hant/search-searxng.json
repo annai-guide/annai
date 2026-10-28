@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "透過你自己執行的 SearXNG 執行個體搜尋。無需金鑰，沒有限制（除了你自己設的）。執行個體必須允許 JSON 和網頁應用程式。",
+    "name": "SearXNG 搜尋",
+    "settings.properties.url.description": "例如 https://search.example.com。在執行個體的 settings.yml 中，把 json 加到 search: formats: 下，並讓它的網頁伺服器為 annai 的網址傳送 Access-Control-Allow-Origin。不加密的 http 只能用於 localhost。",
+    "settings.properties.url.title": "你的 SearXNG 網址",
+    "keywords": [
+      "SearXNG",
+      "自架"
+    ]
+  },
+  "messages": {
+    "xli1co": "需要你的執行個體網址（設定 → 外掛程式 → SearXNG 搜尋）"
+  }
+}

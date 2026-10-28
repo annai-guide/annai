@@ -1,16 +1,16 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '20f3c6695324';
+const BUILD = '55fb2802f92c';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 const DEV = ['localhost', '127.0.0.1'].includes(sw.location.hostname);
 // The languages with a catalog (written by strings.mjs); stamp.mjs hashes the catalogs after SHELL.
-const LANGS = ['ja', 'zh-Hans'];
+const LANGS = ['ja', 'zh-Hans', 'zh-Hant'];
 // The finished ones: a phone is matched against these only; a user's own choice may be any of LANGS.
-const SHIPPED_LANGS = ['ja', 'zh-Hans'];
+const SHIPPED_LANGS = ['ja', 'zh-Hans', 'zh-Hant'];
 const SHELL = [
   '/',
   '/index.html',
@@ -378,6 +378,15 @@ function sameLanguage(a, b) {
     return false;
   }
 }
+/** A phone's language as the screens read it, as the page's screensTag: Cantonese is written Chinese, by its script (yue-HK is zh-Hant). @param {string} tag */
+function screensTag(tag) {
+  try {
+    const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue'));
+    return l.language === 'yue' ? new Intl.Locale('zh', { script: l.maximize().script, region: l.region }).toString() : tag;
+  } catch {
+    return tag;
+  }
+}
 
 /**
  * The languages whose catalogs a version caches: languages.ui in the app settings, else the worker's own languages against the shipped
@@ -405,7 +414,7 @@ function chosenWords(app) {
   if (ui === 'en') return null;
   if (typeof ui === 'string' && LANGS.includes(ui)) return ui;
   for (const wanted of sw.navigator?.languages ?? []) {
-    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(wanted, tag));
+    const found = ['en', ...SHIPPED_LANGS].find((tag) => sameLanguage(screensTag(wanted), tag));
     if (found) return found === 'en' ? null : found;
   }
   return null;

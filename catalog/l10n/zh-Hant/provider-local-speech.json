@@ -1,0 +1,14 @@
+{
+  "manifest": {
+    "description": "由你自己執行的伺服器（如 Speaches、whisper.cpp 或 Kokoro）提供語音轉文字和聲音。",
+    "name": "本機語音伺服器",
+    "provider.abilities.transcription.note": "在供應商的網址上使用 Speaches 或 whisper.cpp。依 ID 或用「取得模型清單」新增模型。除非用 --convert 啟動，whisper.cpp 的伺服器只接受 WAV、MP3 和 FLAC：這種情況下請把它的 audioIn 設為 [\"mp3\", \"flac\", \"wav\"]。",
+    "provider.abilities.voice.note": "在它自己的網址上使用 Kokoro 或 Speaches。依 ID 新增一個聲音模型，並在模型的「聲音」中填入它的一個聲音（Kokoro 的如 af_heart）。它們不接受風格：風格會儲存但不會傳送；如果伺服器接受，請從模型的可調參數中刪除 \"styled\": false。",
+    "keywords": [
+      "Speaches",
+      "whisper.cpp",
+      "Kokoro"
+    ]
+  },
+  "messages": {}
+}
