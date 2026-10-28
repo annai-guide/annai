@@ -29,8 +29,8 @@ export function readRefusal(message) {
 }
 
 /**
- * The photos over the count, oldest first, sent as stubs. Within one message, a PDF's page pictures go from its last page back, so a
- * limit under a PDF's page count keeps page 1 and on, and the stub says which page didn't go (the re-check of reading-files).
+ * The photos over the count, oldest first, sent as stubs. Within one message, a PDF's page pictures give way before its own photos, from
+ * its last page back, so a limit keeps the message's photos and page 1 and on; a page's stub names it (the re-checks of reading-files).
  * @param {Message[]} messages @param {number | null | undefined} maxCount
  */
 export function limitImages(messages, maxCount) {
@@ -40,9 +40,9 @@ export function limitImages(messages, maxCount) {
   if (drop <= 0) return messages;
   return messages.map((m) => {
     if (drop <= 0) return { role: m.role, parts: m.parts };
-    // This message's pictures in the order they go: photos first, as they come; then a PDF's pages, its last first.
+    // This message's pictures in the order they go: a PDF's pages first, its last first; then its own photos, as they come.
     const images = m.parts.flatMap((p, i) => (p.type === 'image' ? [{ p, i }] : []));
-    const order = [...images.filter(({ p }) => !p.page), ...images.filter(({ p }) => p.page).reverse()];
+    const order = [...images.filter(({ p }) => p.page).reverse(), ...images.filter(({ p }) => !p.page)];
     const gone = new Set(order.slice(0, drop).map(({ i }) => i));
     drop -= gone.size;
     return {
