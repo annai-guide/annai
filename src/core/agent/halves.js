@@ -975,7 +975,7 @@ export class Halves {
 
   /**
    * Koe tells the user Kokoro couldn't check, once, in plain words; no card (plan decision 21). Only while
-   * someone waits for Kokoro (Koe asked it, or waits): a check nobody waited for stays in the Trace. Koe reads it, so it is annai's
+   * someone waits for Kokoro (Koe asked it, or waits): a check nobody waited for gets a card instead. Koe reads it, so it is annai's
    * English. @param {Why} why @param {unknown} e
    */
   #kokoroFailed(why, e) {
@@ -991,7 +991,9 @@ export class Halves {
       this.#asked = false;
       this.#note(/* en */ `Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'kokoro-failed');
     }
-    return true;
+    // Koe tells the user (now, or did since their last words), or its turn still runs, and a failure of its own says both in one
+    // card; else a card does (the user, 2026-10-28: only the Trace had it). The Conversation has its line either way.
+    return this.#failTold || this.koe.busy;
   }
 
   /** Koe's list rests; Kokoro is told to talk directly, and wakes to (its notes may not have reached the user). No card. */
