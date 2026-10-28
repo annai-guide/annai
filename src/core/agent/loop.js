@@ -137,7 +137,7 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
-/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string }[] }} KeptReading */
+/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures, by their blob hashes. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string, hash: string }[] }} KeptReading */
 
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
@@ -2185,7 +2185,7 @@ export class Agent {
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope);
+      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read');
     }
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
@@ -2242,8 +2242,10 @@ export class Agent {
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
    * @param {Map<string, string>} [failed] a helper's readings that failed, by what was sent: not sent again in its task
    * @param {string} [scope] the conversation the tool ran for, its photos read for it
+   * @param {boolean} [fresh] an explicit read: read afresh, and the new reading replaces the kept one (the re-review of reading-files:
+   *   "read it again" must read it again)
    */
-  async #described(output, wakeId, signal, model, failed, scope = this.scope) {
+  async #described(output, wakeId, signal, model, failed, scope = this.scope, fresh = false) {
     const sees = Boolean(model?.input?.includes('image'));
     const reads = Boolean(model?.input?.includes('pdf'));
     /** @type {string[]} */
@@ -2258,7 +2260,7 @@ export class Agent {
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
       const tried = key ? `${kind}\n${key}` : '';
       /** @type {import('./reading.js').Reading | null} */
-      let reading = key ? await this.#keptReading(scope, key, sees) : null;
+      let reading = key && !fresh ? await this.#keptReading(scope, key, sees) : null;
       if (!reading && failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
       if (!reading) {
         const data = m.data ?? (bytes ? toBase64(bytes) : '');
@@ -2266,7 +2268,7 @@ export class Agent {
           llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
           secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
         });
-        if (key) await this.#keep(scope, key, kind, reading, wakeId);
+        if (key) reading = (await this.#keep(scope, key, kind, reading, wakeId)) ?? reading;
         if (failed && tried && (reading.how === 'failed' || reading.how === 'late')) failed.set(tried, reading.text);
       }
       said.push(reading.text);
@@ -2303,11 +2305,11 @@ export class Agent {
           llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
           explain: (e, role) => this.#explain(e, role, true),
         });
-        if (key) await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', reading, wakeId);
+        if (key) reading = (await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', reading, wakeId)) ?? reading;
         // One that failed, or ran out of time, isn't kept, but isn't waited for again by the next model of this call.
         if (reading.how !== 'told' && reading.how !== 'pages') memo.set(once, reading);
       }
-      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data }))];
+      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}) }))];
     } catch (e) {
       /* en */
       return [{ type: 'text', text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }];
@@ -2327,14 +2329,15 @@ export class Agent {
       const text = (await storedTexts(this.store, e)).text ?? e.data?.text;
       const how = e.data?.how;
       if (typeof e.data?.hash !== 'string' || typeof text !== 'string' || (how !== 'told' && how !== 'pages')) continue;
-      /** @type {{ mediaType: string, data: string }[]} */
+      /** @type {{ mediaType: string, data: string, hash: string }[]} */
       const images = [];
       for (const im of how === 'pages' ? e.data.images ?? [] : []) {
         const bytes = await blobBytes(this.store, scope, im.hash, { named: e, via: e.type });
-        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes) });
+        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash });
       }
       if (how === 'pages' && !images.length) continue;
-      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text, images } });
+      // The newest reading of a file replaces what was kept of it (an explicit read reads afresh).
+      kept.map.set(e.data.hash, { [how]: { how, text, images } });
     }
   }
 
@@ -2357,9 +2360,10 @@ export class Agent {
    * Keeps a reading that read the file (told in words, or drawn as pages) with its conversation: a `reading` entry in its log, its page
    * pictures named by the entry (spec §4.9), so it outlives a reload and goes with the conversation.
    * @param {string} scope @param {string} hash @param {'image' | 'pdf'} kind @param {import('./reading.js').Reading} reading @param {string} wakeId
+   * @returns {Promise<KeptReading | null>} what was kept, its pictures with their hashes; null for a reading that read nothing
    */
   async #keep(scope, hash, kind, reading, wakeId) {
-    if (reading.how !== 'told' && reading.how !== 'pages') return;
+    if (reading.how !== 'told' && reading.how !== 'pages') return null;
     const how = reading.how;
     const pages = await Promise.all(reading.images.map(async (i) => { const bytes = fromBase64(i.data); return { hash: await sha256Hex(bytes), bytes, type: i.mediaType }; }));
     await record(this.store, scope, {
@@ -2367,7 +2371,11 @@ export class Agent {
       data: { hash, kind, how, wake: wakeId, ...(pages.length ? { images: pages.map((p) => ({ hash: p.hash, mediaType: p.type })) } : {}) },
       texts: [['text', reading.text]], blobs: pages,
     });
-    if (this.#kept.scope === scope) this.#kept.map.set(hash, { ...this.#kept.map.get(hash), [how]: { how, text: reading.text, images: reading.images } });
+    /** @type {KeptReading} */
+    const kept = { how, text: reading.text, images: reading.images.map((i, n) => ({ ...i, hash: pages[n].hash })) };
+    // The newest reading of a file replaces what was kept of it; the older stays in the log, its pictures named by its entry.
+    if (this.#kept.scope === scope) this.#kept.map.set(hash, { [how]: kept });
+    return kept;
   }
 
   /**

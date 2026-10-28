@@ -11,6 +11,7 @@ import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { shownFor } from '../errors.js';
+import { limitImages } from '../agent/refusals.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -299,7 +300,7 @@ function newestDocument(request) {
 /**
  * What a conversation has kept of a file a model can't take (the review of reading-files, finding 1), by the file's hash: what it says
  * in words, for any model, or its pages, for one that sees photos (sees); null when nothing was kept.
- * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string }[] } | null} Readings
+ * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string, hash?: string }[] } | null} Readings
  */
 
 /**
@@ -311,6 +312,8 @@ function newestDocument(request) {
  * @returns {Request}
  */
 export function photosAsWords(request, { photos = true, documents = true, sees = false, readings, kept = false } = {}) {
+  // A kept page picture already in the request (a tool result's pages) goes once: the copy there stays (the re-review of reading-files).
+  const sent = new Set(request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'image' && p.hash ? [p.hash] : []))));
   /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part[]} */
   const word = (p) => {
     if (!((photos && p.type === 'image') || (documents && p.type === 'document'))) return [p];
@@ -319,7 +322,10 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     /* en */
     const stub = p.type === 'image' ? `[a photo${p.path ? `: ${p.path}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${p.name}` : ''}]`;
     if (!r) return [{ type: 'text', text: stub }];
-    return [{ type: 'text', text: `${stub} ${r.text}` }, ...(sees ? r.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data })) : [])];
+    const pages = sees ? r.images.filter((i) => !i.hash || !sent.has(i.hash)) : [];
+    for (const i of pages) if (i.hash) sent.add(i.hash);
+    // With their hashes, so a provider's files API can take them by upload rather than as bytes in every request.
+    return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}) }))];
   };
   return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.flatMap(word) })) };
 }
@@ -341,7 +347,8 @@ async function readFor(request, model, read, signal, readings) {
     ...m, parts: (await Promise.all(m.parts.map((p) => (cant(p) ? read(/** @type {any} */ (p), model, signal) : [p])))).flat(),
   })));
   const sees = model.input.includes('image');
-  return photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
+  const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
+  return model.images?.maxCount ? { ...out, messages: limitImages(out.messages, model.images.maxCount) } : out;
 }
 
 /**
@@ -495,6 +502,8 @@ export async function callRole(c) {
       // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
       const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
       if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
+      // Kept page pictures count toward the model's photo limit too: the oldest over it go as stubs (spec §4.8).
+      if (sent !== r && model?.images?.maxCount) sent = { ...sent, messages: limitImages(sent.messages, model.images.maxCount) };
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;
