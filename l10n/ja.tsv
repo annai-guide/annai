@@ -664,23 +664,24 @@ sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with
 b1qn4p	ok	Voice	声	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
 su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:135	
 izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:145	
-13fumpt	ok	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:146	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:147	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:148	
-1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:149	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} にはプラグインが必要ですが、動いていません。インストールするには、設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:150	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
-11neb14	ok	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:151	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:152	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:153	{0} = name
-x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:154	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:155	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:157	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:158	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:159	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:160	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:163	{0} = name
+1l28lx6#other	ok	Its output stopped for # seconds.	出力が#秒間止まりました。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:147	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:148	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:149	
+1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:150	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} にはプラグインが必要ですが、動いていません。インストールするには、設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
+11neb14	ok	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:152	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:154	{0} = name
+x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:155	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:156	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:158	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:159	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:160	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:164	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	"tiers" の段階にある {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	"schedule" の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 予定 is the Plan screen's word.
@@ -693,22 +694,22 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" の項目に "from" がありません：各項目は 2027-01-01 のような日付で始まります。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" に {0} が2回あります：その日に変わるものは1つの項目にまとめてください。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" に「{0}」がありますが、annai が知っている料金ではありません。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	エラーの後、数分間休んでいます。	src/core/llm/fallback.js:102	
-9bk0c8	ok	It doesn't take photos.	写真を受け付けません。	src/core/llm/fallback.js:103	
-12h1lml	ok	It doesn't read PDFs.	PDF を読めません。	src/core/llm/fallback.js:104	
-uxj42v	ok	It doesn't take audio.	音声を受け付けません。	src/core/llm/fallback.js:105	
-19lcshx	ok	It can't use tools.	ツールを使えません。	src/core/llm/fallback.js:106	
-1coimht	ok	The conversation is too long for it.	会話が長すぎます。	src/core/llm/fallback.js:107	
-6o9g3j	ok	It doesn't have the provider tool this needs.	これに必要なプロバイダーのツールがありません。	src/core/llm/fallback.js:108	
-8xm1wt	ok	It isn't a chat model.	チャットモデルではありません。	src/core/llm/fallback.js:109	
-1i0eq06	ok	It is switched off.	オフになっています。	src/core/llm/fallback.js:110	
-10vxomx	ok	It was removed.	削除されました。	src/core/llm/fallback.js:111	
-s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:112	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:131	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:157	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:206	Note: the role by its screen name (補助 / 辅助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:207	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:208	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	エラーの後、数分間休んでいます。	src/core/llm/fallback.js:119	
+9bk0c8	ok	It doesn't take photos.	写真を受け付けません。	src/core/llm/fallback.js:120	
+12h1lml	ok	It doesn't read PDFs.	PDF を読めません。	src/core/llm/fallback.js:121	
+uxj42v	ok	It doesn't take audio.	音声を受け付けません。	src/core/llm/fallback.js:122	
+19lcshx	ok	It can't use tools.	ツールを使えません。	src/core/llm/fallback.js:123	
+1coimht	ok	The conversation is too long for it.	会話が長すぎます。	src/core/llm/fallback.js:124	
+6o9g3j	ok	It doesn't have the provider tool this needs.	これに必要なプロバイダーのツールがありません。	src/core/llm/fallback.js:125	
+8xm1wt	ok	It isn't a chat model.	チャットモデルではありません。	src/core/llm/fallback.js:126	
+1i0eq06	ok	It is switched off.	オフになっています。	src/core/llm/fallback.js:127	
+10vxomx	ok	It was removed.	削除されました。	src/core/llm/fallback.js:128	
+s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:129	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:148	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:174	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:223	Note: the role by its screen name (補助 / 辅助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:224	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:225	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:31	{0} = res.status
 mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:105	Note: said of a plugin, whose name is the card's title.

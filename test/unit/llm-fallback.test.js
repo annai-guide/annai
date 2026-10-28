@@ -624,3 +624,25 @@ test("speech cut when another model starts over is named by the model that spoke
   assert.ok(restarts.length >= 1);
   assert.ok(restarts.every((by) => by.name === 'model-0'), JSON.stringify(restarts));
 });
+
+test("output that started and then stopped says so, not that none started (the real-PDF check, 2026-10-28)", async () => {
+  const stalls = /** @type {any} */ ({ type: 'stalls', name: 'Stalls', pluginId: 'stalls', run: async function* (/** @type {any} */ c) {
+    yield { type: 'text', text: 'Let me' };
+    await new Promise((_, no) => c.signal?.addEventListener('abort', () => no(c.signal.reason)));
+  } });
+  const s = setup([[]], { types: [['stalls', stalls]], endpointTypes: ['stalls'] });
+  await assert.rejects(call(s, { firstOutputMs: 1000 }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'timeout' && /^Its output stopped for 1 second\.$/.test(e.attempts[0].error ?? '') && e.attempts[0].said?.code === 'paused');
+});
+
+test("when every model the role could use is resting, the one that has rested longest is asked anyway (the real-PDF check: one stall failed the next turn)", async () => {
+  const s = setup([[{ text: 'From model-0.' }], [{ text: 'From model-1.' }]]);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // resting the longest
+  s.bench.bench('m-0', 300_000, 1_000_000 - 1_000);
+  const r = await call(s);
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:benched', 'm-1:benched', 'm-1:ok']);
+  // With a model that can answer, resting still passes the others over.
+  const t = setup([[{ text: 'never' }], [{ text: 'From model-1.' }]]);
+  t.bench.bench('m-0', 300_000, 1_000_000);
+  assert.equal((await call(t)).answeredBy, 'model-1');
+});
