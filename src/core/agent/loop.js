@@ -111,6 +111,8 @@ export const LABELS = Object.freeze({
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
 const TIDYING = 'tidying';
+/** Shiori's lines: each names the model that wrote it (data.by). */
+const LINES = new Set(['out.speak', 'out.show', 'out.ask', 'note']);
 /** What a user sends with nothing but photos, as the log keeps it: the words a model reads (the Conversation shows its own). */
 export const PHOTO_ONLY = /* en */ '(a photo)';
 export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn't listen; the user may type.";
@@ -285,6 +287,8 @@ export class Agent {
   #owing = null;
   /** Whether the turn running owes the user a note of Kokoro's it hasn't reached them with (Koe's). */
   #noteOwed = () => false;
+  /** The model that answered this turn's last call, for Shiori's lines (null outside a turn's calls). @type {{ name: string, first: string | null, tried: boolean } | null} */
+  #by = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
   /** The prompt the last call sent, in tokens, as the provider counted it. */
@@ -1452,7 +1456,9 @@ export class Agent {
   #log(ev) {
     const write = async () => {
       const mark = this.#mark(ev.type);
-      const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...mark } });
+      // Each of Shiori's lines says which model wrote it: null when none did (annai's own, a live voice's), never left out (phone-fixes-1).
+      const by = LINES.has(ev.type) && !('by' in (ev.data ?? {})) ? { by: this.#by } : {};
+      const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...by, ...mark } });
       const r = await resolveEvent(this.store, stored);
       this.#apply(stored, r);
       if (ev.type.startsWith('out.')) this.#facts.spoke = true;
@@ -1555,6 +1561,7 @@ export class Agent {
       ok = await this.#steps(wakes, wakeId, abort);
       await this.#paused(abort);
     } finally {
+      this.#by = null;
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn(/* en */ 'the end of a turn failed', e));
       // A turn that worked takes down the cards about a model failing; a turn of the user's that spoke to them, the card about
       // her saying nothing in its conversation (not a reminder's turn, nor another conversation's).
@@ -1764,6 +1771,8 @@ export class Agent {
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
         });
+        // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
+        this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
       } catch (e) {
         this.#callCut = null;
         this.#calling = false;

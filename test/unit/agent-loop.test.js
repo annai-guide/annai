@@ -1279,3 +1279,12 @@ test('describing is never started once the turn is stopped: an already-stopped s
   assert.equal((k.sent['model-u'] ?? []).length, 0);
   assert.match(out.content, /It wasn't described: /);
 });
+
+test("each of Shiori's lines carries the model that wrote it, the role's first, and whether that was tried (the second review of phone-fixes-1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }], [say('Hi.')]]);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  const [line] = await k.events(['out.speak']);
+  assert.deepEqual(line.data.by, { name: 'model-1', first: 'model-0', tried: true });
+});

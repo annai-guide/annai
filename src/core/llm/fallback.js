@@ -384,7 +384,8 @@ const heardIds = (was, now) => (was === now ? now : {
  *   borrow: warm housekeeping, which continues the conversation's live kept chain (if it has one) and deletes its own response, recording nothing
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
  *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
- * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string }>}
+ * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
+ *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
 export async function callRole(c) {
   const { role, config, types, bench, now = Date.now, sleep = defaultSleep, online = deviceOnline } = c;
@@ -411,8 +412,10 @@ export async function callRole(c) {
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
   const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (role === KOE_CLASSIC ? 8 : 30)) * 1000;
   const list = c.models ?? candidates(config, role);
-  // The role's first model, by name, whichever is tried first: the Conversation says when another answered (null: none).
-  const first = list[0] && config.models[list[0]] ? modelOf(config.models[list[0]]).name : null;
+  // The role's first model that can answer (its chat ability on), by name, whichever is tried first: Shiori's lines say when another
+  // answered, and whether it was tried (null: none).
+  const firstId = c.models ? list[0] : chatCandidates(config, role)[0];
+  const first = firstId && config.models[firstId] ? modelOf(config.models[firstId]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
   let began = false;
@@ -483,7 +486,7 @@ export async function callRole(c) {
         const full = said ? prefixed(reply, said) : reply;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
         await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
-        return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id };
+        return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id, first, tried: attempts.some((a) => a.model === firstId) };
       } catch (e) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
         attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message, ...(err.said ? { said: err.said } : {}) });

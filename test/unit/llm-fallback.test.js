@@ -362,9 +362,11 @@ test('prefer: the model whose cache is warm is tried first (spec §9.6, switchin
 });
 
 test("a model turn names the role's first model, whichever was tried first: the Conversation's \"· … didn't answer\" is against it (the review of phone-fixes-1)", async () => {
-  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]]);
-  await call(s, { prefer: 'm-1' });
-  await call(s);
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { off: [] });
+  const warm = await call(s, { prefer: 'm-1' });
+  assert.deepEqual([warm.answeredBy, warm.first, warm.tried], ['model-1', 'model-0', false], 'a warm model answered in its place: it was never asked');
+  const plain = await call(s);
+  assert.deepEqual([plain.first, plain.tried], ['model-0', true]);
   const turns = (await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }))).map((e) => [e.data.answeredBy, e.data.first]);
   assert.deepEqual(turns, [['model-1', 'model-0'], ['model-0', 'model-0']]);
 });
@@ -510,4 +512,16 @@ test("a call stopped part-way costs what its provider had reported: the model tu
   const [turn] = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
   assert.equal(turn.data.cost, 1, '1M input tokens at $1 per million');
   assert.equal(turn.data.usage.input, 1_000_000);
+});
+
+test("the first model a line names is one that can answer: a model whose chat ability is off is passed over (the second review of phone-fixes-1)", async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { off: [0] });
+  const r = await call(s);
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-1', true]);
+});
+
+test("the first model, tried and failed: the line says it didn't answer", async () => {
+  const s = setup([[{ error: 'auth', status: 401 }], [{ text: 'B.' }]]);
+  const r = await call(s);
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-0', true]);
 });

@@ -455,10 +455,10 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在没人要求时自己做事，已经走了{0}步，所以停在了这里。想让她继续，就告诉她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次唤醒可走的{0}步（设置 → Shiori → 她主动行动的频率）。想让她继续，就告诉她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:518	
-yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:518	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:639	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:639	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:527	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:527	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:648	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:648	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:109	
 1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:109	
 4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:109	
@@ -467,45 +467,45 @@ g8840o	ok	Waiting for your OK	等待你的确认	src/core/agent/loop.js:109
 yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:109	Note: one of Shiori's states: she hears you speaking.
 akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:110	
 izy3tv	ok	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:110	
-1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:536	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:536	
-19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:848	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1071	
-1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1071	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1104	
-oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1104	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1237	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1435	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1435	
-nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1533	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1533	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1533	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1586	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1850	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1850	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1887	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1891	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1954	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1982	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2037	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2398	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2540	
-guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2540	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2541	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2541	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2679	
-8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2814	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2988	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2989	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2990	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:2991	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2992	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2993	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3000	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3010	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3011	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3012	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3013	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:540	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:540	
+19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:852	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1075	
+1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1075	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1108	
+oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1108	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1241	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1439	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1439	
+nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1539	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1539	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1539	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1593	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1863	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1863	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1900	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1904	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1968	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1996	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2051	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2412	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2554	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2554	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2555	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2555	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2693	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2828	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3002	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3003	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3004	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3005	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3006	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3007	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3014	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3024	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3025	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3026	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3027	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -1201,16 +1201,16 @@ q21uv	ok	Trying each reasoning level…	正在逐一尝试推理级别…	src/ui
 la23qc	ok	This model has no reasoning levels to try.	这个模型没有可尝试的推理级别。	src/ui/model-check.js:56	
 18nnh3z	ok	{0}: works	{0}：可用	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
 edkut8	ok	Test reasoning levels	测试推理级别	src/ui/model-check.js:64	
-1qfy6dp	ok	Hide	隐藏	src/ui/notices.js:83	
-bi2jq4	ok	Show	显示	src/ui/notices.js:83	
-icn7kg	ok	Dismiss all	全部关闭	src/ui/notices.js:88	
-14jq62w#other	ok	{0}, # cards	{0}，# 张卡片	src/ui/notices.js:100	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
-1w0wlmk#other	ok	Show the # cards: {0}	显示 # 张卡片：{0}	src/ui/notices.js:101	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
-1wucd5m#other	ok	Hide the # cards: {0}	隐藏 # 张卡片：{0}	src/ui/notices.js:101	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
-1dg2v9a#other	ok	Dismiss all # cards: {0}	关闭全部 # 张卡片：{0}	src/ui/notices.js:102	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	ok	Less	收起	src/ui/notices.js:170	Note: Closes a long card back to three lines.
-lz65mo	ok	More	展开	src/ui/notices.js:170	Note: Opens a long card to its full height.
-an1pf7	ok	Dismiss	关闭	src/ui/notices.js:181	
+1qfy6dp	ok	Hide	隐藏	src/ui/notices.js:86	
+bi2jq4	ok	Show	显示	src/ui/notices.js:86	
+icn7kg	ok	Dismiss all	全部关闭	src/ui/notices.js:91	
+14jq62w#other	ok	{0}, # cards	{0}，# 张卡片	src/ui/notices.js:103	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
+1w0wlmk#other	ok	Show the # cards: {0}	显示 # 张卡片：{0}	src/ui/notices.js:104	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
+1wucd5m#other	ok	Hide the # cards: {0}	隐藏 # 张卡片：{0}	src/ui/notices.js:104	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
+1dg2v9a#other	ok	Dismiss all # cards: {0}	关闭全部 # 张卡片：{0}	src/ui/notices.js:105	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
+18u3mqg	ok	Less	收起	src/ui/notices.js:173	Note: Closes a long card back to three lines.
+lz65mo	ok	More	展开	src/ui/notices.js:173	Note: Opens a long card to its full height.
+an1pf7	ok	Dismiss	关闭	src/ui/notices.js:184	
 16ujpkf#other	ok	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	ok	# places	# 个地点	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	ok	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
@@ -1530,34 +1530,34 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	此页
 ata72m	ok	Trace	记录	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	无法绘制此页面；插件的错误在{0}中。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:56	
-10rafvo	ok	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:37	
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/file.js:37	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:39	
-krcze5	ok	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:42	
-1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:48	
-1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/file.js:48	
-1hnv6ua	ok	Content	内容	src/ui/screens/file.js:73	
-lewgh4	ok	Save	保存	src/ui/screens/file.js:73	
-1m183es	ok	Open the photo full size	放大查看照片	src/ui/screens/file.js:81	
-wbyn1d	ok	Look at this part of {0}.	请看{0}的这一部分。	src/ui/screens/file.js:86	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此浏览器无法显示这张照片。它在 Safari 浏览器中可以显示，用“分享”方式导出时会尽可能转换格式。	src/ui/screens/file.js:93	Note: A Share export is the export panel's "Share" choice (分享), not the platform's Share button (共享).
-t8quxl	ok	Download	下载	src/ui/screens/file.js:100	
-4g2gbm	ok	Taken {0}	拍摄于{0}	src/ui/screens/file.js:109	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	按原样保存	src/ui/screens/file.js:110	
-1v3hapr	ok	Where it was taken	拍摄地点	src/ui/screens/file.js:113	
-1ooqziz	ok	No earlier versions.	没有更早的版本。	src/ui/screens/file.js:120	
-yugfpb	ok	History	历史	src/ui/screens/file.js:121	
-q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:126	
-1q136y3	ok	That version isn't stored on this device.	此设备上没有存储该版本。	src/ui/screens/file.js:132	
-twulcv	ok	Version restored	已恢复版本	src/ui/screens/file.js:136	
-16qw3bf	ok	Restore this version	恢复此版本	src/ui/screens/file.js:137	
-1dw4k8q	ok	Current	当前	src/ui/screens/file.js:138	
-3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:144	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:144	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:150	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:150	{0} = who; {1} = ago
-1cdkli8	ok	Saved by you {0}	你{0}保存	src/ui/screens/file.js:151	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:151	{0} = who; {1} = ago
+10rafvo	ok	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:42	
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/file.js:42	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:44	
+krcze5	ok	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:47	
+1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:53	
+1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/file.js:53	
+1hnv6ua	ok	Content	内容	src/ui/screens/file.js:78	
+lewgh4	ok	Save	保存	src/ui/screens/file.js:78	
+1m183es	ok	Open the photo full size	放大查看照片	src/ui/screens/file.js:86	
+wbyn1d	ok	Look at this part of {0}.	请看{0}的这一部分。	src/ui/screens/file.js:91	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此浏览器无法显示这张照片。它在 Safari 浏览器中可以显示，用“分享”方式导出时会尽可能转换格式。	src/ui/screens/file.js:98	Note: A Share export is the export panel's "Share" choice (分享), not the platform's Share button (共享).
+t8quxl	ok	Download	下载	src/ui/screens/file.js:105	
+4g2gbm	ok	Taken {0}	拍摄于{0}	src/ui/screens/file.js:114	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	按原样保存	src/ui/screens/file.js:115	
+1v3hapr	ok	Where it was taken	拍摄地点	src/ui/screens/file.js:118	
+1ooqziz	ok	No earlier versions.	没有更早的版本。	src/ui/screens/file.js:125	
+yugfpb	ok	History	历史	src/ui/screens/file.js:126	
+q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:131	
+1q136y3	ok	That version isn't stored on this device.	此设备上没有存储该版本。	src/ui/screens/file.js:137	
+twulcv	ok	Version restored	已恢复版本	src/ui/screens/file.js:141	
+16qw3bf	ok	Restore this version	恢复此版本	src/ui/screens/file.js:142	
+1dw4k8q	ok	Current	当前	src/ui/screens/file.js:143	
+3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:149	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:149	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:155	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:155	{0} = who; {1} = ago
+1cdkli8	ok	Saved by you {0}	你{0}保存	src/ui/screens/file.js:156	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:156	{0} = who; {1} = ago
 f0ig49	ok	Open a trip	打开旅行	src/ui/screens/import.js:36	
 1azyvjt	ok	Choose a file instead	改为选择文件	src/ui/screens/import.js:39	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	选择一个 annai 文件（.annai.zip 或 .annai）即可打开。	src/ui/screens/import.js:52	
@@ -2206,38 +2206,39 @@ qjf670	ok	Three identical tool calls in a row with identical results.	连续三�
 1v011e1	ok	This trip so far: {0}	这次旅行到目前为止：{0}	src/ui/screens/talk.js:246	{0} = formatCost(c.total)
 glbwh5	ok	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:246	{0} = formatCost(c.total)
 td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:273	
-1242x07	ok	{0} · {1} didn't answer	{0} · {1} 未回应	src/ui/screens/talk.js:285	{0} = d.answeredBy; {1} = first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the first model tried, which gave no answer. Both are model names as the user has them.
-9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:304	
-fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:359	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:359	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:371	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:372	
-1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:382	
-1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:382	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:397	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	来自{0}。	src/ui/screens/talk.js:461	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。请从“旅行”中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:479	Note: The Trips screen, quoted so it reads apart from a trip.
-1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:510	
-bomkf4	ok	Tidy up the conversation	整理对话	src/ui/screens/talk.js:511	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:525	
-12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:527	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:527	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:527	
-va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:527	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:530	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:535	
-va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:542	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:543	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:544	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:554	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:557	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:557	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:557	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:557	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:577	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:578	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:593	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:600	
+1242x07	ok	{0} · {1} didn't answer	{0} · {1} 未回应	src/ui/screens/talk.js:287	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the role's first model, which was asked and gave no answer. Both are model names as the user has them.
+141y2ts	ok	{0} · instead of {1}	{0} · 代替 {1} 回答	src/ui/screens/talk.js:287	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0}, the model that wrote it, answered in place of {1}, the first model of the role, which was not asked (a model with a warm cache went first). Both are model names as the user has them.
+9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:302	
+fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:357	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:357	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:369	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:370	
+1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:380	
+1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:380	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:395	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	来自{0}。	src/ui/screens/talk.js:449	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。请从“旅行”中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:467	Note: The Trips screen, quoted so it reads apart from a trip.
+1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:498	
+bomkf4	ok	Tidy up the conversation	整理对话	src/ui/screens/talk.js:499	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:513	
+12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:515	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:515	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:515	
+va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:515	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:518	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:523	
+va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:530	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:531	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:532	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:542	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:545	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:545	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:545	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:545	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:565	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:566	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:581	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:588	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
