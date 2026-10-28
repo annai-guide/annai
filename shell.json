@@ -1,5 +1,5 @@
 {
-  "build": "2f618ae6bcb1",
+  "build": "5ec89815171b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -212,7 +212,7 @@
     "/src/ui/media-keys.js": "1c616b5f79e6",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
-    "/src/ui/notices.js": "644115f6ec9d",
+    "/src/ui/notices.js": "e08b2c82c44b",
     "/src/ui/offline-pack.js": "569092a05266",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/photo-codec.js": "545a1122e6f8",
