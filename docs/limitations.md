@@ -58,3 +58,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** live audio can't be cut and rerun the way a typed call can (Classic Koe's call is cut and rerun with both notes). The only guard in live voice is Koe's instruction to skip a note she has already said, which a weak model can ignore.
 - **Revisit when:** it happens on the user's phone with a live model.
 - **Approved:** 2026-10-28, the user: "Accept as known limitation".
+
+### A page on the old annai deletes official plugins' translations if it applies their updates before restarting
+- **Kind:** known limitation.
+- **What the user sees:** once, at the release that moved official plugins' translations out of their packages. A phone still running the old annai sees the plugins' new versions before it restarts. If the user taps Update before Restart, the old code installs each new package and deletes the translation it doesn't contain. Those plugins show English for the rest of that session. After the restart, the first plugin check downloads their words again (a few KB).
+- **Why:** the old code already on phones can't change. Releasing the new code first and moving the translations a release later would cost every user two update rounds instead of one.
+- **Revisit when:** never needed; it heals by itself at the next restart plus one check.
+- **Approved:** 2026-10-28, the user: "Accept as known limitation".
