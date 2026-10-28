@@ -136,7 +136,9 @@ test("the halves' notes are notes of their own, set apart from her reminders; an
     await type(page, 'Is Nepenthe open?');
     await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
     const notes = page.locator('.convo .halves-note');
-    await expect(notes).toHaveText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);
+    // Each ends with the model that wrote it (phone-fixes-1 item 12).
+    await expect(notes).toHaveText([/^Koe to Kokoro: Is Nepenthe open now\?/, /^Kokoro to Koe: Nepenthe is open till 10 tonight \(nepenthe\.com\)\./]);
+    await expect(notes.locator('.by')).toHaveCount(2);
     expect(await notes.first().evaluate((el) => [el.classList.contains('system-line'), getComputedStyle(el).borderTopStyle])).toEqual([false, 'dashed']);
     await expect(page.locator('.convo li', { hasText: /^annai to / })).toHaveCount(0);
     expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual(["Shiori: I'm checking.", "Shiori: Good news: it's open till 10 tonight."]);
