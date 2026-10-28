@@ -1,5 +1,5 @@
 {
-  "build": "c808d10c4829",
+  "build": "bdb6e8306e18",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -109,7 +109,7 @@
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "14efc0eed98c",
     "/src/core/l10n.js": "d38eac0f8f44",
-    "/src/core/languages.js": "eca81bef2820",
+    "/src/core/languages.js": "953a68149ec9",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",
@@ -205,7 +205,7 @@
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
     "/src/ui/install.js": "2c4eb4214b7c",
-    "/src/ui/languages.js": "a98745cf70a3",
+    "/src/ui/languages.js": "c70bed552c04",
     "/src/ui/live-chip.js": "1f44abeb7177",
     "/src/ui/live-help.js": "b59b03827f96",
     "/src/ui/markdown.js": "f07c8d58f557",
@@ -239,7 +239,7 @@
     "/src/ui/screens/import.js": "fd44391c00ce",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
-    "/src/ui/screens/models.js": "0b77c5b5f6ff",
+    "/src/ui/screens/models.js": "9d8a2586c1fa",
     "/src/ui/screens/notifications.js": "360e6f3ab25f",
     "/src/ui/screens/now.js": "8ae0aec5dac4",
     "/src/ui/screens/plan.js": "ed857ad55515",
@@ -277,7 +277,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "c883d596e193",
-    "/l10n/zh-Hans.json": "3aa52e60262f"
+    "/l10n/ja.json": "e01b354b6ddc",
+    "/l10n/zh-Hans.json": "5ccd42345612"
   }
 }

@@ -196,7 +196,7 @@ test('what the user wrote is told apart from annai\'s words: dir="auto" on trip 
   await panel.getByLabel('Add a language').selectOption('ja');
   await panel.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(panel.getByRole('status')).toHaveText('Added Japanese. Saved');
-  await expect(panel.locator('.lang-name [lang="ja"]')).toHaveText('日本語');
+  await expect(panel.locator('.role-item [lang="ja"]')).toHaveText('日本語');
 });
 
 test('Shiori\'s cards, the card on Now and the recap carry the language of their words', async ({ page }) => {
@@ -707,8 +707,8 @@ test('under Japanese screens the languages you speak are named in Japanese, each
   await panel.locator('#language-add').selectOption('ja');
   await panel.getByRole('button', { name: JA[key('Add')], exact: true }).click();
   await expect(status).toHaveText(JA[key('Added {0}. Saved')].replace('{0}', '日本語'));
-  await expect(panel.locator('li[data-lang="en"] .lang-name')).toHaveText('英語 English');
-  await expect(panel.locator('li[data-lang="ja"] .lang-name')).toHaveText('日本語');
+  await expect(panel.locator('li[data-id="en"] > span').first()).toHaveText('1. 英語 English');
+  await expect(panel.locator('li[data-id="ja"] > span').first()).toHaveText('2. 日本語');
   await expect(panel.locator('#language-answer option[value="en"]')).toHaveText(JA[key('{0} · {1}')].replace('{0}', '英語').replace('{1}', 'English'));
   await panel.locator('#language-answer').selectOption('en');
   await expect(status).toHaveText(JA[key('Shiori answers in {0}. Saved')].replace('{0}', '英語'));
