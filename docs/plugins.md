@@ -96,6 +96,7 @@ export function activate(annai) {
 | `annai.searchProviders()`, `await annai.searchProvidersAsync()` | the search providers in the order `web_search` tries them: the user's list (Settings → Tools → Search), then keyed ones, the free ones and the knowledge floor. The async one reads the user's order and leaves out those they switched off. |
 | `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, kind?, ready?(), search(query, { fetch, signal, limit }) })` | a search provider for `web_search`: see "Search providers" below |
+| `annai.register('pdf-pages', { id, pages(bytes, { from, max, edge, signal }) })` | draws a PDF's pages as pictures, for a model that sees photos but reads no PDFs and for a PDF's preview: see "PDF pages" below |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
@@ -636,6 +637,23 @@ Describe it in the manifest, so the install screen can say where searches and th
 - The official ones are Tavily, Serper and SearXNG (`plugins-official/search-*`); read them as examples.
 
 annai's own free search is not a plugin you can replace one by one: Exa, Parallel and Firecrawl (each through its MCP address, one request per search with no session), and a floor of Wikivoyage, Wikipedia and Nominatim, are built into the web tools. Only the words searched go to them.
+
+## PDF pages
+
+annai's own code has no PDF library. A plugin that draws a PDF's pages registers one function, and annai uses it in two places: a model that sees photos but reads no PDFs gets a PDF's pages as pictures (when no model here can read the PDF), and the screens draw a PDF's first page for its preview in any browser. annai's official one is PDF pages (`plugins-official/pdf-pages`, Mozilla's PDF.js).
+
+```js
+export function activate(annai) {
+  return annai.register('pdf-pages', { id: 'pdfjs', pages });
+}
+```
+
+- **`pages(bytes, { from, max, edge, signal })`** gets the PDF as a `Uint8Array`. `from` is the first page wanted, 1-based (1 when left out), `max` how many at most (annai asks for at most 10 for a model, 1 for a preview), and `edge` the longest side of each picture in pixels (1600 for a model, 1200 for a preview). Stop when `signal` aborts: a model's reading of a PDF has 90 seconds in all.
+- **It returns `{ count, pages: [{ type, bytes, width, height }] }`:** `count` is the PDF's number of pages, and `pages` the ones drawn, in order, each a picture every browser decodes (annai's own uses JPEG) with its size in pixels.
+- **Leave the bytes whole.** The caller keeps using them (a stored file, a screen's Blob). Copy them before handing them to a library that transfers buffers to a worker; PDF.js does.
+- **An `Error` in plain words is an answer,** not a failure of the plugin: "This PDF is locked with a password, so its pages can't be drawn." Shiori's model is told it. A crash (a `TypeError` and the like) counts against the plugin, as a tool's does, and three in a row switch it off (spec §5.5).
+- **One is used:** the first running registration of the kind. Plugins start in rank order, so annai's official one comes first.
+- The pages are drawn on the device, and go only to the models the user chose.
 
 ## MCP servers
 
