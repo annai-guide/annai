@@ -1166,7 +1166,7 @@ Reference: mockups draft 6.
   - vermilion accent
   - cool, plain paper neutrals
   - Zen Maru Gothic for display text, Zen Kaku Gothic New for body text, IBM Plex Mono for data
-  - the Zen faces are Latin; Chinese, Japanese and Korean are drawn in the phone's own fonts, which a browser chooses by each line's language (`lang`), so a Chinese line has Chinese shapes and a Japanese one Japanese shapes; under Japanese screens the display type keeps the rounded Hiragino Maru Gothic
+  - the Zen faces are Latin, less the seven spacing accents they class as marks (` ´ ¨ ¸ ˆ ˚ ˜, which sat on the next letter: the user's iPhone, 2026-10-28), drawn in the phone's own font; Chinese, Japanese and Korean are drawn in the phone's own fonts, which a browser chooses by each line's language (`lang`), so a Chinese line has Chinese shapes and a Japanese one Japanese shapes; under Japanese screens the display type keeps the rounded Hiragino Maru Gothic
   - timetable rows like a trip booklet's schedule page
   - the 枝折戸 diamond-lattice pattern as a quiet texture
   - station-stamp marks for visited places
