@@ -895,7 +895,10 @@ test.describe('with no service worker, so the words come by a plain fetch', () =
     await page.evaluate(() => { location.hash = '#/languages'; });
     await page.locator('#language-ui').selectOption('en');
     await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible();
+    // Japanese's words arrive; its change goes on from there at once (its plugins' words, none here, settled long before).
+    const arrived = page.waitForResponse((r) => r.url().endsWith('/l10n/ja.json'));
     release();
+    await arrived;
     // Japanese, picked over, would have kept itself and restarted into it.
     const reloaded = page.waitForEvent('load', { timeout: 3000 }).then(() => true, () => false);
     expect(await reloaded).toBe(false);
