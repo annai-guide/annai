@@ -488,6 +488,9 @@ export async function callRole(c) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
         attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message, ...(err.said ? { said: err.said } : {}) });
         if (err.kind === 'cancelled') {
+          // What it had used before it was stopped is spent: the turn's record (the Trace, the day's spend) counts it.
+          if (err.usage) usage = addUsage(usage, err.usage);
+          cost = addCost(cost, err.cost);
           await record(null, said + err.partial);
           throw err;
         }
