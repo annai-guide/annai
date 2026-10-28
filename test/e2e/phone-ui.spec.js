@@ -389,7 +389,7 @@ async function raise(page, cards) {
   }, cards);
 }
 
-test('at 320 x 544 a short card has no More and its title shows; the long sign-in card still gets More, in view: in the buttons, as even one line of text is more than the box holds (phone-fixes-1 item 3)', async ({ page }) => {
+test('at 320 x 544 a card shows its title and its buttons in one row, clear of each other; its words, which the box has no room for beside them, are behind More (phone-fixes-1 item 3, its second review)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
   await openApp(page, '#/trips');
   await raise(page, [{ title: 'Signed in with OpenRouter', body: OPENROUTER_CARD }]);
@@ -400,7 +400,9 @@ test('at 320 x 544 a short card has no More and its title shows; the long sign-i
   await raise(page, [{ title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' }]);
   const short = page.locator('.notice', { hasText: 'Open a trip first' });
   await expect(short).toBeVisible();
-  await expect(short.getByRole('button', { name: 'More' })).toHaveCount(0);
+  // Even its two lines would sit behind the buttons: they are behind More, in the buttons' row (the second review: no words behind them).
+  await expect(short.locator('.acts').getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
+  expect(await short.locator('.acts').evaluate((a) => a.getBoundingClientRect().height)).toBeLessThan(60);
   // Its title is clear of the buttons that stay at the foot of the box.
   const gap = await short.evaluate((card) => {
     const title = /** @type {HTMLElement} */ (card.querySelector('strong')).getBoundingClientRect();
@@ -416,7 +418,8 @@ test('a card is looked at again when the screen turns: More comes and goes with 
   await raise(page, [{ title: 'Heads up', body: 'This card says a little more than a narrow screen can show in its first three lines, but a wide screen holds all of it in three lines, with room to spare at the end.' }]);
   const card = page.locator('.notice', { hasText: 'Heads up' });
   await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
-  await page.setViewportSize({ width: 900, height: 544 });
+  // Wide, and tall enough for its three lines and its button in a quarter of the screen.
+  await page.setViewportSize({ width: 900, height: 1000 });
   await expect(card.getByRole('button', { name: 'More' })).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 544 });
   await expect(card.getByRole('button', { name: 'More' })).toBeVisible();

@@ -1,5 +1,5 @@
 {
-  "build": "c4d72ac13b0b",
+  "build": "f369a90dded6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -189,7 +189,7 @@
     "/src/plugins/voice-browser/index.js": "4b8e07716086",
     "/src/plugins/web/free.js": "be161cb903a1",
     "/src/plugins/web/index.js": "b0f3b38401b5",
-    "/src/ui/base.css": "e271283c97fe",
+    "/src/ui/base.css": "5658d66884e4",
     "/src/ui/cards.js": "516990c53957",
     "/src/ui/credits.js": "6a90a3274f4d",
     "/src/ui/dock.js": "6871d6d465bc",
@@ -212,7 +212,7 @@
     "/src/ui/media-keys.js": "1c616b5f79e6",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
-    "/src/ui/notices.js": "e08b2c82c44b",
+    "/src/ui/notices.js": "4d651e33e56d",
     "/src/ui/offline-pack.js": "569092a05266",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/photo-codec.js": "545a1122e6f8",

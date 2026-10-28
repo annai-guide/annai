@@ -58,7 +58,6 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
     // More is under the words.
     if (m.tight) await expect(card.getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
     else expect(Math.abs(m.more - m.text), 'More starts where the words do').toBeLessThanOrEqual(2);
-    expect(m.tight).toBe(height < 600);
     if (!m.tight) expect(Math.abs(m.update - m.text), 'and so does Update').toBeLessThanOrEqual(2);
     await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
   });
@@ -217,44 +216,6 @@ test("each of Shiori's lines names the model that wrote it, as written with it: 
   expect(await named.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
 });
 
-// The review of phone-fixes-1: in Japanese, 続きを表示 joined アップデート and 閉じる, the sticky row wrapped to two, and the title was hidden.
-for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
-  for (const lang of ['ja', 'en']) {
-    test(`a tight card keeps its title in view and its buttons in one row (${lang}, ${width} x ${height}; review of item 3)`, async ({ page }) => {
-      await page.setViewportSize({ width, height });
-      await openApp(page, '#/trips');
-      await page.evaluate(async ({ lang, body }) => {
-        const at = (/** @type {string} */ p) => p;
-        if (lang === 'ja') {
-          const { setWords } = await import(at('/src/core/l10n.js'));
-          setWords('ja', await (await fetch('/l10n/ja.json')).json());
-        }
-        const { createNotices } = await import(at('/src/ui/notices.js'));
-        const notices = createNotices();
-        notices.el.id = 'test-notices';
-        document.querySelector('header.topbar')?.after(notices.el);
-        const { t } = await import(at('/src/core/l10n.js'));
-        notices.card({ title: t`Plugin updates are ready`, body, actions: [{ label: t`Update`, primary: true, run: () => {} }] });
-      }, { lang, body: OFFER });
-      const m = await page.locator('#test-notices > .notice').evaluate((card) => {
-        const r = (/** @type {Element | null} */ el) => /** @type {Element} */ (el).getBoundingClientRect();
-        const acts = r(card.querySelector('.acts'));
-        const button = r(card.querySelector('.acts .btn'));
-        const p = /** @type {HTMLElement} */ (card.querySelector('p'));
-        return { card: r(card), title: r(card.querySelector('strong')), acts, rows: Math.round(acts.height / button.height), more: card.querySelectorAll('.more:not([hidden])').length,
-          text: p.offsetHeight ? r(p).bottom : null, scrolled: card.scrollHeight - card.clientHeight,
-          moreBottom: card.querySelector('.acts .more') ? null : r(card.querySelector('.more')).bottom };
-      });
-      expect(m.rows, 'the buttons stay one row').toBe(1);
-      expect(m.title.top).toBeGreaterThanOrEqual(m.card.top);
-      expect(m.title.bottom, 'the title is clear of the buttons').toBeLessThanOrEqual(m.acts.top + 1);
-      if (width < 600) expect(m.more, 'More is still there to open it').toBe(1); // on its side the text fits its three lines
-      // What shows of the text is clear of the buttons: no line sits behind them.
-      if (m.text !== null) expect(m.text).toBeLessThanOrEqual(m.acts.top + 1);
-      if (m.moreBottom !== null && width < 600) expect(m.moreBottom, 'nor More').toBeLessThanOrEqual(m.acts.top + 1);
-    });
-  }
-}
 
 test("a file of a trip that isn't open goes back to its own trip's Plan, not the open trip's (the review of item 8)", async ({ page }) => {
   await openApp(page);
@@ -268,4 +229,95 @@ test("a file of a trip that isn't open goes back to its own trip's Plan, not the
   await page.goto(file('#/now'));
   await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${encodeURIComponent(first)}`);
   await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Trips');
+});
+
+// The second review of phone-fixes-1: every kind of card, in English, Japanese and Chinese, on small, low and sideways phones.
+/** Builds each kind of card, one at a time, in a box of the test's own, and says how its parts show. @param {import('@playwright/test').Page} page */
+const cardsShown = (page) => page.evaluate(async () => {
+  const at = (/** @type {string} */ p) => p;
+  const { t } = await import(at('/src/core/l10n.js'));
+  const { createNotices } = await import(at('/src/ui/notices.js'));
+  const { offerCard } = await import(at('/src/ui/plugin-updates.js'));
+  const { reloadCard } = await import(at('/src/ui/plugin-cards.js'));
+  const { newerText, sentences } = await import(at('/src/ui/format.js'));
+  for (const n of document.querySelectorAll('.notices, .risk')) /** @type {HTMLElement} */ (n).style.display = 'none';
+  const updates = [['gemini-api', 'Gemini API', '0.9.0', '0.10.1'], ['custom-provider', 'Custom provider', '2.1.4', '2.2.1'], ['openrouter', 'OpenRouter', '2.2.0', '2.3.1'], ['remote-trace', 'Remote trace', '0.1.2', '0.2.1'], ['anthropic', 'Anthropic', '1.1.0', '1.2.0']]
+    .map(([id, name, installed, available]) => ({ id, name, installed, available }));
+  const target = { name: 'GitHub', hold: { kind: 'newer', remote: { label: 'iPhone', at: Date.now() - 3 * 3600e3 } }, last: Date.now() - 5 * 3600e3 };
+  const run = () => {};
+  /** @type {Record<string, (n: any) => void>} */
+  const kinds = {
+    updates: (n) => offerCard({ notices: n, plugins: {} }, updates),
+    backup: (n) => n.card({ tone: 'warn', title: t`A newer backup is on ${'GitHub'}`, body: newerText(target, { where: 'me/annai-backup', noun: 'phone', tree: true }),
+      actions: [{ label: t`Import it as a copy`, primary: true, run }, { label: t`Back up this phone over it`, run }] }),
+    personality: (n) => n.card({ title: t`A new version of the ${'Concise'} personality`, body: t`Yours has your own edits, so it was kept as it is.`,
+      actions: [{ label: t`Compare`, run }, { label: t`Keep mine`, run }, { label: t`Let Shiori merge`, primary: true, run }] }),
+    large: (n) => n.card({ title: t`A large backup is waiting`, body: sentences(t`This backup uploads ${'48 MB'} to ${'GitHub'}.`, t`annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.`),
+      actions: [{ label: t`Back up now`, primary: true, run }, { label: t`Open Backups`, run }] }),
+    reload: (n) => n.card(reloadCard(['Gemini API', 'OpenRouter'], run)),
+    titleOnly: (n) => n.card({ tone: 'warn', title: t`Some plugins weren't updated` }),
+    stopped: (n) => n.card({ tone: 'warn', title: t`Backups to ${'GitHub'} stopped`, body: t`Open Backups to fix it.`, en: 'GitHub answered 409 Conflict: the branch main was updated by another device while this one was uploading, and the upload was refused. Back up again once the other device has finished.', actions: [{ label: t`Open Backups`, run }] }),
+    stack: (n) => { for (let i = 0; i < 2; i++) n.card({ tone: 'warn', title: t`Something went wrong`, body: t`annai kept running. The details are in Trace.` }); },
+  };
+  /** @type {string[]} */
+  const wrong = [];
+  for (const [kind, make] of Object.entries(kinds)) {
+    document.getElementById('tn')?.remove();
+    const n = createNotices();
+    n.el.id = 'tn';
+    document.querySelector('header.topbar')?.after(n.el);
+    make(n);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    scrollTo(0, 0);
+    const card = /** @type {HTMLElement} */ (n.el.firstElementChild);
+    const r = (/** @type {Element} */ el) => el.getBoundingClientRect();
+    /** Whether a part shows whole and on top, as it is now: nothing scrolled. @param {HTMLElement} el */
+    const shows = (el) => {
+      const b = r(el);
+      const box = r(n.el);
+      const inside = b.height > 0 && b.top >= Math.max(r(card).top, box.top, 0) - 0.5 && b.bottom <= Math.min(r(card).bottom, box.bottom, innerHeight) + 0.5;
+      const hit = document.elementFromPoint(b.left + Math.min(6, b.width / 2), b.top + b.height / 2);
+      return inside && Boolean(hit && el.contains(hit));
+    };
+    const title = /** @type {HTMLElement} */ (card.querySelector(':scope > strong'));
+    if (!shows(title)) wrong.push(`${kind}: the title`);
+    for (const b of /** @type {HTMLElement[]} */ ([...card.querySelectorAll(':scope > .acts > button, :scope > .more')]).filter((x) => !x.hidden)) if (!shows(b)) wrong.push(`${kind}: ${b.textContent}`);
+    const acts = /** @type {HTMLElement} */ (card.querySelector(':scope > .acts'));
+    for (const p of /** @type {HTMLElement[]} */ ([...card.querySelectorAll(':scope > p')])) {
+      if (p.offsetHeight > 1 && getComputedStyle(acts).position === 'sticky' && r(p).bottom > r(acts).top + 1) wrong.push(`${kind}: words behind the buttons`);
+    }
+  }
+  return wrong;
+});
+
+for (const ui of ['', 'ja', 'zh-Hans']) {
+  for (const [width, height] of [[320, 544], [360, 640], [393, 659], [390, 844], [667, 375]]) {
+    test(`every kind of card shows its title and every button, and no words behind them${ui ? `, in ${ui}` : ''}, at ${width} x ${height} (the second review of item 3)`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      if (ui) await page.addInitScript((tag) => { try { localStorage.setItem('annai.ui', tag); } catch { /* storage blocked */ } }, ui);
+      await openApp(page, '#/trips');
+      if (ui) await expect(page.locator('html')).toHaveAttribute('lang', ui);
+      await page.evaluate(() => document.fonts.ready);
+      expect(await cardsShown(page)).toEqual([]);
+    });
+  }
+}
+
+test("a card's words behind More are still read by a screen reader, and a refit while the card is scrolled measures from its top (the second review of item 3)", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page, '#/trips');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createNotices } = await import(at('/src/ui/notices.js'));
+    const n = createNotices();
+    n.el.id = 'tn';
+    document.querySelector('header.topbar')?.after(n.el);
+    n.card({ tone: 'warn', title: 'A newer backup is on GitHub', body: 'An iPhone backed up to me/annai-backup 3 hours ago. That was after this phone\'s last backup, 5 hours ago.', actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
+  });
+  const card = page.locator('#tn > .notice');
+  await expect(card).toHaveClass(/\bbrief\b/);
+  expect(await card.ariaSnapshot()).toContain("That was after this phone's last backup");
+  const before = await card.getAttribute('class');
+  await card.evaluate((c) => { c.scrollTop = c.scrollHeight; dispatchEvent(new Event('resize')); });
+  expect(await card.getAttribute('class')).toBe(before);
 });
