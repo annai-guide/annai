@@ -4,7 +4,7 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
       "category": "developer",
       "keywords": [],
@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 13157,
+      "size": 12953,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,8 +20,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "813319148ab2b398a96bee350d22197ad068c8e8075753d3d535464d550b85ee",
-        "index.js": "e0a81ed04c27b97c0b8062dfd0a2a41c9dae5315e02a10d6a36a897740c0b5dd",
+        "annai-plugin.json": "041df956a9c967ec81cffdc8a334fa954e74bb49f7ed0adbd3e69125fc1a1cf6",
+        "index.js": "ea2c6f9a9c88a842994ee286327e26df76b6953017c236be2ece7d14fe372702",
         "l10n/ja.json": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
         "l10n/zh-Hans.json": "d0d84bb7c297830837be8c6ce2a59d96eddf7a4805ce66fef93359cf5969d37e"
       }

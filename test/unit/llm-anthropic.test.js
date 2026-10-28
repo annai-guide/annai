@@ -124,12 +124,11 @@ test('read: text with cache reads and writes of both lifetimes, and the stop rea
   ]);
 });
 
-test('read: signed thinking, redacted thinking and a tool call streamed in pieces', async () => {
+test('read: thinking as words alone, redacted thinking left out, and a tool call streamed in pieces', async () => {
   const events = await read(await fixture('thinking-tools.sse'));
-  assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [
-    { type: 'reasoning', text: 'A red square. Call the tool.', signature: 'EqQBCgIYAh==' },
-    { type: 'reasoning', text: '', redacted: 'EmwKAhgBEgy3' },
-  ]);
+  // Kept for the Trace as words only: nothing goes back to the model (phone-fixes-1), so a signature, redacted thinking or an empty
+  // block (display "omitted") isn't kept to be carried in steps and backups (its review).
+  assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [{ type: 'reasoning', text: 'A red square. Call the tool.' }]);
   // Thinking is shown as it streams, so a long think never looks like a model that never started (spec §9.6).
   assert.equal(events.filter((e) => e.type === 'reasoning_delta').map((e) => e.text).join(''), 'A red square. Call the tool.');
   assert.deepEqual(events.filter((e) => e.type === 'tool_input').map((e) => e.partial), ['', '{"color": "re', '{"color": "red"}']);
