@@ -489,7 +489,7 @@ export class PluginHost {
     const official = (this.#known[id] ?? (await this.installed())[id])?.source === 'official';
     const tag = m ? translationFor(official ? { l10n: [lang()] } : m) : null;
     const bytes = tag ? (await this.ws.read(SYS_PLUGINS, `/${id}/${WORDS}${tag}.json`).catch(() => null))?.bytes : undefined;
-    return wordsOf(m, () => bytes, { tag });
+    return wordsOf(m, () => bytes, { tag, official });
   }
 
   /** An installed plugin's kept translations: each one's SHA-256, by its tag. @param {string} id @returns {Promise<Record<string, string>>} */
@@ -853,7 +853,6 @@ export class PluginHost {
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
     );
-    const shownIn = this.langOf(id);
     return Object.freeze({
       id,
       /** Its words in the screens' language, and the formats (localization design, section 8). */
@@ -908,8 +907,9 @@ export class PluginHost {
         fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => tracedFetch(this.ws.store, SYS, { tool: `plugin:${id}` }, this.#services.fetch)(url, init),
       }),
       ui: Object.freeze({
-        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body == null ? undefined : String(c.body), tone: c?.tone, actions: c?.actions, lang: shownIn }),
-        toast: (/** @type {string} */ text) => need('notices').toast(String(text), { lang: shownIn }),
+        card: (/** @type {any} */ c) => need('notices').card({ title: String(c?.title ?? ''), body: c?.body == null ? undefined : String(c.body), tone: c?.tone, actions: c?.actions, lang: this.langOf(id) }),
+        // The language its words are in now: words fetched while it runs (fetchTranslations) are used at once.
+        toast: (/** @type {string} */ text) => need('notices').toast(String(text), { lang: this.langOf(id) }),
         // What a plugin adds to annai's screens (spec §16.4), checked first; it goes when the plugin stops.
         slot: (/** @type {string} */ slot, /** @type {any} */ item) => {
           const wrong = checkSlot(slot, item);
