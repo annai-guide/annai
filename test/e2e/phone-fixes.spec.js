@@ -170,3 +170,46 @@ test('a finger held on the handle, then moved, still drags: nothing is selected 
   await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
   expect(await page.evaluate(() => String(getSelection()))).toBe('');
 });
+
+// "when all models error out, I cannot see it unless I goto the trace screen?" and "maybe we shall also mark which model is responding in
+// the conversation tab as well?" (IMG_3017)
+const ATTEMPTS = [{ name: 'Gemini 3.5 Flash Lite', outcome: 'timeout', error: 'No output started in time.', said: { code: 'late' } }, { name: 'Claude Opus 5.5', outcome: 'auth', error: 'The key was rejected.' }];
+test('a turn or a tidy-up every model failed is a line in the Conversation, Kokoro\'s too; one the user stopped is not (item 6)', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  await writeEvent(page, trip, { type: 'msg.user', data: { text: 'Read these files again?' } });
+  // Kokoro's, set aside while Koe talks: before, only the Trace had them.
+  await writeEvent(page, trip, { type: 'error', data: { kind: 'model', half: 'kokoro', aside: true, wake: 'w-1', why: { attempts: ATTEMPTS }, message: 'Gemini 3.5 Flash Lite: No output started in time.' } });
+  await writeEvent(page, trip, { type: 'error', data: { kind: 'compaction', half: 'kokoro', aside: true, wake: 'w-2', why: { attempts: ATTEMPTS }, message: 'Gemini 3.5 Flash Lite: No output started in time.' } });
+  await writeEvent(page, trip, { type: 'error', data: { kind: 'stopped', half: 'koe', quiet: true, wake: 'w-3', message: 'Stopped by the user.' } });
+  await page.goto('/#/talk');
+  const lines = page.locator('.convo li.system');
+  await expect(lines).toHaveCount(2);
+  await expect(lines.nth(0).locator('strong')).toHaveText("Shiori can't reach her model");
+  await expect(lines.nth(0)).toContainText('Claude Opus 5.5');
+  await expect(lines.nth(1).locator('strong')).toHaveText("Shiori couldn't tidy up the conversation");
+  // Set aside, it offers no Try again: Koe is the one who talks.
+  await expect(lines.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+});
+
+test("each of Shiori's lines names the model that wrote it, and says so when it wasn't the first; Koe's and Kokoro's notes too (item 12)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  const turn = (/** @type {string} */ wake, /** @type {string} */ role, /** @type {string} */ by, /** @type {any[]} */ attempts) => writeEvent(page, trip, { type: 'model.turn', data: { role, level: 'low', answeredBy: by, attempts, wake } });
+  await writeEvent(page, trip, { type: 'msg.user', data: { text: 'Where can I upload them?' } });
+  await turn('w-koe', 'koe-classic', 'Claude Sonnet 5.5', [{ name: 'Claude Sonnet 5.5', outcome: 'ok' }]);
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's1', wake: 'w-koe', text: "I'm checking." } });
+  await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', wake: 'w-koe', text: 'Where do bookings go?' } });
+  await turn('w-kokoro', 'main', 'Gemini 3.5 Flash Lite', [{ name: 'Claude Opus 5.5', outcome: 'bad-request' }, { name: 'Gemini 3.5 Flash Lite', outcome: 'ok' }]);
+  await writeEvent(page, trip, { type: 'note', data: { id: 'n2', from: 'kokoro', mode: 'append', why: 'tool', wake: 'w-kokoro', text: 'Tell them to start a trip first.' } });
+  await turn('w-koe', 'koe-classic', 'Qwen3.8 Flash', [{ name: 'Claude Sonnet 5.5', outcome: 'bad-request' }, { name: 'Qwen3.8 Flash', outcome: 'ok' }]);
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's2', wake: 'w-koe', text: 'Start a trip from Trips first.' } });
+  // A line no model turn stands for (an older one, or a live voice's) names nothing.
+  await writeEvent(page, trip, { type: 'out.speak', data: { id: 's3', wake: 'w-live', text: 'Hello.' } });
+  await page.goto('/#/talk');
+  const by = page.locator('.convo .by');
+  await expect(by).toHaveText(['Claude Sonnet 5.5', 'Claude Sonnet 5.5', "Gemini 3.5 Flash Lite · Claude Opus 5.5 didn't answer", "Qwen3.8 Flash · Claude Sonnet 5.5 didn't answer"]);
+  await expect(page.locator('.convo li', { hasText: 'Hello.' }).locator('.by')).toHaveCount(0);
+  // Quiet: small, and not in what the announcer says of a line.
+  expect(await by.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
+});

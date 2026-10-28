@@ -504,7 +504,7 @@ test('"Hear Shiori tell it" while Koe works: Koe tells the recap aloud, even wit
   assert.ok(read(k.agent.kokoro).includes(`[Koe said aloud] ${JSON.stringify('We drove the coast, and the fog lifted at ten.')}`));
 });
 
-test("Kokoro's list failing on a check nobody waits for (Koe's answer, a review) tells Koe nothing; a question still hears it couldn't check", async (t) => {
+test("Kokoro's list failing on a check nobody waits for (Koe's answer, a review) tells Koe nothing, and a card says so; a question still hears it couldn't check", async (t) => {
   useClock(t);
   const k = await agentKit([[{ error: 'overloaded', message: 'busy' }]], {
     koe: { talk: { rules: [
@@ -519,7 +519,9 @@ test("Kokoro's list failing on a check nobody waits for (Koe's answer, a review)
   await k.agent.idle();
   assert.ok((k.sent['model-0']?.length ?? 0) >= 1, 'Kokoro was asked to check');
   assert.deepEqual(await k.events(['note']), [], 'nobody waited for it: Koe is told nothing');
-  assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0, 'and no card');
+  // Nobody tells the user: a card does, and the Conversation's line (phone-fixes-1 item 6: only the Trace had it).
+  assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 1, 'a card');
+  assert.ok((await k.events(['error'])).some((e) => e.data.kind === 'model' && !e.data.quiet));
   k.llm.bench.clear('m-0');
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
