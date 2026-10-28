@@ -1,5 +1,5 @@
 {
-  "build": "a7c01ddbcad2",
+  "build": "456023b01ea1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,8 +43,8 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "e700ef3f201a",
-    "/src/core/agent/reading.js": "f21ba1e2f4a4",
+    "/src/core/agent/loop.js": "a62a422d9a03",
+    "/src/core/agent/reading.js": "143cbb92c8c3",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "7f3d4c10fe18",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
@@ -124,7 +124,7 @@
     "/src/core/pack/plan.js": "cd89bf4374e8",
     "/src/core/pack/read.js": "d02793ca050b",
     "/src/core/patch.js": "e2e285dc5248",
-    "/src/core/pdf-pages.js": "92d9eef7e59b",
+    "/src/core/pdf-pages.js": "941dc7e23c12",
     "/src/core/photo-meta.js": "7021827cca8d",
     "/src/core/pkpass.js": "b3e3dc6d825a",
     "/src/core/photos.js": "04a6d604ae69",
