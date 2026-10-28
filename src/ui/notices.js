@@ -38,39 +38,41 @@ export function createNotices() {
    * choice that changes the user's data is never out of sight). Its words take fewer lines, down to one, while it is taller than the
    * box; then More joins the buttons if their row stays one row, and the words go behind More (hidden to the eye only, so a screen
    * reader still reads them); still too tall, the card grows past the quarter of the screen (cards scroll away with the page).
-   * Measured from the card's top, wherever it is scrolled. @param {HTMLElement} node @param {HTMLElement} more
+   * @param {HTMLElement} node @param {HTMLElement} more
    */
   const fit = (node, more) => () => {
     if (!node.offsetHeight || node.classList.contains('open')) return;
-    const top = node.scrollTop;
-    node.scrollTop = 0;
     const words = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(':scope > p')]);
     const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
+    const focused = document.activeElement === more;
     node.style.removeProperty('--lines');
     node.classList.remove('brief', 'grow');
-    acts.before(more);
-    more.hidden = true; // measured without it: it comes back only where the words need it
     const cut = () => words.some((p) => p.scrollHeight > p.clientHeight + 1);
     const over = () => node.scrollHeight > node.clientHeight + 1;
-    node.classList.add('clamp');
-    more.hidden = !cut();
-    node.classList.toggle('clamp', !more.hidden);
-    if (words.length && over()) {
+    if (words.length) {
+      acts.before(more);
+      more.hidden = true; // measured without it: it comes back only where the words need it
       node.classList.add('clamp');
-      for (let n = 2; n && over(); n--) {
-        node.style.setProperty('--lines', String(n));
-        more.hidden = !cut();
+      more.hidden = !cut();
+      node.classList.toggle('clamp', !more.hidden);
+      if (over()) {
+        node.classList.add('clamp');
+        for (let n = 2; n && over(); n--) {
+          node.style.setProperty('--lines', String(n));
+          more.hidden = !cut();
+        }
+      }
+      if (over()) {
+        more.hidden = false;
+        const row = acts.offsetHeight;
+        acts.append(more);
+        if (acts.offsetHeight > row + 1) acts.before(more);
+        node.classList.add('brief');
       }
     }
-    if (words.length && over()) {
-      more.hidden = false;
-      const row = acts.offsetHeight;
-      acts.append(more);
-      if (acts.offsetHeight > row + 1) acts.before(more);
-      node.classList.add('brief');
-    }
     if (over()) node.classList.add('grow');
-    node.scrollTop = top;
+    // More moved to measure: a keyboard's focus on it stays (the review of phone-fixes-1).
+    if (focused && !more.hidden) more.focus({ preventScroll: true });
   };
   /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
   const fitStack = (node) => () => {
@@ -159,6 +161,7 @@ let lone = 0;
     if (stack.members.size === 1) {
       const [only] = stack.members;
       stack.el.replaceWith(only);
+      fitters.get(only)?.(); // a card again, in the box: fitted as one
       stacks.delete(kind);
       singles.set(kind, only);
     } else if (!stack.members.size) {
@@ -185,9 +188,9 @@ let lone = 0;
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const more = h('button', { class: 'btn ghost more', type: 'button', hidden: true, 'aria-expanded': 'false', onclick: () => keep(() => {
       const open = node.classList.toggle('open');
+      if (!open) fitters.get(node)?.(); // closed again, it fits the screen as it is now (it may have turned meanwhile)
       more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
-      el.classList.toggle('opened', Boolean(el.querySelector('.notice.open')));
     }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title, lang: otherLang(lang) }),
@@ -198,9 +201,12 @@ let lone = 0;
         ...actions.map((a) => h('button', { class: ['btn', a.primary && 'pri'], type: 'button', onclick: () => { a.run(); dismiss(); } }, a.label)),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => dismiss() }, t`Dismiss`)));
     fitters.set(node, fit(node, more));
-    const dismiss = () => { if (node.isConnected) keep(() => { leave(kind, node); el.classList.toggle('opened', Boolean(el.querySelector('.notice.open'))); }); };
-    keep(() => place(kind, title, node));
-    fitters.get(node)?.();
+    const dismiss = () => { if (node.isConnected) keep(() => leave(kind, node)); };
+    // Fitted inside keep(): what it changes of the card's height is kept off what the user sees (scrolled down, the screen stays put).
+    keep(() => {
+      place(kind, title, node);
+      fitters.get(node)?.();
+    });
     return dismiss;
   }
   /** @param {string} text @param {{ lang?: string }} [o] lang: a plugin's words' language, marked when it isn't the screens' */
