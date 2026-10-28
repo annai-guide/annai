@@ -109,7 +109,7 @@ test('a new build is found when annai comes back to the screen, without a reload
 test('Settings → Updates shows the build running and says when everything is up to date; About and Settings link to it', async ({ page }) => {
   await openApp(page, '#/settings');
   await waitForServiceWorker(page);
-  expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Photos', 'Tools', 'Plugins', 'Storage',
+  expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Languages', 'Photos', 'Tools', 'Plugins', 'Storage',
     'Updates', 'About', 'Diagnostics', 'Developer', 'Experimental', 'Erase']);
   await page.getByRole('link', { name: 'About annai' }).click();
   await page.getByRole('link', { name: 'Check for updates' }).click();

@@ -356,7 +356,8 @@ test("one card taller than the box a quarter of the screen high keeps its Dismis
   await expect(card).toBeVisible();
   // One card that says a lot: far taller than a quarter of 375 px.
   await card.locator('p').evaluate((p) => { p.textContent = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of what this card has to say.`).join('\n'); });
-  const box = page.locator('.notices');
+  // The card scrolls within itself, whole in the box (phone-fixes-1 item 3: the box's own scroll cut a card's foot off).
+  const box = page.locator('.notices > .notice');
   expect(await box.evaluate((el) => el.scrollHeight > el.clientHeight + 100)).toBe(true);
   const dismiss = card.getByRole('button', { name: 'Dismiss' });
   /** Whether the button lies wholly inside the box as it is seen now. */
@@ -480,7 +481,10 @@ test('review S1: three cards take at most a quarter of a 320 × 544 screen, and 
   await expect(page.locator('.notice')).toHaveCount(4);
   const box = await page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
   expect(box.h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
-  expect(box.scroll).toBeGreaterThan(box.h);
+  // The folded card scrolls within itself, whole in the box (phone-fixes-1 item 3).
+  const card = await page.locator('.notices > .notice-stack').evaluate((n) => ({ h: n.clientHeight, scroll: n.scrollHeight, bottom: n.getBoundingClientRect().bottom }));
+  expect(card.scroll).toBeGreaterThan(card.h);
+  expect(card.bottom).toBeLessThanOrEqual(await page.locator('.notices').evaluate((n) => n.getBoundingClientRect().bottom));
 });
 
 for (const [width, height] of [[360, 760], [320, 544]]) {
