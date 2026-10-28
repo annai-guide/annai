@@ -525,3 +525,30 @@ test("the first model, tried and failed: the line says it didn't answer", async 
   const r = await call(s);
   assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-0', true]);
 });
+
+test("a first model that never got the request (it can't read the PDF in it) wasn't tried: the line says another answered instead; a resting one was (third review of phone-fixes-1)", async () => {
+  const pdf = { messages: [{ role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBE', name: 'stay.pdf' }, { type: 'text', text: 'Read it' }] }] };
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { models: [{ input: ['text'] }, { input: ['text', 'pdf'] }] });
+  const r = await call(s, { request: pdf });
+  assert.deepEqual([r.answeredBy, r.first, r.tried], ['model-1', 'model-0', false]);
+  s.bench.bench('m-0', 60_000);
+  const rested = await call(s);
+  assert.deepEqual([rested.answeredBy, rested.first, rested.tried], ['model-1', 'model-0', true], 'resting: it "didn\'t answer"');
+});
+
+test("a call that times out or is cut off part-way costs what it had used too: the turn's cost counts it with the answer's (third review of phone-fixes-1)", async () => {
+  for (const kind of /** @type {const} */ (['timeout', 'network'])) {
+    const failing = { type: 'failing', name: 'Failing', tail: true, async *run() {
+      yield { type: 'usage', usage: { input: 1_000_000, output: 0 } };
+      throw new ProviderError(kind, `Scripted ${kind}.`);
+    } };
+    const s = setup([[{ text: 'unused' }], [{ text: 'B.', usage: { input: 0, output: 0 } }]], { endpointTypes: ['failing'], types: [['failing', failing]] });
+    const r = await call(s);
+    assert.equal(r.answeredBy, 'model-1');
+    // Each call to the first model (a network failure is tried again) used a million input tokens, at $1.
+    const first = r.attempts.filter((a) => a.model === 'm-0');
+    assert.ok(first.length >= 1);
+    assert.equal(r.cost, first.length, kind);
+    assert.ok(first.every((a) => a.cost === 1));
+  }
+});

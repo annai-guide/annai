@@ -642,6 +642,8 @@ test('an immediate note while Koe streams a speak: what it said aloud is in the 
   assert.equal(said.length, 2, JSON.stringify(said));
   assert.deepEqual(said[0].slice(0, 3), ['koe', true, true]);
   assert.match(said[0][3], /^Bixby Bridge is .*…$/);
+  // Named by the model whose speech was cut, not an earlier call's (the third review of phone-fixes-1).
+  assert.equal((await k.events(['out.speak']))[0].data.by?.name, 'model-koet');
   assert.ok(read(k.agent.kokoro).includes(`[Koe said aloud] ${JSON.stringify(said[0][3])}`), JSON.stringify(read(k.agent.kokoro)));
   assert.ok(read(k.agent.koe).includes(`[annai] ${JSON.stringify(`a note stopped you after: ${said[0][3]}`)}`), JSON.stringify(read(k.agent.koe)));
 });

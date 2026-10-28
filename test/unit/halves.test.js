@@ -222,6 +222,8 @@ test('final text: passed to Koe when the turn told no one and never slept; text 
   // idle() waits for the note annai sends Koe as Kokoro's turn ends (the fix pass, S7: it raced it before).
   const notes = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro');
   assert.deepEqual(notes.map((e) => [e.data.why, e.data.text]), [['final-text', 'Open till 10, per its site.']]);
+  // Written as Kokoro's turn ended, it is still named by the model that wrote it (the third review of phone-fixes-1).
+  assert.equal(notes[0].data.by?.name, 'model-0');
   assert.ok(!JSON.stringify(k.sent['model-0']).includes("The user hasn't been answered"), "Kokoro, behind Koe, isn't asked again for the user (spec §7.1): its plain text went to Koe");
   // Koe, which slept on it, is asked once more; annai shows nothing of it (the fix pass, M1).
   const koe = k.sent['model-koe'];
@@ -884,3 +886,18 @@ for (const koeFirst of [true, false]) {
     assert.deepEqual([...up.keys()], [], 'the card for both is down');
   });
 }
+
+test("Kokoro's card, gated while Koe talks and never passed on, is shown by annai named by the model that wrote it (the third review of phone-fixes-1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: calls(['show', { card: { title: 'Nepenthe', text: 'Open till 10' } }]) }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) },
+    { match: '.', reply: sleep },
+  ] } } });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  const [gated] = (await k.events(['note'])).filter((e) => e.data.why === 'gated:show');
+  assert.equal(gated.data.by?.name, 'model-0');
+  const shownCards = await k.events(['out.show']);
+  assert.equal(shownCards.length, 1, 'annai showed it');
+  assert.equal(shownCards[0].data.by?.name, 'model-0');
+});
