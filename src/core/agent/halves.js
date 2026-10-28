@@ -59,6 +59,8 @@ const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 /** The key of Kokoro's card for a turn its models all failed. */
 const KOKORO_CARD = 'model:kokoro';
+/** The notes annai writes to a half, which no model wrote. @type {string[]} */
+const ANNAI_NOTES = ['kokoro-failed', 'nothing-to-add', 'stopped'];
 /** The key of the card for both halves' models failing. */
 const BOTH_CARD = 'model:both';
 
@@ -79,7 +81,8 @@ export class Channel {
    */
   async send(from, text, mode, why, wake, call, watched = false, forUser = '') {
     const to = from === 'koe' ? 'kokoro' : 'koe';
-    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}) }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
+    // annai's own notes to a half name no model.
+    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), ...(ANNAI_NOTES.includes(why) ? { by: null } : {}) }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
     this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
@@ -947,8 +950,8 @@ export class Halves {
       const i = w.call?.input ?? {};
       const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
       const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
-      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card } });
-      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options } });
+      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: null } });
+      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: null } });
       else if (card || ask) {
         // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
         const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')

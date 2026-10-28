@@ -455,10 +455,10 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori が止まりました�
 67wvld	ok	Shiori stopped: step limit	Shiori が止まりました：ステップ数の上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori は誰にも頼まれずに自分で進めていたことで{0}ステップ進んだため、そこで止まりました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進めるステップ数（設定 → Shiori → Shiori が自分から動く頻度）の{0}ステップに達しました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:518	
-yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:518	
-bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:639	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:639	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:527	
+yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:527	
+bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:648	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:648	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:109	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:109	
 4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:109	
@@ -467,45 +467,45 @@ g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/age
 yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:109	Note: one of Shiori's states: she hears you speaking.
 akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:110	
 izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:110	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:536	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:536	
-19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:848	
-16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1071	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1071	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1104	
-oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1104	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1237	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1435	
-1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1435	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1533	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1533	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1533	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1586	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1850	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1850	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:1887	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:1891	
-1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:1954	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:1982	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2037	
-vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2398	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2540	
-guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2540	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2541	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2541	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2679	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2814	
-43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:2988	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:2989	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:2990	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:2991	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:2992	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:2993	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3000	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3010	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3011	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3012	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3013	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:540	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:540	
+19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:852	
+16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1075	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1075	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1108	
+oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1108	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1241	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1439	
+1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1439	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1539	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1539	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1539	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1593	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1863	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1863	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:1900	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:1904	
+1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:1968	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:1996	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2051	
+vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2412	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2554	
+guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2554	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2555	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2555	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2693	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2828	
+43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3002	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3003	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3004	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3005	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3006	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3007	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3014	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3024	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3025	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3026	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3027	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -1201,16 +1201,16 @@ q21uv	ok	Trying each reasoning level…	推論レベルを1つずつ試してい
 la23qc	ok	This model has no reasoning levels to try.	このモデルには試せる推論レベルがありません。	src/ui/model-check.js:56	
 18nnh3z	ok	{0}: works	{0}：動作します	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
 edkut8	ok	Test reasoning levels	推論レベルをテスト	src/ui/model-check.js:64	
-1qfy6dp	ok	Hide	隠す	src/ui/notices.js:83	
-bi2jq4	ok	Show	表示	src/ui/notices.js:83	
-icn7kg	ok	Dismiss all	すべて閉じる	src/ui/notices.js:88	
-14jq62w#other	ok	{0}, # cards	{0}、#件のカード	src/ui/notices.js:100	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
-1w0wlmk#other	ok	Show the # cards: {0}	#件のカードを表示：{0}	src/ui/notices.js:101	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
-1wucd5m#other	ok	Hide the # cards: {0}	#件のカードを隠す：{0}	src/ui/notices.js:101	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
-1dg2v9a#other	ok	Dismiss all # cards: {0}	#件のカードをすべて閉じる：{0}	src/ui/notices.js:102	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	ok	Less	折りたたむ	src/ui/notices.js:170	Note: Closes a long card back to three lines.
-lz65mo	ok	More	続きを表示	src/ui/notices.js:170	Note: Opens a long card to its full height.
-an1pf7	ok	Dismiss	閉じる	src/ui/notices.js:181	
+1qfy6dp	ok	Hide	隠す	src/ui/notices.js:86	
+bi2jq4	ok	Show	表示	src/ui/notices.js:86	
+icn7kg	ok	Dismiss all	すべて閉じる	src/ui/notices.js:91	
+14jq62w#other	ok	{0}, # cards	{0}、#件のカード	src/ui/notices.js:103	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
+1w0wlmk#other	ok	Show the # cards: {0}	#件のカードを表示：{0}	src/ui/notices.js:104	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
+1wucd5m#other	ok	Hide the # cards: {0}	#件のカードを隠す：{0}	src/ui/notices.js:104	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
+1dg2v9a#other	ok	Dismiss all # cards: {0}	#件のカードをすべて閉じる：{0}	src/ui/notices.js:105	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
+18u3mqg	ok	Less	折りたたむ	src/ui/notices.js:173	Note: Closes a long card back to three lines.
+lz65mo	ok	More	続きを表示	src/ui/notices.js:173	Note: Opens a long card to its full height.
+an1pf7	ok	Dismiss	閉じる	src/ui/notices.js:184	
 16ujpkf#other	ok	# Wikipedia summaries	Wikipedia の要約#件	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	ok	# places	#か所	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	ok	# Wikivoyage guides	Wikivoyage のガイド#件	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
@@ -1530,34 +1530,34 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	この
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}にあります。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅	src/ui/screens/ext.js:56	
-10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:37	
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/file.js:37	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:39	
-krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:42	
-1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:48	
-1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:48	
-1hnv6ua	ok	Content	内容	src/ui/screens/file.js:73	
-lewgh4	ok	Save	保存	src/ui/screens/file.js:73	
-1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:81	
-wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:86	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:93	
-t8quxl	ok	Download	ダウンロード	src/ui/screens/file.js:100	
-4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:109	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:110	
-1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:113	
-1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:120	
-yugfpb	ok	History	履歴	src/ui/screens/file.js:121	
-q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:126	
-1q136y3	ok	That version isn't stored on this device.	そのバージョンはこの端末に保存されていません。	src/ui/screens/file.js:132	
-twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:136	
-16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:137	
-1dw4k8q	ok	Current	現在	src/ui/screens/file.js:138	
-3g3rkl	ok	changed by you {0}	あなたが変更（{0}）	src/ui/screens/file.js:144	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0} が変更（{1}）	src/ui/screens/file.js:144	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	あなたが削除（{0}）	src/ui/screens/file.js:150	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:150	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:151	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:151	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:42	
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/file.js:42	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:44	
+krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:47	
+1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:53	
+1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:53	
+1hnv6ua	ok	Content	内容	src/ui/screens/file.js:78	
+lewgh4	ok	Save	保存	src/ui/screens/file.js:78	
+1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:86	
+wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:91	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:98	
+t8quxl	ok	Download	ダウンロード	src/ui/screens/file.js:105	
+4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:114	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:115	
+1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:118	
+1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:125	
+yugfpb	ok	History	履歴	src/ui/screens/file.js:126	
+q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:131	
+1q136y3	ok	That version isn't stored on this device.	そのバージョンはこの端末に保存されていません。	src/ui/screens/file.js:137	
+twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:141	
+16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:142	
+1dw4k8q	ok	Current	現在	src/ui/screens/file.js:143	
+3g3rkl	ok	changed by you {0}	あなたが変更（{0}）	src/ui/screens/file.js:149	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0} が変更（{1}）	src/ui/screens/file.js:149	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	あなたが削除（{0}）	src/ui/screens/file.js:155	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:155	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:156	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:156	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 f0ig49	ok	Open a trip	旅を開く	src/ui/screens/import.js:36	
 1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:39	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには annai のファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:52	
@@ -2206,38 +2206,39 @@ qjf670	ok	Three identical tool calls in a row with identical results.	同じ内�
 1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:246	{0} = formatCost(c.total)
 glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:246	{0} = formatCost(c.total)
 td8u17	ok	A photo you sent	あなたが送った写真	src/ui/screens/talk.js:273	
-1242x07	ok	{0} · {1} didn't answer	{0} · {1} は応答しませんでした	src/ui/screens/talk.js:285	{0} = d.answeredBy; {1} = first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the first model tried, which gave no answer. Both are model names as the user has them.
-9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:304	
-fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:359	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:359	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:371	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:372	
-1o41up	ok	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:382	
-1p4yyw7	ok	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:382	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:397	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:461	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。「旅」から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:479	
-1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:510	
-bomkf4	ok	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:511	
-7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:525	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:527	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:527	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:527	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:527	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:530	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:535	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:542	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:543	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:544	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:554	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:557	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:557	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:557	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:557	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:577	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:578	
-159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:593	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:600	
+1242x07	ok	{0} · {1} didn't answer	{0} · {1} は応答しませんでした	src/ui/screens/talk.js:287	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the role's first model, which was asked and gave no answer. Both are model names as the user has them.
+141y2ts	ok	{0} · instead of {1}	{0} · {1} の代わりに応答	src/ui/screens/talk.js:287	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0}, the model that wrote it, answered in place of {1}, the first model of the role, which was not asked (a model with a warm cache went first). Both are model names as the user has them.
+9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:302	
+fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:357	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:357	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:369	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。完全なログは記録にあります。	src/ui/screens/talk.js:370	
+1o41up	ok	A budget ended her turn	上限に達したため、Shiori のターンが終わりました	src/ui/screens/talk.js:380	
+1p4yyw7	ok	Her turn ended	Shiori のターンが終わりました	src/ui/screens/talk.js:380	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ何もありません。下の Shiori か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:395	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:449	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。「旅」から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:467	
+1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:498	
+bomkf4	ok	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:499	
+7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:513	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:515	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:515	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:515	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:515	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:518	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:523	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:530	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:531	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:532	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:542	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:545	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:545	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:545	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:545	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:565	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:566	
+159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:581	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:588	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

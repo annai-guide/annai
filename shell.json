@@ -1,5 +1,5 @@
 {
-  "build": "ccaebd752ac8",
+  "build": "c4d72ac13b0b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,11 +39,11 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "e9a817888555",
     "/src/core/agent/context.js": "b0818c542af2",
-    "/src/core/agent/halves.js": "fed254e0913a",
+    "/src/core/agent/halves.js": "f8f91d53d5f7",
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "28ee6c2b3219",
+    "/src/core/agent/loop.js": "ef64a277b053",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "7f3d4c10fe18",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
@@ -73,7 +73,7 @@
     "/src/core/llm/config.js": "d32a97cf6da1",
     "/src/core/llm/contract.js": "c3402efddbe5",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "c91dfc2264a2",
+    "/src/core/llm/fallback.js": "ea6469d93411",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "8306b02c48bf",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
@@ -105,7 +105,7 @@
     "/src/core/intl.js": "de5e4d0c9b93",
     "/src/core/koe/context.js": "a3724049f0e7",
     "/src/core/koe/instructions.js": "dfee9cc2d0cb",
-    "/src/core/koe/live.js": "c81e4fe50a80",
+    "/src/core/koe/live.js": "8077bc356b16",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "14efc0eed98c",
     "/src/core/l10n.js": "d38eac0f8f44",
@@ -252,7 +252,7 @@
     "/src/ui/screens/settings.js": "bc2395afa70e",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
-    "/src/ui/screens/talk.js": "525b61b38ff7",
+    "/src/ui/screens/talk.js": "0bcbd55820ea",
     "/src/ui/screens/tools.js": "a820f3ddec27",
     "/src/ui/screens/trace.js": "232ff7af2307",
     "/src/ui/screens/trip.js": "2ac01ae1599e",
@@ -277,7 +277,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "32c42f66901f",
-    "/l10n/zh-Hans.json": "b2d22ecb6a5b"
+    "/l10n/ja.json": "17ddc7557ca8",
+    "/l10n/zh-Hans.json": "48953c5bbc94"
   }
 }

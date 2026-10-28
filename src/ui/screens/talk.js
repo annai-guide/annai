@@ -276,18 +276,12 @@ export async function renderTalk(ctx) {
     }
     return out;
   };
-  /** Who answered each wake's latest model turn, for the lines it wrote: its model, and the first one tried when that didn't answer. @type {Map<string, string>} */
-  const answered = new Map();
-  /** @param {any} d a model turn's data */
-  const heard = (d) => {
-    // The role's first model (since phone-fixes-1's review); an older turn has only the first one tried.
-    const first = 'first' in d ? d.first : d.attempts?.[0]?.name;
-    if (d.wake && d.answeredBy) answered.set(d.wake, first && first !== d.answeredBy ? t`${d.answeredBy} · ${first} didn't answer` : d.answeredBy);
-  };
-  /** A line of hers, quietly naming the model that wrote it (the user, 2026-10-28), where a model turn of its wake is known. @param {any} d @param {HTMLElement} li */
+  /** A line of hers, quietly naming the model that wrote it, as written with it (the user, 2026-10-28). @param {any} d @param {HTMLElement} li */
   const by = (d, li) => {
-    const who = d.wake && !d.live ? answered.get(d.wake) : undefined;
-    if (who) li.append(h('span', { class: 'sub by', text: who }));
+    const b = d.by;
+    if (!b?.name) return li;
+    const who = !b.first || b.first === b.name ? b.name : b.tried ? t`${b.name} · ${b.first} didn't answer` : t`${b.name} · instead of ${b.first}`;
+    li.append(h('span', { class: 'sub by', text: who }));
     return li;
   };
   /** @param {any} e */
@@ -414,18 +408,8 @@ export async function renderTalk(ctx) {
   let built = false;
   let wasShown = false;
   const stop = await follow(agent, scope, {
-    // The lines, and the model turns that name who wrote them, in the order they came.
-    read: async () => {
-      const lines = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }));
-      const oldest = lines.at(-1)?.seq;
-      // The model turns behind them: all since the oldest line, and the last few before it (the turns that wrote the first lines).
-      const turns = oldest === undefined ? [] : await ctx.store.tx(['events'], 'readonly', async (/** @type {any} */ tx) => [
-        ...await tx.listEvents(scope, { types: ['model.turn'], before: oldest, reverse: true, limit: 20 }), ...await tx.listEvents(scope, { types: ['model.turn'], after: oldest }),
-      ]);
-      return [...lines, ...turns].sort((/** @type {any} */ a, /** @type {any} */ b) => a.seq - b.seq);
-    },
+    read: async () => (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse(),
     show: async (e) => {
-      if (e.type === 'model.turn') return void heard(e.data ?? {});
       if (!SHOWN.includes(e.type)) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
       const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
