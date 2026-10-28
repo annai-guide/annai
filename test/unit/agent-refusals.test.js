@@ -263,3 +263,11 @@ test("limitImages: a PDF's page pictures in one message go from the last page ba
   assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => p.page ?? p.text), ['[a PDF: booking.pdf] Its pages as pictures, as you can\'t read PDFs: pages 1–3 of 3.', 1, 2, '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
   assert.equal(out[1].parts[0].type, 'image', 'the newest photo still wins');
 });
+
+test("limitImages: within one message, its own photos stay before its PDF's pages, which give way from the last page (round 4)", () => {
+  const page = (/** @type {number} */ n) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash: `h${n}`, page: n });
+  const photo = { type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'BBBB', path: '/trip/files/menu.webp' };
+  const messages = [{ role: /** @type {const} */ ('user'), parts: [photo, { type: /** @type {const} */ ('text'), text: '[a PDF: booking.pdf] …' }, page(1), page(2), page(3)] }];
+  const out = limitImages(messages, 2);
+  assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.page ?? p.path : p.text)), ['/trip/files/menu.webp', '[a PDF: booking.pdf] …', 1, '[page 2 of the PDF above, not sent: this model takes fewer pictures at a time]', '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
+});

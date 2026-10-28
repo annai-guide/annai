@@ -1794,3 +1794,41 @@ test("a later reading as pages doesn't take a PDF's words from a model that sees
   assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.deepEqual((await k.events(['reading'])).map((e) => e.data.how), ['told', 'pages']);
 });
+
+// Round 4.
+test('the same photo twice in one message is read once: one reader call, one kept reading (round 4)', async (t) => {
+  useClock(t);
+  const k = await photoKit([say('Two menus.')], [{ text: 'A menu; the fish is circled.' }, { text: 'never' }]);
+  k.agent.send('What are these?', { photos: [{ path: '/trip/files/p.webp' }, { path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1);
+  assert.equal((await k.events(['reading'])).length, 1);
+  assert.equal((JSON.stringify(k.sent['model-0'][0].messages).match(/the fish is circled/g) ?? []).length, 2, 'both parts carry it');
+});
+
+test('two reads of one file in one step read it once (round 4)', async (t) => {
+  useClock(t);
+  const twice = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }, { name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+  const k = await bookingKit([[twice, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1);
+  assert.equal((await k.events(['reading'])).length, 1);
+  for (const r of (await k.events(['tool.result'])).filter((e) => e.data.name === 'read')) assert.match(r.data.content, /Hotel booking: check-in 3 PM\.$/);
+});
+
+test("kept pages whose pictures are partly gone say which pages went (round 4)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Done.'), say('Still.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'] }] });
+  numberedPages(k, 3);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const [kept] = await k.events(['reading']);
+  await k.store.tx(['blobs'], 'readwrite', (/** @type {any} */ t) => t.deleteBlob(kept.data.images[1].hash)); // page 2's picture, gone (a refused copy, say)
+  k.agent.forgetTold();
+  k.agent.send('And?');
+  await k.agent.idle();
+  const parts = k.sent['model-1'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts);
+  assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image' && p.page).map((/** @type {any} */ p) => p.page), [1, 3]);
+  assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /Of these, only pages 1 and 3 went; page 2 is no longer on this device\./.test(p.text)));
+});
