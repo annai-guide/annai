@@ -90,8 +90,9 @@ export function summaryLanguage(said, languages) {
   const last = lines.at(-1);
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
   if (languages?.explicit) {
-    const guess = last ? languageOf(last) || languageOf(lines.join('\n')) : '';
-    const wrote = guess ? listedFor(guess, languages.spoken) : null;
+    const text = last && languageOf(last) ? last : lines.join('\n');
+    const guess = text ? languageOf(text) : '';
+    const wrote = guess ? listedFor(guess, languages.spoken, text) : null;
     /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
   }
   if (!last) /* en */ return "English, the app's language (the user hasn't written anything yet)";

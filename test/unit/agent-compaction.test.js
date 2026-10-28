@@ -249,6 +249,16 @@ test('kanji alone is Japanese for the summary when Japanese is listed and Chines
   assert.equal(summaryLanguage('今日の夕食はどこにしますか', zh), 'English, the first language the user speaks (English and Chinese (Simplified))', 'kana is Japanese, which is not listed');
 });
 
+test('with both Chinese listed, the summary is in the one the user wrote in last, by its characters (the check of 18f87b78)', async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
+  assert.equal(summaryLanguage('我們今晚去哪裡吃飯', both), 'Chinese (Traditional), the language the user wrote in last');
+  assert.equal(summaryLanguage('我们今晚去哪里吃饭', both), 'Chinese (Simplified), the language the user wrote in last');
+  assert.equal(summaryLanguage('好的', both), 'Chinese (Simplified), the language the user wrote in last', 'characters that tell nothing: the first listed');
+  const cantonese = languageSettings({ languages: { spoken: ['yue', 'zh-Hant'] } }, 'en-US');
+  assert.equal(summaryLanguage('我們今晚去邊度食飯', cantonese), 'Cantonese, the language the user wrote in last', 'Cantonese listed first keeps Traditional characters');
+});
+
 test('what the user said aloud counts for the summary\'s language, not only what they typed (review item 5, Step S7)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });

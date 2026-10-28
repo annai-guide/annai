@@ -58,7 +58,8 @@ export function nativeName(l) {
 /** What a browser's language tag is, as a language: the browser's own tag stays the locale (zh-Hant-TW, nb-NO, et-EE), as it was before this branch. @param {unknown} locale @returns {Language} */
 function browserLanguage(locale) {
   const tag = String(locale ?? '').trim().replace(/_/g, '-');
-  const raw = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/i.test(tag) ? tag : 'en-US';
+  // zh-yue, which Intl doesn't take, is Cantonese, as the screens read it (l10n.js screensTag).
+  const raw = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/i.test(tag) ? tag.replace(/^zh-yue(?=-|$)/i, 'yue') : 'en-US';
   const code = raw.split('-')[0].toLowerCase();
   // A Traditional Chinese phone's Chinese is the Traditional row.
   const id = code === 'zh' && traditional(raw) ? 'zh-Hant' : BY_ID.has(code) ? code : ({ nb: 'no', nn: 'no', iw: 'he', tl: 'fil' }[/** @type {'nb'} */ (code)] ?? null);
@@ -195,12 +196,18 @@ const SHARED = /** @type {Record<string, string[]>} */ ({ Chinese: ['zh', 'zh-Ha
 
 /**
  * The listed language a name from languageOf is, or null. Han characters alone are Chinese's, and Japanese's too when Chinese isn't
- * listed (a short Japanese reply may be kanji only). @param {string} guess @param {Language[]} spoken
+ * listed (a short Japanese reply may be kanji only). With both Chinese listed, the text's characters choose between them, when they tell.
+ * @param {string} guess @param {Language[]} spoken @param {string} [text] what was written
  */
-export function listedFor(guess, spoken) {
+export function listedFor(guess, spoken, text = '') {
   const same = spoken.find((l) => guess === l.name || (SHARED[guess] ?? []).includes(l.id));
-  return same ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
+  const written = same && MANDARIN.includes(same.id) ? spoken.find((l) => l.id === hanRow(text)) : undefined;
+  return written ?? same ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
 }
+/** The two Chinese rows, Simplified and Traditional. */
+const MANDARIN = ['zh', 'zh-Hant'];
+/** The Chinese row a text's characters say, or '' when they don't tell. @param {string} text */
+const hanRow = (text) => { const [hans, hant] = [count(text, HANS), count(text, HANT)]; return hans > hant ? 'zh' : hant > hans ? 'zh-Hant' : ''; };
 
 /** Whether a locale is written in Traditional characters: its script when it names one (zh-Hans-HK is Simplified), else its region's. @param {string} locale */
 const traditional = (locale) => { try { return new Intl.Locale(locale).maximize().script === 'Hant'; } catch { return false; } };
@@ -289,11 +296,15 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
 
 /**
  * The locale browser voice uses: the answer language if she answers in one; else the listed language the sentence itself is written
- * in (kana: Japanese, Han: Chinese or Japanese...); else the first listed. @param {LanguageSettings} s @param {string} [text]
+ * in (kana: Japanese, Han: Chinese or Japanese...); else the first listed. Chinese whose characters say Simplified or Traditional takes a
+ * voice of that script. @param {LanguageSettings} s @param {string} [text]
  */
 export function speechLocale(s, text = '') {
   const guess = languageOf(text);
-  return (s.answer ?? (guess ? listedFor(guess, s.spoken) : null) ?? s.spoken[0]).locale;
+  const l = s.answer ?? (guess ? listedFor(guess, s.spoken, text) : null) ?? s.spoken[0];
+  // Chinese in the other script than the row's is read with a voice of its own script.
+  const row = MANDARIN.includes(l.id) ? hanRow(text) : '';
+  return row && row !== (traditional(l.locale) ? 'zh-Hant' : 'zh') ? /** @type {Language} */ (BY_ID.get(row)).locale : l.locale;
 }
 
 /** The locale phone dictation listens in: Web Speech takes one tag, the first language listed, whatever Shiori answers in. @param {LanguageSettings} s */
