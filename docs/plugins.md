@@ -1,6 +1,6 @@
 # Writing an annai plugin
 
-This guide covers the plugin interface as it is built today: plugin API version 1, through milestone 8 (extensions). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
+This guide covers the plugin interface as it is built today: plugin API version 2 (version 1 plus `annai.l10n` and `helpers.addressShown`; annai accepts a plugin that says either). The full design is in the spec, [§5 Plugin system](superpowers/specs/2026-10-15-annai-design.md#5-plugin-system). The interface grows with later milestones, and this guide grows with it.
 
 A code plugin is trusted fully. It runs on annai's own page, with the same powers as annai's built-in parts, and the install screen tells the user so (spec §5.1): for yours, as for any that isn't annai's own, that it can read every key saved in annai and send it anywhere, naming whose keys are saved now ("now your keys for Google Gemini and Jina"), with **Install anyway**. An update that brings code to a package that had none asks the same way, with **Update anyway**.
 
@@ -28,7 +28,7 @@ A plugin's manifest:
   - `id`: lowercase letters, digits, `.`, `_` and `-`, 2 to 64 characters, starting with a letter or digit.
   - `name`: up to 80 characters.
   - `version`: semantic, like `1.0.0`.
-  - `api`: must be `1`. A plugin made for another API version is turned off cleanly.
+  - `api`: the plugin API it was made for: `1`, or `2` if it uses anything API 2 added: `annai.l10n` (see Translations) and `annai.helpers.addressShown`. annai runs its own API and every older one; a plugin made for a newer one is refused, naming it, so an older annai never runs a plugin without the API it needs.
 - **Optional fields:**
   - `description` (up to 500 characters), `author`, `homepage`.
   - `entry`: an ES module inside the package, ending in `.js` or `.mjs`.
@@ -81,7 +81,7 @@ export function activate(annai) {
 | `annai.providers.setup(setup)` | a provider plugin's own setup and quirks, once: see "Model providers with code" below |
 | `annai.storage.register(type)` | a kind of place to back up to (spec §12.4); see "Backup places" below |
 | `annai.l10n` | your words in the screens' language: `t`, `tc`, `plural`, `both`, `lang`, `dir` and annai's formats. See "Translations" below. |
-| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`; in English, for a model and the log), `addressShown(url)` (the same in the screens' words), `base64` (`encode(bytes)`, `decode(text)`), `g711` (`pcmToUlaw`, `ulawToPcm`, `pcmToAlaw`, `alawToPcm`: 16-bit PCM in an `Int16Array` to and from G.711's bytes), `wav` (`encode(pcm, rate)`: 16-bit mono PCM as a WAV file; `decode(bytes)`: a 16-bit WAV file's first channel, `{ pcm, rate }`) |
+| `annai.helpers` | `sse` (server-sent events from a response body), `parsePartialJSON`, `ProviderError`, `errorFromResponse`, `retry`, `tsv(header, rows)` (TSV for the model, spec §4.7), `mergePatch`, `TargetError`, `readAnswer`, `xml` and `backupFiles` (see "Backup places"), `zip` (`ZipReader`, `ZipWriter`: annai's own zip), `addressProblem(url)` (why annai wouldn't send a key to an address, or null: it must be https, or http only for `localhost` or `127.0.0.1`; in English, for a model and the log), `addressShown(url)` (the same in the screens' words; API 2), `base64` (`encode(bytes)`, `decode(text)`), `g711` (`pcmToUlaw`, `ulawToPcm`, `pcmToAlaw`, `alawToPcm`: 16-bit PCM in an `Int16Array` to and from G.711's bytes), `wav` (`encode(pcm, rate)`: 16-bit mono PCM as a WAV file; `decode(bytes)`: a 16-bit WAV file's first channel, `{ pcm, rate }`) |
 | `annai.secrets.get(name)`, `.set(name, value)` | your plugin's own secrets, such as an API key; `get` gives null for one that isn't set. Never put them in files or log entries. |
 | `annai.secrets.blank(value)` | a copy of a value (a string, or objects and lists of them, however deep) with every secret annai keeps, any plugin's or provider's, and anything shaped like a credential (a Bearer or Basic value, a signed address's signature) blanked as `«key»` in every string; a string that could still show one is replaced by a note. It is what annai's own cards and errors show. Use it on anything you send or show beyond annai. It reads every secret annai keeps at each call, so call it once for a batch, not once per string. It **rejects** when they can't be read (the database closed under it, as an iPhone's can), rather than give back text it couldn't check: send nothing then, and try again later. |
 | `annai.llm(role, request)` | a model call through a role (`main`, `utility`, `decide`), with fallback; returns the reply. It is in the trace, tagged `plugin:<id>`. |
@@ -757,6 +757,8 @@ the page as text, never as HTML. The install screen's warnings (full access, who
 annai's own words, never yours, in every language.
 
 ### `annai.l10n`
+
+A plugin that reads it says `"api": 2` in its manifest: an annai from before `annai.l10n` then refuses it, naming the API, instead of running it without its words.
 
 | | |
 |---|---|

@@ -179,7 +179,7 @@ async function boot() {
   // plugin (§5.3), whose files load through the service worker.
   const device = deviceName();
   const backups = createBackups({
-    store, ws, registry, app: VERSION, label: device.label, noun: device.noun, online: () => navigator.onLine !== false,
+    store, ws, registry, plugins, app: VERSION, label: device.label, noun: device.noun, online: () => navigator.onLine !== false,
     ensure: async (type, o = {}) => {
       await canLoad();
       await ensureProvided(plugins, 'storage-type', type, { keepOff: o.keepOff });

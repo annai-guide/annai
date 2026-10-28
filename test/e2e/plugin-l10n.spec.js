@@ -74,6 +74,15 @@ test.describe('on Japanese screens', () => {
     await expect(page.getByText('Custom provider')).toHaveCount(0);
   });
 
+  test("Add asks for annai's catalog's words once, beside the catalog", async ({ page }) => {
+    /** @type {string[]} */
+    const asked = [];
+    page.on('request', (r) => { if (r.url().includes('/catalog/l10n/')) asked.push(r.url()); });
+    await openApp(page, '#/add');
+    await expect(page.locator('li.card', { hasText: 'カスタムプロバイダー' })).toBeVisible();
+    expect(asked.filter((u) => u.endsWith('/catalog/l10n/ja.json'))).toHaveLength(1);
+  });
+
   test("OpenRouter's sign-in on Models speaks Japanese (the draft review found it in English)", async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'Safari on an iPhone sets a model up in the Home Screen app');
     await openApp(page, '#/models');

@@ -29,7 +29,11 @@ import { size, sentences, list } from './intl.js';
  *   left: the translations left out, and why (leftOut)
  */
 
-export const API_VERSION = 1;
+/**
+ * The newest plugin API this annai runs; it runs every older one too. 2 adds annai.l10n: a plugin that reads it says api 2, so an annai
+ * from before refuses it in words ("was made for plugin API 2") instead of running it without its words.
+ */
+export const API_VERSION = 2;
 export const MANIFEST_FILE = 'annai-plugin.json';
 /** A plugin package may unpack to at most this much. */
 export const PLUGIN_MAX_BYTES = 64 * 1024 * 1024;
@@ -76,8 +80,8 @@ export function checkManifest(manifest) {
   const id = typeof manifest?.id === 'string' ? manifest.id : 'plugin';
   const errors = validate(PLUGIN_MANIFEST_SCHEMA, manifest);
   if (errors.length) throw new PluginError(id, /* en */ `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
-  if (manifest.api !== API_VERSION) {
-    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION}`);
+  if (manifest.api > API_VERSION) {
+    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION} and older`);
   }
   if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
     throw new PluginError(id, /* en */ `its entry "${manifest.entry}" isn't a file inside the plugin`);
@@ -289,7 +293,7 @@ export async function fingerprint(files) {
 /** The manifest annai reads a bare skill as; nothing like it is stored (choice 2). @param {Skill} skill */
 export function skillManifest(skill) {
   return {
-    id: skill.name, name: skill.name, version: skillVersion(skill.metadata), api: API_VERSION, description: skill.description, skills: ['.'],
+    id: skill.name, name: skill.name, version: skillVersion(skill.metadata), api: 1, description: skill.description, skills: ['.'],
     ...(skill.metadata.author ? { author: skill.metadata.author } : {}),
   };
 }
@@ -444,6 +448,9 @@ export function rawAddress(address) {
 /** Whether a name stays inside the package (see plainPath). @param {string} name */
 const fileName = (name) => plainPath(name);
 
+/** The answers that say a file isn't there: S3 answers 403 for a missing object it won't list. */
+const MISSING = new Set([403, 404, 410]);
+
 /**
  * A package's files from an address (choice 6): a zip, whatever the address ends with; an
  * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
@@ -475,7 +482,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       res = await get(u.href, { cache: 'no-cache' });
     } catch (e) {
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint));
+      throw Object.assign(new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint)), { unreachable: true });
     }
     const bytes = await answerBytes(res, u.host, max - used);
     used += bytes.byteLength;
@@ -507,7 +514,21 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   const tooMany = () => new Error(t`That package has more than ${ADDRESS_MAX_FILES} files; annai installs packages of up to ${ADDRESS_MAX_FILES} from an address. Use a zip instead.`);
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
-  /** The files a SKILL.md links to, in its folder; one that can't be downloaded is left out. @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
+  /**
+   * Why a file of the package couldn't be had, naming it; null when it may be left out (optional) and the site answers it hasn't it: a
+   * 404, a 410, or a 403 as S3 answers for a missing object. A busy site (503, 429) or no answer is no answer that it isn't there, and
+   * fails. No answer names the file: a 404 without CORS headers looks the same, and annai has just read the package from that site.
+   * @param {unknown} e @param {string} name @param {URL} u @param {string} from the file that names it @param {boolean} optional
+   */
+  const failed = (e, name, u, from, optional) => {
+    const status = /** @type {any} */ (e)?.status;
+    if (optional && MISSING.has(status)) return null;
+    if (status) return new Error(t`${u.host} answered ${status} for ${name}, a file its ${from} names.`);
+    // A connection that dropped mid-file is no answer either.
+    if (/** @type {any} */ (e)?.unreachable || /** @type {any} */ (e)?.said?.code === 'cut') return new Error(t`annai couldn't read ${name} from ${u.host}, a file its ${from} names. Check that it is there, and that the site lets web apps read it.`);
+    return e;
+  };
+  /** The files a SKILL.md links to, in its folder; one the site answers it hasn't is left out (failed). @param {string} folder '' or "skills/x/" @param {Uint8Array} skill */
   const linked = async (folder, skill) => {
     let links = skillLinks(text(skill));
     try {
@@ -523,7 +544,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(at));
       } catch (e) {
-        if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
+        const why = failed(e, name, at, SKILL_FILE, true);
+        if (why) throw why;
       }
     }
   };
@@ -544,7 +566,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       add(`${folder}${SKILL_FILE}`);
     }
     for (const f of Array.isArray(manifest.personalities) ? manifest.personalities : []) add(f);
-    // Its translations, each left out when it can't be had (fail working).
+    // Its translations, each left out when the site answers it hasn't one (fail working).
     const l10n = new Set((Array.isArray(manifest.l10n) ? manifest.l10n : []).filter((x) => typeof x === 'string' && fileName(`l10n/${x}.json`)).map((x) => `l10n/${x}.json`));
     for (const f of l10n) add(f);
     names.delete(MANIFEST_FILE);
@@ -560,10 +582,9 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(u));
       } catch (e) {
-        if (l10n.has(name) && /** @type {any} */ (e)?.name !== 'AbortError') continue;
-        // Which file the site lacks (minors 21).
-        const status = /** @type {any} */ (e)?.status;
-        throw status ? new Error(t`${u.host} answered ${status} for ${name}, a file its ${MANIFEST_FILE} names.`) : e;
+        // Which file the site lacks (minors 21); a translation it answers it hasn't is left out.
+        const why = failed(e, name, u, MANIFEST_FILE, l10n.has(name));
+        if (why) throw why;
       }
     }
     for (const s of skillFiles) await linked(s.slice(0, -SKILL_FILE.length), /** @type {Uint8Array} */ (files.get(s)));

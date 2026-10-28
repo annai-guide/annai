@@ -2,7 +2,7 @@ import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, save
 import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { addListedModel, addModelById } from '../../core/llm/providers.js';
-import { officialPlugins, namesReady, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
+import { officialPlugins, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
 import { sourceLine, sourceHost } from './plugin-install.js';
@@ -92,9 +92,8 @@ export async function renderProvider(ctx, id) {
   const catalogName = (/** @type {string | undefined} */ id) => { const e = catalog?.find((/** @type {any} */ x) => x.id === id); return e ? officialName(e.id, e.name) : null; };
   /** A protocol by name: running, else annai's own from the catalog, else nothing to name. @param {string} type @returns {string | null} */
   const protocolName = (type) => types.get(type)?.name ?? catalogName(/** @type {Record<string, string>} */ (OFFICIAL_NAMES['endpoint-type'])[type]);
-  await namesReady();
   const named = src?.name ?? installed?.name;
-  const pluginName = named ? shownPluginName(installed, rec.plugin, named) : catalogName(rec.plugin);
+  const pluginName = named ? await shownPluginName(ctx.plugins, installed, rec.plugin, named) : catalogName(rec.plugin);
   const hasKey = Boolean(await ctx.llm.keyFor(id));
   const status = h('p', { class: 'sub', role: 'status' });
   const title = h('h1', { class: 'title', text: p.name });
@@ -223,10 +222,9 @@ export async function renderProvider(ctx, id) {
  */
 export async function renderNewProvider(ctx, pluginId) {
   await ctx.llm.ready;
-  await namesReady();
   const found = ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId);
   // Its plugin by name: annai's own in the screens' words (decision 10).
-  const src = found && { ...found, name: shownPluginName((await ctx.plugins.installed())[pluginId], pluginId, found.name) };
+  const src = found && { ...found, name: await shownPluginName(ctx.plugins, (await ctx.plugins.installed())[pluginId], pluginId, found.name) };
   const open = (/** @type {string} */ id) => ctx.go(`#/models/provider?id=${encodeURIComponent(id)}`);
   const panel = src && drawPanel(ctx, pluginId, null, { added: open });
   const status = h('p', { class: 'sub', role: 'status', text: panel ? '' : src ? t`${src.name} has no way of its own to add it here: add it by hand, and set it up on its page.` : t`This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.` });
@@ -272,7 +270,8 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
   if (installed) {
     // The link is a value of the message, so every translation has it.
     const look = t`Look at it in Settings → Plugins`;
-    return h('p', { class: 'risk-note' }, ...linkIn(t`Its plugin, ${installed.name}, isn't running, so annai can't say what it offers. ${look}.`, h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, look)));
+    const name = await shownPluginName(ctx.plugins, installed, plugin, installed.name);
+    return h('p', { class: 'risk-note' }, ...linkIn(t`Its plugin, ${name}, isn't running, so annai can't say what it offers. ${look}.`, h('a', { href: `#/plugins/${encodeURIComponent(plugin)}` }, look)));
   }
   const entry = catalog?.find((/** @type {any} */ p) => p.id === plugin && isProviderEntry(p));
   if (!entry) {
@@ -294,7 +293,7 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
       }
     },
   }, t`Install it`);
-  return h('div', { class: 'risk-note' }, h('p', { text: t`Its plugin, ${entry.name}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
+  return h('div', { class: 'risk-note' }, h('p', { text: t`Its plugin, ${officialName(entry.id, entry.name)}, isn't installed, so annai can't say what it offers.` }), h('div', { class: 'acts' }, install), status);
 }
 
 /**

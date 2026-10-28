@@ -7,7 +7,7 @@ import { keysAndData, finePrint } from '../privacy.js';
 import { STEPS as INSTALL_STEPS, installButton } from '../install.js';
 import { platform, isStandalone } from '../platform.js';
 import { readyFeatured } from '../provider-setup.js';
-import { officialPlugins, catalogWords, shownEntry } from '../../core/llm/official.js';
+import { officialPlugins, officialWords, shownEntry } from '../../core/llm/official.js';
 import { freeTicks, WELCOME_SEARCH } from '../search-panel.js';
 
 /**
@@ -103,9 +103,9 @@ function start(ctx) {
   };
   say('');
   // Its sentence in the screens' language, where annai's catalog has it.
-  Promise.all([officialPlugins(), catalogWords(), ctx.llm.config()]).then(([list, words, cfg]) => {
+  Promise.all([officialPlugins(), ctx.llm.config()]).then(([list, cfg]) => {
     const f = list.find((x) => typeof x.featured === 'string' && x.featured);
-    if (f && !Object.keys(cfg.providers).length) say(String(shownEntry(f, words).featured));
+    if (f && !Object.keys(cfg.providers).length) say(String(shownEntry(f, officialWords()).featured));
   }, () => {});
   if (!inSafari()) readyFeatured(ctx).catch(() => {});
   const model = [lead];

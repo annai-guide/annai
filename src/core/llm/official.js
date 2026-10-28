@@ -29,24 +29,29 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
     throw new PluginError('catalog', /* en */ "annai's list of plugins couldn't be loaded. Check the connection and try again.", { shown: t`annai's list of plugins couldn't be loaded. Check the connection and try again.` });
   }
   if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
-  const json = await res.json();
-  await namesReady({ fetch: get, base }); // what the catalog's plugins are named on the screens, beside it
+  // What the catalog's plugins are named on the screens, read beside it while it isn't (no extra wait in English).
+  const [json] = await Promise.all([res.json(), names ? null : catalogWords({ fetch: get, base }).then((w) => { names = w; })]);
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
 
 /** @type {Awaited<ReturnType<typeof catalogWords>>} the catalog's words, once had in this run */
 let names = null;
-/** @type {Promise<unknown> | null} */
-let naming = null;
-/** The catalog's words for officialName, read once a run (tried again while they can't be had). @param {FetchOptions} [opts] */
-export const namesReady = (opts) => (naming ??= catalogWords(opts).then((w) => { names = w; if (!w) naming = null; }));
 /**
- * An official plugin's name as the screens show it: annai's catalog's translation (decision 10), once read (namesReady, as reading the
- * catalog does), else its English. Only for annai's own plugins: a third party's name is shown as written. @param {string} id @param {string} name
+ * An official plugin that isn't installed by name as the screens show it: annai's catalog's translation (decision 10), once the catalog
+ * has been read in this run, else its English. For one that is installed, pluginName. @param {string} id @param {string} name
  */
 export const officialName = (id, name) => names?.[id]?.name ?? name;
-/** An installed plugin's name as the screens show it: annai's own in their words, any other as written. @param {any} state its record @param {string} id @param {string} name */
-export const pluginName = (state, id, name) => (state?.source === 'official' ? officialName(id, name) : name);
+/** The catalog's words officialPlugins read beside it (catalogWords), for shownEntry; null before, in English, or when they couldn't be had. */
+export const officialWords = () => names;
+/**
+ * An installed plugin's name as the screens show it: annai's own from its own translation on the device (the running plugin's words, else
+ * its stored ones, as Plugins shows it, running or off), any other as written (decision 10). No request is made.
+ * @param {PluginHost} plugins @param {any} state its record @param {string} id @param {string} name @returns {Promise<string>}
+ */
+export async function pluginName(plugins, state, id, name) {
+  if (state?.source !== 'official') return name;
+  return (plugins.shownOf(id) ?? (await plugins.words(id).catch(() => null))?.manifest)?.name ?? name;
+}
 
 /**
  * The catalog's words for the screens (localization design, section 8): each official plugin's name, description, featured sentence and
@@ -206,7 +211,8 @@ async function ensureNow(host, kind, type, opts) {
     // Switched off by the user, or by annai after repeated errors (spec §5.5): the user's tap turns it back on,
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
     if (!state.enabled && opts.keepOff) {
-      throw new PluginError(entry.id, /* en */ `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`, { shown: sentences(t`${entry.name}, which you turned off, isn't switched on by this.`, turnOnShown()) });
+      const name = await pluginName(host, state, entry.id, entry.name);
+      throw new PluginError(entry.id, /* en */ `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`, { shown: sentences(t`${name}, which you turned off, isn't switched on by this.`, turnOnShown()) });
     }
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);
