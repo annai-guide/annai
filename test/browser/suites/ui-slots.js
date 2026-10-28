@@ -315,7 +315,7 @@ export default function (test, assert) {
       addEventListener('hashchange', done, { once: true });
       location.hash = '#/trip/t1/ext/tides/table';
     });
-    startShell(root, /** @type {any} */ ({ registry, plugins: { active: new Map([['tides', { manifest: { name: 'Tides' } }]]), langOf: () => 'en' }, store, version: 'test' }));
+    startShell(root, /** @type {any} */ ({ registry, plugins: { active: new Map([['tides', { manifest: { name: 'Tides' } }]]), langOf: () => 'en' }, store, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'test' }));
     await new Promise((done) => setTimeout(done, 30));
     location.hash = '#/ext/tides/now';
     await new Promise((done) => setTimeout(done, 300));

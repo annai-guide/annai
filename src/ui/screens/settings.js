@@ -49,7 +49,7 @@ export async function renderSettings(ctx) {
   const app = await readAppSettings(ctx.ws);
   const exportSlot = h('div', {});
   const places = ctx.backups ? await ctx.backups.list() : [];
-  const waits = waitingWords(Boolean(ctx.updates?.waiting), (await ctx.updates?.plugins().catch(() => [])) ?? []);
+  const waits = waitingWords(Boolean(ctx.updates.waiting), await ctx.updates.plugins().catch(() => []));
   /** @type {Record<string, () => Promise<any> | any>} */
   const sections = {
     updates: () => section(t`Updates`,
