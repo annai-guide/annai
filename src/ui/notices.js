@@ -37,10 +37,13 @@ export function createNotices() {
   const fit = (node, more) => () => {
     const p = node.querySelector('p');
     if (!p || !node.offsetHeight || node.classList.contains('open')) return;
+    node.style.removeProperty('--lines');
     node.classList.add('clamp');
     const long = p.scrollHeight > p.clientHeight + 1;
     node.classList.toggle('clamp', long);
     more.hidden = !long;
+    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off).
+    for (let n = 2; long && n && node.scrollHeight > node.clientHeight + 1; n--) node.style.setProperty('--lines', String(n));
   };
   addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
