@@ -54,18 +54,63 @@ export async function pluginName(plugins, state, id, name) {
 }
 
 /**
- * The catalog's words for the screens (localization design, section 8): each official plugin's name, description, featured sentence and
- * keywords, from catalog/l10n/<tag>.json; null in English, or when they can't be had. @param {FetchOptions} [opts]
- * @returns {Promise<Record<string, { name?: string, description?: string, featured?: string, keywords?: string[] }> | null>}
+ * annai's catalog in a language, catalog/l10n/<tag>.json, or null: plugins, each official plugin's name, description, featured sentence
+ * and keywords in it; translations, the SHA-256 of each one's words in it (catalog/l10n/<tag>/<id>.json). @param {string} tag @param {FetchOptions} [opts]
+ * @returns {Promise<{ plugins?: Record<string, { name?: string, description?: string, featured?: string, keywords?: string[] }>, translations?: Record<string, string> } | null>}
  */
-export async function catalogWords({ fetch: get = defaultFetch, base = '' } = {}) {
-  if (lang() === 'en') return null;
+async function catalogIn(tag, { fetch: get = defaultFetch, base = '' } = {}) {
   try {
-    const res = await get(`${base}/catalog/l10n/${lang()}.json`, { cache: 'no-cache' });
+    const res = await get(`${base}/catalog/l10n/${tag}.json`, { cache: 'no-cache' });
     const json = res.ok ? await res.json() : null;
-    return json?.plugins && typeof json.plugins === 'object' ? json.plugins : null;
+    return json && typeof json === 'object' ? json : null;
   } catch {
     return null;
+  }
+}
+
+/** The catalog's words for the screens (localization design, section 8), from catalogIn; null in English, or when they can't be had. @param {FetchOptions} [opts] */
+export async function catalogWords(opts = {}) {
+  if (lang() === 'en') return null;
+  const json = await catalogIn(lang(), opts);
+  return json?.plugins && typeof json.plugins === 'object' ? json.plugins : null;
+}
+
+/**
+ * Brings annai's own installed plugins' words in a language (their packages carry none) to the hashes catalogIn lists: each one kept
+ * with other bytes gets catalog/l10n/<tag>/<id>.json, kept only when it matches; one listed with none loses its own. Words in other
+ * languages than tag and the screens' go; English asks for nothing. It is no plugin update, and never fails: what can't be had leaves
+ * the device as it is (else the plugin's English shows), and the next call tries again. ids: only these plugins (an install's).
+ * @param {PluginHost} host @param {FetchOptions & { tag?: string, ids?: string[] }} [opts]
+ */
+export async function fetchTranslations(host, { tag = lang(), ids, ...opts } = {}) {
+  try {
+    const state = await host.installed();
+    const own = Object.keys(state).filter((id) => state[id]?.source === 'official' && (!ids || ids.includes(id)));
+    if (!own.length) return;
+    const json = tag === 'en' ? null : await catalogIn(tag, opts);
+    // Add's words for this run too, so it doesn't ask again.
+    if (tag === lang() && json?.plugins && typeof json.plugins === 'object') names = json.plugins;
+    const listed = json?.translations && typeof json.translations === 'object' ? json.translations : null;
+    const { fetch: get = defaultFetch, base = '' } = opts;
+    await Promise.all(own.map(async (id) => {
+      try {
+        const kept = await host.translations(id);
+        /** @type {Map<string, Uint8Array | null>} */
+        const changes = new Map(Object.keys(kept).filter((x) => x !== tag && x !== lang()).map((x) => [x, null]));
+        const want = listed?.[id];
+        if (listed && typeof want !== 'string' && kept[tag]) changes.set(tag, null);
+        if (typeof want === 'string' && kept[tag] !== want) {
+          const res = await get(/* en */ `${base}/catalog/l10n/${tag}/${encodeURIComponent(id)}.json`, { cache: 'no-cache' });
+          const bytes = res.ok ? new Uint8Array(await res.arrayBuffer()) : null;
+          if (bytes && (await sha256Hex(bytes)) === want) changes.set(tag, bytes);
+        }
+        if (changes.size) await host.keepTranslations(id, changes);
+      } catch {
+        // this one stays as it is until the next call
+      }
+    }));
+  } catch {
+    // the device keeps what it has
   }
 }
 
@@ -106,6 +151,7 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
 /** Downloads, checks and installs one official plugin, then starts it. @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] */
 export async function installOfficial(host, entry, opts = {}) {
   await host.install(await download(entry, opts), { source: 'official' });
+  await fetchTranslations(host, { ...opts, ids: [entry.id] });
   await host.start(entry.id);
 }
 
@@ -142,6 +188,7 @@ export async function updateOfficial(host, entry, opts = {}) {
   if (entry.requires?.length) await installRequirements(host, entry.requires, { ...opts, tap: true }, { who: entry.name, id: entry.id });
   const wasOn = (await host.installed())[entry.id]?.enabled !== false;
   await host.install(files, { source: 'official' });
+  await fetchTranslations(host, { ...opts, ids: [entry.id] });
   if (!wasOn) {
     await host.setEnabled(entry.id, false);
     return 'started';

@@ -3,7 +3,6 @@
   "name": "Scripted model (for testing)",
   "version": "1.1.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
   "category": "developer",
   "requires": [

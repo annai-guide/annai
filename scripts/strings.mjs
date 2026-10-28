@@ -3,7 +3,8 @@
 // t`…`, tc(context)`…` or plural(n, one, other); this reads those marks with TypeScript's parser (no type checking), and keeps
 // one translator's file per language, l10n/<tag>.tsv, from which it writes what ships, l10n/<tag>.json. Official plugins' words are
 // in the same files (localization design, section 8): their manifests' translatable fields, and their code's l10n.t, l10n.tc,
-// l10n.plural and l10n.both, in rows keyed "<id>:…", from which it writes each plugin's plugins-official/<id>/l10n/<tag>.json.
+// l10n.plural and l10n.both, in rows keyed "<id>:…", from which it writes each plugin's words in each language beside annai's
+// catalog, catalog/l10n/<tag>/<id>.json, which a phone fetches for its screens' language (plugin-l10n-fetch).
 //   node scripts/strings.mjs                    updates the TSVs, the JSON files (the official plugins' too: run npm run catalog
 //                                               after), src/core/l10n-list.js and sw.js's LANGS
 //   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
@@ -163,15 +164,14 @@ async function jsFiles(root, dir) {
   return out.sort();
 }
 
-/** The official plugins that speak annai's languages (their manifests list l10n), by id. @param {string} root @returns {Promise<string[]>} */
+/** The official plugins, by id: each speaks every language annai has. @param {string} root @returns {Promise<string[]>} */
 async function pluginIds(root) {
   if (!existsSync(`${root}/${PLUGINS}`)) return [];
-  const ids = (await readdir(`${root}/${PLUGINS}`, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-  /** @type {string[]} */
-  const out = [];
-  for (const id of ids) if (JSON.parse(await readFile(`${root}/${PLUGINS}/${id}/annai-plugin.json`, 'utf8')).l10n) out.push(id);
-  return out;
+  return (await readdir(`${root}/${PLUGINS}`, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name).sort();
 }
+
+/** Where an official plugin's words in a language ship: beside annai's catalog, fetched only by a phone in that language. @param {string} tag @param {string} id */
+export const pluginWordsPath = (tag, id) => `catalog/l10n/${tag}/${id}.json`;
 
 /**
  * An official plugin's messages, keyed "<id>:…": its manifest's translatable fields ("<id>:@description", a keyword
@@ -208,7 +208,7 @@ export async function pluginMessages(root, id) {
 }
 
 /**
- * What a plugin's l10n/<tag>.json holds, made from a language's rows: its manifest's fields, by path, and its messages.
+ * What a plugin's words in a language hold (pluginWordsPath), made from its rows: its manifest's fields, by path, and its messages.
  * @param {Omit<Row, 'line'>[]} rows @param {string} id
  */
 export function pluginJson(rows, id) {
@@ -424,7 +424,7 @@ export async function update(root) {
     const rows = updateRows(old, messages, tag);
     await put(file, writeTsv(rows));
     await put(`l10n/${tag}.json`, shippedJson(rows, glossaryNames(glossary, tag)));
-    if (list.some((l) => l.tag === tag)) for (const id of await pluginIds(root)) await put(`${PLUGINS}/${id}/l10n/${tag}.json`, pluginJson(rows, id));
+    if (list.some((l) => l.tag === tag)) for (const id of await pluginIds(root)) await put(pluginWordsPath(tag, id), pluginJson(rows, id));
   }
   await put('src/core/l10n-list.js', listFile(list));
   if (existsSync(`${root}/sw.js`)) {
@@ -635,17 +635,10 @@ export async function check(root, files = EXTRACTED, { glossaryAll = false } = {
       const json = `l10n/${tag}.json`;
       if (!existsSync(`${root}/${json}`) || (await readFile(`${root}/${json}`, 'utf8')) !== shippedJson(rows, glossaryNames(glossary, tag))) problems.push({ file: json, line: 1, message: `${json} isn't what ${file} makes: run npm run strings` });
       for (const id of await pluginIds(root)) {
-        const own = `${PLUGINS}/${id}/l10n/${tag}.json`;
+        const own = pluginWordsPath(tag, id);
         if (!existsSync(`${root}/${own}`) || (await readFile(`${root}/${own}`, 'utf8')) !== pluginJson(rows, id)) problems.push({ file: own, line: 1, message: `${own} isn't what ${file} makes: run npm run strings, then npm run catalog` });
       }
     }
-  }
-  // Each official plugin lists every language annai has, as its l10n: its words are annai's own.
-  const tags = JSON.stringify(list.map((l) => l.tag));
-  const all = existsSync(`${root}/${PLUGINS}`) ? (await readdir(`${root}/${PLUGINS}`, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name) : [];
-  for (const id of all) {
-    const file = `${PLUGINS}/${id}/annai-plugin.json`;
-    if (JSON.stringify(JSON.parse(await readFile(`${root}/${file}`, 'utf8')).l10n ?? []) !== tags) problems.push({ file, line: 1, message: `its l10n must be ${tags}, the languages in l10n/languages.json` });
   }
   const listPath = 'src/core/l10n-list.js';
   if (!existsSync(`${root}/${listPath}`) || (await readFile(`${root}/${listPath}`, 'utf8')) !== listFile(list)) problems.push({ file: listPath, line: 1, message: `${listPath} isn't what l10n/languages.json makes: run npm run strings` });

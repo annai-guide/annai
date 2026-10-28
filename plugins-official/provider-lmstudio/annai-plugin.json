@@ -3,7 +3,6 @@
   "name": "LM Studio",
   "version": "1.2.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "description": "Models on LM Studio's server.",
   "category": "providers",

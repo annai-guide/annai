@@ -3,7 +3,6 @@
   "name": "Google Gemini",
   "version": "2.7.2",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
   "requires": [

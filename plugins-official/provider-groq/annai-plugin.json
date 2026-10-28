@@ -3,7 +3,6 @@
   "name": "Groq",
   "version": "1.2.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "Fast open models, and fast Whisper transcription.",
   "category": "providers",
   "requires": [

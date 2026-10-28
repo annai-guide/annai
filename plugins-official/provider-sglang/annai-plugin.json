@@ -3,7 +3,6 @@
   "name": "SGLang",
   "version": "1.1.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "description": "Models on an SGLang server you run, with their thinking switched through the chat template.",
   "category": "providers",
   "requires": [

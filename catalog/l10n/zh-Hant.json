@@ -154,5 +154,38 @@
       "name": "WebDAV",
       "description": "把所有內容備份到允許瀏覽器存取的 WebDAV 伺服器上的資料夾，每次備份一個封存檔案。"
     }
+  },
+  "translations": {
+    "anthropic-messages": "f27a002d2cb8a2bf6e80b2ea0ad2a652ec9c532ec1935314995921b99bb16a1b",
+    "chat-completions": "721c87e1829232dd569a114805ca2f5788d9482141d74714eeb8c4eb53ec9608",
+    "gemini-api": "bdcce2b0d8eb6fb42a75314b5ab86434f059657ffb32a8fe33da0dc367eda27f",
+    "gemini-live": "b0d1a5450ffe3e68d0444bdf36e503a71818f09f5a21b76d71d0817a866b02cc",
+    "openai-realtime": "932776257eec3b35d5a9e798a4fee3e8e9a4898bc6a31c98bcc5accde02c8066",
+    "openai-responses": "bc378e6f28469edab01457bbce93c39743fb545a90cf1c1d52a9216ab6474b51",
+    "provider-another-address": "7a36c6b16d4d69bc8b21c4f6190faa17bad16c7842269cd2716d885a71ec9d79",
+    "provider-anthropic": "d9734f139f9c8a81803337efc12b68b02b1e3829627160d16bbf0482fcd7d8a6",
+    "provider-deepseek": "46b69e1d842a5414309a1983800fd852f96c875666085b228f8475b5f12253cc",
+    "provider-gemini": "15fe0d487735237c56d5325c3c3cf4fa67ff05f1bbe5c1e48344cb852ec74b6a",
+    "provider-groq": "8f6c794189f5627904c4f685f3dc8999ecd27e2ed08694e835adf4f5ebde6547",
+    "provider-llamacpp": "d017cc4a6f8d99a34a4e2c7bd541f99aa10b7b7ebb0cab51094f19a21d849a97",
+    "provider-lmstudio": "0571d521cce117e57de4e0a6d665612ca4d402725a9241a226e8121a5bf53422",
+    "provider-local-speech": "57be6a1d677d9e751acab628e566b9149ba8fd30912cb4aae328c785316836e0",
+    "provider-mistral": "14fc54a1e4a5555abbb87f01b0d4c754177858ab8baf931ed653bf25d309eff3",
+    "provider-ollama": "91476931f93626cce12d3a062f997ce890ab858db48a5a58f885716d05a1adac",
+    "provider-openai": "d8b3bc0257776a71f89b845a94dfb9411cf8c238bd1eff4c9632909267fee5fe",
+    "provider-openrouter": "8dd4ddc17d98e0f6b7473a8c587fc41f36eb32c357eacb403c92bc04a57d1d14",
+    "provider-scripted": "82a7b879e22071a767765ccdcf064f7ae675719753d9fb7bf4e169cdccfc8971",
+    "provider-sglang": "ed6f8629475ad83e31d73f292d397d2e93a8f83876caee9754223825f6534ddf",
+    "provider-vllm": "b3b0051d42e846d04814ebe2ddc865412bbe7ea395e045c6fbb9e16de884294c",
+    "remote-trace": "0e8e0dee2bde5c464e4264f7eb016bca91e7bbeaac8360289be3bbc47135e03d",
+    "scripted-model": "b4b0b6b30046bb7e1f3babc38ae2199f157bf52c12887ec1196429e1b90228a5",
+    "search-searxng": "240e0259328ccdfd9aba0a487df90e6f289c44189664d0155fcdc4a4c6e1b18f",
+    "search-serper": "820d733fd7b218474d3f44bd1d5f5a51029e347198d496b2e07d56b37eba89ba",
+    "search-tavily": "e5e7ea7fae92bf3bac9a273d5bc3cf21e10199482fa35d2b93cddb76bea791d8",
+    "speech-openai": "a6e95bf4bf60a2d5a9b1f11e597c83290f679a78fbced3e0cfd9a5e845369658",
+    "storage-forgejo": "d60631aa9e76a58337270e7ad3d4c3b9eeb807ed079d297b05457f948871841e",
+    "storage-github": "b9a4af69b84e530b0ba51f7bc469172fbe6ebfe154df71e9681ddd32675f5ed0",
+    "storage-s3": "d6686c61ed9b053d94bd3d275a0fdb17929781031a9f801e779b12b16583d2d4",
+    "storage-webdav": "3cbaea7d215e2ffd52176a18b3677a1388fbc8345df0f4fafbce4cc55ee9f64a"
   }
 }

@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 13125,
+      "size": 12569,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,11 +20,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "6169b30ef15b4133594bcb85e97fa6abeb09784fa36ea97919911a01626f9167",
-        "index.js": "ea2c6f9a9c88a842994ee286327e26df76b6953017c236be2ece7d14fe372702",
-        "l10n/ja.json": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
-        "l10n/zh-Hans.json": "d0d84bb7c297830837be8c6ce2a59d96eddf7a4805ce66fef93359cf5969d37e",
-        "l10n/zh-Hant.json": "f27a002d2cb8a2bf6e80b2ea0ad2a652ec9c532ec1935314995921b99bb16a1b"
+        "annai-plugin.json": "f3e9abf0e99d9806525249739e40c804545e23e5bd0706465d6ece8178fbcf0d",
+        "index.js": "ea2c6f9a9c88a842994ee286327e26df76b6953017c236be2ece7d14fe372702"
       }
     },
     {
@@ -38,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 20673,
+      "size": 19924,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -46,11 +43,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "186ab09279fb3106403d327aac0af2b5f3d0111af326dc19c7458806a30d30ce",
-        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b",
-        "l10n/ja.json": "549e6b39331df19eca883923129a4295e19c3a46e7d556f59afbbb83b73f4efd",
-        "l10n/zh-Hans.json": "c6a14e04bf5429e1d74d7fc47cb0ac4c2bd742c4f1de11860cb71509e2e57905",
-        "l10n/zh-Hant.json": "721c87e1829232dd569a114805ca2f5788d9482141d74714eeb8c4eb53ec9608"
+        "annai-plugin.json": "c66ebb3b96d1bc32b5de5f856d771f16b1939adec570541030ae93eecb7e87ea",
+        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b"
       }
     },
     {
@@ -64,7 +58,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 66752,
+      "size": 64342,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -74,13 +68,10 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "59a059b7c724acb7898d4e31714dc567e7cbabc65fb079ec01afc3a5c7b4d8e8",
+        "annai-plugin.json": "4cef5ca4f02153b5edc161b31f78c7dd1f6dc2d3f6a5fe013a321f221eee9109",
         "blocked.js": "0014b538b6efe5e15aedb53dcf51ea335c3d93bf578a0ce0faf4017184428fce",
         "chat.js": "e9ee89b11bfc7e91568499a39c33c10d8b1cc37defdc3dc4c9f604a9a10b9fda",
         "index.js": "d182e8cb345feeb9a50d1249ce0f406e2c612c8338c625a23533c737d782931c",
-        "l10n/ja.json": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
-        "l10n/zh-Hans.json": "c1ba6a35452f52fd6691800349c2b23e54c6edb215169fd601db14eca0a18656",
-        "l10n/zh-Hant.json": "bdcce2b0d8eb6fb42a75314b5ab86434f059657ffb32a8fe33da0dc367eda27f",
         "levels.js": "5f7c947cc48559e8a858916a7e206f4d3db9a59b803b4dc57c69ea8d435a38d4",
         "schema.js": "1565a0cb2a53fa22b7061c454c7421be6a5e971e297e651f958f213685f473d6",
         "speech.js": "3e31818f5151747cfa6902fd34f5d81572ec905a9d3e7b9aca8251b1bf58d4bf",
@@ -98,7 +89,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 11553,
+      "size": 10943,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -106,11 +97,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "2cbd76f71b7151eb91096cdd5f0123afab7f4efdadbcd8ca6f6bb37fa8d1db8d",
-        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7",
-        "l10n/ja.json": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
-        "l10n/zh-Hans.json": "88b849b7e5d9e9315e869ab128fbcda96b4af38607db016fcdd1a7774d6425d3",
-        "l10n/zh-Hant.json": "b0d1a5450ffe3e68d0444bdf36e503a71818f09f5a21b76d71d0817a866b02cc"
+        "annai-plugin.json": "d6ba8a6c082ebbf3e1b1164546c21f3b49a1596eadc4f45de6e142c1cd9f6a29",
+        "index.js": "224e6fb5c514ca96581f50fe3ffbb6765a6da4302dbc71faf4b294e6a36823f7"
       }
     },
     {
@@ -124,7 +112,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 23582,
+      "size": 22948,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -132,11 +120,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "ff6a7028806b0b4dd807c03fe46394570d31c3cd01361e43d484a30f83b513fd",
-        "index.js": "eb234e787601e43d0c34413ca9cd92d7016df04a8d0cf4560b5933ea12a13188",
-        "l10n/ja.json": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
-        "l10n/zh-Hans.json": "917fae4baafc44716aba1d0a7d209ad46eef2b2d7ba982ce9f035d6b616eaf6f",
-        "l10n/zh-Hant.json": "932776257eec3b35d5a9e798a4fee3e8e9a4898bc6a31c98bcc5accde02c8066"
+        "annai-plugin.json": "2dfae59b60f82e5bfd5d32412b575466a92a64b4f5422fbb0d43efe2c479441c",
+        "index.js": "eb234e787601e43d0c34413ca9cd92d7016df04a8d0cf4560b5933ea12a13188"
       }
     },
     {
@@ -150,7 +135,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 26711,
+      "size": 25753,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -158,11 +143,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "bd531f1f7f1f0899904cfbb11abd65ed766da74f868e2aeae974b602335cef21",
-        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01",
-        "l10n/ja.json": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
-        "l10n/zh-Hans.json": "8f17383d3a6e52efbef502a98b62e42c4ada3057783ad13b3c1b7f678f25bc39",
-        "l10n/zh-Hant.json": "bc378e6f28469edab01457bbce93c39743fb545a90cf1c1d52a9216ab6474b51"
+        "annai-plugin.json": "af689f565baeafd5a105b3fe70ff7704e69082d2098b681f29e6a6e334f9b630",
+        "index.js": "37edd795e572e441c8bcaa952ccf80db3e2a6c4782ed46f05d399dcce8cbfb01"
       }
     },
     {
@@ -187,16 +169,13 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 45156,
+      "size": 25528,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "f3a84946e9d4dba61bb21dd5f1c21695af7b82eec845136c7a322cc7981be4d3",
+        "annai-plugin.json": "99c699923d4dd9ae4ee6d237578aa387fa5be044906d7da5f900c73ea9c919b2",
         "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
-        "l10n/ja.json": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
-        "l10n/zh-Hans.json": "41efd6d62eb08676ec4ddbc45020bddeaa0aafe561de265aecd009773d9560a0",
-        "l10n/zh-Hant.json": "7a36c6b16d4d69bc8b21c4f6190faa17bad16c7842269cd2716d885a71ec9d79",
         "probe.js": "2ee480d300a84e152a42f1cf6fbbfdcd561ac9f102e7526fe53763edc4661b6d"
       }
     },
@@ -213,7 +192,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 10092,
+      "size": 9442,
       "requires": [
         {
           "id": "anthropic-messages",
@@ -222,10 +201,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "aaa53778f7a25233ab95372228c11ce80fe4159d3943dce328e78382a2090176",
-        "l10n/ja.json": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
-        "l10n/zh-Hans.json": "97c82307fc7cb7fc51a42bf58fb7b8f746e304379aa720f5774b195878cd9229",
-        "l10n/zh-Hant.json": "d9734f139f9c8a81803337efc12b68b02b1e3829627160d16bbf0482fcd7d8a6"
+        "annai-plugin.json": "372ecd8ef29893af186c6c60bd84261cac91b8012081a3ef3b79783fece6ef12"
       }
     },
     {
@@ -241,7 +217,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1425,
+      "size": 668,
       "requires": [
         {
           "id": "chat-completions",
@@ -250,10 +226,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "cc50c4f5fa6e68284b9488e4ceed23f72f1b57ce1b1666faf01075fcb49432d0",
-        "l10n/ja.json": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
-        "l10n/zh-Hans.json": "4c2832c8b0fc818f22493bdc61a0457ac94b30454f1968d176906a09a700970a",
-        "l10n/zh-Hant.json": "46b69e1d842a5414309a1983800fd852f96c875666085b228f8475b5f12253cc"
+        "annai-plugin.json": "923eee08de8f16bfbcf974abdbb3ecf1516221b6d772827a06987453151f5668"
       }
     },
     {
@@ -272,7 +245,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 19378,
+      "size": 11731,
       "requires": [
         {
           "id": "gemini-api",
@@ -281,10 +254,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "3f997815ea06d319230b7616e112e3e010fb0161869dbc68d9c299b13258c545",
-        "l10n/ja.json": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
-        "l10n/zh-Hans.json": "002febb9ec5463695956e7505c2cc8ae71e55e07ee38d8f15c2b82bbd1688f5f",
-        "l10n/zh-Hant.json": "15fe0d487735237c56d5325c3c3cf4fa67ff05f1bbe5c1e48344cb852ec74b6a"
+        "annai-plugin.json": "9fbad9b868b0e1df5c0b6c0fcb00dbcb5271dc9437351bf46263577b1179f6a9"
       }
     },
     {
@@ -301,7 +271,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 2740,
+      "size": 1607,
       "requires": [
         {
           "id": "chat-completions",
@@ -314,10 +284,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "a842c5518e21fff3b3ec3aeb729894582797f43cf69649a6e49d5a66fd141dc1",
-        "l10n/ja.json": "971743244bdf7d3855a8504df4f841a039c245a7964b28fb1771f1afaa8d62fc",
-        "l10n/zh-Hans.json": "2df41f6c26b6b9045204a55871a814a2cb806b05336db9e20ee587bd4eff3b31",
-        "l10n/zh-Hant.json": "8f6c794189f5627904c4f685f3dc8999ecd27e2ed08694e835adf4f5ebde6547"
+        "annai-plugin.json": "0f6f97fc8b15f0e5684dec5f014e888950779a1e8021b76bca15514071dc9bea"
       }
     },
     {
@@ -337,7 +304,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 8439,
+      "size": 4408,
       "requires": [
         {
           "id": "chat-completions",
@@ -346,11 +313,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "b7d8bd459fa9168f1b5a3664044e0cd2d9be739ec5d7eef6dfe4d43a0773b2ca",
-        "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7",
-        "l10n/ja.json": "361425bae75413a650931ae2dac1a74847a06bf3a27628364e79e1644865a032",
-        "l10n/zh-Hans.json": "33368b043403032c695239cbd9088b898a6cdf9789ae7a656985f138c610aa5f",
-        "l10n/zh-Hant.json": "d017cc4a6f8d99a34a4e2c7bd541f99aa10b7b7ebb0cab51094f19a21d849a97"
+        "annai-plugin.json": "9c7e95ddd93b34b474feea89b126a7c9b6292ac168c9d3ce4001bb13437f7361",
+        "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7"
       }
     },
     {
@@ -366,7 +330,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 6047,
+      "size": 3221,
       "requires": [
         {
           "id": "chat-completions",
@@ -375,11 +339,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "37458e969f0172532207e4ef796336cab3019623090f90257ca30aa86337998d",
-        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451",
-        "l10n/ja.json": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
-        "l10n/zh-Hans.json": "2bb3e10f94c59f4ec281f53771316a159c7203eaf721af770c875789f29f59f6",
-        "l10n/zh-Hant.json": "0571d521cce117e57de4e0a6d665612ca4d402725a9241a226e8121a5bf53422"
+        "annai-plugin.json": "d048e3862313f9b5026278566bdcce26cf794acf30da281460167e11fa186796",
+        "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451"
       }
     },
     {
@@ -400,7 +361,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 4816,
+      "size": 1676,
       "requires": [
         {
           "id": "speech-openai",
@@ -409,10 +370,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "1c01d28f14d29f1b1e2682c7185ad1d2e6277622c130800a67ef569db1e55bf9",
-        "l10n/ja.json": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
-        "l10n/zh-Hans.json": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9",
-        "l10n/zh-Hant.json": "57be6a1d677d9e751acab628e566b9149ba8fd30912cb4aae328c785316836e0"
+        "annai-plugin.json": "7339a59077f3c11a4df650b563d914d98eef3543abfe3ed1345fbe12e96dc478"
       }
     },
     {
@@ -428,7 +386,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 1174,
+      "size": 540,
       "requires": [
         {
           "id": "chat-completions",
@@ -437,10 +395,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "3d6c4b9214159b6e1e0310084a257ad351655979aeb3426f6bbd1314a7e209d3",
-        "l10n/ja.json": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
-        "l10n/zh-Hans.json": "6e3d8d19e51b48a482a5e54c734b26a9f9a78b93db61907baf9588b53795d568",
-        "l10n/zh-Hant.json": "14fc54a1e4a5555abbb87f01b0d4c754177858ab8baf931ed653bf25d309eff3"
+        "annai-plugin.json": "297f9f8e788afa4282949b62a66f0107ae1ea51240511315c41f6f785723e20b"
       }
     },
     {
@@ -456,7 +411,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 8064,
+      "size": 4179,
       "requires": [
         {
           "id": "chat-completions",
@@ -465,11 +420,8 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "7b87acfd094b80b68036aa11cfcfd89ca857337f565590b0bd9ba765e679d152",
-        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb",
-        "l10n/ja.json": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
-        "l10n/zh-Hans.json": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825",
-        "l10n/zh-Hant.json": "91476931f93626cce12d3a062f997ce890ab858db48a5a58f885716d05a1adac"
+        "annai-plugin.json": "ec70c2eda7c98451d3582279c06176aa795f209926c95aeece42b6ad45ec9d8d",
+        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
       }
     },
     {
@@ -488,7 +440,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 20823,
+      "size": 13295,
       "requires": [
         {
           "id": "openai-responses",
@@ -501,10 +453,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "0b970a7668f7a0625d01106780c265260c7320f87de592a2c777275864500fbd",
-        "l10n/ja.json": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
-        "l10n/zh-Hans.json": "60047f27be782a7900e2d45beab643e14bf63d000802b2d0e9abfa877162c4be",
-        "l10n/zh-Hant.json": "d8b3bc0257776a71f89b845a94dfb9411cf8c238bd1eff4c9632909267fee5fe"
+        "annai-plugin.json": "6a19ad63ec000b745f07e006b06bd70658a324c402f6ad5b458ec55ada32cb93"
       }
     },
     {
@@ -522,7 +471,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 46122,
+      "size": 31473,
       "requires": [
         {
           "id": "chat-completions",
@@ -536,11 +485,8 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "c9016266870057bb9467051cce4667bf53520a255efaf9da9ea2e88185d43438",
-        "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
-        "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
-        "l10n/zh-Hans.json": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7",
-        "l10n/zh-Hant.json": "8dd4ddc17d98e0f6b7473a8c587fc41f36eb32c357eacb403c92bc04a57d1d14"
+        "annai-plugin.json": "ac2d2b4b8d058aec3cd5a99ba3ed1bd40c31c5a199ff2911e313d25d943a717e",
+        "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb"
       }
     },
     {
@@ -556,7 +502,7 @@
       "free": true,
       "local": false,
       "code": false,
-      "size": 1575,
+      "size": 884,
       "requires": [
         {
           "id": "scripted-model",
@@ -565,10 +511,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "1d6a540ebac10648178b486439fcc9714292c932492ae7a9db871106ce6a311c",
-        "l10n/ja.json": "75a78e1a3a3b216317a2041eba975e7e7d34a02c5cd74799a3a5412aa59f6f8e",
-        "l10n/zh-Hans.json": "9dfb3901051de397e56465adb78a6d14712730275536b85bccefc18b4026f41e",
-        "l10n/zh-Hant.json": "82a7b879e22071a767765ccdcf064f7ae675719753d9fb7bf4e169cdccfc8971"
+        "annai-plugin.json": "77bddb2eadacb4d419543c8386458c7c7c94589ddd286da3f1796da4cfba3d96"
       }
     },
     {
@@ -584,7 +527,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 4024,
+      "size": 1843,
       "requires": [
         {
           "id": "chat-completions",
@@ -593,10 +536,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ae63abe36ba9fb1cad07d07706dd568978c539a55d844c5e158649ec9f81eff0",
-        "l10n/ja.json": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
-        "l10n/zh-Hans.json": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665",
-        "l10n/zh-Hant.json": "ed6f8629475ad83e31d73f292d397d2e93a8f83876caee9754223825f6534ddf"
+        "annai-plugin.json": "e1017d72a6a6ccd2282ba1ae46115fc896eb737c5a1136c3031d6954b5518a28"
       }
     },
     {
@@ -613,7 +553,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 5390,
+      "size": 2349,
       "requires": [
         {
           "id": "chat-completions",
@@ -622,10 +562,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "6759703d5fc6d06194feb2c8294a15d7f3d77770a1df1209f4e804ee72a7c55d",
-        "l10n/ja.json": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
-        "l10n/zh-Hans.json": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916",
-        "l10n/zh-Hant.json": "b3b0051d42e846d04814ebe2ddc865412bbe7ea395e045c6fbb9e16de884294c"
+        "annai-plugin.json": "a4982a8ac74a7c1575238d71ef32825edd24af330fdbba375091a50786602010"
       }
     },
     {
@@ -639,15 +576,12 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 31513,
+      "size": 20549,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "5dfa14d1b0e77035a301627680bc8caaf7fe34ad3a0ffc895cd04e3f10c99a40",
-        "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
-        "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
-        "l10n/zh-Hans.json": "2f4d8f6cfbe005329a034ac011752b06a7fe22538a6c0eba646aa87f2bf78308",
-        "l10n/zh-Hant.json": "0e8e0dee2bde5c464e4264f7eb016bca91e7bbeaac8360289be3bbc47135e03d"
+        "annai-plugin.json": "8817e25f480ef253fda9277d80edd30a8aa3fe3f57f4c13ee273e00757a78f0a",
+        "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb"
       }
     },
     {
@@ -661,7 +595,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 7775,
+      "size": 7132,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -669,11 +603,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "96d050de7226548734e071939265b2148ad98b61a729f2acdd63812a7e1daacf",
-        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a",
-        "l10n/ja.json": "e311b1c502a9134d1f71c86cff7dd64e71eed6003f17c237d639124c550faf69",
-        "l10n/zh-Hans.json": "f0475b034744ccc5cd6ba794ac1e05a5a9d2174adbb9c979eab75b7cfc598a1b",
-        "l10n/zh-Hant.json": "b4b0b6b30046bb7e1f3babc38ae2199f157bf52c12887ec1196429e1b90228a5"
+        "annai-plugin.json": "e8ebfab59c80a8001aea23584d4ab8f8ea05e1e041640665d3a4f3e04a865f6f",
+        "index.js": "15f1c65de8d8fb15ee52e97d50e028fd251226c08b7d56b01c8614a33d00e69a"
       }
     },
     {
@@ -690,7 +621,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5800,
+      "size": 3325,
       "requires": [],
       "provides": {
         "search": [
@@ -698,11 +629,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "a1f3a8ffa81016dc6ef97d2641d3c077068dc5f9d23afaf1d20b0a4e9f250523",
-        "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
-        "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
-        "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2",
-        "l10n/zh-Hant.json": "240e0259328ccdfd9aba0a487df90e6f289c44189664d0155fcdc4a4c6e1b18f"
+        "annai-plugin.json": "b935cb8aa0cd671a928a90136abdfe039953ccfd2e5c051925e77dfe032f78ec",
+        "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d"
       }
     },
     {
@@ -719,7 +647,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 4423,
+      "size": 2878,
       "requires": [],
       "provides": {
         "search": [
@@ -727,11 +655,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "4a85028c96aadcb0f04596c44769c1f1971e0a9c6872c21a792ab6811ed84984",
-        "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463",
-        "l10n/ja.json": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
-        "l10n/zh-Hans.json": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a",
-        "l10n/zh-Hant.json": "820d733fd7b218474d3f44bd1d5f5a51029e347198d496b2e07d56b37eba89ba"
+        "annai-plugin.json": "2879e4a9fe4fb66672ed4dae64950140b32d1ce3c4b70e5f58b429a62df32ad5",
+        "index.js": "1ed295068620324e3dd903f3706cc59cbbf0ac05617b75f2b149779e2e826463"
       }
     },
     {
@@ -747,7 +672,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 6069,
+      "size": 3459,
       "requires": [],
       "provides": {
         "search": [
@@ -755,11 +680,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "35955fb322306297b43486fa79dccb5c6bacd36a5d62bcd233a6ea80c1cd72fe",
-        "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec",
-        "l10n/ja.json": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
-        "l10n/zh-Hans.json": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08",
-        "l10n/zh-Hant.json": "e5e7ea7fae92bf3bac9a273d5bc3cf21e10199482fa35d2b93cddb76bea791d8"
+        "annai-plugin.json": "2050ea98d811be75285a584f4a0cf9468fef9ec9395e6c4a99a8a1d4793702b1",
+        "index.js": "1a414526cc82d17058b532e73a71f3f2a49d3fc3143c97dabe7e17ebd89ddaec"
       }
     },
     {
@@ -773,7 +695,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 10118,
+      "size": 9317,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -782,11 +704,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "849f54c5215dd34105ba8227c1610da1fbf38cdf4d5340b52fe5317a6a3e3736",
-        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92",
-        "l10n/ja.json": "a9b094294d25ea2bda1dea0be13887ffdbefc6d0735aee3f4af72ae4eb83002b",
-        "l10n/zh-Hans.json": "2672c7f3bb4dbbd2e498d1cecd385f978703f868fcadf1da704390dfb159d86c",
-        "l10n/zh-Hant.json": "a6e95bf4bf60a2d5a9b1f11e597c83290f679a78fbced3e0cfd9a5e845369658"
+        "annai-plugin.json": "f5fdff73e218a43877739505c179e944b81f6b463ef63bffb7efbc0a732c31e9",
+        "index.js": "30b8769b558d7a8d5f279709442c1a4731cca785d6c99ea66fa6d17befa30a92"
       }
     },
     {
@@ -800,7 +719,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 72372,
+      "size": 48048,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -808,12 +727,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "767fc94e2fe9d12ea7aadfe7670fbb0a4786be253222495e878313b31a0c0685",
+        "annai-plugin.json": "30e705edb8fbe16a260595f132b08e7e8f3f626f241d5d48fce3095e43478ed3",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
-        "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541",
-        "l10n/ja.json": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
-        "l10n/zh-Hans.json": "74e81a5c4fb04bf50536a35a19f5e000519621836e5da193d23aabc96c43f2d9",
-        "l10n/zh-Hant.json": "d60631aa9e76a58337270e7ad3d4c3b9eeb807ed079d297b05457f948871841e"
+        "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541"
       }
     },
     {
@@ -827,7 +743,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 43833,
+      "size": 31217,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -835,12 +751,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "c979aebae7e8912476eeb269da626b390278f68dd212c4762a5c68bd1cd20ce6",
+        "annai-plugin.json": "4b20ff2328553a8a48ae2e79c5fff2d1f3a3e3e38a200df3b6beb03b2aaffe3d",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
-        "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190",
-        "l10n/ja.json": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
-        "l10n/zh-Hans.json": "61c1f1f7a4db024c966ef9661fbcba41b916f50c22e6d75af593bd9bda3b0383",
-        "l10n/zh-Hant.json": "b9a4af69b84e530b0ba51f7bc469172fbe6ebfe154df71e9681ddd32675f5ed0"
+        "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190"
       }
     },
     {
@@ -854,7 +767,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24382,
+      "size": 15875,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -862,11 +775,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "4adcfe3485259e61cc233c9e52f605322640d24092ece3d1c1fbff36a87a682f",
+        "annai-plugin.json": "12b87f22ab00c4723bdda7e054d38e576e6eb28780a0ba4518d630e17887cb86",
         "index.js": "84570a4a5184db62e47f67e4b8ef4642b363742546cfbc244dd95b596922c76e",
-        "l10n/ja.json": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
-        "l10n/zh-Hans.json": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
-        "l10n/zh-Hant.json": "d6686c61ed9b053d94bd3d275a0fdb17929781031a9f801e779b12b16583d2d4",
         "sigv4.js": "8e4d949983b5cbad75eb915802dde4ba79de5dd085ccc86ac6e707f5bc695eb8"
       }
     },
@@ -881,7 +791,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16658,
+      "size": 10178,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -889,11 +799,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "7a8993dc9c86c821041d61bb0980f7ba510def5206cb2bb1709b49f0cb9e0ae1",
-        "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
-        "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
-        "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926",
-        "l10n/zh-Hant.json": "3cbaea7d215e2ffd52176a18b3677a1388fbc8345df0f4fafbce4cc55ee9f64a"
+        "annai-plugin.json": "fb6246317c01b855c3079445578003f23ec697bec32c637b7dc19a04ec7430cf",
+        "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0"
       }
     }
   ]

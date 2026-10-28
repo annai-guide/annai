@@ -190,10 +190,12 @@ export function leftOut(manifest, read) {
 /**
  * A plugin's words for the screens: their language, its messages (annai.l10n), and its manifest as shown, a copy with the translated
  * fields and keywords added; its own words when it has none, or it can't be read. The manifest itself stays English (the shown rule).
- * @param {any} manifest @param {(path: string) => Uint8Array | undefined} read @returns {{ lang: string, messages: Record<string, any> | null, manifest: any }}
+ * tag: the translation to read, when it isn't the one the manifest lists for the screens (annai's own plugins list none: theirs come
+ * from its catalog).
+ * @param {any} manifest @param {(path: string) => Uint8Array | undefined} read @param {{ tag?: string | null }} [o]
+ * @returns {{ lang: string, messages: Record<string, any> | null, manifest: any }}
  */
-export function wordsOf(manifest, read) {
-  const tag = translationFor(manifest);
+export function wordsOf(manifest, read, { tag = translationFor(manifest) } = {}) {
   const bytes = tag ? read(`l10n/${tag}.json`) : undefined;
   // One that fails a check is left out here too, as at install: a stored package may hold one.
   const json = tag && !checkTranslation(manifest, tag, bytes) ? JSON.parse(text(/** @type {Uint8Array} */ (bytes))) : null;
