@@ -19,7 +19,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Official plugin downloads carry every language's translation
 - **Kind:** deferred.
-- **What the user sees:** nothing on screen. Each official plugin download includes its Japanese and its Chinese translation, whatever language the screens are in. For a typical OpenRouter user's three plugins that is about 4 KB of 20 KB compressed. Across all 31 official plugins, translations are about a quarter of the bytes, and each added language adds about 12%.
+- **What the user sees:** nothing on screen. Each official plugin download includes its Japanese, Simplified Chinese and Traditional Chinese translations, whatever language the screens are in. For a typical OpenRouter user's three plugins that is about 6 KB of 22 KB compressed. Across all 31 official plugins, translations are about 32% of the bytes (60 of 185 KB with brotli); Traditional Chinese added 19.5 KB of them.
 - **Why:** annai verifies an official plugin by every file the catalog lists. A plugin downloaded with only the screens' language would look like a changed copy and be offered as an update forever. A language change would also need a fetch. For two languages the cost is small.
 - **Revisit when:** a third language ships. Then move official plugins' translations to a per-language fetch, as `catalog/l10n/<tag>.json` already does for the catalog's own words.
 - **Approved:** 2026-10-27, the user: "Defer to a 3rd language".

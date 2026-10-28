@@ -1,7 +1,7 @@
 # Translating annai
 
-annai's screens are in English, Japanese (`ja`) and Chinese, Simplified (`zh-Hans`); Chinese, Traditional (`zh-Hant`), with
-Taiwan's words, is in draft. This page is for anyone who translates them, a person or an agent. The design is
+annai's screens are in English, Japanese (`ja`), Chinese, Simplified (`zh-Hans`) and Chinese, Traditional (`zh-Hant`), with
+Taiwan's words. This page is for anyone who translates them, a person or an agent. The design is
 [the localization design](superpowers/specs/2026-10-23-localization-design.md); the spec's rule is §14.3.
 
 ## Where the words are
@@ -82,8 +82,9 @@ and Chinese were reviewed by Opus, at the user's word (2026-10-26).
 **Traditional Chinese** (`zh-Hant`, 2026-10-28) started from the Simplified catalog, converted by OpenCC's `s2twp`
 (Simplified to Taiwan, with phrases; `opencc-js`, run once outside the repo), then given Taiwan's words where the
 converter left the mainland's (透過, 傳送, 供應商, 網址, 權杖, 存取, 重新啟動, 行事曆…) and 「」 for quotes. There is one
-Traditional catalog, with Taiwan's words: a phone set to Hong Kong or Macau gets it too (the user's choice). Its
-glossary column follows Taiwan's iPhone (加入主畫面, 分享, 隱私權與安全性).
+Traditional catalog, with Taiwan's words: a phone set to Hong Kong, Macau or Cantonese gets it too (the user's choice). Its
+glossary column follows Taiwan's iPhone (加入主畫面, 分享, 隱私權與安全性). Opus reviewed every row against its English
+and its place, with Taiwan's usage as the standard, and it shipped (2026-10-28).
 
 Look at the screens in the language before marking rows `ok`: choose it under Settings → Languages, or
 set `localStorage['annai.ui']` to its tag. The phone-fit test (`test/e2e/phone-fit.spec.js`) runs every screen at
