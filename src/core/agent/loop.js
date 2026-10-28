@@ -1770,7 +1770,8 @@ export class Agent {
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
-          read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId),
+          // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
+          ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId) }),
         });
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
         this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
