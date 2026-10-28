@@ -7,6 +7,7 @@ import { updateAppSettings } from '../../src/core/settings.js';
 import { KOKORO_PART } from '../../src/core/koe/instructions.js';
 import { useClock } from './clock.js';
 import { setWords } from '../../src/core/l10n.js';
+import { anthropicStandIn } from '../fakes/anthropic-binding.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 /** A reply that calls tools, then sleeps. @param {...[string, any]} calls */
@@ -743,4 +744,50 @@ test('Start fresh lets both halves go even when closing live at its end throws (
   k.agent.send('Again');
   await Promise.race([k.agent.idle(), new Promise((r) => setTimeout(r, 3000))]);
   assert.equal((await k.events(['out.speak'])).length, 2, 'the message after it is answered');
+});
+
+test("Claude's thinking is never sent back: Koe and Kokoro on Claude, and a tidy-up, against a stand-in that refuses a block bound to another conversation (phone-fixes-1 item 1)", async (t) => {
+  useClock(t);
+  let n = 0;
+  /** A tool call. @param {string} name @param {any} input */
+  const use = (name, input) => ({ type: 'tool_use', id: `toolu_${++n}`, name, input });
+  /** What the last message holds: its words, and the tools whose results it brings. @param {any} body */
+  const last = (body) => {
+    const m = body.messages.at(-1);
+    const called = new Map(body.messages.flatMap((/** @type {any} */ x) => x.content).filter((/** @type {any} */ b) => b.type === 'tool_use').map((/** @type {any} */ b) => [b.id, b.name]));
+    return {
+      text: m.content.filter((/** @type {any} */ b) => b.type === 'text').map((/** @type {any} */ b) => b.text).join('\n'),
+      results: m.content.filter((/** @type {any} */ b) => b.type === 'tool_result').map((/** @type {any} */ b) => called.get(b.tool_use_id)),
+    };
+  };
+  const claude = anthropicStandIn((body) => {
+    const { text, results } = last(body);
+    if (/housekeeping/.test(text)) return [{ type: 'text', text: 'The user asked whether Nepenthe is open; it is, till 10.' }];
+    if (body.model === 'claude-sonnet-5-5') {
+      if (/woke for: a note from Kokoro/.test(text)) return [use('speak', { text: "Good news: it's open till 10 tonight." }), use('sleep', {})];
+      if (/woke for: the user wrote/.test(text)) return [use('speak', { text: /Thanks/.test(text) ? 'Enjoy!' : "I'm checking." }), ...(/Thanks/.test(text) ? [] : [use('tell_kokoro', { text: 'Is Nepenthe open now?' })]), use('sleep', {})];
+      return [use('sleep', {})];
+    }
+    // Kokoro: looks first, then tells Koe, then sleeps: a chain of three requests in one wake.
+    if (results.includes('list')) return [use('tell_koe', { text: 'Nepenthe is open till 10 tonight (nepenthe.com).' })];
+    return /woke for: .*Koe asks/.test(text) ? [use('list', { path: '/trip/' })] : [use('sleep', {})];
+  });
+  const at = { type: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', tunables: { cacheTtl: '5m' } };
+  const k = await agentKit([{ ability: at }], {
+    koe: { type: { ability: at }, model: { providerId: 'claude-sonnet-5-5' } },
+    models: [{ providerId: 'claude-opus-5-5', contextWindow: 1000000 }], fetch: claude.fetch,
+  });
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  k.agent.send('Thanks!');
+  await k.agent.idle();
+  const tidied = await k.agent.kokoro.summarizeNow();
+  assert.deepEqual(claude.refused, [], 'no request was refused');
+  assert.equal(tidied, 'done', 'the tidy-up is written');
+  const speak = (await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text);
+  assert.deepEqual(speak, ["I'm checking.", "Good news: it's open till 10 tonight.", 'Enjoy!']);
+  const models = new Set(claude.bodies.map((b) => b.model));
+  assert.deepEqual([...models].sort(), ['claude-opus-5-5', 'claude-sonnet-5-5'], 'both halves and the tidy-up went to Claude');
+  assert.ok(claude.bodies.length >= 6);
+  assert.deepEqual(k.notices, []);
 });

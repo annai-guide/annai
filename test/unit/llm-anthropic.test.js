@@ -58,9 +58,8 @@ test('build: annai’s request as a Messages API request, with browser access an
   assert.deepEqual(body.tools, [{ name: 'report_color', description: 'Report a color.', input_schema: { type: 'object' } }]);
   assert.deepEqual(body.messages, [
     { role: 'user', content: [{ type: 'text', text: 'What color?' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] },
+    // Thinking is never sent back, even to the model that signed it: Claude 5.5 binds it to the conversation (phone-fixes-1 item 1).
     { role: 'assistant', content: [
-      { type: 'thinking', thinking: 'A red square.', signature: 'sig' },
-      { type: 'redacted_thinking', data: 'opaque' },
       { type: 'tool_use', id: 'toolu_1', name: 'report_color', input: { color: 'red' } },
     ] },
     { role: 'user', content: [

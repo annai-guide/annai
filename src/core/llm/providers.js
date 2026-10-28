@@ -215,6 +215,17 @@ export async function syncProviders({ ws }, sources) {
     for (const m of mine) {
       const d = listed.find((x) => m.template?.id === `${src.plugin}/${x.key}`);
       if (d && m.template) changed.push({ ...m, template: { id: m.template.id, version: src.version, values: d.values } });
+      else if (!m.template || m.template.id.startsWith('list/')) {
+        // A model added from the list or by id started with its ability's modelDefaults then: a default new since (Claude's photos
+        // and PDFs, phone-fixes-1) reaches it, in the layer that holds its start, unless it or the user has that field.
+        const was = rec.template.values.abilities?.[m.ability]?.modelDefaults ?? {};
+        const now = /** @type {Record<string, any>} */ (values.abilities?.[m.ability]?.modelDefaults ?? {});
+        const start = /** @type {Record<string, any>} */ (m.template ? m.template.values : m.user ?? {});
+        const fresh = Object.keys(now).filter((k) => !(k in was) && !(k in start) && !(k in (m.user ?? {})));
+        if (!fresh.length) continue;
+        const add = Object.fromEntries(fresh.map((k) => [k, structuredClone(now[k])]));
+        changed.push(m.template ? { ...m, template: { ...m.template, values: { ...m.template.values, ...add } } } : { ...m, user: { ...m.user, ...add } });
+      }
     }
     for (const d of listed) {
       if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;

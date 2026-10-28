@@ -1,7 +1,7 @@
 {
   "id": "provider-anthropic",
   "name": "Anthropic",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "api": 1,
   "l10n": ["ja", "zh-Hans"],
   "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
@@ -21,6 +21,11 @@
         "kind": "chat",
         "type": "anthropic-messages",
         "modelDefaults": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
           "cacheTtls": [
             "5m",
             "1h"
@@ -52,7 +57,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {
@@ -145,7 +151,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {
@@ -243,7 +250,8 @@
             "maxOutput": 128000,
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "tools": true,
             "images": {
