@@ -1,5 +1,5 @@
 {
-  "build": "20720c5eb0db",
+  "build": "99dc28cc6a5e",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -218,6 +218,7 @@
     "/src/ui/offline-pack.js": "569092a05266",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/photo-codec.js": "3006ab90b0ab",
+    "/src/ui/preview.js": "bed528cdf639",
     "/src/ui/photo-viewer.js": "cdb466165727",
     "/src/ui/platform.js": "d92cd56df069",
     "/src/ui/privacy.js": "fbe514b232cf",
