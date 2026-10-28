@@ -38,16 +38,16 @@ test('Settings → Languages: the browser\'s language to begin with; add, reorde
   await add.selectOption('zh');
   await expect(addButton).toBeEnabled();
   await addButton.click();
-  await expect(panel.getByRole('status')).toHaveText('Added Chinese (Mandarin). Saved');
+  await expect(panel.getByRole('status')).toHaveText('Added Chinese (Simplified). Saved');
   await expect(panel).not.toContainText('None picked'); // the note follows the list, not only a new visit
   await add.selectOption('ja');
   await addButton.click();
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/, /^3\. Japanese/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Simplified\)/, /^3\. Japanese/]);
   await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'zh', 'ja'], answer: 'follow' });
   await panel.getByRole('button', { name: 'Reorder Japanese, 3 of 3' }).click();
   await panel.getByRole('group', { name: 'Move Japanese' }).getByRole('button', { name: 'Move up' }).click();
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Japanese/, /^3\. Chinese \(Mandarin\)/]);
-  await panel.getByRole('button', { name: 'Remove Chinese (Mandarin)' }).click();
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Japanese/, /^3\. Chinese \(Simplified\)/]);
+  await panel.getByRole('button', { name: 'Remove Chinese (Simplified)' }).click();
   await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Japanese/]);
   await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'ja'], answer: 'follow' });
   // The language she answers in: the one you speak to her, or one of those you listed, by its name and its own.
@@ -98,16 +98,16 @@ test('after Move up, Move down or Remove focus stays where the user is, and the 
   // Its arrow keys go on from there.
   await page.keyboard.press('ArrowUp');
   await expect(panel.getByRole('status')).toHaveText('Japanese moved to 1. Saved');
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. Japanese/, /^2\. English/, /^3\. Chinese \(Mandarin\)/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. Japanese/, /^2\. English/, /^3\. Chinese \(Simplified\)/]);
   await expect(panel.getByRole('button', { name: 'Reorder Japanese, 1 of 3' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(panel.getByRole('status')).toHaveText('Japanese moved to 2. Saved');
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Japanese/, /^3\. Chinese \(Mandarin\)/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Japanese/, /^3\. Chinese \(Simplified\)/]);
   // Remove: focus goes to the next one's Remove, so the next press removes nothing by surprise but never loses its place.
   await panel.getByRole('button', { name: 'Remove Japanese' }).press('Enter');
   await expect(panel.getByRole('status')).toHaveText('Japanese removed. Saved');
-  await expect(panel.getByRole('button', { name: 'Remove Chinese (Mandarin)' })).toBeFocused();
-  await panel.getByRole('button', { name: 'Remove Chinese (Mandarin)' }).press('Enter');
+  await expect(panel.getByRole('button', { name: 'Remove Chinese (Simplified)' })).toBeFocused();
+  await panel.getByRole('button', { name: 'Remove Chinese (Simplified)' }).press('Enter');
   await expect(list.getByRole('listitem')).toHaveCount(1);
   await expect(panel.getByRole('button', { name: 'Remove English' })).toBeDisabled();
 });
@@ -175,14 +175,14 @@ test('two languages added before the first write lands are both kept; a write th
   const { probe, list, add, writes } = await mountProbe(page);
   await add('zh');
   await add('ja');
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/, /^3\. Japanese/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Simplified\)/, /^3\. Japanese/]);
   await expect.poll(async () => (await writes()).length, { timeout: 15_000 }).toBe(2);
   expect((await writes()).at(-1)).toEqual({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow' } });
   // A write that fails, with nothing after it: the list goes back to what was kept, and the error is said.
   await page.evaluate(() => { /** @type {any} */ (window).__fail = true; });
   await add('ko');
   await expect(probe.getByRole('alert')).toHaveText('The disk is full.', { timeout: 15_000 });
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/, /^3\. Japanese/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Simplified\)/, /^3\. Japanese/]);
 });
 
 test('a write that fails while an earlier one was still going puts the list back to what the earlier one sent, not to the change that failed (review follow-up 2)', async ({ page }) => {
@@ -190,9 +190,9 @@ test('a write that fails while an earlier one was still going puts the list back
   await page.evaluate(() => { /** @type {any} */ (window).__failAt = 2; });
   await add('zh'); // its write takes 600 ms...
   await add('ja'); // ...and this one is made in the meantime, and fails
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/, /^3\. Japanese/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Simplified\)/, /^3\. Japanese/]);
   await expect(probe.getByRole('alert')).toHaveText('The disk is full.', { timeout: 15_000 });
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Mandarin\)/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. English/, /^2\. Chinese \(Simplified\)/]);
   expect(await writes()).toEqual([{ languages: { spoken: ['en', 'zh'], answer: 'follow' } }]);
 });
 
@@ -250,13 +250,13 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
     await openLanguages(page);
     await page.getByLabel('Add a language').selectOption('zh');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('region', { name: 'Languages', exact: true }).getByRole('status')).toHaveText('Added Chinese (Mandarin). Saved');
+    await expect(page.getByRole('region', { name: 'Languages', exact: true }).getByRole('status')).toHaveText('Added Chinese (Simplified). Saved');
     await page.goto('/#/trips');
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('And dinner?');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(before);
-    expect(system(llm.bodies('/b/v1/messages').at(-1))).toContain(`# Languages\nThe user speaks English, Japanese and Chinese (Mandarin); they may switch between these. Answer in the language they used. ${rest}`);
+    expect(system(llm.bodies('/b/v1/messages').at(-1))).toContain(`# Languages\nThe user speaks English, Japanese and Chinese (Simplified); they may switch between these. Answer in the language they used. ${rest}`);
   } finally {
     await llm.stop();
   }
@@ -295,7 +295,7 @@ test("Languages you speak are dragged into order like the model list, and a line
   await page.mouse.move(from.x, (from.y + to.y) / 2, { steps: 4 });
   await page.mouse.move(to.x, to.y - 8, { steps: 4 });
   await page.mouse.up();
-  await expect(list.getByRole('listitem')).toHaveText([/^1\. Japanese/, /^2\. English/, /^3\. Chinese \(Mandarin\)/]);
+  await expect(list.getByRole('listitem')).toHaveText([/^1\. Japanese/, /^2\. English/, /^3\. Chinese \(Simplified\)/]);
   await expect(panel.getByRole('status')).toHaveText('Japanese moved to 1. Saved');
   await expect.poll(() => saved(page)).toEqual({ spoken: ['ja', 'en', 'zh'], answer: 'follow' });
   // The row and its handle are a drag on iOS, not text to select (item 4).

@@ -1317,7 +1317,7 @@ test('a live session is told the languages: the section in its instructions, the
     k.agent.tap();
     await soon(async () => got(k, 'setup').length === 2);
     const second = got(k, 'setup')[1].setup;
-    assert.match(second.systemInstruction.parts[0].text, /# Languages\nThe user speaks English, Chinese \(Mandarin\) and Japanese; they may switch between these\. Answer in the language they used\./);
+    assert.match(second.systemInstruction.parts[0].text, /# Languages\nThe user speaks English, Chinese \(Simplified\) and Japanese; they may switch between these\. Answer in the language they used\./);
     assert.deepEqual(second.inputAudioTranscription, { languageCodes: ['en', 'zh-Hans', 'ja'] });
   } finally {
     await k.done();
