@@ -713,6 +713,13 @@ export class Live {
     for (const [k, n] of this.#notified) if (now - n.t > 86_400_000) this.#notified.delete(k);
     /** @type {string[]} */
     const doubles = [];
+    // Each trip's plan read once for the opened reminders of this batch.
+    /** @type {Map<string, Promise<Watch[]>>} */
+    const plans = new Map();
+    const watchesOf = (/** @type {string} */ scope) => {
+      if (!plans.has(scope)) plans.set(scope, this.#planOf(scope).then((p) => p.watches, () => []));
+      return /** @type {Promise<Watch[]>} */ (plans.get(scope));
+    };
     for (const n of Array.isArray(list) ? list : []) {
       if (!n || typeof n !== 'object' || n.test || typeof n.key !== 'string' || typeof n.scope !== 'string' || !n.scope) continue;
       if (n.kind !== 'shown' && n.kind !== 'opened') continue;
@@ -724,11 +731,12 @@ export class Live {
         if (!n.stale) this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
-        // A plan reminder's notification says it in the screens' words: Shiori is quoted its English (the plan's own, when it is
-        // still planned here). Anyone else's reminder is quoted as it was written.
+        // A plan reminder's notification says it in the screens' words: Shiori is quoted its English, from its own trip's plan
+        // (a plan watch's id is the same in two trips with a plan file of the same name), while it is still planned there. Anyone
+        // else's reminder is quoted as it was written. With no words, none are quoted: an id tells her nothing.
         const plan = String(n.watch ?? '').startsWith('plan:');
-        const words = (plan ? this.#plan.find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
-        this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened the reminder ${words ? `"${words}"` : `for ${String(n.watch ?? /* en */ 'a watch')}`} from its notification at ${timeIn(t, zone())}.` });
+        const words = (plan ? (await watchesOf(n.scope)).find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
+        this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened ${words ? `the reminder "${words}"` : 'a reminder'} from its notification at ${timeIn(t, zone())}.` });
       }
       await logEvent(this.store, n.scope, { type: n.kind === 'shown' ? 'push.shown' : 'push.opened', actor: 'system', data: { key: n.key, watch: String(n.watch ?? ''), at: t } }, now);
     }
@@ -1063,6 +1071,23 @@ export class Live {
     if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run (review 4)
     // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
     if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
+    const { items, watches } = await this.#planOf(trip);
+    this.#plan = watches;
+    // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
+    const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
+    if (ids.size) await this.#recall(trip, ids);
+    for (const { item } of items) {
+      const p = item.place;
+      if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? /* en */ 'a plan place'), lat: p.lat, lng: p.lng });
+    }
+    this.#prune();
+  }
+
+  /**
+   * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone.
+   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
+   */
+  async #planOf(trip) {
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
@@ -1079,15 +1104,7 @@ export class Live {
     }
     const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
     const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
-    this.#plan = planWatches(items, bookings, { fallbackTz });
-    // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
-    const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
-    if (ids.size) await this.#recall(trip, ids);
-    for (const { item } of items) {
-      const p = item.place;
-      if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? /* en */ 'a plan place'), lat: p.lat, lng: p.lng });
-    }
-    this.#prune();
+    return { items, watches: planWatches(items, bookings, { fallbackTz }) };
   }
 
   /** Forgets the memories and firings of watches that are gone: hers that fired or were cancelled, plan items no longer planned, other trips' plans. */
@@ -1140,15 +1157,16 @@ export class Live {
       return type.check(w.when, m, mem) ?? null;
     } catch (e) {
       if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
-      else this.#noteOnce(scope, { type: type.type, watch: w.id, reminder: w.fallback, why: String(/** @type {any} */ (e)?.message ?? e) });
+      else this.#noteOnce(scope, { type: type.type, watch: w.id, ...(w.owner === 'system' ? { title: String(w.when.title ?? '') } : { reminder: w.fallback }), why: String(/** @type {any} */ (e)?.message ?? e) });
       return null;
     }
   }
 
   /**
    * Notes a watch that can't be checked in its conversation's log, once: as data, from which the Conversation makes its line, with
-   * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, reminder: string, why: string }} d reminder: the
-   *   watch's own words, which the Conversation names it by; why: the trigger's own words
+   * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, title?: string, reminder?: string, why: string }} d
+   *   what the Conversation names it by: a plan watch's item title (its fallback is annai's English), or another watch's own words
+   *   (reminder); why: the trigger's own words, a plugin's or the browser's
    */
   #noteOnce(scope, d) {
     /* en */
