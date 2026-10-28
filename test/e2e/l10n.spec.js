@@ -878,3 +878,28 @@ test('under Japanese screens each of the voice menu\'s buttons is one line, at 3
   expect(lines.length).toBeGreaterThan(1);
   for (const l of lines) expect(l).toMatch(/: 1$/);
 });
+
+test.describe('with no service worker, so the words come by a plain fetch', () => {
+  test.use({ serviceWorkers: 'block' });
+  test("a language picked again while a slow change waits wins: the slow one, picked over, keeps nothing and doesn't restart (plugin-l10n-fetch)", async ({ page }) => {
+    await openApp(page, '#/languages');
+    /** @type {() => void} */
+    let release = () => {};
+    const slow = new Promise((r) => { release = () => r(undefined); });
+    let asked = false;
+    await page.route('**/l10n/ja.json', async (route) => { asked = true; await slow; await route.continue(); });
+    await page.locator('#language-ui').selectOption('ja');
+    await expect.poll(() => asked).toBe(true);
+    // The screen left and opened again while Japanese is coming: its row works, and English, picked there, is kept at once.
+    await page.evaluate(() => { location.hash = '#/trips'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
+    await page.locator('#language-ui').selectOption('en');
+    await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible();
+    release();
+    // Japanese, picked over, would have kept itself and restarted into it.
+    const reloaded = page.waitForEvent('load', { timeout: 3000 }).then(() => true, () => false);
+    expect(await reloaded).toBe(false);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    expect(await page.evaluate(() => localStorage.getItem('annai.ui'))).toBe('en');
+  });
+});

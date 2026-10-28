@@ -22,6 +22,8 @@ export function keepUiChoice(tag) {
 
 /** @type {{ tag: string } | null} */
 let changing = null;
+/** Changes of the screens' language begun in this run. */
+let changes = 0;
 /**
  * A change of the screens' language under way: until the returned call (its choice kept, or failed), nextScreens is its language, so
  * a check meanwhile keeps the words fetched for it; an earlier change's end leaves a later one's. @param {string} tag @returns {() => void}
@@ -51,7 +53,7 @@ export async function keepUiFrom(ws) {
 /** Asks the worker to keep a language's words; with no worker, checks they can be fetched. @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o] */
 export async function keepWords(tag, { worker = navigator.serviceWorker?.controller, limitMs = 30_000 } = {}) {
   if (!worker) {
-    try { /* en */ return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
+    try { /* en */ return (await fetch(`/l10n/${tag}.json`, { signal: AbortSignal.timeout(limitMs) })).ok; } catch { return false; }
   }
   return new Promise((resolve) => {
     const { port1, port2 } = new MessageChannel();
@@ -228,6 +230,8 @@ export function screensRow(ctx, app) {
   const error = h('p', { class: 'error', 'aria-live': 'assertive', hidden: true });
   let shown = select.value;
   select.addEventListener('change', async () => {
+    // The latest change wins: one picked again meanwhile (the screen left and opened again) stops this one where it waited.
+    const mine = ++changes;
     const pick = select.value;
     select.disabled = true;
     error.hidden = true;
@@ -241,6 +245,7 @@ export function screensRow(ctx, app) {
       // No next: it drops nothing, as the change may yet fail.
       const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
       const [got] = await Promise.all([keepWords(next.tag).catch(() => false), plugins]);
+      if (mine !== changes) return;
       if (!got) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
     }
     try {
@@ -248,6 +253,7 @@ export function screensRow(ctx, app) {
     } catch (e) {
       return back(messageOf(e));
     }
+    if (mine !== changes) return;
     keepUiChoice(pick);
     done();
     shown = pick;
