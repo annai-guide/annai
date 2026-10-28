@@ -192,6 +192,10 @@ export class ProviderError extends Error {
     this.noChain = more.noChain === true;
     /** A kept turn the server said it lacked is there when looked up: the same call is tried once more, chained. */
     this.again = false;
+    /** What the call had used when it failed, and its cost, set by callOnce (a stopped call is billed for it). @type {import('./contract.js').Usage | undefined} */
+    this.usage = undefined;
+    /** @type {number | undefined} */
+    this.cost = undefined;
   }
 }
 
