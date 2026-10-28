@@ -225,15 +225,15 @@ function scriptOf(text) {
 
 /**
  * The tag of Han characters with no kana: Japanese when that is the language and the characters are ones Chinese does not use; else
- * Chinese, Simplified or Traditional by the characters, and by the language (the phone's, or the list's) when they do not tell.
- * @param {string} text @param {Language | null} l the language they are taken to be
+ * Chinese, Simplified or Traditional by the characters, and when they do not tell, by Traditional screens, else by the language (the
+ * phone's, or the list's). @param {string} text @param {Language | null} l the language they are taken to be @param {string} ui the screens'
  */
-function hanTag(text, l) {
+function hanTag(text, l, ui) {
   const [hans, hant] = [count(text, HANS), count(text, HANT)];
   if (l?.id === 'ja' && !count(text, HANS.slice(0, -3))) return 'ja';
   if (hans > hant) return 'zh-Hans';
   if (l?.id === 'yue') return 'yue-Hant';
-  return hant > hans ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
+  return hant > hans || ui === 'zh-Hant' ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
 }
 
 /** What tagOf says for a line that must not take the screens' language and has none of its own (shown as `lang=""`). */
@@ -257,6 +257,7 @@ function latinTag(tag) {
  * text agrees with it (its script, or Latin when hers is written in Latin); Han alone is taken for hers, if she answers in Japanese.
  * ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one is
  * (usually English), else the one languageOf names from two of its words, else NO_LANGUAGE: it never takes the screens'.
+ * Han that does not tell Simplified from Traditional is Traditional under Traditional Chinese screens.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
  */
 export function tagOf(text, s, byShiori = false, ui = 'en') {
@@ -276,7 +277,7 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
     return named ? tagFor(named) : NO_LANGUAGE;
   }
   const l = (answer && listedFor(kind, [answer])) || listedFor(kind, s.spoken);
-  return kind === 'Chinese' ? hanTag(said, l) : l ? tagFor(l) : SCRIPT_TAGS[kind];
+  return kind === 'Chinese' ? hanTag(said, l, ui) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }
 
 /**

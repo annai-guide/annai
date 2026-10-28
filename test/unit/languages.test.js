@@ -227,6 +227,16 @@ test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is l
   assert.equal(tagOf('Kyoto 京都 station', en), '', 'a place name in an English line is no Chinese');
 });
 
+test('tagOf: under Traditional Chinese screens, Han that does not tell its script is Traditional (l10n-zh-Hant)', () => {
+  const only = (/** @type {string[]} */ ids) => languageSettings({ languages: { spoken: ids } }, 'en-US');
+  assert.equal(tagOf('骨架', only(['en', 'zh']), false, 'zh-Hant'), 'zh-Hant', "the listed Chinese is the list's (zh-CN), the screens' is Traditional");
+  assert.equal(tagOf('骨架', only(['en']), false, 'zh-Hant'), 'zh-Hant', 'and with no Chinese listed');
+  assert.equal(tagOf('骨架', only(['en', 'zh']), false, 'en'), 'zh-Hans', 'other screens are as before');
+  assert.equal(tagOf('这是我们说的', only(['en', 'zh']), false, 'zh-Hant'), 'zh-Hans', 'Simplified characters still say Simplified');
+  assert.equal(tagOf('骨格', only(['en', 'ja']), false, 'zh-Hant'), 'ja', 'and Japanese, alone in the list, is still Japanese');
+  assert.equal(tagOf('直角三角形的骨架', only(['yue']), false, 'zh-Hant'), 'yue-Hant');
+});
+
 test('tagOf: Shiori\'s own lines take the answer language only where the text agrees with it', () => {
   const answers = (/** @type {string} */ id, /** @type {string[]} */ spoken = ['en', 'zh', 'ja']) => languageSettings({ languages: { spoken, answer: id } }, 'en-US');
   assert.equal(tagOf('骨架', answers('ja'), true), 'ja', 'Han alone, with Japanese fixed, is Japanese though Chinese is listed too');
