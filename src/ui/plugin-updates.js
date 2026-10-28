@@ -46,7 +46,7 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   if (official) {
     const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; });
     // One with an update waiting keeps the words it has: they match its version, and the update brings the new one's (updateOfficial).
-    if (now) await fetchTranslations(host, { ...env, skip: now.map((u) => u.id), next: env.next?.() });
+    if (now) await fetchTranslations(host, { fetch: env.fetch, base: env.base, skip: now.map((u) => u.id), next: env.next?.() });
     if (now && current()) keep(false, now);
   }
   if (address) {

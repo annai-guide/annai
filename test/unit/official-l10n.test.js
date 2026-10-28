@@ -280,3 +280,44 @@ test('a card or a toast a plugin shows carries the language its words are in now
   /** @type {any} */ (globalThis).tideToast();
   assert.deepEqual(toasts, [['Low tide.', 'en'], ['干潮。', 'ja']]);
 });
+
+// Fix round 2 (plugin-l10n-fetch): the env annai gives Updates holds next as a function, and a language change takes a while.
+
+test("an Update tap, through the card and the env annai gives Updates, keeps every language kept and asks only for language files", async () => {
+  const { offerCard } = await import('../../src/ui/plugin-updates.js');
+  setWords('ja', {});
+  const k = await kit();
+  await installOfficial(k.host, k.entry, { fetch: k.s.fetch });
+  await fetchTranslations(k.host, { tag: 'zh-Hans', next: 'zh-Hans', fetch: k.s.fetch });
+  const next = await site({ [ID]: NEXT() }, { ja: { [ID]: JA_NEXT }, 'zh-Hans': { [ID]: ZH } });
+  // As main.js builds it: next is a function (nextScreens); Updates spreads the env into the card's (updates.js).
+  const env = { fetch: next.fetch, next: () => 'zh-Hans' };
+  const { found } = await checkPlugins(k.host, env, { address: false });
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { plugins: k.host, notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast: () => {} } };
+  const applied = new Promise((resolve) => { offerCard(ctx, found, { ...env, reload: () => {}, applied: () => resolve(undefined) }); });
+  cards[0].actions[0].run();
+  await applied;
+  assert.equal((await k.host.installed())[ID].version, '1.1.0');
+  assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`], "the next start's language survives the tap");
+  const words = next.asked.filter((p) => p.startsWith('/catalog/l10n/'));
+  assert.ok(words.length > 0);
+  assert.deepEqual(words.filter((p) => !/^\/catalog\/l10n\/(ja|zh-Hans|zh-Hant)(\/[a-z0-9-]+)?\.json$/.test(p)), [], 'no address made from anything but a language');
+});
+
+test("while Settings changes the screens' language, a check keeps the words fetched for it, until the choice is kept or the change fails", async () => {
+  const { changingScreens, nextScreens } = await import('../../src/ui/languages.js');
+  setWords('ja', {});
+  const k = await kit();
+  await installOfficial(k.host, k.entry, { fetch: k.s.fetch });
+  const before = nextScreens();
+  const done = changingScreens('zh-Hans');
+  assert.equal(nextScreens(), 'zh-Hans');
+  await fetchTranslations(k.host, { tag: 'zh-Hans', next: 'zh-Hans', fetch: k.s.fetch });
+  // A check comes back meanwhile (coming back to the screen, the day's, a slow start's), with the env annai gives it.
+  await checkPlugins(k.host, { fetch: k.s.fetch, next: nextScreens }, { address: false });
+  assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`]);
+  done();
+  assert.equal(nextScreens(), before, 'over: the device\'s copy of the choice says again');
+});

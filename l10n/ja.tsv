@@ -708,14 +708,14 @@ d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Ko
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:35	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:147	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:149	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:151	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:254	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:256	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:268	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:277	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:279	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:148	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:150	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:152	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:255	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:257	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:269	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:278	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:280	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -1121,21 +1121,21 @@ uqmge3	ok	Open the browser menu (⋮).	ブラウザのメニュー（⋮）を�
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari は、7日間開かないと旅を消去することがあります。また、ホーム画面のアプリは旅を別に保存するので、ここで始めた旅はそちらにはありません。annai をホーム画面に追加して、そこで旅を始めてください。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	ブラウザは、空き容量が少なくなると旅を消去することがあります。annai をインストールして、旅を守ってください。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	手順を見る	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:211	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
-967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:225	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:229	{0} = name
-1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:244	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:248	
-v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:251	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
-1c7q9dt	ok	Miles	マイル	src/ui/languages.js:257	Note: A choice of Distances.
-86ef5k	ok	Kilometres	キロメートル	src/ui/languages.js:257	Note: A choice of Distances.
-r122ro	ok	Automatic	自動	src/ui/languages.js:257	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	ok	Distances	距離の単位	src/ui/languages.js:273	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:286	{0} = name
-dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:286	
-8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:293	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:294	{0} = name
-1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:295	
+n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:223	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
+967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:238	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:242	{0} = name
+1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:258	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:262	
+v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:265	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
+1c7q9dt	ok	Miles	マイル	src/ui/languages.js:271	Note: A choice of Distances.
+86ef5k	ok	Kilometres	キロメートル	src/ui/languages.js:271	Note: A choice of Distances.
+r122ro	ok	Automatic	自動	src/ui/languages.js:271	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離の単位	src/ui/languages.js:287	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:300	{0} = name
+dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:300	
+8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:307	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:308	{0} = name
+1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:309	
 15kmah9	ok	Simulation · moving fast	シミュレーション · 高速で移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	シミュレーション · 停止中	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	シミュレーション · 歩行中	src/ui/live-chip.js:22	
