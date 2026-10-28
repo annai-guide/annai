@@ -467,16 +467,20 @@ test('review S2: a card that lands while the screen is at its top moves it down,
   await expect(steps).toBeVisible();
 });
 
-test('review S1: three cards take at most a quarter of a 320 × 544 screen, and scroll within it', async ({ page }) => {
+test('review S1: three cards fold into one, which takes at most a quarter of a 320 × 544 screen; opened, the box grows and each card shows whole (the third review of phone-fixes-1)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   for (let i = 0; i < 3; i++) await raiseCard(page);
+  const box = () => page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
+  expect((await box()).h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
   await page.locator('.notice-stack').getByRole('button', { name: 'Show' }).click(); // the three fold into one card; opened, each shows
   await expect(page.locator('.notice')).toHaveCount(4);
-  const box = await page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
-  expect(box.h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
-  expect(box.scroll).toBeGreaterThan(box.h);
+  // The box's cap is lifted while the stack is open, as for an opened card: no card's sticky Dismiss over another's title.
+  const opened = await box();
+  expect(opened.scroll).toBeLessThanOrEqual(opened.h + 1);
+  await page.locator('.notice-stack').getByRole('button', { name: 'Hide' }).click();
+  expect((await box()).h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
 });
 
 for (const [width, height] of [[360, 760], [320, 544]]) {
