@@ -31,6 +31,8 @@ import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
 import { planWords } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
+import { readFile, DESCRIBE_S, DESCRIBE_PDF_S } from './reading.js';
+import { runningPdfPages } from '../pdf-pages.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -135,22 +137,8 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
-/**
- * How long a photo's description may take, in seconds (review A5): the same as a role waits for a model's first words (§9.6),
- * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
- */
-export const DESCRIBE_S = 30;
-/**
- * And a PDF's telling (the fix pass): its words, up to 3,000 tokens, take a slow model (a local one, at some 35 tokens a second)
- * near 90 seconds, where a photo's few sentences fit in 30. Only Kokoro and one Shiori wait for it; Koe never does.
- */
-export const DESCRIBE_PDF_S = 90;
-/** What a PDF told only up to the output limit ends with. */
-const GOES_ON = /* en */ ' …(it stops here: the PDF goes on)';
-/** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
-const DESCRIBE = /* en */ 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
-/** And for one that can't read PDFs (the second emulator pass): the PDF's own words, as annai has no PDF library (spec §7.2). */
-const DESCRIBE_PDF = /* en */ "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
+/** How long a photo's description and a PDF's reading may take (reading.js). */
+export { DESCRIBE_S, DESCRIBE_PDF_S };
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
  * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
@@ -403,8 +391,8 @@ export class Agent {
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
   /**
-   * PDFs told in words in the open conversation, by its scope and the hash of the bytes told: a second read isn't sent again. A
-   * conversation switch and Erase forget them. @type {Map<string, string>}
+   * PDFs read in the open conversation (told in words, or drawn as pages), by its scope, the hash of the bytes read and whether the
+   * model sees photos: a second read isn't sent again. A conversation switch and Erase forget them. @type {Map<string, import('./reading.js').Reading>}
    */
   #toldPdfs = new Map();
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
@@ -2235,75 +2223,48 @@ export class Agent {
   }
 
   /**
-   * A tool's photos and PDF in words, for a model that can't see photos or read PDFs (emulator pass, 5b; the second pass, a PDF):
-   * described by the utility role's models, then Main's, that can (the utility list first: a side job, like a summary, on the
-   * cheaper model); the crop when a part was asked for, as that is what the tool returned. It stops with the turn, and within
-   * DESCRIBE_S; either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   * A tool's photos and PDF for a model that can't see photos or read PDFs (emulator pass, 5b; the bookings design, goals 11 and 12):
+   * read by whoever can (reading.js), the crop when a part was asked for, as that is what the tool returned; a PDF's pages, drawn for a
+   * model that sees photos, go with the result as its photos. It stops with the turn, and within DESCRIBE_S (DESCRIBE_PDF_S for a PDF);
+   * either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
-   * @param {Map<string, string>} [failed] a helper's tellings that failed, by what was sent: not sent again in its task
+   * @param {Map<string, string>} [failed] a helper's readings that failed, by what was sent: not sent again in its task
    * @param {string} [scope] the conversation the tool ran for, its photos read for it
    */
   async #described(output, wakeId, signal, model, failed, scope = this.scope) {
-    const cfg = await this.llm.config();
-    const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
+    const sees = Boolean(model?.input?.includes('image'));
+    const reads = Boolean(model?.input?.includes('pdf'));
     /** @type {string[]} */
     const said = [];
+    /** @type {{ mediaType: string, data: string }[]} */
+    const pages = [];
     /** @param {'image' | 'pdf'} kind @param {any} m */
     const tell = async (kind, m) => {
-      const pdf = kind === 'pdf';
-      if (!roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes(kind)))) {
-        /* en */
-        said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
-        return;
-      }
       const bytes = m.data ? null : await blobBytes(this.store, scope, m.hash ?? '');
-      // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
-      // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
+      // A PDF read already in this conversation is read from that, not sent again (the fix pass): keyed by the bytes read, their
+      // own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own), and by what the model takes.
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
-      const told = pdf && key ? `${scope}\n${key}` : '';
-      if (told && this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
+      const told = kind === 'pdf' && key ? `${scope}\n${key}\n${sees ? 'sees' : 'words'}` : '';
       const tried = key ? `${kind}\n${key}` : '';
-      if (failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
-      const data = m.data ?? (bytes ? toBase64(bytes) : '');
-      const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
-      let why = '';
-      // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
-      const stop = new AbortController();
-      const end = () => stop.abort();
-      const late = setTimeout(end, (pdf ? DESCRIBE_PDF_S : DESCRIBE_S) * this.secondMs);
-      signal.addEventListener('abort', end, { once: true });
-      if (signal.aborted) end(); // stopped while the bytes were read
-      try {
-        for (const role of roles) {
-          if (stop.signal.aborted) break;
-          try {
-            /* en */
-            const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: pdf ? DESCRIBE_PDF : DESCRIBE, maxOutput: pdf ? 3000 : 600, messages: [{ role: 'user', parts: [part, { type: 'text', text: pdf ? 'Give this PDF\'s content.' : 'Describe this photo.' }] }] } });
-            /* en */
-            why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}${pdf && r.reply.stop === 'length' ? GOES_ON : ''}` : '';
-          } catch (e) {
-            /* en */
-            why ||= `It couldn't be described: ${this.#explain(e, role, true)}`;
-            continue;
-          }
-          if (why) break;
-        }
-      } finally {
-        clearTimeout(late);
-        signal.removeEventListener('abort', end);
+      let reading = told ? this.#toldPdfs.get(told) : undefined;
+      if (!reading && failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
+      if (!reading) {
+        const data = m.data ?? (bytes ? toBase64(bytes) : '');
+        reading = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
+          llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
+          secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
+        });
+        if (told && (reading.how === 'told' || reading.how === 'pages')) this.#toldPdfs.set(told, reading);
+        if (failed && tried && (reading.how === 'failed' || reading.how === 'late')) failed.set(tried, reading.text);
       }
-      /* en */
-      if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${pdf ? DESCRIBE_PDF_S : DESCRIBE_S} seconds).`;
-      if (told && why.startsWith('What it says')) this.#toldPdfs.set(told, why);
-      /* en */
-      if (!why) why = "It couldn't be described.";
-      if (failed && tried && why.startsWith("It couldn't be described")) failed.set(tried, why);
-      said.push(why);
+      said.push(reading.text);
+      if (reading.how === 'pages') pages.push(...reading.images);
     };
-    if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
-    if (output.document && !model?.input?.includes('pdf')) await tell('pdf', output.document);
+    if (!sees) for (const m of output.images ?? []) await tell('image', m);
+    if (output.document && !reads) await tell('pdf', output.document);
     const { images, document, ...rest } = output;
-    return { ...rest, ...(model?.input?.includes('image') ? { images } : {}), ...(model?.input?.includes('pdf') ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
+    const shown = [...(sees ? images ?? [] : []), ...pages];
+    return { ...rest, ...(shown.length ? { images: shown } : {}), ...(reads ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
   }
 
   /**
