@@ -33,36 +33,49 @@ export function createNotices() {
    * @type {WeakMap<HTMLElement, () => void>}
    */
   const fitters = new WeakMap();
-  /** @param {HTMLElement} node @param {HTMLElement} more */
+  /**
+   * A card in the box shows its title and every button, and none of its words behind them (the second review of phone-fixes-1: a
+   * choice that changes the user's data is never out of sight). Its words take fewer lines, down to one, while it is taller than the
+   * box; then More joins the buttons if their row stays one row, and the words go behind More (hidden to the eye only, so a screen
+   * reader still reads them); still too tall, the card grows past the quarter of the screen (cards scroll away with the page).
+   * Measured from the card's top, wherever it is scrolled. @param {HTMLElement} node @param {HTMLElement} more
+   */
   const fit = (node, more) => () => {
-    const p = node.querySelector('p');
-    if (!p || !node.offsetHeight || node.classList.contains('open')) return;
+    if (!node.offsetHeight || node.classList.contains('open')) return;
+    const top = node.scrollTop;
+    node.scrollTop = 0;
+    const words = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(':scope > p')]);
+    const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
     node.style.removeProperty('--lines');
-    node.classList.remove('brief', 'loose');
-    const acts = /** @type {HTMLElement} */ (node.querySelector('.acts'));
+    node.classList.remove('brief', 'grow');
     acts.before(more);
-    node.classList.add('clamp');
-    const long = p.scrollHeight > p.clientHeight + 1;
-    node.classList.toggle('clamp', long);
-    more.hidden = !long;
+    more.hidden = true; // measured without it: it comes back only where the words need it
+    const cut = () => words.some((p) => p.scrollHeight > p.clientHeight + 1);
     const over = () => node.scrollHeight > node.clientHeight + 1;
-    /** Whether a part of the card sits behind the sticky buttons. @param {HTMLElement} el */
-    const behind = (el) => el.getBoundingClientRect().bottom > acts.getBoundingClientRect().top + 1;
-    const moreBehind = () => !more.hidden && more.parentElement !== acts && behind(more);
-    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off).
-    for (let n = 2; long && n && over(); n--) node.style.setProperty('--lines', String(n));
-    if (long && over()) {
-      // Still too tall: More joins the buttons only if their row stays one row, and the text line goes if it or More would sit
-      // behind them, so the title and the buttons show (the review of phone-fixes-1: in Japanese the row wrapped to two and hid the title).
+    node.classList.add('clamp');
+    more.hidden = !cut();
+    node.classList.toggle('clamp', !more.hidden);
+    if (words.length && over()) {
+      node.classList.add('clamp');
+      for (let n = 2; n && over(); n--) {
+        node.style.setProperty('--lines', String(n));
+        more.hidden = !cut();
+      }
+    }
+    if (words.length && over()) {
+      more.hidden = false;
       const row = acts.offsetHeight;
       acts.append(more);
       if (acts.offsetHeight > row + 1) acts.before(more);
-      if (over() && (behind(p) || moreBehind())) node.classList.add('brief');
+      node.classList.add('brief');
     }
-    // A box too low for the title and the buttons together (a two-line title at 320 x 544, a phone on its side): the buttons follow
-    // what is shown, a scroll of the card away, rather than sit over the title.
-    const title = /** @type {HTMLElement} */ (node.querySelector('strong'));
-    if (over() && (behind(title) || moreBehind())) node.classList.add('loose');
+    if (over()) node.classList.add('grow');
+    node.scrollTop = top;
+  };
+  /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
+  const fitStack = (node) => () => {
+    node.classList.remove('grow');
+    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
   };
   addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
@@ -92,6 +105,7 @@ let lone = 0;
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
     /** @type {Stack} */
     const stack = { el, list, count, members: new Set(), said, show, all };
+    fitters.set(el, fitStack(el));
     stack.count.dataset.title = title;
     return stack;
   }
@@ -103,6 +117,7 @@ let lone = 0;
     st.el.setAttribute('aria-label', plural(n, '{0}, # card', '{0}, # cards', title));
     st.show.setAttribute('aria-label', st.list.hidden ? plural(n, 'Show the # card: {0}', 'Show the # cards: {0}', title) : plural(n, 'Hide the # card: {0}', 'Hide the # cards: {0}', title));
     st.all.setAttribute('aria-label', plural(n, 'Dismiss the # card: {0}', 'Dismiss all # cards: {0}', title));
+    fitters.get(st.el)?.();
   };
   /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
   const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
