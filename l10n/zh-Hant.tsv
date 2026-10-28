@@ -706,16 +706,16 @@ s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/cor
 1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	輔助角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 輔助).
 d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 經典沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:203	
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
-g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:29	
-2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:31	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:141	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:143	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:145	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:248	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:250	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:262	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:271	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:273	{0} = type; Note: said of a plugin, whose name is the card's title.
+g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:33	
+2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:35	{0} = res.status
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:147	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:149	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:151	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:254	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:256	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:268	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:277	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:279	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手機上，localhost 指的是手機本身。另一台電腦上的伺服器需要 https 網址：瀏覽器會攔截 https 頁面送出的普通 http 請求，所以 annai 只連線你網路上的 https 網址。一個辦法是用 Tailscale Serve，並讓手機加入你的 tailnet：在伺服器所在的電腦上執行 {0}，然後把 {1} 填給 annai。伺服器還必須允許來自 annai.guide 的 CORS。Chrome 142 及以後的版本可能會請你允許存取本機網路。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是網址：請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（http:// 只用於 localhost 或 127.0.0.1）。瀏覽器會攔截 https 頁面送出的普通 http 請求，而 annai 只連線你網路上的 https 網址，所以另一台電腦上的伺服器需要一個 https 網址。Tailscale Serve 可以提供：{0}。伺服器還必須允許來自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -740,25 +740,25 @@ aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-u
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	它不是從網址安裝的，所以 annai 沒有地方查詢更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在放的是另一個套件（{0}），所以沒有更新。如果你想要它，請移除這個，再安裝那個。	src/core/package-updates.js:58	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	這次更新會加入你尚未同意的部分：{0}。請再次檢查更新，看看它會加入什麼。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多個技能。請逐個安裝，或新增一個列出它們的 annai-plugin.json。	src/core/packages.js:333	
-is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位於 {1}，巢狀太深：annai 只讀取 zip 頂層或其唯一資料夾內的檔案。請只壓縮那個資料夾。	src/core/packages.js:341	{0} = file; {1} = folder
-1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位於 {1}，與其他檔案並列：annai 只讀取 zip 頂層或其唯一資料夾內的檔案。請只壓縮那個資料夾。	src/core/packages.js:342	{0} = file; {1} = folder
-1svq3gn	ok	there is no {0} or {1} in this package	此套件中沒有 {0} 或 {1}	src/core/packages.js:344	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解壓縮後超過 {0}	src/core/packages.js:362	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	這不是網址。請貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/core/packages.js:442	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	對於 GitHub 上的資料夾，請使用其 SKILL.md 或 annai-plugin.json 的網址。	src/core/packages.js:478	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 無法連線到 {0}。請檢查網址，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:487	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 傳來的 zip 無法被 annai 開啟：{1}	src/core/packages.js:500	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	該套件的檔案超過 {0} 個；annai 從網址安裝的套件最多 {1} 個檔案。請改用 zip。	src/core/packages.js:516	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {3} 中列出的檔案 {2} 傳回了 {1}。	src/core/packages.js:528	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	annai 無法從 {1} 讀取 {0}，這是 {2} 中列出的檔案。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:530	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會查詢 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:600	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:610	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:651	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:652	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:653	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:654	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	你的搜尋會傳送到的網址：{0}	src/core/packages.js:654	{0} = o; Note: one of a list of what an update adds.
+1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多個技能。請逐個安裝，或新增一個列出它們的 annai-plugin.json。	src/core/packages.js:338	
+is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位於 {1}，巢狀太深：annai 只讀取 zip 頂層或其唯一資料夾內的檔案。請只壓縮那個資料夾。	src/core/packages.js:346	{0} = file; {1} = folder
+1k2igo9	ok	its {0} is in {1}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	它的 {0} 位於 {1}，與其他檔案並列：annai 只讀取 zip 頂層或其唯一資料夾內的檔案。請只壓縮那個資料夾。	src/core/packages.js:347	{0} = file; {1} = folder
+1svq3gn	ok	there is no {0} or {1} in this package	此套件中沒有 {0} 或 {1}	src/core/packages.js:349	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+ai2siz	ok	is too large: it unpacks to more than {0}	太大了：解壓縮後超過 {0}	src/core/packages.js:367	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	這不是網址。請貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/core/packages.js:447	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	對於 GitHub 上的資料夾，請使用其 SKILL.md 或 annai-plugin.json 的網址。	src/core/packages.js:483	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	annai 無法連線到 {0}。請檢查網址，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:492	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 傳來的 zip 無法被 annai 開啟：{1}	src/core/packages.js:505	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	該套件的檔案超過 {0} 個；annai 從網址安裝的套件最多 {1} 個檔案。請改用 zip。	src/core/packages.js:521	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {3} 中列出的檔案 {2} 傳回了 {1}。	src/core/packages.js:533	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	annai 無法從 {1} 讀取 {0}，這是 {2} 中列出的檔案。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:535	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會查詢 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:605	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:615	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:656	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:657	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:658	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:659	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	你的搜尋會傳送到的網址：{0}	src/core/packages.js:659	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此瀏覽器無法轉換 {0}，因此 annai 保留了原樣。它可能只能在 Safari 中顯示。	src/core/photos.js:135	{0} = name
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	時區「{0}」不是 annai 認識的時區；依 {1} 顯示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此檔案不是 annai 能開啟的外掛程式套件：{0}	src/core/plugins.js:176	{0} = why
@@ -1121,21 +1121,21 @@ uqmge3	ok	Open the browser menu (⋮).	開啟瀏覽器選單（⋮）。	src/ui/
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 可能會在 7 天未造訪後清除你的旅行，而且主畫面上的 App 會另外儲存旅行：在這裡開始的旅行不會出現在那裡。請將 annai 加入主畫面，並在那裡開始旅行。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空間不足時，瀏覽器可能會清除你的旅行。請安裝 annai，讓旅行安全儲存。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	檢視步驟	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:204	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:218	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:222	{0} = name
-1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:237	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:241	
-v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:244	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
-1c7q9dt	ok	Miles	英里	src/ui/languages.js:250	Note: A choice of Distances.
-86ef5k	ok	Kilometres	公里	src/ui/languages.js:250	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
-r122ro	ok	Automatic	自動	src/ui/languages.js:250	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	ok	Distances	距離單位	src/ui/languages.js:266	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:279	{0} = name
-dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:279	
-8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:286	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:287	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:288	
+n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:211	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:225	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:229	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:244	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:248	
+v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:251	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:257	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:257	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自動	src/ui/languages.js:257	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離單位	src/ui/languages.js:273	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:286	{0} = name
+dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:286	
+8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:293	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:294	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:295	
 15kmah9	ok	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	模擬 · 步行中	src/ui/live-chip.js:22	
@@ -1261,26 +1261,26 @@ fzpt3w	ok	Reload now	立即重新載入	src/ui/plugin-cards.js:31
 1vgaaah	ok	It didn't start the last few times annai opened: {0}	最近幾次開啟 annai 時，它都沒有啟動：{0}	src/ui/plugin-cards.js:46	{0} = why
 11arkb9	ok	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:47	
 1jz4o49	ok	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:47	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:74	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:74	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:75	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:75	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	外掛程式更新已就緒	src/ui/plugin-updates.js:81	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什麼都不會改變。正在執行的外掛程式更新後，會在 annai 重新啟動前保持關閉。	src/ui/plugin-updates.js:82	
-1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:82	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	更新	src/ui/plugin-updates.js:83	
-1agymuw	ok	Some plugins weren't updated	有些外掛程式沒有更新	src/ui/plugin-updates.js:118	
-1vsv4vh	ok	Restart annai to use the new versions	重新啟動 annai 以使用新版本	src/ui/plugin-updates.js:122	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}無法使用。	src/ui/plugin-updates.js:123	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:123	
-nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:124	
-1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:127	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 帶來新內容	src/ui/plugin-updates.js:143	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:144	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	只有在你信任它的來源時才更新。	src/ui/plugin-updates.js:144	
-1dfe53s	ok	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:145	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:147	
-c9wfke	ok	Not now	現在不要	src/ui/plugin-updates.js:148	Note: 現在不要, as Taiwan's iPhone says Not Now.
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:77	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:77	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:78	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:78	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	外掛程式更新已就緒	src/ui/plugin-updates.js:84	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什麼都不會改變。正在執行的外掛程式更新後，會在 annai 重新啟動前保持關閉。	src/ui/plugin-updates.js:85	
+1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:85	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	更新	src/ui/plugin-updates.js:86	
+1agymuw	ok	Some plugins weren't updated	有些外掛程式沒有更新	src/ui/plugin-updates.js:121	
+1vsv4vh	ok	Restart annai to use the new versions	重新啟動 annai 以使用新版本	src/ui/plugin-updates.js:125	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}無法使用。	src/ui/plugin-updates.js:126	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:126	
+nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:127	
+1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:130	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 帶來新內容	src/ui/plugin-updates.js:146	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:147	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	只有在你信任它的來源時才更新。	src/ui/plugin-updates.js:147	
+1dfe53s	ok	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:148	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:150	
+c9wfke	ok	Not now	現在不要	src/ui/plugin-updates.js:151	Note: 現在不要, as Taiwan's iPhone says Not Now.
 1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、檔案、設定和金鑰都儲存在此裝置的這個瀏覽器中。annai 沒有帳號，也沒有任何 annai 的伺服器儲存你的旅行或金鑰。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只傳送到需要的地方。	src/ui/privacy.js:22	
