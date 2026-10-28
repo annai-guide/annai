@@ -109,6 +109,8 @@ test('which translation the screens use: none in its own language, else the one 
   assert.equal(translationFor(TIDES(), 'zh-Hans'), null);
   assert.equal(translationFor(TIDES({ l10n: ['zh'] }), 'zh-Hans'), 'zh', 'the same language and script');
   assert.equal(translationFor(TIDES({ l10n: ['zh-Hant'] }), 'zh-Hans'), null, 'Traditional is not Simplified');
+  assert.equal(translationFor(TIDES({ language: 'yue-Hant-HK', l10n: ['zh-Hant'] }), 'zh-Hant'), 'zh-Hant', 'Cantonese is not the Traditional Chinese a plugin translates into (Step on ae4c81db)');
+  assert.equal(translationFor(TIDES({ l10n: ['yue-Hant'] }), 'zh-Hant'), null, 'nor a Cantonese file the Traditional Chinese screens read');
   assert.equal(translationFor(TIDES({ language: 'ja', l10n: ['en'] }), 'ja'), null, 'written in Japanese');
   assert.equal(translationFor(TIDES({ language: 'ja', l10n: ['en'] }), 'en'), 'en');
 });

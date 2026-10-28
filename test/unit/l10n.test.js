@@ -158,9 +158,10 @@ test('a Cantonese phone opens in Traditional Chinese, the Chinese it writes, wit
   assert.deepEqual(chooseTag(null, ['yue-HK'], all), { tag: 'zh-Hant', region: 'HK' });
   assert.deepEqual(chooseTag(null, ['yue-Hant-HK', 'en-US'], all), { tag: 'zh-Hant', region: 'HK' });
   assert.deepEqual(chooseTag(null, ['zh-yue'], all), { tag: 'zh-Hant', region: '' });
-  assert.ok(sameLanguage('yue-Hans', 'zh-Hans'), 'Cantonese written in Simplified is Simplified');
-  assert.ok(!sameLanguage('yue-HK', 'zh-Hans'));
-  assert.ok(!sameLanguage('yue', 'ja'));
+  assert.deepEqual(chooseTag(null, ['yue-CN'], all), { tag: 'zh-Hans', region: 'CN' }, 'Cantonese written in Simplified is Simplified');
+  assert.deepEqual(chooseTag(null, ['yue-Hans'], all), { tag: 'zh-Hans', region: '' });
+  assert.deepEqual(chooseTag(null, ['yue-HK'], ['en', 'ja']), { tag: 'en', region: '' });
+  assert.ok(!sameLanguage('yue-HK', 'zh-Hant'), 'only the screens\' choice reads Cantonese as Chinese: a plugin\'s Cantonese is not its Chinese (Step on ae4c81db)');
 });
 
 test('an unfinished language is never picked for the user, only by them', () => {

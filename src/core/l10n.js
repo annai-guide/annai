@@ -42,22 +42,31 @@ export function key(source, context) {
   for (const b of new TextEncoder().encode(context ? `${context}\u0001${source}` : source)) n = Math.imul(n ^ b, 0x01000193);
   return (n >>> 0).toString(36);
 }
-/** A tag's written language and script: Cantonese is written Chinese (yue-HK is zh-Hant; zh-yue is yue). @param {string} tag */
-function written(tag) {
-  const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue')).maximize();
-  return `${l.language === 'yue' ? 'zh' : l.language}-${l.script}`;
-}
-/** Whether two tags are one written language and script (zh-TW is zh-Hant, not zh-Hans; so is yue-HK). @param {string} a @param {string} b */
+/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
 export function sameLanguage(a, b) {
-  try { return written(a) === written(b); } catch { return false; /* not a language tag */ }
+  try {
+    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
+    return x.language === y.language && x.script === y.script;
+  } catch { return false; /* not a language tag */ }
+}
+/**
+ * A phone's language as the screens read it: Cantonese is written Chinese, by its script, with its region (yue-HK is zh-Hant-HK,
+ * yue-CN zh-Hans-CN; zh-yue is yue). Only for choosing the screens: a plugin's Cantonese is not its Chinese. @param {string} tag
+ */
+export function screensTag(tag) {
+  try {
+    const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue'));
+    return l.language === 'yue' ? new Intl.Locale('zh', { script: l.maximize().script, region: l.region }).toString() : tag;
+  } catch { return tag; /* not a language tag */ }
 }
 /**
  * The screens' language at the start, and the phone's region for it. own: the device's choice; offered: what it may be; shipped: what
  * the phone's languages are matched against. A choice no longer offered is as none.
- * @param {string | null | undefined} own @param {readonly string[]} phone @param {readonly string[]} offered @param {readonly string[]} [shipped]
+ * @param {string | null | undefined} own @param {readonly string[]} phones the phone's languages @param {readonly string[]} offered @param {readonly string[]} [shipped]
  * @returns {{ tag: string, region: string }}
  */
-export function chooseTag(own, phone, offered, shipped = offered) {
+export function chooseTag(own, phones, offered, shipped = offered) {
+  const phone = phones.map(screensTag);
   const regionOf = (/** @type {string} */ tag) => {
     for (const wanted of phone) if (sameLanguage(wanted, tag)) { try { return new Intl.Locale(wanted).region ?? ''; } catch { return ''; } }
     return '';
