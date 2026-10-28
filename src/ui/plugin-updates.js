@@ -119,7 +119,7 @@ export async function applyUpdates(ctx, updates, env = {}) {
       tone: 'warn',
       title: t`Restart annai to use the new versions`,
       body: sentences(t`The update is installed and runs the next time annai starts.`, t`Until then, ${list(waiting)} can't be used.`),
-      actions: [{ label: t`Restart now`, primary: true, run: env.reload ?? (() => location.reload()) }],
+      actions: [{ label: t`Restart now`, primary: true, run: () => { env.reload?.(); } }],
     });
   } else if (!failed.length && applied) {
     ctx.notices.toast(t`Plugins updated.`);
