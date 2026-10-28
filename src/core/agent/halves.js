@@ -59,6 +59,8 @@ const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 /** The key of Kokoro's card for a turn its models all failed. */
 const KOKORO_CARD = 'model:kokoro';
+/** The key of the card for both halves' models failing. */
+const BOTH_CARD = 'model:both';
 
 export class Channel {
   /** @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void> }} c */
@@ -266,12 +268,16 @@ export class Halves {
     // Koe's quick tools are Shiori's own, by name: Kokoro's (timers, recall), else the plugins'.
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
     this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null)), ALREADY_TOLD]);
-    // Kokoro's failure card is its own: only its good turn takes it down, never Koe's (the review of phone-fixes-1).
+    // Kokoro's failure card is its own: only its good turn takes it down, never Koe's (the review of phone-fixes-1). The card for both
+    // halves goes at either half's good turn (its second review).
     const own = (/** @type {Agent} */ a, /** @type {string} */ key) => (a === this.kokoro && key === 'model' ? KOKORO_CARD : key);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
       a.on('notice', (n) => this.#notice(n.key ? { ...n, key: own(a, n.key) } : n));
-      a.on('clear', (key) => this.#emit('clear', own(a, key)));
+      a.on('clear', (key) => {
+        this.#emit('clear', own(a, key));
+        if (key === 'model') this.#emit('clear', BOTH_CARD);
+      });
       a.on('state', (s) => this.#stateOf(a, s));
     }
     this.kokoro.on('open', (x) => this.#emit('open', x));

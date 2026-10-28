@@ -862,3 +862,25 @@ test("Koe's call cut for a second note counts as a step of its wake: steps per w
   assert.equal(stopped.length, 1, "Koe's wake stopped at its budget");
   assert.ok(!(await shown(k)).some(([, , text]) => /Tap Trips/.test(text)));
 });
+
+for (const koeFirst of [true, false]) {
+  test(`the card for both halves failing has a key of its own, taken down by either half's next good turn (Koe failing ${koeFirst ? 'first' : 'second'}; the second review of phone-fixes-1)`, async (t) => {
+    useClock(t);
+    const say = (/** @type {string} */ text) => calls(['speak', { text }]);
+    const k = await agentKit([[{ ...(koeFirst ? { delayMs: 40 } : {}), error: 'auth', message: 'bad key' }, say('Back now.'), say('Still here.')]], {
+      koe: { type: [{ ...(koeFirst ? {} : { delayMs: 40 }), error: 'timeout', message: 'No output started in time.' }] },
+    });
+    /** @type {Map<any, any>} */
+    const up = new Map();
+    k.agent.on('notice', (/** @type {any} */ c) => up.set(c.key, c));
+    k.agent.on('clear', (/** @type {any} */ key) => up.delete(key));
+    k.agent.send('What is Bixby Bridge? One sentence.');
+    await k.agent.idle();
+    assert.deepEqual([...up.keys()], ['model:both']);
+    // Kokoro works again; Koe still rests and has no card of its own.
+    k.llm.bench.clear('m-0');
+    k.agent.send('Are you there?');
+    await k.agent.idle();
+    assert.deepEqual([...up.keys()], [], 'the card for both is down');
+  });
+}

@@ -1955,7 +1955,8 @@ export class Agent {
     if (quiet || this.#photoCard === wakeId) {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
-    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why), key: 'model' });
+    // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
+    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why), key: why.halves ? 'model:both' : 'model' });
     // The log keeps why as data, for the Conversation's words, and annai's English for the Trace.
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, why, message: whyWords(why, true), ...(quiet ? { quiet: true } : {}) } });
   }
