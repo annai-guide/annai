@@ -220,6 +220,24 @@ test("a model added by id or from a list starts with its ability's modelDefaults
   await assert.rejects(addModelById(ctx, claude, 'voice', 'x'), /ability/);
 });
 
+test("a default new to an ability's modelDefaults reaches the models added from its list or by id before it, unless the user set that field (phone-fixes-1 item 2: Claude read only text)", async () => {
+  const ctx = await setup();
+  const claude = await addProvider(ctx, ANTHROPIC_SRC, { key: 'sk-ant' });
+  const model = async (/** @type {string} */ id) => modelOf((await readConfig(ctx.ws)).models[id]);
+  const listed = await addListedModel(ctx, claude, 'chat', { providerId: 'claude-sonnet-6', name: 'Claude Sonnet 6', contextWindow: 1000 });
+  const byId = await addModelById(ctx, claude, 'chat', 'claude-haiku-6');
+  const mine = await addListedModel(ctx, claude, 'chat', { providerId: 'claude-opus-6', name: 'Claude Opus 6' });
+  const rec = (await readConfig(ctx.ws)).models[mine];
+  await saveModel(ctx.ws, { ...rec, user: { input: ['text'] } });
+  assert.deepEqual((await model(listed)).input, ['text'], 'before: text only');
+  const next = bumped(ANTHROPIC_SRC, '1.1.0', (p) => { p.abilities.chat.modelDefaults.input = ['text', 'image', 'pdf']; p.abilities.chat.modelDefaults.cacheTtls = ['5m']; });
+  assert.equal(await syncProviders(ctx, [next]), 1);
+  assert.deepEqual((await model(listed)).input, ['text', 'image', 'pdf']);
+  assert.deepEqual((await model(byId)).input, ['text', 'image', 'pdf']);
+  assert.deepEqual((await model(mine)).input, ['text'], "the user's own choice stays");
+  assert.deepEqual([(await model(listed)).cacheTtls, (await model(listed)).contextWindow], [['5m', '1h'], 1000], 'a default the model had already stays as it started');
+});
+
 test('Custom provider: abilities start off; an ability added on with its own address keeps it', async () => {
   const ctx = await setup();
   const id = await addProvider(ctx, ANOTHER_SRC, { name: 'maiGo', baseUrl: 'https://router.example/v1', key: 'sk-m', abilities: { 'chat-completions': { on: true }, voice: { on: true, baseUrl: 'https://voice.example/v1' } } });
