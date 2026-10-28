@@ -187,7 +187,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 45159,
+      "size": 45156,
       "requires": [],
       "catchAll": true,
       "provides": {},
@@ -196,7 +196,7 @@
         "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
         "l10n/ja.json": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
         "l10n/zh-Hans.json": "41efd6d62eb08676ec4ddbc45020bddeaa0aafe561de265aecd009773d9560a0",
-        "l10n/zh-Hant.json": "47bbe4d0fde4dc59d75e54bc39235f39a8c374c51af312ace7f210fec84a7915",
+        "l10n/zh-Hant.json": "7a36c6b16d4d69bc8b21c4f6190faa17bad16c7842269cd2716d885a71ec9d79",
         "probe.js": "2ee480d300a84e152a42f1cf6fbbfdcd561ac9f102e7526fe53763edc4661b6d"
       }
     },
@@ -284,7 +284,7 @@
         "annai-plugin.json": "3f997815ea06d319230b7616e112e3e010fb0161869dbc68d9c299b13258c545",
         "l10n/ja.json": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
         "l10n/zh-Hans.json": "002febb9ec5463695956e7505c2cc8ae71e55e07ee38d8f15c2b82bbd1688f5f",
-        "l10n/zh-Hant.json": "54fe5d02749eea0f903072a4a514d5b511fef284d4f0733c5b89c36977b890d9"
+        "l10n/zh-Hant.json": "15fe0d487735237c56d5325c3c3cf4fa67ff05f1bbe5c1e48344cb852ec74b6a"
       }
     },
     {
@@ -337,7 +337,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 8424,
+      "size": 8439,
       "requires": [
         {
           "id": "chat-completions",
@@ -350,7 +350,7 @@
         "index.js": "a21970b031a674e97b6e9e1d573ae6a360519989015ead689fe86f13229c32a7",
         "l10n/ja.json": "361425bae75413a650931ae2dac1a74847a06bf3a27628364e79e1644865a032",
         "l10n/zh-Hans.json": "33368b043403032c695239cbd9088b898a6cdf9789ae7a656985f138c610aa5f",
-        "l10n/zh-Hant.json": "6652c7740e00034311e9d3180f26040aecf01da7db92572b10a29c8ae872d6f5"
+        "l10n/zh-Hant.json": "d017cc4a6f8d99a34a4e2c7bd541f99aa10b7b7ebb0cab51094f19a21d849a97"
       }
     },
     {
@@ -366,7 +366,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 6038,
+      "size": 6047,
       "requires": [
         {
           "id": "chat-completions",
@@ -379,7 +379,7 @@
         "index.js": "1ca16151b107d03d0c02eae5e7dc858fb9be0cbf6036efe23205e2cb61799451",
         "l10n/ja.json": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
         "l10n/zh-Hans.json": "2bb3e10f94c59f4ec281f53771316a159c7203eaf721af770c875789f29f59f6",
-        "l10n/zh-Hant.json": "96b252b04a5af953adf47ba5d9d1bf6d279f51c2f67e8f03e6c147e01f75d320"
+        "l10n/zh-Hant.json": "0571d521cce117e57de4e0a6d665612ca4d402725a9241a226e8121a5bf53422"
       }
     },
     {
@@ -412,7 +412,7 @@
         "annai-plugin.json": "1c01d28f14d29f1b1e2682c7185ad1d2e6277622c130800a67ef569db1e55bf9",
         "l10n/ja.json": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
         "l10n/zh-Hans.json": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9",
-        "l10n/zh-Hant.json": "5ab1f3dd8564d9a839996c289bab6fbd44ca16025e4c9269d798d33eeb3d1661"
+        "l10n/zh-Hant.json": "57be6a1d677d9e751acab628e566b9149ba8fd30912cb4aae328c785316836e0"
       }
     },
     {
@@ -456,7 +456,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 8055,
+      "size": 8064,
       "requires": [
         {
           "id": "chat-completions",
@@ -469,7 +469,7 @@
         "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb",
         "l10n/ja.json": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
         "l10n/zh-Hans.json": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825",
-        "l10n/zh-Hant.json": "26490e13043658a4b30ebb40f1ecd91cabced684e5861ec068d52b6895fd79c5"
+        "l10n/zh-Hant.json": "91476931f93626cce12d3a062f997ce890ab858db48a5a58f885716d05a1adac"
       }
     },
     {
@@ -504,7 +504,7 @@
         "annai-plugin.json": "0b970a7668f7a0625d01106780c265260c7320f87de592a2c777275864500fbd",
         "l10n/ja.json": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
         "l10n/zh-Hans.json": "60047f27be782a7900e2d45beab643e14bf63d000802b2d0e9abfa877162c4be",
-        "l10n/zh-Hant.json": "1ab17411055e865fa04fa1cd52eaa7e9ca546f247b116365b466e032000d57b5"
+        "l10n/zh-Hant.json": "d8b3bc0257776a71f89b845a94dfb9411cf8c238bd1eff4c9632909267fee5fe"
       }
     },
     {
@@ -522,7 +522,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 46146,
+      "size": 46122,
       "requires": [
         {
           "id": "chat-completions",
@@ -540,7 +540,7 @@
         "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb",
         "l10n/ja.json": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
         "l10n/zh-Hans.json": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7",
-        "l10n/zh-Hant.json": "01c49762e7d2667f27fd9150a1b3670fbd545c9019cd8c155930b06792497473"
+        "l10n/zh-Hant.json": "8dd4ddc17d98e0f6b7473a8c587fc41f36eb32c357eacb403c92bc04a57d1d14"
       }
     },
     {
@@ -584,7 +584,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 4015,
+      "size": 4024,
       "requires": [
         {
           "id": "chat-completions",
@@ -596,7 +596,7 @@
         "annai-plugin.json": "ae63abe36ba9fb1cad07d07706dd568978c539a55d844c5e158649ec9f81eff0",
         "l10n/ja.json": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
         "l10n/zh-Hans.json": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665",
-        "l10n/zh-Hant.json": "31f6c6b7bee8341326ea3ac3d1fd4af317ab31426de0d960a9a7e9fa424ebdfa"
+        "l10n/zh-Hant.json": "ed6f8629475ad83e31d73f292d397d2e93a8f83876caee9754223825f6534ddf"
       }
     },
     {
@@ -613,7 +613,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 5381,
+      "size": 5390,
       "requires": [
         {
           "id": "chat-completions",
@@ -625,7 +625,7 @@
         "annai-plugin.json": "6759703d5fc6d06194feb2c8294a15d7f3d77770a1df1209f4e804ee72a7c55d",
         "l10n/ja.json": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
         "l10n/zh-Hans.json": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916",
-        "l10n/zh-Hant.json": "6ca470ec98fda1a9d7f9051c5194defb7888728940301efa0c95c2fb172490c9"
+        "l10n/zh-Hant.json": "b3b0051d42e846d04814ebe2ddc865412bbe7ea395e045c6fbb9e16de884294c"
       }
     },
     {
@@ -647,7 +647,7 @@
         "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb",
         "l10n/ja.json": "ad3f3e15d00f851a771d5cf8912c0466257bbb7fa05b7ec69093a4b831221df8",
         "l10n/zh-Hans.json": "2f4d8f6cfbe005329a034ac011752b06a7fe22538a6c0eba646aa87f2bf78308",
-        "l10n/zh-Hant.json": "73f2ce3e6c9bed11ae1376b08aa43dd45df90ebb0689d6d8162da98a5e89f5e8"
+        "l10n/zh-Hant.json": "0e8e0dee2bde5c464e4264f7eb016bca91e7bbeaac8360289be3bbc47135e03d"
       }
     },
     {
@@ -690,7 +690,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 5803,
+      "size": 5800,
       "requires": [],
       "provides": {
         "search": [
@@ -702,7 +702,7 @@
         "index.js": "fdbe0c532f34b2b28e76d35c6331d27297171ccadfd5059c835a4417cfb4a73d",
         "l10n/ja.json": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
         "l10n/zh-Hans.json": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2",
-        "l10n/zh-Hant.json": "73a6790d268c86933143a7a9de0960ea8a33fe991b5981169816933ac584a390"
+        "l10n/zh-Hant.json": "240e0259328ccdfd9aba0a487df90e6f289c44189664d0155fcdc4a4c6e1b18f"
       }
     },
     {
@@ -813,7 +813,7 @@
         "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541",
         "l10n/ja.json": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
         "l10n/zh-Hans.json": "74e81a5c4fb04bf50536a35a19f5e000519621836e5da193d23aabc96c43f2d9",
-        "l10n/zh-Hant.json": "9c445830b286a68299d62e53c70773791eb4ceb390419158a117e32581e20a55"
+        "l10n/zh-Hant.json": "d60631aa9e76a58337270e7ad3d4c3b9eeb807ed079d297b05457f948871841e"
       }
     },
     {
@@ -840,7 +840,7 @@
         "index.js": "5187580af7d43c2a1e78ea095abeb8ac65c2834d09270d81031b74ecff2dd190",
         "l10n/ja.json": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
         "l10n/zh-Hans.json": "61c1f1f7a4db024c966ef9661fbcba41b916f50c22e6d75af593bd9bda3b0383",
-        "l10n/zh-Hant.json": "a08390c4ccdf9ebc2b50680b5dd795ac9b1e1535e2dce535c5e4cf881bba1b5d"
+        "l10n/zh-Hant.json": "b9a4af69b84e530b0ba51f7bc469172fbe6ebfe154df71e9681ddd32675f5ed0"
       }
     },
     {
@@ -881,7 +881,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16657,
+      "size": 16658,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -893,7 +893,7 @@
         "index.js": "7c361a333c64aa59ab2ae3e80df2ac3e762cd45ebebf04d42e57ecd0c5f5e3f0",
         "l10n/ja.json": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f",
         "l10n/zh-Hans.json": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926",
-        "l10n/zh-Hant.json": "e5dc141973caad972925b7e76e687de49e17ef64c1078a343763fc8546bd3fcb"
+        "l10n/zh-Hant.json": "3cbaea7d215e2ffd52176a18b3677a1388fbc8345df0f4fafbce4cc55ee9f64a"
       }
     }
   ]

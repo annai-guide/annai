@@ -3,7 +3,7 @@
     "description": "LM Studio 伺服器上的模型。",
     "name": "LM Studio",
     "provider.abilities.chat.note": "用「取得模型清單」新增模型。對於在 LM Studio 中已載入的模型，會讀取它載入時的上下文長度，以及它能否讀圖、是否為工具呼叫訓練過；未載入的模型請在其頁面上設定上下文視窗。LM Studio 沒有說明如何開關思考：如果模型會思考，請在其頁面上設定推理等級。",
-    "provider.note": "在 LM Studio 的伺服器設定中開啟 Enable CORS，讓 annai 的頁面能呼叫它；如果要從另一台電腦存取，還要開啟 Serve on Local Network。除非改過，它監聽 1234 埠。如果你開啟了它的身分驗證，請把它的 API 權杖填為金鑰。"
+    "provider.note": "在 LM Studio 的伺服器設定中開啟 Enable CORS，讓 annai 的頁面能呼叫它；如果要從另一台電腦存取，還要開啟 Serve on Local Network。除非改過，它在 1234 連接埠監聽。如果你開啟了它的身分驗證，請把它的 API 權杖填為金鑰。"
   },
   "messages": {}
 }
