@@ -1,5 +1,5 @@
 /**
- * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
+ * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…" (&from= the Plan, booking or Now screen its crumb goes back to), "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
  * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
  * "#/trip/<id>/ext/<plugin>/<tab>",
  * "#/welcome" (and "#/welcome/2" to 6), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental", "#/updates",
