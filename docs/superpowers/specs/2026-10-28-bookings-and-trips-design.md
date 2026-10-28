@@ -1,6 +1,6 @@
 # Bookings and trips: hand Shiori your bookings, and she does the rest
 
-Date: 2026-10-28. Status: design, for the user's approval. Nothing here is built before they approve it.
+Date: 2026-10-28. Status: approved by the user on 2026-10-28 ("Approve as written").
 
 ## Why
 
