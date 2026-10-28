@@ -569,30 +569,30 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 1acz027	ok	just now	たった今	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:405	Note: names what to tap (the dock's Shiori), as the English does.
-3fqfy0	ok	Languages	言語	src/core/languages.js:318	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:319	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
-1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:320	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかを Shiori に伝えます。	src/core/languages.js:321	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:322	
-17rv3f8	ok	Add	追加	src/core/languages.js:323	
-9c35st	ok	Remove	削除	src/core/languages.js:324	
-oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:325	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:327	{0} = name; {1} = own
-18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:328	{0} = name
-zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:328	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
-14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:329	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:329	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:330	{0} = name
-p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:330	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:332	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:333	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:335	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:335	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:336	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:336	
-1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:337	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:338	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:339	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	言語	src/core/languages.js:320	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:321	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:322	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかを Shiori に伝えます。	src/core/languages.js:323	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:324	
+17rv3f8	ok	Add	追加	src/core/languages.js:325	
+9c35st	ok	Remove	削除	src/core/languages.js:326	
+oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:327	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:329	{0} = name; {1} = own
+18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:330	{0} = name
+zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:330	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:331	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:331	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:332	{0} = name
+p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:332	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:334	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:335	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:337	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:337	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:338	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:338	
+1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:339	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:340	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:341	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time

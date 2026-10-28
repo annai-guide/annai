@@ -569,30 +569,30 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:405	Note: The dock's Shiori button: tap it to talk over her.
-3fqfy0	ok	Languages	語言	src/core/languages.js:318	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:319	
-1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:320	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	第一種語言是手機語音輸入辨識的語言；順序告訴 Shiori 你更偏好哪種。	src/core/languages.js:321	Note: under "Languages you speak" (你說的語言); Phone dictation as Settings → Voice's row (手機語音輸入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	新增語言	src/core/languages.js:322	
-17rv3f8	ok	Add	新增	src/core/languages.js:323	
-9c35st	ok	Remove	移除	src/core/languages.js:324	Note: 移除 (take off the list) over 刪除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:325	{0} = name; Note: {0} is the language's name in Chinese (英語), so no spaces around it.
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:327	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已新增{0}	src/core/languages.js:328	{0} = name
-zu7130	ok	Added {0}. Saved	已新增{0}，已儲存	src/core/languages.js:328	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已儲存	src/core/languages.js:329	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:329	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已儲存	src/core/languages.js:330	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:330	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢復用你對她說的語言回答	src/core/languages.js:332	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已儲存；Shiori 恢復用你對她說的語言回答	src/core/languages.js:333	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:335	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已儲存	src/core/languages.js:335	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你對她說的語言回答。已儲存	src/core/languages.js:336	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說的語言回答	src/core/languages.js:336	
-1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:337	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:338	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:339	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	語言	src/core/languages.js:320	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:321	
+1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:322	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	第一種語言是手機語音輸入辨識的語言；順序告訴 Shiori 你更偏好哪種。	src/core/languages.js:323	Note: under "Languages you speak" (你說的語言); Phone dictation as Settings → Voice's row (手機語音輸入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	新增語言	src/core/languages.js:324	
+17rv3f8	ok	Add	新增	src/core/languages.js:325	
+9c35st	ok	Remove	移除	src/core/languages.js:326	Note: 移除 (take off the list) over 刪除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:327	{0} = name; Note: {0} is the language's name in Chinese (英語), so no spaces around it.
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:329	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已新增{0}	src/core/languages.js:330	{0} = name
+zu7130	ok	Added {0}. Saved	已新增{0}，已儲存	src/core/languages.js:330	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已儲存	src/core/languages.js:331	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:331	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已儲存	src/core/languages.js:332	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:332	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢復用你對她說的語言回答	src/core/languages.js:334	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已儲存；Shiori 恢復用你對她說的語言回答	src/core/languages.js:335	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:337	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已儲存	src/core/languages.js:337	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你對她說的語言回答。已儲存	src/core/languages.js:338	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說的語言回答	src/core/languages.js:338	
+1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:339	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:340	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:341	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time

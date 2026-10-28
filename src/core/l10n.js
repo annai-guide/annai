@@ -42,12 +42,14 @@ export function key(source, context) {
   for (const b of new TextEncoder().encode(context ? `${context}\u0001${source}` : source)) n = Math.imul(n ^ b, 0x01000193);
   return (n >>> 0).toString(36);
 }
-/** Whether two tags are one language and script (zh-TW is zh-Hant, not zh-Hans). @param {string} a @param {string} b */
+/** A tag's written language and script: Cantonese is written Chinese (yue-HK is zh-Hant; zh-yue is yue). @param {string} tag */
+function written(tag) {
+  const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue')).maximize();
+  return `${l.language === 'yue' ? 'zh' : l.language}-${l.script}`;
+}
+/** Whether two tags are one written language and script (zh-TW is zh-Hant, not zh-Hans; so is yue-HK). @param {string} a @param {string} b */
 export function sameLanguage(a, b) {
-  try {
-    const [x, y] = [new Intl.Locale(a).maximize(), new Intl.Locale(b).maximize()];
-    return x.language === y.language && x.script === y.script;
-  } catch { return false; /* not a language tag */ }
+  try { return written(a) === written(b); } catch { return false; /* not a language tag */ }
 }
 /**
  * The screens' language at the start, and the phone's region for it. own: the device's choice; offered: what it may be; shipped: what

@@ -237,6 +237,14 @@ test('tagOf: under Traditional Chinese screens, Han that does not tell its scrip
   assert.equal(tagOf('直角三角形的骨架', only(['yue']), false, 'zh-Hant'), 'yue-Hant');
 });
 
+test('tagOf: a phone locale that names its script is that script, whatever its region: zh-Hans-HK is Simplified (Step)', () => {
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-Hans-HK'), false, 'zh-Hans'), 'zh-Hans');
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-Hans-TW'), false, 'zh-Hans'), 'zh-Hans');
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-HK'), false, 'zh-Hans'), 'zh-Hant', 'a region alone still says Traditional');
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-MO'), false, 'en'), 'zh-Hant');
+  assert.equal(tagOf('骨架', languageSettings({}, 'zh-SG'), false, 'en'), 'zh-Hans');
+});
+
 test('tagOf: Shiori\'s own lines take the answer language only where the text agrees with it', () => {
   const answers = (/** @type {string} */ id, /** @type {string[]} */ spoken = ['en', 'zh', 'ja']) => languageSettings({ languages: { spoken, answer: id } }, 'en-US');
   assert.equal(tagOf('骨架', answers('ja'), true), 'ja', 'Han alone, with Japanese fixed, is Japanese though Chinese is listed too');
