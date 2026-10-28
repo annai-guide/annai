@@ -314,10 +314,16 @@ test("while Settings changes the screens' language, a check keeps the words fetc
   const before = nextScreens();
   const done = changingScreens('zh-Hans');
   assert.equal(nextScreens(), 'zh-Hans');
-  await fetchTranslations(k.host, { tag: 'zh-Hans', next: 'zh-Hans', fetch: k.s.fetch });
+  // As Settings fetches: no next, so it drops nothing while the change may yet fail.
+  await fetchTranslations(k.host, { tag: 'zh-Hans', fetch: k.s.fetch });
+  assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`]);
   // A check comes back meanwhile (coming back to the screen, the day's, a slow start's), with the env annai gives it.
   await checkPlugins(k.host, { fetch: k.s.fetch, next: nextScreens }, { address: false });
   assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`]);
+  // A second change to the same language while the first runs: the first one's end leaves the second's mark.
+  const again = changingScreens('zh-Hans');
   done();
+  assert.equal(nextScreens(), 'zh-Hans', "the second change's mark outlives the first's end");
+  again();
   assert.equal(nextScreens(), before, 'over: the device\'s copy of the choice says again');
 });

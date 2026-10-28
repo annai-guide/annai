@@ -20,19 +20,21 @@ export function keepUiChoice(tag) {
   } catch { /* storage blocked: annai starts in English then */ }
 }
 
-let changing = '';
+/** @type {{ tag: string } | null} */
+let changing = null;
 /**
  * A change of the screens' language under way: until the returned call (its choice kept, or failed), nextScreens is its language, so
- * a check meanwhile keeps the words fetched for it. @param {string} tag @returns {() => void}
+ * a check meanwhile keeps the words fetched for it; an earlier change's end leaves a later one's. @param {string} tag @returns {() => void}
  */
 export function changingScreens(tag) {
-  changing = tag;
-  return () => { if (changing === tag) changing = ''; };
+  const mark = { tag };
+  changing = mark;
+  return () => { if (changing === mark) changing = null; };
 }
 
 /** The screens' language the next start opens in: one being changed to, else the device's choice, else the phone's (as boot.js). */
 export function nextScreens() {
-  if (changing) return changing;
+  if (changing) return changing.tag;
   let own = null;
   try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
   return chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED).tag;
@@ -236,8 +238,9 @@ export function screensRow(ctx, app) {
     if (next.tag !== 'en') {
       note.textContent = t`Getting ${name}…`;
       // annai's own plugins' words in it too, so they start in it after the restart; they never stop the change, nor hold it up past 30 s.
-      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag, next: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
-      const [got] = await Promise.all([keepWords(next.tag), plugins]);
+      // No next: it drops nothing, as the change may yet fail.
+      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
+      const [got] = await Promise.all([keepWords(next.tag).catch(() => false), plugins]);
       if (!got) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
     }
     try {
