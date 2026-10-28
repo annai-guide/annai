@@ -137,7 +137,7 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
-/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures, by their blob hashes. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string, hash: string }[] }} KeptReading */
+/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures, by their blob hashes and pages. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string, hash: string, page?: number }[] }} KeptReading */
 
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
@@ -394,7 +394,7 @@ export class Agent {
    * The readings kept in the open conversation's log (`reading` entries; the review of reading-files, finding 1), by the hash of what was
    * read: told in words (for any model) and drawn as pages (for one that sees photos). Loaded from the log after the last entry read, so a
    * reading the other half kept arrives at the next call; a conversation switch loads the new one's, and Erase forgets them.
-   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading }> }}
+   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }> }}
    */
   #kept = { scope: '', through: 0, map: new Map() };
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
@@ -2193,7 +2193,7 @@ export class Agent {
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
     const media = async (/** @type {any} */ m) => {
-      const where = { ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}), ...(m.name ? { name: m.name } : {}) };
+      const where = { ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}), ...(m.name ? { name: m.name } : {}), ...(m.page ? { page: m.page } : {}) };
       if (m.data) {
         // New bytes (a request copy made now, a crop, an image a page had): stored with this event, by the hash of what is stored.
         const bytes = fromBase64(m.data);
@@ -2309,7 +2309,7 @@ export class Agent {
         // One that failed, or ran out of time, isn't kept, but isn't waited for again by the next model of this call.
         if (reading.how !== 'told' && reading.how !== 'pages') memo.set(once, reading);
       }
-      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}) }))];
+      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}), ...(/** @type {any} */ (i).page ? { page: /** @type {any} */ (i).page } : {}) }))];
     } catch (e) {
       /* en */
       return [{ type: 'text', text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }];
@@ -2329,15 +2329,15 @@ export class Agent {
       const text = (await storedTexts(this.store, e)).text ?? e.data?.text;
       const how = e.data?.how;
       if (typeof e.data?.hash !== 'string' || typeof text !== 'string' || (how !== 'told' && how !== 'pages')) continue;
-      /** @type {{ mediaType: string, data: string, hash: string }[]} */
+      /** @type {KeptReading['images']} */
       const images = [];
       for (const im of how === 'pages' ? e.data.images ?? [] : []) {
         const bytes = await blobBytes(this.store, scope, im.hash, { named: e, via: e.type });
-        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash });
+        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.page ? { page: im.page } : {}) });
       }
       if (how === 'pages' && !images.length) continue;
-      // The newest reading of a file replaces what was kept of it (an explicit read reads afresh).
-      kept.map.set(e.data.hash, { [how]: { how, text, images } });
+      // The newest reading of each kind replaces what was kept of that kind (an explicit read reads afresh).
+      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text, images }, newest: how });
     }
   }
 
@@ -2353,7 +2353,8 @@ export class Agent {
   /** The same, from what is loaded now (callRole asks for it while it builds a request). @param {string} hash @param {boolean} sees */
   #keptNow(hash, sees) {
     const k = this.#kept.map.get(hash);
-    return k?.told ?? (sees ? k?.pages : undefined) ?? null;
+    // A model that sees photos takes the newer of the two kinds; one that doesn't, the newest words (the re-check of reading-files).
+    return (sees ? (k?.newest ? k[k.newest] : undefined) ?? k?.told ?? k?.pages : k?.told) ?? null;
   }
 
   /**
@@ -2368,13 +2369,13 @@ export class Agent {
     const pages = await Promise.all(reading.images.map(async (i) => { const bytes = fromBase64(i.data); return { hash: await sha256Hex(bytes), bytes, type: i.mediaType }; }));
     await record(this.store, scope, {
       now: this.#stamp(scope), type: 'reading', actor: 'system',
-      data: { hash, kind, how, wake: wakeId, ...(pages.length ? { images: pages.map((p) => ({ hash: p.hash, mediaType: p.type })) } : {}) },
+      data: { hash, kind, how, wake: wakeId, ...(pages.length ? { images: pages.map((p, n) => ({ hash: p.hash, mediaType: p.type, ...(reading.images[n].page ? { page: reading.images[n].page } : {}) })) } : {}) },
       texts: [['text', reading.text]], blobs: pages,
     });
     /** @type {KeptReading} */
     const kept = { how, text: reading.text, images: reading.images.map((i, n) => ({ ...i, hash: pages[n].hash })) };
-    // The newest reading of a file replaces what was kept of it; the older stays in the log, its pictures named by its entry.
-    if (this.#kept.scope === scope) this.#kept.map.set(hash, { [how]: kept });
+    // The newest reading of each kind replaces what was kept of that kind; the older stays in the log, its pictures named by its entry.
+    if (this.#kept.scope === scope) this.#kept.map.set(hash, { ...this.#kept.map.get(hash), [how]: kept, newest: how });
     return kept;
   }
 

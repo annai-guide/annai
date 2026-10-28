@@ -341,7 +341,7 @@ export async function resolveEvent(store, e) {
   for (const im of e.type === 'tool.result' || e.type === 'msg.user' ? e.data?.images ?? [] : []) {
     const bytes = await read(im.hash);
     // Bytes that are gone (a refused copy, deleted) stay in the transcript as missing, so a replacement can find them.
-    images.push({ type: 'image', mediaType: im.mediaType, data: bytes ? toBase64(bytes) : '', hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}), ...(bytes ? {} : { missing: true }) });
+    images.push({ type: 'image', mediaType: im.mediaType, data: bytes ? toBase64(bytes) : '', hash: im.hash, ...(im.path ? { path: im.path } : {}), ...(im.region ? { region: im.region } : {}), ...(im.page ? { page: im.page } : {}), ...(bytes ? {} : { missing: true }) });
   }
   if (e.type === 'photo.replace') {
     const bytes = await read(e.data?.new);
