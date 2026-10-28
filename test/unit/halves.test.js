@@ -887,6 +887,27 @@ for (const koeFirst of [true, false]) {
   });
 }
 
+test("Koe working again takes the card for both halves down; Kokoro, still failing on her next turn, has her own card (the third review of phone-fixes-1, U3b)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ delayMs: 40, error: 'auth', message: 'bad key' }]], {
+    koe: { type: [{ error: 'auth', message: 'bad key' }, calls(['speak', { text: 'Back now.' }]), calls(['speak', { text: 'Still here.' }])] },
+  });
+  /** @type {Map<any, any>} */
+  const up = new Map();
+  k.agent.on('notice', (/** @type {any} */ c) => up.set(c.key, c));
+  k.agent.on('clear', (/** @type {any} */ key) => up.delete(key));
+  k.agent.send('What is Bixby Bridge?');
+  await k.agent.idle();
+  assert.deepEqual([...up.keys()], ['model:both']);
+  // Koe's key is fixed and its rest is over; Kokoro's is still bad.
+  k.llm.bench.clear('m-koe');
+  await new Promise((r) => setTimeout(r, 10 * 60_000));
+  k.agent.send('Are you there?');
+  await k.agent.idle();
+  assert.ok((await k.events(['out.speak'])).some((e) => e.data.text === 'Back now.'), 'Koe answered');
+  assert.deepEqual([...up.keys()], ['model:kokoro'], "the card for both is down, and Kokoro's own says she still can't");
+});
+
 test("Kokoro's card, gated while Koe talks and never passed on, is shown by annai named by the model that wrote it (the third review of phone-fixes-1)", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: calls(['show', { card: { title: 'Nepenthe', text: 'Open till 10' } }]) }] }], { koe: { type: { rules: [
