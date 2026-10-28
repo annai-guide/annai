@@ -13,9 +13,9 @@ import { keepBlob } from '../workspace.js';
  *   outcome: string, error?: string, usage: any, cost?: number, wake?: string, seconds?: number, chars?: number }} RequestInfo
  *   kind: "model" unless given ("speech-in", "speech-out"); seconds or chars: how much speech was sent
  * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string, said?: import('./contract.js').Said, restsUntil?: number }} Attempt
- * @typedef {{ role: string, level: string, answeredBy: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
+ * @typedef {{ role: string, level: string, answeredBy: string | null, first?: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
  *   tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, citations?: { url: string, title?: string }[] }} TurnInfo
- *   tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
+ *   first: the role's first model, by name (since phone-fixes-1; null: none), whichever was tried first; tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
  *   fingerprint; context: the events in context (spec §4.5)
  */
 
