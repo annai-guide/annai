@@ -45,8 +45,13 @@ const language = (id) => LANGUAGES.find((l) => l.id === id);
 /** A language as a picker shows it: its name in the screens' language, then its own. @param {import('../core/languages.js').Language} l */
 const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
+/** Settings → Languages, a screen of its own (the user, 2026-10-28; Settings → Shiori held it before). @param {any} ctx */
+export async function renderLanguages(ctx) {
+  return h('div', { class: 'screen' }, h('h1', { class: 'title', text: W.heading }), languagesSection(ctx, await readAppSettings(ctx.ws)));
+}
+
 /**
- * Settings → Shiori → Languages (phase 2): the languages you speak, in order, and the one Shiori answers in. Each change is saved at
+ * Settings → Languages (phase 2): annai's screens, distances, the languages you speak, in order, and the one Shiori answers in. Each change is saved at
  * once, in the app settings (so backups carry it), and every model that hears or speaks is told at its next session or wake. Each
  * change is built from the list as it stands, and shown before its write lands, so two quick ones lose neither; the answer language
  * is one of those listed, and takes leave with its language, in the same save.
@@ -165,7 +170,6 @@ export function languagesSection(ctx, app) {
   draw();
 
   return h('section', { class: 'panel', 'aria-label': W.heading },
-    h('h2', { class: 'section', text: W.heading }),
     h('p', { class: 'sub', text: W.intro }),
     screens,
     distances,

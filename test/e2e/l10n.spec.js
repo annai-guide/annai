@@ -53,9 +53,9 @@ test('a pseudo-locale that does not exist is ignored', async ({ page }) => {
 });
 
 test('the Languages section speaks through t under en-XA, its statuses whole', async ({ page }) => {
-  await openApp(page, '?l10n=en-XA#/shiori');
+  await openApp(page, '?l10n=en-XA#/languages');
   const panel = page.getByRole('region', { name: accented('Languages') });
-  await expect(panel.getByRole('heading', { name: accented('Languages') })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: accented('Languages') })).toBeVisible();
   await expect(panel.getByRole('list', { name: accented('Languages you speak') })).toBeVisible();
   await expect(panel.getByLabel(accented('Add a language'))).toBeVisible();
   await expect(panel.getByLabel(accented('Shiori answers in'))).toBeVisible();
@@ -191,7 +191,7 @@ test('what the user wrote is told apart from annai\'s words: dir="auto" on trip 
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/notes/שלום.md')}`);
   await expect(page.getByRole('heading', { level: 1, name: '/notes/שלום.md' })).toHaveAttribute('dir', 'ltr');
   await expect(page.getByRole('heading', { level: 1 }).locator('span')).toHaveAttribute('dir', 'auto');
-  await page.goto('/#/shiori');
+  await page.goto('/#/languages');
   const panel = page.getByRole('region', { name: 'Languages' });
   await panel.getByLabel('Add a language').selectOption('ja');
   await panel.getByRole('button', { name: 'Add', exact: true }).click();
@@ -384,7 +384,7 @@ test('a choice kept on the device that annai no longer offers is the phone\'s la
 });
 
 test("annai's screens in: As this phone is set (English), then English, 日本語 and 简体中文 by their own names, with nothing to turn on; Distances beside it (localization L6)", async ({ page }) => {
-  await openApp(page, '#/shiori');
+  await openApp(page, '#/languages');
   const panel = page.getByRole('region', { name: 'Languages' });
   const screens = panel.getByLabel(SCREENS);
   // The first rows, above the languages you speak.
@@ -398,7 +398,7 @@ test("annai's screens in: As this phone is set (English), then English, 日本�
 });
 
 test('Distances: Kilometres on an American phone shows kilometres at once and after a reload; Automatic is miles again (localization L6)', async ({ page }) => {
-  await openApp(page, '#/shiori');
+  await openApp(page, '#/languages');
   const distances = () => page.getByRole('region', { name: 'Languages' }).getByLabel('Distances');
   const shown = () => page.evaluate(async () => (await import(/** @type {string} */ ('/src/core/intl.js'))).distance(42.3));
   await expect(distances()).toHaveValue('');
@@ -407,7 +407,7 @@ test('Distances: Kilometres on an American phone shows kilometres at once and af
   await distances().selectOption('km');
   await expect.poll(shown).toBe('42 km');
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Languages' })).toBeVisible();
   await expect(distances()).toHaveValue('km');
   expect(await shown()).toBe('42 km');
   await distances().selectOption('');
@@ -436,10 +436,10 @@ test("the welcome's first step has the screens' language to choose, and choosing
 test('choosing 日本語 keeps its words, restarts annai in Japanese, and it stays Japanese offline', async ({ page }, testInfo) => {
   const server = await startServer(8831 + testInfo.parallelIndex);
   try {
-    await page.goto(`${server.origin}/#/shiori`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+    await page.goto(`${server.origin}/#/languages`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Languages' })).toBeVisible();
     await waitForServiceWorker(page);
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const restarted = page.waitForEvent('load');
     await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
     await restarted;
@@ -458,7 +458,7 @@ test('choosing 日本語 keeps its words, restarts annai in Japanese, and it sta
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(TRIPS_JA);
     // The row says what was chosen; "As this phone is set" is English again, with the copy on the device taken away.
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const screens = page.locator('#language-ui');
     await expect(screens).toHaveValue('ja');
     const back = page.waitForEvent('load');
@@ -480,7 +480,7 @@ test.describe('on a phone set to Japanese', () => {
     await expect(page.locator('main #language-ui option').first()).toHaveText(JA[key('As this phone is set ({0})')].replace('{0}', '日本語'));
     await page.evaluate(() => { location.hash = '#/trips'; });
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(TRIPS_JA);
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const screens = page.locator('#language-ui');
     await expect(screens).toHaveValue('');
     await expect(screens.locator('option').first()).toHaveText(JA[key('As this phone is set ({0})')].replace('{0}', '日本語'));
@@ -497,7 +497,7 @@ test.describe('on a phone set to Chinese (China)', () => {
     await openApp(page, '#/trips');
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hans-CN');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(ZH[key('Trips')]);
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     await expect(page.locator('#language-ui option').first()).toHaveText(ZH[key('As this phone is set ({0})')].replace('{0}', '简体中文'));
   });
 });
@@ -538,10 +538,10 @@ async function startSite() {
 test('a new version of annai installs with the chosen catalog in its own cache', async ({ page }) => {
   const site = await startSite();
   try {
-    await page.goto(`${site.origin}/#/shiori`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+    await page.goto(`${site.origin}/#/languages`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Languages' })).toBeVisible();
     await waitForServiceWorker(page);
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const restarted = page.waitForEvent('load');
     await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
     await restarted;
@@ -696,8 +696,8 @@ test('under Japanese screens an English line is English, a script annai cannot t
 
 test('under Japanese screens the languages you speak are named in Japanese, each with its own name beside it', async ({ page }) => {
   // All through the screen, as a user does it: a write of the settings from the test could race annai's own at the start.
-  await openApp(page, '#/shiori');
-  await page.evaluate(() => { location.hash = '#/shiori'; });
+  await openApp(page, '#/languages');
+  await page.evaluate(() => { location.hash = '#/languages'; });
   const restarted = page.waitForEvent('load');
   await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
   await restarted;
@@ -723,7 +723,7 @@ test('under Japanese screens a trip card\'s name carries its own language, not t
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
     await startTrip(page, name);
   }
-  await page.evaluate(() => { location.hash = '#/shiori'; });
+  await page.evaluate(() => { location.hash = '#/languages'; });
   const restarted = page.waitForEvent('load');
   await page.getByRole('region', { name: 'Languages' }).getByLabel(SCREENS).selectOption('ja');
   await restarted;
@@ -740,18 +740,18 @@ test('under Japanese screens a trip card\'s name carries its own language, not t
 test('a language already on the device is chosen again offline: 日本語, then English, then 日本語 with no connection', async ({ page }, testInfo) => {
   const server = await startServer(8841 + testInfo.parallelIndex);
   try {
-    await page.goto(`${server.origin}/#/shiori`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+    await page.goto(`${server.origin}/#/languages`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Languages' })).toBeVisible();
     await waitForServiceWorker(page);
     for (const [pick, lang] of /** @type {const} */ ([['ja', /^ja$/], ['en', /^en/]])) {
-      await page.evaluate(() => { location.hash = '#/shiori'; });
+      await page.evaluate(() => { location.hash = '#/languages'; });
       const restarted = page.waitForEvent('load');
       await page.locator('#language-ui').selectOption(pick);
       await restarted;
       await expect(page.locator('html')).toHaveAttribute('lang', lang);
     }
     await server.stop();
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const restarted = page.waitForEvent('load');
     await page.locator('#language-ui').selectOption('ja');
     await restarted;
@@ -776,7 +776,7 @@ test('Don\'t restart, on the card that waits for Shiori, gives the row back and 
     await page.getByLabel('Message to Shiori').fill('When is low tide?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
-    await page.evaluate(() => { location.hash = '#/shiori'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
     const row = page.locator('#language-ui');
     await row.selectOption('ja');
     const card = page.getByRole('status').locator('.notice', { hasText: 'annai restarts once Shiori has finished' });
