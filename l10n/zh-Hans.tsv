@@ -572,29 +572,27 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 3fqfy0	ok	Languages	语言	src/core/languages.js:317	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:318	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:319	
-krvxy3	ok	In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:320	Note: Phone dictation is the keyboard's 语音输入 (glossary, Speech in's note).
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	第一种语言是手机语音输入识别的语言；顺序告诉 Shiori 你更偏好哪种。	src/core/languages.js:320	Note: under "Languages you speak" (你说的语言); Phone dictation as Settings → Voice's row (手机语音输入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
 5h4ntn	ok	Add a language	添加语言	src/core/languages.js:321	
 17rv3f8	ok	Add	添加	src/core/languages.js:322	
 9c35st	ok	Remove	移除	src/core/languages.js:323	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:326	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
-1u9ac5b	ok	Move {0} up	上移{0}	src/core/languages.js:327	{0} = name
-9v00pm	ok	Move {0} down	下移{0}	src/core/languages.js:328	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:330	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:331	{0} = name
-zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:331	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:332	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:332	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:333	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:333	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:335	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:336	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:338	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:338	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:339	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:339	
-1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:340	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:341	
-au82n5	ok	None picked: annai uses the browser’s language. In order of use. Phone dictation listens in the first one only; models that take several are given all of them.	未选择：annai 使用浏览器的语言。按使用频率排序。手机的语音输入只识别第一种语言；支持多种语言的模型会获得全部语言。	src/core/languages.js:342	
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:324	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:326	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:327	{0} = name
+zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:327	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:328	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:328	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:329	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:329	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢复用你对她说的语言回答	src/core/languages.js:331	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已保存；Shiori 恢复用你对她说的语言回答	src/core/languages.js:332	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:334	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已保存	src/core/languages.js:334	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你对她说的语言回答。已保存	src/core/languages.js:335	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说的语言回答	src/core/languages.js:335	
+1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:336	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:337	
+cc69cl	ok	None picked: annai uses the browser’s language.	未选择：annai 使用浏览器的语言。	src/core/languages.js:338	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
@@ -1123,21 +1121,21 @@ uqmge3	ok	Open the browser menu (⋮).	打开浏览器菜单（⋮）。	src/ui/
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 浏览器可能会在 7 天未访问后清除你的旅行，而且主屏幕上的 App 会另外保存旅行：在这里开始的旅行不会出现在那里。请将 annai 添加到主屏幕，并在那里开始旅行。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空间不足时，浏览器可能会清除你的旅行。请安装 annai，让旅行安全保存。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	查看步骤	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:190	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	ok	Getting {0}…	正在获取{0}…	src/ui/languages.js:204	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:205	{0} = name
-1t9l1f1	ok	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:220	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:225	
-v4uyh0	ok	annai's screens in	annai 界面语言	src/ui/languages.js:228	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
-1c7q9dt	ok	Miles	英里	src/ui/languages.js:234	Note: A choice of Distances.
-86ef5k	ok	Kilometres	公里	src/ui/languages.js:234	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
-r122ro	ok	Automatic	自动	src/ui/languages.js:234	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自动).
-v4r0ir	ok	Distances	距离单位	src/ui/languages.js:250	Note: The setting beside the screens' language: which unit distances are shown in; 距离 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:263	{0} = name
-dc30do	ok	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:263	
-8rqn0k	ok	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:270	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:271	{0} = name
-1of7r8x	ok	Restart annai	重启 annai	src/ui/languages.js:272	
+n3y7d4	ok	As this phone is set ({0})	跟随手机设置（{0}）	src/ui/languages.js:202	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在获取{0}…	src/ui/languages.js:216	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 无法获取{0}。获取语言需要联网一次。	src/ui/languages.js:217	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已保存。正在重启…	src/ui/languages.js:232	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已保存。下次重启 annai 时生效。	src/ui/languages.js:237	
+v4uyh0	ok	annai's screens in	annai 界面语言	src/ui/languages.js:240	Note: Not in the glossary yet. 界面语言 (interface language) as apps say it; 显示语言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:246	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:246	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自动	src/ui/languages.js:246	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自动).
+v4r0ir	ok	Distances	距离单位	src/ui/languages.js:262	Note: The setting beside the screens' language: which unit distances are shown in; 距离 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	无法加载{0}	src/ui/languages.js:275	{0} = name
+dc30do	ok	annai shows English until it is online.	联网之前，annai 显示英文。	src/ui/languages.js:275	
+8rqn0k	ok	Restart to show annai in {0}	重启以用{0}显示 annai	src/ui/languages.js:282	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的设置中 annai 界面语言为{0}，但此设备显示的是其他语言。	src/ui/languages.js:283	{0} = name
+1of7r8x	ok	Restart annai	重启 annai	src/ui/languages.js:284	
 15kmah9	ok	Simulation · moving fast	模拟 · 快速移动中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模拟 · 已停下	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	模拟 · 步行中	src/ui/live-chip.js:22	
@@ -1732,11 +1730,11 @@ q0h89m	ok	A model that can't see photos or read PDFs gets each photo or PDF it r
 58mvoq	ok	Reasoning for {0}	推理级别（{0}）	src/ui/screens/models.js:190	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
 1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间为 1 到 600 秒；留空表示默认。	src/ui/screens/models.js:191	
 8nhvom	ok	Reorder {0}, {1} of {2}	重新排序{0}，第 {1} 个，共 {2} 个	src/ui/screens/models.js:206	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:218	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:222	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
-1ln5v12	ok	Move {0}	移动{0}	src/ui/screens/models.js:224	{0} = name
-1rvkqip	ok	Move up	上移	src/ui/screens/models.js:225	
-c2tjmw	ok	Move down	下移	src/ui/screens/models.js:226	
+17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:223	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
+1ln5v12	ok	Move {0}	移动{0}	src/ui/screens/models.js:225	{0} = name
+1rvkqip	ok	Move up	上移	src/ui/screens/models.js:226	
+c2tjmw	ok	Move down	下移	src/ui/screens/models.js:227	
 1yveacd	ok	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	这部 iPhone 关闭了 annai 的通知。请在设置 → 通知 → annai 中开启，然后回到这里。	src/ui/screens/notifications.js:9	
 x5n8yx	ok	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annai 的通知被阻止了。请长按 annai 的图标，然后在应用信息 → 通知中允许，再回到这里。	src/ui/screens/notifications.js:10	
 3e712g	ok	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	此网站的通知被阻止了。请在浏览器的网站设置（地址旁边的图标）中允许，然后回到这里。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
