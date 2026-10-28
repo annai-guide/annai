@@ -495,3 +495,19 @@ test('a day limit\'s sentence is for models and code, so no language changes it;
     setWords('en', null);
   }
 });
+
+test("a call stopped part-way costs what its provider had reported: the model turn and the day's spend count it (the second review of phone-fixes-1)", async () => {
+  // A reply that reports its prompt's usage first (as Anthropic's message_start does), then is stopped before it finishes.
+  const hang = { type: 'hang', name: 'Hang', tail: true, async *run(/** @type {any} */ { signal }) {
+    yield { type: 'usage', usage: { input: 1_000_000, output: 0 } };
+    await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  } };
+  const s = setup([[{ text: 'unused' }]], { endpointTypes: ['hang'], types: [['hang', hang]] });
+  const stop = new AbortController();
+  const done = call(s, { signal: stop.signal });
+  setTimeout(() => stop.abort(), 20);
+  await assert.rejects(done, (/** @type {any} */ e) => e.kind === 'cancelled');
+  const [turn] = await s.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['model.turn'] }));
+  assert.equal(turn.data.cost, 1, '1M input tokens at $1 per million');
+  assert.equal(turn.data.usage.input, 1_000_000);
+});
