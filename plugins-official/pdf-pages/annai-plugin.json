@@ -1,0 +1,12 @@
+{
+  "id": "pdf-pages",
+  "name": "PDF pages",
+  "version": "0.1.0",
+  "api": 1,
+  "l10n": ["ja", "zh-Hans"],
+  "entry": "index.js",
+  "category": "tools",
+  "description": "Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.",
+  "keywords": ["PDF.js"],
+  "homepage": "https://github.com/annai-guide/annai/blob/main/docs/plugins.md#pdf-pages"
+}

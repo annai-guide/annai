@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '71dfd73238f5';
+const BUILD = '20720c5eb0db';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -525,8 +525,11 @@ function openExisting() {
   });
 }
 
-/** Plugin files a page may load: code, data, styles, plain text, raster images and fonts. Never HTML or SVG. */
-const SAFE_PLUGIN_TYPES = new Set(['text/javascript', 'application/json', 'text/css', 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'font/woff2']);
+/**
+ * Plugin files a page may load: code, data, styles, plain text, raster images, fonts, and bytes of no named type (PDF.js's packed CMaps
+ * and fonts, read with fetch; nosniff keeps a browser from running them as anything). Never HTML or SVG.
+ */
+const SAFE_PLUGIN_TYPES = new Set(['text/javascript', 'application/json', 'text/css', 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'font/woff2', 'application/octet-stream']);
 
 /** @param {string} why */
 function deny(why) {

@@ -25,6 +25,13 @@
       "name": "OpenAI Responses",
       "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
     },
+    "pdf-pages": {
+      "name": "PDF ページ",
+      "description": "写真は見られても PDF を読めないモデルに、PDF のページを画像として見せます。どのブラウザでも、PDF の1ページ目をプレビューとして描きます。Mozilla の PDF.js（約 4.5 MB）を含みます。",
+      "keywords": [
+        "PDF.js"
+      ]
+    },
     "provider-another-address": {
       "name": "カスタムプロバイダー",
       "description": "そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。",
