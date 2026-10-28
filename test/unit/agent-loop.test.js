@@ -343,7 +343,7 @@ async function pdfKit(script, utility) {
 }
 const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
 
-test('a PDF told only up to the output limit says it stops there; a second read in the session is told from what was told, never sent again (the fix pass, S6)', async (t) => {
+test('a PDF told only up to the output limit says it stops there; a second read reads it afresh, as "read it again" asks (the fix pass, S6; the re-review of reading-files)', async (t) => {
   useClock(t);
   const k = await pdfKit([readPdf, readPdf, say('Check-in is at 3 PM.')], [{ text: 'Hotel booking: check-in 3 PM, 2 nights. Room', stop: 'length' }]);
   k.agent.send('When is check-in?');
@@ -352,7 +352,7 @@ test('a PDF told only up to the output limit says it stops there; a second read 
   assert.equal(reads.length, 2);
   assert.match(reads[0], /: Hotel booking: check-in 3 PM, 2 nights\. Room …\(it stops here: the PDF goes on\)$/);
   assert.equal(reads[1], reads[0]);
-  assert.equal(k.sent['model-u'].length, 1, 'the PDF went to be told once');
+  assert.equal(k.sent['model-u'].length, 2, 'an explicit read reads afresh');
 });
 
 test("the told PDFs are keyed by the bytes told, in their conversation: a part claiming an earlier PDF's hash with other bytes is told afresh, and another conversation never gets the first one's words (the fix pass's security review)", async (t) => {
@@ -377,7 +377,7 @@ test("the told PDFs are keyed by the bytes told, in their conversation: a part c
   assert.equal(k.sent['model-u'].length, 3, 'told in the other conversation afresh');
 });
 
-test('what is kept of a PDF lives in its conversation\'s log: Erase forgets what is in memory and it is read from the log again; removing the trip removes it (the review of reading-files)', async (t) => {
+test('each explicit read of a PDF is told afresh and kept in its conversation\'s log; removing the trip removes what was kept (the review of reading-files)', async (t) => {
   useClock(t);
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPdf, then: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
@@ -388,12 +388,9 @@ test('what is kept of a PDF lives in its conversation\'s log: Erase forgets what
   await k.agent.idle();
   k.agent.send('And again?');
   await k.agent.idle();
-  assert.equal(k.sent['model-u'].length, 1, 'told once');
+  assert.equal(k.sent['model-u'].length, 2, 'told afresh');
   k.agent.hush('erase');
-  k.agent.send('Once more?');
-  await k.agent.idle();
-  assert.equal(k.sent['model-u'].length, 1, 'read from the log, not told again');
-  assert.equal((await k.events(['reading'])).length, 1);
+  assert.equal((await k.events(['reading'])).length, 2);
   const { removeTrip } = await import('../../src/core/scopes.js');
   await removeTrip(k.store, k.trip);
   assert.deepEqual(await k.events(['reading']), [], 'gone with the trip');
@@ -574,27 +571,20 @@ test('with nothing that reads it and no plugin, the note names Takes PDFs, and t
   assert.equal(await last(blindKit), noReader('pdf', { plugin: false }));
 });
 
-test('pages are drawn once per conversation, never given to another, and read from what was kept after a reload', async (t) => {
+test('pages drawn in one conversation are never given to another', async (t) => {
   useClock(t);
-  const k = await bookingKit([[readPdf, readPdf, say('Done.'), readPdf, say('Done.'), readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  const k = await bookingKit([[readPdf, say('Done.'), readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
   const calls = fakePages(k, 3);
-  k.agent.send('Read it twice');
+  k.agent.send('Read it');
   await k.agent.idle();
-  assert.equal(calls.length, 1, 'drawn once in this conversation');
-  const [first, second] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
-  assert.deepEqual(second.data.images.map((/** @type {any} */ i) => i.hash), first.data.images.map((/** @type {any} */ i) => i.hash));
+  assert.equal(calls.length, 1);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
   await k.ws.write(other, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
   await k.agent.open(other);
   k.agent.send('And here?');
   await k.agent.idle();
   assert.equal(calls.length, 2, 'drawn afresh in the other trip');
-  k.agent.forgetTold(); // what is in memory goes, as at a reload
-  k.agent.send('Once more?');
-  await k.agent.idle();
-  assert.equal(calls.length, 2, 'once here, once in the other trip, never again after a reload');
-  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
-  assert.equal(reads.at(-1).data.images.length, 3, 'the kept pages, from the log');
+  assert.equal((await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(other, { types: ['reading'] }))).length, 1, 'kept there, in its own log');
 });
 
 test('a live Koe is never asked to read: realtime models are not chat models', async (t) => {
@@ -1612,17 +1602,18 @@ test('a PDF read in the second pass is still read at every later step', async (t
 
 test('a PDF told in words serves a model that sees photos and one that does not alike: told once', async (t) => {
   useClock(t);
-  const k = await bookingKit([[readPdf, say('Done.')], [readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  // model-0 reads PDFs, reads the booking, then is out of credit; model-1 sees photos and reads no PDFs: the PDF is told to it in words.
+  // Then the user's list holds model-2 alone, which sees no photos: the same words serve it.
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Done.')], [say('Still 3 PM.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
   k.agent.send('Read it');
   await k.agent.idle();
   const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
   const cfg = await readConfig(k.ws);
-  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-1'] } });
-  k.agent.send('And again');
+  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-2'] } });
+  k.agent.send('When again?');
   await k.agent.idle();
-  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
-  assert.equal(reads.length, 2);
-  assert.match(reads[1].data.content, /Hotel booking: check-in 3 PM\.$/);
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.equal(k.sent['model-u'].length, 1);
 });
 
@@ -1679,4 +1670,68 @@ test('a PDF whose pages are all blank says so in words, with no pictures', async
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
   assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: page 1 of 1, which is blank, so nothing was sent\.$/);
   assert.equal(r.data.images, undefined);
+});
+
+// Fix round 2 (the re-review of reading-files).
+test("an explicit read reads afresh, and its reading replaces the kept one: the next request carries the new one (A)", async (t) => {
+  useClock(t);
+  // Kokoro's first model reads PDFs, reads the booking, then is out of credit; the second reads none. Utility's reader first misreads it.
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('It looks blurry.'), readPdf, say('Check-in is at 3 PM.'), say('You are welcome.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text'] }], utility: [{ text: 'Blurry.' }, { text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  k.agent.send("That's wrong, read it again.");
+  await k.agent.idle();
+  k.agent.send('Thanks.');
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 2, 'read once at first, and once more when asked');
+  const last = JSON.stringify(k.sent['model-1'].at(-1).messages);
+  assert.match(last, /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.doesNotMatch(last, /Blurry/);
+  const kept = await k.events(['reading']);
+  assert.deepEqual(kept.map((e) => e.data.how), ['told', 'told'], 'both kept in the log; the newest is the one used');
+});
+
+test("a PDF's pages read afresh replace the kept ones, and every page picture stays named by its entry (A)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.'), readPdf, say('Done again.')]], { models: [{ input: ['text', 'image'] }] });
+  let n = 0;
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => { n++; return { count: 1, pages: [{ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, n]), width: 10, height: 10 }] }; } });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  k.agent.send('Read it again');
+  await k.agent.idle();
+  assert.equal(n, 2, 'drawn again when asked');
+  const kept = await k.events(['reading']);
+  assert.equal(kept.length, 2);
+  for (const e of kept) for (const im of e.data.images) assert.ok(e.refs.includes(im.hash), 'named by its entry');
+  assert.notEqual(kept[0].data.images[0].hash, kept[1].data.images[0].hash);
+});
+
+test("kept page pictures go with their hashes (so uploads can name them), within the model's photo limit, and never twice in one request (B)", async (t) => {
+  useClock(t);
+  // model-0 reads PDFs and reads the booking, then is out of credit; model-1 sees photos (at most 2 a request) and reads no PDFs.
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [{ text: 'Let me look.' }, readPdf, say('Done.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'], images: { maxCount: 2 } }] });
+  fakePages(k, 3);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const sent = k.sent['model-1'];
+  assert.ok(sent.length >= 2);
+  for (const r of sent) {
+    const images = r.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
+    assert.ok(images.length <= 2, `${images.length} photos, over the model's 2`);
+    for (const i of images) assert.match(i.hash ?? '', /^[0-9a-f]{64}$/);
+    assert.equal(new Set(images.map((/** @type {any} */ i) => i.hash)).size, images.length, 'each page once');
+  }
+});
+
+test("a reader's first-words wait never takes a PDF's whole reading: at most two thirds of it, so the pages get their turn (C)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { agent: { secondMs: 1000 }, models: [{ input: ['text', 'image'] }], utility: [{ delayMs: 200_000, text: 'Hotel.' }] }, ['text', 'pdf']);
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, utility: { ...cfg.roles.utility, firstOutputSeconds: 120 } });
+  const asked = fakePages(k, 1);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  assert.equal(asked.length, 1, 'the pages were drawn');
 });

@@ -74,7 +74,7 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
- * its first words the longer of its role's wait and DESCRIBE_S. The whole reading, pages included, stops at
+ * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
@@ -99,6 +99,15 @@ export async function readFile(file, model, o) {
   stopped.catch(() => {});
   /** @type {(how: Reading['how'], text: string, images?: Reading['images']) => Reading} */
   const reading = (how, text, images = []) => ({ how, text, images });
+  /**
+   * How long a reader waits for its first words: the longer of its role's own wait and DESCRIBE_S, so a role's short wait (Koe's 8 s)
+   * doesn't cut a reading; for a PDF, never more than two thirds of its reading, so a reader that never starts answering always leaves
+   * the pages their turn (the re-review of reading-files). @param {string} role
+   */
+  const wait = (role) => {
+    const ms = Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs);
+    return pdf ? Math.min(ms, Math.floor((limit * o.secondMs * 2) / 3)) : ms;
+  };
   /** What failed last, in words. */
   let failed = '';
   /**
@@ -110,9 +119,7 @@ export async function readFile(file, model, o) {
       if (stop.signal.aborted) break;
       try {
         const r = await o.llm.call({
-          // The longer of the role's own wait and a photo's 30 seconds: a role's short wait (Koe's 8 s) doesn't cut a reading, and a reader
-          // that never starts answering leaves the rest of a PDF's 90 seconds to the next readers and the pages.
-          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs),
+          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...parts, { type: 'text', text: ask }] }] },
         });
         if (r.reply.text.trim()) return r;
@@ -155,6 +162,7 @@ export async function readFile(file, model, o) {
         // A page with nothing drawn on it isn't sent (the review of reading-files: a booking's empty last page went as a picture every turn).
         const blank = Array.isArray(drawn.blank) ? drawn.blank : [];
         const last = images.length + blank.length;
+        /* en */
         const rest = drawn.count > last ? "; the rest weren't sent" : '';
         /* en */
         const span = last === 1 ? `page 1 of ${drawn.count}` : `pages 1–${last} of ${drawn.count}`;

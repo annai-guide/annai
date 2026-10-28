@@ -16,7 +16,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'reading'],
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
@@ -120,6 +120,7 @@ export function traceStored(e) {
   if (e.type === 'wake') kept = (d.reasons ?? []).filter((/** @type {any} */ r) => r.kind !== 'user' && r.kind !== 'choice').map((/** @type {any} */ r) => r.text);
   else if (e.type === 'note' || e.type === 'halves' || e.type === 'trigger.fired') kept = [cut(d.text)];
   else if (e.type === 'tool.result') kept = [d.content ? cut(d.content) : ''];
+  else if (e.type === 'reading') kept = [d.text ? cut(d.text) : ''];
   else if (e.type === 'net.request' || e.type === 'push.sync') kept = [d.error ? cut(d.error) : ''];
   else if (e.type === 'live.session') kept = [d.why ? cut(d.why) : ''];
   else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`];
