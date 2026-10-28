@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -419,5 +419,27 @@ test('an opened stack in a small box shows each of its cards whole: no Dismiss o
   for (const member of await page.locator('#tn .stack-list > .notice').all()) {
     await member.scrollIntoViewIfNeeded();
     expect(await onTop(member.locator('strong'))).toBe(true);
+  }
+});
+
+test("a tab another took annai over from reloads at once on \"Use it here instead\", even with Shiori mid-turn: nothing waits for her turn (the third review of phone-fixes-1)", async ({ page, context }) => {
+  // Her reply takes a minute: she is still in her turn when the other tab takes over.
+  const llm = await startModelServer({ '/b/v1/messages': [{ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Big Sur is lovely.' } }, { name: 'sleep', input: {} }]), delayMs: 60_000 }] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Is Big Sur nice now?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0);
+    const second = await context.newPage();
+    await second.goto('/#/trips');
+    await second.getByRole('button', { name: 'Use it here' }).click();
+    await expect(second.getByRole('heading', { name: 'Trips' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+    const loaded = page.waitForEvent('load', { timeout: 8000 });
+    await page.getByRole('button', { name: 'Use it here instead' }).click();
+    await loaded;
+  } finally {
+    await llm.stop();
   }
 });

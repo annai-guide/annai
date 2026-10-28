@@ -84,7 +84,7 @@ function row(ctx, r, update, told) {
 }
 
 /** Restarts annai, after Shiori's turn and into a new version that waits (Updates.restart). @param {any} ctx */
-export const restartAnnai = (ctx) => ctx.updates?.restart() ?? location.reload();
+export const restartAnnai = (ctx) => ctx.updates.restart();
 
 /** "Update to 1.1.0": here, on a plugin's page and on Settings → Updates. @param {any} ctx @param {any} update */
 export function updateButton(ctx, update) {
