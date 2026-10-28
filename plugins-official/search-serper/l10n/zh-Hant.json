@@ -1,0 +1,15 @@
+{
+  "manifest": {
+    "description": "透過 Serper 取得 Google 的搜尋結果，附帶它的答案框。註冊即送 2,500 次免費搜尋，無需信用卡。",
+    "name": "Serper 搜尋",
+    "search.key.note": "註冊即送 2,500 次免費搜尋，無需信用卡。",
+    "settings.properties.key.title": "Serper API 金鑰",
+    "keywords": [
+      "Serper",
+      "Google"
+    ]
+  },
+  "messages": {
+    "nnxk8n": "需要金鑰（設定 → 外掛程式 → Serper 搜尋）"
+  }
+}

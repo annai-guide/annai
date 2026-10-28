@@ -167,6 +167,15 @@ test('without a choice, install takes the first of the worker\'s own languages t
   assert.deepEqual(await (await swKit({ phone: ['ja-JP'], settings: app({ spoken: ['en'] }) })).install(), ['/l10n/ja.json'], 'settings without a choice');
 });
 
+test('with Traditional Chinese shipped, a Taiwan or Hong Kong phone caches its catalog, and a mainland one Simplified (l10n-zh-Hant)', async () => {
+  const langs = ['ja', 'zh-Hans', 'zh-Hant'];
+  const network = { ja: '{"a":"b"}', 'zh-Hans': '{"a":"c"}', 'zh-Hant': '{"a":"d"}' };
+  assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-TW'] })).install(), ['/l10n/zh-Hant.json']);
+  assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-HK', 'en-GB'] })).install(), ['/l10n/zh-Hant.json']);
+  assert.deepEqual(await (await swKit({ langs, network, phone: ['zh-CN'] })).install(), ['/l10n/zh-Hans.json']);
+  assert.deepEqual(await (await swKit({ langs, network, shipped: ['ja', 'zh-Hans'], phone: ['zh-TW', 'ja-JP'] })).install(), ['/l10n/ja.json'], 'unfinished, it is not the phone\'s');
+});
+
 test('a phone that lists English before a language annai has gets English, as the page does: no catalog (L6 review 1)', async () => {
   assert.deepEqual(await (await swKit({ phone: ['en-US', 'ja-JP'] })).install(), []);
   assert.deepEqual(await (await swKit({ phone: ['en-GB', 'zh-CN'] })).install(), []);

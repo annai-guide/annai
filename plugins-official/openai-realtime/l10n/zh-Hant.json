@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "連線 OpenAI 的 Realtime API：為 Koe 提供在單一串流中雙向進行的語音對話。",
+    "name": "OpenAI Realtime"
+  },
+  "messages": {}
+}

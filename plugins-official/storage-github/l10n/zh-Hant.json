@@ -1,0 +1,45 @@
+{
+  "manifest": {
+    "description": "把所有內容備份到 GitHub 的私有儲存庫：每次備份是一次提交，只上傳有變化的檔案。",
+    "name": "GitHub"
+  },
+  "messages": {
+    "11dzsyr": "GitHub 儲存的內容與 annai 傳送的不同，所以 annai 沒有保留這次備份。annai 稍後會再試。",
+    "12lsnri": "GitHub 上的 {0} 中沒有這個備份。",
+    "12syvsv": "可以使用：annai 能存取私有儲存庫 {0}。",
+    "19v5czl": "git 無法儲存「{0}」：其中任何部分都不能叫 .git。請在 annai 中改名後再備份。",
+    "1afchmy": {
+      "other": "GitHub 要求 annai 放慢速度。備份會在約 # 分鐘後自動繼續。"
+    },
+    "1arxyaq": "請在 GitHub 上為 annai 的備份建立一個私有儲存庫。然後只為這個儲存庫建立一個具有 Contents: Read and write 權限的 fine-grained 存取權杖，並貼到這裡。權杖只儲存在本裝置上，絕不會進入備份。",
+    "1cm4kmv": "此次備份將上傳 {0}。",
+    "1duy7cy": "annai 在 GitHub 上找不到 {0}。請檢查名稱，以及權杖是否有權存取它。",
+    "1f6pfhd": "GitHub 拒絕了此操作（HTTP {0}）。annai 稍後會再試。",
+    "1ffp47z": "請按「所有者/名稱」的形式填寫儲存庫，例如 you/annai-backup。",
+    "1gk4xqa": "GitHub 儲存的 {0} 與 annai 傳送的不同。annai 稍後會再試。",
+    "1j97ilg": "{0} 是公開的，任何人都能讀到其中你的旅行。請在 GitHub 上把它設為私有（儲存庫的 Settings，然後 Change visibility），或選擇一個私有儲存庫。",
+    "1jsrg21": "在 GitHub 上建立權杖",
+    "1ljvup9": "此備份已損壞：無法讀取其 annai-archive.json。",
+    "1n7ook3": "此備份已損壞：GitHub 上缺少 {0}。",
+    "1nsr5as": "git 無法同時儲存名為「{0}」的檔案和資料夾。請在 annai 中改名後再備份。",
+    "1qqlp9q": "{0} 中有其他檔案（{1}），所以 annai 不會備份到這裡。請為 annai 的備份建立一個私有儲存庫。",
+    "1rjv5la": "GitHub API 網址",
+    "1s7ad9x": "儲存庫",
+    "1vg2u06": "GitHub 出了問題（HTTP {0}）。annai 稍後會再試。",
+    "1vrp0o9": "GitHub 傳回了 annai 無法讀取的內容。annai 稍後會再試。",
+    "1yf590i": "git 無法儲存「{0}」：它含有空的、「.」或「..」的部分。請在 annai 中改名後再備份。",
+    "5ydf76": "GitHub 拒絕了此操作（HTTP {0}：{1}）。annai 稍後會再試。",
+    "998w7o": "{0} 中有更新的備份。",
+    "9mtyxq": "這個提交不是 annai 的備份。",
+    "9ozxm2": "這個存取權杖能讀取 {0}，但不能修改它。請為它授予 Contents: Read and write 權限。",
+    "dcbxnt": "GitHub 不接受這個存取權杖。請建立新的，貼到這裡並儲存。",
+    "eqdmta": "另一台裝置在同一時刻備份到了 {0}。",
+    "flhq1f": "{0} 中的檔案多於 GitHub 一次能列出的數量，所以 annai 無法使用它。請選擇一個新的私有儲存庫。",
+    "iahjh1": "請檢查 GitHub API 網址：它必須是以 https:// 開頭的網址。",
+    "iwos7u": "GitHub 無法儲存超過 {0} 的檔案，而 {1} 有 {2}。請把它從 annai 中移除，或者備份到另一種備份位置。",
+    "nb61qg": "請貼上該儲存庫的存取權杖，然後儲存。",
+    "ns1rz6": "這個存取權杖無權在 {0} 中執行此操作。請為它授予此儲存庫的 Contents: Read and write 權限。",
+    "s5vfq7": "「{0}」在備份中出現了兩次。請在 annai 中改名後再備份。",
+    "z1mfie": "存取權杖"
+  }
+}

@@ -239,7 +239,7 @@ test("OpenRouter's page has its plugin's sign-in in the key's place, the key fie
   await expect(conn.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   await expect(conn.getByText('Sign in again for a new key, in place of the one saved.')).toBeVisible();
   await page.goto('/#/plugins/provider-openrouter');
-  await expect(page.getByText(/^A model provider · has code · version 2\.3\.1/)).toBeVisible();
+  await expect(page.getByText(/^A model provider · has code · version 2\.3\.2/)).toBeVisible();
   if (browserName === 'webkit') return; // WebKit can't stand in for OpenRouter's sign-in; the unit tests cover the rest
   let authUrl = '';
   await page.route('https://openrouter.ai/auth**', (route) => {
