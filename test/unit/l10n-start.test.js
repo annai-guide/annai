@@ -45,6 +45,9 @@ test('words that could not be loaded get a card that says why, and the restart i
   assert.equal(got.cards[0].title, '日本語 couldn\'t be loaded');
   assert.equal(got.cards[0].body, 'annai shows English until it is online.');
   assert.deepEqual(got.cards[0].actions.map((a) => a.label), ['Try again']);
+  // Try again restarts as every restart does, once a tap's sound unlock has settled: a bare reload then deadlocks WebKit on Linux (the
+  // third review of phone-fixes-1, the l10n.spec flake).
+  assert.equal(got.cards[0].actions[0].run, restart);
   const both = start({ settings: 'ja', kept: '', running: 'en', failed: 'ja' });
   assert.equal(both.cards.length, 1, 'one card: restarting would only fail again');
   assert.equal(both.copy, 'ja');
