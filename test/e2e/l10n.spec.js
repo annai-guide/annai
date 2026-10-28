@@ -361,8 +361,6 @@ const JA = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new UR
 const TRIPS_JA = JA[key('Trips')];
 const ZH = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new URL('../../l10n/zh-Hans.json', import.meta.url), 'utf8')));
 const HANT = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new URL('../../l10n/zh-Hant.json', import.meta.url), 'utf8')));
-// Traditional Chinese is offered under Experimental until its review, then ships (l10n-zh-Hant): the tests hold for either.
-const HANT_SHIPPED = /** @type {{ tag: string, status: string }[]} */ (JSON.parse(readFileSync(new URL('../../l10n/languages.json', import.meta.url), 'utf8'))).some((l) => l.tag === 'zh-Hant' && l.status === 'shipped');
 const SCREENS = "annai's screens in";
 
 /** The catalog of a language in the worker's caches, by cache name: null where a cache lacks it. @param {import('@playwright/test').Page} page @param {string} tag */
@@ -386,21 +384,18 @@ test('a choice kept on the device that annai no longer offers is the phone\'s la
   await expect(page.getByRole('status').locator('.notice')).toHaveCount(0);
 });
 
-test("annai's screens in: As this phone is set (English), then English, 日本語 and 简体中文 by their own names, with nothing to turn on, and 繁體中文 once it ships; Distances beside it (localization L6)", async ({ page }) => {
+test("annai's screens in: As this phone is set (English), then English, 日本語, 简体中文 and 繁體中文 by their own names, with nothing to turn on; Distances beside it (localization L6, l10n-zh-Hant)", async ({ page }) => {
   await openApp(page, '#/languages');
   const panel = page.getByRole('region', { name: 'Languages' });
   const screens = panel.getByLabel(SCREENS);
   // The first rows, above the languages you speak.
   expect(await panel.locator('.field-label, h3').allTextContents()).toEqual([SCREENS, 'Distances', 'Languages you speak', 'Add a language', 'Shiori answers in']);
-  const shipped = HANT_SHIPPED ? ['en', 'ja', 'zh-Hans', 'zh-Hant'] : ['en', 'ja', 'zh-Hans'];
-  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', ...(HANT_SHIPPED ? ['繁體中文'] : [])]);
-  for (const tag of shipped) await expect(screens.locator(`option[value="${tag}"]`)).toHaveAttribute('lang', tag);
-  // Japanese and Chinese ship; Traditional Chinese is Experimental's only unfinished translation until it does.
+  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', '繁體中文']);
+  for (const tag of ['en', 'ja', 'zh-Hans', 'zh-Hant']) await expect(screens.locator(`option[value="${tag}"]`)).toHaveAttribute('lang', tag);
+  // All ship: Experimental has no unfinished translations to offer.
   await page.evaluate(() => { location.hash = '#/experimental'; });
   await expect(page.getByRole('heading', { level: 1, name: 'Experimental' })).toBeVisible();
-  const unfinished = page.getByRole('region', { name: 'Unfinished translations' });
-  if (HANT_SHIPPED) await expect(unfinished).toHaveCount(0);
-  else await expect(unfinished.locator('li')).toHaveText(['繁體中文']);
+  await expect(page.getByRole('region', { name: 'Unfinished translations' })).toHaveCount(0);
 });
 
 
@@ -428,7 +423,7 @@ test("the welcome's first step has the screens' language to choose, and choosing
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
   const screens = page.locator('main').getByLabel(SCREENS);
   await expect(screens).toHaveValue('');
-  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', ...(HANT_SHIPPED ? ['繁體中文'] : [])]);
+  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', '繁體中文']);
   const restarted = page.waitForEvent('load');
   await screens.selectOption('ja');
   await restarted;
@@ -511,13 +506,8 @@ test.describe('on a phone set to Chinese (China)', () => {
 
 test.describe('on a phone set to Chinese (Taiwan)', () => {
   test.use({ locale: 'zh-TW' });
-  test('Traditional Chinese is not Simplified: annai opens in Traditional Chinese with its region, zh-Hant-TW, once it ships, and in English until then (l10n-zh-Hant)', async ({ page }) => {
+  test('As this phone is set opens annai in Traditional Chinese, not Simplified, with its region, zh-Hant-TW (l10n-zh-Hant)', async ({ page }) => {
     await openApp(page, '#/trips');
-    if (!HANT_SHIPPED) {
-      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-      await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
-      return;
-    }
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-TW');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
     await page.evaluate(() => { location.hash = '#/languages'; });
@@ -543,10 +533,10 @@ test.describe('on a phone set to Chinese (Taiwan)', () => {
 
 test.describe('on a phone set to Chinese (Hong Kong)', () => {
   test.use({ locale: 'zh-HK' });
-  test('a Hong Kong phone gets the one Traditional catalog, with Taiwan\'s words, and its own region, zh-Hant-HK, once it ships (l10n-zh-Hant)', async ({ page }) => {
+  test('a Hong Kong phone gets the one Traditional catalog, with Taiwan\'s words, and its own region, zh-Hant-HK (l10n-zh-Hant)', async ({ page }) => {
     await openApp(page, '#/trips');
-    await expect(page.locator('html')).toHaveAttribute('lang', HANT_SHIPPED ? 'zh-Hant-HK' : 'en');
-    if (HANT_SHIPPED) await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-HK');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
   });
 });
 
