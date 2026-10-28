@@ -244,7 +244,8 @@ for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
         const button = r(card.querySelector('.acts .btn'));
         const p = /** @type {HTMLElement} */ (card.querySelector('p'));
         return { card: r(card), title: r(card.querySelector('strong')), acts, rows: Math.round(acts.height / button.height), more: card.querySelectorAll('.more:not([hidden])').length,
-          text: p.offsetHeight ? r(p).bottom : null, scrolled: card.scrollHeight - card.clientHeight };
+          text: p.offsetHeight ? r(p).bottom : null, scrolled: card.scrollHeight - card.clientHeight,
+          moreBottom: card.querySelector('.acts .more') ? null : r(card.querySelector('.more')).bottom };
       });
       expect(m.rows, 'the buttons stay one row').toBe(1);
       expect(m.title.top).toBeGreaterThanOrEqual(m.card.top);
@@ -252,6 +253,7 @@ for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
       if (width < 600) expect(m.more, 'More is still there to open it').toBe(1); // on its side the text fits its three lines
       // What shows of the text is clear of the buttons: no line sits behind them.
       if (m.text !== null) expect(m.text).toBeLessThanOrEqual(m.acts.top + 1);
+      if (m.moreBottom !== null && width < 600) expect(m.moreBottom, 'nor More').toBeLessThanOrEqual(m.acts.top + 1);
     });
   }
 }
