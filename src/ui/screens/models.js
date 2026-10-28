@@ -224,7 +224,7 @@ export function reorderable(role, id, i, n, name, page, note, move, list, remove
   const menu = h('div', { id: menuId, class: 'reorder-menu', role: 'group', 'aria-label': t`Move ${name}`, hidden: true, onkeydown: (/** @type {KeyboardEvent} */ e) => { if (e.key === 'Escape') shut(true); } },
     h('button', { class: 'btn', type: 'button', disabled: i === 0, onclick: () => again(move(id, -1)) }, t`Move up`),
     h('button', { class: 'btn', type: 'button', disabled: i === n - 1, onclick: () => again(move(id, 1)) }, t`Move down`));
-  const li = h('li', { class: 'role-item', 'data-id': id, 'data-name': name }, label, grip, remove, menu);
+  const li = h('li', { class: 'role-item', 'data-id': id, 'data-name': name, oncontextmenu: (/** @type {Event} */ e) => e.preventDefault() }, label, grip, remove, menu);
   /** Once the list is drawn again, the handle takes the focus back, so arrow keys go on. @param {Promise<void>} moved */
   const again = (moved) => moved.then(() => {
     for (const g of document.querySelectorAll('.grip')) if (g instanceof HTMLElement && g.dataset.grip === `${role}\n${id}`) g.focus();
