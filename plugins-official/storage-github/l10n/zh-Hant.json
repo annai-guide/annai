@@ -15,7 +15,7 @@
     "1cm4kmv": "此次備份將上傳 {0}。",
     "1duy7cy": "annai 在 GitHub 上找不到 {0}。請檢查名稱，以及權杖是否有權存取它。",
     "1f6pfhd": "GitHub 拒絕了此操作（HTTP {0}）。annai 稍後會再試。",
-    "1ffp47z": "請按「所有者/名稱」的形式填寫儲存庫，例如 you/annai-backup。",
+    "1ffp47z": "請依「擁有者/名稱」的形式填寫儲存庫，例如 you/annai-backup。",
     "1gk4xqa": "GitHub 儲存的 {0} 與 annai 傳送的不同。annai 稍後會再試。",
     "1j97ilg": "{0} 是公開的，任何人都能讀到其中你的旅行。請在 GitHub 上把它設為私有（儲存庫的 Settings，然後 Change visibility），或選擇一個私有儲存庫。",
     "1jsrg21": "在 GitHub 上建立權杖",
