@@ -649,7 +649,7 @@ export function activate(annai) {
 ```
 
 - **`pages(bytes, { from, max, edge, signal })`** gets the PDF as a `Uint8Array`. `from` is the first page wanted, 1-based (1 when left out), `max` how many at most (annai asks for at most 10 for a model, 1 for a preview), and `edge` the longest side of each picture in pixels (1600 for a model, 1200 for a preview). Stop when `signal` aborts: a model's reading of a PDF has 90 seconds in all.
-- **It returns `{ count, pages: [{ type, bytes, width, height }] }`:** `count` is the PDF's number of pages, and `pages` the ones drawn, in order, each a picture every browser decodes (annai's own uses JPEG) with its size in pixels.
+- **It returns `{ count, pages: [{ type, bytes, width, height }], blank? }`:** `count` is the PDF's number of pages, and `pages` the ones drawn, in order, each a picture every browser decodes (annai's own uses JPEG) with its size in pixels. A page with nothing drawn on it is left out of `pages` and named in `blank` (its page numbers); it counts toward `max`, and annai tells the model it was blank rather than sending it.
 - **Leave the bytes whole.** The caller keeps using them (a stored file, a screen's Blob). Copy them before handing them to a library that transfers buffers to a worker; PDF.js does.
 - **An `Error` in plain words is an answer,** not a failure of the plugin: "This PDF is locked with a password, so its pages can't be drawn." Shiori's model is told it. A crash (a `TypeError` and the like) counts against the plugin, as a tool's does, and three in a row switch it off (spec §5.5).
 - **One is used:** the first running registration of the kind. Plugins start in rank order, so annai's official one comes first.

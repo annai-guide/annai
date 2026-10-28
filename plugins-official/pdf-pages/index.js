@@ -40,6 +40,13 @@ function pdfjs() {
   return lib;
 }
 
+/** Whether a drawn page is white all over: no pixel darker than the faintest grey a scan's paper shows. @param {CanvasRenderingContext2D} g @param {number} w @param {number} h */
+function blankCanvas(g, w, h) {
+  const { data } = g.getImageData(0, 0, w, h);
+  for (let i = 0; i < data.length; i += 4) if (data[i] < 248 || data[i + 1] < 248 || data[i + 2] < 248) return false;
+  return true;
+}
+
 /** The longest side a page is drawn at, at most, as a multiple of its own size. */
 const MOST_SCALE = 4;
 
@@ -48,7 +55,8 @@ const MOST_SCALE = 4;
  * (locked, broken); the bytes given are left whole (PDF.js is handed a copy, as it transfers what it gets to its worker).
  * @param {Uint8Array} bytes @param {{ from?: number, max: number, edge: number, signal?: AbortSignal }} o
  *   from: the first page, 1-based; max: how many at most; edge: each picture's longest side, in px
- * @returns {Promise<{ count: number, pages: { type: string, bytes: Uint8Array, width: number, height: number }[] }>}
+ * @returns {Promise<{ count: number, pages: { type: string, bytes: Uint8Array, width: number, height: number }[], blank?: number[] }>} blank: the pages
+ *   drawn with nothing on them, left out of pages (they count toward max)
  */
 export async function pages(bytes, { from = 1, max, edge, signal }) {
   /* en */
@@ -68,6 +76,8 @@ export async function pages(bytes, { from = 1, max, edge, signal }) {
     const doc = await task.promise;
     const count = doc.numPages;
     const out = [];
+    /** @type {number[]} */
+    const blank = [];
     for (let n = Math.max(1, from); n <= Math.min(count, from + max - 1); n++) {
       if (signal?.aborted) throw stopped();
       const page = await doc.getPage(n);
@@ -81,13 +91,19 @@ export async function pages(bytes, { from = 1, max, edge, signal }) {
       g.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: g, canvas, viewport }).promise;
       page.cleanup();
+      // A page with nothing drawn on it (a booking's empty last page) isn't sent, only named: it would cost a picture every turn.
+      if (blankCanvas(g, canvas.width, canvas.height)) {
+        blank.push(n);
+        canvas.width = canvas.height = 0;
+        continue;
+      }
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
       /* en */
       if (!blob) throw new Error(`Page ${n} was drawn, but this browser couldn't make a picture of it.`);
       out.push({ type: 'image/jpeg', bytes: new Uint8Array(await blob.arrayBuffer()), width: canvas.width, height: canvas.height });
       canvas.width = canvas.height = 0; // let the browser have its memory back now (Safari keeps a canvas's pixels until collected)
     }
-    return { count, pages: out };
+    return { count, pages: out, ...(blank.length ? { blank } : {}) };
   } catch (e) {
     // PDF.js's errors are answers about this PDF, never a crash of the plugin: a PDF that trips PDF.js up must not switch it off.
     if (signal?.aborted) throw stopped();

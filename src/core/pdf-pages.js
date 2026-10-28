@@ -8,7 +8,8 @@ export const MAX_PAGES = 10; // pages drawn for a model, at most
 export const PAGE_EDGE = 1600; // px, a page picture's longest side for a model
 
 /** @typedef {{ type: string, bytes: Uint8Array, width: number, height: number }} PageImage */
-/** @typedef {{ count: number, pages: PageImage[] }} Drawn  count: the PDF's pages; pages: those drawn */
+/** @typedef {{ count: number, pages: PageImage[], blank?: number[] }} Drawn  count: the PDF's pages; pages: those drawn with something on them;
+ *   blank: the numbers of pages drawn with nothing on them, left out of pages (they count toward max) */
 /** @typedef {{ pluginId: string, pages: (bytes: Uint8Array, o: { from?: number, max: number, edge: number, signal?: AbortSignal }) => Promise<Drawn> }} PdfPages
  *   from: the first page, 1-based (default 1); max: how many at most; edge: the longest side in px */
 
