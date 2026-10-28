@@ -14,9 +14,10 @@ Taiwan's words. This page is for anyone who translates them, a person or an agen
 - **annai's official plugins** are in the same files (localization L7): a row keyed `<plugin id>:@<field>` is its manifest's field
   (its name, description, a provider's notes, a setting's title), and `<plugin id>:<key>` its code's words (`l10n.t`, `l10n.tc`,
   `l10n.plural` and `l10n.both`, or `t` and the rest taken out of `annai.l10n`). Their `where` names the plugin. `npm run strings`
-  writes each plugin's `plugins-official/<id>/l10n/<tag>.json` from them; run `npm run catalog` after it, since the catalog
-  holds every plugin file's hash, and bump the plugin's version. A third party's plugin ships its own translations
-  ([docs/plugins.md](plugins.md), "Translations").
+  writes each plugin's words in each language beside annai's catalog, `catalog/l10n/<tag>/<id>.json`; run `npm run catalog`
+  after it, which lists each one's hash in `catalog/l10n/<tag>.json`. A changed translation needs no new version of the plugin:
+  a phone in that language fetches that one file at its next check, and no other phone fetches anything. A third party's plugin
+  ships its own translations ([docs/plugins.md](plugins.md), "Translations").
 - **The glossary,** `l10n/glossary.tsv` (and `glossary.md` to read it), fixes the names of annai's screens and things
   in each language, the names iPhone and Android use for their own settings, and what is never translated.
 

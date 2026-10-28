@@ -5,6 +5,7 @@ import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor, distancesOf } from '../core/languages.js';
 import { languageName, setDistances } from '../core/intl.js';
 import { reorderable } from './screens/models.js';
+import { fetchTranslations } from '../core/llm/official.js';
 
 /** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
 export function ownName(tag) {
@@ -215,7 +216,10 @@ export function screensRow(ctx, app) {
     const back = (/** @type {string} */ why) => { select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
     if (next.tag !== 'en') {
       note.textContent = t`Getting ${name}…`;
-      if (!(await keepWords(next.tag))) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
+      // annai's own plugins' words in it too, so they start in it after the restart; they never stop the change, nor hold it up past 30 s.
+      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
+      const [got] = await Promise.all([keepWords(next.tag), plugins]);
+      if (!got) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
     }
     try {
       await updateAppSettings(ctx.ws, { languages: { ui: pick || null } });

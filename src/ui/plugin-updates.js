@@ -1,4 +1,4 @@
-import { officialUpdates, updateOfficial, officialName } from '../core/llm/official.js';
+import { officialUpdates, updateOfficial, officialName, fetchTranslations } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
 import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
@@ -28,7 +28,8 @@ const knownOf = (host) => {
 
 /**
  * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
- * keeps what it found before, and says why in failed. Nothing is kept once current() is false.
+ * keeps what it found before, and says why in failed. Nothing is kept once current() is false. Checking annai's own also brings
+ * their words in the screens' language to the catalog's (fetchTranslations), which is never an update and never fails.
  * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
  */
@@ -42,7 +43,7 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
     for (const u of list) known.set(u.id, u);
   };
   if (official) {
-    const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; });
+    const [now] = await Promise.all([officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; }), fetchTranslations(host, env)]);
     if (now && current()) keep(false, now);
   }
   if (address) {
