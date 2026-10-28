@@ -162,7 +162,8 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice .acts { position: sticky; bottom: 0; background: var(--sheet); padding-top: 4px; }
 /* A card longer than the box shows its first lines until More opens it (notices.js); open, the box's cap is lifted. */
 .notice.clamp:not(.open) p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 3); line-clamp: var(--lines, 3); overflow: hidden; }
-.notices.opened { max-height: none; }
+/* An opened card, or an opened stack, lifts the box's cap: each card in it shows whole. */
+.notices:has(.notice.open, .stack-list:not([hidden])) { max-height: none; }
 .notice .more { align-self: flex-start; min-height: 36px; padding: 4px 10px; margin-inline-start: -10px; } /* its word under the text's first letter */
 .notice .acts .more { margin-inline-start: 0; align-self: center; }
 /* Words behind More: out of sight, still read by a screen reader. */

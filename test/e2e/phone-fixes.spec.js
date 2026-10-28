@@ -303,7 +303,7 @@ for (const ui of ['', 'ja', 'zh-Hans']) {
   }
 }
 
-test("a card's words behind More are still read by a screen reader, and a refit while the card is scrolled measures from its top (the second review of item 3)", async ({ page }) => {
+test("a card's words behind More are still read by a screen reader (the second review of item 3)", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
   await openApp(page, '#/trips');
   await page.evaluate(async () => {
@@ -317,7 +317,107 @@ test("a card's words behind More are still read by a screen reader, and a refit 
   const card = page.locator('#tn > .notice');
   await expect(card).toHaveClass(/\bbrief\b/);
   expect(await card.ariaSnapshot()).toContain("That was after this phone's last backup");
-  const before = await card.getAttribute('class');
-  await card.evaluate((c) => { c.scrollTop = c.scrollHeight; dispatchEvent(new Event('resize')); });
-  expect(await card.getAttribute('class')).toBe(before);
+});
+
+// The third review of phone-fixes-1: a card's fit, when it comes, when a stack folds back, after Less, with More focused, and an open stack.
+/** A box of the test's own in place of the app's, with window.__n its notices and window.__backup() a backup-conflict card. @param {import('@playwright/test').Page} page */
+const ownBox = (page) => page.evaluate(async () => {
+  const at = (/** @type {string} */ p) => p;
+  const { createNotices } = await import(at('/src/ui/notices.js'));
+  const n = createNotices();
+  n.el.id = 'tn';
+  document.querySelector('.notices')?.replaceWith(n.el);
+  for (const r of document.querySelectorAll('.risk')) /** @type {HTMLElement} */ (r).style.display = 'none';
+  const w = /** @type {any} */ (window);
+  w.__n = n;
+  w.__backup = () => n.card({ tone: 'warn', title: 'A newer backup is on GitHub', body: "An iPhone backed up to me/annai-backup 3 hours ago. That was after this phone's last backup, 5 hours ago.",
+    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
+});
+/** Whether a part shows on top, as things are now. @param {import('@playwright/test').Locator} part */
+const onTop = (part) => part.evaluate((el) => {
+  const b = el.getBoundingClientRect();
+  const hit = document.elementFromPoint(b.left + Math.min(6, b.width / 2), b.top + b.height / 2);
+  return b.height > 0 && b.top >= 0 && b.bottom <= innerHeight && Boolean(hit && el.contains(hit));
+});
+const frames = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+test('a card that comes while the page is scrolled down leaves what is seen where it was, its fit and all (third review, 1)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await ownBox(page);
+  await page.evaluate(() => scrollTo(0, 400));
+  const mark = page.locator('main.view a[href]').filter({ hasNotText: /^$/ }).nth(3);
+  const was = await mark.evaluate((el) => el.getBoundingClientRect().top);
+  await page.evaluate(() => /** @type {any} */ (window).__backup());
+  await frames(page);
+  await expect(page.locator('#tn > .notice')).toHaveClass(/\bbrief\b/); // a card its fit changed
+  expect(Math.abs((await mark.evaluate((el) => el.getBoundingClientRect().top)) - was)).toBeLessThanOrEqual(1);
+});
+
+test('a stack folding back to one card fits that card: its title is not behind its buttons (third review, 2)', async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await openApp(page, '#/trips');
+  await ownBox(page);
+  await page.evaluate(() => {
+    const n = /** @type {any} */ (window).__n;
+    const first = n.card({ tone: 'warn', title: 'Something went wrong', body: 'annai kept running. The details are in Trace.' });
+    n.card({ tone: 'warn', title: 'Something went wrong', body: 'annai kept running. The details are in Trace.' });
+    first();
+  });
+  await frames(page);
+  const card = page.locator('#tn > .notice');
+  await expect(card).not.toHaveClass(/notice-stack/);
+  expect(await onTop(card.locator('strong'))).toBe(true);
+  expect(await onTop(card.getByRole('button', { name: 'Dismiss' }))).toBe(true);
+});
+
+test('More, a turn of the phone, then Less: the card fits the screen it is on now (third review, 3)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, '#/trips');
+  await ownBox(page);
+  await page.evaluate((body) => /** @type {any} */ (window).__n.card({ title: 'Plugin updates are ready', body, actions: [{ label: 'Update', primary: true, run() {} }] }), OFFER);
+  await frames(page);
+  const card = page.locator('#tn > .notice');
+  await card.getByRole('button', { name: 'More' }).click();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await frames(page);
+  await card.getByRole('button', { name: 'Less' }).click();
+  await frames(page);
+  const after = await card.evaluate((c) => [c.className, c.style.getPropertyValue('--lines')]);
+  await page.evaluate(() => dispatchEvent(new Event('resize')));
+  await frames(page);
+  expect(after).toEqual(await card.evaluate((c) => [c.className, c.style.getPropertyValue('--lines')]));
+});
+
+test('More keeps the focus when the screen changes size (third review, 10)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 544 });
+  await openApp(page, '#/trips');
+  await ownBox(page);
+  await page.evaluate(() => /** @type {any} */ (window).__backup());
+  await frames(page);
+  const more = page.locator('#tn > .notice').getByRole('button', { name: 'More' });
+  await more.focus();
+  await page.evaluate(() => dispatchEvent(new Event('resize')));
+  await frames(page);
+  await expect(more).toBeFocused();
+});
+
+test('an opened stack in a small box shows each of its cards whole: no Dismiss over a title (third review, 9)', async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 659 });
+  await openApp(page, '#/trips');
+  await ownBox(page);
+  await page.evaluate(() => {
+    const n = /** @type {any} */ (window).__n;
+    for (let i = 0; i < 2; i++) n.card({ tone: 'warn', title: 'Something went wrong', body: 'annai kept running. The details are in Trace.' });
+  });
+  await frames(page);
+  await page.locator('#tn .notice-stack').getByRole('button', { name: /^Show/ }).click();
+  await frames(page);
+  // The box's cap is lifted, as for an opened card: it doesn't scroll, so no card's sticky Dismiss sits over another's title.
+  expect(await page.locator('#tn').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+  for (const member of await page.locator('#tn .stack-list > .notice').all()) {
+    await member.scrollIntoViewIfNeeded();
+    expect(await onTop(member.locator('strong'))).toBe(true);
+  }
 });
