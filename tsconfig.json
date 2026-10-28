@@ -12,5 +12,6 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["src/**/*.js", "plugins-official/**/*.js", "scripts/**/*.mjs", "relay/**/*.js", "relay/**/*.mjs", "playwright.config.js"]
+  "include": ["src/**/*.js", "plugins-official/**/*.js", "scripts/**/*.mjs", "relay/**/*.js", "relay/**/*.mjs", "playwright.config.js"],
+  "exclude": ["node_modules", "plugins-official/*/vendor/**"]
 }
