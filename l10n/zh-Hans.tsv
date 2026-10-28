@@ -491,24 +491,24 @@ pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent
 1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1978	
 1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:2006	{0} = names; {1} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2061	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2486	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2629	
-guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2629	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2630	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2630	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2768	
-8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2903	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3077	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3078	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3079	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3080	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3081	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3082	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3089	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3099	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3100	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3101	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3102	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2494	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2637	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2637	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2638	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2638	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2776	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2911	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3085	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3086	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3087	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3088	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3089	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3090	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3097	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3107	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3108	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3109	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3110	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -693,22 +693,22 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" 的某一项缺少 "from"：每一项都以 2027-01-01 这样的日期开始。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" 中 {0} 出现了两次：请把那天的变化放在同一项里。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" 中有“{0}”，但它不是 annai 认识的价格。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:101	
-9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
-12h1lml	ok	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:103	
-uxj42v	ok	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:104	
-19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:105	
-1coimht	ok	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:106	
-6o9g3j	ok	It doesn't have the provider tool this needs.	它没有这里需要的提供商工具。	src/core/llm/fallback.js:107	
-8xm1wt	ok	It isn't a chat model.	它不是对话模型。	src/core/llm/fallback.js:108	Note: chat model → 对话模型, as the glossary's Koe · Classic note names Koe's list of chat models.
-1i0eq06	ok	It is switched off.	它已关闭。	src/core/llm/fallback.js:109	
-10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:110	Note: 移除, as Remove model.
-s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:111	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:130	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:156	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:205	Note: the role by its screen name (補助 / 辅助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:206	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:207	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:102	
+9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:103	
+12h1lml	ok	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:104	
+uxj42v	ok	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:105	
+19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:106	
+1coimht	ok	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:107	
+6o9g3j	ok	It doesn't have the provider tool this needs.	它没有这里需要的提供商工具。	src/core/llm/fallback.js:108	
+8xm1wt	ok	It isn't a chat model.	它不是对话模型。	src/core/llm/fallback.js:109	Note: chat model → 对话模型, as the glossary's Koe · Classic note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	它已关闭。	src/core/llm/fallback.js:110	
+10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:111	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:112	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:131	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:157	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:206	Note: the role by its screen name (補助 / 辅助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:207	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:208	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:105	Note: said of a plugin, whose name is the card's title.
@@ -2280,89 +2280,89 @@ pghiva	ok	Location	位置	src/ui/screens/trace.js:33
 1jije2k	ok	Nothing here yet.	这里还没有内容。	src/ui/screens/trace.js:76	
 zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:87	
 vv1pu6	ok	Type contains	事件类型包含	src/ui/screens/trace.js:88	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:145	
-obwhc7	ok	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:145	
-oh532o	ok	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:145	
-1ds6m85	ok	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:146	
-1r6qy12	ok	the user wrote	用户写了	src/ui/screens/trace.js:167	
-yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:167	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:171	
-l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:171	
-omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:172	
-1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:175	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
-piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:175	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	一个回答	src/ui/screens/trace.js:176	
-1x13vat	ok	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:176	
-k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:176	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:177	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:177	
-1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:179	{0} = d.by
-o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:182	{0} = d.source
-v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:182	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	错误	src/ui/screens/trace.js:184	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:184	
-1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:188	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
-7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:188	
-udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:188	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:190	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:192	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	为看不了照片的模型保留的照片描述	src/ui/screens/trace.js:192	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:192	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:196	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:196	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:197	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:200	
-1vkhbgw	ok	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:200	
-17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:201	
-130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:202	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:202	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:204	{0} = d.late
-1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:204	
-1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:205	
-1yfde5	ok	no name	无名称	src/ui/screens/trace.js:207	
-1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:208	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:208	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	来自现有的设备	src/ui/screens/trace.js:208	
-3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:209	
-1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:215	Note: The glossary's Voice on mode (语音开启).
-z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:215	Note: The glossary's Voice off mode (语音关闭).
-1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:218	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:218	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:219	
-cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:220	
-3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:230	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:234	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:235	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:236	{0} = d.state
-beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:238	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:243	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:243	
-njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:243	
-9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:244	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:244	
-1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:245	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:245	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:246	{0} = d.player
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:249	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:252	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:254	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:254	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:258	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:258	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:259	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:259	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:261	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:262	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:264	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:264	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:266	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:268	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:268	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:291	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:291	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:308	
+g9esrd	ok	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:146	
+obwhc7	ok	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:146	
+oh532o	ok	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:146	
+1ds6m85	ok	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:147	
+1r6qy12	ok	the user wrote	用户写了	src/ui/screens/trace.js:168	
+yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:168	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:172	
+l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:172	
+omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:173	
+1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:176	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
+piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:176	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	一个回答	src/ui/screens/trace.js:177	
+1x13vat	ok	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:177	
+k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:177	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:178	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:178	
+1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:180	{0} = d.by
+o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:183	{0} = d.source
+v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:183	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	错误	src/ui/screens/trace.js:185	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:185	
+1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
+7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:189	
+udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:190	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:191	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:193	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	为看不了照片的模型保留的照片描述	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:197	{0} = app
+13f9wx2	ok	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:197	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:198	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	ok	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:201	
+1vkhbgw	ok	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:201	
+17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:202	
+130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:203	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:203	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:205	{0} = d.late
+1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:205	
+1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:206	
+1yfde5	ok	no name	无名称	src/ui/screens/trace.js:208	
+1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:209	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:209	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	来自现有的设备	src/ui/screens/trace.js:209	
+3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:210	
+1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:216	Note: The glossary's Voice on mode (语音开启).
+z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:216	Note: The glossary's Voice off mode (语音关闭).
+1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:219	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:219	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:220	
+cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:221	
+3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:231	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:235	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:236	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:237	{0} = d.state
+beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:239	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:244	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:244	
+njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:244	
+9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:245	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:245	
+1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:246	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:246	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:247	{0} = d.player
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:250	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:255	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:255	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:259	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:260	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:260	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:263	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:267	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:292	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:309	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:38	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:48	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:50	
