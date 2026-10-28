@@ -5,7 +5,7 @@
 **Goal:** One way in, a + in the type box: the user hands Shiori photos, PDFs, Wallet passes or pasted text, with or without words; she works out what each is and which trip it belongs to (starting or opening one when needed), does it, says what she did, and Undo takes it back. A trip needs only a name. Files handed over with no trip open wait with Shiori in a space of their own.
 
 **Architecture:**
-- **A hand-over is a user message with files.** The composer stores the files first (the open trip's `/files/`, or the waiting space `sys:waiting` when no trip is open), then sends the message with `handed` (what was handed) and a `handover` id. The message's line tells Shiori, in annai's English, what was handed and what to do. She reads the files with `read`, the path the "Reading files" plan routes.
+- **A hand-over is a user message with files.** The composer stores the files first (the open trip's `/files/`, or the waiting space `sys:waiting` when no trip is open), then sends the message with `handed` (what was handed) and a `handover` id. The message's line tells Shiori, in annai's English, what was handed and what to do. In a trip she reads the files with `read`, the path the "Reading files" plan routes. **With no trip open, a waiting file is read by a side task** (that plan's `readFile` in `src/core/agent/reading.js`), and only what it says is kept in the no-trip conversation. The file itself lives only in the waiting space and then its trip, so removing the trip gives its space back (the user, 2026-10-28: "Fix: read it in a side task").
 - **Her writes carry the hand-over.** The turn that takes a hand-over passes its id to every tool call; the file tools put it on each `file.write` and `file.delete`. Undo reads those entries back. Nothing else marks what she did.
 - **Trip tools are Kokoro's loop tools** (`list_trips`, `start_trip`, `open_trip`, `move_file`). A trip she starts or opens gets the hand-over and her recap written into its conversation first; with no trip open it opens once both halves are done (`Halves.openWhenDone`). Renaming and dates stay her existing `patch` of `/trip/trip.json`.
 - **Short names are data in `/names.json`** beside the files, in each trip and in the waiting space; she writes them with `patch`. Showing them is the seeing-bookings plan's.
@@ -14,7 +14,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-28-bookings-and-trips-design.md` (approved 2026-10-28, "Approve as written"). The main spec is `docs/superpowers/specs/2026-10-15-annai-design.md` (§4 Storage, §6 Agent loop, §7.2–7.3, §16.2). Its sibling plan, `docs/superpowers/plans/2026-10-28-seeing-bookings.md`, builds on the interfaces below. A third plan, "Reading files" (spec goals 11 and 12), runs alongside: nothing here decides which model reads a file.
 
-**Starts from:** main **after phone-fixes-1 has merged** (branch `phone-fixes-1`, brief `.superpowers/briefs/phone-fixes-1.md`). Tasks marked **[after phone-fixes-1]** touch files that branch changes (`loop.js`, `halves.js`, `talk.js`, `file.js`, `shell.js`, `router.js`, `format.js`, `base.css`): rebase onto main once it has merged, before starting them. Its `fileHref(id, path, from)` and `cameFrom(from, id)` (file.js) are used here as they will be on main.
+**Starts from:** main **after phone-fixes-1 has merged** (branch `phone-fixes-1`, brief `.superpowers/briefs/phone-fixes-1.md`). Tasks marked **[after phone-fixes-1]** touch files that branch changes (`loop.js`, `halves.js`, `talk.js`, `file.js`, `shell.js`, `router.js`, `format.js`, `base.css`): rebase onto main once it has merged, before starting them. Its `fileHref(id, path, from)` and `cameFrom(from, id)` (file.js) are used here as they will be on main. Task 4b also needs the "Reading files" plan's Task 2 merged (`docs/superpowers/plans/2026-10-28-reading-files.md`: `readFile`, `Reading` in `src/core/agent/reading.js`; `runningPdfPages` in `src/core/pdf-pages.js`), and is marked **[after reading-files Task 2]**.
 
 ---
 
@@ -157,11 +157,11 @@ test('dropWaiting: removes the file, its history and its name, and frees what no
 });
 ```
 - `cross-trip.test.js`: `"the no-trip conversation reaches waiting files' content by hash; a trip doesn't"`: `canRead(store, ME, hash)` true, `canRead(store, trip, hash)` false.
-- `plugin-files.test.js`: `"with no trip open, list / shows /waiting/ files, and read reads one; with a trip open, /waiting/ is refused in words"`.
+- `plugin-files.test.js`: `"with no trip open, list / shows /waiting/ files, and read reads one; with a trip open, /waiting/ is refused in words"`; `"Shiori's delete of a /waiting/ file drops it: the file, its history and its name go, and its space comes back"` (a pasted text that isn't a booking, My call 6).
 - `archive.test.js`: `'an everything backup carries the waiting space and brings it back; a trip backup leaves it out'`.
 
 - [ ] **Step 2: Run to verify they fail** (`waiting.test.js`, `cross-trip.test.js`, `plugin-files.test.js`, `archive.test.js`). Expected: FAIL.
-- [ ] **Step 3: Implement.** `reachable`: from `ME`, a hash named by one of `SYS_WAITING`'s files is reached (`blobNamedIn(h, SYS_WAITING, { events: false })`), like a trip reaching `/me/`'s. `DIRS` gains `[SYS_WAITING]: 'system/waiting'`. `filesUnder('/')` with no trip lists `/waiting` beside `/me`. Grep the unit tests for assertions on the base scopes' list and add `sys:waiting` where they count them.
+- [ ] **Step 3: Implement.** `reachable`: from `ME`, a hash named by one of `SYS_WAITING`'s files is reached (`blobNamedIn(h, SYS_WAITING, { events: false })`), like a trip reaching `/me/`'s. `DIRS` gains `[SYS_WAITING]: 'system/waiting'`. `filesUnder('/')` with no trip lists `/waiting` beside `/me`. The `delete` tool on a `/waiting/` path calls `dropWaiting` instead of `ws.delete`. Grep the unit tests for assertions on the base scopes' list and add `sys:waiting` where they count them.
 - [ ] **Step 4: Run to verify they pass.** Expected: PASS.
 - [ ] **Step 5: Commit** (the files above by name): "Files handed over with no trip open wait with Shiori, in a space of their own".
 
@@ -221,6 +221,8 @@ test("Shiori's file tools put the turn's hand-over on what they write and delete
     - for new files under `/waiting/`: read each; work out what it is (a flight, a stay, a car, a train, an event or a reservation, or just a photo) and which trip it fits (`list_trips`); then, without asking where it goes, `open_trip` with the files for a trip that fits, else `start_trip` named and dated from the bookings; one you can't place with confidence starts a trip, and you say what you were unsure of;
     - for new files under `/trip/`: file each here, unless it belongs to another trip (`move_file` it there and say so); a photo that isn't a booking stays among the trip's photos;
     - for every new file: give it a short name for what it is ("ANNAI AIR flight · Nov 20") in `names.json` beside it, with `patch`; then say what you did;
+    - for a pasted text (`pasted-….txt`, Task 7): one that isn't a booking, `delete` it, so it isn't kept; one that is stays with its booking (in the trip's Files, or moved to its trip with the others) (My call 6);
+    - for new files under `/waiting/`, also: what `read` gives you is what the file says, read for you by a side task; the file itself stays where it is;
     - for a reference (`new: false`): "The user is asking about <path>: read it, and the file it came from, before you answer."
     - The booking sentence is today's (`imports.js` `newFilesText`): "write an unverified booking in /trip/bookings/ with source set to its path, add the fixed plan items it implies…". seeing-bookings replaces that one sentence.
   - `Halves`: Kokoro's wake for a typed message carries `handover: e.data.handover`; a hand-over typed while Koe is live goes through `LiveKoe.send(text, { photos, chose, handed, handover })`, which logs it with `logUser` and tells the session `/* en */ "[the user handed you N files; Kokoro reads them]"`.
@@ -253,6 +255,7 @@ test('a hostile or long file name is quoted as a name and cut at 100 characters'
   assert.match(text, /…"/); assert.match(text, /File names are what the files were called/); // Review Focus 4
 });
 test('handOverText: waiting files ask for list_trips and open_trip or start_trip; trip files for move_file; a reference asks her to read it first', () => { /* three asserts on the three cases */ });
+test('handOverText: a pasted text that is not a booking is to be deleted, one that is kept with its booking', () => { assert.match(handOverText([pasted]), /pasted-.*isn.t a booking.*delete/s); });
 ```
 - `halves.test.js`: `"with two halves, Kokoro's turn for a typed hand-over carries it: its writes have the hand-over"`.
 - `halves-live.test.js`: `'a hand-over typed while Koe is live is logged with its files, and Kokoro is woken for it'`.
@@ -262,6 +265,41 @@ test('handOverText: waiting files ask for list_trips and open_trip or start_trip
 - [ ] **Step 3: Implement** as in Interfaces. `send()`: `said = text.trim() || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '')`; with a pending ask, the words resolve it and the files follow as a `{ kind: 'user', text: FILES_ONLY, handed, handover }` wake (as photos do today).
 - [ ] **Step 4: Run to verify they pass**, then `NODE_OPTIONS=--max-old-space-size=2048 timeout 1500 systemd-run --scope -q -p MemoryMax=6G npm run check` (the agent suites are the risk).
 - [ ] **Step 5: Commit** the files above by name: "A message can hand Shiori files, and her turn's writes carry the hand-over". Add the `logUser` entry to `/mnt/optane/work/agent-rules/LESSONS.md` (outside this repo, not in this commit).
+
+---
+
+### Task 4b: With no trip open, a side task reads the waiting files **[after phone-fixes-1] [after reading-files Task 2]**
+
+The user, 2026-10-28, on what the no-trip conversation may keep: "Fix: read it in a side task". With no trip open, a handed file is read by a side task. Only what it found (the booking's facts, as words) goes into the no-trip conversation; the file is never `read` into that history. In a trip, files are read as before.
+
+**Files:**
+- Modify: `src/core/agent/loop.js` (`#runCall`: a waiting file is told, never sent), `src/plugins/files/index.js` (`read` of a `/waiting/` photo returns it by its hash, with no request copy), `test/unit/agent-handover.test.js`
+
+**Interfaces:**
+- Consumes, from the "Reading files" plan (name them as it defines them; don't plan a second reading path): `readFile(file: FileToRead, model: { input?: string[] }, o: { llm, half, pages, signal, wakeId, scope, secondMs }): Promise<Reading>`, `FileToRead`, `Reading` (`src/core/agent/reading.js`), `runningPdfPages(registry)` (`src/core/pdf-pages.js`), and its PDF cache in `#toldPdfs`.
+- Produces:
+  - In a conversation with no trip open, a photo or PDF that a tool returns with a `path` under `/waiting/` is replaced, before it is logged or sent, by words. The loop calls `readFile({ kind, mediaType, data, name, path }, { input: ['text'] }, { …, scope: ME })` (a text-only view, so the side task always tells it in words). The result is `/* en */ "Files waiting with you are read by a side task here, so only what it says is kept in this conversation."` followed by the reading's `text`.
+  - That `tool.result` holds no `images`, no `document` and no blob of the file. `msg.user`'s `handed` names paths only, never content. So nothing in the no-trip log names the file's bytes.
+  - With nothing that can read it, the words are the reading's own (`noReader`, naming the setting that fixes it), and still nothing of the file is kept.
+
+- [ ] **Step 1: Write the failing tests** in `test/unit/agent-handover.test.js`. Use agentKit with no trip open and a scripted utility reader that answers "ANNAI AIR AN 123, SEA 11:20 → ANC 14:05, Nov 20 2026, seat 14C". The waiting space holds `flight.pdf`, from `test/fixtures/bookings/` (Task 10; until then, any small bytes typed `application/pdf`).
+
+```js
+test("with no trip open, read of a waiting PDF gives her a side task's words; the no-trip log names none of its bytes", async () => {
+  const [result] = await k.events(['tool.result']);
+  assert.match(String((await storedTexts(k.store, result)).content), /side task[\s\S]*AN 123/);
+  assert.equal(result.data.document, undefined);
+  assert.equal((result.refs ?? []).includes(pdfHash), false);
+  assert.equal((await k.store.tx(['events'], 'readonly', (t) => t.listEvents(ME))).some((e) => (e.refs ?? []).includes(pdfHash)), false);
+});
+test('a waiting photo too: words, and no request copy stored', async () => { /* the blobs' count is the same before and after the turn */ });
+test('in a trip, a handed PDF is read as before: a document her model gets', async () => {});
+test('with no model that can read it, she is told which setting fixes it, and nothing of the file is kept', async () => {});
+```
+- [ ] **Step 2: Run to verify they fail.**
+- [ ] **Step 3: Implement** in `#runCall`, next to the existing call to `#described` (which Reading files has made delegate to `readFile`).
+- [ ] **Step 4: Run to verify they pass**, then the full check.
+- [ ] **Step 5: Commit** `src/core/agent/loop.js src/plugins/files/index.js test/unit/agent-handover.test.js`: "With no trip open, a side task reads handed files, and only its words are kept".
 
 ---
 
@@ -324,6 +362,10 @@ test('a trip she started opens later with its hand-over owed: the turn that take
   // start_trip with a trip open (no open), then a fresh Agent on the same store opens the new trip: its booking write has data.handover 'h-1' (Review Focus 2)
 });
 test("the user opening another conversation before she is done keeps that one open: openWhenDone doesn't pull them away", async () => {});
+test('a PDF handed over with no trip open, filed into a trip she started, then the trip removed: no blob of that PDF is left', async () => {
+  // the side task reads it (Task 4b); start_trip moves it; a booking is written in the trip; then removeTrip(k.store, t.id)
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(pdfHash)), false);
+});
 ```
 - `scopes.test.js`: `"createTrip: a name is enough; Shiori's trip is hers, with the hand-over on its scope.create"`.
 
@@ -433,7 +475,7 @@ test('shownPath: the waiting space as /waiting/, a trip as /trip/', () => {
   - **The user's line** shows its files as chips under the words: the file's own name (`dir="auto"`), a link to the file where it is now (`fileHref`, or `#/waiting/file?path=` from Task 9), plain text when it has moved on; a `FILES_ONLY` line shows no words.
   - **Her recap:** a `wake` whose reason has `recap` is drawn as a line of Shiori's (her words, `hers()`), not as "Shiori woke…".
   - `movedWords(d: { to: string, started: boolean, count: number }, title: string | null): string`: `` t`Shiori started ${title} with these files.` ``, `` plural(count, 'Shiori took # file to {0}.', 'Shiori took # files to {0}.', title) ``, and words for a trip since removed (`title` null): `` t`Shiori took these files to a trip that has since been removed.` ``. The line links to the trip when it exists.
-  - **The Undo line:** a quiet line with a real button (`` t`Undo` ``, labelled `` t`Undo what Shiori did with these files` ``) under her last line after the newest hand-over in this conversation, moving down as she adds lines until the user writes or speaks again, then staying (My call 2: "Undo stays on her message until her next hand-over"); shown only while `undoable(...)`; a newer hand-over takes it away. On tap: `undoHandover`; with `tripEmpty`, each of `files` goes back to `SYS_WAITING` (`moveFile`), then `removeTripNow(ctx, scope)`, a toast `` t`Undone. ${title} is removed, and your files are waiting with Shiori.` `` and `#/trips`; otherwise a toast `` t`Undone.` `` plus, for `kept`, `` plural(kept.length, 'Left # file as you changed it.', 'Left # files as you changed them.') ``; the line then says `` t`Undone` ``.
+  - **The Undo line:** a quiet line with a real button (`` t`Undo` ``, labelled `` t`Undo what Shiori did with these files` ``) under her last line after the newest hand-over in this conversation. It moves down as she adds lines, until the user writes or speaks again, and then stays where it is. It is shown until her next hand-over in this conversation, or until it is used. The user writing again doesn't end it (My call 2: "Undo stays on her message until her next hand-over"). It shows only while `undoable(...)`. On tap: `undoHandover`; with `tripEmpty`, each of `files` goes back to `SYS_WAITING` (`moveFile`), then `removeTripNow(ctx, scope)`, a toast `` t`Undone. ${title} is removed, and your files are waiting with Shiori.` `` and `#/trips`; otherwise a toast `` t`Undone.` `` plus, for `kept`, `` plural(kept.length, 'Left # file as you changed it.', 'Left # files as you changed them.') ``; the line then says `` t`Undone` ``.
   - `removeTripNow(ctx, id)`: what `askAndRemove` does after its questions (Shiori leaves the trip, the pack stops, `removeTrip`, kept turns forgotten, live mode and memory let go); `askAndRemove` calls it.
   - The shell, on `ctx.agent.on('went', …)`: `ctx.render()` (the Conversation re-reads `agent.scope`; the top bar shows the trip).
 
@@ -498,7 +540,9 @@ The Undo line's placement and removal are covered end to end in Task 10.
   - `'with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she starts "Anchorage · Nov 20–27", it opens, and its conversation starts with the hand-over and her recap'`: pick both with `setInputFiles` on the `Add photos or files` label; send with no words; the stand-in replies `list_trips`, then `start_trip` with both files and a recap, then `speak`; then (in the trip) `write` a booking and `speak`. Expect: the top bar's trip is "Anchorage · Nov 20–27"; the Conversation's first lines are the two chips and the recap; no question was shown (`getByRole('button')` inside `.convo .shiori .acts` has count 0); `#/trips` shows no Waiting with Shiori.
   - `'the no-trip conversation keeps its lines, and one saying where the files went'`.
   - `'Undo takes back what she did; the trip she started goes, and the files wait with Shiori again'`.
-  - `'in a trip, a pasted confirmation email becomes a chip, then a text file in its Files, and Shiori is told about it'`: paste `confirmation.txt`'s text into the type box (`page.evaluate` dispatching a `paste` with `DataTransfer`), send; the request body's last user message names `/trip/files/pasted-…txt`; the trip's file list has it.
+  - `'in a trip, a pasted confirmation email becomes a chip, then a text file in its Files, and Shiori is told about it'`: paste `confirmation.txt`'s text into the type box (`page.evaluate` dispatching a `paste` with `DataTransfer`), send; the request body's last user message names `/trip/files/pasted-…txt`; the stand-in writes a booking from it; the trip's file list has it.
+  - `'with no trip open, a pasted text that is not a booking is dropped: once she deletes it, Waiting with Shiori doesn't list it'` (My call 6).
+  - `'with no trip open, a handed PDF reaches the stand-in only through the side task: the conversation\'s requests carry its words, never the PDF'`: the side reader's route gets the document; the main route's bodies have no `document` part (Task 4b).
   - `'a booking for another trip, while in a trip: she moves the file there and says so; that trip\'s card says a file is waiting to be read'`.
 - [ ] **Step 3: Run to verify they fail, fix what they find**, then pass on both projects: the e2e command with `test/e2e/hand-over.spec.js`.
 - [ ] **Step 4: Commit** the files above by name: "End-to-end tests for handing Shiori files, with synthetic booking fixtures".
@@ -528,12 +572,12 @@ The Undo line's placement and removal are covered end to end in Task 10.
 
 ## Calls to confirm (for the coordinator to put to the user)
 
-1. **What the no-trip conversation read stays in its history.** Shiori reads waiting files in the no-trip conversation, so that conversation's log names their content. Moving them into a trip frees the waiting space's copy, but removing that trip later doesn't free a PDF she read there. Freeing it would mean cutting her own reads out of the no-trip history. Recommended: accept, the same as a photo sent in any conversation.
-2. **Undo's place.** Undo sits under her last line after the hand-over. It moves down while she is still answering, and stays put once the user writes again, because Koe's first quick "let me look" comes before Kokoro has done anything. It is not a mark on one particular message of hers.
+1. **Resolved by the user ("Fix: read it in a side task"):** with no trip open, a side task reads waiting files and only its words are kept in the no-trip conversation (Task 4b). Removing the trip then gives the file's space back (tested in Task 5).
+2. **Undo's place.** Undo sits under her last line after the hand-over. It moves down while she is still answering, because Koe's first quick "let me look" comes before Kokoro has done anything, and stays there once the user writes again. It stays available until her next hand-over, as the spec says.
 3. **Every message with attachments is a hand-over,** Ask Shiori about this included, so a fix made after "the seat is 14D" can be undone too.
 4. **Renaming and dates are her existing `patch` of `/trip/trip.json`,** not a new tool. Koe still refuses it with "ask Kokoro".
 5. **A trip she starts while another is open does not open.** Its files wait to be read there, and she says so.
-6. **A pasted text becomes a file** when it has a line break or runs past 280 characters. It is kept even when it turns out not to be a booking, and the user can remove the chip before sending or delete the file later.
+6. **A pasted text becomes a file** when it has a line break or runs past 280 characters. When she finds it isn't a booking, she deletes it. From the waiting space that drops it with its space; in a trip it leaves Files. Only one that reads as a booking is kept, with its booking (My call 6).
 7. **`list_trips` shows active trips only.** Archived ones are left out.
 8. **`logUser(text, photos, chose)` became `logUser(text, photos, { chose, handed, handover })`.** This gets a LESSONS.md entry.
 9. **Calendar files handed over with no trip open wait as files.** When they later move into a trip, annai doesn't make plan items from them; Shiori reads them like any other file.

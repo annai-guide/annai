@@ -113,7 +113,7 @@ Goal 5: "a flight on the day it leaves, with times in each airport's own time zo
     - no plan item links it: a `booking` row at its `start` (on no day when it has none). A `lodging` booking also gets a `checkout` row at its `end`.
     - plan items link it: those rows, as today. A `lodging` booking also gets a `checkout` row at its `end`, unless a linked item falls on that day.
     - a `lodging` booking with a good `start` and `end` (in its own zone; `end` after `start`) gets `night` rows on each day strictly between check-in and check-out: `night: { n: 2 … N, of: N }`, where N is the number of nights. Night rows have `at: null`, `time: ''` and the check-in day's place. There are at most `NIGHTS_MAX = 60`.
-  - `planDays(rows, trip)` returns `{ days, untimed, notOnDay }`. `notOnDay` holds the `booking` rows with no day, ordered by title. `untimed` stays plan items only. Within a day, `night` rows come last.
+  - `planDays(rows, trip)` returns `{ days, untimed, notOnDay }`. `notOnDay` holds the `booking` rows with no day, ordered by title. `untimed` stays plan items only. Within a day, `night` rows come first, before the day's other rows, as in the approved mockup 2b.
   - Now and Driving read `tripRows` → `planRows`. A night row has no `at`, so they never list it; a `booking` row does show as a next item. Keep that, and test it.
 
 - [ ] **Step 1: Write the failing tests** in `test/unit/plan.test.js`, with a flight booking `{ kind: 'flight', start: { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-20T14:05:00-09:00', tz: 'America/Anchorage' } }` and a stay from `2026-11-20T15:00:00-09:00` to `2026-11-27T11:00:00-09:00` (`America/Anchorage`):
@@ -136,7 +136,10 @@ test('a booking with no time is Not on a day; plan items with no time stay under
   assert.deepEqual(notOnDay.map((r) => r.path), ['/bookings/pass.json']);
   assert.deepEqual(untimed.map((r) => r.path), ['/plan/u.json']);
 });
-test('nights come last in their day; a 0- or 1-night stay has none; a 200-night one stops at 60', () => {});
+test('nights come first in their day, before its other rows; a 0- or 1-night stay has none; a 200-night one stops at 60', () => {
+  const { days } = planDays(planRows([dinnerOn21st], [stay], { fallbackTz: 'UTC' }), {});
+  assert.deepEqual(days.find((d) => d.key === '2026-11-21').rows.map((r) => r.from), ['night', 'item']);
+});
 test('a booking with a time zone annai does not know, or an end before its start, still shows, in the fallback zone with the note; no nights', () => {});
 test('check and checkFields come from checkOf: an old unverified booking is check, a new one lists its fields, an old confirmed one neither', () => {});
 test("Now's next items include a flight booking no plan item stands for, and never a night line", () => { /* tripRows over a memory workspace */ });
@@ -431,7 +434,7 @@ Goal 10: "She names each file for what it is ('ANNAI AIR flight · Nov 20'), sho
 2. **New bookings still store `status: 'unverified'`.** The schema requires `status`, and Shiori still can't set `confirmed`. For a new booking, the marks come only from `unsure`, so `status` is history for new records.
 3. **A trip photo isn't listed in Files.** My call 4 says photos are not listed. Goal 8 lists "a trip photo" among the things a file can become. The data keeps `photo`, but Files leaves those photos out. A photo shows in Files only when a booking came from it, or while it waits to be read.
 4. **Bookings are on the Plan even without a plan item.** A plan item that links a booking stands for it. A stay's check-out and nights are always drawn from the booking.
-5. **Night lines sit at the end of each night's day:** "Staying at … · night 2 of 7" on the day after check-in, through the day before check-out.
+5. **Night lines come first in each night's day** (mockup 2b): "Staying at … · night 2 of 7" on the day after check-in, through the day before check-out.
 6. **Safari's `<img>` of a PDF can't be tested on Linux WebKit.** The e2e test checks the file card path, and the iPhone check is manual (Task 9).
 7. **The page count** is read from the PDF's own `/Count` within its first 2 MiB. That is a few lines of annai's own code, not a PDF library. When the count is unknown, the card leaves it out.
 8. **`bookingLines` became `bookingFacts`,** which returns labelled facts with an `unsure` flag. Its only caller is the booking screen.
