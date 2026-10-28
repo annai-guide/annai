@@ -155,9 +155,8 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await page.getByRole('link', { name: /Kyoto/ }).click();
     await writeNote(page, '/notes/kiyomizu.md', 'Kiyomizu-dera');
     await expect(page.getByText('A newer backup is on GitHub')).toBeVisible({ timeout: 30_000 });
-    // On a low screen the card shows its title and buttons, and More its words (the review of phone-fixes-1).
-    const more = page.locator('.notice', { hasText: 'A newer backup is on GitHub' }).getByRole('button', { name: 'More' });
-    if (await more.isVisible()) await more.click();
+    // On both phones (Pixel 7, iPhone 15) the card shows its title and its three buttons, and its words behind More (phone-fixes-1's reviews).
+    await page.locator('.notice', { hasText: 'A newer backup is on GitHub' }).getByRole('button', { name: 'More' }).click();
     await expect(page.getByText(/^An? (iPhone|Android phone) backed up to me\/annai-backup .*\. That was after this phone's last backup\./)).toBeVisible();
     expect(gh.commits(REPO).length).toBe(commits);
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
