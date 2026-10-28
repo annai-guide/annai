@@ -96,7 +96,7 @@ export function activate(annai) {
     },
     {
       name: 'read', group: 'Files',
-      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document (in words, if your model reads no PDFs), a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
+      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document (in words or as pictures of its pages, if your model reads no PDFs), a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
       input: {
         type: 'object', required: ['path'],
         properties: {

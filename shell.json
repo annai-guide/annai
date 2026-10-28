@@ -1,5 +1,5 @@
 {
-  "build": "cf55a8bf0211",
+  "build": "666c8bfd5643",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,8 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "b2872e1b4a31",
+    "/src/core/agent/loop.js": "52950cda9131",
+    "/src/core/agent/reading.js": "2ffbd69bbdbc",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "7f3d4c10fe18",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
@@ -178,7 +179,7 @@
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
     "/src/plugins/core-schemas/schemas.js": "eb2402943012",
-    "/src/plugins/files/index.js": "891c79c2141f",
+    "/src/plugins/files/index.js": "2afe96a5abb3",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "5b6ad6ee60a8",
     "/src/plugins/mcp/index.js": "094b457aa562",
@@ -240,7 +241,7 @@
     "/src/ui/screens/import.js": "fd44391c00ce",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
-    "/src/ui/screens/models.js": "9d8a2586c1fa",
+    "/src/ui/screens/models.js": "61681d998143",
     "/src/ui/screens/notifications.js": "360e6f3ab25f",
     "/src/ui/screens/now.js": "8ae0aec5dac4",
     "/src/ui/screens/plan.js": "ed857ad55515",
@@ -278,7 +279,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "17ddc7557ca8",
-    "/l10n/zh-Hans.json": "48953c5bbc94"
+    "/l10n/ja.json": "77ef67d18175",
+    "/l10n/zh-Hans.json": "d71e7cd918c4"
   }
 }
