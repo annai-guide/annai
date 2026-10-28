@@ -1,5 +1,5 @@
 {
-  "build": "ac3f259d290a",
+  "build": "2e60d8b13f21",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -252,7 +252,7 @@
     "/src/ui/screens/settings.js": "b3f9cad62752",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "339bbf1d1193",
-    "/src/ui/screens/talk.js": "9732d1010088",
+    "/src/ui/screens/talk.js": "56a0836d5512",
     "/src/ui/screens/tools.js": "a820f3ddec27",
     "/src/ui/screens/trace.js": "232ff7af2307",
     "/src/ui/screens/trip.js": "2ac01ae1599e",
@@ -264,7 +264,7 @@
     "/src/ui/shell.js": "0b22bc01bd23",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
-    "/src/ui/shiori.css": "12e0c9107729",
+    "/src/ui/shiori.css": "657e2c5170d5",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "b12c573be9a4",
