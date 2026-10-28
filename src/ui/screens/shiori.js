@@ -1,3 +1,4 @@
+import { LANGUAGE_WORDS as W } from '../../core/languages.js';
 import { h, crumb, t, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
@@ -141,7 +142,7 @@ export async function renderShiori(ctx, route) {
     section(t`Her two halves`,
       h('p', { class: 'sub', text: t`Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.` }),
       showHalves.el),
-    h('p', { class: 'sub' }, h('a', { href: '#/languages', text: t`The languages you speak, and the one Shiori answers in, are in Settings → Languages.` })),
+    section(W.heading, h('p', { class: 'sub' }, h('a', { href: '#/languages', text: t`The languages you speak, and the one Shiori answers in, are in Settings → Languages.` }))),
     // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape (the user, 2026-10-18).
     section(t`How often she acts on her own`,
       h('p', { class: 'sub', text: t`Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.` }),

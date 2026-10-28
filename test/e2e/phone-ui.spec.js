@@ -389,13 +389,13 @@ async function raise(page, cards) {
   }, cards);
 }
 
-test('at 320 x 544 a short card has no More and its title shows; the long sign-in card still gets More, beside the text and not in the buttons', async ({ page }) => {
+test('at 320 x 544 a short card has no More and its title shows; the long sign-in card still gets More, in view: in the buttons, as even one line of text is more than the box holds (phone-fixes-1 item 3)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
   await openApp(page, '#/trips');
   await raise(page, [{ title: 'Signed in with OpenRouter', body: OPENROUTER_CARD }]);
   const long = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
   await expect(long.getByRole('button', { name: 'More' })).toBeVisible();
-  await expect(long.locator('.acts').getByRole('button', { name: 'More' })).toHaveCount(0);
+  await expect(long.locator('.acts').getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
   await long.getByRole('button', { name: 'Dismiss' }).click();
   await raise(page, [{ title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' }]);
   const short = page.locator('.notice', { hasText: 'Open a trip first' });

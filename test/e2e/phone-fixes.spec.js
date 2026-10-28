@@ -46,6 +46,7 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
       return {
         box: r(box), card: r(card), scrolled: box.scrollHeight - box.clientHeight, line: getComputedStyle(box).borderBottomWidth,
         text: r(card.querySelector('p')).left, more: words.getBoundingClientRect().left, update: r(card.querySelector('.acts .pri')).left,
+        tight: Boolean(card.querySelector('.acts .more')),
       };
     });
     expect(m.scrolled, 'the box needs no scrolling to show the card').toBeLessThanOrEqual(0);
@@ -53,7 +54,10 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
     expect(m.card.top).toBeGreaterThanOrEqual(m.box.top);
     expect(m.box.height).toBeLessThanOrEqual(height * 0.25 + 1);
     expect(m.line, 'a line parts the cards from the screen').not.toBe('0px');
-    expect(Math.abs(m.more - m.text), 'More starts where the words do').toBeLessThanOrEqual(2);
+    // Where even one line is more than the box holds (320 x 544), More is in the buttons, in view; else under the words.
+    if (m.tight) await expect(card.getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
+    else expect(Math.abs(m.more - m.text), 'More starts where the words do').toBeLessThanOrEqual(2);
+    expect(m.tight).toBe(height < 600);
     expect(Math.abs(m.update - m.text), 'and so does Update').toBeLessThanOrEqual(2);
     await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
   });
