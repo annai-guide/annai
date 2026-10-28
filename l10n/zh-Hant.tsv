@@ -942,396 +942,396 @@ elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音�
 scnz2y	ok	Web tools	網頁工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 網頁).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 讀取任何網頁，遇到不允許網頁應用程式讀取的網站時透過 Jina Reader 或 Exa 讀取；web_search 用搜尋供應商搜尋，順序由設定 → 工具決定：先用免費的。	src/plugins/web/index.js:15	
 b4g7z9	ok	needs a key (Settings → Tools)	需要金鑰（設定 → 工具）	src/plugins/web/index.js:188	
-ew9em3	draft	Cancel	取消	src/ui/ask.js:21	
-7fxcga	draft	Back up this phone over it	用這部手機的備份覆蓋它	src/ui/auto-backup.js:65	Note: "it" is the newer backup at the place: this phone's backup replaces it.
-qe6isd	draft	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這部手機是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:65	
-13aymis	draft	Back up this iPad over it	用這台 iPad 的備份覆蓋它	src/ui/auto-backup.js:66	
-17c0bbv	draft	annai can't tell whether this iPad is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這台 iPad 是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:66	
-1900dh1	draft	Back up this computer over it	用這台電腦的備份覆蓋它	src/ui/auto-backup.js:67	
-iubvos	draft	annai can't tell whether this computer is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這台電腦是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:67	
-1jhhbi	draft	Open Backups	開啟備份	src/ui/auto-backup.js:76	
-8dbjq	draft	A newer backup is on {0}	{0}上有更新的備份	src/ui/auto-backup.js:82	{0} = target.name
-1g7wii9	draft	Import it as a copy	作為副本匯入	src/ui/auto-backup.js:85	
-1ndbdgm	draft	A large backup is waiting	有一個大的備份在等待	src/ui/auto-backup.js:91	
-1nj869p	draft	This backup uploads {0} to {1}.	此備份會向{1}上傳 {0}。	src/ui/auto-backup.js:92	{0} = size(h.bytes); {1} = target.name
-1lm8hbn	draft	Back up now	立即備份	src/ui/auto-backup.js:93	
-1m6y9c0	draft	Backups to {0} ({1}) stopped	到{0}（{1}）的備份已停止	src/ui/auto-backup.js:97	{0} = target.name; {1} = where
-54wd1u	draft	Backups to {0} stopped	到{0}的備份已停止	src/ui/auto-backup.js:97	{0} = target.name
-arudmh	draft	Open Backups to fix it.	請開啟備份進行修復。	src/ui/auto-backup.js:98	
-y3yg69	draft	Backing up…	正在備份…	src/ui/auto-backup.js:104	
-zsz4na	draft	Backed up.	已備份。	src/ui/auto-backup.js:106	
-183eg6b	draft	The backup didn't finish	備份沒有完成	src/ui/auto-backup.js:108	
-rs50uy	draft	Opening the backup…	正在開啟備份…	src/ui/auto-backup.js:125	
-12sejli	draft	Waiting for the backup that's running to finish…	正在等待進行中的備份完成…	src/ui/auto-backup.js:144	
-1jpt0cn	draft	Shiori	Shiori	src/ui/cards.js:45	
-1qg198k	draft	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
-1dn0kon	draft	Open in Maps	在地圖中開啟	src/ui/cards.js:77	
-io1qx	draft	Open the booking	開啟預訂	src/ui/cards.js:82	
-1ghy26u	draft	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
-1hvdy8q	draft	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的類型（{0}）來自一個未開啟的外掛程式。	src/ui/cards.js:97	{0} = card.type
-1qozjyj	draft	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，用於 Shiori 的 nearby 工具和離線資料包，透過 Overpass（overpass-api.de，繁忙時用 private.coffee 的伺服器）查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
-g4c01g	draft	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名稱查詢地點，或說出某個位置的地名，用於 Shiori 的 geocode 和 reverse 工具；作為免費搜尋的最後手段，也會查詢地點的官網。annai 按其使用政策，每秒最多詢問一次。	src/ui/credits.js:26	
-1jfh2kq	draft	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地點的文章，以及離線資料包中的摘要。Shiori 讀到的每篇文章都附有網址。免費搜尋始終開啟的最後手段會用搜尋的詞向它查詢。	src/ui/credits.js:33	
-1ufrhy7	draft	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，用於 Shiori 的 guide 工具和離線資料包，也是免費搜尋的後備。	src/ui/credits.js:40	
-1g8sy5k	draft	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天氣預報，用於 Shiori 的 weather 工具。預報中的日出和日落也來自 Open-Meteo；此刻頁面的黃金時刻，以及 Open-Meteo 沒有回應時的日出日落時間，都在手機上計算。	src/ui/credits.js:47	
-a8awk7	draft	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	為 web_search 提供免費網頁搜尋，並為 fetch 讀取其他方式讀不了的網頁，僅在設定 → 工具中勾選時使用。只傳送搜尋的詞或網址。	src/ui/credits.js:54	
-382qu6	draft	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	為 web_search 提供免費網頁搜尋，僅在設定 → 工具中勾選時使用。只傳送搜尋的詞。	src/ui/credits.js:61	
-138nh47	draft	Web search for web_search, with your key, once the Tavily Search plugin is installed.	為 web_search 提供網頁搜尋，安裝「Tavily 搜尋」外掛程式後用你的金鑰。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).; Note: Names the plugin as its own zh name, Tavily 搜尋 (L7).
-1a5kitj	draft	Web search for web_search, with your key, once the Serper Search plugin is installed.	為 web_search 提供網頁搜尋，安裝「Serper 搜尋」外掛程式後用你的金鑰。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜尋 (L7).
-1yvqge7	draft	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	讀取不允許網頁應用程式讀取的網頁，並搜尋網頁，用於 Shiori 的 fetch 和 web_search 工具，按設定 → 工具的選擇使用。	src/ui/credits.js:89	
-l5jx6y	draft	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：為 annai 用 AI 影像生成設計，再描摹成向量圖。	src/ui/credits.js:107	
-gb19et	draft	Message to Shiori	給 Shiori 的訊息	src/ui/dock.js:43	
-1vatbdb	draft	Send	傳送	src/ui/dock.js:58	
-1m2zofh	draft	Type	輸入	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	draft	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片儲存在旅行中。請在「旅行」中開啟一個旅行，再拍一次。	src/ui/dock.js:109	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
-drtui7	draft	Open a trip first	請先開啟一個旅行	src/ui/dock.js:109	
-1dcb0v0	draft	The photo wasn't added	未能新增照片	src/ui/dock.js:120	
-1xmvmzh	draft	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:209	
-1ndyc8s	draft	Stop Kokoro	停止 Kokoro	src/ui/dock.js:210	
-ky4lc5	draft	Stop	停止	src/ui/dock.js:210	
-1s6dmy6	draft	Camera	相機	src/ui/dock.js:223	
-1rm0t76	draft	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
-1a791in	draft	{0} has to be an object: { … }.	{0}必須是物件：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
-1gkm7i5	draft	Saving…	正在儲存…	src/ui/dom.js:258	
-12ek4is	draft	Saved	已儲存	src/ui/dom.js:305	
-fj0t7x	draft	History (every version and the log)	歷史（每個版本和日誌）	src/ui/export-panel.js:21	
-oopaku	draft	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
-1l4mw9c	draft	Photos	照片	src/ui/export-panel.js:23	
-fz72ei	draft	Include API keys (needs a passphrase)	包含 API 金鑰（需要密碼片語）	src/ui/export-panel.js:24	
-1k1mi4l	draft	Include where photos were taken	包含照片的拍攝地點	src/ui/export-panel.js:25	
-1ahfa0	draft	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
-40d3tk	draft	What to include	包含的內容	src/ui/export-panel.js:29	
-e1v954	draft	Backup: everything	備份：全部	src/ui/export-panel.js:29	
-1pgegxa	draft	Shared.	已分享。	src/ui/export-panel.js:49	
-li1zvd	draft	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:49	
-1rtc92m	draft	Save file	儲存檔案	src/ui/export-panel.js:58	
-e8bmvg	draft	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:62	
-10xxtpg	draft	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:63	
-1vdabwr	draft	Building…	正在產生…	src/ui/export-panel.js:66	
-ix6wsj	draft	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:66	
-9powzm	draft	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	draft	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	draft	Build file	產生檔案	src/ui/export-panel.js:85	
-1sh99lf	draft	Export	匯出	src/ui/export-panel.js:86	
-laav31	draft	Export {0}	匯出{0}	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	draft	Export everything	匯出全部	src/ui/export-panel.js:87	
-sxjkia	draft	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:90	
-xyveyo	draft	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:90	
-kpa27s	draft	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:91	
-la9701	draft	not backed up	未備份	src/ui/format.js:27	
-1h47npq	draft	backed up {0}	{0}已備份	src/ui/format.js:28	{0} = relTime(at, now); Note: {0} is relTime ("2小時前", "剛剛"), so it comes first.
-1sjuc50	draft	backed up {0}, changed since	{0}已備份，之後有更改	src/ui/format.js:28	{0} = relTime(at, now)
-meb4bg	draft	you	你	src/ui/format.js:32	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	draft	cost unknown	費用未知	src/ui/format.js:36	
-16name3	draft	free	免費	src/ui/format.js:37	
-1bm6q72	draft	key rejected	金鑰被拒絕	src/ui/format.js:42	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	draft	too many requests	請求過多	src/ui/format.js:42	
-4icrku	draft	answered	已回答	src/ui/format.js:42	
-jk3r0m	draft	overloaded	過載	src/ui/format.js:42	
-k1s3xh	draft	out of credit	餘額用完	src/ui/format.js:42	Note: Credit is a prepaid balance (餘額), as "This account is out of credit".
-1ci3mtm	draft	doesn't allow web apps	不允許網頁應用程式	src/ui/format.js:43	
-1lj1ww1	draft	photo upload expired	照片上傳已過期	src/ui/format.js:43	
-1x40ny1	draft	didn't take the photo	未接受照片	src/ui/format.js:43	
-f82spn	draft	too long for it	內容過長	src/ui/format.js:43	
-11n2a71	draft	couldn't connect	無法連線	src/ui/format.js:44	
-a3596h	draft	refused the request	拒絕了請求	src/ui/format.js:44	
-n3huvh	draft	unknown model or address	未知的模型或網址	src/ui/format.js:44	
-rhcw9u	draft	provider error	供應商出錯	src/ui/format.js:44	
-13effb	draft	connection dropped	連線中斷	src/ui/format.js:45	
-1quwfm7	draft	plugin failed	外掛程式出錯	src/ui/format.js:45	
-1s4r037	draft	too slow to start	啟動太慢	src/ui/format.js:45	
-hqyrx7	draft	removed	已移除	src/ui/format.js:45	
-urm4i6	draft	stopped	已停止	src/ui/format.js:45	
-184j4co	draft	resting after an error	出錯後暫停中	src/ui/format.js:46	
-1mrun4s	draft	redirected elsewhere	被重新導向到別處	src/ui/format.js:46	
-1q01jst	draft	doesn't take photos	不支援照片	src/ui/format.js:46	
-365ivi	draft	can't use tools	無法使用工具	src/ui/format.js:46	
-4k8rwn	draft	its ability is switched off	該功能已關閉	src/ui/format.js:46	
-l7u7vc	draft	its plugin is missing	缺少其外掛程式	src/ui/format.js:46	
-1y8iwje	draft	has no web tool of that kind	沒有該類網頁工具	src/ui/format.js:47	
-6gto9k	draft	couldn't hear the speech	未能聽清語音	src/ui/format.js:47	
-710q7y	draft	conversation too long for it	對話過長	src/ui/format.js:47	
-7jim5c	draft	isn't a chat model	不是對話模型	src/ui/format.js:47	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
-w70v2a	draft	doesn't take audio	不支援音訊	src/ui/format.js:47	
-1009iza	draft	Restaurant	餐廳	src/ui/format.js:61	
-1lrcegv	draft	Event	活動	src/ui/format.js:61	
-8cdq15	draft	Train	火車	src/ui/format.js:61	
-d57q3n	draft	Flight	航班	src/ui/format.js:61	
-jj8u9s	draft	Stay	住宿	src/ui/format.js:61	Note: A kind of booking: a hotel or other lodging.
-sksosh	draft	Car	租車	src/ui/format.js:61	Note: A kind of booking: a car, nearly always a rental.
-ukzedx	draft	Other	其他	src/ui/format.js:61	
-hqumoz	draft	Kind	類型	src/ui/format.js:76	
-j6u2ti	draft	Starts	開始	src/ui/format.js:78	context: booking; Note: A booking's start, its day and time shown beside it.
-1pcvk9l	draft	Ends	結束	src/ui/format.js:80	context: booking
-16ygujg	draft	Place	地點	src/ui/format.js:81	
-lypvx6	draft	{0}, {1}	{0}（{1}）	src/ui/format.js:81	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	draft	Confirmation	確認碼	src/ui/format.js:82	Note: A booking's confirmation code.
-t05i6w	draft	Cost	費用	src/ui/format.js:83	
-1vdspge	draft	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:100	{0} = num(p.done); {1} = num(p.total)
-zo1gq	draft	Getting the backup…	正在取得備份…	src/ui/format.js:100	
-fuj1qb	draft	Getting the backup ready…	正在準備備份…	src/ui/format.js:104	
-1a0lh7c	draft	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:105	{0} = num(p.done); {1} = num(p.total)
-1ofggks	draft	Comparing files…	正在比較檔案…	src/ui/format.js:105	
-1jbhw8o	draft	Uploading…	正在上傳…	src/ui/format.js:106	
-sg0mn0	draft	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:106	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	draft	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:111	
-1815ss7	draft	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:111	
-1kc2l15	draft	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:112	
-1ytn3n1	draft	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:112	
-14m1y56	draft	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:113	
-12hcbva	draft	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	draft	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago
-1hmrpdo	draft	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
-dc7u48	draft	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
-19kyaez	draft	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:119	{0} = where; {1} = ago
-mbc651	draft	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:123	
-vqd7xg	draft	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:123	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	draft	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:124	
-nmyapy	draft	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:124	
-hqymxl	draft	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:125	
-wn3ejs	draft	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:125	
-1n6qjpw	draft	Working…	正在處理…	src/ui/format.js:140	
-1sw982j	draft	Last backup {0}.	上次備份：{0}。	src/ui/format.js:145	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	draft	Not backed up yet.	尚未備份。	src/ui/format.js:145	
-10ouos4	draft	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:146	{0} = size(h.bytes)
-nbshf0	draft	The last try failed.	上次嘗試失敗了。	src/ui/format.js:148	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	draft	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:149	{0} = holdWords(h, target.name)
-1qmdzit	draft	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:150	Note: "Save and test" is the backup place's button.
-1e2pygg	draft	Automatic backups are off	自動備份已關閉	src/ui/format.js:151	
-173tgfr	draft	Last backup {0}	上次備份：{0}	src/ui/format.js:152	{0} = at
-1uajbr3	draft	Not backed up yet	尚未備份	src/ui/format.js:152	
-1j5k2vf	draft	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:164	
-hmr3pn	draft	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:164	
-8091b1	draft	no limit	無限制	src/ui/format.js:189	
-1y3qo2k#other	draft	# trips	# 個旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
-12lprg	draft	Imported {0} from {1}.	已從{1}匯入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
-1hzaym7	draft	Imported {0}.	已匯入{0}。	src/ui/import-state.js:48	{0} = what
-kotjbl	draft	Imported.	已匯入。	src/ui/import-state.js:48	
-oefcrt	draft	Imported from {0}.	已從{0}匯入。	src/ui/import-state.js:48	{0} = place
-12gy0yc	draft	Open annai from your Home Screen.	從主畫面開啟 annai。	src/ui/install.js:17	
-82ba67	draft	Tap the Share button in Safari.	點一下 Safari 中的「分享」按鈕。	src/ui/install.js:17	Note: Apple's zh-CN guides say 輕點 for tap.
-ejxnor	draft	Choose "Add to Home Screen".	選擇「加入主畫面」。	src/ui/install.js:17	
-1yjkliw	draft	Choose "Install and create shortcut", then "Install".	選擇「安裝並建立捷徑」，然後選擇「安裝」。	src/ui/install.js:18	Note: Chrome's own words (Google's "Use web apps" help, zh-Hans), per the glossary's Install app row.
-tf6np0	draft	Open annai from your Home screen.	從主畫面開啟 annai。	src/ui/install.js:18	
-uqmge3	draft	Open the browser menu (⋮).	開啟瀏覽器選單（⋮）。	src/ui/install.js:18	
-1q8vwe5	draft	Use your browser menu to install annai as an app.	透過瀏覽器選單將 annai 安裝為應用程式。	src/ui/install.js:19	
-1gxw0ly	draft	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	這裡已有的旅行：先在設定中匯出全部內容，再在主畫面上的 App 中用「開啟別人傳來的旅行」開啟該檔案。	src/ui/install.js:22	
-10jxrv9	draft	Install annai	安裝 annai	src/ui/install.js:35	
-1ob0g1z	draft	annai isn't installed yet.	annai 尚未安裝。	src/ui/install.js:49	
-1gizuqd	draft	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 可能會在 7 天未造訪後清除你的旅行，而且主畫面上的 App 會另外儲存旅行：在這裡開始的旅行不會出現在那裡。請將 annai 加入主畫面，並在那裡開始旅行。	src/ui/install.js:51	
-o22iaq	draft	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空間不足時，瀏覽器可能會清除你的旅行。請安裝 annai，讓旅行安全儲存。	src/ui/install.js:52	
-hz0ihc	draft	Show me how	檢視步驟	src/ui/install.js:53	
-n3y7d4	draft	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:203	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	draft	Getting {0}…	正在取得{0}…	src/ui/languages.js:217	{0} = name
-ixc7cw	draft	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:218	{0} = name
-1t9l1f1	draft	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:233	
-1lycsu9	draft	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:237	
-v4uyh0	draft	annai's screens in	annai 介面語言	src/ui/languages.js:240	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
-1c7q9dt	draft	Miles	英里	src/ui/languages.js:246	Note: A choice of Distances.
-86ef5k	draft	Kilometres	公里	src/ui/languages.js:246	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
-r122ro	draft	Automatic	自動	src/ui/languages.js:246	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	draft	Distances	距離單位	src/ui/languages.js:262	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	draft	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:275	{0} = name
-dc30do	draft	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:275	
-8rqn0k	draft	Restart to show annai in {0}	重新啟動以用{0}顯示 annai	src/ui/languages.js:282	{0} = name
-150k2hg	draft	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為{0}，但此裝置顯示的是其他語言。	src/ui/languages.js:283	{0} = name
-1of7r8x	draft	Restart annai	重新啟動 annai	src/ui/languages.js:284	
-15kmah9	draft	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
-17gqu8c	draft	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
-he6p5i	draft	Simulation · walking	模擬 · 步行中	src/ui/live-chip.js:22	
-1u02s33	draft	GPS on · moving fast	GPS 開啟 · 快速移動中	src/ui/live-chip.js:23	
-1z0woag	draft	GPS on · walking	GPS 開啟 · 步行中	src/ui/live-chip.js:23	
-im61se	draft	GPS on · stopped	GPS 開啟 · 已停下	src/ui/live-chip.js:23	
-1kas4ei	draft	Simulation · on	模擬 · 開啟	src/ui/live-chip.js:24	
-zemwn2	draft	GPS off	GPS 關閉	src/ui/live-chip.js:25	
-10g5ucm	draft	GPS on · no signal	GPS 開啟 · 無訊號	src/ui/live-chip.js:26	
-1a0v739	draft	GPS on · no location	GPS 開啟 · 無位置	src/ui/live-chip.js:26	
-thd4ot	draft	GPS on · finding you	GPS 開啟 · 正在定位	src/ui/live-chip.js:26	
-j7yqys	draft	GPS on	GPS 開啟	src/ui/live-chip.js:27	
-2usjiv	draft	The screen goes off as usual while driving or riding.	駕駛或乘車時，螢幕照常熄滅。	src/ui/live-chip.js:35	
-5v8q2v	draft	The screen stays on while driving or riding.	駕駛或乘車時，螢幕保持開啟。	src/ui/live-chip.js:35	
-m2s0ya	draft	Keep the screen on while driving or riding	駕駛或乘車時保持螢幕開啟	src/ui/live-chip.js:35	Note: 駕駛 as the glossary's Driving (駕駛中) and the sentences beside it.
-1jceci4	draft	Keep the screen on while walking	步行時保持螢幕開啟	src/ui/live-chip.js:36	
-2jdkql	draft	The screen goes off as usual while walking.	步行時，螢幕照常熄滅。	src/ui/live-chip.js:36	
-vkuqa5	draft	The screen stays on while walking.	步行時，螢幕保持開啟。	src/ui/live-chip.js:36	
-1b0r7t3	draft	The screen goes off as usual while stopped.	停下時，螢幕照常熄滅。	src/ui/live-chip.js:37	
-1uq8tvb	draft	The screen stays on while stopped.	停下時，螢幕保持開啟。	src/ui/live-chip.js:37	
-il754y	draft	Keep the screen on while stopped	停下時保持螢幕開啟	src/ui/live-chip.js:37	Note: 停下 as the sentences beside it and the chip's 已停下.
-1aspuv3	draft	The screen goes off as usual while GPS is on.	GPS 開啟時，螢幕照常熄滅。	src/ui/live-chip.js:38	
-1r528n6	draft	Keep the screen on while GPS is on	GPS 開啟時保持螢幕開啟	src/ui/live-chip.js:38	
-m1jg5r	draft	The screen stays on while GPS is on.	GPS 開啟時，螢幕保持開啟。	src/ui/live-chip.js:38	
-13ebf61	draft	Pause the simulation	暫停模擬	src/ui/live-chip.js:78	
-1ui2yvw	draft	Resume the simulation	繼續模擬	src/ui/live-chip.js:78	
-5zs6ip	draft	Stop the simulation	停止模擬	src/ui/live-chip.js:79	
-1yuht27	draft	Simulate a trip	模擬旅行	src/ui/live-chip.js:80	
-100a56n	draft	Turn GPS off	關閉 GPS	src/ui/live-chip.js:89	
-ah9gez	draft	Turn GPS on	開啟 GPS	src/ui/live-chip.js:89	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
-1cm49b4	draft	The plan has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/live-chip.js:104	
-1sedy1m	draft	Where are you?	你在哪裡？	src/ui/live-chip.js:104	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	draft	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/live-chip.js:111	{0} = p.name
-12nwa0c	draft	A plan place	行程中的地點	src/ui/live-chip.js:148	
-19pzct7	draft	Location Services must be on: Settings → Privacy & Security → Location Services.	必須開啟定位服務：設定 → 隱私權與安全性 → 定位服務。	src/ui/live-help.js:14	Note: Location Services is the platform's 定位服務 (glossary), not the Location row (位置).
-6c6pb6	draft	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：設定 → 隱私權與安全性 → 定位服務 → Safari 網站 → 使用 App 期間，以及設定 → App → Safari → 位置 → 允許。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; Safari 瀏覽器網站, 使用 App 期間 and Safari's 位置 are to be checked on a phone (glossary).
-m9ud30	draft	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：點一下網址列中的「頁面選單」按鈕，然後選擇網站設定 → 位置 → 允許（或設定 → App → Safari → 位置 → 允許）。	src/ui/live-help.js:17	Note: “頁面選單”按鈕 as Apple's zh-cn guide names it; 網站設定 is to be checked on a phone (glossary).
-687eo2	draft	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	在 Android 上：點一下網址左側的圖示（在已安裝的應用程式中：按住 annai 圖示，然後選擇應用程式資訊 → 權限），並允許位置資訊。	src/ui/live-help.js:21	Note: Android's 位置資訊, as the glossary's Location row says for Android.
-1ell92d	draft	Allow location for this site in your browser's site settings.	請在瀏覽器的網站設定中允許此網站使用位置資訊。	src/ui/live-help.js:22	
-37e0kb	draft	Location isn't allowed, so GPS has only its time reminders.	位置資訊未獲允許，因此 GPS 只有按時間的提醒。	src/ui/live-help.js:23	
-ozmn9a	draft	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	然後關閉 GPS 再重新開啟。或者告訴 annai 你在哪裡：點一下 GPS 按鈕 → 你在哪裡？	src/ui/live-help.js:24	Note: "Where are you?" is the GPS chip's own item (live-chip.js): it says what that row says.
-141ivnq	draft	annai can't see where you are	annai 無法取得你的位置	src/ui/live-help.js:25	
-1m81j1n	draft	images	圖片	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
-1ue1hlo	draft	tools	工具	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
-27aenj	draft	live	即時	src/ui/model-check.js:6	Note: what a model's test checked: a live voice session.
-gqww9o	draft	upload	上傳	src/ui/model-check.js:6	Note: what a model's test checked: uploading a file.
-svodbg	draft	key	金鑰	src/ui/model-check.js:6	Note: what a model's test checked: the key works.
-1bicsne	draft	off	關閉	src/ui/model-check.js:8	Note: a reasoning level.
-1ntxi55	draft	max	最高	src/ui/model-check.js:8	Note: a reasoning level.
-ew9h86	draft	medium	中	src/ui/model-check.js:8	Note: a reasoning level.
-h5yol9	draft	high	高	src/ui/model-check.js:8	Note: a reasoning level.
-m0aa9t	draft	low	低	src/ui/model-check.js:8	Note: a reasoning level.
-dbbxmt	draft	Test	測試	src/ui/model-check.js:15	
-1l9uojt	draft	Last tested {0}: {1}.	上次測試於{0}：{1}。	src/ui/model-check.js:18	{0} = relTime(verified.at); {1} = list(Object.keys(CHECKS).filter((k) => k in verified).map((k) => `${CHECKS[k]} ${verified[k] ? '✓' : '✗'}`), 'plain'); Note: {1} is a list such as "key ✓, tools ✗".
-6w9tb5	draft	Not tested yet.	尚未測試。	src/ui/model-check.js:19	
-17f0nyo	draft	Testing: a tiny request, then one with a tool and a small picture…	測試中：先送一個很小的請求，再送一個帶工具和小圖片的請求…	src/ui/model-check.js:28	
-rgisri	draft	Opening a live session…	正在開啟即時會話…	src/ui/model-check.js:28	
-1btb3mc	draft	It works, with one note:	可以使用，有一點需要注意：	src/ui/model-check.js:38	
-1dccge4	draft	Everything works.	一切正常。	src/ui/model-check.js:38	
-gfu8p2	draft	Something needs attention:	有地方需要處理：	src/ui/model-check.js:38	
-q21uv	draft	Trying each reasoning level…	正在逐一嘗試推理等級…	src/ui/model-check.js:53	
-19m8h68	draft	Reasoning levels:	推理等級：	src/ui/model-check.js:56	
-la23qc	draft	This model has no reasoning levels to try.	這個模型沒有可嘗試的推理等級。	src/ui/model-check.js:56	
-18nnh3z	draft	{0}: works	{0}：可用	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
-edkut8	draft	Test reasoning levels	測試推理等級	src/ui/model-check.js:64	
-1qfy6dp	draft	Hide	隱藏	src/ui/notices.js:101	
-bi2jq4	draft	Show	顯示	src/ui/notices.js:101	
-icn7kg	draft	Dismiss all	全部關閉	src/ui/notices.js:106	
-14jq62w#other	draft	{0}, # cards	{0}，# 張卡片	src/ui/notices.js:119	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
-1w0wlmk#other	draft	Show the # cards: {0}	顯示 # 張卡片：{0}	src/ui/notices.js:120	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
-1wucd5m#other	draft	Hide the # cards: {0}	隱藏 # 張卡片：{0}	src/ui/notices.js:120	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
-1dg2v9a#other	draft	Dismiss all # cards: {0}	關閉全部 # 張卡片：{0}	src/ui/notices.js:121	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	draft	Less	收起	src/ui/notices.js:192	Note: Closes a long card back to three lines.
-lz65mo	draft	More	展開	src/ui/notices.js:192	Note: Opens a long card to its full height.
-an1pf7	draft	Dismiss	關閉	src/ui/notices.js:202	
-16ujpkf#other	draft	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
-18s5rc#other	draft	# places	# 個地點	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
-1bid1z0#other	draft	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
-13u8cof	draft	Downloading: {0}…	正在下載：{0}…	src/ui/offline-pack.js:33	{0} = r.label
-1ciduc1	draft	Downloading…	正在下載…	src/ui/offline-pack.js:33	
-1ws3913	draft	Downloading {0} of {1}…	正在下載（{0}/{1}）…	src/ui/offline-pack.js:33	{0} = done; {1} = total
-1y7mim7	draft	Downloading {0} of {1}: {2}…	正在下載（{0}/{1}）：{2}…	src/ui/offline-pack.js:33	{0} = done; {1} = total; {2} = r.label
-5sofm3	draft	The pack follows the plan: once the plan has places, it can be downloaded here.	離線資料包跟隨行程：行程中有了地點後，就可以在這裡下載。	src/ui/offline-pack.js:36	
-1rxtl83#other	draft	For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's # stops and along the way between them. Shiori's nearby and guide read it first.	用於沒有網路時：行程中 # 個停留點周圍及其間沿途的 OpenStreetMap 地點、Wikipedia 摘要和 Wikivoyage 指南。Shiori 的 nearby 和 guide 工具會先讀取它。	src/ui/offline-pack.js:42	plural; # = s.stops; English: "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's stop and along the way between them. Shiori's nearby and guide read it first." (one), "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's # stops and along the way between them. Shiori's nearby and guide read it first." (other); Note: nearby and guide are Shiori's tools, named as in Settings → Tools.
-u8epe6	draft	Downloading sends the plan's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.	下載時會把行程中的地點傳送給 OpenStreetMap 和 Wikipedia，把地名傳送給 Wikivoyage。	src/ui/offline-pack.js:44	
-1452e43	draft	Download (about {0})	下載（約{0}）	src/ui/offline-pack.js:46	{0} = about
-13ryfn7	draft	Downloaded · {0} · {1}.	已下載 · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
-1yax0wt	draft	Downloaded {0} · {1} · {2}.	下載於{0} · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").
-11sehoe	draft	Guides: {0}.	指南：{0}。	src/ui/offline-pack.js:51	{0} = list(m.guides.map((g) => g.title), 'plain')
-wc42uc	draft	It stopped at its {0} limit, so it holds only the start of the plan.	已達到{0}的上限，因此只包含行程的開頭部分。	src/ui/offline-pack.js:52	{0} = size(MAX_BYTES)
-16n19op	draft	This plan is longer than a pack holds, so some of the way between stops is left out.	行程太長，離線資料包裝不下，因此停留點之間的部分路段沒有包含在內。	src/ui/offline-pack.js:53	
-1nbogz3#other	draft	# parts didn't download: {0} ({1}).	# 個部分未能下載：{0}（{1}）。	src/ui/offline-pack.js:58	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
-1pbas9l	draft	The download was stopped before the end.	下載在完成前被停止了。	src/ui/offline-pack.js:59	
-1nes6lp	draft	The plan changed since.	之後行程有了變化。	src/ui/offline-pack.js:63	
-w5716a	draft	Update (about {0})	更新（約{0}）	src/ui/offline-pack.js:64	{0} = about
-13cigs6	draft	Download the rest (about {0})	下載其餘部分（約{0}）	src/ui/offline-pack.js:65	{0} = about
-o81vpw	draft	Try again (about {0})	重試（約{0}）	src/ui/offline-pack.js:65	{0} = about
-16r6naq	draft	It is more than a month old.	已超過一個月。	src/ui/offline-pack.js:67	
-1v2fms	draft	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	連線 Wi-Fi 時，只要這個旅行處於開啟狀態，annai 會自動保持它為最新。	src/ui/offline-pack.js:70	
-1vwbp7l	draft	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器不會告訴 annai 何時連著 Wi-Fi，請在這裡更新。	src/ui/offline-pack.js:70	
-5pklax	draft	Offline pack	離線資料包	src/ui/offline-pack.js:80	
-1bk5sw	draft	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:87	
-v6p0ku	draft	The offline pack didn't download	離線資料包未能下載	src/ui/offline-pack.js:87	
-qtuxek	draft	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-qdh58i	draft	No offline pack for this trip yet.	這個旅行還沒有離線資料包。	src/ui/offline-pack.js:127	
-1l61m6n	draft	The offline pack is from before the plan changed.	離線資料包是行程變化之前的。	src/ui/offline-pack.js:128	
-ksuwxs	draft	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
-r91312	draft	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
-dbm7fe	draft	Open a trip someone sent you	開啟別人傳來的旅行	src/ui/open-file.js:6	
-ow6fak	draft	This browser could not draw the photo.	這個瀏覽器無法繪製這張照片。	src/ui/photo-codec.js:72	
-11dn6um	draft	This browser could not write {0}.	這個瀏覽器無法寫出 {0}。	src/ui/photo-codec.js:80	{0} = type
-1l0xxoj	draft	Close	關閉	src/ui/photo-viewer.js:32	
-1s1o4yb	draft	Show Shiori this part	把這部分給 Shiori 看	src/ui/photo-viewer.js:33	
-u3xlwb	draft	The plugin "{0}" was turned off	外掛程式「{0}」已關閉	src/ui/plugin-cards.js:12	{0} = name
-1k1qvj4	draft	Its hooks were handed more than {0} log entries in {1} seconds, which looks like a loop.	它的鉤子在{1}秒內收到了超過{0}筆日誌，看起來像是陷入了迴圈。	src/ui/plugin-cards.js:13	{0} = num(why.entries); {1} = num(why.seconds)
-14cse4m	draft	You can turn it back on in Settings → Plugins.	可以在設定 → 外掛程式中重新開啟。	src/ui/plugin-cards.js:14	
-1m15smo#other	draft	It failed # times in a row.	它連續失敗了#次。	src/ui/plugin-cards.js:14	plural; # = why.count; English: "It failed # time in a row." (one), "It failed # times in a row." (other)
-alpox6	draft	The last error: {0}	最後一次錯誤：{0}	src/ui/plugin-cards.js:14	{0} = message
-4egg99	draft	annai needs a reload	annai 需要重新載入	src/ui/plugin-cards.js:28	
-6kkhkz#other	draft	It opened without its offline service, so these plugins can't start: {0}.	它在沒有離線服務的情況下開啟，所以這些外掛程式無法啟動：{0}。	src/ui/plugin-cards.js:29	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
-53p50e	draft	It opened without its offline service, so plugins can't start or be installed.	它在沒有離線服務的情況下開啟，所以外掛程式無法啟動，也無法安裝。	src/ui/plugin-cards.js:30	
-fzpt3w	draft	Reload now	立即重新載入	src/ui/plugin-cards.js:31	
-1vgaaah	draft	It didn't start the last few times annai opened: {0}	最近幾次開啟 annai 時，它都沒有啟動：{0}	src/ui/plugin-cards.js:46	{0} = why
-11arkb9	draft	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:47	
-1jz4o49	draft	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:47	{0} = it
-44nn0b	draft	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:73	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	draft	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:73	{0} = u.name
-1kyfel6	draft	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:74	{0} = u.name
-i8x2zk	draft	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:74	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	draft	Plugin updates are ready	外掛程式更新已就緒	src/ui/plugin-updates.js:80	
-1qhkyk	draft	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什麼都不會改變。正在執行的外掛程式更新後，會在 annai 重新啟動前保持關閉。	src/ui/plugin-updates.js:81	
-1x9jer0	draft	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:81	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	draft	Update	更新	src/ui/plugin-updates.js:82	
-1agymuw	draft	Some plugins weren't updated	有些外掛程式沒有更新	src/ui/plugin-updates.js:117	
-1vsv4vh	draft	Restart annai to use the new versions	重新啟動 annai 以使用新版本	src/ui/plugin-updates.js:121	
-1k0lt4v	draft	Until then, {0} can't be used.	在此之前，{0}無法使用。	src/ui/plugin-updates.js:122	{0} = list(waiting)
-2jfvhf	draft	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:122	
-nb21do	draft	Restart now	立即重新啟動	src/ui/plugin-updates.js:123	
-1do1igm	draft	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:126	
-eaf3fx	draft	{0} {1} brings something new	{0} {1} 帶來新內容	src/ui/plugin-updates.js:142	{0} = u.name; {1} = u.available
-127j3cm	draft	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:143	{0} = semicolons(whatItBrings(added))
-zymqne	draft	Only update if you trust where it came from.	只有在你信任它的來源時才更新。	src/ui/plugin-updates.js:143	
-1dfe53s	draft	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:144	
-15ziixp	draft	Update anyway	仍然更新	src/ui/plugin-updates.js:146	
-c9wfke	draft	Not now	暫不	src/ui/plugin-updates.js:147	
-1cjjnaq	draft	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
-tct7be	draft	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、檔案、設定和金鑰都儲存在此裝置的這個瀏覽器中。annai 沒有帳號，也沒有任何 annai 的伺服器儲存你的旅行或金鑰。	src/ui/privacy.js:21	
-14xwlem	draft	Sent only where it's needed.	只傳送到需要的地方。	src/ui/privacy.js:22	
-5ycw8s	draft	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	你問 Shiori 的內容，連同她從旅行中需要的資訊，會傳送給你連線的模型供應商；你說的話會傳送到設定 → 語音中顯示的地方。她查詢的地點會傳送給設定 → 關於中列出的來源。記錄會顯示 annai 為 Shiori 送出的每個請求：她的模型呼叫、工具和離線資料包。	src/ui/privacy.js:22	Note: "her" kept where it reads natural; the Trace is 記録/記錄 per the glossary.
-1g2tvlf	draft	Your keys stay yours.	金鑰歸你所有。	src/ui/privacy.js:23	
-1jo7026	draft	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	每個模型金鑰都儲存在此裝置的儲存中，只傳送給它所屬的供應商。金鑰從不放進 Shiori 的模型讀取的內容，在記錄中會被遮蓋，也不會包含在匯出中，除非你選擇把它們放進加密備份。	src/ui/privacy.js:23	
-12t6czb	draft	No tracking.	不追蹤。	src/ui/privacy.js:24	
-5d5p39	draft	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai 沒有統計分析，也沒有廣告。它不從其他網站載入腳本：內容安全政策只允許執行來自 annai 自己網址的腳本，你安裝的程式碼外掛程式除外，它們由 annai 自己儲存和提供。	src/ui/privacy.js:24	
-1e9jheb	draft	Reminders stay sealed.	提醒始終加密。	src/ui/privacy.js:25	
-1ves2ac	draft	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	開啟通知後，推播中繼儲存的每則定時提醒都在此裝置上加密，它只保留手機的推播位址、每則提醒的時間、等待的數量，以及很少的其他資訊：每則的取消碼，以及這部手機已收到提醒的標記。關於地點的提醒從不離開手機。	src/ui/privacy.js:25	
-13wlc44	draft	Open code.	開放原始碼。	src/ui/privacy.js:26	
-1qhqdx	draft	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai 的程式碼以 AGPL-3.0 開源，任何人都可以在 {0} 閱讀。	src/ui/privacy.js:26	{0} = REPO.replace('https://', '')
-1q2zxy5	draft	Where this stops	侷限	src/ui/privacy.js:27	Note: "Where this stops" as one noun heading.
-1bk8ve3	draft	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	你安裝的程式碼外掛程式擁有完全權限：它能讀取你的旅行和金鑰，它的請求也可以繞過記錄。只安裝你信任的外掛程式。	src/ui/privacy.js:29	Note: "runs with full trust": full access to trips and keys, as the Add screen says it (完全訪問).
-19jox8f	draft	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	使用模型自帶的搜尋或抓取（設定 → 工具）時，搜尋和網頁在供應商的伺服器上執行，記錄只顯示模型的這一輪。	src/ui/privacy.js:30	
-426n3h	draft	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	金鑰的安全取決於這台裝置：任何能在它上面使用這個瀏覽器的人都能接觸到它們。請鎖好裝置。	src/ui/privacy.js:31	
-ldqm5c	draft	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	在 iPhone 上，Safari 和主畫面上的 App 各自儲存資料：在其中一個新增的金鑰和旅行不會出現在另一個裡。	src/ui/privacy.js:32	
-mj3oi4	draft	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai 是自由軟體，在法律允許的範圍內按原樣提供，不附帶任何擔保，依據 {0}（AGPL-3.0）授權。	src/ui/privacy.js:39	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
-19ow2h0	draft	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能會出錯。預訂、價格、營業時間、路線和安全資訊請自己核實。	src/ui/privacy.js:40	
-5aqdvy	draft	When you drive, use her hands-free, and follow the road and the local rules.	開車時請擴音使用她，並遵守路況和當地規定。	src/ui/privacy.js:41	
-hirfin	draft	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你連線的模型供應商收取的費用由你支付。你匯入、抓取或連線的內容由你負責。	src/ui/privacy.js:42	
-1qelf30	draft	{0} can't add a provider at {1}: it sends keys only to none.	{0}無法在 {1} 新增供應商：它不向任何地方傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
-rq1jha	draft	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}無法在 {1} 新增供應商：它只向 {2} 傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
-1st0ijv	draft	That provider no longer exists. Add it again in Settings → Models.	該供應商已不存在。請在設定 → 模型中重新新增。	src/ui/provider-setup.js:88	
-1lwfyvo	draft	That provider isn't one of {0}'s, so it can't keep a key for it.	該供應商不屬於{0}，所以不能為它儲存金鑰。	src/ui/provider-setup.js:90	{0} = mine
-13upi6b	draft	{0} isn't a model provider.	{0}不是模型供應商。	src/ui/provider-setup.js:118	{0} = officialName(entry.id, entry.name)
-17q3a6l	draft	That plugin isn't a model provider.	該外掛程式不是模型供應商。	src/ui/provider-setup.js:118	
-1p012cf	draft	Connect to the internet to sign in.	請連線網際網路以登入。	src/ui/provider-setup.js:148	
-14m6i84	draft	Finishing the sign-in with {0}…	正在完成 {0} 的登入…	src/ui/provider-setup.js:157	{0} = finishing
-yyxfov	draft	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	無法顯示 {0} 的登入。請改從「新增供應商」新增。	src/ui/provider-setup.js:162	{0} = f.name
-15aq08d	draft	The quickest start	最快的開始方式	src/ui/provider-setup.js:164	
-w9nig3	draft	Sign in	登入	src/ui/provider-setup.js:164	
-edml6o	draft	Getting the sign-in ready…	正在準備登入…	src/ui/provider-setup.js:168	
-1rk1a1z	draft	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登入結果傳回了，但 annai 已不再等待：已超過 15 分鐘，或已經完成。請從設定 → 模型重新開始。	src/ui/provider-setup.js:198	
-sv1qqk	draft	A sign-in came back too late	登入結果傳回得太晚	src/ui/provider-setup.js:198	
-gkf0xx	draft	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}沒有執行。請在設定 → 外掛程式中檢視，然後重新登入。	src/ui/provider-setup.js:212	{0} = name
-1fbojq2	draft	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:218	{0} = name
-1fm7mjz	draft	Speech out	朗讀	src/ui/provider-setup.js:226	
-v20s4a	draft	Quick decision	快速判斷	src/ui/provider-setup.js:226	
-w8niry	draft	Speech in	語音辨識	src/ui/provider-setup.js:226	
-eudybe#other	draft	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	draft	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1}沒有可先用的免費模型，而 Shiori 需要一個模型來回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	draft	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	draft	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的金鑰屬於免費額度，請在此頁面開啟「此金鑰為免費額度」：這樣它的模型就不收費。	src/ui/provider-setup.js:245	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	draft	Its speech in models went behind the free entries.	其語音辨識模型排在免費項之後。	src/ui/provider-setup.js:246	
-jvtji4	draft	Its speech in and speech out models went behind the free entries.	其語音辨識和朗讀模型排在免費項之後。	src/ui/provider-setup.js:246	
-1r0x31s	draft	Its speech out models went behind the free entries.	其朗讀模型排在免費項之後。	src/ui/provider-setup.js:247	
-1llun41	draft	The provider	供應商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
-1c4feqt	draft	This browser can't run annai's offline service, which shows notifications.	此瀏覽器無法執行 annai 用來顯示通知的離線服務。	src/ui/push.js:19	
-1vug986	draft	The phone's push subscription has no keys. Turn notifications off and on again.	手機的推播訂閱沒有金鑰。請關閉通知後再重新開啟。	src/ui/push.js:30	
-17sbtk9	draft	The relay's key isn't one annai can use.	中繼的金鑰不是 annai 能用的。	src/ui/push.js:78	
+ew9em3	ok	Cancel	取消	src/ui/ask.js:21	
+7fxcga	ok	Back up this phone over it	用這部手機的備份覆蓋它	src/ui/auto-backup.js:65	Note: "it" is the newer backup at the place: this phone's backup replaces it.
+qe6isd	ok	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這部手機是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:65	
+13aymis	ok	Back up this iPad over it	用這台 iPad 的備份覆蓋它	src/ui/auto-backup.js:66	
+17c0bbv	ok	annai can't tell whether this iPad is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這台 iPad 是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:66	
+1900dh1	ok	Back up this computer over it	用這台電腦的備份覆蓋它	src/ui/auto-backup.js:67	
+iubvos	ok	annai can't tell whether this computer is on Wi-Fi, so larger backups wait for your OK.	annai 無法判斷這台電腦是否連著 Wi-Fi，所以較大的備份會等你同意。	src/ui/auto-backup.js:67	
+1jhhbi	ok	Open Backups	開啟備份	src/ui/auto-backup.js:76	
+8dbjq	ok	A newer backup is on {0}	{0}上有更新的備份	src/ui/auto-backup.js:82	{0} = target.name
+1g7wii9	ok	Import it as a copy	作為副本匯入	src/ui/auto-backup.js:85	
+1ndbdgm	ok	A large backup is waiting	有一個大型備份在等待	src/ui/auto-backup.js:91	
+1nj869p	ok	This backup uploads {0} to {1}.	此備份會向{1}上傳 {0}。	src/ui/auto-backup.js:92	{0} = size(h.bytes); {1} = target.name
+1lm8hbn	ok	Back up now	立即備份	src/ui/auto-backup.js:93	
+1m6y9c0	ok	Backups to {0} ({1}) stopped	到{0}（{1}）的備份已停止	src/ui/auto-backup.js:97	{0} = target.name; {1} = where
+54wd1u	ok	Backups to {0} stopped	到{0}的備份已停止	src/ui/auto-backup.js:97	{0} = target.name
+arudmh	ok	Open Backups to fix it.	請開啟備份進行修復。	src/ui/auto-backup.js:98	
+y3yg69	ok	Backing up…	正在備份…	src/ui/auto-backup.js:104	
+zsz4na	ok	Backed up.	已備份。	src/ui/auto-backup.js:106	
+183eg6b	ok	The backup didn't finish	備份沒有完成	src/ui/auto-backup.js:108	
+rs50uy	ok	Opening the backup…	正在開啟備份…	src/ui/auto-backup.js:125	
+12sejli	ok	Waiting for the backup that's running to finish…	正在等待進行中的備份完成…	src/ui/auto-backup.js:144	
+1jpt0cn	ok	Shiori	Shiori	src/ui/cards.js:45	
+1qg198k	ok	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
+1dn0kon	ok	Open in Maps	在地圖中開啟	src/ui/cards.js:77	
+io1qx	ok	Open the booking	開啟預訂	src/ui/cards.js:82	
+1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
+1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的類型（{0}）來自一個未開啟的外掛程式。	src/ui/cards.js:97	{0} = card.type
+1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，用於 Shiori 的 nearby 工具和離線資料包，透過 Overpass（overpass-api.de，繁忙時用 private.coffee 的伺服器）查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
+g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或說出某個位置的地名，用於 Shiori 的 geocode 和 reverse 工具；作為免費搜尋的最後手段，也會查詢地點的官網。annai 依其使用政策，每秒最多詢問一次。	src/ui/credits.js:26	
+1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地點的文章，以及離線資料包中的摘要。Shiori 讀到的每篇文章都附有網址。免費搜尋始終開啟的最後手段會用搜尋的詞向它查詢。	src/ui/credits.js:33	
+1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，用於 Shiori 的 guide 工具和離線資料包，也是免費搜尋的後備。	src/ui/credits.js:40	
+1g8sy5k	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天氣預報，用於 Shiori 的 weather 工具。預報中的日出和日落也來自 Open-Meteo；此刻頁面的黃金時刻，以及 Open-Meteo 沒有回應時的日出日落時間，都在手機上計算。	src/ui/credits.js:47	
+a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	為 web_search 提供免費網頁搜尋，並為 fetch 讀取其他方式讀不了的網頁，僅在設定 → 工具中勾選時使用。只傳送搜尋的詞或網址。	src/ui/credits.js:54	
+382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	為 web_search 提供免費網頁搜尋，僅在設定 → 工具中勾選時使用。只傳送搜尋的詞。	src/ui/credits.js:61	
+138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	為 web_search 提供網頁搜尋，安裝「Tavily 搜尋」外掛程式後用你的金鑰。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).; Note: Names the plugin as its own zh name, Tavily 搜尋 (L7).
+1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	為 web_search 提供網頁搜尋，安裝「Serper 搜尋」外掛程式後用你的金鑰。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜尋 (L7).
+1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	讀取不允許網頁應用程式讀取的網頁，並搜尋網頁，用於 Shiori 的 fetch 和 web_search 工具，依設定 → 工具的選擇使用。	src/ui/credits.js:89	
+l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：為 annai 用 AI 影像生成設計，再描摹成向量圖。	src/ui/credits.js:107	
+gb19et	ok	Message to Shiori	給 Shiori 的訊息	src/ui/dock.js:43	
+1vatbdb	ok	Send	傳送	src/ui/dock.js:58	
+1m2zofh	ok	Type	輸入	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
+178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片儲存在旅行中。請在「旅行」中開啟一個旅行，再拍一次。	src/ui/dock.js:109	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
+drtui7	ok	Open a trip first	請先開啟一個旅行	src/ui/dock.js:109	
+1dcb0v0	ok	The photo wasn't added	未能新增照片	src/ui/dock.js:120	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:209	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:210	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:210	
+1s6dmy6	ok	Camera	相機	src/ui/dock.js:223	
+1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
+1a791in	ok	{0} has to be an object: { … }.	{0}必須是物件：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
+1gkm7i5	ok	Saving…	正在儲存…	src/ui/dom.js:258	
+12ek4is	ok	Saved	已儲存	src/ui/dom.js:305	
+fj0t7x	ok	History (every version and the log)	歷史（每個版本和日誌）	src/ui/export-panel.js:21	
+oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
+1l4mw9c	ok	Photos	照片	src/ui/export-panel.js:23	
+fz72ei	ok	Include API keys (needs a passphrase)	包含 API 金鑰（需要密碼片語）	src/ui/export-panel.js:24	
+1k1mi4l	ok	Include where photos were taken	包含照片的拍攝地點	src/ui/export-panel.js:25	
+1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:29	Note: 分享 here (sending a trip to someone), as Taiwan's iPhone names its Share button too.
+40d3tk	ok	What to include	包含的內容	src/ui/export-panel.js:29	
+e1v954	ok	Backup: everything	備份：全部	src/ui/export-panel.js:29	
+1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:49	
+li1zvd	ok	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:49	
+1rtc92m	ok	Save file	儲存檔案	src/ui/export-panel.js:58	
+e8bmvg	ok	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:62	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:63	
+1vdabwr	ok	Building…	正在產生…	src/ui/export-panel.js:66	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:66	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	產生檔案	src/ui/export-panel.js:85	
+1sh99lf	ok	Export	匯出	src/ui/export-panel.js:86	
+laav31	ok	Export {0}	匯出{0}	src/ui/export-panel.js:87	{0} = what.title
+xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:87	
+sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:90	
+xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:90	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:91	
+la9701	ok	not backed up	未備份	src/ui/format.js:27	
+1h47npq	ok	backed up {0}	{0}已備份	src/ui/format.js:28	{0} = relTime(at, now); Note: {0} is relTime ("2小時前", "剛剛"), so it comes first.
+1sjuc50	ok	backed up {0}, changed since	{0}已備份，之後有更改	src/ui/format.js:28	{0} = relTime(at, now)
+meb4bg	ok	you	你	src/ui/format.js:32	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	ok	cost unknown	費用未知	src/ui/format.js:36	
+16name3	ok	free	免費	src/ui/format.js:37	
+1bm6q72	ok	key rejected	金鑰被拒絕	src/ui/format.js:42	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	ok	too many requests	請求過多	src/ui/format.js:42	
+4icrku	ok	answered	已回答	src/ui/format.js:42	
+jk3r0m	ok	overloaded	過載	src/ui/format.js:42	
+k1s3xh	ok	out of credit	餘額用完	src/ui/format.js:42	Note: Credit is a prepaid balance (餘額), as "This account is out of credit".
+1ci3mtm	ok	doesn't allow web apps	不允許網頁應用程式	src/ui/format.js:43	
+1lj1ww1	ok	photo upload expired	照片上傳已過期	src/ui/format.js:43	
+1x40ny1	ok	didn't take the photo	未接受照片	src/ui/format.js:43	
+f82spn	ok	too long for it	內容過長	src/ui/format.js:43	
+11n2a71	ok	couldn't connect	無法連線	src/ui/format.js:44	
+a3596h	ok	refused the request	拒絕了請求	src/ui/format.js:44	
+n3huvh	ok	unknown model or address	未知的模型或網址	src/ui/format.js:44	
+rhcw9u	ok	provider error	供應商出錯	src/ui/format.js:44	
+13effb	ok	connection dropped	連線中斷	src/ui/format.js:45	
+1quwfm7	ok	plugin failed	外掛程式出錯	src/ui/format.js:45	
+1s4r037	ok	too slow to start	啟動太慢	src/ui/format.js:45	
+hqyrx7	ok	removed	已移除	src/ui/format.js:45	
+urm4i6	ok	stopped	已停止	src/ui/format.js:45	
+184j4co	ok	resting after an error	出錯後暫停中	src/ui/format.js:46	
+1mrun4s	ok	redirected elsewhere	被重新導向到別處	src/ui/format.js:46	
+1q01jst	ok	doesn't take photos	不支援照片	src/ui/format.js:46	
+365ivi	ok	can't use tools	無法使用工具	src/ui/format.js:46	
+4k8rwn	ok	its ability is switched off	該功能已關閉	src/ui/format.js:46	
+l7u7vc	ok	its plugin is missing	缺少其外掛程式	src/ui/format.js:46	
+1y8iwje	ok	has no web tool of that kind	沒有該類網頁工具	src/ui/format.js:47	
+6gto9k	ok	couldn't hear the speech	未能聽清語音	src/ui/format.js:47	
+710q7y	ok	conversation too long for it	對話過長	src/ui/format.js:47	
+7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:47	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
+w70v2a	ok	doesn't take audio	不支援音訊	src/ui/format.js:47	
+1009iza	ok	Restaurant	餐廳	src/ui/format.js:61	
+1lrcegv	ok	Event	活動	src/ui/format.js:61	
+8cdq15	ok	Train	火車	src/ui/format.js:61	
+d57q3n	ok	Flight	航班	src/ui/format.js:61	
+jj8u9s	ok	Stay	住宿	src/ui/format.js:61	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	租車	src/ui/format.js:61	Note: A kind of booking: a car, nearly always a rental.
+ukzedx	ok	Other	其他	src/ui/format.js:61	
+hqumoz	ok	Kind	類型	src/ui/format.js:76	
+j6u2ti	ok	Starts	開始	src/ui/format.js:78	context: booking; Note: A booking's start, its day and time shown beside it.
+1pcvk9l	ok	Ends	結束	src/ui/format.js:80	context: booking
+16ygujg	ok	Place	地點	src/ui/format.js:81	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:81	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	確認碼	src/ui/format.js:82	Note: A booking's confirmation code.
+t05i6w	ok	Cost	費用	src/ui/format.js:83	
+1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:100	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:100	
+fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:104	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:105	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:105	
+1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:106	
+sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:106	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:111	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:111	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:112	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:112	
+14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:113	
+12hcbva	ok	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:117	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:118	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:119	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:123	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:123	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:124	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:124	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:125	
+wn3ejs	ok	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:125	
+1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:140	
+1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:145	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:145	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:146	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:148	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:149	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:150	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:151	
+173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:152	{0} = at
+1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:152	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:164	
+hmr3pn	ok	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:164	
+8091b1	ok	no limit	無限制	src/ui/format.js:189	
+1y3qo2k#other	ok	# trips	# 個旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
+12lprg	ok	Imported {0} from {1}.	已從{1}匯入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
+1hzaym7	ok	Imported {0}.	已匯入{0}。	src/ui/import-state.js:48	{0} = what
+kotjbl	ok	Imported.	已匯入。	src/ui/import-state.js:48	
+oefcrt	ok	Imported from {0}.	已從{0}匯入。	src/ui/import-state.js:48	{0} = place
+12gy0yc	ok	Open annai from your Home Screen.	從主畫面開啟 annai。	src/ui/install.js:17	
+82ba67	ok	Tap the Share button in Safari.	點一下 Safari 中的「分享」按鈕。	src/ui/install.js:17	Note: Apple's zh-TW guide says 點一下 for tap, and 分享 for the Share button.
+ejxnor	ok	Choose "Add to Home Screen".	選擇「加入主畫面」。	src/ui/install.js:17	
+1yjkliw	ok	Choose "Install and create shortcut", then "Install".	選擇「安裝並建立捷徑」，然後選擇「安裝」。	src/ui/install.js:18	Note: Chrome's own words (Google's "Use web apps" help, zh-Hans), per the glossary's Install app row.
+tf6np0	ok	Open annai from your Home screen.	從主畫面開啟 annai。	src/ui/install.js:18	
+uqmge3	ok	Open the browser menu (⋮).	開啟瀏覽器選單（⋮）。	src/ui/install.js:18	
+1q8vwe5	ok	Use your browser menu to install annai as an app.	透過瀏覽器選單將 annai 安裝為應用程式。	src/ui/install.js:19	
+1gxw0ly	ok	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	這裡已有的旅行：先在設定中匯出全部內容，再在主畫面上的 App 中用「開啟別人傳來的旅行」開啟該檔案。	src/ui/install.js:22	
+10jxrv9	ok	Install annai	安裝 annai	src/ui/install.js:35	
+1ob0g1z	ok	annai isn't installed yet.	annai 尚未安裝。	src/ui/install.js:49	
+1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 可能會在 7 天未造訪後清除你的旅行，而且主畫面上的 App 會另外儲存旅行：在這裡開始的旅行不會出現在那裡。請將 annai 加入主畫面，並在那裡開始旅行。	src/ui/install.js:51	
+o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空間不足時，瀏覽器可能會清除你的旅行。請安裝 annai，讓旅行安全儲存。	src/ui/install.js:52	
+hz0ihc	ok	Show me how	檢視步驟	src/ui/install.js:53	
+n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:203	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:217	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:218	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:233	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:237	
+v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:240	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:246	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:246	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自動	src/ui/languages.js:246	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離單位	src/ui/languages.js:262	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:275	{0} = name
+dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:275	
+8rqn0k	ok	Restart to show annai in {0}	重新啟動以用{0}顯示 annai	src/ui/languages.js:282	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為{0}，但此裝置顯示的是其他語言。	src/ui/languages.js:283	{0} = name
+1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:284	
+15kmah9	ok	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
+17gqu8c	ok	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
+he6p5i	ok	Simulation · walking	模擬 · 步行中	src/ui/live-chip.js:22	
+1u02s33	ok	GPS on · moving fast	GPS 開啟 · 快速移動中	src/ui/live-chip.js:23	
+1z0woag	ok	GPS on · walking	GPS 開啟 · 步行中	src/ui/live-chip.js:23	
+im61se	ok	GPS on · stopped	GPS 開啟 · 已停下	src/ui/live-chip.js:23	
+1kas4ei	ok	Simulation · on	模擬 · 開啟	src/ui/live-chip.js:24	
+zemwn2	ok	GPS off	GPS 關閉	src/ui/live-chip.js:25	
+10g5ucm	ok	GPS on · no signal	GPS 開啟 · 無訊號	src/ui/live-chip.js:26	
+1a0v739	ok	GPS on · no location	GPS 開啟 · 無位置	src/ui/live-chip.js:26	
+thd4ot	ok	GPS on · finding you	GPS 開啟 · 正在定位	src/ui/live-chip.js:26	
+j7yqys	ok	GPS on	GPS 開啟	src/ui/live-chip.js:27	
+2usjiv	ok	The screen goes off as usual while driving or riding.	駕駛或乘車時，螢幕照常熄滅。	src/ui/live-chip.js:35	
+5v8q2v	ok	The screen stays on while driving or riding.	駕駛或乘車時，螢幕保持開啟。	src/ui/live-chip.js:35	
+m2s0ya	ok	Keep the screen on while driving or riding	駕駛或乘車時保持螢幕開啟	src/ui/live-chip.js:35	Note: 駕駛 as the glossary's Driving (駕駛中) and the sentences beside it.
+1jceci4	ok	Keep the screen on while walking	步行時保持螢幕開啟	src/ui/live-chip.js:36	
+2jdkql	ok	The screen goes off as usual while walking.	步行時，螢幕照常熄滅。	src/ui/live-chip.js:36	
+vkuqa5	ok	The screen stays on while walking.	步行時，螢幕保持開啟。	src/ui/live-chip.js:36	
+1b0r7t3	ok	The screen goes off as usual while stopped.	停下時，螢幕照常熄滅。	src/ui/live-chip.js:37	
+1uq8tvb	ok	The screen stays on while stopped.	停下時，螢幕保持開啟。	src/ui/live-chip.js:37	
+il754y	ok	Keep the screen on while stopped	停下時保持螢幕開啟	src/ui/live-chip.js:37	Note: 停下 as the sentences beside it and the chip's 已停下.
+1aspuv3	ok	The screen goes off as usual while GPS is on.	GPS 開啟時，螢幕照常熄滅。	src/ui/live-chip.js:38	
+1r528n6	ok	Keep the screen on while GPS is on	GPS 開啟時保持螢幕開啟	src/ui/live-chip.js:38	
+m1jg5r	ok	The screen stays on while GPS is on.	GPS 開啟時，螢幕保持開啟。	src/ui/live-chip.js:38	
+13ebf61	ok	Pause the simulation	暫停模擬	src/ui/live-chip.js:78	
+1ui2yvw	ok	Resume the simulation	繼續模擬	src/ui/live-chip.js:78	
+5zs6ip	ok	Stop the simulation	停止模擬	src/ui/live-chip.js:79	
+1yuht27	ok	Simulate a trip	模擬旅行	src/ui/live-chip.js:80	
+100a56n	ok	Turn GPS off	關閉 GPS	src/ui/live-chip.js:89	
+ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/live-chip.js:89	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
+1cm49b4	ok	The plan has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/live-chip.js:104	
+1sedy1m	ok	Where are you?	你在哪裡？	src/ui/live-chip.js:104	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/live-chip.js:111	{0} = p.name
+12nwa0c	ok	A plan place	行程中的地點	src/ui/live-chip.js:148	
+19pzct7	ok	Location Services must be on: Settings → Privacy & Security → Location Services.	必須開啟定位服務：設定 → 隱私權與安全性 → 定位服務。	src/ui/live-help.js:14	Note: Location Services is the platform's 定位服務 (glossary), not the Location row (位置).
+6c6pb6	ok	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：設定 → 隱私權與安全性 → 定位服務 → Safari 網站 → 使用 App 期間，以及設定 → App → Safari → 位置 → 允許。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; Safari 網站, 使用 App 期間 and Safari's 位置 are to be checked on a phone (glossary).
+m9ud30	ok	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：點一下網址列中的「頁面選單」按鈕，然後選擇網站設定 → 位置 → 允許（或設定 → App → Safari → 位置 → 允許）。	src/ui/live-help.js:17	Note: 「頁面選單」按鈕 as the glossary's page menu (Apple's zh-TW guide); 網站設定 is to be checked on a phone (glossary).
+687eo2	ok	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	在 Android 上：點一下網址左側的圖示（在已安裝的應用程式中：按住 annai 圖示，然後選擇應用程式資訊 → 權限），並允許位置資訊。	src/ui/live-help.js:21	Note: Android's 位置資訊, as the glossary's Location row says for Android.
+1ell92d	ok	Allow location for this site in your browser's site settings.	請在瀏覽器的網站設定中允許此網站使用位置資訊。	src/ui/live-help.js:22	
+37e0kb	ok	Location isn't allowed, so GPS has only its time reminders.	位置資訊未獲允許，因此 GPS 只有定時提醒。	src/ui/live-help.js:23	
+ozmn9a	ok	Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?	然後關閉 GPS 再重新開啟。或者告訴 annai 你在哪裡：點一下 GPS 按鈕 → 你在哪裡？	src/ui/live-help.js:24	Note: "Where are you?" is the GPS chip's own item (live-chip.js): it says what that row says.
+141ivnq	ok	annai can't see where you are	annai 無法取得你的位置	src/ui/live-help.js:25	
+1m81j1n	ok	images	圖片	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
+1ue1hlo	ok	tools	工具	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
+27aenj	ok	live	即時	src/ui/model-check.js:6	Note: what a model's test checked: a live voice session.
+gqww9o	ok	upload	上傳	src/ui/model-check.js:6	Note: what a model's test checked: uploading a file.
+svodbg	ok	key	金鑰	src/ui/model-check.js:6	Note: what a model's test checked: the key works.
+1bicsne	ok	off	關閉	src/ui/model-check.js:8	Note: a reasoning level.
+1ntxi55	ok	max	最高	src/ui/model-check.js:8	Note: a reasoning level.
+ew9h86	ok	medium	中	src/ui/model-check.js:8	Note: a reasoning level.
+h5yol9	ok	high	高	src/ui/model-check.js:8	Note: a reasoning level.
+m0aa9t	ok	low	低	src/ui/model-check.js:8	Note: a reasoning level.
+dbbxmt	ok	Test	測試	src/ui/model-check.js:15	
+1l9uojt	ok	Last tested {0}: {1}.	上次測試於{0}：{1}。	src/ui/model-check.js:18	{0} = relTime(verified.at); {1} = list(Object.keys(CHECKS).filter((k) => k in verified).map((k) => `${CHECKS[k]} ${verified[k] ? '✓' : '✗'}`), 'plain'); Note: {1} is a list such as "key ✓, tools ✗".
+6w9tb5	ok	Not tested yet.	尚未測試。	src/ui/model-check.js:19	
+17f0nyo	ok	Testing: a tiny request, then one with a tool and a small picture…	測試中：先送一個很小的請求，再送一個帶工具和小圖片的請求…	src/ui/model-check.js:28	
+rgisri	ok	Opening a live session…	正在開啟即時連線…	src/ui/model-check.js:28	
+1btb3mc	ok	It works, with one note:	可以使用，有一點需要注意：	src/ui/model-check.js:38	
+1dccge4	ok	Everything works.	一切正常。	src/ui/model-check.js:38	
+gfu8p2	ok	Something needs attention:	有地方需要處理：	src/ui/model-check.js:38	
+q21uv	ok	Trying each reasoning level…	正在逐一嘗試推理等級…	src/ui/model-check.js:53	
+19m8h68	ok	Reasoning levels:	推理等級：	src/ui/model-check.js:56	
+la23qc	ok	This model has no reasoning levels to try.	這個模型沒有可嘗試的推理等級。	src/ui/model-check.js:56	
+18nnh3z	ok	{0}: works	{0}：可用	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
+edkut8	ok	Test reasoning levels	測試推理等級	src/ui/model-check.js:64	
+1qfy6dp	ok	Hide	隱藏	src/ui/notices.js:101	
+bi2jq4	ok	Show	顯示	src/ui/notices.js:101	
+icn7kg	ok	Dismiss all	全部關閉	src/ui/notices.js:106	
+14jq62w#other	ok	{0}, # cards	{0}，# 張卡片	src/ui/notices.js:119	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
+1w0wlmk#other	ok	Show the # cards: {0}	顯示 # 張卡片：{0}	src/ui/notices.js:120	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
+1wucd5m#other	ok	Hide the # cards: {0}	隱藏 # 張卡片：{0}	src/ui/notices.js:120	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
+1dg2v9a#other	ok	Dismiss all # cards: {0}	關閉全部 # 張卡片：{0}	src/ui/notices.js:121	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
+18u3mqg	ok	Less	收起	src/ui/notices.js:192	Note: Closes a long card back to three lines.
+lz65mo	ok	More	展開	src/ui/notices.js:192	Note: Opens a long card to its full height.
+an1pf7	ok	Dismiss	關閉	src/ui/notices.js:202	
+16ujpkf#other	ok	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
+18s5rc#other	ok	# places	# 個地點	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
+1bid1z0#other	ok	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
+13u8cof	ok	Downloading: {0}…	正在下載：{0}…	src/ui/offline-pack.js:33	{0} = r.label
+1ciduc1	ok	Downloading…	正在下載…	src/ui/offline-pack.js:33	
+1ws3913	ok	Downloading {0} of {1}…	正在下載（{0}/{1}）…	src/ui/offline-pack.js:33	{0} = done; {1} = total
+1y7mim7	ok	Downloading {0} of {1}: {2}…	正在下載（{0}/{1}）：{2}…	src/ui/offline-pack.js:33	{0} = done; {1} = total; {2} = r.label
+5sofm3	ok	The pack follows the plan: once the plan has places, it can be downloaded here.	離線資料包跟隨行程：行程中有了地點後，就可以在這裡下載。	src/ui/offline-pack.js:36	
+1rxtl83#other	ok	For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's # stops and along the way between them. Shiori's nearby and guide read it first.	用於沒有網路時：行程中 # 個停留點周圍及其間沿途的 OpenStreetMap 地點、Wikipedia 摘要和 Wikivoyage 指南。Shiori 的 nearby 和 guide 工具會先讀取它。	src/ui/offline-pack.js:42	plural; # = s.stops; English: "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's stop and along the way between them. Shiori's nearby and guide read it first." (one), "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's # stops and along the way between them. Shiori's nearby and guide read it first." (other); Note: nearby and guide are Shiori's tools, named as in Settings → Tools.
+u8epe6	ok	Downloading sends the plan's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.	下載時會把行程中的地點傳送給 OpenStreetMap 和 Wikipedia，把地名傳送給 Wikivoyage。	src/ui/offline-pack.js:44	
+1452e43	ok	Download (about {0})	下載（約{0}）	src/ui/offline-pack.js:46	{0} = about
+13ryfn7	ok	Downloaded · {0} · {1}.	已下載 · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
+1yax0wt	ok	Downloaded {0} · {1} · {2}.	下載於{0} · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").
+11sehoe	ok	Guides: {0}.	指南：{0}。	src/ui/offline-pack.js:51	{0} = list(m.guides.map((g) => g.title), 'plain')
+wc42uc	ok	It stopped at its {0} limit, so it holds only the start of the plan.	已達到{0}的上限，因此只包含行程的開頭部分。	src/ui/offline-pack.js:52	{0} = size(MAX_BYTES)
+16n19op	ok	This plan is longer than a pack holds, so some of the way between stops is left out.	行程太長，離線資料包裝不下，因此停留點之間的部分路段沒有包含在內。	src/ui/offline-pack.js:53	
+1nbogz3#other	ok	# parts didn't download: {0} ({1}).	# 個部分未能下載：{0}（{1}）。	src/ui/offline-pack.js:58	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
+1pbas9l	ok	The download was stopped before the end.	下載在完成前被停止了。	src/ui/offline-pack.js:59	
+1nes6lp	ok	The plan changed since.	之後行程有了變化。	src/ui/offline-pack.js:63	
+w5716a	ok	Update (about {0})	更新（約{0}）	src/ui/offline-pack.js:64	{0} = about
+13cigs6	ok	Download the rest (about {0})	下載其餘部分（約{0}）	src/ui/offline-pack.js:65	{0} = about
+o81vpw	ok	Try again (about {0})	重試（約{0}）	src/ui/offline-pack.js:65	{0} = about
+16r6naq	ok	It is more than a month old.	已超過一個月。	src/ui/offline-pack.js:67	
+1v2fms	ok	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	連線 Wi-Fi 時，只要這個旅行處於開啟狀態，annai 會自動保持它為最新。	src/ui/offline-pack.js:70	
+1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器不會告訴 annai 何時連著 Wi-Fi，請在這裡更新。	src/ui/offline-pack.js:70	
+5pklax	ok	Offline pack	離線資料包	src/ui/offline-pack.js:80	
+1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:87	
+v6p0ku	ok	The offline pack didn't download	離線資料包未能下載	src/ui/offline-pack.js:87	
+qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+qdh58i	ok	No offline pack for this trip yet.	這個旅行還沒有離線資料包。	src/ui/offline-pack.js:127	
+1l61m6n	ok	The offline pack is from before the plan changed.	離線資料包是行程變化之前的。	src/ui/offline-pack.js:128	
+ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
+r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
+dbm7fe	ok	Open a trip someone sent you	開啟別人傳來的旅行	src/ui/open-file.js:6	
+ow6fak	ok	This browser could not draw the photo.	這個瀏覽器無法繪製這張照片。	src/ui/photo-codec.js:72	
+11dn6um	ok	This browser could not write {0}.	這個瀏覽器無法寫出 {0}。	src/ui/photo-codec.js:80	{0} = type
+1l0xxoj	ok	Close	關閉	src/ui/photo-viewer.js:32	
+1s1o4yb	ok	Show Shiori this part	把這部分給 Shiori 看	src/ui/photo-viewer.js:33	
+u3xlwb	ok	The plugin "{0}" was turned off	外掛程式「{0}」已關閉	src/ui/plugin-cards.js:12	{0} = name
+1k1qvj4	ok	Its hooks were handed more than {0} log entries in {1} seconds, which looks like a loop.	它的鉤子在{1}秒內收到了超過{0}筆日誌，看起來像是陷入了迴圈。	src/ui/plugin-cards.js:13	{0} = num(why.entries); {1} = num(why.seconds)
+14cse4m	ok	You can turn it back on in Settings → Plugins.	可以在設定 → 外掛程式中重新開啟。	src/ui/plugin-cards.js:14	
+1m15smo#other	ok	It failed # times in a row.	它連續失敗了#次。	src/ui/plugin-cards.js:14	plural; # = why.count; English: "It failed # time in a row." (one), "It failed # times in a row." (other)
+alpox6	ok	The last error: {0}	最後一次錯誤：{0}	src/ui/plugin-cards.js:14	{0} = message
+4egg99	ok	annai needs a reload	annai 需要重新載入	src/ui/plugin-cards.js:28	
+6kkhkz#other	ok	It opened without its offline service, so these plugins can't start: {0}.	它在沒有離線服務的情況下開啟，所以這些外掛程式無法啟動：{0}。	src/ui/plugin-cards.js:29	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
+53p50e	ok	It opened without its offline service, so plugins can't start or be installed.	它在沒有離線服務的情況下開啟，所以外掛程式無法啟動，也無法安裝。	src/ui/plugin-cards.js:30	
+fzpt3w	ok	Reload now	立即重新載入	src/ui/plugin-cards.js:31	
+1vgaaah	ok	It didn't start the last few times annai opened: {0}	最近幾次開啟 annai 時，它都沒有啟動：{0}	src/ui/plugin-cards.js:46	{0} = why
+11arkb9	ok	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:47	
+1jz4o49	ok	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:47	{0} = it
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:73	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改）（帶來新內容：會先詢問你）	src/ui/plugin-updates.js:73	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:74	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:74	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	外掛程式更新已就緒	src/ui/plugin-updates.js:80	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	在你更新之前什麼都不會改變。正在執行的外掛程式更新後，會在 annai 重新啟動前保持關閉。	src/ui/plugin-updates.js:81	
+1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:81	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	更新	src/ui/plugin-updates.js:82	
+1agymuw	ok	Some plugins weren't updated	有些外掛程式沒有更新	src/ui/plugin-updates.js:117	
+1vsv4vh	ok	Restart annai to use the new versions	重新啟動 annai 以使用新版本	src/ui/plugin-updates.js:121	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0}無法使用。	src/ui/plugin-updates.js:122	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:122	
+nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:123	
+1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:126	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 帶來新內容	src/ui/plugin-updates.js:142	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:143	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	只有在你信任它的來源時才更新。	src/ui/plugin-updates.js:143	
+1dfe53s	ok	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:144	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:146	
+c9wfke	ok	Not now	現在不要	src/ui/plugin-updates.js:147	Note: 現在不要, as Taiwan's iPhone says Not Now.
+1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
+tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、檔案、設定和金鑰都儲存在此裝置的這個瀏覽器中。annai 沒有帳號，也沒有任何 annai 的伺服器儲存你的旅行或金鑰。	src/ui/privacy.js:21	
+14xwlem	ok	Sent only where it's needed.	只傳送到需要的地方。	src/ui/privacy.js:22	
+5ycw8s	ok	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	你問 Shiori 的內容，連同她從旅行中需要的資訊，會傳送給你連線的模型供應商；你說的話會傳送到設定 → 語音中顯示的地方。她查詢的地點會傳送給設定 → 關於中列出的來源。記錄會顯示 annai 為 Shiori 送出的每個請求：她的模型呼叫、工具和離線資料包。	src/ui/privacy.js:22	Note: "her" kept where it reads natural; the Trace is 記録/記錄 per the glossary.
+1g2tvlf	ok	Your keys stay yours.	金鑰歸你所有。	src/ui/privacy.js:23	
+1jo7026	ok	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	每個模型金鑰都儲存在此裝置的儲存空間中，只傳送給它所屬的供應商。金鑰從不放進 Shiori 的模型讀取的內容，在記錄中會被遮蓋，也不會包含在匯出中，除非你選擇把它們放進加密備份。	src/ui/privacy.js:23	
+12t6czb	ok	No tracking.	不追蹤。	src/ui/privacy.js:24	
+5d5p39	ok	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annai 沒有統計分析，也沒有廣告。它不從其他網站載入腳本：內容安全政策只允許執行來自 annai 自己網址的腳本，你安裝的程式碼外掛程式除外，它們由 annai 自己儲存和提供。	src/ui/privacy.js:24	
+1e9jheb	ok	Reminders stay sealed.	提醒始終加密。	src/ui/privacy.js:25	
+1ves2ac	ok	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone has received one. Reminders about places never leave the phone.	開啟通知後，推播中繼儲存的每則定時提醒都在此裝置上加密，它只保留手機的推播位址、每則提醒的時間、等待的數量，以及很少的其他資訊：每則的取消碼，以及這部手機已收到提醒的標記。關於地點的提醒從不離開手機。	src/ui/privacy.js:25	
+13wlc44	ok	Open code.	開放原始碼。	src/ui/privacy.js:26	
+1qhqdx	ok	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annai 的程式碼以 AGPL-3.0 開源，任何人都可以在 {0} 閱讀。	src/ui/privacy.js:26	{0} = REPO.replace('https://', '')
+1q2zxy5	ok	Where this stops	侷限	src/ui/privacy.js:27	Note: "Where this stops" as one noun heading.
+1bk8ve3	ok	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	你安裝的程式碼外掛程式擁有完全權限：它能讀取你的旅行和金鑰，它的請求也可以繞過記錄。只安裝你信任的外掛程式。	src/ui/privacy.js:29	Note: "runs with full trust": full access to trips and keys, as the Add screen says it (完全存取).
+19jox8f	ok	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	使用模型自帶的搜尋或抓取（設定 → 工具）時，搜尋和網頁在供應商的伺服器上執行，記錄只顯示模型的這一輪。	src/ui/privacy.js:30	
+426n3h	ok	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	金鑰的安全取決於這台裝置：任何能在它上面使用這個瀏覽器的人都能接觸到它們。請鎖好裝置。	src/ui/privacy.js:31	
+ldqm5c	ok	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	在 iPhone 上，Safari 和主畫面上的 App 各自儲存資料：在其中一個新增的金鑰和旅行不會出現在另一個裡。	src/ui/privacy.js:32	
+mj3oi4	ok	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annai 是自由軟體，在法律允許的範圍內依「現狀」提供，不附帶任何擔保，依據 {0}（AGPL-3.0）授權。	src/ui/privacy.js:39	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
+19ow2h0	ok	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能會出錯。預訂、價格、營業時間、路線和安全資訊請自己核實。	src/ui/privacy.js:40	
+5aqdvy	ok	When you drive, use her hands-free, and follow the road and the local rules.	開車時請用免持方式使用她，並注意路況、遵守當地規定。	src/ui/privacy.js:41	
+hirfin	ok	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你連線的模型供應商收取的費用由你支付。你匯入、抓取或連線的內容由你負責。	src/ui/privacy.js:42	
+1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}無法在 {1} 新增供應商：它不向任何地方傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
+rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}無法在 {1} 新增供應商：它只向 {2} 傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
+1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	該供應商已不存在。請在設定 → 模型中重新新增。	src/ui/provider-setup.js:88	
+1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	該供應商不屬於{0}，所以不能為它儲存金鑰。	src/ui/provider-setup.js:90	{0} = mine
+13upi6b	ok	{0} isn't a model provider.	{0}不是模型供應商。	src/ui/provider-setup.js:118	{0} = officialName(entry.id, entry.name)
+17q3a6l	ok	That plugin isn't a model provider.	該外掛程式不是模型供應商。	src/ui/provider-setup.js:118	
+1p012cf	ok	Connect to the internet to sign in.	請連上網路以登入。	src/ui/provider-setup.js:148	
+14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登入…	src/ui/provider-setup.js:157	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	無法顯示 {0} 的登入。請改從「新增供應商」新增。	src/ui/provider-setup.js:162	{0} = f.name
+15aq08d	ok	The quickest start	最快的開始方式	src/ui/provider-setup.js:164	
+w9nig3	ok	Sign in	登入	src/ui/provider-setup.js:164	
+edml6o	ok	Getting the sign-in ready…	正在準備登入…	src/ui/provider-setup.js:168	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登入結果傳回了，但 annai 已不再等待：已超過 15 分鐘，或已經完成。請從設定 → 模型重新開始。	src/ui/provider-setup.js:198	
+sv1qqk	ok	A sign-in came back too late	登入結果傳回得太晚	src/ui/provider-setup.js:198	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}沒有執行。請在設定 → 外掛程式中檢視，然後重新登入。	src/ui/provider-setup.js:212	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:218	{0} = name
+1fm7mjz	ok	Speech out	朗讀	src/ui/provider-setup.js:226	
+v20s4a	ok	Quick decision	快速判斷	src/ui/provider-setup.js:226	
+w8niry	ok	Speech in	語音辨識	src/ui/provider-setup.js:226	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1}沒有可先用的免費模型，而 Shiori 需要一個模型來回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的金鑰屬於免費額度，請在此頁面開啟「此金鑰為免費額度」：這樣它的模型就不收費。	src/ui/provider-setup.js:245	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	其語音辨識模型排在免費項之後。	src/ui/provider-setup.js:246	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	其語音辨識和朗讀模型排在免費項之後。	src/ui/provider-setup.js:246	
+1r0x31s	ok	Its speech out models went behind the free entries.	其朗讀模型排在免費項之後。	src/ui/provider-setup.js:247	
+1llun41	ok	The provider	供應商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
+1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此瀏覽器無法執行 annai 用來顯示通知的離線服務。	src/ui/push.js:19	
+1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手機的推播訂閱沒有金鑰。請關閉通知後再重新開啟。	src/ui/push.js:30	
+17sbtk9	ok	The relay's key isn't one annai can use.	中繼的金鑰不是 annai 能用的。	src/ui/push.js:78	
 xp81tw	draft	annai {0}	annai {0}	src/ui/screens/about.js:40	{0} = v
 cx3u06	draft	annai {0} · build not known yet: annai's offline service is still starting	annai {0} · 建置版本暫時未知：annai 的離線服務仍在啟動	src/ui/screens/about.js:42	{0} = v
 kgnamw	draft	annai {0} · build {1}	annai {0} · 建置 {1}	src/ui/screens/about.js:42	{0} = v; {1} = build
@@ -2519,53 +2519,53 @@ s3y93q	draft	Then	然後	src/ui/screens/welcome.js:126
 186hb75	draft	Look around first	先隨便看看	src/ui/screens/welcome.js:147	
 zzldle	draft	Set up a model	設定模型	src/ui/screens/welcome.js:148	
 dndycx	draft	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:154	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
-1jrfsn4	draft	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免費搜尋會把你的搜尋傳送給 Exa、Parallel 或 Firecrawl：只傳送搜尋的詞，不傳送你的檔案或位置。Exa 還會讀取其他方式讀不了的網頁，因此也會收到該網址。它們都是可能變化或停止的免費額度，而且 Exa 和 Parallel 可能用搜尋內容訓練模型，所以請不要在搜尋中寫名字和地址。在它們之後，還有一個始終開啟的最後手段，會用同樣的詞詢問 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有「搜尋方式：關閉」能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
-16trcjc	draft	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜尋的詞會傳送給你保留勾選的服務，Exa 還會收到它為她讀取的網址：不傳送你的檔案或位置。它們都是可能變化或停止的免費額度，而且 Exa 和 Parallel 可能用搜尋訓練模型，所以請不要在搜尋中寫名字和地址。在它們之後，作為最後手段，始終會詢問 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有設定 → 工具 → 搜尋方式：關閉能停止它。這些都可以在那裡更改。	src/ui/search-panel.js:15	
-1fn0bdg	draft	Use	使用	src/ui/search-panel.js:31	
-1uowdjd	draft	resting after a failure, tries again {0}	失敗後暫停中，{0}重試	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1分鐘後".
-a6dklq	draft	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia 和 OpenStreetMap；始終開啟，最後手段	src/ui/search-panel.js:50	
-10c8x63	draft	free, no key	免費，無需金鑰	src/ui/search-panel.js:51	
-sbfb3o	draft	ready	就緒	src/ui/search-panel.js:51	
-qx2onv	draft	couldn't check	無法檢查	src/ui/search-panel.js:54	
-1lhwd5p	draft	not ready	未就緒	src/ui/search-panel.js:57	
-1j0itop	draft	Search	搜尋	src/ui/search-panel.js:87	
-hdu04k	draft	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 從上往下嘗試這些，第一個回答的勝出。失敗的會休息一陣，之後再試。取消勾選即可停用。	src/ui/search-panel.js:89	
-1a1oz0p	draft	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜尋供應商是外掛程式：從目錄中新增一個（Tavily、Serper、你自己的 SearXNG），它的金鑰在它自己的頁面上設定。	src/ui/search-panel.js:92	
-f2eaqi	draft	Find a search plugin	查詢搜尋外掛程式	src/ui/search-panel.js:93	
-1le6ymq	draft	{0} is a whole number.	{0}須為整數。	src/ui/settings-form.js:79	{0} = f.label
-1ulakkp	draft	{0} is a number.	{0}須為數字。	src/ui/settings-form.js:79	{0} = f.label
-do1m5o	draft	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:117	{0} = f.label
-1qrgqx0	draft	saved	已儲存	src/ui/settings-form.js:122	
-phutrz	draft	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:131	{0} = f.label; {1} = messageOf(e)
-1skw031	draft	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:261	
-1z00dfe	draft	An update is ready	更新已就緒	src/ui/shell.js:353	
-gt0nrj	draft	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:353	
-sntfon	draft	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
-n8hyke	draft	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
-1a27ynt	draft	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
-lrzlka	draft	Last tested {0}: it didn't work.	上次測試於{0}：不可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
-11k50g8	draft	Playing a sample…	正在播放試聽…	src/ui/speech-check.js:36	
-10nc9qe	draft	The sample stopped early.	試聽提前停止了。	src/ui/speech-check.js:38	
-f41br8	draft	It works: that was this voice.	可以使用：剛才就是這個聲音。	src/ui/speech-check.js:38	
-en3jzv	draft	Say something, such as "Where should we stop for lunch?"	說點什麼，例如「我們在哪裡停下來吃午餐？」	src/ui/speech-check.js:42	
-sn0s5v	draft	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒內沒聽到聲音。請確認麥克風已開啟，然後再試一次。	src/ui/speech-check.js:47	
-16ssm8b	draft	It heard speech but wrote nothing down. Try again, a little closer to the phone.	聽到了語音，但什麼也沒寫出來。請離手機近一點，再試一次。	src/ui/speech-check.js:52	
-a2r8f0	draft	It heard: "{0}"	聽到：「{0}」	src/ui/speech-check.js:52	{0} = text
-1alwf78	draft	Say something	說點什麼	src/ui/speech-check.js:65	
-1qerct6	draft	Play a sample	播放試聽	src/ui/speech-check.js:65	
-edrwuk	draft	annai's storage is full	annai 的儲存空間已滿	src/ui/storage-full.js:12	
-dvkkfg	draft	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	沒有任何內容只儲存了一半。要騰出空間，請移除不再需要的旅行（請先備份），或釋放此裝置上的空間。	src/ui/storage-full.js:14	Note: 移除, as the trip's own button, Remove trip (移除旅行).
-1yr1lra	draft	Export a backup	匯出備份	src/ui/storage-full.js:16	
-8a7h7a#other	draft	# tokens · {0}	# 個 token · {0}	src/ui/talk-panel.js:14	plural; # = n; {0} = formatCost(result.cost); English: "# token · {0}" (one), "# tokens · {0}" (other)
-q69pp5	draft	{0} didn't answer: {1}. No other model was asked.	{0}沒有回答：{1}。沒有詢問其他模型。	src/ui/talk-panel.js:23	{0} = name; {1} = why
-1cam7ic	draft	Message	訊息	src/ui/talk-panel.js:74	
-vy4apn	draft	Try this model	試用這個模型	src/ui/talk-panel.js:75	
-1k3coi2	draft	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和這個模型的簡短對話：失敗時不會有其他模型回答。每則回覆都會顯示 token 數和費用。除了記錄，什麼都不保留。	src/ui/talk-panel.js:77	
-1sva5r0	draft	The check took too long. Check the connection, and try again.	檢查用時過長。請檢查網路連線，然後重試。	src/ui/updates.js:122	
-14d6ut8	draft	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的離線服務尚未啟動，因此沒有檢查 annai 本身。請稍後重試。	src/ui/updates.js:140	
-16l98jx	draft	annai couldn't check for a new version of itself. Check the connection and try again.	annai 無法檢查自身的新版本。請檢查網路連線，然後重試。	src/ui/updates.js:141	
-rtcus4	draft	The download of the new version didn't finish. annai tries again the next time it checks.	新版本沒有下載完成。annai 會在下次檢查時重試。	src/ui/updates.js:167	
-32o7q3	draft	annai restarts once Shiori has finished	Shiori 完成後，annai 將重新啟動	src/ui/updates.js:184	
-3ur3tf	draft	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shiori 正在處理事情，更新不會在她的回合中進行。點一下她可立即停止。	src/ui/updates.js:184	
-4naie6	draft	Don't restart	不重新啟動	src/ui/updates.js:185	
-4u8ij0	draft	Listening live	正在即時收聽	src/ui/voice-chip.js:79	
+1jrfsn4	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. Exa also reads a page that no other reader can, which sends it that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	免費搜尋會把你的搜尋傳送給 Exa、Parallel 或 Firecrawl：只傳送搜尋的詞，不傳送你的檔案或位置。Exa 還會讀取其他方式讀不了的網頁，因此也會收到該網址。它們都是可能變化或停止的免費額度，而且 Exa 和 Parallel 可能用搜尋內容訓練模型，所以請不要在搜尋中寫名字和地址。在它們之後，還有一個始終開啟的最後手段，會用同樣的詞詢問 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有「搜尋方式：關閉」能停止它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
+16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	只有她搜尋的詞會傳送給你保留勾選的服務，Exa 還會收到它為她讀取的網址：不傳送你的檔案或位置。它們都是可能變化或停止的免費額度，而且 Exa 和 Parallel 可能用搜尋訓練模型，所以請不要在搜尋中寫名字和地址。在它們之後，作為最後手段，始終會詢問 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）；只有設定 → 工具 → 搜尋方式：關閉能停止它。這些都可以在那裡更改。	src/ui/search-panel.js:15	
+1fn0bdg	ok	Use	使用	src/ui/search-panel.js:31	
+1uowdjd	ok	resting after a failure, tries again {0}	失敗後暫停中，{0}重試	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1分鐘後".
+a6dklq	ok	Wikimedia and OpenStreetMap; always on, the last resort	Wikimedia 和 OpenStreetMap；始終開啟，最後手段	src/ui/search-panel.js:50	
+10c8x63	ok	free, no key	免費，無需金鑰	src/ui/search-panel.js:51	
+sbfb3o	ok	ready	就緒	src/ui/search-panel.js:51	
+qx2onv	ok	couldn't check	無法檢查	src/ui/search-panel.js:54	
+1lhwd5p	ok	not ready	未就緒	src/ui/search-panel.js:57	
+1j0itop	ok	Search	搜尋	src/ui/search-panel.js:87	
+hdu04k	ok	web_search tries these from the top, and the first that answers wins. One that fails rests for a while, then is tried again. Untick one to stop using it.	web_search 從上往下嘗試這些，第一個回答的勝出。失敗的會休息一陣，之後再試。取消勾選即可停用。	src/ui/search-panel.js:89	
+1a1oz0p	ok	More search providers are plugins: add one from the catalog (Tavily, Serper, your own SearXNG), and its key goes on its own page.	更多搜尋供應商是外掛程式：從目錄中新增一個（Tavily、Serper、你自己的 SearXNG），它的金鑰在它自己的頁面上設定。	src/ui/search-panel.js:92	
+f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:93	
+1le6ymq	ok	{0} is a whole number.	{0}須為整數。	src/ui/settings-form.js:79	{0} = f.label
+1ulakkp	ok	{0} is a number.	{0}須為數字。	src/ui/settings-form.js:79	{0} = f.label
+do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:117	{0} = f.label
+1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:122	
+phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:131	{0} = f.label; {1} = messageOf(e)
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:261	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:353	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:353	
+sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
+n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+lrzlka	ok	Last tested {0}: it didn't work.	上次測試於{0}：無法使用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
+11k50g8	ok	Playing a sample…	正在播放試聽…	src/ui/speech-check.js:36	
+10nc9qe	ok	The sample stopped early.	試聽提前停止了。	src/ui/speech-check.js:38	
+f41br8	ok	It works: that was this voice.	可以使用：剛才就是這個聲音。	src/ui/speech-check.js:38	
+en3jzv	ok	Say something, such as "Where should we stop for lunch?"	說點什麼，例如「我們在哪裡停下來吃午餐？」	src/ui/speech-check.js:42	
+sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒內沒聽到聲音。請確認麥克風已開啟，然後再試一次。	src/ui/speech-check.js:47	
+16ssm8b	ok	It heard speech but wrote nothing down. Try again, a little closer to the phone.	聽到了語音，但什麼也沒寫出來。請離手機近一點，再試一次。	src/ui/speech-check.js:52	
+a2r8f0	ok	It heard: "{0}"	聽到：「{0}」	src/ui/speech-check.js:52	{0} = text
+1alwf78	ok	Say something	說點什麼	src/ui/speech-check.js:65	
+1qerct6	ok	Play a sample	播放試聽	src/ui/speech-check.js:65	
+edrwuk	ok	annai's storage is full	annai 的儲存空間已滿	src/ui/storage-full.js:12	
+dvkkfg	ok	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	沒有任何內容只儲存了一半。要騰出空間，請移除不再需要的旅行（請先備份），或釋放此裝置上的空間。	src/ui/storage-full.js:14	Note: 移除, as the trip's own button, Remove trip (移除旅行).
+1yr1lra	ok	Export a backup	匯出備份	src/ui/storage-full.js:16	
+8a7h7a#other	ok	# tokens · {0}	# 個 token · {0}	src/ui/talk-panel.js:14	plural; # = n; {0} = formatCost(result.cost); English: "# token · {0}" (one), "# tokens · {0}" (other)
+q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}沒有回答：{1}。沒有詢問其他模型。	src/ui/talk-panel.js:23	{0} = name; {1} = why
+1cam7ic	ok	Message	訊息	src/ui/talk-panel.js:74	
+vy4apn	ok	Try this model	試用這個模型	src/ui/talk-panel.js:75	
+1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和這個模型的簡短對話：失敗時不會有其他模型回答。每則回覆都會顯示 token 數和費用。除了記錄，什麼都不保留。	src/ui/talk-panel.js:77	
+1sva5r0	ok	The check took too long. Check the connection, and try again.	檢查耗時過久。請檢查網路連線，然後重試。	src/ui/updates.js:122	
+14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的離線服務尚未啟動，因此沒有檢查 annai 本身。請稍後重試。	src/ui/updates.js:140	
+16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai 無法檢查自身的新版本。請檢查網路連線，然後重試。	src/ui/updates.js:141	
+rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新版本沒有下載完成。annai 會在下次檢查時重試。	src/ui/updates.js:167	
+32o7q3	ok	annai restarts once Shiori has finished	Shiori 完成後，annai 將重新啟動	src/ui/updates.js:184	
+3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shiori 正在處理事情，更新不會在她的回合中進行。點一下她可立即停止。	src/ui/updates.js:184	
+4naie6	ok	Don't restart	不重新啟動	src/ui/updates.js:185	
+4u8ij0	ok	Listening live	正在即時收聽	src/ui/voice-chip.js:79	
