@@ -1,5 +1,5 @@
 {
-  "build": "c9ba563d5299",
+  "build": "bddebbe2070c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -108,8 +108,8 @@
     "/src/core/koe/live.js": "8077bc356b16",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "f6bb1818bb3c",
-    "/src/core/l10n.js": "d38eac0f8f44",
-    "/src/core/languages.js": "678022552a2a",
+    "/src/core/l10n.js": "0c2a9120c5f6",
+    "/src/core/languages.js": "480afa0a1495",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",

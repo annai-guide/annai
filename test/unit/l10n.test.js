@@ -1,6 +1,6 @@
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { t, tc, plural, setWords, key, lang, dir, holes, chooseTag } from '../../src/core/l10n.js';
+import { t, tc, plural, setWords, key, lang, dir, holes, chooseTag, sameLanguage } from '../../src/core/l10n.js';
 
 beforeEach(() => setWords('en', null));
 after(() => setWords('en', null));
@@ -150,6 +150,17 @@ test('Taiwan, Hong Kong, Macau and any zh-Hant phone choose Traditional Chinese,
   assert.deepEqual(chooseTag(null, ['zh'], all), { tag: 'zh-Hans', region: '' }, 'Chinese with neither script nor region is Simplified, as Intl takes it');
   assert.deepEqual(chooseTag(null, ['zh-TW', 'ja-JP'], all, ['en', 'ja', 'zh-Hans']), { tag: 'ja', region: 'JP' }, 'while it is unfinished, a Taiwan phone is not given it');
   assert.deepEqual(chooseTag('zh-Hant', ['zh-TW'], all, ['en', 'ja', 'zh-Hans']), { tag: 'zh-Hant', region: 'TW' }, 'but a choice of it is kept, with the phone\'s region');
+});
+
+test('a Cantonese phone opens in Traditional Chinese, the Chinese it writes, with its region: yue, yue-HK, yue-Hant-HK and zh-yue (review F5)', () => {
+  const all = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+  assert.deepEqual(chooseTag(null, ['yue'], all), { tag: 'zh-Hant', region: '' });
+  assert.deepEqual(chooseTag(null, ['yue-HK'], all), { tag: 'zh-Hant', region: 'HK' });
+  assert.deepEqual(chooseTag(null, ['yue-Hant-HK', 'en-US'], all), { tag: 'zh-Hant', region: 'HK' });
+  assert.deepEqual(chooseTag(null, ['zh-yue'], all), { tag: 'zh-Hant', region: '' });
+  assert.ok(sameLanguage('yue-Hans', 'zh-Hans'), 'Cantonese written in Simplified is Simplified');
+  assert.ok(!sameLanguage('yue-HK', 'zh-Hans'));
+  assert.ok(!sameLanguage('yue', 'ja'));
 });
 
 test('an unfinished language is never picked for the user, only by them', () => {
