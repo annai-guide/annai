@@ -35,7 +35,8 @@ async function walk(dir) {
   const out = [];
   for (const e of await readdir(new URL(dir, root), { withFileTypes: true })) {
     const p = `${dir}/${e.name}`;
-    if (e.isDirectory()) out.push(...(await walk(p)));
+    // Vendored code (PDF.js, in the PDF pages plugin) names hosts in comments and messages that it never contacts.
+    if (e.isDirectory()) out.push(...(e.name === 'vendor' ? [] : await walk(p)));
     else if (p.endsWith('.js')) out.push(p);
   }
   return out;

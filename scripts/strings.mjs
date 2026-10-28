@@ -152,12 +152,13 @@ export function readMessages(file, text, plugin = false) {
   return { messages, errors };
 }
 
-/** Every .js file under a folder, as paths from the root, sorted. @param {string} root @param {string} dir @returns {Promise<string[]>} */
+/** Every .js file under a folder, as paths from the root, sorted; not a vendor folder's. @param {string} root @param {string} dir @returns {Promise<string[]>} */
 async function jsFiles(root, dir) {
   if (!existsSync(`${root}/${dir}`)) return [];
   const out = [];
   for (const e of await readdir(`${root}/${dir}`, { withFileTypes: true })) {
-    if (e.isDirectory()) out.push(...(await jsFiles(root, `${dir}/${e.name}`)));
+    // A vendor folder holds a third party's code (the PDF pages plugin's PDF.js): none of annai's words are in it.
+    if (e.isDirectory()) out.push(...(e.name === 'vendor' ? [] : await jsFiles(root, `${dir}/${e.name}`)));
     else if (/\.m?js$/.test(e.name)) out.push(`${dir}/${e.name}`);
   }
   return out.sort();

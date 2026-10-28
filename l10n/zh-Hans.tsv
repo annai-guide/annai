@@ -15,6 +15,9 @@ openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai
 openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。	plugins-official/openai-realtime/annai-plugin.json:8	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。	plugins-official/openai-responses/annai-plugin.json:8	
+pdf-pages:@name	ok	PDF pages	PDF 页面	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the screens and the Models note (1xx9c0t) say it.
+pdf-pages:@description	ok	Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.	把 PDF 的页面作为图片，给能看照片但读不了 PDF 的模型看；并在任何浏览器中画出 PDF 的第一页作为预览。它带有 Mozilla 的 PDF.js，约 4.5 MB。	plugins-official/pdf-pages/annai-plugin.json:9	Note: "brings" read as the package carries it, so 带有.
+pdf-pages:@keywords.0	ok	PDF.js	PDF.js	plugins-official/pdf-pages/annai-plugin.json:10	Note: a product name, kept.
 provider-another-address:@name	ok	Custom provider	自定义提供商	plugins-official/provider-another-address/annai-plugin.json:3	
 provider-another-address:@description	ok	Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.	任何其他服务器：OpenAI 兼容的服务器、路由或代理，或你自己运行的服务器。填写它的地址，annai 会免费查看它提供什么。	plugins-official/provider-another-address/annai-plugin.json:12	
 provider-another-address:@keywords.0	ok	OpenAI-compatible	OpenAI 兼容	plugins-official/provider-another-address/annai-plugin.json:15	
@@ -475,37 +478,37 @@ izy3tv	ok	Offline · reminders still work	离线 · 提醒仍然有效	src/core/
 n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1104	
 oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1104	
 x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1237	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1435	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1435	
-nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1535	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1535	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1535	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1590	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1861	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1861	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1898	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1902	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1966	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1994	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2049	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2383	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2526	
-guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2526	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2527	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2527	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2665	
-8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2800	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:2974	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:2975	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:2976	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:2977	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2978	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:2979	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:2986	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:2996	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:2997	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:2998	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:2999	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1438	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1438	
+nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1538	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1538	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1538	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1593	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:1865	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:1865	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:1902	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:1906	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:1970	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:1998	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2053	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2418	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:2561	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:2561	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:2562	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:2562	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:2700	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:2835	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3009	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3010	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3011	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3012	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3013	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3014	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3021	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3031	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3032	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3033	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3034	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -636,48 +639,48 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:134
 1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:387	
 3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:391	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:97	
-1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:98	Note: Credit is a prepaid balance (余额), not a quota (额度).
-99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:99	
-1f1gofm	ok	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:100	
-1m90sjx	ok	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:101	
-ofpdqd	ok	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:102	
-1acsflt	ok	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:103	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:104	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:105	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:106	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:107	
-11ib30k	ok	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:108	
-1sdnnoc	ok	The connection dropped.	连接中断了。	src/core/llm/contract.js:109	
-vfwfwf	ok	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:110	
-5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:111	
-1jk8mhk	ok	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:112	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:113	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:114	
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:115	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:116	
-17ifucf	ok	Transcription	语音转文字	src/core/llm/contract.js:134	
-9kdcjv	ok	Chat	对话	src/core/llm/contract.js:134	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note names them.
-b1qn4p	ok	Voice	声音	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:134	
-izfolc	ok	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:144	
-13fumpt	ok	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:145	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:146	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:147	
-1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:148	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:150	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:152	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
-x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:153	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:154	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:156	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:157	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:158	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:162	{0} = name
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:98	
+1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:99	Note: Credit is a prepaid balance (余额), not a quota (额度).
+99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求太多。	src/core/llm/contract.js:100	
+1f1gofm	ok	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:101	
+1m90sjx	ok	The conversation is too long for this model.	对话对这个模型来说太长了。	src/core/llm/contract.js:102	
+ofpdqd	ok	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:103	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:104	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	这个地址不允许像 annai 这样的网页应用调用。	src/core/llm/contract.js:105	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 无法连到这个地址。它可能已停止运行，或不允许网页应用访问。	src/core/llm/contract.js:106	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请在它的提供商页面上检查可调参数。	src/core/llm/contract.js:107	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	提供商不认识这个模型或地址。请检查模型 ID 和基础 URL。	src/core/llm/contract.js:108	
+11ib30k	ok	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:109	
+1sdnnoc	ok	The connection dropped.	连接中断了。	src/core/llm/contract.js:110	
+vfwfwf	ok	The model took too long to start answering.	模型开始回答花的时间太长了。	src/core/llm/contract.js:111	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:112	
+1jk8mhk	ok	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:113	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:114	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商已不再保留之前的几轮；annai 会发送整个对话。	src/core/llm/contract.js:115	
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:116	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商以重定向作答，而 annai 不会带着你的密钥跟随重定向。请检查它的地址。	src/core/llm/contract.js:117	
+17ifucf	ok	Transcription	语音转文字	src/core/llm/contract.js:135	
+9kdcjv	ok	Chat	对话	src/core/llm/contract.js:135	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Classic note names them.
+b1qn4p	ok	Voice	声音	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:135	
+izfolc	ok	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:145	
+13fumpt	ok	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:146	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:147	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:148	
+1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:149	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:150	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:151	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:152	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:153	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
+x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:154	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:155	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:157	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:158	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:159	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:160	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:163	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	价格是一个对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 的阶梯中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 计划 read as a plan.
@@ -708,14 +711,14 @@ d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Ko
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:96	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:98	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:100	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:201	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:203	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:215	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:224	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:226	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:105	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:107	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:109	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	这不是 annai 认识的备份位置类型。请安装提供它的插件。	src/core/llm/official.js:221	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	这不是 annai 认识的端点类型。请安装提供它的插件。	src/core/llm/official.js:223	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你关闭的 {0} 不会因此被开启。	src/core/llm/official.js:235	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:244	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:246	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址：浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 只连接你网络上的 https 地址。一个办法是用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后把 {1} 填给 annai。服务器还必须允许来自 annai.guide 的 CORS。Chrome 142 及以后的版本可能会请你允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是网址：请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（http:// 只用于 localhost 或 127.0.0.1）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 只连接你网络上的 https 地址，所以另一台电脑上的服务器需要一个 https 地址。Tailscale Serve 可以提供：{0}。服务器还必须允许来自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
