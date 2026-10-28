@@ -139,7 +139,7 @@ test('the languages (phase 2): one section, in the system text of Shiori, Kokoro
   assert.match(first.languages, /^The user's phone is set to Japanese, and they may speak other languages\. Answer in the language they used\./);
   await updateAppSettings(ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
   const snap = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' });
-  const line = "The user speaks English, Chinese (Mandarin) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.";
+  const line = "The user speaks English, Chinese (Simplified) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.";
   assert.equal(snap.languages, line);
   const section = `# Languages\n${line}`;
   for (const text of [systemText(snap), systemText(snap, 'a half\'s part'), koeSystem(snap), koeSystem(snap, true)]) {

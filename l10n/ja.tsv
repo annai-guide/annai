@@ -569,30 +569,30 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 1acz027	ok	just now	たった今	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:405	Note: names what to tap (the dock's Shiori), as the English does.
-3fqfy0	ok	Languages	言語	src/core/languages.js:320	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:321	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
-1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:322	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかを Shiori に伝えます。	src/core/languages.js:323	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:324	
-17rv3f8	ok	Add	追加	src/core/languages.js:325	
-9c35st	ok	Remove	削除	src/core/languages.js:326	
-oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:327	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:329	{0} = name; {1} = own
-18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:330	{0} = name
-zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:330	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
-14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:331	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:331	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:332	{0} = name
-p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:332	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:334	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:335	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:337	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:337	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:338	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:338	
-1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:339	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:340	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:341	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	言語	src/core/languages.js:336	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:337	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:338	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかを Shiori に伝えます。	src/core/languages.js:339	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:340	
+17rv3f8	ok	Add	追加	src/core/languages.js:341	
+9c35st	ok	Remove	削除	src/core/languages.js:342	
+oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:343	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:345	{0} = name; {1} = own
+18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:346	{0} = name
+zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:346	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:347	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:347	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:348	{0} = name
+p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:348	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:350	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shiori はまた、話しかけた言語で答えます	src/core/languages.js:351	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori は{0}で答えます	src/core/languages.js:353	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori は{0}で答えます。保存しました	src/core/languages.js:353	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori は話しかけた言語で答えます。保存しました	src/core/languages.js:354	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけた言語で答えます	src/core/languages.js:354	
+1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:355	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:356	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
@@ -706,16 +706,16 @@ s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れ�
 1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 辅助).
 d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:203	
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
-g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:30	
-2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:32	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:145	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:147	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:149	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:252	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:254	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:266	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:275	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:277	{0} = type; Note: said of a plugin, whose name is the card's title.
+g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:29	
+2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:31	{0} = res.status
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:141	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:143	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:145	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:248	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:250	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:262	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:271	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:273	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)

@@ -569,30 +569,30 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:405	
 1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:405	Note: The dock's Shiori button: tap it to talk over her.
-3fqfy0	ok	Languages	語言	src/core/languages.js:320	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:321	
-1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:322	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	第一種語言是手機語音輸入辨識的語言；順序告訴 Shiori 你更偏好哪種。	src/core/languages.js:323	Note: under "Languages you speak" (你說的語言); Phone dictation as Settings → Voice's row (手機語音輸入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	新增語言	src/core/languages.js:324	
-17rv3f8	ok	Add	新增	src/core/languages.js:325	
-9c35st	ok	Remove	移除	src/core/languages.js:326	Note: 移除 (take off the list) over 刪除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:327	{0} = name; Note: {0} is the language's name in Chinese (英語), so no spaces around it.
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:329	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已新增{0}	src/core/languages.js:330	{0} = name
-zu7130	ok	Added {0}. Saved	已新增{0}，已儲存	src/core/languages.js:330	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已儲存	src/core/languages.js:331	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:331	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已儲存	src/core/languages.js:332	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:332	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢復用你對她說的語言回答	src/core/languages.js:334	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已儲存；Shiori 恢復用你對她說的語言回答	src/core/languages.js:335	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:337	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已儲存	src/core/languages.js:337	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你對她說的語言回答。已儲存	src/core/languages.js:338	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說的語言回答	src/core/languages.js:338	
-1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:339	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:340	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:341	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	語言	src/core/languages.js:336	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:337	
+1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:338	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	第一種語言是手機語音輸入辨識的語言；順序告訴 Shiori 你更偏好哪種。	src/core/languages.js:339	Note: under "Languages you speak" (你說的語言); Phone dictation as Settings → Voice's row (手機語音輸入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	新增語言	src/core/languages.js:340	
+17rv3f8	ok	Add	新增	src/core/languages.js:341	
+9c35st	ok	Remove	移除	src/core/languages.js:342	Note: 移除 (take off the list) over 刪除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:343	{0} = name; Note: {0} is the language's name in Chinese (英語), so no spaces around it.
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:345	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已新增{0}	src/core/languages.js:346	{0} = name
+zu7130	ok	Added {0}. Saved	已新增{0}，已儲存	src/core/languages.js:346	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已儲存	src/core/languages.js:347	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:347	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已儲存	src/core/languages.js:348	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:348	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}；Shiori 恢復用你對她說的語言回答	src/core/languages.js:350	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，已儲存；Shiori 恢復用你對她說的語言回答	src/core/languages.js:351	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 用{0}回答	src/core/languages.js:353	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 用{0}回答。已儲存	src/core/languages.js:353	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 用你對她說的語言回答。已儲存	src/core/languages.js:354	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說的語言回答	src/core/languages.js:354	
+1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:355	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:356	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:244	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
@@ -706,16 +706,16 @@ s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/cor
 1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	輔助角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 輔助).
 d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 經典沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:203	
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
-g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:30	
-2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:32	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:145	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:147	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:149	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:252	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:254	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:266	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:275	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:277	{0} = type; Note: said of a plugin, whose name is the card's title.
+g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:29	
+2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:31	{0} = res.status
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:141	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:143	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:145	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:248	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:250	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:262	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:271	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:273	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手機上，localhost 指的是手機本身。另一台電腦上的伺服器需要 https 網址：瀏覽器會攔截 https 頁面送出的普通 http 請求，所以 annai 只連線你網路上的 https 網址。一個辦法是用 Tailscale Serve，並讓手機加入你的 tailnet：在伺服器所在的電腦上執行 {0}，然後把 {1} 填給 annai。伺服器還必須允許來自 annai.guide 的 CORS。Chrome 142 及以後的版本可能會請你允許存取本機網路。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是網址：請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（http:// 只用於 localhost 或 127.0.0.1）。瀏覽器會攔截 https 頁面送出的普通 http 請求，而 annai 只連線你網路上的 https 網址，所以另一台電腦上的伺服器需要一個 https 網址。Tailscale Serve 可以提供：{0}。伺服器還必須允許來自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)

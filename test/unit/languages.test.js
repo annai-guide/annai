@@ -27,11 +27,40 @@ test('every language has a name and the codes each model takes, and the browser 
     assert.ok(l.name && l.locale && l.iso && (l.live || l.id === 'yue'), l.id);
     assert.match(l.locale, /^[a-z]{2,3}(-[A-Za-z0-9]+)+$/, l.id);
   }
-  assert.deepEqual(['ja', 'zh', 'es'].map((id) => nativeName(/** @type {any} */ (LANGUAGES.find((l) => l.id === id)))), ['日本語', '中文', 'español']);
-  assert.equal(LANGUAGES.length, 41, 'the list has 41 languages');
+  assert.deepEqual(['ja', 'zh', 'zh-Hant', 'es'].map((id) => nativeName(/** @type {any} */ (LANGUAGES.find((l) => l.id === id)))), ['日本語', '简体中文', '繁體中文', 'español']);
+  assert.equal(LANGUAGES.length, 42, 'the list has 42 languages');
   assert.equal(LANGUAGES.find((l) => l.id === 'yue')?.live, null, "Gemini Live's zh-Hant is not Cantonese: Cantonese has no Live code (review item 12)");
   const zh = LANGUAGES.find((l) => l.id === 'zh');
-  assert.deepEqual([zh?.name, zh?.iso, zh?.live, zh?.google, zh?.locale], ['Chinese (Mandarin)', 'zh', 'zh-Hans', 'cmn-Hans-CN', 'zh-CN']);
+  assert.deepEqual([zh?.name, zh?.iso, zh?.live, zh?.google, zh?.locale], ['Chinese (Simplified)', 'zh', 'zh-Hans', 'cmn-Hans-CN', 'zh-CN']);
+  const hant = LANGUAGES.find((l) => l.id === 'zh-Hant');
+  assert.deepEqual([hant?.name, hant?.iso, hant?.live, hant?.google, hant?.locale], ['Chinese (Traditional)', 'zh', 'zh-Hant', 'cmn-Hant-TW', 'zh-TW'], 'its own row, Taiwan\'s codes (review F4)');
+});
+
+test('Chinese (Traditional) is its own row: the default on a Traditional phone, its dictation zh-TW, its line Traditional; an old saved "zh" stays Simplified (review F4)', () => {
+  for (const tag of ['zh-TW', 'zh-HK', 'zh-MO', 'zh-Hant-TW']) {
+    const s = languageSettings({}, tag);
+    assert.deepEqual([s.spoken[0].id, s.spoken[0].name, s.spoken[0].locale, dictationLocale(s)], ['zh-Hant', 'Chinese (Traditional)', tag, tag], tag);
+  }
+  for (const tag of ['zh-CN', 'zh-SG', 'zh', 'zh-Hans-HK']) assert.equal(languageSettings({}, tag).spoken[0].id, 'zh', tag);
+  const old = languageSettings({ languages: { spoken: ['zh', 'en'], answer: 'zh' } }, 'zh-TW');
+  assert.deepEqual([old.spoken[0].id, old.spoken[0].name, dictationLocale(old), old.answer?.id], ['zh', 'Chinese (Simplified)', 'zh-CN', 'zh'], 'a list saved before keeps working, as Simplified');
+  const listed = languageSettings({ languages: { spoken: ['zh-Hant', 'en'] } }, 'en-US');
+  assert.equal(dictationLocale(listed), 'zh-TW');
+  assert.equal(speechLocale(listed, '我們去吃飯吧'), 'zh-TW', 'Han is the listed Traditional Chinese for the browser voice');
+  assert.deepEqual(modelLanguages(listed).spoken.map((l) => [l.iso, l.live, l.google]), [['zh', 'zh-Hant', 'cmn-Hant-TW'], ['en', 'en', 'en-US']]);
+  assert.equal(tagOf('骨架', listed), 'zh-Hant');
+  assert.equal(listedFor('Chinese', listed.spoken)?.id, 'zh-Hant');
+  const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
+  assert.equal(speechLocale(both, '我們去吃飯吧'), 'zh-TW', 'a Traditional sentence, both listed: the Traditional voice (the check of 18f87b78)');
+  assert.equal(speechLocale(both, '我们去吃饭吧'), 'zh-CN');
+  assert.equal(speechLocale(listed, '我们去吃饭吧'), 'zh-CN', 'a Simplified sentence with only Traditional listed: a Simplified voice');
+  assert.equal(speechLocale(languageSettings({ languages: { spoken: ['zh', 'en'] } }, 'en-US'), '我們去吃飯吧'), 'zh-TW');
+  assert.equal(speechLocale(both, '好的'), 'zh-CN', 'characters that tell nothing: the first listed');
+  for (const tag of ['zh-yue', 'zh-yue-HK']) {
+    const s = languageSettings({}, tag);
+    assert.deepEqual([s.spoken[0].id, s.spoken[0].locale], ['yue', tag.replace('zh-yue', 'yue')], `${tag} is Cantonese, as the screens take it`);
+  }
+  assert.equal(languagesText(listed), "The user speaks Chinese (Traditional) and English; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.");
 });
 
 test('with nothing saved the setting is the browser\'s language, answering in the language she is spoken to', () => {
@@ -55,7 +84,7 @@ test('with nothing saved, the browser\'s own tag is the locale, as before this b
     assert.deepEqual(modelLanguages(s), { spoken: [], answer: null }, `${tag}: no protocol is given a hint`);
   }
   const hant = languageSettings({}, 'zh-Hant-TW');
-  assert.deepEqual([hant.spoken[0].id, hant.spoken[0].locale, dictationLocale(hant)], ['zh', 'zh-Hant-TW', 'zh-Hant-TW']);
+  assert.deepEqual([hant.spoken[0].id, hant.spoken[0].locale, dictationLocale(hant)], ['zh-Hant', 'zh-Hant-TW', 'zh-Hant-TW']);
   assert.equal(languageSettings({}, 'pt_BR').spoken[0].locale, 'pt-BR', 'a tag written with an underscore');
 });
 
@@ -83,7 +112,7 @@ test('a saved setting is read in order; unknown ids and repeats are dropped; an 
 test('what models are told (the user, 2026-10-23): the languages, that they may switch, never to switch for one word, and to ask again', () => {
   const three = languageSettings({ languages: { spoken: ['en', 'zh', 'ja'] } }, 'en-US');
   assert.equal(languagesText(three),
-    "The user speaks English, Chinese (Mandarin) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.");
+    "The user speaks English, Chinese (Simplified) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.");
   assert.match(languagesText(languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en')), /^The user speaks English and Japanese; they may switch between these\. Answer in the language they used\./);
   const one = languagesText(languageSettings({ languages: { spoken: ['en'] } }, 'en-US'));
   assert.match(one, /^The user speaks English\. Answer in the language they used\./);
