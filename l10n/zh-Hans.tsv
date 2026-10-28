@@ -664,23 +664,24 @@ sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with
 b1qn4p	ok	Voice	声音	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
 su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:135	
 izfolc	ok	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:145	
-13fumpt	ok	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:146	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:147	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:148	
-1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:149	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:150	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:151	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:152	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:153	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
-x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:154	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:155	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:157	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:158	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:159	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:160	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:163	{0} = name
+1l28lx6#other	ok	Its output stopped for # seconds.	输出中断了 # 秒。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	声音中断的时间超过了等待时限。	src/core/llm/contract.js:147	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新加载：它在没有离线服务的情况下打开，所以插件无法启动。	src/core/llm/contract.js:148	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已没有 annai 几分钟前保存的对话，这个账户大概不保存数据（Zero Data Retention）：在 annai 下次启动之前，它不会在那里保存任何内容，并会发送完整对话。	src/core/llm/contract.js:149	
+1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:150	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的插件，但插件没有运行。请在设置 → 模型中打开 {2} 来安装。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:152	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是声音。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:154	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
+x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:155	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:156	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许像 annai 这样的网页应用调用它（没有 CORS 头），所以 annai 无法在浏览器中列出或使用它的模型。如果提供商有别的地址，请试试那个，或请提供商允许浏览器访问。	src/core/llm/contract.js:158	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 无法连到 {0}。请检查地址和网络连接。	src/core/llm/contract.js:159	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:160	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受这部手机能生成的任何音频格式（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成了发往 {2} 的请求，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往一个无效的地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有能为 {0} 听写的项目。	src/core/llm/contract.js:164	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	价格是一个对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 的阶梯中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 不是价格：它应是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 计划 read as a plan.
@@ -693,22 +694,22 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" 的某一项缺少 "from"：每一项都以 2027-01-01 这样的日期开始。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" 中 {0} 出现了两次：请把那天的变化放在同一项里。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" 中有“{0}”，但它不是 annai 认识的价格。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:102	
-9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:103	
-12h1lml	ok	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:104	
-uxj42v	ok	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:105	
-19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:106	
-1coimht	ok	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:107	
-6o9g3j	ok	It doesn't have the provider tool this needs.	它没有这里需要的提供商工具。	src/core/llm/fallback.js:108	
-8xm1wt	ok	It isn't a chat model.	它不是对话模型。	src/core/llm/fallback.js:109	Note: chat model → 对话模型, as the glossary's Koe · Classic note names Koe's list of chat models.
-1i0eq06	ok	It is switched off.	它已关闭。	src/core/llm/fallback.js:110	
-10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:111	Note: 移除, as Remove model.
-s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:112	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:131	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:157	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:206	Note: the role by its screen name (補助 / 辅助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:207	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:208	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	出错后正在休息几分钟。	src/core/llm/fallback.js:119	
+9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:120	
+12h1lml	ok	It doesn't read PDFs.	它不能读 PDF。	src/core/llm/fallback.js:121	
+uxj42v	ok	It doesn't take audio.	它不接受音频。	src/core/llm/fallback.js:122	
+19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:123	
+1coimht	ok	The conversation is too long for it.	对话对它来说太长了。	src/core/llm/fallback.js:124	
+6o9g3j	ok	It doesn't have the provider tool this needs.	它没有这里需要的提供商工具。	src/core/llm/fallback.js:125	
+8xm1wt	ok	It isn't a chat model.	它不是对话模型。	src/core/llm/fallback.js:126	Note: chat model → 对话模型, as the glossary's Koe · Classic note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	它已关闭。	src/core/llm/fallback.js:127	
+10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:128	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:129	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:148	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	这台设备处于离线状态。	src/core/llm/fallback.js:174	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	辅助角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:223	Note: the role by its screen name (補助 / 辅助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 经典没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:224	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色没有设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:225	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:29	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:31	{0} = res.status
 mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:105	Note: said of a plugin, whose name is the card's title.

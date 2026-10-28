@@ -57,6 +57,28 @@ export function limitImages(messages, maxCount) {
   });
 }
 
+/**
+ * Each picture once in a request: a later copy of one already there (the same pages drawn again by a forced re-read, the same photo
+ * read twice) goes as a stub, and the earlier stays, so the conversation's start is unchanged (the real-PDF check, 2026-10-28).
+ * @param {Message[]} messages @returns {Message[]}
+ */
+export function onceEach(messages) {
+  /** @type {Set<string>} */
+  const seen = new Set();
+  return messages.map((m) => ({
+    ...m,
+    parts: m.parts.map((p) => {
+      if (p.type !== 'image' || !p.hash) return p;
+      if (!seen.has(p.hash)) {
+        seen.add(p.hash);
+        return p;
+      }
+      /* en */
+      return { type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF, the same picture as above]` : `[photo${p.path ? ` ${p.path}` : ''}, the same as above]` };
+    }),
+  }));
+}
+
 /** The smaller of two limits each, for saving what a refusal taught. @param {Learned} a @param {Learned} b @returns {Learned} */
 export function stricter(a, b) {
   /** @type {Learned} */

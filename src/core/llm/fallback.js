@@ -36,8 +36,15 @@ export class Bench {
   #until = new Map();
   /** Why a model rests, when that is worth saying while it does. @type {Map<string, string>} */
   #why = new Map();
-  /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] */
-  bench(id, ms, now = Date.now(), why) {
+  /** When each rest began, to tell which model has rested longest. @type {Map<string, number>} */
+  #since = new Map();
+  /** What failed, for a rest only the user can end (a refused key, no credit): such a model isn't asked anyway. @type {Map<string, string>} */
+  #kind = new Map();
+  /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] @param {string} [kind] the failure's kind */
+  bench(id, ms, now = Date.now(), why, kind) {
+    if (!(this.until(id) > now)) this.#since.set(id, now);
+    if (kind) this.#kind.set(id, kind);
+    else this.#kind.delete(id);
     this.#until.set(id, Math.max(this.#until.get(id) ?? 0, now + ms));
     if (why) this.#why.set(id, why);
     else this.#why.delete(id);
@@ -50,9 +57,19 @@ export class Bench {
   why(id) {
     return this.#why.get(id);
   }
+  /** When its rest began (0: it isn't resting). @param {string} id */
+  since(id) {
+    return this.#since.get(id) ?? 0;
+  }
+  /** Whether it rests after a failure only the user can end: its key refused, or out of credit. @param {string} id */
+  usersToEnd(id) {
+    return ['auth', 'credit'].includes(this.#kind.get(id) ?? '');
+  }
   /** @param {string} id */
   clear(id) {
     this.#until.delete(id);
+    this.#since.delete(id);
+    this.#kind.delete(id);
     this.#why.delete(id);
   }
   /** Models that refused a required tool call (Request.toolRequired): they aren't asked for one again this run. */
@@ -149,7 +166,7 @@ export function failedText(attempts, { offline = false, now = Date.now(), plain 
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
     // A model passed over for a file it can't take, then asked again with the file read (callRole's second pass): its later reason is
     // the one that counts; the Trace keeps both.
-    if ((a.outcome === 'no-images' || a.outcome === 'no-documents') && attempts.slice(i + 1).some((b) => b.name === a.name)) continue;
+    if ((a.outcome === 'no-images' || a.outcome === 'no-documents' || a.outcome === 'benched') && attempts.slice(i + 1).some((b) => b.name === a.name)) continue;
     if (!lines.has(a.name)) lines.set(a.name, new Set());
     lines.get(a.name)?.add(attemptWhy(a, { now, plain }));
   }
@@ -478,6 +495,8 @@ export async function callRole(c) {
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
   let began = false;
+  /** Resting models asked anyway, as every model the role could use was resting. @type {Set<string>} */
+  const anyway = new Set();
   /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
   let last = '';
   /**
@@ -509,7 +528,7 @@ export async function callRole(c) {
       return rest;
     };
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() ? 'benched' : gap(model, forModel(request), provider ?? undefined);
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() && !anyway.has(id) ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
       attempts.push({
@@ -628,7 +647,7 @@ export async function callRole(c) {
         if (step.bench !== undefined) {
           const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
           if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
-          bench.bench(id, step.bench, now(), long);
+          bench.bench(id, step.bench, now(), long, err.kind);
         }
         break;
       }
@@ -645,6 +664,19 @@ export async function callRole(c) {
   for (const id of passed) {
     const model = modelOf(config.models[id]);
     base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
+    request = said ? continueAfter(base, said) : base;
+    const r = await one(id);
+    if (r) return r;
+  }
+  // Every model the role could use is resting, and none was asked: the one that has rested longest is asked anyway, rather than a turn
+  // failing for nothing (the coordinator's call after the real-PDF check: one stall of the only model failed the next turn).
+  // Not Koe's: when her list rests, Kokoro answers instead (§9.6). Not a model resting after a refused key or no credit: asking it fails
+  // the same way, and only the user can end that.
+  const resting = sentTo.size || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !bench.usersToEnd(a.model)).map((a) => a.model))];
+  if (resting.length) {
+    const id = resting.reduce((a, b) => (bench.since(b) < bench.since(a) ? b : a));
+    anyway.add(id);
+    base = c.request;
     request = said ? continueAfter(base, said) : base;
     const r = await one(id);
     if (r) return r;
