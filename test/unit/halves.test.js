@@ -132,10 +132,16 @@ test("both halves' lists fail: the user gets one card, \"Shiori can't reach her 
   const busy = 'This model is currently experiencing high demand. Please try again later.';
   for (const koeFirst of [true, false]) {
     const k = await agentKit([[{ ...(koeFirst ? { delayMs: 40 } : {}), error: 'overloaded', message: busy }]], { koe: { type: [{ ...(koeFirst ? {} : { delayMs: 40 }), error: 'timeout', message: 'No output started in time.' }] } });
+    // The cards up, as the app keeps them: a card with a key replaces the one up with it, and a clear takes it down.
+    /** @type {Map<any, any>} */
+    const up = new Map();
+    let n = 0;
+    k.agent.on('notice', (/** @type {any} */ c) => up.set(c.key ?? ++n, c));
+    k.agent.on('clear', (/** @type {any} */ key) => up.delete(key));
     k.agent.send('What is Bixby Bridge? One sentence.');
     await k.agent.idle();
-    const cards = k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title));
-    assert.equal(cards.length, 1, `once (Koe failing ${koeFirst ? 'first' : 'second'})`);
+    const cards = [...up.values()].filter((/** @type {any} */ c) => /can't reach her model/.test(c.title));
+    assert.equal(cards.length, 1, `once (Koe failing ${koeFirst ? 'first' : 'second'}): Kokoro's own card, if it came first, gave way to the card for both`);
     assert.deepEqual(cards[0].body.split('\n'), ['Koe: model-koe: No output started in time.', `Kokoro: model-0: ${busy}`]);
     assert.ok((await k.events(['error'])).some((e) => !e.data.quiet), 'the conversation says so too');
   }
@@ -598,7 +604,8 @@ test("Fix pass 12: Kokoro's errors are set aside from the conversation only whil
   await k.agent.idle();
   const kokoro = (await k.events(['error'])).filter((e) => e.data.half === 'kokoro');
   assert.ok(kokoro.length >= 2);
-  assert.equal(kokoro[0].data.quiet && kokoro[0].data.aside, true, 'while Koe talked: Koe said it, and the line is set aside');
+  // Koe, failing too, couldn't say it: a card did (the review of phone-fixes-1), and the line is set aside.
+  assert.equal(kokoro[0].data.aside, true, 'while Koe talked: the line is set aside');
   const last = kokoro.at(-1);
   assert.equal(Boolean(last.data.quiet || last.data.aside), false, "Koe down: Kokoro's own error is the conversation's");
 });
@@ -810,4 +817,29 @@ test("a second note from Kokoro that comes while Koe is still answering the firs
   const last = k.sent['model-koe'].at(-1);
   const texts = JSON.stringify(last.messages);
   assert.ok(texts.includes('create a trip from the Trips screen') && texts.includes('tap Trips to create the trip'), 'the call that spoke had both notes');
+});
+
+test("Kokoro's list failing while Koe holds an ask gets its card, with a key of its own: Koe's next good turn leaves it, Kokoro's takes it down (review of phone-fixes-1, item 1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }, sleep]], {
+    koe: { type: { rules: [
+      { match: 'the user wrote', times: 1, reply: { toolCalls: [{ name: 'ask', input: { question: 'Where are you headed?', options: ['Alaska', 'Japan'] } }] } },
+      { match: 'the user', reply: calls(['speak', { text: 'Sure.' }]) },
+    ] } },
+  });
+  /** @type {string[]} */
+  const log = [];
+  k.agent.on('notice', (/** @type {any} */ n) => log.push(`card ${n.key}`));
+  k.agent.on('clear', (/** @type {any} */ key) => log.push(`clear ${key}`));
+  k.agent.send('Can you start a trip for me?');
+  await until(() => log.length > 0, 3000);
+  assert.deepEqual(log, ['card model:kokoro'], 'a card, though Koe is busy with its ask');
+  const [asked] = (await k.events(['out.ask']));
+  k.agent.answer(asked.data.id, 'Alaska');
+  await k.agent.idle();
+  assert.ok(!log.includes('clear model:kokoro'), "Koe's good turns leave Kokoro's card up");
+  k.llm.bench.clear('m-0');
+  k.agent.send('Thanks');
+  await k.agent.idle();
+  assert.ok(log.includes('clear model:kokoro'), "Kokoro's own good turn takes it down");
 });
