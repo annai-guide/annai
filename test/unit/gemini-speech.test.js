@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { loadTypes, KEY } from './gemini-kit.js';
 import { INSTRUCTION } from '../../plugins-official/gemini-api/speech.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { languageSettings, modelLanguages } from '../../src/core/languages.js';
 import { decodeWav, encodeWav, pcm16 } from '../../src/core/voice/pcm.js';
 import { ulawToPcm } from '../../src/core/voice/g711.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
@@ -77,6 +78,10 @@ test("transcribeRequest: Google's transcription model gets its own transcription
   });
   const ja = JSON.parse(hear.transcribeRequest({ ...spec(hear, 'gemini-3.5-transcribe', { language: 'ja-JP, en-US' }), audio }).body);
   assert.deepEqual(ja.generation_config.transcription_config.language_codes, ['ja-JP', 'en-US']);
+  // The languages listed, by Google's codes: Chinese (Traditional) is Taiwan's Mandarin (review F4); the old Chinese row stays Simplified.
+  const codes = (/** @type {string[]} */ spoken) => JSON.parse(hear.transcribeRequest({ ...spec(hear, 'gemini-3.5-transcribe'), audio, languages: modelLanguages(languageSettings({ languages: { spoken } }, 'en-US')) }).body).generation_config.transcription_config.language_codes;
+  assert.deepEqual(codes(['zh-Hant', 'en']), ['cmn-Hant-TW', 'en-US']);
+  assert.deepEqual(codes(['zh', 'en']), ['cmn-Hans-CN', 'en-US']);
 });
 
 test('readTranscript: the words of the model_output, as Google sent them, without its tags for sounds (fix pass)', async () => {

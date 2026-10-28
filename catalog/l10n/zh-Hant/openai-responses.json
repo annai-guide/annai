@@ -1,0 +1,7 @@
+{
+  "manifest": {
+    "description": "連線 OpenAI 的 Responses API 以及支援它的伺服器。對話由 OpenAI 在輪次之間儲存，因此每次只傳送新內容；annai 收到指示時會刪除已儲存的回覆。",
+    "name": "OpenAI Responses"
+  },
+  "messages": {}
+}

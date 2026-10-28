@@ -1,4 +1,4 @@
-import { officialUpdates, updateOfficial, officialName } from '../core/llm/official.js';
+import { officialUpdates, updateOfficial, officialName, fetchTranslations } from '../core/llm/official.js';
 import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
 import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
@@ -9,8 +9,9 @@ import { list, sentences } from './format.js';
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
  * from there. Offered on one card, in Settings → Updates and in Settings → Plugins; nothing changes until the user taps Update.
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string,
- *   addressFetch?: (url: string, init?: RequestInit) => Promise<Response>, applied?: () => void }} Env
- *   fetch: for annai's own catalog and files; addressFetch: for addresses (traced, in the app); applied: after Update ran
+ *   addressFetch?: (url: string, init?: RequestInit) => Promise<Response>, applied?: () => void, next?: () => string }} Env
+ *   fetch: for annai's own catalog and files; addressFetch: for addresses (traced, in the app); applied: after Update ran;
+ *   next: the language the next start opens in (nextScreens), whose words a check keeps
  * @typedef {Env & { reload: () => unknown }} Applying reload: annai's one restart (Updates.restart), for Restart now
  * @typedef {{ id: string, name: string, installed: string, available: string, entry?: any, url?: string, changed?: boolean,
  *   added?: import('../core/packages.js').Added, agreed?: boolean }} Update
@@ -28,7 +29,8 @@ const knownOf = (host) => {
 
 /**
  * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
- * keeps what it found before, and says why in failed. Nothing is kept once current() is false.
+ * keeps what it found before, and says why in failed. Nothing is kept once current() is false. Checking annai's own also brings
+ * their words in the screens' language, and the next start's, to the catalog's (fetchTranslations), which is never an update and never fails.
  * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
  */
@@ -43,6 +45,8 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   };
   if (official) {
     const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; });
+    // One with an update waiting keeps the words it has: they match its version, and the update brings the new one's (updateOfficial).
+    if (now) await fetchTranslations(host, { fetch: env.fetch, base: env.base, skip: now.map((u) => u.id), next: env.next?.() });
     if (now && current()) keep(false, now);
   }
   if (address) {

@@ -1,0 +1,12 @@
+{
+  "manifest": {
+    "description": "透過 Gemini 自己的 API（Interactions）進行對話、語音轉文字和聲音：支援所有音訊格式，原樣保留 Gemini 3 的思考簽名，用量包含快取和思考 token，聲音可串流播放，對話由 Google 在輪次之間儲存，因此每次只傳送新內容；付費金鑰還可使用 Google 搜尋，答案按 Google 給出的樣子顯示。",
+    "name": "Gemini API"
+  },
+  "messages": {
+    "14fnhz7": "電話音質，8 kHz（每分鐘約 0.8 MB）",
+    "1dvvwok": "音質",
+    "1naj6ho": "串流播放她的聲音，讓她更早開口（關閉：每句完整到達後再說）",
+    "e230no": "全音質（資料量最大：每分鐘語音約 4 MB）"
+  }
+}

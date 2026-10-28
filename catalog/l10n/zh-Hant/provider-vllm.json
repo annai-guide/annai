@@ -1,0 +1,10 @@
+{
+  "manifest": {
+    "description": "你自己執行的 vLLM 伺服器上的模型，思考透過聊天範本開關，另有用於語音轉文字的 Whisper 模型。",
+    "name": "vLLM",
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型：每個模型都會帶上伺服器保有的上下文長度。工具呼叫需要 --enable-auto-tool-choice --tool-call-parser <name>，會思考的模型需要 --reasoning-parser <name>；沒有它們，Shiori 無法使用工具，她的思考也會混進她的話裡。",
+    "provider.abilities.transcription.note": "用於在單獨的 vLLM 伺服器上執行的 Whisper 模型：把那台伺服器的網址填為此功能自己的網址，再依 ID 新增模型。",
+    "provider.note": "除非用 --port 另行指定，vLLM 在 8000 連接埠監聽；用 --api-key 給它設金鑰，或者把金鑰留空。"
+  },
+  "messages": {}
+}

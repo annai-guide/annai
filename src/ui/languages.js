@@ -5,6 +5,7 @@ import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor, distancesOf } from '../core/languages.js';
 import { languageName, setDistances } from '../core/intl.js';
 import { reorderable } from './screens/models.js';
+import { fetchTranslations } from '../core/llm/official.js';
 
 /** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
 export function ownName(tag) {
@@ -19,6 +20,28 @@ export function keepUiChoice(tag) {
   } catch { /* storage blocked: annai starts in English then */ }
 }
 
+/** @type {{ tag: string } | null} */
+let changing = null;
+/** Changes of the screens' language begun in this run. */
+let changes = 0;
+/**
+ * A change of the screens' language under way: until the returned call (its choice kept, or failed), nextScreens is its language, so
+ * a check meanwhile keeps the words fetched for it; an earlier change's end leaves a later one's. @param {string} tag @returns {() => void}
+ */
+export function changingScreens(tag) {
+  const mark = { tag };
+  changing = mark;
+  return () => { if (changing === mark) changing = null; };
+}
+
+/** The screens' language the next start opens in: one being changed to, else the device's choice, else the phone's (as boot.js). */
+export function nextScreens() {
+  if (changing) return changing.tag;
+  let own = null;
+  try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
+  return chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED).tag;
+}
+
 /** The screens' language the app settings choose: a tag, or '' as the phone is set. @param {Record<string, any>} app */
 export const chosenUi = (app) => (typeof app.languages?.ui === 'string' ? app.languages.ui : '');
 
@@ -30,7 +53,7 @@ export async function keepUiFrom(ws) {
 /** Asks the worker to keep a language's words; with no worker, checks they can be fetched. @param {string} tag @param {{ worker?: ServiceWorker | null, limitMs?: number }} [o] */
 export async function keepWords(tag, { worker = navigator.serviceWorker?.controller, limitMs = 30_000 } = {}) {
   if (!worker) {
-    try { /* en */ return (await fetch(`/l10n/${tag}.json`)).ok; } catch { return false; }
+    try { /* en */ return (await fetch(`/l10n/${tag}.json`, { signal: AbortSignal.timeout(limitMs) })).ok; } catch { return false; }
   }
   return new Promise((resolve) => {
     const { port1, port2 } = new MessageChannel();
@@ -207,22 +230,32 @@ export function screensRow(ctx, app) {
   const error = h('p', { class: 'error', 'aria-live': 'assertive', hidden: true });
   let shown = select.value;
   select.addEventListener('change', async () => {
+    // The latest change wins: one picked again meanwhile (the screen left and opened again) stops this one where it waited.
+    const mine = ++changes;
     const pick = select.value;
     select.disabled = true;
     error.hidden = true;
     const next = chooseTag(pick || null, phone, offered, SHIPPED);
     const name = ownName(next.tag);
-    const back = (/** @type {string} */ why) => { select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
+    const done = changingScreens(next.tag);
+    const back = (/** @type {string} */ why) => { done(); select.value = shown; select.disabled = false; note.textContent = ''; error.textContent = why; error.hidden = false; };
     if (next.tag !== 'en') {
       note.textContent = t`Getting ${name}…`;
-      if (!(await keepWords(next.tag))) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
+      // annai's own plugins' words in it too, so they start in it after the restart; they never stop the change, nor hold it up past 30 s.
+      // No next: it drops nothing, as the change may yet fail.
+      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
+      const [got] = await Promise.all([keepWords(next.tag).catch(() => false), plugins]);
+      if (mine !== changes) return;
+      if (!got) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
     }
     try {
       await updateAppSettings(ctx.ws, { languages: { ui: pick || null } });
     } catch (e) {
       return back(messageOf(e));
     }
+    if (mine !== changes) return;
     keepUiChoice(pick);
+    done();
     shown = pick;
     // Already in it: nothing to restart into.
     if (document.documentElement.lang === (next.region ? `${next.tag}-${next.region}` : next.tag)) {
