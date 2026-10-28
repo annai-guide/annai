@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -117,4 +117,56 @@ test('Tidy up is at the foot of the Conversation, under its last line, and its m
   const m = /** @type {any} */ (await menu.boundingBox());
   expect(m.y + m.height).toBeLessThanOrEqual(at.y + 1);
   await expect(menu.getByRole('button', { name: 'Summarize now' })).toBeVisible();
+});
+
+// "the drag model also does not work as intended. the long press and hold text selection will show up..." (IMG_3014)
+/** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */
+const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder ${m}, \\d of \\d$`) });
+/** A main list of three models, a1, a2 and a3. @param {import('@playwright/test').Page} page */
+async function threeModels(page) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const m of ['a1', 'a2', 'a3']) {
+    await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: `Endpoint ${m}`, url: `https://${m}.example.test/v1`, key: `sk-test-${m}`, model: m, look: false });
+    await page.getByLabel('Add a model to main').selectOption({ label: m });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByText(new RegExp(`\\d\\. ${m}$`))).toBeVisible();
+  }
+  const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
+  const order = () => main.locator('.role-item > span').allTextContents();
+  await expect.poll(order).toEqual(['1. a1', '2. a2', '3. a3']);
+  return { main, order };
+}
+
+test('a reorderable row and its handle take no text selection, no callout and no long-press menu (item 4)', async ({ page }) => {
+  const { main } = await threeModels(page);
+  const looks = await gripOf(main, 'a2').evaluate((grip) => {
+    const row = /** @type {HTMLElement} */ (grip.closest('li'));
+    const of = (/** @type {Element} */ el) => {
+      const s = /** @type {any} */ (getComputedStyle(el));
+      // -webkit-touch-callout is iOS Safari's alone: the test's WebKit and Chromium don't report it.
+      return { select: s.webkitUserSelect || s.userSelect, callout: s.webkitTouchCallout ?? 'none' };
+    };
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    const opened = grip.dispatchEvent(menu);
+    return { row: of(row), grip: of(grip), link: of(/** @type {Element} */ (row.querySelector('a'))), opened };
+  });
+  for (const part of [looks.row, looks.grip, looks.link]) expect(part).toEqual({ select: 'none', callout: 'none' });
+  expect(looks.opened, "a long press opens no menu of the browser's").toBe(false);
+});
+
+test('a finger held on the handle, then moved, still drags: nothing is selected and the order is kept (item 4)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'touch events are sent through the DevTools protocol, Chromium only');
+  const { main, order } = await threeModels(page);
+  const cdp = await page.context().newCDPSession(page);
+  const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const from = await centre(gripOf(main, 'a1'));
+  const to = await centre(gripOf(main, 'a3'));
+  const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd'} */ type, /** @type {number} */ y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: from.x, y }] });
+  await touch('touchStart', from.y);
+  await page.waitForTimeout(900); // held, as a long press
+  for (let k = 1; k <= 6; k++) await touch('touchMove', from.y + ((to.y + 6 - from.y) * k) / 6);
+  await touch('touchEnd', to.y);
+  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  expect(await page.evaluate(() => String(getSelection()))).toBe('');
 });

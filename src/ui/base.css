@@ -184,6 +184,8 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .role-item > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* The handle of a role's entry: dragged by a finger, so the page doesn't scroll under it; a lifted entry floats over the others. */
 .grip { touch-action: none; cursor: grab; }
+/* On iOS a long press on a row is a drag, not a text selection (IMG_3014) */
+.role-item, .role-item * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .role-item.dragging { position: relative; z-index: 2; background: var(--sheet); box-shadow: 0 6px 18px -8px var(--shadow); border-radius: 12px; }
 .reorder-menu { flex-basis: 100%; display: flex; gap: 6px; padding: 4px 0 6px; }
 .where { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
