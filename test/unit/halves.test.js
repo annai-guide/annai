@@ -843,3 +843,22 @@ test("Kokoro's list failing while Koe holds an ask gets its card, with a key of 
   await k.agent.idle();
   assert.ok(log.includes('clear model:kokoro'), "Kokoro's own good turn takes it down");
 });
+
+test("Koe's call cut for a second note counts as a step of its wake: steps per wake hold (the review of phone-fixes-1, item 9)", async (t) => {
+  useClock(t);
+  const KOE = { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: "I'm checking." } }, { name: 'tell_kokoro', input: { text: 'Where can they add bookings?' } }, { name: 'wait', input: { seconds: 60 } }] } },
+    { match: 'a note from Kokoro', reply: { delayMs: 80, ...calls(['speak', { text: 'Tap Trips and start a trip; add your bookings there.' }]) } },
+  ] };
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'tell_koe', input: { text: 'Tell the user to create a trip from the Trips screen.' } }] },
+    { delayMs: 20, toolCalls: [{ name: 'tell_koe', input: { text: 'Tell the user to tap Trips to create the trip, then add bookings.' } }, { name: 'sleep', input: {} }] },
+  ]], { koe: { type: KOE } });
+  await updateAppSettings(k.ws, { shiori: { budgets: { stepsPerWake: 2 } } });
+  k.agent.send('Where can I upload my bookings?');
+  await k.agent.idle();
+  // Koe's first step, then the call that was cut: two, so the call it would make again is past the budget.
+  const stopped = (await k.events(['error'])).filter((e) => e.data.kind === 'budget' && e.data.half === 'koe');
+  assert.equal(stopped.length, 1, "Koe's wake stopped at its budget");
+  assert.ok(!(await shown(k)).some(([, , text]) => /Tap Trips/.test(text)));
+});

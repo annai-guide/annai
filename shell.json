@@ -1,5 +1,5 @@
 {
-  "build": "08bf06bf6b42",
+  "build": "7248f36fc19d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "fbd1b46653ea",
+    "/src/core/agent/loop.js": "8f070dae180c",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "7f3d4c10fe18",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
