@@ -15,13 +15,18 @@ let objectUrl = null;
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
 const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, now: t`Now` });
 /**
- * Where a file opened from: one of BACK's screens, of this trip or the open one's, else null.
- * @param {string | undefined} from @param {string} id @returns {{ hash: string, name: string } | null}
+ * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
+ * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip (the review of phone-fixes-1).
+ * @param {string | undefined} from @param {string} id the file's trip @param {string | null} [open] the open trip
+ * @returns {{ hash: string, name: string } | null}
  */
-export function cameFrom(from, id) {
+export function cameFrom(from, id, open) {
   if (!from?.startsWith('#/')) return null;
   const r = parseHash(from);
-  return Object.hasOwn(BACK, r.name) && (r.parts[0] !== 'trip' || r.parts[1] === id) ? { hash: from, name: r.name } : null;
+  if (!Object.hasOwn(BACK, r.name)) return null;
+  if (r.parts[0] === 'trip') return r.parts[1] === id ? { hash: from, name: r.name } : null;
+  if (id === open) return { hash: from, name: r.name };
+  return r.name === 'plan' ? { hash: `#/trip/${encodeURIComponent(id)}/plan`, name: 'plan' } : null;
 }
 
 /** @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route */
@@ -29,7 +34,7 @@ export async function renderFile(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
   // Back is where the file was opened from (Plan → Check this → Open the original, the user, 2026-10-28), else the trip.
-  const from = cameFrom(route.params.from, id);
+  const from = cameFrom(route.params.from, id, ctx.agent?.trip ?? null);
   const back = from?.hash ?? `#/trip/${encodeURIComponent(id)}`;
   // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));

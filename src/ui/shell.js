@@ -224,7 +224,7 @@ export function startShell(root, core) {
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     // A file opened from the Plan, a booking or Now is in that tab (the user, 2026-10-28: back on Plan, the top bar said Trips).
-    const from = route.name === 'file' ? cameFrom(route.params.from, route.parts[1]) : null;
+    const from = route.name === 'file' ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
     const at = from ? parseHash(from.hash) : route;
     const section = SECTION[at.name] ?? (at.parts[0] === 'trip' ? 'trips' : at.parts[0]);
     const current = route.name === 'ext' ? location.hash : `#/${section}`;

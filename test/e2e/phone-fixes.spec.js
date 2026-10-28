@@ -276,3 +276,17 @@ test("the model's name is against the role's first model, and a line older than 
   await page.goto('/#/talk');
   await expect(page.locator('.convo .by')).toHaveText(["Claude Sonnet 5.5 · Claude Opus 5.5 didn't answer", 'Claude Opus 5.5']);
 });
+
+test("a file of a trip that isn't open goes back to its own trip's Plan, not the open trip's (the review of item 8)", async ({ page }) => {
+  await openApp(page);
+  const first = await startTrip(page, 'Alaska');
+  await writeRecords(page, first, { text: { '/files/avis.txt': 'Your Avis reservation' } });
+  await page.goto('/#/trips');
+  await startTrip(page, 'Kyoto'); // the open trip now
+  const file = (/** @type {string} */ from) => `/#/trip/${encodeURIComponent(first)}/file?path=${encodeURIComponent('/files/avis.txt')}&from=${encodeURIComponent(from)}`;
+  await page.goto(file('#/plan'));
+  await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${encodeURIComponent(first)}/plan`);
+  await page.goto(file('#/now'));
+  await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${encodeURIComponent(first)}`);
+  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Trips');
+});
