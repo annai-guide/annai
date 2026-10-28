@@ -125,9 +125,11 @@ const object = (/** @type {any} */ o) => o && typeof o === 'object' && !Array.is
  * What is wrong with a plugin's l10n/<tag>.json, for its developer, or null: only manifest and messages; each manifest key a field
  * this manifest has that a translation may give, within its limit; each message text, or plural forms of the language, up to 2,000.
  * One with anything wrong is left out, never a reason to refuse the plugin (fail working); an empty text is no translation.
- * @param {any} manifest @param {string} tag as listed @param {Uint8Array | undefined} bytes
+ * official: annai's own plugin's, fetched from its catalog for the version the catalog lists, which may not be the one installed: a
+ * field this manifest hasn't is skipped (wordsOf gives only those it has), not a reason to leave the rest out.
+ * @param {any} manifest @param {string} tag as listed @param {Uint8Array | undefined} bytes @param {{ official?: boolean }} [o]
  */
-export function checkTranslation(manifest, tag, bytes) {
+export function checkTranslation(manifest, tag, bytes, { official = false } = {}) {
   /* en */ const file = `its l10n/${tag}.json`;
   if (!canonical(tag)) /* en */ return `"${tag}" isn't a language tag, such as ja or zh-Hans`;
   if (!bytes) /* en */ return `${file}, listed in l10n, is missing`;
@@ -144,7 +146,10 @@ export function checkTranslation(manifest, tag, bytes) {
     const keys = path.split('.');
     const max = TRANSLATED.find(([p]) => p.split('.').every((x, i, all) => all.length === keys.length && (x === '*' || x === keys[i])))?.[1];
     if (!max) /* en */ return `${file} translates ${path}, which isn't a field a translation may give`;
-    if (path !== 'keywords' && typeof at(manifest, keys) !== 'string') /* en */ return `${file} translates ${path}, which this manifest doesn't have`;
+    if (path !== 'keywords' && typeof at(manifest, keys) !== 'string') {
+      if (official) continue;
+      /* en */ return `${file} translates ${path}, which this manifest doesn't have`;
+    }
     const ok = (/** @type {unknown} */ x) => typeof x === 'string' && x.length <= max;
     if (path === 'keywords' ? !Array.isArray(value) || value.length > 20 || !value.every(ok) : !ok(value)) /* en */ return `${file}'s ${path} must be text of up to ${max} characters${path === 'keywords' ? ', up to 20' : ''}`;
   }
@@ -191,14 +196,14 @@ export function leftOut(manifest, read) {
  * A plugin's words for the screens: their language, its messages (annai.l10n), and its manifest as shown, a copy with the translated
  * fields and keywords added; its own words when it has none, or it can't be read. The manifest itself stays English (the shown rule).
  * tag: the translation to read, when it isn't the one the manifest lists for the screens (annai's own plugins list none: theirs come
- * from its catalog).
- * @param {any} manifest @param {(path: string) => Uint8Array | undefined} read @param {{ tag?: string | null }} [o]
+ * from its catalog); official: annai's own plugin's, checked field by field (checkTranslation).
+ * @param {any} manifest @param {(path: string) => Uint8Array | undefined} read @param {{ tag?: string | null, official?: boolean }} [o]
  * @returns {{ lang: string, messages: Record<string, any> | null, manifest: any }}
  */
-export function wordsOf(manifest, read, { tag = translationFor(manifest) } = {}) {
+export function wordsOf(manifest, read, { tag = translationFor(manifest), official = false } = {}) {
   const bytes = tag ? read(`l10n/${tag}.json`) : undefined;
   // One that fails a check is left out here too, as at install: a stored package may hold one.
-  const json = tag && !checkTranslation(manifest, tag, bytes) ? JSON.parse(text(/** @type {Uint8Array} */ (bytes))) : null;
+  const json = tag && !checkTranslation(manifest, tag, bytes, { official }) ? JSON.parse(text(/** @type {Uint8Array} */ (bytes))) : null;
   if (!json) return { lang: canonical(manifest?.language) || 'en', messages: null, manifest };
   const shown = structuredClone(manifest);
   for (const [path, value] of Object.entries(json.manifest ?? {})) {

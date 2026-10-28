@@ -20,6 +20,13 @@ export function keepUiChoice(tag) {
   } catch { /* storage blocked: annai starts in English then */ }
 }
 
+/** The screens' language the next start opens in: the device's copy of the choice, else the phone's, as boot.js reads them. */
+export function nextScreens() {
+  let own = null;
+  try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
+  return chooseTag(own, navigator.languages ?? [], [...SHIPPED, ...EXPERIMENTAL], SHIPPED).tag;
+}
+
 /** The screens' language the app settings choose: a tag, or '' as the phone is set. @param {Record<string, any>} app */
 export const chosenUi = (app) => (typeof app.languages?.ui === 'string' ? app.languages.ui : '');
 
@@ -217,7 +224,7 @@ export function screensRow(ctx, app) {
     if (next.tag !== 'en') {
       note.textContent = t`Getting ${name}…`;
       // annai's own plugins' words in it too, so they start in it after the restart; they never stop the change, nor hold it up past 30 s.
-      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
+      const plugins = Promise.race([fetchTranslations(ctx.plugins, { tag: next.tag, next: next.tag }), new Promise((r) => { setTimeout(r, 30_000); })]);
       const [got] = await Promise.all([keepWords(next.tag), plugins]);
       if (!got) return back(t`annai couldn't get ${name}. It needs a connection once to get a language.`);
     }

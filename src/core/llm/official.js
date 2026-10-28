@@ -19,8 +19,12 @@ const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefi
 /** A catalog entry that makes a model provider: it has abilities. A restore and the provider page install only these (reviews of the emulator-pass fixes). @param {any} entry */
 export const makesProvider = (entry) => Array.isArray(entry?.abilities) && entry.abilities.length > 0;
 
-/** @param {FetchOptions} [opts] @returns {Promise<CatalogPlugin[]>} */
-export async function officialPlugins({ fetch: get = defaultFetch, base = '' } = {}) {
+/**
+ * words: false leaves out the catalog's words in the screens' language (Add's names), which officialPlugins otherwise reads beside
+ * it once a run: a check reads them with the plugins' translations (fetchTranslations), in the same request.
+ * @param {FetchOptions & { words?: boolean }} [opts] @returns {Promise<CatalogPlugin[]>}
+ */
+export async function officialPlugins({ fetch: get = defaultFetch, base = '', words = true } = {}) {
   /** @type {Response} */
   let res;
   try {
@@ -30,7 +34,7 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '' } =
   }
   if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
   // What the catalog's plugins are named on the screens, read beside it while it isn't (no extra wait in English).
-  const [json] = await Promise.all([res.json(), names ? null : catalogWords({ fetch: get, base }).then((w) => { names = w; })]);
+  const [json] = await Promise.all([res.json(), names || !words ? null : catalogWords({ fetch: get, base }).then((w) => { names = w; })]);
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
 
@@ -77,32 +81,34 @@ export async function catalogWords(opts = {}) {
 
 /**
  * Brings annai's own installed plugins' words in a language (their packages carry none) to the hashes catalogIn lists: each one kept
- * with other bytes gets catalog/l10n/<tag>/<id>.json, kept only when it matches; one listed with none loses its own. Words in other
- * languages than tag and the screens' go; English asks for nothing. It is no plugin update, and never fails: what can't be had leaves
- * the device as it is (else the plugin's English shows), and the next call tries again. ids: only these plugins (an install's).
- * @param {PluginHost} host @param {FetchOptions & { tag?: string, ids?: string[] }} [opts]
+ * with other bytes gets catalog/l10n/<tag>/<id>.json, kept only when it matches. English asks for nothing. It is no plugin update, and
+ * never fails: what can't be had leaves the device as it is (else the plugin's English shows), and the next call tries again.
+ * ids: only these plugins (an install's); skip: these keep the words they have (a check's plugins with an update waiting: their words
+ * match their version, and the update brings the new one's). next: the language the next start
+ * opens in (nextScreens), brought too; given, words in any language but tag, next and the screens' go (a check's clean-up; an
+ * install, which can't know it, drops nothing). A plugin annai's catalog stops listing words for keeps its own.
+ * @param {PluginHost} host @param {FetchOptions & { tag?: string, next?: string, ids?: string[], skip?: string[] }} [opts]
  */
-export async function fetchTranslations(host, { tag = lang(), ids, ...opts } = {}) {
+export async function fetchTranslations(host, { tag = lang(), next, ids, skip = [], ...opts } = {}) {
   try {
     const state = await host.installed();
     const own = Object.keys(state).filter((id) => state[id]?.source === 'official' && (!ids || ids.includes(id)));
     if (!own.length) return;
-    const json = tag === 'en' ? null : await catalogIn(tag, opts);
+    const lists = await Promise.all([...new Set([tag, next ?? tag])].filter((x) => x !== 'en').map(async (x) => /** @type {const} */ ([x, await catalogIn(x, opts)])));
     // Add's words for this run too, so it doesn't ask again.
-    if (tag === lang() && json?.plugins && typeof json.plugins === 'object') names = json.plugins;
-    const listed = json?.translations && typeof json.translations === 'object' ? json.translations : null;
+    for (const [x, json] of lists) if (x === lang() && json?.plugins && typeof json.plugins === 'object') names = json.plugins;
     const { fetch: get = defaultFetch, base = '' } = opts;
     await Promise.all(own.map(async (id) => {
       try {
         const kept = await host.translations(id);
         /** @type {Map<string, Uint8Array | null>} */
-        const changes = new Map(Object.keys(kept).filter((x) => x !== tag && x !== lang()).map((x) => [x, null]));
-        const want = listed?.[id];
-        if (listed && typeof want !== 'string' && kept[tag]) changes.set(tag, null);
-        if (typeof want === 'string' && kept[tag] !== want) {
-          const res = await get(/* en */ `${base}/catalog/l10n/${tag}/${encodeURIComponent(id)}.json`, { cache: 'no-cache' });
+        const changes = new Map(next === undefined ? [] : Object.keys(kept).filter((x) => ![tag, next, lang()].includes(x)).map((x) => [x, null]));
+        for (const [x, json] of lists) {
+          const want = json?.translations?.[id];
+          if (typeof want !== 'string' || kept[x] === want || (kept[x] && skip.includes(id))) continue;
+          const res = await get(/* en */ `${base}/catalog/l10n/${x}/${encodeURIComponent(id)}.json`, { cache: 'no-cache' });
           const bytes = res.ok ? new Uint8Array(await res.arrayBuffer()) : null;
-          if (bytes && (await sha256Hex(bytes)) === want) changes.set(tag, bytes);
+          if (bytes && (await sha256Hex(bytes)) === want) changes.set(x, bytes);
         }
         if (changes.size) await host.keepTranslations(id, changes);
       } catch {
@@ -165,7 +171,7 @@ export async function officialUpdates(host, opts = {}) {
   const state = await host.installed();
   /** @type {{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]} */
   const out = [];
-  for (const p of await officialPlugins(opts)) {
+  for (const p of await officialPlugins({ ...opts, words: false })) {
     const s = state[p.id];
     if (s?.source !== 'official') continue;
     // Official means matching the catalog: a changed copy is offered the catalog's files, whatever its version.
