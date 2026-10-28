@@ -286,10 +286,13 @@ test('languageName: the language\'s name in the screens\' language, annai\'s Eng
 
 test('languageName: English screens keep annai\'s own English names, where the browser\'s differ', () => {
   as('en', 'en-US');
-  assert.equal(languageName('zh'), 'Chinese (Mandarin)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('zh'), 'Chinese (Simplified)', 'not the browser\'s "Chinese"');
+  assert.equal(languageName('zh-Hant'), 'Chinese (Traditional)');
   assert.equal(languageName('bn'), 'Bengali', 'not "Bangla"');
   as('ja', 'ja-JP');
-  assert.equal(languageName('zh'), '中国語');
+  assert.equal(languageName('zh'), new Intl.DisplayNames('ja', { type: 'language' }).of('zh-Hans'), 'the two Chinese rows are told apart (review F4)');
+  assert.equal(languageName('zh-Hant'), new Intl.DisplayNames('ja', { type: 'language' }).of('zh-Hant'));
+  assert.notEqual(languageName('zh'), languageName('zh-Hant'));
   assert.equal(languageName('bn'), 'ベンガル語');
 });
 

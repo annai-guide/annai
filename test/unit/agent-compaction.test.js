@@ -214,9 +214,9 @@ test('with the languages setting the summary is written in the language it names
   assert.equal(summaryLanguage('今日の夕食はどこにしますか', three), 'Japanese, the language the user wrote in last');
   assert.equal(summaryLanguage('Where should we eat?', three), 'English, the language the user wrote in last');
   // A short or unplaceable message, or one in a language not listed, is the first listed language: the guess is never taken for the user's.
-  assert.equal(summaryLanguage('OK', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
-  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
-  assert.equal(summaryLanguage('', three), 'English, the first language the user speaks (English, Chinese (Mandarin) and Japanese)');
+  assert.equal(summaryLanguage('OK', three), 'English, the first language the user speaks (English, Chinese (Simplified) and Japanese)');
+  assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', three), 'English, the first language the user speaks (English, Chinese (Simplified) and Japanese)');
+  assert.equal(summaryLanguage('', three), 'English, the first language the user speaks (English, Chinese (Simplified) and Japanese)');
   // A fixed answer language is the summary's.
   const fixed = languageSettings({ languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US');
   assert.equal(summaryLanguage('Where should we eat?', fixed), 'Japanese, the language Shiori answers in');
@@ -243,10 +243,10 @@ test('kanji alone is Japanese for the summary when Japanese is listed and Chines
   const ja = languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US');
   assert.equal(summaryLanguage('大丈夫', ja), 'Japanese, the language the user wrote in last');
   const both = languageSettings({ languages: { spoken: ['en', 'ja', 'zh'] } }, 'en-US');
-  assert.equal(summaryLanguage('我们今晚去哪里吃饭', both), 'Chinese (Mandarin), the language the user wrote in last');
+  assert.equal(summaryLanguage('我们今晚去哪里吃饭', both), 'Chinese (Simplified), the language the user wrote in last');
   assert.equal(summaryLanguage('今日の夕食はどこにしますか', both), 'Japanese, the language the user wrote in last');
   const zh = languageSettings({ languages: { spoken: ['en', 'zh'] } }, 'en-US');
-  assert.equal(summaryLanguage('今日の夕食はどこにしますか', zh), 'English, the first language the user speaks (English and Chinese (Mandarin))', 'kana is Japanese, which is not listed');
+  assert.equal(summaryLanguage('今日の夕食はどこにしますか', zh), 'English, the first language the user speaks (English and Chinese (Simplified))', 'kana is Japanese, which is not listed');
 });
 
 test('what the user said aloud counts for the summary\'s language, not only what they typed (review item 5, Step S7)', async () => {
