@@ -415,6 +415,10 @@ export async function callRole(c) {
   // The role's first model that can answer (its chat ability on), by name, whichever is tried first: Shiori's lines say when another
   // answered, and whether it was tried (null: none).
   const firstId = c.models ? list[0] : chatCandidates(config, role)[0];
+  /** The models the request went to: one passed over before it (no PDFs, too long) was never asked. */
+  const sentTo = new Set();
+  /** What a line written from a model's words says of it: the model, the role's first, and whether that was asked (a resting one was). @param {string} name */
+  const byOf = (name) => ({ name, first, tried: sentTo.has(firstId) || attempts.some((a) => a.model === firstId && a.outcome === 'benched') });
   const first = firstId && config.models[firstId] ? modelOf(config.models[firstId]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
@@ -472,7 +476,9 @@ export async function callRole(c) {
           break;
         }
       }
-      if (began) c.onEvent?.({ type: 'restart' });
+      // Another model starts over: what the last one had begun to say is cut, and named by it.
+      if (began) c.onEvent?.({ type: 'restart', by: byOf(String(attempts.at(-1)?.name ?? '')) });
+      sentTo.add(id);
       began = true;
       const started = now();
       try {
@@ -486,14 +492,19 @@ export async function callRole(c) {
         const full = said ? prefixed(reply, said) : reply;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
         await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
-        return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id, first, tried: attempts.some((a) => a.model === firstId) };
+        return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id, first, tried: byOf(model.name).tried };
       } catch (e) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
-        attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message, ...(err.said ? { said: err.said } : {}) });
-        if (err.kind === 'cancelled') {
-          // What it had used before it was stopped is spent: the turn's record (the Trace, the day's spend) counts it.
-          if (err.usage) usage = addUsage(usage, err.usage);
+        // What a call that failed had used is spent, stopped, timed out or cut off part-way: the turn's record (the Trace, the day's
+        // spend) counts it (the reviews of phone-fixes-1).
+        const spent = Boolean(err.usage && Object.values(err.usage).some((v) => typeof v === 'number' && v > 0));
+        if (spent) {
+          usage = addUsage(usage, /** @type {any} */ (err.usage));
           cost = addCost(cost, err.cost);
+        }
+        attempts.push({ model: id, name: model.name, outcome: err.kind, ms: now() - started, error: err.message, ...(err.said ? { said: err.said } : {}), ...(spent && err.cost !== undefined ? { cost: err.cost } : {}) });
+        if (err.kind === 'cancelled') {
+          err.by = byOf(model.name); // what it had begun to say is cut, and named by this model
           await record(null, said + err.partial);
           throw err;
         }

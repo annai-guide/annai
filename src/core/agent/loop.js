@@ -46,7 +46,9 @@ import { scopeTitle } from '../scopes.js';
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
- *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[] }} Wake
+ *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
+ *   by?: { name: string, first: string | null, tried: boolean } | null }} Wake
+ *   by: a note's, the model that wrote it
  *   files, titles: a file wake's paths, and what a trigger's watches are for: the screens' data for its line
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
@@ -93,7 +95,8 @@ import { scopeTitle } from '../scopes.js';
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
  * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
- * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[] }} TurnEnd
+ * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
+ *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
  */
 
@@ -541,6 +544,11 @@ export class Agent {
     this.state = { name, label, ...(detail ? { detail } : {}) };
     this.#emit('state', this.state);
     this.poke(); // a turn waiting while the user speaks looks again
+  }
+
+  /** The model that answered this turn's last call, for the lines it writes (null outside a turn's calls). */
+  get by() {
+    return this.#by;
   }
 
   /** @param {LoopTool[]} tools Self tools (spec §7.2), offered after the talk tools */
@@ -1561,6 +1569,7 @@ export class Agent {
       ok = await this.#steps(wakes, wakeId, abort);
       await this.#paused(abort);
     } finally {
+      const by = this.#by; // for what the other half is told of this turn once it has ended (Kokoro's final text)
       this.#by = null;
       await this.#afterTurn(ok, wakeId).catch((e) => console.warn(/* en */ 'the end of a turn failed', e));
       // A turn that worked takes down the cards about a model failing; a turn of the user's that spoke to them, the card about
@@ -1571,7 +1580,7 @@ export class Agent {
       }
       this.#turning = false;
       try {
-        this.#half.ended?.({ wakeId, ok, ...this.#facts });
+        this.#half.ended?.({ wakeId, ok, ...this.#facts, by });
       } catch (e) {
         console.warn(/* en */ 'the end of a turn failed', e);
       }
@@ -1787,7 +1796,7 @@ export class Agent {
           // phone-fixes-1: a cut and a call again ran past the budgets).
           steps++;
           spent = await spentToday(this.store, this.#real.now(), this.#real.timeZone());
-          const said = await this.#cutSpeech(wakeId);
+          const said = await this.#cutSpeech(wakeId, /** @type {any} */ (e)?.by ?? null);
           if (said && this.#noteCut) this.#push({ kind: 'cue', text: /* en */ `a note stopped you after: ${said}` });
           this.#noteCut = false;
           const more = this.#take();
@@ -2474,7 +2483,7 @@ export class Agent {
    */
   #streamed(ev, wakeId) {
     if (ev.type === 'restart') {
-      this.#cutSpeech(wakeId).catch(() => {});
+      this.#cutSpeech(wakeId, ev.by ?? null).catch(() => {});
       return;
     }
     if (!this.#voiceNow || !this.#half.voice() || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
@@ -2501,9 +2510,10 @@ export class Agent {
 
   /**
    * Speech that streamed in and played but whose call never ran (the call was cut, or started over): what
-   * was said aloud is written into the conversation, marked cut. @param {string} wakeId @returns {Promise<string>} what was said
+   * was said aloud is written into the conversation, marked cut, named by the model whose speech it was.
+   * @param {string} wakeId @param {{ name: string, first: string | null, tried: boolean } | null} [by] @returns {Promise<string>} what was said
    */
-  async #cutSpeech(wakeId) {
+  async #cutSpeech(wakeId, by = this.#by) {
     const begun = [...this.#utterances];
     this.#utterances.clear();
     this.#streaming = '';
@@ -2513,7 +2523,7 @@ export class Agent {
       const spoken = await u.done;
       if (!spoken.heard) continue;
       said = spoken.heard;
-      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
+      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, by, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
     }
     return said;
   }
