@@ -1,9 +1,9 @@
 /**
- * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
+ * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…" (&from= the Plan, booking or Now screen its crumb goes back to), "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
  * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
  * "#/trip/<id>/ext/<plugin>/<tab>",
  * "#/welcome" (and "#/welcome/2" to 6), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental", "#/updates",
- * "#/plugins", "#/add" (the catalog: ?kind=providers from Models, ?ability=transcription or voice from a speech role; ?from= its crumb), "#/plugin-install" (the package picked on Add), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/talk", "#/tools", "#/mcp" (MCP servers), "#/models/provider?id=…" (?new=<plugin>: a provider plugin's own Add flow), "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
+ * "#/plugins", "#/add" (the catalog: ?kind=providers from Models, ?ability=transcription or voice from a speech role; ?from= its crumb), "#/plugin-install" (the package picked on Add), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/languages", "#/talk", "#/tools", "#/mcp" (MCP servers), "#/models/provider?id=…" (?new=<plugin>: a provider plugin's own Add flow), "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
  * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}

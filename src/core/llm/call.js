@@ -289,7 +289,11 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     clearTimeout(t);
     const err = asProviderError(e, linked, type, registry);
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
-    if (!endpoint.free) await billed(usage, model.providerTools ?? [], tally); // searches it made count all the same
+    // What the provider had reported using, and what that costs: a call stopped part-way is billed for it (the second review of
+    // phone-fixes-1). Searches it made count all the same.
+    const spent = endpoint.free ? usage : await billed(usage, model.providerTools ?? [], tally);
+    err.usage = usage;
+    err.cost = endpoint.free ? 0 : costOf(spent, model.prices, model.providerTools, started);
     // A failed call's kept turn is deleted. A chained call refused, or whose turn was forgotten, drops its chain and goes once
     // more whole (callRole); forgotten on an unchained call is not-found.
     await settle((c) => /** @type {any} */ (keeping).kept.record(c));

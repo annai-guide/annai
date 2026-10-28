@@ -162,6 +162,9 @@ test("OpenRouter's and Anthropic's chat abilities offer web search to every mode
   assert.deepEqual((await official('provider-openrouter')).provider.abilities.chat.modelDefaults?.providerTools?.map((t) => t.id), ['openrouter-web-search']);
   const claude = (await official('provider-anthropic')).provider.abilities.chat.modelDefaults;
   assert.deepEqual([claude?.cacheTtls, claude?.providerTools?.map((t) => t.id)], [['5m', '1h'], ['anthropic-web-search']]);
+  // Claude reads photos and PDFs: so does every Claude model, listed or added (phone-fixes-1 item 2: the user's were text only).
+  assert.deepEqual(claude?.input, ['text', 'image', 'pdf']);
+  for (const m of (await official('provider-anthropic')).provider.abilities.chat.models ?? []) assert.deepEqual(m.input, ['text', 'image', 'pdf'], m.providerId);
   assert.deepEqual((await official('provider-another-address')).provider.abilities.messages.modelDefaults, { cacheTtls: ['5m', '1h'] });
 });
 

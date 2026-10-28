@@ -52,7 +52,7 @@ import { list } from '../intl.js';
  *   | { type: 'provider', block: any }
  *   | { type: 'citation', url: string, title?: string }
  *   | { type: 'stop', reason: StopReason }
- *   | { type: 'restart' }
+ *   | { type: 'restart', by?: { name: string, first: string | null, tried: boolean } }
  *   | { type: 'kept', id: string }
  *   | { type: 'attribution', source: string, text: string, links: { url: string, title?: string }[], html?: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
@@ -192,6 +192,12 @@ export class ProviderError extends Error {
     this.noChain = more.noChain === true;
     /** A kept turn the server said it lacked is there when looked up: the same call is tried once more, chained. */
     this.again = false;
+    /** What the call had used when it failed, and its cost, set by callOnce (a stopped call is billed for it). @type {import('./contract.js').Usage | undefined} */
+    this.usage = undefined;
+    /** @type {number | undefined} */
+    this.cost = undefined;
+    /** A stopped call's model, for the line its cut speech is written as (callRole). @type {{ name: string, first: string | null, tried: boolean } | undefined} */
+    this.by = undefined;
   }
 }
 

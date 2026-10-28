@@ -211,7 +211,7 @@ export function replacing(ctx, pkg) {
 export function restartCard(ctx, name) {
   ctx.notices.card({
     title: t`Restart annai to run the new version of ${name}.`, body: t`The browser keeps the old code until annai starts again.`,
-    actions: [{ label: t`Restart annai`, primary: true, run: () => ctx.updates?.restart() ?? location.reload() }], // after Shiori's turn (Updates.restart)
+    actions: [{ label: t`Restart annai`, primary: true, run: () => ctx.updates.restart() }], // after Shiori's turn (Updates.restart)
   });
 }
 

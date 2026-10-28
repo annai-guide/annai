@@ -24,7 +24,7 @@ test.afterEach(async ({ page }) => {
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
-  '#/about', '#/experimental', '#/welcome'];
+  '#/languages', '#/about', '#/experimental', '#/welcome'];
 
 // In English, and in Japanese and Chinese (localization L6): short words, tall glyphs and no spaces to break at.
 for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 320], ['ja', 420], ['zh-Hans', 320], ['zh-Hans', 420]])) {
@@ -347,30 +347,26 @@ test('review S1: scrolled down, a card coming or going keeps the screen where it
   expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
 });
 
-test("one card taller than the box a quarter of the screen high keeps its Dismiss in sight, at the top, in the middle and at the end (SE size, landscape; the second emulator re-check)", async ({ page }) => {
+test("one card taller than the box a quarter of the screen high shows its title and Dismiss, its words behind More (SE size, landscape; the second emulator re-check; the second review of phone-fixes-1: a card shows its title and every button)", async ({ page }) => {
   await page.setViewportSize({ width: 667, height: 375 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await raiseCard(page);
   const card = page.locator('.notice', { hasText: 'Open a trip first' });
   await expect(card).toBeVisible();
-  // One card that says a lot: far taller than a quarter of 375 px.
+  // One card that says a lot: far taller than a quarter of 375 px; looked at again (a turn of the phone).
   await card.locator('p').evaluate((p) => { p.textContent = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of what this card has to say.`).join('\n'); });
-  const box = page.locator('.notices');
-  expect(await box.evaluate((el) => el.scrollHeight > el.clientHeight + 100)).toBe(true);
-  const dismiss = card.getByRole('button', { name: 'Dismiss' });
-  /** Whether the button lies wholly inside the box as it is seen now. */
-  const inSight = () => page.evaluate(() => {
-    const b = /** @type {HTMLElement} */ ([...document.querySelectorAll('.notice .btn.ghost')].find((x) => x.textContent === 'Dismiss')).getBoundingClientRect();
-    const r = /** @type {HTMLElement} */ (document.querySelector('.notices')).getBoundingClientRect();
-    return b.top >= r.top - 0.5 && b.bottom <= r.bottom + 0.5 && b.height > 20;
+  await page.evaluate(() => dispatchEvent(new Event('resize')));
+  /** Whether a part lies wholly in sight, and nothing covers it. @param {import('@playwright/test').Locator} part */
+  const inSight = (part) => part.evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const top = document.elementFromPoint(b.left + 4, b.top + b.height / 2);
+    return b.top >= 0 && b.bottom <= innerHeight && b.height > 20 && Boolean(top && el.contains(top));
   });
-  for (const at of [0, 0.5, 1]) {
-    await box.evaluate((el, f) => { el.scrollTop = (el.scrollHeight - el.clientHeight) * f; }, at);
-    expect(await inSight(), `scrolled to ${at}`).toBe(true);
-  }
-  await box.evaluate((el) => { el.scrollTop = 0; });
-  await dismiss.click();
+  expect(await inSight(card.locator('strong')), 'the title').toBe(true);
+  expect(await inSight(card.getByRole('button', { name: 'Dismiss' })), 'Dismiss').toBe(true);
+  expect(await inSight(card.getByRole('button', { name: 'More' })), 'More, for the words').toBe(true);
+  await card.getByRole('button', { name: 'Dismiss' }).click();
   await expect(card).toHaveCount(0);
 });
 
@@ -471,16 +467,20 @@ test('review S2: a card that lands while the screen is at its top moves it down,
   await expect(steps).toBeVisible();
 });
 
-test('review S1: three cards take at most a quarter of a 320 × 544 screen, and scroll within it', async ({ page }) => {
+test('review S1: three cards fold into one, which takes at most a quarter of a 320 × 544 screen; opened, the box grows and each card shows whole (the third review of phone-fixes-1)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   for (let i = 0; i < 3; i++) await raiseCard(page);
+  const box = () => page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
+  expect((await box()).h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
   await page.locator('.notice-stack').getByRole('button', { name: 'Show' }).click(); // the three fold into one card; opened, each shows
   await expect(page.locator('.notice')).toHaveCount(4);
-  const box = await page.evaluate(() => { const n = /** @type {HTMLElement} */ (document.querySelector('.notices')); return { h: n.offsetHeight, scroll: n.scrollHeight }; });
-  expect(box.h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
-  expect(box.scroll).toBeGreaterThan(box.h);
+  // The box's cap is lifted while the stack is open, as for an opened card: no card's sticky Dismiss over another's title.
+  const opened = await box();
+  expect(opened.scroll).toBeLessThanOrEqual(opened.h + 1);
+  await page.locator('.notice-stack').getByRole('button', { name: 'Hide' }).click();
+  expect((await box()).h).toBeLessThanOrEqual(Math.ceil(544 / 4) + 1);
 });
 
 for (const [width, height] of [[360, 760], [320, 544]]) {

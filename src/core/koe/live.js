@@ -1010,7 +1010,7 @@ export class LiveKoe {
     }
     const cut = t.cut && !t.whole;
     if (text && cut) text += '✂';
-    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
+    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, by: null, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
     if (next) this.#next();
     this.#idle();
     this.#changed();
