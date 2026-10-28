@@ -65,11 +65,15 @@ const ANNAI_NOTES = ['kokoro-failed', 'nothing-to-add', 'stopped'];
 const BOTH_CARD = 'model:both';
 
 export class Channel {
-  /** @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void> }} c */
-  constructor({ log, deliver, cut }) {
+  /**
+   * @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void>, by?: Record<Side, () => any> }} c
+   *   by: the model each half's call that is running was answered by, for the notes it sends
+   */
+  constructor({ log, deliver, cut, by }) {
     this.log = log;
     this.deliver = deliver;
     this.cut = cut;
+    this.by = by;
   }
 
   /**
@@ -77,14 +81,17 @@ export class Channel {
    * @param {Side} from @param {string} text @param {'append' | 'immediate'} mode @param {NoteWhy} why @param {string} [wake]
    * @param {{ name: string, input: any }} [call] the gated call of Kokoro's it stands for
    * @param {boolean} [watched] Koe's turn that sends it is one the user is watching (isWatched): a note of Koe's is the user's only then
-   * @param {string} [forUser] Kokoro's exact words for the user (tell_koe's for_user) @returns {Promise<'sent'>}
+   * @param {string} [forUser] Kokoro's exact words for the user (tell_koe's for_user)
+   * @param {{ by?: any }} [o] by: the model whose words it is, when not the sender's call running now (Kokoro's final text, after its turn)
+   * @returns {Promise<'sent'>}
    */
-  async send(from, text, mode, why, wake, call, watched = false, forUser = '') {
+  async send(from, text, mode, why, wake, call, watched = false, forUser = '', o = {}) {
     const to = from === 'koe' ? 'kokoro' : 'koe';
-    // annai's own notes to a half name no model.
-    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), ...(ANNAI_NOTES.includes(why) ? { by: null } : {}) }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
+    // Which model wrote it, taken now: annai's own notes to a half name none (the reviews of phone-fixes-1).
+    const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
+    const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), by }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -190,6 +197,7 @@ export class Halves {
     this.secondMs = c.secondMs ?? 1000;
     this.channel = new Channel({
       log: { koe: (ev) => this.koe.log(ev), kokoro: (ev) => this.kokoro.log(ev) },
+      by: { koe: () => this.koe.by, kokoro: () => this.kokoro.by },
       deliver: {
         koe: (w) => {
           if (isForUser(w) && !w.retold) this.#unsaid.push(w.text);
@@ -950,8 +958,9 @@ export class Halves {
       const i = w.call?.input ?? {};
       const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
       const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
-      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: null } });
-      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: null } });
+      // Kokoro's card or question, shown by annai: named by the model that wrote it.
+      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: w.by ?? null } });
+      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: w.by ?? null } });
       else if (card || ask) {
         // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
         const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
@@ -1050,7 +1059,7 @@ export class Halves {
     let told = t.told;
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
-      this.#note(t.finalText, 'final-text', t.wakeId);
+      this.#note(t.finalText, 'final-text', t.wakeId, t.by);
     } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ ([/* en */ 'Kokoro was stopped.', 'stopped'])));
     if (told) {
       this.#answered = true;
@@ -1066,9 +1075,12 @@ export class Halves {
     this.#note(text, why);
   }
 
-  /** A note annai sends Koe from Kokoro, not waited for here; idle() waits for it (the fix pass). @param {string} text @param {NoteWhy} why @param {string} [wake] */
-  #note(text, why, wake) {
-    const p = this.channel.send('kokoro', text, 'append', why, wake).catch(() => {});
+  /**
+   * A note annai sends Koe from Kokoro, not waited for here; idle() waits for it (the fix pass).
+   * @param {string} text @param {NoteWhy} why @param {string} [wake] @param {TurnEnd['by']} [by] the model whose words it is, when its turn is over
+   */
+  #note(text, why, wake, by) {
+    const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch(() => {});
     this.#sending.add(p);
     p.finally(() => this.#sending.delete(p));
   }
