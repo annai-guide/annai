@@ -1,5 +1,5 @@
 {
-  "build": "75a97b2f7066",
+  "build": "20f3c6695324",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -249,7 +249,7 @@
     "/src/ui/screens/provider.js": "9d9fbc3af687",
     "/src/ui/screens/recap.js": "439295edabe1",
     "/src/ui/screens/replay.js": "f3b77b241f52",
-    "/src/ui/screens/settings.js": "bc2395afa70e",
+    "/src/ui/screens/settings.js": "a99180404955",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
     "/src/ui/screens/talk.js": "0bcbd55820ea",
