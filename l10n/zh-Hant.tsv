@@ -1133,8 +1133,8 @@ r122ro	ok	Automatic	自動	src/ui/languages.js:246	Note: A choice of Distances: 
 v4r0ir	ok	Distances	距離單位	src/ui/languages.js:262	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
 15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:275	{0} = name
 dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:275	
-8rqn0k	ok	Restart to show annai in {0}	重新啟動以用{0}顯示 annai	src/ui/languages.js:282	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為{0}，但此裝置顯示的是其他語言。	src/ui/languages.js:283	{0} = name
+8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:282	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:283	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
 1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:284	
 15kmah9	ok	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
@@ -1340,7 +1340,7 @@ gy5xww	ok	{0}, under the SIL Open Font License 1.1, as annai ships them.	{0}，�
 n8r900	ok	Font licences	字型授權條款	src/ui/screens/about.js:58	
 spfq0z	ok	About annai	關於 annai	src/ui/screens/about.js:64	
 v9i6me	ok	Check for updates	檢查更新	src/ui/screens/about.js:66	
-101s9ks	ok	annai (案内) is Japanese for "guidance; showing someone around". It is a free, open-source travel guide, and its guide is Shiori.	annai（案內）在日語中意為「引導；帶人四處參觀」。它是一個免費、開源的旅行嚮導，嚮導就是 Shiori。	src/ui/screens/about.js:67	
+101s9ks	ok	annai (案内) is Japanese for "guidance; showing someone around". It is a free, open-source travel guide, and its guide is Shiori.	annai（案内）在日語中意為「引導；帶人四處參觀」。它是一個免費、開源的旅行嚮導，嚮導就是 Shiori。	src/ui/screens/about.js:67	Note: 案内 as Japanese writes it (not 案內), as the welcome shows Koe's 声.
 1wpc982	ok	Licence and source	授權條款和原始碼	src/ui/screens/about.js:68	
 z9r361	ok	annai is free software under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use it, study it, share it and change it. Anyone who runs a changed copy for others must offer them its source too.	annai 是依據 GNU Affero General Public License 第 3 版（AGPL-3.0）釋出的自由軟體。你可以使用、研究、分享和修改它。為他人執行修改版的人，也必須向他們提供原始碼。	src/ui/screens/about.js:69	
 pla60h	ok	Read the licence	閱讀授權條款	src/ui/screens/about.js:70	
@@ -2478,7 +2478,7 @@ bewa4v	ok	What she says	她說的話	src/ui/screens/voice.js:178
 1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手機裡的免費開源旅行嚮導。	src/ui/screens/welcome.js:47	
 119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的嚮導是 Shiori。她和你一起規劃旅行，保管你的預訂和筆記，在合適的時間和地點提醒你，在路上和你聊天，旅行結束後為你做回顧。	src/ui/screens/welcome.js:48	
 1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每個螢幕的底部：點一下她來說話，或者打字。	src/ui/screens/welcome.js:49	
-1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案內）是日語，意思是「引導；帶人四處參觀」。	src/ui/screens/welcome.js:50	Note: the same gloss as Settings → About's line.
+1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日語，意思是「引導；帶人四處參觀」。	src/ui/screens/welcome.js:50	Note: 案内 as Japanese writes it (not 案內), as Koe's 声 beside it; the same gloss as Settings → About's line.
 u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的嚮導。她有兩個協同工作的分身。	src/ui/screens/welcome.js:58	
 5swud	ok	Koe ({0}, voice)	Koe（{0}，聲音）	src/ui/screens/welcome.js:60	{0} = KOE; Note: {0} is 聲, Koe's name in Japanese; ja needs no gloss.
 qhkarb	ok	talks with you and answers at once.	和你說話，馬上回答。	src/ui/screens/welcome.js:60	Note: follows Koe's name in bold: "Koe (聲, voice) talks with you…".
