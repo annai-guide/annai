@@ -74,7 +74,7 @@ memories afterwards.
 
 ## Languages
 
-- annai's screens are in English, Japanese and Chinese (Simplified), as your phone is set unless you choose one in Settings → Shiori → Languages. Distances, beside it, are kilometres or miles by your phone's region unless you choose.
+- annai's screens are in English, Japanese and Chinese (Simplified), as your phone is set unless you choose one in Settings → Languages. Distances, beside it, are kilometres or miles by your phone's region unless you choose.
 - Shiori answers in the language you speak to her, among those you list there, whatever the screens are in.
 - To translate, or to correct a translation: [docs/translating.md](docs/translating.md).
 
