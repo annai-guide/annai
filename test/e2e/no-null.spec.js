@@ -68,7 +68,7 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     expect(await nulls(page)).toEqual([]);
 
     const t = encodeURIComponent(trip);
-    for (const hash of ['#/trips', `#/trip/${t}`, '#/now', '#/plan', `#/trip/${t}/recap`, `#/trip/${t}/replay`, '#/talk', '#/settings', '#/models', '#/voice', '#/shiori',
+    for (const hash of ['#/trips', `#/trip/${t}`, '#/now', '#/plan', `#/trip/${t}/recap`, `#/trip/${t}/replay`, '#/talk', '#/settings', '#/models', '#/voice', '#/shiori', '#/languages',
       '#/tools', '#/mcp', '#/plugins', '#/add', '#/backups', '#/notifications', '#/simulate', '#/trace', '#/updates', '#/experimental', '#/about', '#/welcome']) await sweep(page, hash);
     await sweep(page, '#/models');
     const model = await page.evaluate(() => /** @type {HTMLAnchorElement | null} */ (document.querySelector('a[href^="#/models/model?id="]'))?.hash ?? null);

@@ -1,4 +1,4 @@
-import { h, field, queueSave, messageOf, t } from './dom.js';
+import { h, field, queueSave, messageOf, t, crumb } from './dom.js';
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { chooseTag, lang as screensLang } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
@@ -48,7 +48,8 @@ const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
 /** Settings → Languages, a screen of its own (the user, 2026-10-28; Settings → Shiori held it before). @param {any} ctx */
 export async function renderLanguages(ctx) {
-  return h('div', { class: 'screen' }, h('h1', { class: 'title', text: W.heading }), languagesSection(ctx, await readAppSettings(ctx.ws)));
+  return h('div', { class: 'screen' }, h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)), h('h1', { class: 'title', text: W.heading }),
+    languagesSection(ctx, await readAppSettings(ctx.ws)));
 }
 
 /**
