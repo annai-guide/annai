@@ -791,3 +791,23 @@ test("Claude's thinking is never sent back: Koe and Kokoro on Claude, and a tidy
   assert.ok(claude.bodies.length >= 6);
   assert.deepEqual(k.notices, []);
 });
+
+test("a second note from Kokoro that comes while Koe is still answering the first, before Koe has said it, joins Koe's turn: Koe says it once (phone-fixes-1 item 9: the doubled reply)", async (t) => {
+  useClock(t);
+  const KOE = { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: "I'm checking." } }, { name: 'tell_kokoro', input: { text: 'Where can they add bookings?' } }, { name: 'wait', input: { seconds: 60 } }] } },
+    { match: 'a note from Kokoro', reply: { delayMs: 80, ...calls(['speak', { text: 'Tap Trips and start a trip; add your bookings there.' }]) } },
+  ] };
+  // Kokoro tells Koe, then tells it again in other words a moment later, as Gemini Flash Lite did.
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'tell_koe', input: { text: 'Tell the user to create a trip from the Trips screen.' } }] },
+    { delayMs: 20, toolCalls: [{ name: 'tell_koe', input: { text: 'Tell the user to tap Trips to create the trip, then add bookings.' } }] },
+    sleep,
+  ]], { koe: { type: KOE } });
+  k.agent.send('Where can I upload my bookings?');
+  await k.agent.idle();
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ["I'm checking.", 'Tap Trips and start a trip; add your bookings there.']);
+  const last = k.sent['model-koe'].at(-1);
+  const texts = JSON.stringify(last.messages);
+  assert.ok(texts.includes('create a trip from the Trips screen') && texts.includes('tap Trips to create the trip'), 'the call that spoke had both notes');
+});

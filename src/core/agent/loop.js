@@ -283,6 +283,8 @@ export class Agent {
   #before = [];
   /** Kokoro's notes for the user that the turn running owes (Koe's), taken: Start fresh shows them instead. @type {(() => Wake[]) | null} */
   #owing = null;
+  /** Whether the turn running owes the user a note of Kokoro's it hasn't reached them with (Koe's). */
+  #noteOwed = () => false;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
   /** The prompt the last call sent, in tokens, as the provider counted it. */
@@ -667,6 +669,9 @@ export class Agent {
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     if (w.kind === 'note') this.#noted();
+    // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
+    // with both, so Koe says it once (the doubled reply, 2026-10-28: Kokoro said the same thing twice, and Koe said each).
+    if (isForUser(w) && this.#calling && !this.#streaming && !this.voice?.speaker.speaking && this.#noteOwed()) this.#callCut?.abort();
     this.poke();
   }
 
@@ -1068,6 +1073,7 @@ export class Agent {
       this.#busy = false;
       this.#abort = null;
       this.#owing = null;
+      this.#noteOwed = () => false;
       // A tap's listening window outlives the turn until something is said, or a silence (spec §10.4).
       const tapped = this.#ear?.owner === 'tap';
       this.#setState(tapped ? 'listening' : this.online() ? 'sleeping' : 'offline');
@@ -1631,6 +1637,7 @@ export class Agent {
       return taken;
     };
     let wrote = false;
+    this.#noteOwed = () => notes.length > 0 && this.#reached === reached;
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
     const unanswered = () => wrote || (theirs && !this.#facts.told);
