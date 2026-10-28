@@ -307,3 +307,21 @@ test("a call that failed after reporting its prompt doesn't add to the next prom
   assert.equal(turn.data.usage.input, 12000, "the turn's record counts both calls");
   assert.equal(timers.length, 0, 'a 6000-token prompt in a 10000 window is not due for housekeeping (threshold 0.7)');
 });
+
+test("warm housekeeping goes on past a reader that fails to a model that reads no PDFs, the newest PDF a note (2026-10-28, 04:04)", async () => {
+  // Main: model-0 reads PDFs (it reads the booking, then fails the summary, out of credit); model-1 reads none and writes the summary.
+  const readAndSleep = { toolCalls: [{ name: 'speak', input: { text: 'Got it.' } }, { name: 'read', input: { path: '/trip/files/booking.pdf' } }, { name: 'sleep', input: {} }] };
+  const k = await agentKit([[say('a'), say('b'), say('c'), readAndSleep, { error: 'credit', status: 402 }], [{ text: 'Summary.' }]], { models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  for (const text of ['Hi', 'Hello', 'Hey', 'Read the booking']) {
+    k.agent.send(text);
+    await k.agent.idle();
+  }
+  assert.match(JSON.stringify(k.agent.transcript.messages.at(-1)), /"type":"document"/, 'the PDF is in the newest message');
+  assert.equal(await k.agent.summarizeNow(), 'done');
+  const asked = JSON.stringify(k.sent['model-1'].at(-1).messages);
+  assert.match(asked, /\[a PDF: booking\.pdf\]/);
+  assert.doesNotMatch(asked, /"type":"document"/);
+  assert.equal((await k.events(['compaction'])).at(-1).data.mode, 'warm');
+  assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'compaction').length, 0);
+});
