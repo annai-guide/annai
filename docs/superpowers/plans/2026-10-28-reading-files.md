@@ -21,17 +21,17 @@
 - Every stored blob is named (spec §4.9): page pictures given to a model at tool time are kept as the `tool.result`'s blobs, named by it. Pages made for a single request are never stored.
 - The browser floor is iOS 16.4 Safari for annai itself. The plugin must fail working on an older engine (its `pages()` throws an `Error` in words; the preview falls back to the file card).
 - Official plugin rules: a new plugin's version starts at `0.1.0`; any later change bumps it; run `npm run strings`, then `npm run catalog`, then `npm run stamp` after shipped-file changes.
-- Test fixtures are synthetic and made here (`scripts/make-pdf-fixtures.mjs` → `test/fixtures/pdf/`). The repo is public: never the user's real files. A real-world sample, if one is needed, is the manual local step in Task 8, kept out of the repo.
+- Test fixtures are synthetic and made here (`scripts/make-pdf-fixtures.mjs` → `test/fixtures/pdf/`). The repo is public: never the user's real files. A real-world sample, if one is needed, is the manual local step in Task 9, kept out of the repo.
 - Every command runs under a cap: `node --max-old-space-size=2048` (via `NODE_OPTIONS` for npm), an outer `timeout`, Docker `--memory=6g`. No real model calls in tests.
 - If a task changes an existing API's shape (rather than adding to it), add a `/mnt/optane/work/agent-rules/LESSONS.md` entry and list it in Calls to confirm. This plan expects none: everything here is an addition.
 
 ## Review Focus
 
-1. **A big PDF** (the user's "Travel Reservation Center" PDF was 2 MB): at most `MAX_PAGES` (10) pages are drawn, the line says how many were left out, and drawing stops at the PDF's reading limit (90 s), saying so. Pinned in Task 2 ("pages that take longer than the PDF's limit…") and Task 5 ("max and from pick the pages").
+1. **A big PDF** (the user's "Travel Reservation Center" PDF was 2 MB): at most `MAX_PAGES` (10) pages are drawn, the line says how many were left out, and drawing stops at the PDF's reading limit (90 s), saying so. Pinned in Task 2 ("pages that take longer than the PDF's limit…") and Task 6 ("max and from pick the pages").
 2. **A locked or broken PDF:** the plugin answers with an `Error` in words; that never counts against the plugin, the reading says what happened, and the note still names the setting. Pinned in Task 1 ("an answer in words never counts against it") and Task 2 ("pages the plugin can't draw").
 3. **The same PDF read again, or in another trip:** pages and words are reused within the conversation and never cross to another conversation, and Erase forgets them. Pinned in Task 2 ("pages are drawn once per conversation").
-4. **The plugin switched off, crashing or removed mid-session:** the next reading behaves as if it were never installed (the note mentions it again), and `previewOf` returns null or the browser's own drawing. Pinned in Task 1 ("three crashes switch it off") and Task 6 ("without the plugin").
-5. **PDF.js taking the caller's bytes:** PDF.js transfers the buffer it is given to its worker, which would leave the caller's `Uint8Array` empty (a blob read from the store, the details screen's Blob). Pinned in Task 5 ("the bytes given are still whole afterwards").
+4. **The plugin switched off, crashing or removed mid-session:** the next reading behaves as if it were never installed (the note mentions it again), and `previewOf` returns null or the browser's own drawing. Pinned in Task 1 ("three crashes switch it off") and Task 7 ("without the plugin").
+5. **PDF.js taking the caller's bytes:** PDF.js transfers the buffer it is given to its worker, which would leave the caller's `Uint8Array` empty (a blob read from the store, the details screen's Blob). Pinned in Task 6 ("the bytes given are still whole afterwards").
 
 ---
 
@@ -51,6 +51,7 @@
 | `src/core/llm/fallback.js`, `src/core/llm/contract.js`, `src/core/llm/service.js` | `callRole`'s second pass (`read`); `Request.newestDocument` |
 | `src/ui/preview.js` (new) | `previewOf()` and `imgDrawsPdf()` |
 | `src/ui/screens/models.js` | The utility role's note, widened |
+| `src/core/llm/official.js` | `download()` fetches an official plugin's files six at a time, all or nothing |
 | `plugins-official/pdf-pages/` (new) | The plugin: `annai-plugin.json`, `index.js`, `l10n/`, `vendor/pdfjs/` |
 | `sw.js` | Serves `application/octet-stream` plugin files (PDF.js's cmaps and fonts); SHELL gains the new modules |
 | `scripts/make-pdf-fixtures.mjs`, `test/fixtures/pdf/` (new) | Synthetic PDFs |
@@ -517,7 +518,102 @@ EOF
 
 ---
 
-### Task 5: The PDF pages plugin
+### Task 5: Official plugins download six files at a time
+
+`download()` in `src/core/llm/official.js` (about line 86) awaits each file in turn; PDF pages has about 190. It fetches six at once instead, still all or nothing: every hash checked, the first failure stopping the rest (no new request starts after it), and the same error words. `fetchPackage()` in `src/core/packages.js` (a package from an address) stays one at a time: its downloads share one byte allowance (`max - used`), so running them at once is a different change (each would need its share reserved first), and an address package has at most 200 files.
+
+**Files:**
+- Modify: `src/core/llm/official.js` (`download`), `docs/superpowers/specs/2026-10-15-annai-design.md` §5.3 (one clause)
+- Test: `test/unit/official-download.test.js` (new)
+
+**Interfaces:**
+- Consumes: nothing new.
+- Produces: `export const DOWNLOADS_AT_ONCE = 6;` in `official.js`. `download(entry, { fetch, base })` keeps its signature, and its `Map` keeps the catalog's file order.
+
+- [ ] **Step 1: Write the failing tests**
+
+```js
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { download, installOfficial, DOWNLOADS_AT_ONCE } from '../../src/core/llm/official.js';
+import { sha256Hex } from '../../src/core/hash.js';
+
+const bytes = (/** @type {string} */ s) => new TextEncoder().encode(s);
+/** A catalog entry of n files f0.js…, with one hash wrong when bad is given. @param {number} n @param {number} [bad] */
+async function entryOf(n, bad) {
+  /** @type {Record<string, string>} */ const files = {};
+  for (let i = 0; i < n; i++) files[`f${i}.js`] = i === bad ? '0'.repeat(64) : await sha256Hex(bytes(`f${i}`));
+  return /** @type {any} */ ({ id: 'many', name: 'Many', version: '0.1.0', files });
+}
+/** A stub fetch that serves each file after a few ms, and counts requests in flight. @param {Record<string, number>} [status] */
+function stub(status = {}) {
+  const s = { now: 0, most: 0, started: /** @type {string[]} */ ([]), fetch: /** @type {any} */ (null) };
+  s.fetch = async (/** @type {string} */ url) => {
+    const name = decodeURIComponent(url.split('/').pop() ?? '');
+    s.started.push(name);
+    s.most = Math.max(s.most, ++s.now);
+    await new Promise((r) => setTimeout(r, 5));
+    s.now--;
+    return new Response(bytes(name.replace(/\.js$/, '')), { status: status[name] ?? 200 });
+  };
+  return /** @type {any} */ (s);
+}
+
+test("an official plugin's files come six at a time, every one checked, in the catalog's order", async () => {
+  const s = stub();
+  const files = await download(await entryOf(20), { fetch: s.fetch });
+  assert.equal(DOWNLOADS_AT_ONCE, 6);
+  assert.equal(s.most, 6);
+  assert.deepEqual([...files.keys()], Array.from({ length: 20 }, (_, i) => `f${i}.js`));
+});
+
+test("one file that doesn't match the catalog installs nothing, with the same words, and nothing starts after it", async () => {
+  const s = stub();
+  /** @type {any[]} */ const installed = [];
+  const host = /** @type {any} */ ({ install: async (/** @type {any} */ f) => { installed.push(f); }, start: async () => {} });
+  await assert.rejects(installOfficial(host, await entryOf(20, 7), { fetch: s.fetch }), /wasn't installed: f7\.js doesn't match annai's catalog/);
+  assert.deepEqual(installed, []);
+  assert.ok(s.started.length < 20, 'the rest were not asked for');
+  const after = s.started.length;
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(s.started.length, after, 'no request starts after the failure');
+});
+
+test('a file the site refuses: the same words as before, naming it', async () => {
+  await assert.rejects(download(await entryOf(10), { fetch: stub({ 'f3.js': 404 }).fetch }), /couldn't be downloaded \(f3\.js: HTTP 404\)/);
+});
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+Run: `node --test --test-timeout=60000 --import ./test/unit/pin-phone.js test/unit/official-download.test.js`
+Expected: FAIL: `DOWNLOADS_AT_ONCE` is undefined, and at most 1 request was in flight.
+
+- [ ] **Step 3: Implement six at a time in `download()`**
+
+Six workers take the next file name from the catalog's list until it is empty or one has failed; the first failure is the one thrown, after the requests already running settle; the `Map` is built in the catalog's order at the end. Spec §5.3: "fetched from /plugins-official/<id>/, six files at a time, and every one checked".
+
+- [ ] **Step 4: Run them to see them pass**
+
+Run: `node --test --test-timeout=60000 --import ./test/unit/pin-phone.js test/unit/official-download.test.js test/unit/llm-plugins.test.js test/unit/plugin-updates.test.js test/unit/requires.test.js`
+Expected: PASS, the official-plugin tests that were there unchanged.
+
+- [ ] **Step 5: Commit**
+
+```bash
+npm run stamp
+git add src/core/llm/official.js docs/superpowers/specs/2026-10-15-annai-design.md test/unit/official-download.test.js sw.js shell.json
+git commit -F - <<'EOF'
+An official plugin's files download six at a time, still all or nothing
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QG96wHTW1xUckqei4MC5Bi
+EOF
+```
+
+---
+
+### Task 6: The PDF pages plugin
 
 **Why PDF.js:** drawing a PDF page needs a whole renderer (content streams, embedded font programs, compressed images, encryption); no few hundred lines of our own do that. No browser API draws a chosen page to a canvas: Safari's `<img>` draws page 1 only, and other browsers' viewers are frames a page can't read. PDF.js (Mozilla, Apache-2.0) is pure JavaScript, the most widely used and maintained choice, and runs in every browser annai supports. PDFium or MuPDF compiled to WebAssembly would be larger, and the page's CSP (`script-src 'self'`, no `'wasm-unsafe-eval'`) would refuse them. Version 6.4.299 (2026-10-03, the newest), its **legacy** build, which carries polyfills for older engines.
 
@@ -640,7 +736,7 @@ EOF
 
 ---
 
-### Task 6: `previewOf()`, the first page for the screens
+### Task 7: `previewOf()`, the first page for the screens
 
 **Files:**
 - Create: `src/ui/preview.js`, `test/browser/suites/preview.js`
@@ -727,7 +823,7 @@ EOF
 
 ---
 
-### Task 7: The whole path in the app
+### Task 8: The whole path in the app
 
 **Files:**
 - Create: `test/e2e/reading-files.spec.js`
@@ -779,7 +875,7 @@ EOF
 
 ---
 
-### Task 8: Check, size, catalog, docs
+### Task 9: Check, size, catalog, docs
 
 **Files:**
 - Modify: `scripts/size.mjs` (`BUDGET`, with a note), `README.md:35` (the confirmations line), `docs/superpowers/specs/2026-10-15-annai-design.md` (a last read of §5.1 Kinds, §6.5, §7.2, §9.6, §18), `docs/plugins.md` (a last read)
@@ -801,7 +897,7 @@ Expected: prints nothing (pdf-pages is new; no released plugin's files changed).
 
 - [ ] **Step 4: Spec and docs**
 
-- Main spec: §5.1 lists the `pdf-pages` kind; §7.2, §9.6 and §6.5 read as Tasks 2–4 left them; §18 names the browser suites `pdf-pages` and `preview`.
+- Main spec: §5.1 lists the `pdf-pages` kind; §7.2, §9.6 and §6.5 read as Tasks 2–4 left them, and §5.3 says official plugins download six files at a time; §18 names the browser suites `pdf-pages` and `preview`.
 - `README.md:35`: "…Shiori reads them (or a model that can, for a model that can't; with the PDF pages plugin, a model that sees photos reads a PDF's pages) and writes each booking…".
 - `docs/plugins.md` and `docs/deps.md` read once more against the code.
 - Nothing goes into `docs/limitations.md`: the limits below are proposals for the user (Calls to confirm).
@@ -830,5 +926,5 @@ EOF
 1. **"The other way round" for Koe:** Koe keeps handing a PDF she can't read to Kokoro at once, as now, because she answers at once and a reading can take 90 s; Kokoro then reads it by the whole path, Koe's other models included. For a photo, Koe's own reading order is Kokoro's models, Utility's, then Koe's other models.
 2. **"Can read" means can and did:** a model that reads PDFs but failed this call (the session's timeout) counts as not reading it, so the next readers are asked. Otherwise the session's failure would stay.
 3. **Order inside step 3:** the pages go straight to the asking model when it sees photos; otherwise a reader role's model that sees photos tells them in words.
-4. **Proposed limits (not written down until the user agrees):** at most 10 pages drawn for a model (the rest said to be left out); in a browser whose service worker doesn't serve PDF.js's worker, JPEG 2000 and JBIG2 pictures inside a PDF are left out; PDF pages on iOS 16.4–17.3 is untested (PDF.js 6 targets newer Safari; one shim covers what we found), and on an engine it can't run it fails in words; installing PDF pages fetches about 190 files, 4.5 MB.
-5. **API and behaviour changes:** the utility role's rule widened (Koe's models first; Models screen words changed); a new plugin kind `pdf-pages`; `callRole`'s `read` option and `Request.newestDocument`; the service worker serves `application/octet-stream` plugin files; warm housekeeping sends files as words to a model that can't take them; the "nothing can read it" note now names the setting where it used to say only that it can't be told.
+4. **Proposed limits (not written down until the user agrees):** at most 10 pages drawn for a model (the rest said to be left out); in a browser whose service worker doesn't serve PDF.js's worker, JPEG 2000 and JBIG2 pictures inside a PDF are left out; PDF pages on iOS 16.4–17.3 is untested (PDF.js 6 targets newer Safari; one shim covers what we found), and on an engine it can't run it fails in words.
+5. **API and behaviour changes:** official plugins download six files at a time (an address package still one at a time); the utility role's rule widened (Koe's models first; Models screen words changed); a new plugin kind `pdf-pages`; `callRole`'s `read` option and `Request.newestDocument`; the service worker serves `application/octet-stream` plugin files; warm housekeeping sends files as words to a model that can't take them; the "nothing can read it" note now names the setting where it used to say only that it can't be told.
