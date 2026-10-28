@@ -7,21 +7,36 @@ import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens } from '../format.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
+import { parseHash } from '../router.js';
 
 /** @type {string | null} */
 let objectUrl = null;
+
+/** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, now: t`Now` });
+/**
+ * Where a file opened from: one of BACK's screens, of this trip or the open one's, else null.
+ * @param {string | undefined} from @param {string} id @returns {{ hash: string, name: string } | null}
+ */
+export function cameFrom(from, id) {
+  if (!from?.startsWith('#/')) return null;
+  const r = parseHash(from);
+  return Object.hasOwn(BACK, r.name) && (r.parts[0] !== 'trip' || r.parts[1] === id) ? { hash: from, name: r.name } : null;
+}
 
 /** @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route */
 export async function renderFile(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  const back = `#/trip/${encodeURIComponent(id)}`;
+  // Back is where the file was opened from (Plan → Check this → Open the original, the user, 2026-10-28), else the trip.
+  const from = cameFrom(route.params.from, id);
+  const back = from?.hash ?? `#/trip/${encodeURIComponent(id)}`;
   // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
-  const head = [h('p', { class: 'crumbs' }, crumb(back, t`Back to trip`)), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
+  const head = [h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`)), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));

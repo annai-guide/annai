@@ -141,7 +141,7 @@ function nowRow(id, r) {
   return h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: r.time }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
-    h('a', { class: 'what', href: fileHref(id, r.path) },
+    h('a', { class: 'what', href: fileHref(id, r.path, '#/now') },
       h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
       h('span', { class: 'name', text: String(it.title ?? r.path) }),
       it.place?.name ? h('span', { class: 'sub', text: String(it.place.name) }) : null));

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, startTrip, writeRecords } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -58,3 +58,40 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
     await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
   });
 }
+
+// "I clicked plan -> check this -> open the original, so dropping me to trip looks weird. Also the top tab shows I am in Trips when I am back to plan."
+test('Plan → Check this → Open the original: back goes to the booking, then to the Plan, and the top bar says Plan all the way (item 8)', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  const tz = 'America/Anchorage';
+  await writeRecords(page, trip, {
+    patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-27', timezones: [tz] } },
+    write: {
+      '/plan/car.json': { id: 'car', title: 'Avis at the airport', fixed: true, start: { at: '2026-11-20T20:58:00-09:00', tz }, booking: '/trip/bookings/car.json' },
+      '/bookings/car.json': { id: 'car', kind: 'car', status: 'unverified', source: '/trip/files/avis.txt', title: 'Avis 24603608US1', start: { at: '2026-11-20T20:58:00-09:00', tz } },
+    },
+    text: { '/files/avis.txt': 'Your Avis reservation 24603608US1' },
+  });
+  const tab = () => page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Avis 24603608US1' })).toBeVisible();
+  await expect(tab()).toHaveText('Plan');
+  await page.getByRole('link', { name: 'Open the original' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /avis\.txt/ })).toBeVisible();
+  await expect(tab()).toHaveText('Plan');
+  await page.getByRole('main').locator('.crumbs a').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Avis 24603608US1' })).toBeVisible();
+  await expect(tab()).toHaveText('Plan');
+  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible();
+  await expect(tab()).toHaveText('Plan');
+  // From the trip's own files, back is the trip, as before.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
+  await page.getByRole('link', { name: /avis\.txt/ }).first().click();
+  await expect(tab()).toHaveText('Trips');
+  await page.getByRole('main').locator('.crumbs a').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
+});
