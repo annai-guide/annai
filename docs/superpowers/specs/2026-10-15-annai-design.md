@@ -1197,7 +1197,7 @@ Reference: mockups draft 6.
 | Hearing you | ears leaning in, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
 | Thinking | head turned to the side (mid-blink), looking up and away | Thinking · tap to stop |
 | Talking | facing you, open eyes; her head, the seat glow (vermilion) and the streamer, which waves and swings out, follow her voice level | Tap to interrupt |
-| Your turn | facing you, leaning, head tilted, her left ear angled out | Waiting for your OK |
+| Your turn | facing you, leaning, head tilted, her left ear angled out | Waiting for your OK while an ask waits for the user's choice; Your turn while she waits for them to type or speak (the user, 2026-10-28: nothing needed their OK) |
 | Working | stepped out of her seat, leaving her trail marker in its grass, its streamer waving, paw prints, and her tail's tip, wagging gently (loops); tap it to see what she's doing | Working on … |
 | Offline | present, grey and dim, sad half-lidded eyes with no highlight, ears folded flat | Offline · reminders still work |
 
