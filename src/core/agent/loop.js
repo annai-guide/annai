@@ -137,6 +137,8 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
+/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string }[] }} KeptReading */
+
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
  * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
@@ -389,10 +391,12 @@ export class Agent {
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
   /**
-   * PDFs read in the open conversation (told in words, or drawn as pages), by its scope, the hash of the bytes read and whether the
-   * model sees photos: a second read isn't sent again. A conversation switch and Erase forget them. @type {Map<string, import('./reading.js').Reading>}
+   * The readings kept in the open conversation's log (`reading` entries; the review of reading-files, finding 1), by the hash of what was
+   * read: told in words (for any model) and drawn as pages (for one that sees photos). Loaded from the log after the last entry read, so a
+   * reading the other half kept arrives at the next call; a conversation switch loads the new one's, and Erase forgets them.
+   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading }> }}
    */
-  #toldPdfs = new Map();
+  #kept = { scope: '', through: 0, map: new Map() };
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
 
@@ -500,7 +504,7 @@ export class Agent {
 
   /** Erase: what it keeps in memory of the conversations' files goes. */
   forgetTold() {
-    this.#toldPdfs.clear();
+    this.#kept = { scope: '', through: 0, map: new Map() };
   }
 
   /** The user's Try again after a turn that said nothing to them: her turn again, answering their last message. */
@@ -568,7 +572,6 @@ export class Agent {
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
-    this.#toldPdfs.clear(); // a conversation's told PDFs are its own
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
@@ -1343,7 +1346,8 @@ export class Agent {
           // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
           // each as words, wherever it is (the user's session, 2026-10-28: a PDF just read kept every model from tidying up).
           newestPhoto: false, newestDocument: false };
-        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+        await this.#loadKept(this.scope);
+        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees), ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
         const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
         if (!calls.length) return r.reply.text.trim() || null;
         /** @type {import('../llm/contract.js').Part[]} */
@@ -1757,6 +1761,9 @@ export class Agent {
       let result;
       const cut = new AbortController();
       const before = this.#reached;
+      /** Readings that failed in this call, for its second pass's next model. @type {Map<string, import('./reading.js').Reading>} */
+      const readMemo = new Map();
+      await this.#loadKept(this.scope);
       try {
         this.#half.calling?.(context);
         this.#calling = true;
@@ -1768,8 +1775,10 @@ export class Agent {
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
+          // What this conversation has kept of its files, for a model that can't take one (the review of reading-files, finding 1).
+          readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
           // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
-          ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId) }),
+          ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
         });
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
         this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
@@ -2244,12 +2253,12 @@ export class Agent {
     /** @param {'image' | 'pdf'} kind @param {any} m */
     const tell = async (kind, m) => {
       const bytes = m.data ? null : await blobBytes(this.store, scope, m.hash ?? '');
-      // A PDF read already in this conversation is read from that, not sent again (the fix pass): keyed by the bytes read, their
-      // own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own), and by what the model takes.
+      // A file read already in this conversation is read from what was kept, not sent again (the fix pass; the review of reading-files):
+      // keyed by the bytes read, their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
-      const told = kind === 'pdf' && key ? `${scope}\n${key}\n${sees ? 'sees' : 'words'}` : '';
       const tried = key ? `${kind}\n${key}` : '';
-      let reading = told ? this.#toldPdfs.get(told) : undefined;
+      /** @type {import('./reading.js').Reading | null} */
+      let reading = key ? await this.#keptReading(scope, key, sees) : null;
       if (!reading && failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
       if (!reading) {
         const data = m.data ?? (bytes ? toBase64(bytes) : '');
@@ -2257,7 +2266,7 @@ export class Agent {
           llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
           secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
         });
-        if (told && (reading.how === 'told' || reading.how === 'pages')) this.#toldPdfs.set(told, reading);
+        if (key) await this.#keep(scope, key, kind, reading, wakeId);
         if (failed && tried && (reading.how === 'failed' || reading.how === 'late')) failed.set(tried, reading.text);
       }
       said.push(reading.text);
@@ -2273,32 +2282,92 @@ export class Agent {
   /**
    * What a model a photo or PDF in the newest message kept out gets in its place, at callRole's second pass (the bookings design, goal 11):
    * the file read by whoever can, as reading.js reads a tool's, with the stub photosAsWords writes before it, and a PDF's pages for a model
-   * that sees photos. A PDF read in this conversation is read from that. It never throws.
+   * that sees photos. A file read in this conversation is read from what was kept. It never throws.
    * @param {Extract<import('../llm/contract.js').Part, { type: 'image' | 'document' }>} part @param {{ input: string[] }} model
-   * @param {AbortSignal} signal @param {string} wakeId @returns {Promise<import('../llm/contract.js').Part[]>}
+   * @param {AbortSignal} signal @param {string} wakeId @param {Map<string, import('./reading.js').Reading>} [memo] readings that failed earlier in
+   *   this call, by hash and whether the model sees photos @returns {Promise<import('../llm/contract.js').Part[]>}
    */
-  async #readFor(part, model, signal, wakeId) {
+  async #readFor(part, model, signal, wakeId, memo = new Map()) {
     const pdf = part.type === 'document';
     /* en */
     const stub = pdf ? `[a PDF${part.name ? `: ${part.name}` : ''}]` : `[a photo${part.path ? `: ${part.path}` : ''}]`;
     try {
       const bytes = part.data ? fromBase64(part.data) : part.type === 'image' && part.hash ? await blobBytes(this.store, this.scope, part.hash) : null;
-      const key = bytes ? await sha256Hex(bytes) : '';
+      const key = part.hash || (bytes ? await sha256Hex(bytes) : '');
       const sees = model.input.includes('image');
-      const told = pdf && key ? `${this.scope}\n${key}\n${sees ? 'sees' : 'words'}` : '';
-      let reading = told ? this.#toldPdfs.get(told) : undefined;
+      const once = `${key}\n${sees}`;
+      /** @type {import('./reading.js').Reading | null | undefined} */
+      let reading = (key ? await this.#keptReading(this.scope, key, sees) : null) ?? memo.get(once);
       if (!reading) {
         reading = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
           llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
           explain: (e, role) => this.#explain(e, role, true),
         });
-        if (told && (reading.how === 'told' || reading.how === 'pages')) this.#toldPdfs.set(told, reading);
+        if (key) await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', reading, wakeId);
+        // One that failed, or ran out of time, isn't kept, but isn't waited for again by the next model of this call.
+        if (reading.how !== 'told' && reading.how !== 'pages') memo.set(once, reading);
       }
       return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data }))];
     } catch (e) {
       /* en */
       return [{ type: 'text', text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }];
     }
+  }
+
+  /**
+   * The readings kept in a conversation's log, loaded from after the last entry read (another half's arrive this way); a conversation
+   * switch loads the new one's from its start. @param {string} scope
+   */
+  async #loadKept(scope) {
+    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map() };
+    const kept = this.#kept;
+    const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['reading'], after: kept.through }));
+    for (const e of entries) {
+      kept.through = Math.max(kept.through, e.seq);
+      const text = (await storedTexts(this.store, e)).text ?? e.data?.text;
+      const how = e.data?.how;
+      if (typeof e.data?.hash !== 'string' || typeof text !== 'string' || (how !== 'told' && how !== 'pages')) continue;
+      /** @type {{ mediaType: string, data: string }[]} */
+      const images = [];
+      for (const im of how === 'pages' ? e.data.images ?? [] : []) {
+        const bytes = await blobBytes(this.store, scope, im.hash, { named: e, via: e.type });
+        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes) });
+      }
+      if (how === 'pages' && !images.length) continue;
+      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text, images } });
+    }
+  }
+
+  /**
+   * The reading kept for a file in a conversation, for a model: told in words for any model, its pages for one that sees photos; null
+   * when there is none. @param {string} scope @param {string} hash @param {boolean} sees @returns {Promise<KeptReading | null>}
+   */
+  async #keptReading(scope, hash, sees) {
+    await this.#loadKept(scope);
+    return this.#keptNow(hash, sees);
+  }
+
+  /** The same, from what is loaded now (callRole asks for it while it builds a request). @param {string} hash @param {boolean} sees */
+  #keptNow(hash, sees) {
+    const k = this.#kept.map.get(hash);
+    return k?.told ?? (sees ? k?.pages : undefined) ?? null;
+  }
+
+  /**
+   * Keeps a reading that read the file (told in words, or drawn as pages) with its conversation: a `reading` entry in its log, its page
+   * pictures named by the entry (spec §4.9), so it outlives a reload and goes with the conversation.
+   * @param {string} scope @param {string} hash @param {'image' | 'pdf'} kind @param {import('./reading.js').Reading} reading @param {string} wakeId
+   */
+  async #keep(scope, hash, kind, reading, wakeId) {
+    if (reading.how !== 'told' && reading.how !== 'pages') return;
+    const how = reading.how;
+    const pages = await Promise.all(reading.images.map(async (i) => { const bytes = fromBase64(i.data); return { hash: await sha256Hex(bytes), bytes, type: i.mediaType }; }));
+    await record(this.store, scope, {
+      now: this.#stamp(scope), type: 'reading', actor: 'system',
+      data: { hash, kind, how, wake: wakeId, ...(pages.length ? { images: pages.map((p) => ({ hash: p.hash, mediaType: p.type })) } : {}) },
+      texts: [['text', reading.text]], blobs: pages,
+    });
+    if (this.#kept.scope === scope) this.#kept.map.set(hash, { ...this.#kept.map.get(hash), [how]: { how, text: reading.text, images: reading.images } });
   }
 
   /**

@@ -8,14 +8,14 @@ import { list } from '../intl.js';
  *
  * @typedef {{ type: 'text', text: string, heard?: string }
  *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], fileId?: string, missing?: boolean }
- *   | { type: 'document', mediaType: string, data: string, name?: string, missing?: boolean }
+ *   | { type: 'document', mediaType: string, data: string, hash?: string, name?: string, missing?: boolean }
  *   | { type: 'audio', mediaType: string, data: string, heard?: string }
  *   | { type: 'speech', id: string, text?: string, clip?: string }
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
- *   image.data and document.data are base64 (a document is a PDF). An image's hash is its bytes' fingerprint, path and
+ *   image.data and document.data are base64 (a document is a PDF). An image's or a document's hash is its bytes' fingerprint, path and
  *   region where it came from (for stubs), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
  *   or fileId when they upload. missing marks one whose bytes are gone: annai never sends it. provider is a provider's own block (a server
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block

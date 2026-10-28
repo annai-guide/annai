@@ -297,15 +297,31 @@ function newestDocument(request) {
 }
 
 /**
- * The request for a model that takes no photos or no PDFs (emulator pass): each as words, "[a photo: /trip/files/….webp]" or
- * "[a PDF: booking.pdf]", so a conversation that once held one can still go on with it. @param {Request} request
- * @param {{ photos?: boolean, documents?: boolean }} [which] what to word; both when not given @returns {Request}
+ * What a conversation has kept of a file a model can't take (the review of reading-files, finding 1), by the file's hash: what it says
+ * in words, for any model, or its pages, for one that sees photos (sees); null when nothing was kept.
+ * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string }[] } | null} Readings
  */
-export function photosAsWords(request, { photos = true, documents = true } = {}) {
-  /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part} */
-  /* en */
-  const word = (p) => (photos && p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : documents && p.type === 'document' ? { type: 'text', text: `[a PDF${p.name ? `: ${p.name}` : ''}]` } : p);
-  return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.map(word) })) };
+
+/**
+ * The request for a model that takes no photos or no PDFs (emulator pass): each as words, "[a photo: /trip/files/….webp]" or
+ * "[a PDF: booking.pdf]", so a conversation that once held one can still go on with it; followed by what the conversation kept of it
+ * (readings), and its pages for a model that sees photos. @param {Request} request
+ * @param {{ photos?: boolean, documents?: boolean, sees?: boolean, readings?: Readings, kept?: boolean }} [which] what to word (both when not
+ *   given); sees: the model sees photos (a reading's pages go to it); kept: word only those with a kept reading, and leave the rest
+ * @returns {Request}
+ */
+export function photosAsWords(request, { photos = true, documents = true, sees = false, readings, kept = false } = {}) {
+  /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part[]} */
+  const word = (p) => {
+    if (!((photos && p.type === 'image') || (documents && p.type === 'document'))) return [p];
+    const r = p.hash && readings ? readings(p.hash, sees) : null;
+    if (kept && !r) return [p];
+    /* en */
+    const stub = p.type === 'image' ? `[a photo${p.path ? `: ${p.path}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${p.name}` : ''}]`;
+    if (!r) return [{ type: 'text', text: stub }];
+    return [{ type: 'text', text: `${stub} ${r.text}` }, ...(sees ? r.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data })) : [])];
+  };
+  return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.flatMap(word) })) };
 }
 
 /**
@@ -316,15 +332,16 @@ export function photosAsWords(request, { photos = true, documents = true } = {})
 /**
  * The request for the second pass's model: each photo or PDF of the newest user message that it can't take, as read gives it, and
  * older ones as words (whatever newestPhoto says). The request passed in is not changed.
- * @param {Request} request @param {Model} model @param {ReadFor} read @param {AbortSignal} [signal] @returns {Promise<Request>}
+ * @param {Request} request @param {Model} model @param {ReadFor} read @param {AbortSignal} [signal] @param {Readings} [readings] @returns {Promise<Request>}
  */
-async function readFor(request, model, read, signal) {
+async function readFor(request, model, read, signal, readings) {
   const newest = request.messages.findLastIndex((m) => m.role === 'user');
   const cant = (/** @type {import('./contract.js').Part} */ p) => (p.type === 'image' && !model.input.includes('image')) || (p.type === 'document' && !model.input.includes('pdf'));
   const messages = await Promise.all(request.messages.map(async (m, i) => (i !== newest ? m : {
     ...m, parts: (await Promise.all(m.parts.map((p) => (cant(p) ? read(/** @type {any} */ (p), model, signal) : [p])))).flat(),
   })));
-  return photosAsWords({ ...request, messages }, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
+  const sees = model.input.includes('image');
+  return photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
 }
 
 /**
@@ -398,7 +415,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor }} c
+ *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
@@ -412,6 +429,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
  *   read: after every model was tried, those passed over for a photo or PDF in the newest message are tried again, in order, each with what
  *   read makes of those files (§9.6; without it, as for plugins' calls, there is no second pass)
+ *   readings: what the conversation has kept of its files, put in place of a file a model can't take wherever it is (§7.2)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
@@ -466,12 +484,17 @@ export async function callRole(c) {
     const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
-    // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
-    const words = Boolean(model && !model.input.includes('image') && !newestPhoto(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'image')));
-    // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
-    const notes = Boolean(model && !model.input.includes('pdf') && !newestDocument(request) && request.messages.some((m) => m.parts.some((p) => p.type === 'document')));
+    const sees = Boolean(model?.input.includes('image'));
+    const reads = Boolean(model?.input.includes('pdf'));
     const forModel = (/** @type {Request} */ r) => {
-      const sent = words || notes ? photosAsWords(r, { photos: words, documents: notes }) : r;
+      // A file the conversation has kept a reading of goes as that reading, wherever it is, the newest message's too (the review of
+      // reading-files): it was read once, so it no longer keeps a model out.
+      let sent = model && c.readings && !(sees && reads) ? photosAsWords(r, { photos: !sees, documents: !reads, sees, readings: c.readings, kept: true }) : r;
+      // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
+      const words = Boolean(model && !sees && !newestPhoto(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'image')));
+      // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
+      const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
+      if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;
@@ -612,7 +635,7 @@ export async function callRole(c) {
   const passed = c.read ? [...new Set(attempts.filter((a) => a.outcome === 'no-images' || a.outcome === 'no-documents').map((a) => a.model))] : [];
   for (const id of passed) {
     const model = modelOf(config.models[id]);
-    base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal);
+    base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
     request = said ? continueAfter(base, said) : base;
     const r = await one(id);
     if (r) return r;
