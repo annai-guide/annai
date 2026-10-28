@@ -188,6 +188,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request' && d.kind === 'forget') return line(d.outcome === 'ok' ? t`kept turn deleted` : t`kept turn not deleted yet`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'net.request' && d.kind === 'look') return line(t`kept turn looked up`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'photo.replace') return t`a refused photo sent again as a new copy (${d.mediaType})`;
+  // A reading kept for a model that can't take the file (the review of reading-files); its words are the model's, English.
+  if (e.type === 'reading') return line(d.kind === 'pdf' ? (d.how === 'pages' ? t`a PDF's pages kept for models that can't read PDFs` : t`a PDF's words kept for models that can't read PDFs`) : t`a photo's description kept for models that can't see photos`, d.text ? cut(d.text) : null);
   if (e.type === 'import') {
     const n = Number(d.uncarried) || 0;
     const app = d.app ?? '?';

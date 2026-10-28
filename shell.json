@@ -1,5 +1,5 @@
 {
-  "build": "46b48c92da6a",
+  "build": "a7c01ddbcad2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,14 +43,14 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "6eaa85b3ba06",
+    "/src/core/agent/loop.js": "e700ef3f201a",
     "/src/core/agent/reading.js": "f21ba1e2f4a4",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "7f3d4c10fe18",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
     "/src/core/agent/net.js": "da9a89765c53",
     "/src/core/agent/tools.js": "32f50a08ed24",
-    "/src/core/agent/transcript.js": "a57536ee9524",
+    "/src/core/agent/transcript.js": "f7a3b5ccc8ea",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "ea988f822316",
     "/src/core/address.js": "e821e53d2023",
@@ -72,9 +72,9 @@
     "/src/core/llm/call.js": "d56e9df39c62",
     "/src/core/llm/check.js": "aca61922774b",
     "/src/core/llm/config.js": "d32a97cf6da1",
-    "/src/core/llm/contract.js": "d4b391d5210c",
+    "/src/core/llm/contract.js": "9f491a381a9e",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "d3c3d5bf041f",
+    "/src/core/llm/fallback.js": "50dbae1f9988",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "4e2a7a700eee",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
@@ -84,7 +84,7 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "bcf351269b15",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "e4f04f2cabdb",
+    "/src/core/llm/service.js": "89ec8d878fc5",
     "/src/core/llm/speech.js": "5d91010f311e",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "256c3fe59b0f",
@@ -257,7 +257,7 @@
     "/src/ui/screens/shiori.js": "a43750d57c5b",
     "/src/ui/screens/talk.js": "0bcbd55820ea",
     "/src/ui/screens/tools.js": "a820f3ddec27",
-    "/src/ui/screens/trace.js": "232ff7af2307",
+    "/src/ui/screens/trace.js": "808c3434522c",
     "/src/ui/screens/trip.js": "2ac01ae1599e",
     "/src/ui/screens/trips.js": "b03e27d2aeaf",
     "/src/ui/screens/updates.js": "61d9ab6e11e6",
@@ -280,7 +280,7 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "77ef67d18175",
-    "/l10n/zh-Hans.json": "d71e7cd918c4"
+    "/l10n/ja.json": "bc19f5f5e2c6",
+    "/l10n/zh-Hans.json": "0051fc3ee2ed"
   }
 }

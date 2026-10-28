@@ -350,7 +350,7 @@ export async function resolveEvent(store, e) {
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {
     const bytes = await read(doc.hash);
-    images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
+    images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', hash: doc.hash, ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
   }
   return { texts, images };
 }

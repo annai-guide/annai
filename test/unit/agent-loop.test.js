@@ -377,7 +377,7 @@ test("the told PDFs are keyed by the bytes told, in their conversation: a part c
   assert.equal(k.sent['model-u'].length, 3, 'told in the other conversation afresh');
 });
 
-test('Erase forgets the PDFs told this session (the fix pass\'s security review)', async (t) => {
+test('what is kept of a PDF lives in its conversation\'s log: Erase forgets what is in memory and it is read from the log again; removing the trip removes it (the review of reading-files)', async (t) => {
   useClock(t);
   const { saveModel } = await import('../../src/core/llm/config.js');
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPdf, then: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, models: [{ input: ['text', 'image'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] });
@@ -392,7 +392,11 @@ test('Erase forgets the PDFs told this session (the fix pass\'s security review)
   k.agent.hush('erase');
   k.agent.send('Once more?');
   await k.agent.idle();
-  assert.equal(k.sent['model-u'].length, 2, 'forgotten at Erase');
+  assert.equal(k.sent['model-u'].length, 1, 'read from the log, not told again');
+  assert.equal((await k.events(['reading'])).length, 1);
+  const { removeTrip } = await import('../../src/core/scopes.js');
+  await removeTrip(k.store, k.trip);
+  assert.deepEqual(await k.events(['reading']), [], 'gone with the trip');
 });
 
 test("a PDF has longer to be told than a photo to be described: a telling that takes more than a photo's 30 seconds still comes (the fix pass, S6)", async (t) => {
@@ -570,7 +574,7 @@ test('with nothing that reads it and no plugin, the note names Takes PDFs, and t
   assert.equal(await last(blindKit), noReader('pdf', { plugin: false }));
 });
 
-test('pages are drawn once per conversation, never given to another, and forgotten at Erase', async (t) => {
+test('pages are drawn once per conversation, never given to another, and read from what was kept after a reload', async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, readPdf, say('Done.'), readPdf, say('Done.'), readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
   const calls = fakePages(k, 3);
@@ -585,10 +589,12 @@ test('pages are drawn once per conversation, never given to another, and forgott
   k.agent.send('And here?');
   await k.agent.idle();
   assert.equal(calls.length, 2, 'drawn afresh in the other trip');
-  k.agent.forgetTold(); // what Erase does (Halves.hush('erase'))
+  k.agent.forgetTold(); // what is in memory goes, as at a reload
   k.agent.send('Once more?');
   await k.agent.idle();
-  assert.equal(calls.length, 3, 'once here, once in the other trip, once after Erase');
+  assert.equal(calls.length, 2, 'once here, once in the other trip, never again after a reload');
+  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.equal(reads.at(-1).data.images.length, 3, 'the kept pages, from the log');
 });
 
 test('a live Koe is never asked to read: realtime models are not chat models', async (t) => {
@@ -1550,4 +1556,104 @@ test("the card leaves out \"It doesn't take photos\" for a model that was then a
   assert.doesNotMatch(body, /doesn't take photos/);
   const turn = (await k.events(['model.turn'])).filter((e) => e.data.tag !== 'describe').at(-1);
   assert.deepEqual(turn.data.attempts.filter((/** @type {any} */ a) => a.model === 'm-1').map((/** @type {any} */ a) => a.outcome), ['no-images', 'credit']);
+});
+
+// Kept readings (the review of reading-files, findings 1 and 3): a successful reading is kept with the conversation, by the hash of what was read.
+const readNote = { toolCalls: [{ name: 'read', input: { path: '/trip/files/a.txt' } }] };
+/** A trip with a photo the user can send, a note to read, and Kokoro's model that sees no photos. @param {any[]} script @param {any[]} utility @param {any} [o] */
+async function photoKit(script, utility, o = {}) {
+  const k = await agentKit([script, ...(o.more ?? [])], { models: [{ input: ['text'] }, ...(o.models ?? [])], utility });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  await k.ws.write(k.trip, '/files/a.txt', new TextEncoder().encode('hello'), { author: 'user', type: 'text/plain' });
+  return k;
+}
+
+test("the user's photo, described for a model that can't see it, is still described at the turn's next step, read once", async (t) => {
+  useClock(t);
+  const k = await photoKit([readNote, say('A menu.')], [{ text: 'A menu; the fish is circled.' }, { text: 'never' }]);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [first, second] = k.sent['model-0'];
+  assert.match(JSON.stringify(first.messages), /fish is circled/);
+  assert.match(JSON.stringify(second.messages), /\[a photo: \/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
+  assert.equal(k.sent['model-u'].length, 1, 'described once');
+});
+
+test('the next turn, a question about that photo: the description is still there, never asked for again', async (t) => {
+  useClock(t);
+  const k = await photoKit([say('A menu.'), say('The fish.')], [{ text: 'A menu; the fish is circled.' }, { text: 'never' }]);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  k.agent.send('Which dish is circled?');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /the fish is circled/);
+  assert.equal(k.sent['model-u'].length, 1);
+});
+
+test('a photo is described once, however many models the second pass asks', async (t) => {
+  useClock(t);
+  const k = await photoKit([{ error: 'credit', status: 402 }], [{ text: 'A menu; the fish is circled.' }, { text: 'A menu again.' }], { more: [[say('A menu.')]], models: [{ input: ['text'] }] });
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1, 'one description for both models');
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /the fish is circled/);
+});
+
+test('a PDF read in the second pass is still read at every later step', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [readNote, say('Check-in is at 3 PM.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  await k.ws.write(k.trip, '/files/a.txt', new TextEncoder().encode('hello'), { author: 'user', type: 'text/plain' });
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  assert.ok(k.sent['model-1'].length >= 2);
+  for (const r of k.sent['model-1']) assert.match(JSON.stringify(r.messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.equal(k.sent['model-u'].length, 1);
+});
+
+test('a PDF told in words serves a model that sees photos and one that does not alike: told once', async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')], [readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-1'] } });
+  k.agent.send('And again');
+  await k.agent.idle();
+  const reads = (await k.events(['tool.result'])).filter((e) => e.data.name === 'read');
+  assert.equal(reads.length, 2);
+  assert.match(reads[1].data.content, /Hotel booking: check-in 3 PM\.$/);
+  assert.equal(k.sent['model-u'].length, 1);
+});
+
+test("a reading is kept in the conversation's log: after a reload it is read from there; another trip never gets it", async (t) => {
+  useClock(t);
+  const k = await photoKit([say('A menu.'), say('The fish.'), say('Here too.')], [{ text: 'A menu; the fish is circled.' }, { text: 'Another menu.' }]);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [kept] = await k.events(['reading']);
+  assert.equal(kept.data.kind, 'image');
+  assert.equal(kept.data.how, 'told');
+  assert.match(kept.data.hash, /^[0-9a-f]{64}$/);
+  k.agent.forgetTold(); // what is in memory goes, as at a reload
+  k.agent.send('Which dish is circled?');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /the fish is circled/);
+  assert.equal(k.sent['model-u'].length, 1, 'read from the log, not described again');
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(other, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  await k.agent.open(other);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 2, 'described afresh in the other trip');
+});
+
+test("a reading that failed is remembered for the rest of the call: the second pass's next model doesn't wait for it again", async (t) => {
+  useClock(t);
+  // Utility's reader never answers within the photo's 30 seconds; two models of Kokoro's see no photos.
+  const k = await photoKit([{ error: 'credit', status: 402 }], [{ delayMs: 60_000, text: 'never' }], { more: [[say('I could not see it.')]], models: [{ input: ['text'] }] });
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal(k.sent['model-u'].length, 1, 'asked once');
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: [^\]]+\] It couldn't be described/);
 });
