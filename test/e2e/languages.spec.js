@@ -270,6 +270,9 @@ test("Languages is a section of Settings of its own, with the screens' language 
   for (const label of ["annai's screens in", 'Distances', 'Add a language', 'Shiori answers in']) await expect(page.getByLabel(label)).toBeVisible();
   await expect(page.getByRole('list', { name: 'Languages you speak' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Settings');
+  // Back to Settings, as its other screens have (the review of phone-fixes-1).
+  await page.getByRole('main').locator('.crumbs').getByRole('link', { name: 'Settings' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.goto('/#/shiori');
   await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
   await expect(page.getByLabel('Add a language')).toHaveCount(0);

@@ -24,7 +24,7 @@ test.afterEach(async ({ page }) => {
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
 const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
-  '#/about', '#/experimental', '#/welcome'];
+  '#/languages', '#/about', '#/experimental', '#/welcome'];
 
 // In English, and in Japanese and Chinese (localization L6): short words, tall glyphs and no spaces to break at.
 for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 320], ['ja', 420], ['zh-Hans', 320], ['zh-Hans', 420]])) {
