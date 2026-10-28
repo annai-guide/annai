@@ -170,7 +170,7 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
 .tidy { position: relative; display: flex; justify-content: flex-end; }
-.tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
+.tidy-menu { position: absolute; bottom: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .tidy-menu[hidden] { display: none; }
 .tidy-menu .sub { margin: 4px 0 0; }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
@@ -189,6 +189,7 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .who { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ai); } /* capitals by CSS, so CJK is left alone */
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }
 /* What the halves tell each other: a dashed note of its own, not one of her reminders' quiet lines. */
+.convo .by { display: block; font-size: 12px; }
 .convo .halves-note { align-self: center; max-width: 92%; padding: 4px 10px; border: 1px dashed var(--line); border-radius: 10px; font-size: 12px; color: var(--ink-2); }
 .convo .system { align-self: stretch; border: 1px solid var(--amber); background: var(--amber-wash); border-radius: 12px; padding: 8px 12px; }
 .convo .system p { white-space: pre-line; }

@@ -1,9 +1,11 @@
 /* Design tokens (spec §16.2): vermilion accent, plain paper neutrals, three typefaces (self-hosted, OFL). */
-@font-face { font-family: 'Zen Maru Gothic'; font-weight: 500; font-display: swap; src: url('/assets/fonts/zen-maru-gothic-500.woff2') format('woff2'); }
-@font-face { font-family: 'Zen Maru Gothic'; font-weight: 700; font-display: swap; src: url('/assets/fonts/zen-maru-gothic-700.woff2') format('woff2'); }
-@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 400; font-display: swap; src: url('/assets/fonts/zen-kaku-gothic-new-400.woff2') format('woff2'); }
-@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 500; font-display: swap; src: url('/assets/fonts/zen-kaku-gothic-new-500.woff2') format('woff2'); }
-@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 700; font-display: swap; src: url('/assets/fonts/zen-kaku-gothic-new-700.woff2') format('woff2'); }
+/* The Zen faces class their spacing ` ´ ¨ ¸ ˆ ˚ ˜ as marks, which sat them on the next letter ("`signature`" as "s̀ignaturè", the
+   user's iPhone, 2026-10-28): those seven are drawn in the phone's own font. */
+@font-face { font-family: 'Zen Maru Gothic'; font-weight: 500; font-display: swap; unicode-range: U+0-5F, U+61-A7, U+A9-B3, U+B5-B7, U+B9-2C5, U+2C7-2D9, U+2DB, U+2DD-10FFFF; src: url('/assets/fonts/zen-maru-gothic-500.woff2') format('woff2'); }
+@font-face { font-family: 'Zen Maru Gothic'; font-weight: 700; font-display: swap; unicode-range: U+0-5F, U+61-A7, U+A9-B3, U+B5-B7, U+B9-2C5, U+2C7-2D9, U+2DB, U+2DD-10FFFF; src: url('/assets/fonts/zen-maru-gothic-700.woff2') format('woff2'); }
+@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 400; font-display: swap; unicode-range: U+0-5F, U+61-A7, U+A9-B3, U+B5-B7, U+B9-2C5, U+2C7-2D9, U+2DB, U+2DD-10FFFF; src: url('/assets/fonts/zen-kaku-gothic-new-400.woff2') format('woff2'); }
+@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 500; font-display: swap; unicode-range: U+0-5F, U+61-A7, U+A9-B3, U+B5-B7, U+B9-2C5, U+2C7-2D9, U+2DB, U+2DD-10FFFF; src: url('/assets/fonts/zen-kaku-gothic-new-500.woff2') format('woff2'); }
+@font-face { font-family: 'Zen Kaku Gothic New'; font-weight: 700; font-display: swap; unicode-range: U+0-5F, U+61-A7, U+A9-B3, U+B5-B7, U+B9-2C5, U+2C7-2D9, U+2DB, U+2DD-10FFFF; src: url('/assets/fonts/zen-kaku-gothic-new-700.woff2') format('woff2'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-display: swap; src: url('/assets/fonts/ibm-plex-mono-400.woff2') format('woff2'); }
 @font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-display: swap; src: url('/assets/fonts/ibm-plex-mono-500.woff2') format('woff2'); }
 

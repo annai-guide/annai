@@ -29,6 +29,7 @@ import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { activate as geminiLive } from '../../plugins-official/gemini-live/index.js';
 import { activate as openaiRealtime } from '../../plugins-official/openai-realtime/index.js';
 import { g711 } from '../../src/core/voice/g711.js';
+import { activate as anthropicMessages } from '../../plugins-official/anthropic-messages/index.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -63,8 +64,9 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' } }} [opts]
- *   uploading: whether the main model's provider takes photos by upload
+ *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
+ *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
+ *   endpoint type (anthropic-messages), its requests sent through fetch (a stand-in)
  *   utility: a script for one more scripted model, in the utility role
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
@@ -74,7 +76,7 @@ export function fakeCodec(formats) {
  *   first false chooses Koe · Classic; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -98,8 +100,10 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.providers[p] = { id: p, plugin: 'provider-test', template: null, user: { name, abilities: { [ability.kind]: ability } }, created: 0 };
     config.models[m] = { id: m, provider: p, ability: ability.kind, template: null, user, created: 0 };
   };
+  /** A script's ability: the scripted model's, or the one it names (a real endpoint type, reached through fetch). @param {any} script */
+  const ability = (script) => (script.ability ? { kind: 'chat', ...script.ability } : { kind: 'chat', type: 'scripted', tunables: Array.isArray(script) ? { script } : script });
   scripts.forEach((script, i) => {
-    add(`pv-${i}`, `m-${i}`, `E${i}`, { kind: 'chat', type: 'scripted', tunables: Array.isArray(script) ? { script } : script },
+    add(`pv-${i}`, `m-${i}`, `E${i}`, ability(script),
       { providerId: `model-${i}`, prices: { input: 1, output: 1 }, input: ['text', 'image'], ...(models[i] ?? {}) });
     config.roles.main.models.push(`m-${i}`);
   });
@@ -110,7 +114,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.roles['koe-classic'].models.push('m-koet');
   }
   if (koe?.type) {
-    add('pv-koe', 'm-koe', 'Koe', { kind: 'chat', type: 'scripted', tunables: Array.isArray(koe.type) ? { script: koe.type } : koe.type }, { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
+    add('pv-koe', 'm-koe', 'Koe', ability(koe.type), { providerId: 'model-koe', prices: { input: 1, output: 1 }, input: koe.input ?? ['text', 'image'], ...(koe.model ?? {}) });
     config.roles['koe-classic'].models.push('m-koe');
   }
   if (live) {
@@ -140,6 +144,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   await saveRoles(ws, config.roles, live ? { koeMode: live.first === false ? 'classic' : 'realtime' } : {});
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
+  anthropicMessages({ providers: { register: (/** @type {any} */ x) => { types.set(x.type, { ...x, pluginId: 'anthropic-messages' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   for (const [id, activate] of /** @type {const} */ ([['gemini-live', geminiLive], ['openai-realtime', openaiRealtime]])) {
     activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 }, events: { append: async () => {} } });
   }
@@ -161,7 +166,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     call: async (c) => callRole({
       role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, keyFor: async () => null, bench,
       signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, repairImages: c.repairImages, sleep: async () => {}, trace: modelTrace(store, c.scope ?? SYS),
-      speech: c.speech, firstOutputMs: c.firstOutputMs,
+      speech: c.speech, firstOutputMs: c.firstOutputMs, fetch,
     }),
     types: () => types,
     /** @param {{ modelId: string, text: string }} c */

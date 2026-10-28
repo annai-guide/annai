@@ -28,7 +28,7 @@ export async function renderExperimental(ctx) {
       h('p', { class: 'sub', text: t`Swipe a screen left or right to go to the next or the previous tab of the top bar, back to the screen you last had open there. Off, a sideways swipe does what the browser does.` })),
     EXPERIMENTAL.length ? h('section', { class: 'panel', 'aria-label': t`Unfinished translations` },
       unfinished.el,
-      h('p', { class: 'sub', text: t`Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Shiori → Languages. Their wording may be wrong, and what isn't translated yet stays in English.` }),
+      h('p', { class: 'sub', text: t`Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.` }),
       h('ul', { class: 'langs' }, ...EXPERIMENTAL.map((tag) => h('li', { lang: tag, text: ownName(tag) })))) : null,
     // An official plugin rather than a switch: most people never need it (the user, 2026-10-18).
     h('section', { class: 'panel', 'aria-label': t`Remote trace (for developers)` },

@@ -5,7 +5,7 @@ import { installBanner } from './install.js';
 import { setPendingImport } from './import-state.js';
 import { renderTrips } from './screens/trips.js';
 import { renderTrip } from './screens/trip.js';
-import { renderFile } from './screens/file.js';
+import { renderFile, cameFrom } from './screens/file.js';
 import { renderSettings } from './screens/settings.js';
 import { renderImport } from './screens/import.js';
 import { renderTrace } from './screens/trace.js';
@@ -35,6 +35,7 @@ import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
 import { renderAbout } from './screens/about.js';
 import { renderUpdates } from './screens/updates.js';
+import { renderLanguages } from './languages.js';
 import { renderExperimental } from './screens/experimental.js';
 import { readAppSettings } from '../core/settings.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
@@ -42,16 +43,16 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
 /** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
 const SECTION = /** @type {Record<string, string>} */ ({
-  trip: 'trips', file: 'trips', booking: 'trips', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
+  trip: 'trips', file: 'trips', booking: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
-  voice: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
+  voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
 });
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
- *   updates?: import('./updates.js').Updates, version: string }} core
+ *   updates: import('./updates.js').Updates, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
@@ -222,7 +223,10 @@ export function startShell(root, core) {
     }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
-    const section = SECTION[route.name] ?? (route.parts[0] === 'trip' ? 'trips' : route.parts[0]);
+    // A file opened from the Plan, a booking or Now is in that tab (the user, 2026-10-28: back on Plan, the top bar said Trips).
+    const from = route.name === 'file' ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
+    const at = from ? parseHash(from.hash) : route;
+    const section = SECTION[at.name] ?? (at.parts[0] === 'trip' ? 'trips' : at.parts[0]);
     const current = route.name === 'ext' ? location.hash : `#/${section}`;
     for (const a of links) {
       if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'page');

@@ -213,9 +213,10 @@ let menus = 0;
  * iOS); the handle also takes the arrow keys, and a tap on it shows Move up and Move down, so nothing needs a drag.
  * @param {string} role @param {string} id @param {number} i @param {number} n @param {string} name @param {boolean} page @param {string | undefined} note
  * @param {(id: string, by: number) => Promise<void>} move @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list @param {Node} remove
+ * @param {{ own?: Node | null }} [o] own: shown after the name (a language's own name, in its lang)
  */
-export function reorderable(role, id, i, n, name, page, note, move, list, remove) {
-  const label = h('span', {}, `${num(i + 1)}. `, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, note ? t` (${note})` : '');
+export function reorderable(role, id, i, n, name, page, note, move, list, remove, { own } = {}) {
+  const label = h('span', {}, `${num(i + 1)}. `, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, own ? [' ', own] : null, note ? t` (${note})` : '');
   const menuId = `reorder-menu-${++menus}`;
   const grip = h('button', {
     class: 'btn ghost grip', type: 'button', 'aria-label': reorderLabel(name, i, n), 'aria-expanded': 'false', 'aria-controls': menuId, 'data-grip': `${role}\n${id}`,
@@ -224,7 +225,7 @@ export function reorderable(role, id, i, n, name, page, note, move, list, remove
   const menu = h('div', { id: menuId, class: 'reorder-menu', role: 'group', 'aria-label': t`Move ${name}`, hidden: true, onkeydown: (/** @type {KeyboardEvent} */ e) => { if (e.key === 'Escape') shut(true); } },
     h('button', { class: 'btn', type: 'button', disabled: i === 0, onclick: () => again(move(id, -1)) }, t`Move up`),
     h('button', { class: 'btn', type: 'button', disabled: i === n - 1, onclick: () => again(move(id, 1)) }, t`Move down`));
-  const li = h('li', { class: 'role-item', 'data-id': id, 'data-name': name }, label, grip, remove, menu);
+  const li = h('li', { class: 'role-item', 'data-id': id, 'data-name': name, oncontextmenu: (/** @type {Event} */ e) => e.preventDefault() }, label, grip, remove, menu);
   /** Once the list is drawn again, the handle takes the focus back, so arrow keys go on. @param {Promise<void>} moved */
   const again = (moved) => moved.then(() => {
     for (const g of document.querySelectorAll('.grip')) if (g instanceof HTMLElement && g.dataset.grip === `${role}\n${id}`) g.focus();

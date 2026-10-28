@@ -46,7 +46,7 @@ async function setup(page, hash) {
     const { startShell } = await import(at('/src/ui/shell.js'));
     const root = document.createElement('div');
     document.body.replaceChildren(root);
-    w.shell = startShell(root, { registry, llm, plugins: { langOf: () => 'en' }, version: 'probe' });
+    w.shell = startShell(root, { registry, llm, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
   });
 }
 

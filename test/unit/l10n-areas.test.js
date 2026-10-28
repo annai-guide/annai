@@ -46,8 +46,8 @@ test('the Languages section\'s statuses are whole messages, each with its saved 
   assert.deepEqual(W.answered('Japanese'), ['Shiori answers in Japanese', 'Shiori answers in Japanese. Saved']);
   assert.deepEqual(W.answeredFollow(), ['Shiori answers in the language you speak to her', 'Shiori answers in the language you speak to her. Saved']);
   assert.equal(W.removeLabel('Japanese'), 'Remove Japanese');
-  assert.equal(W.moveUpLabel('Japanese'), 'Move Japanese up');
-  assert.equal(W.moveDownLabel('Japanese'), 'Move Japanese down');
+  // Moving is the handle's, as the model list's (phone-fixes-1 item 11): its words are the list's own.
+  assert.equal(W.order, 'The first is the language phone dictation listens in; the order tells Shiori which you prefer.');
   assert.equal(W.option('Japanese', '日本語'), 'Japanese · 日本語');
 });
 

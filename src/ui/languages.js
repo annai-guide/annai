@@ -1,9 +1,10 @@
-import { h, field, queueSave, messageOf, t } from './dom.js';
+import { h, field, queueSave, messageOf, t, crumb } from './dom.js';
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { chooseTag, lang as screensLang } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 import { LANGUAGES, LANGUAGE_WORDS as W, languageSettings, nativeName, tagFor, distancesOf } from '../core/languages.js';
 import { languageName, setDistances } from '../core/intl.js';
+import { reorderable } from './screens/models.js';
 
 /** A language by its own name ("日本語", "简体中文"), whatever the screens are in. @param {string} tag */
 export function ownName(tag) {
@@ -45,8 +46,14 @@ const language = (id) => LANGUAGES.find((l) => l.id === id);
 /** A language as a picker shows it: its name in the screens' language, then its own. @param {import('../core/languages.js').Language} l */
 const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
+/** Settings → Languages, a screen of its own (the user, 2026-10-28; Settings → Shiori held it before). @param {any} ctx */
+export async function renderLanguages(ctx) {
+  return h('div', { class: 'screen' }, h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)), h('h1', { class: 'title', text: W.heading }),
+    languagesSection(ctx, await readAppSettings(ctx.ws)));
+}
+
 /**
- * Settings → Shiori → Languages (phase 2): the languages you speak, in order, and the one Shiori answers in. Each change is saved at
+ * Settings → Languages (phase 2): annai's screens, distances, the languages you speak, in order, and the one Shiori answers in. Each change is saved at
  * once, in the app settings (so backups carry it), and every model that hears or speaks is told at its next session or wake. Each
  * change is built from the list as it stands, and shown before its write lands, so two quick ones lose neither; the answer language
  * is one of those listed, and takes leave with its language, in the same save.
@@ -67,7 +74,7 @@ export function languagesSection(ctx, app) {
   const screens = screensRow(ctx, app);
   const distances = distancesRow(ctx, app);
   const hint = h('p', { class: 'sub' });
-  const list = h('ol', { class: 'langs', 'aria-label': W.spokenLabel });
+  const list = h('ol', { class: 'role-list', 'aria-label': W.spokenLabel });
   const add = h('select', { id: 'language-add' });
   const addButton = h('button', { class: 'btn', type: 'button', disabled: true, onclick: () => pick() }, W.addButton);
   const answer = h('select', { id: 'language-answer' });
@@ -98,7 +105,7 @@ export function languagesSection(ctx, app) {
     });
   };
 
-  /** Shows the new list at once, then saves it. @param {string[]} next @param {string[]} said @param {{ id: string, act: string } | 'add'} [focus] where focus goes @param {string} [nextAnswer] */
+  /** Shows the new list at once, then saves it. @param {string[]} next @param {string[]} said @param {{ id: string, act: string } | 'add' | null} [focus] where focus goes (null: it stays, or a handle takes it back) @param {string} [nextAnswer] */
   const change = (next, said, focus = 'add', nextAnswer = answerId) => {
     ids = next;
     chosen = true;
@@ -107,21 +114,32 @@ export function languagesSection(ctx, app) {
     return save(said);
   };
 
-  /** @param {{ id: string, act: string } | 'add'} [focus] */
+  /** Moves a language by one (its handle's keys or menu). @param {string} id @param {number} by */
+  const move = async (id, by) => {
+    const i = ids.indexOf(id);
+    if (i < 0 || !ids[i + by]) return;
+    await change(swap(Math.min(i, i + by)), W.moved(languageName(id), i + by + 1), null);
+  };
+  /** A drag's order, said as the language that moved furthest. @param {string} _ @param {(ids: string[]) => string[]} order */
+  const dragged = async (_, order) => {
+    const next = order(ids);
+    const far = (/** @type {string} */ x) => Math.abs(next.indexOf(x) - ids.indexOf(x));
+    const moved = next.reduce((a, b) => (far(b) > far(a) ? b : a), next[0]);
+    await change(next, W.moved(languageName(moved), next.indexOf(moved) + 1), null);
+  };
+
+  /** @param {{ id: string, act: string } | 'add' | null} [focus] */
   const draw = (focus) => {
+    // Dragged by a handle, as the model list is (the user, 2026-10-28).
     list.replaceChildren(...ids.map((id, i) => {
       const l = /** @type {import('../core/languages.js').Language} */ (language(id));
       const own = nativeName(l);
       const name = languageName(id);
-      const button = (/** @type {string} */ act, /** @type {string} */ label, /** @type {string} */ text, /** @type {() => unknown} */ run, disabled = false) =>
-        h('button', { class: 'btn', type: 'button', 'aria-label': label, dataset: { lang: id, act }, disabled, onclick: run }, text);
-      return h('li', { tabindex: '-1', dataset: { lang: id } },
-        h('span', { class: 'lang-name' }, name, own !== name ? [' ', h('span', { class: 'sub', lang: tagFor(l), text: own })] : null, ' '),
-        i ? button('up', W.moveUpLabel(name), W.moveUpText, () => change(swap(i - 1), W.moved(name, i), { id, act: i > 1 ? 'up' : 'down' })) : null,
-        i < ids.length - 1 ? button('down', W.moveDownLabel(name), W.moveDownText, () => change(swap(i), W.moved(name, i + 2), { id, act: i + 1 < ids.length - 1 ? 'down' : 'up' })) : null,
-        button('remove', W.removeLabel(name), W.remove, () => remove(id), ids.length < 2));
+      const drop = h('button', { class: 'btn', type: 'button', 'aria-label': W.removeLabel(name), dataset: { lang: id, act: 'remove' }, disabled: ids.length < 2, onclick: () => remove(id) }, W.remove);
+      return reorderable('languages', id, i, ids.length, name, false, undefined, move, dragged, drop, { own: own !== name ? h('span', { class: 'sub', lang: tagFor(l), text: own }) : null });
     }));
-    hint.textContent = chosen ? W.spokenHint : W.emptyHint;
+    hint.textContent = chosen ? '' : W.emptyHint;
+    hint.hidden = chosen;
     add.replaceChildren(h('option', { value: '', text: W.add }), ...LANGUAGES.filter((l) => !ids.includes(l.id)).map((l) => h('option', { value: l.id, text: optionText(l) })));
     addButton.disabled = true;
     // Shiori answers in one of those listed, or follows you.
@@ -133,7 +151,7 @@ export function languagesSection(ctx, app) {
     else if (focus) {
       // The button asked for, else any other of that language's that works, else the item itself (the last language has no working button).
       const buttons = [...list.querySelectorAll(`button[data-lang="${focus.id}"]`)].filter((b) => !(/** @type {HTMLButtonElement} */ (b).disabled));
-      const to = buttons.find((b) => /** @type {HTMLElement} */ (b).dataset.act === focus.act) ?? buttons[0] ?? list.querySelector(`li[data-lang="${focus.id}"]`);
+      const to = buttons.find((b) => /** @type {HTMLElement} */ (b).dataset.act === focus.act) ?? buttons[0] ?? list.querySelector(`li[data-id="${focus.id}"] .grip`);
       /** @type {HTMLElement | null} */ (to)?.focus({ preventScroll: true });
     }
   };
@@ -165,12 +183,11 @@ export function languagesSection(ctx, app) {
   draw();
 
   return h('section', { class: 'panel', 'aria-label': W.heading },
-    h('h2', { class: 'section', text: W.heading }),
     h('p', { class: 'sub', text: W.intro }),
     screens,
     distances,
     h('div', { class: 'saving' },
-      h('h3', { text: W.spokenLabel }), list,
+      h('h3', { text: W.spokenLabel }), h('p', { class: 'sub', text: W.order }), list,
       h('div', { class: 'row' }, field(W.add, add), addButton),
       field(W.answerLabel, answer),
       note, error, hint));
@@ -215,8 +232,7 @@ export function screensRow(ctx, app) {
     }
     note.textContent = t`Saved. Restarting…`;
     // Called off ("Don't restart"): the row works again, and the change waits for the next restart.
-    if (!ctx.updates) location.reload();
-    else if (!(await ctx.updates.restart())) {
+    if (!(await ctx.updates.restart())) {
       select.disabled = false;
       note.textContent = t`Saved. It applies the next time annai restarts.`;
     }
@@ -256,7 +272,7 @@ export function screensCards({ settings, kept, running, failed, phone = navigato
   const cards = [];
   if (failed) {
     const name = ownName(failed);
-    cards.push({ title: t`${name} couldn't be loaded`, body: t`annai shows English until it is online.`, actions: [{ label: t`Try again`, run: () => location.reload() }] });
+    cards.push({ title: t`${name} couldn't be loaded`, body: t`annai shows English until it is online.`, actions: [{ label: t`Try again`, run: restart }] });
   }
   if (settings === kept) return { copy: null, cards };
   const next = chooseTag(settings || null, phone, offered, shipped);

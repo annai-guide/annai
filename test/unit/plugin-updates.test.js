@@ -138,7 +138,7 @@ test('a package from an address is checked there, offered when it changed, and c
   assert.match(await skill().text(), /^# Tide pools\n/);
   /** @type {any[]} */
   const said = [];
-  await applyUpdates({ plugins: host, notices: { card: (/** @type {any} */ c) => said.push(c.title), toast: (/** @type {string} */ t) => said.push(t) } }, offers, { addressFetch: get });
+  await applyUpdates({ plugins: host, notices: { card: (/** @type {any} */ c) => said.push(c.title), toast: (/** @type {string} */ t) => said.push(t) } }, offers, { addressFetch: get, reload: () => {} });
   assert.deepEqual(said, ['Plugins updated.']);
   assert.match(await skill().text(), /^# Tide pools, new/);
   assert.equal((await host.installed())['tide-pools'].version, '1.3.0');
@@ -203,7 +203,7 @@ test('a package without code whose update adds code asks with the full-trust wor
   assert.equal(offers[0].added?.code, true);
   const notices = fakeNotices();
   await host.ws.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.putSecret('plugin:web:jina', 'jina-key-0123456789'));
-  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get, reload: () => {} });
   assert.equal((await host.installed()).kit.version, '1.0.0');
   assert.deepEqual(notices.toasts, []);
   const [ask] = notices.cards;
@@ -224,7 +224,7 @@ test('an update from an address that adds a skill lists it before anything chang
     { ...SAFETY, 'skills/trail-maps/SKILL.md': '---\nname: trail-maps\ndescription: Reading a trail map.\n---\nNorth is up.' });
   const offers = await addressUpdates(host, { fetch: get });
   const notices = fakeNotices();
-  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get, reload: () => {} });
   assert.equal((await host.installed()).kit.version, '1.0.0');
   assert.match(notices.cards[0].body, /Skill "trail-maps": Reading a trail map\./);
   assert.doesNotMatch(notices.cards[0].body, /full access/);
@@ -238,7 +238,7 @@ test('an update from an address with nothing new is applied as before', async ()
   await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
   site = kitSite({ ...KIT_V1, version: '1.0.1' }, { 'skills/trail-safety/SKILL.md': SAFETY['skills/trail-safety/SKILL.md'].replace('Carry water.', 'Carry more water.') });
   const notices = fakeNotices();
-  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get });
+  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get, reload: () => {} });
   assert.deepEqual([notices.cards.length, notices.toasts], [0, ['Plugins updated.']]);
   assert.equal((await host.installed()).kit.version, '1.0.1');
 });
@@ -255,7 +255,7 @@ test('an update from an address whose provider sends keys to a new origin asks f
   const offers = await addressUpdates(host, { fetch: get });
   assert.deepEqual(offers[0].added.origins, ['http://localhost:9931']);
   const notices = fakeNotices();
-  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get });
+  await applyUpdates({ plugins: host, notices }, offers, { addressFetch: get, reload: () => {} });
   assert.equal((await host.installed()).kit.version, '1.0.0');
   const [ask] = notices.cards;
   assert.match(ask.body, /sends keys you give it to http:\/\/localhost:9931/);
@@ -274,7 +274,7 @@ test('an update from an address that now requires one of annai\'s plugins instal
   await host.install(await fetchPackage(KIT_ADDR, { fetch: get }), { source: 'url', url: KIT_ADDR });
   site = kitSite({ ...KIT_V1, version: '1.0.1', provider: LLM('https://llm.trails.example/v1'), requires: [{ id: 'scripted-model', version: '^0' }] }, SAFETY);
   const notices = fakeNotices();
-  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get, fetch: await repo() });
+  await applyUpdates({ plugins: host, notices }, await addressUpdates(host, { fetch: get }), { addressFetch: get, fetch: await repo(), reload: () => {} });
   assert.deepEqual(notices.toasts, ['Plugins updated.']);
   assert.equal((await host.installed())['scripted-model']?.source, 'official');
   assert.ok(registry.list('endpoint-type').some((t) => t.type === 'scripted'));

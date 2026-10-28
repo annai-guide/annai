@@ -119,7 +119,7 @@ function row(ctx, id, r, undo) {
   return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
-    h('a', { class: 'what', href: fileHref(id, r.path) },
+    h('a', { class: 'what', href: fileHref(id, r.path, location.hash) },
       h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
       h('span', { class: 'name', text: String(it.title ?? r.path) }),
       it.place?.name ? h('span', { class: 'sub', text: String(it.place.name) }) : null),
