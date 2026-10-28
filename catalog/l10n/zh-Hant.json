@@ -33,7 +33,7 @@
         "路由",
         "自訂",
         "代理",
-        "自託管"
+        "自架"
       ]
     },
     "provider-anthropic": {
@@ -116,7 +116,7 @@
       "description": "透過你自己執行的 SearXNG 執行個體搜尋。無需金鑰，沒有限制（除了你自己設的）。執行個體必須允許 JSON 和網頁應用程式。",
       "keywords": [
         "SearXNG",
-        "自託管"
+        "自架"
       ]
     },
     "search-serper": {

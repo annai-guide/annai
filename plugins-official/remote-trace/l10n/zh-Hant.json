@@ -4,7 +4,7 @@
     "name": "遠端記錄（開發人員）",
     "settings.properties.device.description": "隨每批一起傳送，讓伺服器能把本裝置與其他裝置區分開。annai 會在第一次傳送時產生一個；你也可以自己命名。",
     "settings.properties.device.title": "裝置 ID",
-    "settings.properties.location.description": "同時傳送 GPS 開啟時 annai 記錄的位置點（駕駛時約每秒一個）。關閉時，其他條目仍可能包含地點，正如「記錄」中顯示的：天氣請求的地址、工具的輸入等。",
+    "settings.properties.location.description": "同時傳送 GPS 開啟時 annai 記錄的位置點（駕駛時約每秒一個）。關閉時，其他條目仍可能包含地點，正如「記錄」中顯示的：天氣請求的網址、工具的輸入等。",
     "settings.properties.location.title": "傳送位置點",
     "settings.properties.send.description": "開啟後，從現在起「記錄」所記下的內容會在幾秒內傳送到伺服器：你寫的、Shiori 說的、她的工具、請求和錯誤。金鑰會被遮蓋，已儲存的內容（照片、長文字）留在這裡。關閉會立即停止。",
     "settings.properties.send.title": "傳送",
