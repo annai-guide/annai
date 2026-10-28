@@ -63,7 +63,7 @@ function browserLanguage(locale) {
 }
 
 /**
- * The setting (Settings → Shiori): app.json's `languages` — spoken, in order (picked from LANGUAGES), and answer ('follow', or one id) —
+ * The setting (Settings → Languages): app.json's `languages` — spoken, in order (picked from LANGUAGES), and answer ('follow', or one id) —
  * or, with none chosen, the browser's language (explicit: false), which is only what the phone is set to.
  * @param {Record<string, any>} app the app settings @param {string} [locale] the browser's language @returns {LanguageSettings}
  */

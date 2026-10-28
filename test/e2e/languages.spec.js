@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { openApp, startModelServer, anthropicToolReply, modelSetUp } from './helpers.js';
 
-// Languages you speak (phase 2; the user, 2026-10-23): Settings → Shiori picks them, in order, and the language she answers in; they are
+// Languages you speak (phase 2; the user, 2026-10-23): Settings → Languages picks them (Settings → Shiori until 2026-10-28), in order, and the language she answers in; they are
 // saved in the app settings (so a backup carries them) and every model that hears or speaks is told.
 
 /** What /app.json in sys:settings says about languages, through annai's own modules. @param {import('@playwright/test').Page} page */
@@ -18,15 +18,15 @@ const saved = (page) => page.evaluate(async () => {
   }
 });
 
-/** The Languages section of Settings → Shiori, opened. @param {import('@playwright/test').Page} page */
+/** Settings → Languages, opened. @param {import('@playwright/test').Page} page */
 async function openLanguages(page) {
-  await openApp(page, '#/shiori');
+  await openApp(page, '#/languages');
+  await expect(page.getByRole('heading', { level: 1, name: 'Languages', exact: true })).toBeVisible();
   const panel = page.getByRole('region', { name: 'Languages', exact: true });
-  await expect(panel.getByRole('heading', { name: 'Languages', exact: true })).toBeVisible();
   return { panel, list: panel.getByRole('list', { name: 'Languages you speak' }), add: panel.getByLabel('Add a language'), addButton: panel.getByRole('button', { name: 'Add', exact: true }) };
 }
 
-test('Settings → Shiori → Languages: the browser\'s language to begin with; add, reorder and remove, saved as they change and kept; Shiori answers in one language or follows you', async ({ page }) => {
+test('Settings → Languages: the browser\'s language to begin with; add, reorder and remove, saved as they change and kept; Shiori answers in one language or follows you', async ({ page }) => {
   const { panel, list, add, addButton } = await openLanguages(page);
   // One number, the list's own (it was "1. 1. English" with the text numbered as well).
   await expect(list.getByRole('listitem')).toHaveText([/^English/]);
@@ -257,4 +257,19 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
   } finally {
     await llm.stop();
   }
+});
+
+test("Languages is a section of Settings of its own, with the screens' language and distances; Settings → Shiori points to it, and its old address still opens (phone-fixes-1 item 13)", async ({ page }) => {
+  await openApp(page, '#/settings');
+  const section = page.getByRole('region', { name: 'Languages', exact: true });
+  await section.getByRole('link', { name: 'Languages' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Languages', exact: true })).toBeVisible();
+  for (const label of ["annai's screens in", 'Distances', 'Add a language', 'Shiori answers in']) await expect(page.getByLabel(label)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Languages you speak' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Settings');
+  await page.goto('/#/shiori');
+  await expect(page.getByRole('heading', { level: 1, name: 'Shiori' })).toBeVisible();
+  await expect(page.getByLabel('Add a language')).toHaveCount(0);
+  await page.getByRole('link', { name: /The languages you speak/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Languages', exact: true })).toBeVisible();
 });
