@@ -325,3 +325,17 @@ test("warm housekeeping goes on past a reader that fails to a model that reads n
   assert.equal((await k.events(['compaction'])).at(-1).data.mode, 'warm');
   assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'compaction').length, 0);
 });
+
+test("the retry after housekeeping for a request too long doesn't describe the user's photo again: its kept reading goes in (the review of reading-files)", async () => {
+  const k = await agentKit([[say('1'), say('2'), say('3'), { error: 'context', status: 400, message: 'prompt is too long' }, say('fits now')]], { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish is circled.' }, { text: 'Summary.' }, { text: 'A menu again.' }] });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (let i = 0; i < 3; i++) {
+    k.agent.send(`Turn ${i}`);
+    await k.agent.idle();
+  }
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'fits now');
+  assert.equal(k.sent['model-u'].length, 2, 'one description and one summary');
+  assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /the fish is circled/);
+});
