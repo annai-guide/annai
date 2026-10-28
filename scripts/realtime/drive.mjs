@@ -150,7 +150,8 @@ export async function setUp(page, key, log, { standIn } = {}) {
 }
 
 /**
- * The languages setting, set the way a user would, in Settings → Shiori → Languages (phase 2): the browser's language (English) is the
+ * The languages setting, set the way a user would, in Settings → Languages (Settings → Shiori before phone-fixes-1; an older build is
+ * looked for there): the browser's language (English) is the
  * list's first, the others are added in order (a list of English alone is made by adding a language and removing it again, so it is the
  * user's own), and the answer language is chosen. A build with no such section (the control run on the
  * build before the setting) is left as it is, and the record says so. Returns what the record says of it.
@@ -159,9 +160,8 @@ export async function setUp(page, key, log, { standIn } = {}) {
  */
 export async function setLanguages(page, want) {
   const back = new URL(page.url()).hash || '#/trips';
-  await page.goto('/#/shiori');
-  const panel = page.getByRole('region', { name: 'Languages', exact: true });
-  if (!(await panel.waitFor({ timeout: 8000 }).then(() => true, () => false))) {
+  const panel = await languagesPanel(page);
+  if (!panel) {
     await page.goto(`/${back}`);
     return { ...want, applied: false, why: 'this build of annai has no languages setting' };
   }
@@ -170,7 +170,8 @@ export async function setLanguages(page, want) {
   const shown = (await list.getByRole('listitem').allInnerTexts()).map((t) => t.trim());
   for (const id of want.spoken) {
     const name = LANGUAGES.find((l) => l.id === id)?.name ?? id;
-    if (shown.some((t) => t.startsWith(name))) continue;
+    // A row reads "1. English" (with its handle) since phone-fixes-1, "English" before.
+    if (shown.some((t) => new RegExp(`^(\\d+\\.\\s*)?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(t))) continue;
     await panel.getByLabel('Add a language').selectOption(id);
     await panel.getByRole('button', { name: 'Add', exact: true }).click();
     await list.getByRole('listitem').filter({ hasText: name }).waitFor();
@@ -195,12 +196,26 @@ export async function setLanguages(page, want) {
 }
 
 /**
- * The screens' language chosen in Settings → Shiori, the way a user would, once annai is set up in English; annai restarts in it.
- * Returns the words of that language, by English (and a context), for the locators after it. @param {import('@playwright/test').Page} page @param {string} tag
+ * Settings → Languages, its section with the list, opened; on an older build, Settings → Shiori's; null when neither has it.
+ * @param {import('@playwright/test').Page} page
+ */
+async function languagesPanel(page) {
+  for (const hash of ['#/languages', '#/shiori']) {
+    await page.goto(`/${hash}`);
+    const panel = page.getByRole('region', { name: 'Languages', exact: true }).filter({ has: page.getByRole('list', { name: 'Languages you speak' }) });
+    if (await panel.waitFor({ timeout: 8000 }).then(() => true, () => false)) return panel;
+  }
+  return null;
+}
+
+/**
+ * The screens' language chosen in Settings → Languages (Settings → Shiori on an older build), the way a user would, once annai is
+ * set up in English; annai restarts in it. Returns the words of that language, by English (and a context), for the locators after it.
+ * @param {import('@playwright/test').Page} page @param {string} tag
  */
 export async function setScreens(page, tag) {
   const back = new URL(page.url()).hash || '#/trips';
-  await page.goto('/#/shiori');
+  await languagesPanel(page);
   const restarted = page.waitForEvent('load');
   await page.locator('#language-ui').selectOption(tag);
   await restarted;

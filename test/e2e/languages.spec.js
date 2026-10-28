@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { openApp, startModelServer, anthropicToolReply, modelSetUp } from './helpers.js';
+import { setLanguages, setScreens } from '../../scripts/realtime/drive.mjs';
 
 // Languages you speak (phase 2; the user, 2026-10-23): Settings → Languages picks them (Settings → Shiori until 2026-10-28), in order, and the language she answers in; they are
 // saved in the app settings (so a backup carries them) and every model that hears or speaks is told.
@@ -296,4 +297,17 @@ test("Languages you speak are dragged into order like the model list, and a line
   await expect.poll(() => saved(page)).toEqual({ spoken: ['ja', 'en', 'zh'], answer: 'follow' });
   // The row and its handle are a drag on iOS, not text to select (item 4).
   expect(await list.getByRole('listitem').first().evaluate((li) => getComputedStyle(li).userSelect || /** @type {any} */ (getComputedStyle(li)).webkitUserSelect)).toBe('none');
+});
+
+test("the realtime harness sets the languages and the screens' language where they are now, Settings → Languages (the review of phone-fixes-1)", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const done = await setLanguages(page, { spoken: ['en', 'ja'], answer: 'ja' });
+  expect(done.applied).toBe(true);
+  await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'ja'], answer: 'ja' });
+  // Run again, it finds them listed ("1. English", "2. Japanese") and adds nothing.
+  expect((await setLanguages(page, { spoken: ['en', 'ja'], answer: 'ja' })).applied).toBe(true);
+  await expect.poll(() => saved(page)).toEqual({ spoken: ['en', 'ja'], answer: 'ja' });
+  const words = await setScreens(page, 'ja');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  expect(words('Trips')).not.toBe('Trips');
 });
