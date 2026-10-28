@@ -314,10 +314,12 @@ test("while Settings changes the screens' language, a check keeps the words fetc
   const before = nextScreens();
   const done = changingScreens('zh-Hans');
   assert.equal(nextScreens(), 'zh-Hans');
-  // As Settings fetches: no next, so it drops nothing while the change may yet fail.
+  // As Settings fetches: no next, so it drops nothing while the change may yet fail; Traditional, kept from an earlier change, stays.
+  await k.host.keepTranslations(ID, new Map([['zh-Hant', new TextEncoder().encode('{}')]]));
   await fetchTranslations(k.host, { tag: 'zh-Hans', fetch: k.s.fetch });
-  assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`]);
-  // A check comes back meanwhile (coming back to the screen, the day's, a slow start's), with the env annai gives it.
+  assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`, `/${ID}/l10n/zh-Hant.json`]);
+  // A check comes back meanwhile (coming back to the screen, the day's, a slow start's), with the env annai gives it: it keeps the
+  // screens' and the change's, and drops the rest.
   await checkPlugins(k.host, { fetch: k.s.fetch, next: nextScreens }, { address: false });
   assert.deepEqual(await k.kept(), [`/${ID}/l10n/ja.json`, `/${ID}/l10n/zh-Hans.json`]);
   // A second change to the same language while the first runs: the first one's end leaves the second's mark.
