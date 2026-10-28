@@ -37,3 +37,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** these plugins use `annai.l10n`, which pre-L7 annai doesn't give, so an older annai has to refuse them rather than start them broken. A 7f0dc027 page has `annai.l10n` but predates API 2, and its words can't be changed now.
 - **Revisit when:** a user reports being stuck, which shouldn't happen once the page restarts.
 - **Approved:** 2026-10-27, the user: "Accept as known limitation".
+
+### A skill on a site that hides its 404s can't be installed if its SKILL.md links to a missing file
+- **Kind:** known limitation.
+- **What the user sees:** installing a skill from an address whose SKILL.md links to a file that isn't there, on a site that sends its browser-access (CORS) header only on success (nginx `add_header` without `always`), fails with "annai couldn't read <file> from <site>, a file its SKILL.md names…". An installed skill from such a site fails its update check the same way.
+- **Why:** a linked file is left out only when the site answers that it isn't there (404, 410, or 403). No answer fails the install, so a network blip can't silently drop a file and then offer the skill as changed. A site that hides its 404s looks like no answer. GitHub raw, GitHub Pages, jsDelivr and Hugging Face send the header on 404s, and are fine.
+- **Revisit when:** a user meets it on a site they can't change.
+- **Approved:** 2026-10-27, the user: "Accept as known limitation".
