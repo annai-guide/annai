@@ -54,11 +54,12 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
     expect(m.card.top).toBeGreaterThanOrEqual(m.box.top);
     expect(m.box.height).toBeLessThanOrEqual(height * 0.25 + 1);
     expect(m.line, 'a line parts the cards from the screen').not.toBe('0px');
-    // Where even one line is more than the box holds (320 x 544), More is in the buttons, in view; else under the words.
+    // Where even one line is more than the box holds (320 x 544), More is in the buttons, in view, and the text line goes; else
+    // More is under the words.
     if (m.tight) await expect(card.getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
     else expect(Math.abs(m.more - m.text), 'More starts where the words do').toBeLessThanOrEqual(2);
     expect(m.tight).toBe(height < 600);
-    expect(Math.abs(m.update - m.text), 'and so does Update').toBeLessThanOrEqual(2);
+    if (!m.tight) expect(Math.abs(m.update - m.text), 'and so does Update').toBeLessThanOrEqual(2);
     await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
   });
 }
@@ -217,3 +218,40 @@ test("each of Shiori's lines names the model that wrote it, and says so when it 
   // Quiet: small, and not in what the announcer says of a line.
   expect(await by.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
 });
+
+// The review of phone-fixes-1: in Japanese, 続きを表示 joined アップデート and 閉じる, the sticky row wrapped to two, and the title was hidden.
+for (const [width, height] of [[320, 544], [360, 640], [667, 375]]) {
+  for (const lang of ['ja', 'en']) {
+    test(`a tight card keeps its title in view and its buttons in one row (${lang}, ${width} x ${height}; review of item 3)`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await openApp(page, '#/trips');
+      await page.evaluate(async ({ lang, body }) => {
+        const at = (/** @type {string} */ p) => p;
+        if (lang === 'ja') {
+          const { setWords } = await import(at('/src/core/l10n.js'));
+          setWords('ja', await (await fetch('/l10n/ja.json')).json());
+        }
+        const { createNotices } = await import(at('/src/ui/notices.js'));
+        const notices = createNotices();
+        notices.el.id = 'test-notices';
+        document.querySelector('header.topbar')?.after(notices.el);
+        const { t } = await import(at('/src/core/l10n.js'));
+        notices.card({ title: t`Plugin updates are ready`, body, actions: [{ label: t`Update`, primary: true, run: () => {} }] });
+      }, { lang, body: OFFER });
+      const m = await page.locator('#test-notices > .notice').evaluate((card) => {
+        const r = (/** @type {Element | null} */ el) => /** @type {Element} */ (el).getBoundingClientRect();
+        const acts = r(card.querySelector('.acts'));
+        const button = r(card.querySelector('.acts .btn'));
+        const p = /** @type {HTMLElement} */ (card.querySelector('p'));
+        return { card: r(card), title: r(card.querySelector('strong')), acts, rows: Math.round(acts.height / button.height), more: card.querySelectorAll('.more:not([hidden])').length,
+          text: p.offsetHeight ? r(p).bottom : null, scrolled: card.scrollHeight - card.clientHeight };
+      });
+      expect(m.rows, 'the buttons stay one row').toBe(1);
+      expect(m.title.top).toBeGreaterThanOrEqual(m.card.top);
+      expect(m.title.bottom, 'the title is clear of the buttons').toBeLessThanOrEqual(m.acts.top + 1);
+      if (width < 600) expect(m.more, 'More is still there to open it').toBe(1); // on its side the text fits its three lines
+      // What shows of the text is clear of the buttons: no line sits behind them.
+      if (m.text !== null) expect(m.text).toBeLessThanOrEqual(m.acts.top + 1);
+    });
+  }
+}

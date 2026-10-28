@@ -38,16 +38,28 @@ export function createNotices() {
     const p = node.querySelector('p');
     if (!p || !node.offsetHeight || node.classList.contains('open')) return;
     node.style.removeProperty('--lines');
+    node.classList.remove('brief', 'loose');
+    const acts = /** @type {HTMLElement} */ (node.querySelector('.acts'));
+    acts.before(more);
     node.classList.add('clamp');
     const long = p.scrollHeight > p.clientHeight + 1;
     node.classList.toggle('clamp', long);
     more.hidden = !long;
-    const acts = /** @type {HTMLElement} */ (node.querySelector('.acts'));
-    acts.before(more);
-    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off); still
-    // too tall, More joins the buttons, where the card's own scroll can't hide it.
-    for (let n = 2; long && n && node.scrollHeight > node.clientHeight + 1; n--) node.style.setProperty('--lines', String(n));
-    if (long && node.scrollHeight > node.clientHeight + 1) acts.append(more);
+    const over = () => node.scrollHeight > node.clientHeight + 1;
+    // Fewer lines, down to one, while the card is taller than the box, so it shows whole (IMG_3013: its foot was cut off).
+    for (let n = 2; long && n && over(); n--) node.style.setProperty('--lines', String(n));
+    if (long && over()) {
+      // Still too tall: More joins the buttons only if their row stays one row, and the text line goes, so the title and the
+      // buttons show (the review of phone-fixes-1: in Japanese the row wrapped to two and hid the title).
+      const row = acts.offsetHeight;
+      acts.append(more);
+      if (acts.offsetHeight > row + 1) acts.before(more);
+      if (over()) node.classList.add('brief');
+    }
+    // A box too low for the title and the buttons together (a two-line title at 320 x 544, a phone on its side): the buttons follow
+    // what is shown, a scroll of the card away, rather than sit over the title.
+    const title = /** @type {HTMLElement} */ (node.querySelector('strong'));
+    if (over() && title.getBoundingClientRect().bottom > acts.getBoundingClientRect().top + 1) node.classList.add('loose');
   };
   addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
