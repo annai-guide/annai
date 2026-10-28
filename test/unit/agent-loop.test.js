@@ -1490,3 +1490,17 @@ test('the user\'s photo, when no model of Kokoro\'s sees photos: described by on
   assert.match(JSON.stringify(k.sent['model-0'][0].messages), /\[a photo: \/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
   assert.equal((await k.events(['error'])).length, 0);
 });
+
+test("Koe's turn has no second pass: a PDF in her newest message is never read for a model of hers that can't take it, as she answers at once", async (t) => {
+  useClock(t);
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  // Koe's first model reads PDFs, reads the booking, then is out of credit; her second reads none. Utility's could read it.
+  const k = await bookingKit([[sleepStep]], { koe: { talk: [readPdf, { error: 'credit', status: 402 }], type: [say('One moment.')] }, utility: [{ text: 'Flight AN 123.' }] }, ['text', 'pdf']);
+  const cfg = await k.llm.config();
+  await saveModel(k.ws, { ...cfg.models['m-koet'], user: { ...cfg.models['m-koet'].user, input: ['text', 'pdf'] } });
+  await saveModel(k.ws, { ...cfg.models['m-koe'], user: { ...cfg.models['m-koe'].user, input: ['text'] } });
+  k.agent.send('When do I fly?');
+  await k.agent.idle();
+  assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'describe').length, 0, 'nobody was asked to read it for Koe');
+  assert.equal((k.sent['model-u'] ?? []).length, 0);
+});
