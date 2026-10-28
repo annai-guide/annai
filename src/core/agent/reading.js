@@ -3,7 +3,7 @@
  * then Utility's, then the model's own role's; for a PDF then its pages as pictures, drawn by the PDF pages plugin (goal 12);
  * and only when nothing can, a note naming the setting that fixes it. Everything here is words a model reads: English.
  */
-import { chatCandidates, whyOf, whyWords } from '../llm/fallback.js';
+import { chatCandidates, firstWordsMs, whyOf, whyWords } from '../llm/fallback.js';
 import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
@@ -36,11 +36,12 @@ const DESCRIBE_PAGES = /* en */ "These are pictures of a PDF's pages, in order. 
 
 /**
  * The roles that read for a half, in order: those with a chat model on, a role whose list is an earlier one's left out (an empty
- * Utility is Main's). Kokoro, and one Shiori: Koe's, Utility's, Main's; Koe: Kokoro's (Main's), Utility's, her own.
+ * Utility is Main's). Kokoro, and one Shiori: Koe's, Utility's, Main's; Koe: Utility's, Main's, her own (she answers at once, so the
+ * side job's cheaper role goes first; the coordinator's call, 2026-10-28).
  * @param {import('../llm/config.js').ModelConfig} cfg @param {'one' | 'kokoro' | 'koe'} half @returns {string[]}
  */
 export function readerRoles(cfg, half) {
-  const order = half === 'koe' ? ['main', 'utility', KOE_CLASSIC] : [KOE_CLASSIC, 'utility', 'main'];
+  const order = half === 'koe' ? ['utility', 'main', KOE_CLASSIC] : [KOE_CLASSIC, 'utility', 'main'];
   /** @type {Set<string>} */
   const seen = new Set();
   return order.filter((role) => {
@@ -66,8 +67,8 @@ export function noReader(kind, { plugin }) {
 }
 
 /**
- * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, with the
- * reading's own time to its first words (a role's short wait, Koe's 8 s, doesn't cut it). The whole reading, pages included, stops at
+ * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
+ * its first words the longer of its role's wait and DESCRIBE_S. The whole reading, pages included, stops at
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
@@ -103,7 +104,9 @@ export async function readFile(file, model, o) {
       if (stop.signal.aborted) break;
       try {
         const r = await o.llm.call({
-          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: limit * o.secondMs,
+          // The longer of the role's own wait and a photo's 30 seconds: a role's short wait (Koe's 8 s) doesn't cut a reading, and a reader
+          // that never starts answering leaves the rest of a PDF's 90 seconds to the next readers and the pages.
+          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...parts, { type: 'text', text: ask }] }] },
         });
         if (r.reply.text.trim()) return r;

@@ -382,6 +382,9 @@ const heardIds = (was, now) => (was === now ? now : {
   ...now, messages: now.messages.map((m, i) => ({ ...m, parts: m.parts.map((p, j) => { const h = was.messages[i]?.parts[j]; return h?.type === 'speech' && !(p.type === 'text' && p.text === NOT_TRANSCRIBED) ? /** @type {any} */ ({ ...p, heard: h.id }) : p; }) })),
 });
 
+/** How long a role waits for a model's first words, in ms: its own setting, else 8 seconds for Koe and 30 for the rest. @param {ModelConfig} config @param {string} role */
+export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutputSeconds ?? (role === KOE_CLASSIC ? 8 : 30)) * 1000;
+
 /**
  * Calls a role's models in order until one answers (spec §9.6), and records the whole call as
  * one model.turn in the trace.
@@ -434,7 +437,7 @@ export async function callRole(c) {
     { role, level, answeredBy, first, attempts, usage, cost, ...meta, ...(stop ? { stop } : {}), ...(citations?.length ? { citations } : {}) },
     text, reasoning, keepParts ? parts : undefined);
   // How long to wait for the first words: the caller's limit, else the role's own setting (spec §9.6: configurable); Koe answers at once.
-  const firstOutputMs = c.firstOutputMs ?? (config.roles[role]?.firstOutputSeconds ?? (role === KOE_CLASSIC ? 8 : 30)) * 1000;
+  const firstOutputMs = c.firstOutputMs ?? firstWordsMs(config, role);
   const list = c.models ?? candidates(config, role);
   // The role's first model that can answer (its chat ability on), by name, whichever is tried first: Shiori's lines say when another
   // answered, and whether it was tried (null: none).
