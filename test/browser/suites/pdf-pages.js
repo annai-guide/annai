@@ -1,4 +1,4 @@
-import { pages } from '../../../plugins-official/pdf-pages/index.js';
+import { pages, PackedData } from '../../../plugins-official/pdf-pages/index.js';
 
 const fixture = async (/** @type {string} */ n) => new Uint8Array(await (await fetch(`/test/fixtures/pdf/${n}`)).arrayBuffer());
 
@@ -48,6 +48,12 @@ export default function (test, assert) {
     assert.equal(r.count, 2);
     assert.equal(r.pages.length, 1);
     assert.deepEqual(r.blank, [2]);
+  });
+  test("PDF.js's CMaps come from the plugin's one pack, by name: a Japanese one, as PDF.js asks for it", async () => {
+    const data = new PackedData({ standardFontDataUrl: '/plugins-official/pdf-pages/vendor/pdfjs/standard_fonts/' });
+    const bytes = await data.fetch({ kind: 'cMapUrl', filename: 'UniJIS-UCS2-H.bcmap' });
+    assert.ok(bytes instanceof Uint8Array && bytes.byteLength > 100);
+    await assert.rejects(data.fetch({ kind: 'cMapUrl', filename: 'Nothing-H.bcmap' }));
   });
   test('the bytes given are still whole afterwards', async () => {
     const bytes = await fixture('booking.pdf');
