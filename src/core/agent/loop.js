@@ -137,6 +137,20 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
+/** Pages as words: "page 2", "pages 1 and 3", "pages 1, 2 and 4". @param {number[]} n */
+const pagesWords = (n) => (n.length === 1 ? `page ${n[0]}` : `pages ${n.slice(0, -1).join(', ')} and ${n.at(-1)}`);
+/**
+ * What a kept reading says when some of its page pictures are gone: which pages went, and which didn't. Pages are named when the entry
+ * named them, else counted. @param {(number | undefined)[]} sent @param {(number | undefined)[]} gone
+ */
+function goneWords(sent, gone) {
+  const named = [...sent, ...gone].every((p) => typeof p === 'number');
+  /* en */
+  if (!named) return `Of these, only ${sent.length} of ${sent.length + gone.length} pictures went; the others are no longer on this device.`;
+  /* en */
+  return `Of these, only ${pagesWords(/** @type {number[]} */ (sent))} went; ${pagesWords(/** @type {number[]} */ (gone))} ${gone.length === 1 ? 'is' : 'are'} no longer on this device.`;
+}
+
 /** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures, by their blob hashes and pages. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string, hash: string, page?: number }[] }} KeptReading */
 
 /**
@@ -1761,7 +1775,7 @@ export class Agent {
       let result;
       const cut = new AbortController();
       const before = this.#reached;
-      /** Readings that failed in this call, for its second pass's next model. @type {Map<string, import('./reading.js').Reading>} */
+      /** This call's readings, for its second pass: one per file, the same file twice or for the next model. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const readMemo = new Map();
       await this.#loadKept(this.scope);
       try {
@@ -1854,9 +1868,11 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
+      /** This step's readings: two reads of one file in one reply read it once (the re-review of reading-files). @type {Map<string, Promise<import('./reading.js').Reading>>} */
+      const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more });
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, reads });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -2149,7 +2165,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>> }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2185,7 +2201,7 @@ export class Agent {
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read');
+      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
@@ -2244,8 +2260,9 @@ export class Agent {
    * @param {string} [scope] the conversation the tool ran for, its photos read for it
    * @param {boolean} [fresh] an explicit read: read afresh, and the new reading replaces the kept one (the re-review of reading-files:
    *   "read it again" must read it again)
+   * @param {Map<string, Promise<import('./reading.js').Reading>>} [stepReads] this step's readings: two reads of one file in one reply read it once
    */
-  async #described(output, wakeId, signal, model, failed, scope = this.scope, fresh = false) {
+  async #described(output, wakeId, signal, model, failed, scope = this.scope, fresh = false, stepReads = new Map()) {
     const sees = Boolean(model?.input?.includes('image'));
     const reads = Boolean(model?.input?.includes('pdf'));
     /** @type {string[]} */
@@ -2259,16 +2276,22 @@ export class Agent {
       // keyed by the bytes read, their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
       const tried = key ? `${kind}\n${key}` : '';
-      /** @type {import('./reading.js').Reading | null} */
-      let reading = key && !fresh ? await this.#keptReading(scope, key, sees) : null;
+      const once = key ? `${scope}\n${key}\n${sees}` : '';
+      /** @type {import('./reading.js').Reading | null | undefined} */
+      let reading = once ? await stepReads.get(once) : null;
+      if (!reading && key && !fresh) reading = await this.#keptReading(scope, key, sees);
       if (!reading && failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
       if (!reading) {
         const data = m.data ?? (bytes ? toBase64(bytes) : '');
-        reading = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
-          llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
-          secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
-        });
-        if (key) reading = (await this.#keep(scope, key, kind, reading, wakeId)) ?? reading;
+        const pending = (async () => {
+          const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
+            llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
+          });
+          return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
+        })();
+        if (once) stepReads.set(once, pending);
+        reading = await pending;
         if (failed && tried && (reading.how === 'failed' || reading.how === 'late')) failed.set(tried, reading.text);
       }
       said.push(reading.text);
@@ -2286,8 +2309,8 @@ export class Agent {
    * the file read by whoever can, as reading.js reads a tool's, with the stub photosAsWords writes before it, and a PDF's pages for a model
    * that sees photos. A file read in this conversation is read from what was kept. It never throws.
    * @param {Extract<import('../llm/contract.js').Part, { type: 'image' | 'document' }>} part @param {{ input: string[] }} model
-   * @param {AbortSignal} signal @param {string} wakeId @param {Map<string, import('./reading.js').Reading>} [memo] readings that failed earlier in
-   *   this call, by hash and whether the model sees photos @returns {Promise<import('../llm/contract.js').Part[]>}
+   * @param {AbortSignal} signal @param {string} wakeId @param {Map<string, Promise<import('./reading.js').Reading>>} [memo] this call's readings, done
+   *   or under way, by hash and whether the model sees photos @returns {Promise<import('../llm/contract.js').Part[]>}
    */
   async #readFor(part, model, signal, wakeId, memo = new Map()) {
     const pdf = part.type === 'document';
@@ -2298,17 +2321,22 @@ export class Agent {
       const key = part.hash || (bytes ? await sha256Hex(bytes) : '');
       const sees = model.input.includes('image');
       const once = `${key}\n${sees}`;
-      /** @type {import('./reading.js').Reading | null | undefined} */
-      let reading = (key ? await this.#keptReading(this.scope, key, sees) : null) ?? memo.get(once);
-      if (!reading) {
-        reading = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
-          llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
-          explain: (e, role) => this.#explain(e, role, true),
-        });
-        if (key) reading = (await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', reading, wakeId)) ?? reading;
-        // One that failed, or ran out of time, isn't kept, but isn't waited for again by the next model of this call.
-        if (reading.how !== 'told' && reading.how !== 'pages') memo.set(once, reading);
+      // One reading per file in a call: the same file twice in a message (or for the next model, after one that failed) takes the
+      // first's, while it is still being read too (the re-review of reading-files).
+      let pending = memo.get(once);
+      if (!pending) {
+        pending = (async () => {
+          const kept = key ? await this.#keptReading(this.scope, key, sees) : null;
+          if (kept) return kept;
+          const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
+            llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
+            explain: (e, role) => this.#explain(e, role, true),
+          });
+          return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
+        })();
+        memo.set(once, pending);
       }
+      const reading = await pending;
       return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}), ...(/** @type {any} */ (i).page ? { page: /** @type {any} */ (i).page } : {}) }))];
     } catch (e) {
       /* en */
@@ -2335,9 +2363,12 @@ export class Agent {
         const bytes = await blobBytes(this.store, scope, im.hash, { named: e, via: e.type });
         if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.page ? { page: im.page } : {}) });
       }
-      if (how === 'pages' && !images.length) continue;
+      if (how === 'pages' && !images.length) continue; // every picture gone: the file is read again when it is next needed
+      const all = how === 'pages' ? e.data.images ?? [] : [];
+      // Some pictures gone (a refused copy, removed): the line names the pages that go, so it stays true.
+      const note = images.length < all.length ? ` ${goneWords(images.map((i) => i.page), all.filter((/** @type {any} */ im) => !images.some((i) => i.hash === im.hash)).map((/** @type {any} */ im) => im.page))}` : '';
       // The newest reading of each kind replaces what was kept of that kind (an explicit read reads afresh).
-      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text, images }, newest: how });
+      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text: `${text}${note}`, images }, newest: how });
     }
   }
 
