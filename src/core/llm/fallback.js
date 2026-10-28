@@ -423,6 +423,8 @@ export async function callRole(c) {
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
   let began = false;
+  /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
+  let last = '';
   for (const id of ordered) {
     const rec = config.models[id];
     const pRec = rec ? config.providers[rec.provider] : undefined;
@@ -477,8 +479,9 @@ export async function callRole(c) {
         }
       }
       // Another model starts over: what the last one had begun to say is cut, and named by it.
-      if (began) c.onEvent?.({ type: 'restart', by: byOf(String(attempts.at(-1)?.name ?? '')) });
+      if (began) c.onEvent?.({ type: 'restart', by: byOf(last) });
       sentTo.add(id);
+      last = model.name;
       began = true;
       const started = now();
       try {

@@ -552,3 +552,20 @@ test("a call that times out or is cut off part-way costs what it had used too: t
     assert.ok(first.every((a) => a.cost === 1));
   }
 });
+
+test("speech cut when another model starts over is named by the model that spoke it, not one passed over in between (the third review of phone-fixes-1, R1)", async () => {
+  const cutting = { type: 'cutting', name: 'Cutting', tail: true, async *run() {
+    yield { type: 'tool_input', id: 't1', name: 'speak', partial: '{"text":"Bixby Bridge is' };
+    yield { type: 'text', text: 'Bixby ' };
+    throw new ProviderError('network', 'The connection dropped.');
+  } };
+  const s = setup([[{ text: 'unused' }], [{ text: 'B.' }], [{ text: 'C.' }]], { endpointTypes: ['cutting'], types: [['cutting', cutting]] });
+  s.bench.bench('m-1', 600_000, Date.now());
+  /** @type {any[]} */
+  const restarts = [];
+  const r = await call(s, { onEvent: (/** @type {any} */ ev) => { if (ev.type === 'restart') restarts.push(ev.by); } });
+  assert.equal(r.answeredBy, 'model-2');
+  assert.ok(r.attempts.some((a) => a.model === 'm-1' && a.outcome === 'benched'), 'model-1 rested in between');
+  assert.ok(restarts.length >= 1);
+  assert.ok(restarts.every((by) => by.name === 'model-0'), JSON.stringify(restarts));
+});
