@@ -1538,3 +1538,16 @@ test('with PDF pages running and nothing here that sees photos, no pages are dra
   assert.equal(asked.length, 0, 'nothing drawn for no one');
   assert.equal(r.data.content.split('\n').at(-1), noReader('pdf', { photos: true }));
 });
+
+test("the card leaves out \"It doesn't take photos\" for a model that was then asked again with the photo read, and failed for another reason; the Trace keeps both (the review of reading-files)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ error: 'credit', status: 402 }], [{ error: 'credit', status: 402 }]], { models: [{}, { input: ['text'] }], utility: [{ text: 'A menu.' }] });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const body = k.notices.at(-1).body;
+  assert.match(body, /model-1: /);
+  assert.doesNotMatch(body, /doesn't take photos/);
+  const turn = (await k.events(['model.turn'])).filter((e) => e.data.tag !== 'describe').at(-1);
+  assert.deepEqual(turn.data.attempts.filter((/** @type {any} */ a) => a.model === 'm-1').map((/** @type {any} */ a) => a.outcome), ['no-images', 'credit']);
+});

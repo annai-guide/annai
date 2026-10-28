@@ -144,8 +144,11 @@ export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
 export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
-  for (const a of attempts) {
+  for (const [i, a] of attempts.entries()) {
     if (a.outcome === 'ok' || (offline && (a.outcome === 'unreachable' || a.outcome === 'network'))) continue;
+    // A model passed over for a file it can't take, then asked again with the file read (callRole's second pass): its later reason is
+    // the one that counts; the Trace keeps both.
+    if ((a.outcome === 'no-images' || a.outcome === 'no-documents') && attempts.slice(i + 1).some((b) => b.name === a.name)) continue;
     if (!lines.has(a.name)) lines.set(a.name, new Set());
     lines.get(a.name)?.add(attemptWhy(a, { now, plain }));
   }
