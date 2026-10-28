@@ -529,9 +529,9 @@ export class Agent {
     }
   }
 
-  /** @param {StateName} name @param {string} [detail] */
-  #setState(name, detail) {
-    const label = name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
+  /** @param {StateName} name @param {string} [detail] @param {string} [words] the dock's words, in place of the state's own */
+  #setState(name, detail, words) {
+    const label = words ?? (name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`);
     this.state = { name, label, ...(detail ? { detail } : {}) };
     this.#emit('state', this.state);
     this.poke(); // a turn waiting while the user speaks looks again
@@ -2387,8 +2387,8 @@ export class Agent {
     // A note already queued answers a wait.
     const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
     if (note) return Promise.resolve({ note: note.from ?? 'kokoro' });
-    this.#setState('waiting');
-    if (kind === 'wait') this.state = { name: 'waiting', label: t`Your turn` };
+    // Only an ask waits for the user's OK; a wait is their turn, said so as the dock is told (IMG_3017: it heard "Waiting for your OK").
+    this.#setState('waiting', undefined, kind === 'wait' ? t`Your turn` : undefined);
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;

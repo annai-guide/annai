@@ -67,6 +67,24 @@ test('ask waits for a tap; a later step continues with the answer', async (t) =>
   assert.equal(k.requests.length, 2);
 });
 
+test('the dock is told "Waiting for your OK" only while an ask waits; a wait is the user\'s turn (phone-fixes-1 item 5: IMG_3017)', async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'wait', input: { seconds: 60 } }] }, { toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }] }, say('OK.')]]);
+  /** @type {string[]} */
+  const told = [];
+  k.agent.on('state', (/** @type {any} */ s) => { if (s.name === 'waiting') told.push(s.label); });
+  k.agent.send('Hello');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(told, ['Your turn'], 'what the dock was told, as it was told');
+  assert.equal(k.agent.state.label, 'Your turn');
+  k.agent.send('Still here');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(told, ['Your turn', 'Waiting for your OK']);
+  const asked = (await k.events(['tool.call'])).find((/** @type {any} */ e) => e.data.name === 'ask');
+  k.agent.answer(asked.data.id, 'Yes');
+  await k.agent.idle();
+});
+
 test('typing answers a pending ask, and is not repeated as its own message', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, say('OK.')]]);
