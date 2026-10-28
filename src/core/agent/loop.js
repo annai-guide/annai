@@ -1774,6 +1774,10 @@ export class Agent {
         }
         // Cut in by an immediate note: the turn goes on with what is queued, and knows what it had said.
         if (cut.signal.aborted && !abort.signal.aborted) {
+          // The call that was cut was made, and may be billed: a step of this wake, and what its trace says it cost (the review of
+          // phone-fixes-1: a cut and a call again ran past the budgets).
+          steps++;
+          spent = await spentToday(this.store, this.#real.now(), this.#real.timeZone());
           const said = await this.#cutSpeech(wakeId);
           if (said && this.#noteCut) this.#push({ kind: 'cue', text: /* en */ `a note stopped you after: ${said}` });
           this.#noteCut = false;
