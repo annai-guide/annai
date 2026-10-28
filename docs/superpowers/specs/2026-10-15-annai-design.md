@@ -1136,7 +1136,8 @@ Reference: mockups draft 6.
   - **Camera / snap and ask**
   - **Photo viewer:** tap a photo to see the stored photo at full size, with pinch zoom. "Show Shiori this part" crops what is on screen and sends it (§4.8).
   - **Plan:** day tabs, a timetable with ● fixed and ○ flexible, drive legs between stops, and "Check this" chips
-  - **Booking confirmation**
+  - **Booking confirmation**, in the Plan tab, as the Plan is
+  - A file opened from the Plan, a booking or Now goes back there, and the top bar shows that tab; from anywhere else, back is the trip (the user, 2026-10-28: Plan → Check this → Open the original went back to the trip, and back on Plan the top bar said Trips)
   - **Trips:** the install warning, trip cards with stamps, backup status (when each trip was last backed up), "Open a trip someone sent you"
   - **Conversation:** a **Tidy up** menu (Summarize now, Start fresh, §6.5; Start fresh asks first, and leaves a "Started fresh" divider with every earlier line still there); what the user said and what Shiori said, showed and asked. While she is two halves (§6.8), that is Koe's: Kokoro's wakes and errors, annai's blocks to the halves and the errors the other half told the user of stay out, in the Trace (a card still says what needs saying). The notes the halves send each other show, as notes of their own set apart from her reminders, unless "Show what the halves tell each other" is switched off (Settings → Shiori, on by default; the user, 2026-10-23: "maybe let's just have that always on by default and able to be turned off in the settings?"), when they too stay in the Trace. Her spoken lines show their words, smaller and quieter than her written lines (the bubble over the dock is where they are read live; the user, 2026-10-23), with a small "said aloud" mark; with "Show what she says" off (Settings → Voice) they fold behind "Show what she said". Every line she said is there to look back on.
   - **Files**

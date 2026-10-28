@@ -52,8 +52,8 @@ export function outcomeText(outcome) {
   return OUTCOMES[outcome] ?? outcome;
 }
 
-/** The address of a file in a trip. @param {string} id @param {string} path */
-export const fileHref = (id, path) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`;
+/** The address of a file in a trip; from, the screen its crumb goes back to (a Plan, a booking, Now), else the trip. @param {string} id @param {string} path @param {string} [from] */
+export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 
 /** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
 export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
