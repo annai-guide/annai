@@ -1,9 +1,9 @@
 {
   "id": "storage-github",
   "name": "GitHub",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "api": 2,
-  "l10n": ["ja", "zh-Hans"],
+  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "description": "Backs up everything to a private GitHub repository: each backup is a commit, and only changed files are uploaded.",
   "provides": { "storage-type": ["github"] }

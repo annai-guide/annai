@@ -1,5 +1,5 @@
 {
-  "build": "20f3c6695324",
+  "build": "e66da4e03176",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -107,9 +107,9 @@
     "/src/core/koe/instructions.js": "dfee9cc2d0cb",
     "/src/core/koe/live.js": "8077bc356b16",
     "/src/core/koe/tools.js": "cfbc62fd865b",
-    "/src/core/l10n-list.js": "14efc0eed98c",
+    "/src/core/l10n-list.js": "f6bb1818bb3c",
     "/src/core/l10n.js": "d38eac0f8f44",
-    "/src/core/languages.js": "953a68149ec9",
+    "/src/core/languages.js": "678022552a2a",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",
@@ -278,6 +278,7 @@
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
     "/l10n/ja.json": "17ddc7557ca8",
-    "/l10n/zh-Hans.json": "48953c5bbc94"
+    "/l10n/zh-Hans.json": "48953c5bbc94",
+    "/l10n/zh-Hant.json": "bd79e26065fd"
   }
 }

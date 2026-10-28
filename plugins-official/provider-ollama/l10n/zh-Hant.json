@@ -1,0 +1,9 @@
+{
+  "manifest": {
+    "description": "Ollama 上的模型，快速判斷時會關閉思考。",
+    "name": "Ollama",
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型。它會讀取 Ollama 對每個模型的說明：能否讀圖、能否呼叫工具、是否會思考，以及載入期間的上下文長度（與 ollama ps 顯示的相同），否則讀取其 Modelfile 設定的 num_ctx。會思考的模型有 low、medium 和 high；不會思考的模型會拒絕指定的等級，所以 annai 只在快速判斷時關閉思考。除非另行指定，Ollama 只保留對話的 4K 個 token（顯示記憶體低於 24 GiB 時），遠少於 Shiori 所需：請用 OLLAMA_CONTEXT_LENGTH=64000 啟動它；取得清單時未載入的模型，請在其頁面上設定上下文視窗。Ollama 無法被要求呼叫指定的工具，所以快速判斷可能會改由主要模型來做。",
+    "provider.note": "Ollama 只允許同一台電腦上的頁面存取：請用 OLLAMA_ORIGINS=https://annai.guide 啟動它，讓 annai 的頁面能呼叫它。它監聽 11434 埠。"
+  },
+  "messages": {}
+}

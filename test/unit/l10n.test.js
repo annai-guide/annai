@@ -138,6 +138,20 @@ test('the phone\'s languages are matched by language and script: zh-TW is not zh
   assert.deepEqual(chooseTag(null, ['not a tag', 'ja-JP'], both), { tag: 'ja', region: 'JP' }, 'a tag that is none is passed over');
 });
 
+test('Taiwan, Hong Kong, Macau and any zh-Hant phone choose Traditional Chinese, a mainland or Singapore one Simplified (l10n-zh-Hant)', () => {
+  const all = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+  assert.deepEqual(chooseTag(null, ['zh-TW'], all), { tag: 'zh-Hant', region: 'TW' });
+  assert.deepEqual(chooseTag(null, ['zh-HK', 'en-GB'], all), { tag: 'zh-Hant', region: 'HK' }, 'one Traditional catalog, with Taiwan\'s words, for Hong Kong too');
+  assert.deepEqual(chooseTag(null, ['zh-MO'], all), { tag: 'zh-Hant', region: 'MO' });
+  assert.deepEqual(chooseTag(null, ['zh-Hant-TW'], all), { tag: 'zh-Hant', region: 'TW' });
+  assert.deepEqual(chooseTag(null, ['zh-Hant'], all), { tag: 'zh-Hant', region: '' });
+  assert.deepEqual(chooseTag(null, ['zh-CN'], all), { tag: 'zh-Hans', region: 'CN' });
+  assert.deepEqual(chooseTag(null, ['zh-SG'], all), { tag: 'zh-Hans', region: 'SG' });
+  assert.deepEqual(chooseTag(null, ['zh'], all), { tag: 'zh-Hans', region: '' }, 'Chinese with neither script nor region is Simplified, as Intl takes it');
+  assert.deepEqual(chooseTag(null, ['zh-TW', 'ja-JP'], all, ['en', 'ja', 'zh-Hans']), { tag: 'ja', region: 'JP' }, 'while it is unfinished, a Taiwan phone is not given it');
+  assert.deepEqual(chooseTag('zh-Hant', ['zh-TW'], all, ['en', 'ja', 'zh-Hans']), { tag: 'zh-Hant', region: 'TW' }, 'but a choice of it is kept, with the phone\'s region');
+});
+
 test('an unfinished language is never picked for the user, only by them', () => {
   assert.deepEqual(chooseTag(null, ['ja-JP', 'en-US'], ['en', 'ja'], ['en']), { tag: 'en', region: 'US' });
   assert.deepEqual(chooseTag('ja', ['ja-JP', 'en-US'], ['en', 'ja'], ['en']), { tag: 'ja', region: 'JP' });

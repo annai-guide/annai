@@ -1,9 +1,9 @@
 {
   "id": "openai-realtime",
   "name": "OpenAI Realtime",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans"],
+  "l10n": ["ja", "zh-Hans", "zh-Hant"],
   "entry": "index.js",
   "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.",
   "provides": { "endpoint-type": ["openai-realtime"] }

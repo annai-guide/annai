@@ -327,3 +327,14 @@ test('sentences: a part with no full stop of its own (a plugin\'s error, say) ke
   assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
   assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
 });
+
+test('under Traditional Chinese screens, formats follow the phone\'s region: Taiwan\'s, Hong Kong\'s, or a US phone\'s (l10n-zh-Hant)', () => {
+  as('zh-Hant', 'zh-TW');
+  assert.equal(locale(), 'zh-Hant-TW');
+  assert.equal(money(12.5, 'TWD'), new Intl.NumberFormat('zh-Hant-TW', { style: 'currency', currency: 'TWD' }).format(12.5));
+  as('zh-Hant', 'zh-HK');
+  assert.equal(locale(), 'zh-Hant-HK');
+  as('zh-Hant', 'en-US');
+  assert.equal(locale(), 'zh-Hant-US');
+  assert.equal(num(1234.5), '1,234.5');
+});
