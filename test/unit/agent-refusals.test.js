@@ -252,3 +252,14 @@ test('a model removed while the photo limit it taught is learned needs no limit:
   assert.equal((await readConfig(k.ws)).models['m-0'], undefined, 'not recreated');
   assert.deepEqual(warned.filter((w) => /photo repair/.test(w)), [], 'the repair does not fail on a model that is gone');
 });
+
+test("limitImages: a PDF's page pictures in one message go from the last page back, and each stub names its page (the re-check of reading-files)", () => {
+  const page = (/** @type {number} */ n) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash: `h${n}`, page: n });
+  const messages = [
+    { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: '[a PDF: booking.pdf] Its pages as pictures, as you can\'t read PDFs: pages 1–3 of 3.' }, page(1), page(2), page(3)] },
+    { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'BBBB', path: '/trip/files/new.webp' }] },
+  ];
+  const out = limitImages(messages, 3);
+  assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => p.page ?? p.text), ['[a PDF: booking.pdf] Its pages as pictures, as you can\'t read PDFs: pages 1–3 of 3.', 1, 2, '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
+  assert.equal(out[1].parts[0].type, 'image', 'the newest photo still wins');
+});

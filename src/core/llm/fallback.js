@@ -300,7 +300,7 @@ function newestDocument(request) {
 /**
  * What a conversation has kept of a file a model can't take (the review of reading-files, finding 1), by the file's hash: what it says
  * in words, for any model, or its pages, for one that sees photos (sees); null when nothing was kept.
- * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string, hash?: string }[] } | null} Readings
+ * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string, hash?: string, page?: number }[] } | null} Readings
  */
 
 /**
@@ -325,7 +325,7 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     const pages = sees ? r.images.filter((i) => !i.hash || !sent.has(i.hash)) : [];
     for (const i of pages) if (i.hash) sent.add(i.hash);
     // With their hashes, so a provider's files API can take them by upload rather than as bytes in every request.
-    return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}) }))];
+    return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}), ...(i.page ? { page: i.page } : {}) }))];
   };
   return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.flatMap(word) })) };
 }

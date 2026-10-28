@@ -1735,3 +1735,62 @@ test("a reader's first-words wait never takes a PDF's whole reading: at most two
   await k.agent.idle();
   assert.equal(asked.length, 1, 'the pages were drawn');
 });
+
+// Fix round 3 (the re-check of reading-files).
+const pageOf = (/** @type {any} */ p) => fromB64(p.data)[3] - 0xe0 + 1;
+const fromB64 = (/** @type {string} */ s) => Uint8Array.from(Buffer.from(s, 'base64'));
+/** A plugin that draws count pages, each a JPEG whose fourth byte tells its page, and what it was asked. @param {any} k @param {number} count */
+function numberedPages(k, count) {
+  /** @type {any[]} */
+  const asked = [];
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async (/** @type {any} */ _b, /** @type {any} */ o) => { asked.push(o); return { count, pages: Array.from({ length: Math.min(count, o.max) }, (_, i) => ({ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0 + i]), width: 10, height: 10 })) }; } });
+  return asked;
+}
+
+test("a photo limit under a PDF's kept pages keeps page 1 and on, and says which pages didn't go (round 3)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Done.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'], images: { maxCount: 2 } }] });
+  numberedPages(k, 3);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const parts = k.sent['model-1'][0].messages.at(-1).parts;
+  assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image').map(pageOf), [1, 2]);
+  assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /pages 1–2 of 3; the rest weren't sent\./.test(p.text)), JSON.stringify(parts.map((/** @type {any} */ p) => p.text ?? p.type)));
+});
+
+test("a PDF read for a model that sees photos draws at most its photo limit, from page 1, and the line says so (round 3)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'], images: { maxCount: 2 } }] });
+  const asked = numberedPages(k, 3);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.equal(asked[0].max, 2);
+  assert.match(r.data.content, /pages 1–2 of 3; the rest weren't sent\.$/);
+  assert.equal(r.data.images.length, 2);
+});
+
+test("a later reading as pages doesn't take a PDF's words from a model that sees no photos: each kind's newest is kept (round 3)", async (t) => {
+  useClock(t);
+  const { saveRoles, readConfig, saveModel } = await import('../../src/core/llm/config.js');
+  // m-0 reads PDFs; m-1 sees photos and reads no PDFs; m-2 does neither. Utility's model reads PDFs, until it doesn't.
+  const k = await bookingKit([[readPdf, say('1')], [readPdf, say('3')], [readPdf, say('2'), say('4')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }, { text: 'never' }] }, ['text', 'pdf']);
+  numberedPages(k, 1);
+  const only = async (/** @type {string} */ id) => { const cfg = await readConfig(k.ws); await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: [id] } }); };
+  await only('m-0');
+  k.agent.send('Read it'); // the PDF as a document, kept in the conversation
+  await k.agent.idle();
+  await only('m-2');
+  k.agent.send('Read it, please'); // told in words by Utility's model
+  await k.agent.idle();
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text'] } });
+  await only('m-1');
+  k.agent.send('Read it again'); // read afresh as pages, for a model that sees photos
+  await k.agent.idle();
+  await only('m-2');
+  k.agent.send('So when?');
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.deepEqual((await k.events(['reading'])).map((e) => e.data.how), ['told', 'pages']);
+});

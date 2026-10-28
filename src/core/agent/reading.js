@@ -30,7 +30,7 @@ const DESCRIBE_PAGES = /* en */ "These are pictures of a PDF's pages, in order. 
 
 /** @typedef {{ kind: 'image' | 'pdf', mediaType: string, data: string, name?: string, path?: string }} FileToRead  data: base64 */
 /**
- * @typedef {{ how: 'told' | 'pages' | 'none' | 'failed' | 'late' | 'stopped', text: string, images: { mediaType: string, data: string }[] }} Reading
+ * @typedef {{ how: 'told' | 'pages' | 'none' | 'failed' | 'late' | 'stopped', text: string, images: { mediaType: string, data: string, page?: number }[] }} Reading
  *   text: the line the model reads; images: page pictures, only when how is 'pages' (for a model that sees photos)
  */
 
@@ -76,7 +76,8 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
- * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
+ * @param {FileToRead} file @param {{ input?: string[], images?: { maxCount?: number } }} model the model the reading is for: a PDF drawn for it
+ *   (it sees photos) is drawn at most its photo limit of pages, from page 1
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain?: (e: unknown, role: string) => string }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online)
@@ -149,7 +150,9 @@ export async function readFile(file, model, o) {
         /** @type {import('../pdf-pages.js').Drawn} */
         let drawn;
         try {
-          drawn = await Promise.race([o.pages.pages(fromBase64(file.data), { max: MAX_PAGES, edge: PAGE_EDGE, signal: stop.signal }), stopped]);
+          // For a model that sees photos, no more pages than it takes in one request, from page 1 (the re-check of reading-files).
+          const max = sees ? Math.min(MAX_PAGES, model.images?.maxCount ?? MAX_PAGES) : MAX_PAGES;
+          drawn = await Promise.race([o.pages.pages(fromBase64(file.data), { max, edge: PAGE_EDGE, signal: stop.signal }), stopped]);
         } catch (e) {
           if (stop.signal.aborted) throw e;
           /* en */
@@ -158,9 +161,11 @@ export async function readFile(file, model, o) {
           const why = `The PDF pages plugin couldn't draw its pages: ${/** @type {any} */ (e)?.message ?? e}`;
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         }
-        const images = drawn.pages.map((p) => ({ mediaType: p.type, data: toBase64(p.bytes) }));
         // A page with nothing drawn on it isn't sent (the review of reading-files: a booking's empty last page went as a picture every turn).
         const blank = Array.isArray(drawn.blank) ? drawn.blank : [];
+        // Each picture knows its page, so a photo limit drops the last pages first and says which (the re-check of reading-files).
+        const numbers = Array.from({ length: drawn.pages.length + blank.length }, (_, i) => i + 1).filter((n) => !blank.includes(n));
+        const images = drawn.pages.map((p, i) => ({ mediaType: p.type, data: toBase64(p.bytes), page: numbers[i] }));
         const last = images.length + blank.length;
         /* en */
         const rest = drawn.count > last ? "; the rest weren't sent" : '';
