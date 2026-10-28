@@ -1,5 +1,5 @@
 {
-  "build": "9e6ece2417ee",
+  "build": "be8e9d5c1710",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -102,14 +102,14 @@
     "/src/core/ics.js": "e06e92b65744",
     "/src/core/imports.js": "e96f1badc893",
     "/src/core/inflate.js": "0cc2e9f8de38",
-    "/src/core/intl.js": "de5e4d0c9b93",
+    "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "a3724049f0e7",
     "/src/core/koe/instructions.js": "dfee9cc2d0cb",
     "/src/core/koe/live.js": "8077bc356b16",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "44a52e7a6d63",
-    "/src/core/languages.js": "d9c8e5c92c67",
+    "/src/core/languages.js": "b778e4edbed3",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",

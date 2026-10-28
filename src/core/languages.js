@@ -14,11 +14,13 @@ import { t } from './l10n.js';
 /* en: the names of the languages, until the formatting helpers name them */
 /**
  * id, name, locale, then only what differs: iso (else the id), live (else the id; null: none), google (else the locale; null: none). Chinese is
- * Mandarin (Gemini Live: Simplified); Cantonese is its own. A language's name for itself comes from the browser (nativeName).
+ * Mandarin in two rows, Simplified (the mainland's codes) and Traditional (Taiwan's: review F4, so a Taiwan user's dictation and
+ * transcription come back in Traditional); Cantonese is its own. A language's name for itself comes from the browser (nativeName).
  * @type {[string, string, string, string?, (string | null)?, (string | null)?][]}
  */
 const ROWS = [
-  ['en', 'English', 'en-US'], ['zh', 'Chinese (Mandarin)', 'zh-CN', 'zh', 'zh-Hans', 'cmn-Hans-CN'], ['yue', 'Cantonese', 'yue-Hant-HK', 'yue', null],
+  ['en', 'English', 'en-US'], ['zh', 'Chinese (Simplified)', 'zh-CN', 'zh', 'zh-Hans', 'cmn-Hans-CN'], ['zh-Hant', 'Chinese (Traditional)', 'zh-TW', 'zh', 'zh-Hant', 'cmn-Hant-TW'],
+  ['yue', 'Cantonese', 'yue-Hant-HK', 'yue', null],
   ['ja', 'Japanese', 'ja-JP'], ['ko', 'Korean', 'ko-KR'], ['es', 'Spanish', 'es-ES', 'es', 'es', 'es-419'], ['fr', 'French', 'fr-FR'],
   ['de', 'German', 'de-DE'], ['it', 'Italian', 'it-IT'], ['pt', 'Portuguese', 'pt-BR', 'pt', 'pt-BR'], ['nl', 'Dutch', 'nl-NL'],
   ['ru', 'Russian', 'ru-RU'], ['uk', 'Ukrainian', 'uk-UA'], ['pl', 'Polish', 'pl-PL'], ['cs', 'Czech', 'cs-CZ'],
@@ -35,6 +37,8 @@ const ROWS = [
 export const LANGUAGES = ROWS.map(([id, name, locale, iso = id, live = id, google = locale]) => ({ id, name, locale, iso, live, google }));
 const BY_ID = new Map(LANGUAGES.map((l) => [l.id, l]));
 
+/** The tag the browser names a language of ours by: the Chinese row is Simplified Chinese, apart from Traditional's. @param {string} id */
+export const displayCode = (id) => (id === 'zh' ? 'zh-Hans' : id);
 /** A language's name in a language, as the browser knows it (Intl.DisplayNames), else the fallback. @param {string} in_ @param {string} code @param {string} fallback */
 const display = (in_, code, fallback) => {
   try {
@@ -47,7 +51,7 @@ const display = (in_, code, fallback) => {
 /* en */ const OWN = /** @type {Record<string, string>} */ ({ yue: '粵語' });
 /** A language's name for itself ("日本語"). @param {Language} l */
 export function nativeName(l) {
-  const own = display(l.id, l.id, l.name);
+  const own = display(displayCode(l.id), displayCode(l.id), l.name);
   return own !== l.name && own !== l.id ? own : OWN[l.id] ?? own;
 }
 
@@ -56,7 +60,8 @@ function browserLanguage(locale) {
   const tag = String(locale ?? '').trim().replace(/_/g, '-');
   const raw = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/i.test(tag) ? tag : 'en-US';
   const code = raw.split('-')[0].toLowerCase();
-  const id = BY_ID.has(code) ? code : ({ nb: 'no', nn: 'no', iw: 'he', tl: 'fil' }[/** @type {'nb'} */ (code)] ?? null);
+  // A Traditional Chinese phone's Chinese is the Traditional row.
+  const id = code === 'zh' && traditional(raw) ? 'zh-Hant' : BY_ID.has(code) ? code : ({ nb: 'no', nn: 'no', iw: 'he', tl: 'fil' }[/** @type {'nb'} */ (code)] ?? null);
   const known = id ? BY_ID.get(id) : null;
   // A language annai has no codes for is still named, and still the browser's own tag: no hint is ever sent for it.
   return known ? { ...known, locale: raw } : { id: code, name: display('en', code, code), locale: raw, iso: code, live: code, google: null };
@@ -75,7 +80,7 @@ export function languageSettings(app, locale) {
   return { explicit: false, spoken: [browserLanguage(locale)], answer };
 }
 
-/** "English", "English and Japanese", "English, Chinese (Mandarin) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
+/** "English", "English and Japanese", "English, Chinese (Simplified) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
 export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n, i, a) => (i ? `${s}${i === a.length - 1 ? ` ${and} ` : ', '}${n}` : n), '');
 
 /** What a model that writes speech down is told (phase 2), after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
@@ -186,7 +191,7 @@ export function vietnameseMarks(text, spoken = []) {
 }
 
 /** Which of ours a name from languageOf may be: a script is shared by several languages. */
-const SHARED = /** @type {Record<string, string[]>} */ ({ Chinese: ['zh', 'yue'], Arabic: ['ar', 'fa'], Russian: ['ru', 'uk', 'bg', 'sr'], Ukrainian: ['uk'] });
+const SHARED = /** @type {Record<string, string[]>} */ ({ Chinese: ['zh', 'zh-Hant', 'yue'], Arabic: ['ar', 'fa'], Russian: ['ru', 'uk', 'bg', 'sr'], Ukrainian: ['uk'] });
 
 /**
  * The listed language a name from languageOf is, or null. Han characters alone are Chinese's, and Japanese's too when Chinese isn't
