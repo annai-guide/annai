@@ -602,17 +602,18 @@ test('a live Koe is never asked to read: realtime models are not chat models', a
   assert.ok(!tried.includes('m-live'), 'the realtime model was never asked to read');
 });
 
-test('a model that takes no photos answers once the conversation holds one; a photo just sent needs a model that sees it (emulator pass)', async (t) => {
+test('a model that takes no photos answers once the conversation holds one; a photo just sent goes to it last, read by whoever can, here no one (emulator pass; the bookings design, goal 11)', async (t) => {
   useClock(t);
   const k = await agentKit([[{ error: 'credit', status: 402 }], [say('Pfeiffer Beach is close.')]], { models: [{}, { input: ['text'] }] });
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
-  assert.equal(k.sent['model-1'], undefined, "passed over: it couldn't see the photo it was asked about");
-  assert.match(k.notices[0].body, /model-1: It doesn't take photos\./);
+  // The one model that sees photos is out of credit, so the photo couldn't be described, and the result says so to the model that answers.
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: \/trip\/files\/p\.webp\] It couldn't be described: /);
+  assert.equal(k.notices.length, 0);
   k.agent.send("What's around here?");
   await k.agent.idle();
-  const [asked] = k.sent['model-1'];
+  const asked = k.sent['model-1'].at(-1);
   assert.match(JSON.stringify(asked.messages), /\[a photo: \/trip\/files\/p\.webp\]/);
   assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"image"/);
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Pfeiffer Beach is close.');
@@ -1465,4 +1466,27 @@ test("each of Shiori's lines carries the model that wrote it, the role's first, 
   await k.agent.idle();
   const [line] = await k.events(['out.speak']);
   assert.deepEqual(line.data.by, { name: 'model-1', first: 'model-0', tried: true });
+});
+
+test("the reader fails after reading, and a model that reads no PDFs answers with it told in words (2026-10-28, 04:04: 'It doesn't read PDFs' on every model)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Check-in is at 3 PM.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text'] }], utility: [{ text: 'Hotel booking: check-in 3 PM.' }] }, ['text', 'pdf']);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const sent = JSON.stringify(k.sent['model-1'][0].messages);
+  assert.match(sent, /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.doesNotMatch(sent, /"type":"document"/);
+  const turn = (await k.events(['model.turn'])).find((e) => e.data.answeredBy === 'model-1');
+  assert.deepEqual(turn.data.attempts.map((/** @type {any} */ a) => a.outcome), ['credit', 'no-documents', 'ok']);
+  assert.equal((await k.events(['error'])).length, 0, 'no failure shown');
+});
+
+test('the user\'s photo, when no model of Kokoro\'s sees photos: described by one that does, then answered', async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('A menu.')]], { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish is circled.' }] });
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /\[a photo: \/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
+  assert.equal((await k.events(['error'])).length, 0);
 });

@@ -182,18 +182,21 @@ test('a model that takes no photos gets older ones as words, and is passed over 
   await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
 });
 
+/** A PDF a tool's result brought, and a conversation that read it and went on. */
+const pdf = { type: 'document', mediaType: 'application/pdf', data: 'AAAA', name: 'booking.pdf' };
+/** @type {any} */
+const older = { messages: [
+  { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'read', input: { path: '/trip/files/booking.pdf' } }] },
+  { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'The PDF.' }, pdf] },
+  { role: 'assistant', parts: [{ type: 'text', text: 'Read it.' }] },
+  { role: 'user', parts: [{ type: 'text', text: "What's around here?" }] },
+] };
+
 test('a model that reads no PDFs gets an older one as a note, and is passed over only for a PDF in the newest message (the second emulator pass)', async () => {
   /** @type {any[]} */
   const seen = [];
   const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) { seen.push(c.request); yield { type: 'text', text: 'Fine.' }; yield { type: 'stop', reason: 'end' }; } });
   const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spy]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
-  const pdf = { type: 'document', mediaType: 'application/pdf', data: 'AAAA', name: 'booking.pdf' };
-  const older = { messages: [
-    { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'read', input: { path: '/trip/files/booking.pdf' } }] },
-    { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'The PDF.' }, pdf] },
-    { role: 'assistant', parts: [{ type: 'text', text: 'Read it.' }] },
-    { role: 'user', parts: [{ type: 'text', text: "What's around here?" }] },
-  ] };
   const r = await call(s, { request: older });
   assert.equal(r.reply.text, 'Fine.');
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
@@ -203,6 +206,58 @@ test('a model that reads no PDFs gets an older one as a note, and is passed over
   const t = setup([[{ text: 'never' }]], { models: [{ input: ['text', 'image'] }] });
   const fresh = { messages: [older.messages[0], older.messages[1]] };
   await assert.rejects(call(t, { request: fresh }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-documents' && /PDFs/.test(e.message + failedText(e.attempts)));
+});
+
+/** A model type that answers 'Booked.' and keeps each request it got. @param {any[]} seen */
+const spyType = (seen) => /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) { seen.push(c.request); yield { type: 'text', text: 'Booked.' }; yield { type: 'stop', reason: 'end' }; } });
+
+test("a model a PDF in the newest message kept out is tried again once the rest failed, with what read made of it (the user's session, 2026-10-28)", async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spyType(seen)]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
+  const fresh = { messages: [older.messages[0], older.messages[1]] };
+  /** @type {any[]} */ const asked = [];
+  const read = async (/** @type {any} */ part, /** @type {any} */ model) => { asked.push([part.type, model.providerId]); return [{ type: 'text', text: '[a PDF: booking.pdf] What it says (told by model-u, as you can\'t read PDFs): Flight AN 123.' }]; };
+  const r = await call(s, { request: fresh, read });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'no-documents', 'ok']);
+  assert.deepEqual(asked, [['document', 'model-1']]);
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: "[a PDF: booking.pdf] What it says (told by model-u, as you can't read PDFs): Flight AN 123." });
+  assert.equal(fresh.messages[1].parts[1], pdf, 'the request itself is not changed');
+});
+
+test("read is asked only for the newest message's files: an older photo goes as words", async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[]], { types: [['spy', spyType(seen)]], endpointTypes: ['spy'], models: [{ input: ['text'] }] });
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/2026-10-18-1530.webp' };
+  const fresh = { type: 'image', mediaType: 'image/webp', data: 'BBBB', hash: 'h2', path: '/trip/files/new.webp' };
+  const request = { newestPhoto: true, messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Look at this' }, photo] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'A beach.' }] },
+    { role: 'user', parts: [{ type: 'text', text: "What's this?" }, fresh] },
+  ] };
+  /** @type {any[]} */ const asked = [];
+  const read = async (/** @type {any} */ part, /** @type {any} */ model) => { asked.push([part.type, model.providerId]); return [{ type: 'text', text: `[a photo: ${part.path}] What it shows (described by model-u, as you can't see photos): A menu.` }]; };
+  const r = await call(s, { request, read });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'ok']);
+  assert.deepEqual(asked, [['image', 'model-0']]);
+  assert.match(JSON.stringify(seen[0].messages), /"text":"\[a photo: \/trip\/files\/2026-10-18-1530\.webp\]"/);
+  assert.deepEqual(seen[0].messages[2].parts[1], { type: 'text', text: "[a photo: /trip/files/new.webp] What it shows (described by model-u, as you can't see photos): A menu." });
+});
+
+test('a model passed over for another reason is not tried again: too long, switched off', async () => {
+  const s = setup([[{ text: 'never' }], [{ text: 'never' }]], { models: [{ input: ['text', 'pdf'], contextWindow: 10 }, { input: ['text'] }], off: [1] });
+  let n = 0;
+  await assert.rejects(call(s, { request: { messages: [older.messages[0], older.messages[1]] }, read: async () => { n++; return []; } }),
+    (e) => e instanceof AllFailedError && e.attempts.map((a) => a.outcome).join() === 'too-long,off');
+  assert.equal(n, 0);
+});
+
+test('newestDocument: false sends a newest PDF as a note, as newestPhoto: false does a photo', async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[]], { types: [['spy', spyType(seen)]], endpointTypes: ['spy'], models: [{ input: ['text'] }] });
+  const r = await call(s, { request: { messages: [older.messages[0], older.messages[1]], newestDocument: false } });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['ok']);
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: booking.pdf]' });
 });
 
 test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
