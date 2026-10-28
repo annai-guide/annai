@@ -289,6 +289,7 @@ function newestPhoto(request) {
  * Whether the newest message holds a PDF (a tool's result brought it): a model that reads none can't answer it. @param {Request} request
  */
 function newestDocument(request) {
+  if (request.newestDocument !== undefined) return request.newestDocument;
   return Boolean(request.messages.findLast((m) => m.role === 'user')?.parts.some((p) => p.type === 'document'));
 }
 
@@ -302,6 +303,25 @@ export function photosAsWords(request, { photos = true, documents = true } = {})
   /* en */
   const word = (p) => (photos && p.type === 'image' ? { type: 'text', text: `[a photo${p.path ? `: ${p.path}` : ''}]` } : documents && p.type === 'document' ? { type: 'text', text: `[a PDF${p.name ? `: ${p.name}` : ''}]` } : p);
   return { ...request, messages: request.messages.map((m) => ({ ...m, parts: m.parts.map(word) })) };
+}
+
+/**
+ * What to send in place of a photo or PDF a model can't take, for the model about to be called; it never throws.
+ * @typedef {(part: Extract<import('./contract.js').Part, { type: 'image' | 'document' }>, model: Model, signal?: AbortSignal) => Promise<import('./contract.js').Part[]>} ReadFor
+ */
+
+/**
+ * The request for the second pass's model: each photo or PDF of the newest user message that it can't take, as read gives it, and
+ * older ones as words (whatever newestPhoto says). The request passed in is not changed.
+ * @param {Request} request @param {Model} model @param {ReadFor} read @param {AbortSignal} [signal] @returns {Promise<Request>}
+ */
+async function readFor(request, model, read, signal) {
+  const newest = request.messages.findLastIndex((m) => m.role === 'user');
+  const cant = (/** @type {import('./contract.js').Part} */ p) => (p.type === 'image' && !model.input.includes('image')) || (p.type === 'document' && !model.input.includes('pdf'));
+  const messages = await Promise.all(request.messages.map(async (m, i) => (i !== newest ? m : {
+    ...m, parts: (await Promise.all(m.parts.map((p) => (cant(p) ? read(/** @type {any} */ (p), model, signal) : [p])))).flat(),
+  })));
+  return photosAsWords({ ...request, messages }, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
 }
 
 /**
@@ -372,7 +392,7 @@ const heardIds = (was, now) => (was === now ? now : {
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string }} c
+ *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
@@ -384,6 +404,8 @@ const heardIds = (was, now) => (was === now ? now : {
  *   borrow: warm housekeeping, which continues the conversation's live kept chain (if it has one) and deletes its own response, recording nothing
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
  *   online: whether the device has a connection: a failure to connect while it has none says nothing about the model
+ *   read: after every model was tried, those passed over for a photo or PDF in the newest message are tried again, in order, each with what
+ *   read makes of those files (§9.6; without it, as for plugins' calls, there is no second pass)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
@@ -393,6 +415,8 @@ export async function callRole(c) {
   /** @type {Attempt[]} */
   const attempts = [];
   let request = c.request;
+  /** What a model is sent before what a cut-off reply said is added: the request, or the second pass's for its model. */
+  let base = c.request;
   let said = '';
   let usage = { ...NO_USAGE };
   /** @type {number | undefined} */
@@ -425,7 +449,11 @@ export async function callRole(c) {
   let began = false;
   /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
   let last = '';
-  for (const id of ordered) {
+  /**
+   * Tries one model, its retries and repairs included: its answer, or null when it was passed over or failed (an attempt says why).
+   * @param {string} id @returns {Promise<Awaited<ReturnType<typeof callRole>> | null>}
+   */
+  const one = async (id) => {
     const rec = config.models[id];
     const pRec = rec ? config.providers[rec.provider] : undefined;
     const provider = pRec ? providerOf(pRec) : null;
@@ -450,7 +478,7 @@ export async function callRole(c) {
         model: id, name: model?.name ?? id, outcome: skip ?? 'removed', ms: 0, ...(why ? { error: why } : {}), ...(why && skip === 'benched' ? { restsUntil: bench.until(id) } : {}),
         ...(why && skip === 'type-missing' ? { said: /** @type {import('./contract.js').Said} */ ({ code: 'held' }) } : {}),
       });
-      continue;
+      return null;
     }
     // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
     // first, whatever the header's name, as the protocol then gets none to tell it (fix pass). Its plugin's
@@ -514,7 +542,7 @@ export async function callRole(c) {
         if (err.partial) {
           // Handled like an interruption: the next model continues from here.
           said += err.partial;
-          request = continueAfter(c.request, said);
+          request = continueAfter(base, said);
           break;
         }
         if (err.again && !again) {
@@ -567,6 +595,21 @@ export async function callRole(c) {
         break;
       }
     }
+    return null;
+  };
+  for (const id of ordered) {
+    const r = await one(id);
+    if (r) return r;
+  }
+  // The second pass (the bookings design, goal 11): a model a photo or PDF in the newest message kept out is tried again, once the rest
+  // have failed, with each one it can't take read by whoever can (c.read), and older ones as words.
+  const passed = c.read ? [...new Set(attempts.filter((a) => a.outcome === 'no-images' || a.outcome === 'no-documents').map((a) => a.model))] : [];
+  for (const id of passed) {
+    const model = modelOf(config.models[id]);
+    base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal);
+    request = said ? continueAfter(base, said) : base;
+    const r = await one(id);
+    if (r) return r;
   }
   await record(null, said);
   throw new AllFailedError(attempts, said);

@@ -1767,6 +1767,7 @@ export class Agent {
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
+          read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId),
         });
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
         this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
@@ -2265,6 +2266,37 @@ export class Agent {
     const { images, document, ...rest } = output;
     const shown = [...(sees ? images ?? [] : []), ...pages];
     return { ...rest, ...(shown.length ? { images: shown } : {}), ...(reads ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
+  }
+
+  /**
+   * What a model a photo or PDF in the newest message kept out gets in its place, at callRole's second pass (the bookings design, goal 11):
+   * the file read by whoever can, as reading.js reads a tool's, with the stub photosAsWords writes before it, and a PDF's pages for a model
+   * that sees photos. A PDF read in this conversation is read from that. It never throws.
+   * @param {Extract<import('../llm/contract.js').Part, { type: 'image' | 'document' }>} part @param {{ input: string[] }} model
+   * @param {AbortSignal} signal @param {string} wakeId @returns {Promise<import('../llm/contract.js').Part[]>}
+   */
+  async #readFor(part, model, signal, wakeId) {
+    const pdf = part.type === 'document';
+    /* en */
+    const stub = pdf ? `[a PDF${part.name ? `: ${part.name}` : ''}]` : `[a photo${part.path ? `: ${part.path}` : ''}]`;
+    try {
+      const bytes = part.data ? fromBase64(part.data) : part.type === 'image' && part.hash ? await blobBytes(this.store, this.scope, part.hash) : null;
+      const key = bytes ? await sha256Hex(bytes) : '';
+      const sees = model.input.includes('image');
+      const told = pdf && key ? `${this.scope}\n${key}\n${sees ? 'sees' : 'words'}` : '';
+      let reading = told ? this.#toldPdfs.get(told) : undefined;
+      if (!reading) {
+        reading = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
+          llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
+          explain: (e, role) => this.#explain(e, role, true),
+        });
+        if (told && (reading.how === 'told' || reading.how === 'pages')) this.#toldPdfs.set(told, reading);
+      }
+      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data }))];
+    } catch (e) {
+      /* en */
+      return [{ type: 'text', text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }];
+    }
   }
 
   /**
