@@ -7,6 +7,7 @@ import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
+import { NAMES_FILE } from '../../core/names.js';
 
 export const manifest = {
   id: 'files',
@@ -28,6 +29,8 @@ export function activate(annai) {
   const { tsv } = annai.helpers;
   /** @param {string} path @param {any} call */
   const where = (path, call) => resolvePath(path, call.trip);
+  /** The turn's hand-over, for what she writes and deletes in it, so Undo can take it back. @param {any} call */
+  const turnOf = (call) => (call.handover ? { handover: String(call.handover) } : {});
   /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
   const writable = (scope, path) => {
     /* en */
@@ -190,7 +193,7 @@ export function activate(annai) {
         writable(scope, path);
         recordPlace(scope, path);
         const r = rule(scope, path);
-        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).${r.note}`;
       },
     },
@@ -209,7 +212,7 @@ export function activate(annai) {
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
         const r = rule(scope, path);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.${r.note}`;
       }),
     },
@@ -225,7 +228,8 @@ export function activate(annai) {
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         const r = rule(scope, path);
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        // Her short names for files start with her first one (names.js): no write of an empty file first.
+        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.${r.note}`;
       }),
     },
@@ -259,7 +263,7 @@ export function activate(annai) {
         writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
         const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
-        await ws.delete(scope, path, { author: 'shiori' });
+        await ws.delete(scope, path, { author: 'shiori', ...turnOf(call) });
         return `Deleted ${i.path}.${confirmed ? ' The user had confirmed this booking. If deleting it was a mistake, tell them: its history keeps it, so they can restore it.' : ''}`;
       }),
     },

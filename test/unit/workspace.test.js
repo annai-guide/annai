@@ -238,3 +238,16 @@ test('a guard on a JSON write sees what is stored and what would be, read as the
   await assert.rejects(ws.write('trip-1', '/x.json', { a: 9 }, { author: 'shiori', guard: () => { throw new Error('no'); } }), /no/);
   assert.equal((await ws.readJSON('trip-1', '/x.json')).a, 3);
 });
+
+test('a write, patch, delete or writeMany given a hand-over records it on its log entry; one given none has no such key', async () => {
+  const { ws, store } = await setup();
+  const s = 'trip-1';
+  await ws.write(s, '/a.md', 'x', { author: 'shiori', handover: 'h-1' });
+  await ws.patch(s, '/b.json', { y: 1 }, { author: 'shiori', create: true, handover: 'h-1' });
+  await ws.delete(s, '/a.md', { author: 'shiori', handover: 'h-1' });
+  await ws.writeMany(s, [{ path: '/d.md', content: 'd' }, { path: '/b.json', content: null }], { author: 'shiori', handover: 'h-2' });
+  await ws.write(s, '/c.md', 'z', { author: 'user' });
+  const ev = await store.tx(['events'], 'readonly', (t) => t.listEvents(s, { types: ['file.write', 'file.delete'] }));
+  assert.deepEqual(ev.map((e) => e.data.handover ?? null), ['h-1', 'h-1', 'h-1', 'h-2', 'h-2', null]);
+  assert.equal('handover' in ev.at(-1).data, false);
+});
