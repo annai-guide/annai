@@ -38,8 +38,12 @@ export class Bench {
   #why = new Map();
   /** What failed, for a rest only the user can end (a refused key, no credit): such a model isn't asked anyway. @type {Map<string, string>} */
   #kind = new Map();
+  /** Models asked while resting that failed: not asked again until this rest ends (round 11). @type {Set<string>} */
+  #askedWhileResting = new Set();
   /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] @param {string} [kind] the failure's kind */
   bench(id, ms, now = Date.now(), why, kind) {
+    // A new rest (the last one had ended) forgets that it was asked while resting.
+    if (!(this.until(id) > now)) this.#askedWhileResting.delete(id);
     if (kind) this.#kind.set(id, kind);
     else this.#kind.delete(id);
     this.#until.set(id, Math.max(this.#until.get(id) ?? 0, now + ms));
@@ -54,6 +58,14 @@ export class Bench {
   why(id) {
     return this.#why.get(id);
   }
+  /** Asked while it rested, and it failed: it isn't asked again until its rest ends (round 11). @param {string} id */
+  askedResting(id) {
+    this.#askedWhileResting.add(id);
+  }
+  /** Whether it was asked while resting, and failed, in this rest. @param {string} id */
+  triedResting(id) {
+    return this.#askedWhileResting.has(id);
+  }
   /** Whether it rests after a failure only the user can end: its key refused, or out of credit. @param {string} id */
   usersToEnd(id) {
     return ['auth', 'credit'].includes(this.#kind.get(id) ?? '');
@@ -61,6 +73,7 @@ export class Bench {
   /** @param {string} id */
   clear(id) {
     this.#until.delete(id);
+    this.#askedWhileResting.delete(id);
     this.#kind.delete(id);
     this.#why.delete(id);
   }
@@ -499,7 +512,7 @@ export async function callRole(c) {
   // both passes (round 9), the one whose rest ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
   // check and round 8). Not Koe's list (Kokoro answers when she can't), and not a rest only the user can end (a refused key, no credit)
   // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
-  const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
+  const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id) && !bench.triedResting(id)) : []);
   const awake = preferred.filter((id) => !restingNow.has(id));
   const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b));
   /** The resting model asked in this call, when one was. @type {string | null} */
@@ -507,6 +520,28 @@ export async function callRole(c) {
   let began = false;
   /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
   let last = '';
+  /**
+   * The request as a model is sent it: files it can't take as their kept readings or as words, its photo limit of the pictures, each once,
+   * and no required tool call for one that refused it. Shared by the passes and the hold-back's check (round 11).
+   * @param {Model | null} model @param {string} id @returns {(r: Request) => Request}
+   */
+  const requestFor = (model, id) => (r) => {
+    const sees = Boolean(model?.input.includes('image'));
+    const reads = Boolean(model?.input.includes('pdf'));
+    // A file the conversation has kept a reading of goes as that reading, wherever it is, the newest message's too (the review of
+    // reading-files): it was read once, so it no longer keeps a model out.
+    let sent = model && c.readings && !(sees && reads) ? photosAsWords(r, { photos: !sees, documents: !reads, sees, readings: c.readings, kept: true }) : r;
+    // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
+    const words = Boolean(model && !sees && !newestPhoto(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'image')));
+    // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
+    const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
+    if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
+    // The model's photo limit of the request's distinct pictures, kept pages included, each once (spec §4.8; round 8).
+    sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount) };
+    if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
+    const { toolRequired, ...rest } = sent;
+    return rest;
+  };
   /**
    * Tries one model, its retries and repairs included: its answer, or null when it was passed over or failed (an attempt says why).
    * @param {string} id @returns {Promise<Awaited<ReturnType<typeof callRole>> | null>}
@@ -518,23 +553,7 @@ export async function callRole(c) {
     const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
-    const sees = Boolean(model?.input.includes('image'));
-    const reads = Boolean(model?.input.includes('pdf'));
-    const forModel = (/** @type {Request} */ r) => {
-      // A file the conversation has kept a reading of goes as that reading, wherever it is, the newest message's too (the review of
-      // reading-files): it was read once, so it no longer keeps a model out.
-      let sent = model && c.readings && !(sees && reads) ? photosAsWords(r, { photos: !sees, documents: !reads, sees, readings: c.readings, kept: true }) : r;
-      // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
-      const words = Boolean(model && !sees && !newestPhoto(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'image')));
-      // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
-      const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
-      if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-      // The model's photo limit of the request's distinct pictures, kept pages included, each once (spec §4.8; round 8).
-      sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount) };
-      if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
-      const { toolRequired, ...rest } = sent;
-      return rest;
-    };
+    const forModel = requestFor(model, id);
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
     const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
@@ -669,6 +688,8 @@ export async function callRole(c) {
         break;
       }
     }
+    // Asked while it rested, and it failed: not asked again until this rest ends, so a dead model doesn't hold up every turn (round 11).
+    if (restingAsked === id) bench.askedResting(id);
     return null;
   };
   /**
@@ -678,11 +699,12 @@ export async function callRole(c) {
    */
   /** Awake models whose reading of a file failed, held back until a resting model that takes it as it is was tried (round 10). @type {{ id: string, base: Request }[]} */
   const blind = [];
-  /** Whether a resting model takes the request as it is, its files and all. */
+  /** Whether a resting model would be asked with the request as it is: nothing keeps it out, as it would be sent it (round 11). */
   const restingTakes = () => !restingAsked && resting.some((x) => {
-    const m = modelOf(config.models[x]);
-    const g = gap(m, { ...c.request, messages: limitImages(c.request.messages, m.images?.maxCount) });
-    return g !== 'no-images' && g !== 'no-documents';
+    const rec = config.models[x];
+    const pRec = rec ? config.providers[rec.provider] : undefined;
+    const m = rec ? modelOf(rec) : null;
+    return Boolean(m && gap(m, requestFor(m, x)(c.request), pRec ? providerOf(pRec) : undefined) === null);
   });
   const passes = async (/** @type {string[]} */ ids, holdBlind = false) => {
     base = c.request;

@@ -2048,10 +2048,11 @@ export class Agent {
     for (const [old, copy] of swaps) {
       await this.#log({ type: 'photo.replace', actor: 'system', data: { old, new: copy.hash, mediaType: copy.mediaType, wake: wakeId }, blobs: [copy.data ? { bytes: fromBase64(copy.data), type: copy.mediaType } : { hash: copy.hash, type: copy.mediaType }] });
       await this.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
-        // The refused copy goes, unless a file is that photo, another conversation sent it too, or a kept reading or a tool result here
-        // still names it (a PDF's page pictures: spec §4.9; round 10).
+        // The refused copy goes, unless a file is that photo, another conversation sent it too, or here a kept reading, a tool result or
+        // a file's history still names it (a PDF's page pictures; a version that can be restored: spec §4.2, §4.9; rounds 10 and 11).
         if (await t.blobInUse(old, { exceptScope: this.scope })) return;
-        const named = (await t.listEvents(this.scope, { types: ['reading', 'tool.result'] })).some((/** @type {any} */ e) => (e.refs ?? []).includes(old));
+        const named = (await t.listEvents(this.scope, { types: ['reading', 'tool.result', 'file.write', 'file.delete'] }))
+          .some((/** @type {any} */ e) => (e.refs ?? []).includes(old) || e.data?.old === old || e.data?.new === old);
         if (!named) await t.deleteBlob(old);
       });
     }
