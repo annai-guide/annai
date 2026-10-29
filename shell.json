@@ -1,5 +1,5 @@
 {
-  "build": "18bb248dd32c",
+  "build": "d8a0d108a21d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -50,7 +50,7 @@
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
     "/src/core/agent/net.js": "da9a89765c53",
     "/src/core/agent/tools.js": "bf886adf64d9",
-    "/src/core/agent/trip-tools.js": "cd5054822ec8",
+    "/src/core/agent/trip-tools.js": "26c7bc9f926a",
     "/src/core/agent/transcript.js": "a712b5906e38",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "ea988f822316",
@@ -67,7 +67,7 @@
     "/src/core/errors.js": "803212c6404d",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "bd57e8662ab6",
-    "/src/core/handover.js": "bfb3ac0f8c9a",
+    "/src/core/handover.js": "04d52cacb25f",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
@@ -103,7 +103,7 @@
     "/src/core/live/watch-tools.js": "6a447cb333f5",
     "/src/core/live/watches.js": "7c75a14cf7e4",
     "/src/core/ics.js": "e06e92b65744",
-    "/src/core/imports.js": "e96f1badc893",
+    "/src/core/imports.js": "7138c8693a50",
     "/src/core/inflate.js": "0cc2e9f8de38",
     "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "a3724049f0e7",
