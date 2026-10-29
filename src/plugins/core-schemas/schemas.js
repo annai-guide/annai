@@ -1,4 +1,5 @@
 import { WATCH_SCHEMA } from '../../core/live/watches.js';
+import { NAMES_FILE, NAMES_SCHEMA } from '../../core/names.js';
 
 const TIME = {
   type: 'object', required: ['at', 'tz'],
@@ -83,4 +84,7 @@ export const CORE_SCHEMAS = [
   { scope: 'trip', pattern: '/bookings/*.json', schema: BOOKING_SCHEMA },
   { scope: 'trip', pattern: '/watches/*.json', schema: WATCH_SCHEMA },
   { scope: 'me', pattern: '/watches/*.json', schema: WATCH_SCHEMA },
+  // Shiori's short names for files, beside them in a trip and in the waiting space (sys:waiting).
+  { scope: 'trip', pattern: NAMES_FILE, schema: NAMES_SCHEMA },
+  { scope: 'sys', pattern: NAMES_FILE, schema: NAMES_SCHEMA },
 ];
