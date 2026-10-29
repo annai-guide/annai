@@ -135,6 +135,9 @@ test('handOverText: a pasted text that is not a booking is to be deleted, one th
   assert.match(handOverText([pasted]), /pasted-.*isn.t a booking.*delete/s);
   assert.match(handOverText([pasted]), /stays with its booking/);
   assert.doesNotMatch(handOverText([flight]), /pasted/);
+  // A calendar file in a trip is on the plan already (annai made its items as it was kept).
+  assert.match(handOverText([{ path: '/trip/files/thanksgiving.ics', type: 'text/calendar', name: 'thanksgiving.ics', new: true }]), /on the plan already/);
+  assert.doesNotMatch(handOverText([flight]), /calendar/);
 });
 
 test('logUser takes its options in one object: a choice, and a hand-over', async (t) => {
