@@ -123,7 +123,7 @@ test('read: a Wallet pass as what it says, and an email as its text', async () =
   assert.match(await run('read', { path: '/trip/files/hotel.eml' }), /Confirmation 7788/);
 });
 
-test('bookings: Shiori writes them unverified, never confirms one, and her change to a confirmed one goes back to the user', async () => {
+test('bookings: Shiori writes them unverified and never confirms one; her change to a confirmed one keeps it confirmed', async () => {
   const { ws, trip, run } = await setup();
   const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', title: 'Hotel Hoboken', unsure: [] };
   await assert.rejects(run('write', { path: '/trip/bookings/hotel.json', content: { ...booking, status: 'confirmed' } }), /Only the user confirms a booking/);
@@ -135,11 +135,11 @@ test('bookings: Shiori writes them unverified, never confirms one, and her chang
   assert.equal((await ws.readJSON(trip, '/bookings/hotel.json')).status, 'unverified');
   // The user confirms it.
   await ws.patch(trip, '/bookings/hotel.json', { status: 'confirmed' }, { author: 'user' });
-  // Written back unchanged, it stays confirmed; changed, it is unverified again, and she is told.
+  // Written back unchanged, or changed, it stays confirmed: there is no confirming step to send it back to (and nothing is marked).
   assert.match(await run('write', { path: '/trip/bookings/hotel.json', content: { ...booking, status: 'confirmed' } }), /^Wrote \/trip\/bookings\/hotel\.json \(\d+ bytes\)\.$/);
   assert.equal((await ws.readJSON(trip, '/bookings/hotel.json')).status, 'confirmed');
-  assert.match(await run('patch', { path: '/trip/bookings/hotel.json', changes: { confirmation: 'HX-7788' } }), /unverified again/);
-  assert.deepEqual(await ws.readJSON(trip, '/bookings/hotel.json'), { ...booking, confirmation: 'HX-7788' });
+  assert.equal(await run('patch', { path: '/trip/bookings/hotel.json', changes: { confirmation: 'HX-7788' } }), 'Patched /trip/bookings/hotel.json.');
+  assert.deepEqual(await ws.readJSON(trip, '/bookings/hotel.json'), { ...booking, status: 'confirmed', confirmation: 'HX-7788' });
   await assert.rejects(run('patch', { path: '/trip/bookings/none.json', changes: { title: 'x' } }), /No file at \/trip\/bookings\/none\.json/);
   // Other records are not bookings.
   await run('write', { path: '/trip/notes/confirmed.json', content: { status: 'confirmed' } });
