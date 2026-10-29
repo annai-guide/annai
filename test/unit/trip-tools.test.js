@@ -305,3 +305,19 @@ test("a waiting calendar file filed into a trip she started is not said to be on
   assert.doesNotMatch(text, /on the plan already/);
   assert.match(handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true, planned: 2 }]), /"\/trip\/files\/dinner\.ics": annai put its 2 events on the plan already/);
 });
+
+test('start_trip with no files takes the waiting files of every hand-over its turn took: the flight, then "and the hotel" while she worked', async (t) => {
+  useClock(t);
+  const k = await kit([{ delayMs: 40, toolCalls: [{ name: 'list_trips', input: {} }] }, call('start_trip', { title: 'Anchorage' }), say('Started Anchorage.'), sleep]);
+  await k.ws.write(SYS_WAITING, '/files/hotel.png', utf8('a hotel'), { author: 'user', type: 'image/png' });
+  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
+  await new Promise((r) => setTimeout(r, 10));
+  k.agent.send('and the hotel', { handed: [{ path: '/waiting/files/hotel.png', type: 'image/png', name: 'hotel.png', new: true }], handover: 'h-2' });
+  await k.agent.idle();
+  const trip = await tripNamed(k, 'Anchorage');
+  assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf', '/files/hotel.png']);
+  assert.deepEqual(await waitingFiles(k.ws), []);
+  // Each of the user's lines is copied into the trip, with its own files.
+  const copies = await eventsIn(k, trip.id, ['msg.user']);
+  assert.deepEqual(copies.map((/** @type {any} */ e) => [e.data.handover, e.data.handed.map((/** @type {any} */ f) => f.path)]), [['h-1', ['/trip/files/flight.pdf']], ['h-2', ['/trip/files/hotel.png']]]);
+});
