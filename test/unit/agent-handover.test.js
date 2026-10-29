@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
 import { useClock } from './clock.js';
-import { record } from '../../src/core/agent/log.js';
+import { record, storedTexts } from '../../src/core/agent/log.js';
+import { ME, SYS_WAITING } from '../../src/core/scopes.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { handOverText, FILES_ONLY } from '../../src/core/handover.js';
@@ -146,4 +147,80 @@ test('logUser takes its options in one object: a choice, and a hand-over', async
   assert.equal(handed.data.handover, 'h-3');
   assert.deepEqual(handed.data.handed, [flight]);
   assert.ok(Agent);
+});
+
+// Task 4b: with no trip open, a side task reads the waiting files, and only its words are kept.
+
+const PDF = utf8('%PDF-1.4\n% a flight, ANNAI AIR AN 123\n');
+const SAID = 'ANNAI AIR AN 123, SEA 11:20 → ANC 14:05, Nov 20 2026, seat 14C';
+const readsPdf = { input: ['text', 'image', 'pdf'] };
+/** A kit with no trip open, the waiting space holding a file. @param {any[]} script @param {Record<string, any>} [o] */
+async function noTrip(script, o = {}) {
+  const k = await agentKit([script], { open: false, models: [readsPdf], ...o });
+  await k.agent.open(null);
+  return k;
+}
+/** A result's words, kept inline or stored. @param {any} k @param {any} e */
+const contentOf = async (k, e) => String(e.data.content ?? (await storedTexts(k.store, e)).content);
+const meEvents = (/** @type {any} */ k, /** @type {string[]} */ [...types] = []) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(ME, types.length ? { types } : {}));
+
+test("with no trip open, read of a waiting PDF gives her a side task's words; the no-trip log names none of its bytes", async (t) => {
+  useClock(t);
+  const k = await noTrip([{ toolCalls: [{ name: 'read', input: { path: '/waiting/files/flight.pdf' } }] }, say('A flight to Anchorage.')], { utility: [{ text: SAID }], utilityModel: readsPdf });
+  const { hash: pdfHash } = await k.ws.write(SYS_WAITING, '/files/flight.pdf', PDF, { author: 'user', type: 'application/pdf' });
+  k.agent.send('', { handed: [{ path: '/waiting/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  const [result] = (await meEvents(k, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read');
+  assert.match(await contentOf(k, result), /side task[\s\S]*AN 123/);
+  assert.equal(result.data.document, undefined);
+  assert.equal((result.refs ?? []).includes(pdfHash), false);
+  assert.equal((await meEvents(k)).some((/** @type {any} */ e) => (e.refs ?? []).includes(pdfHash)), false);
+  // Her own requests never carried the PDF; the side task's did.
+  const parts = (/** @type {any[]} */ reqs) => reqs.flatMap((r) => r.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => p.type)));
+  assert.equal(parts(k.sent['model-0']).includes('document'), false);
+  assert.ok(parts(k.sent['model-u']).includes('document'));
+  // Kept as a reading of the conversation's, keyed by the file's content, as reading.js keeps one.
+  assert.deepEqual((await meEvents(k, ['reading'])).map((/** @type {any} */ e) => [e.data.hash, e.data.how]), [[pdfHash, 'told']]);
+});
+
+test('a waiting photo too: words, and no request copy stored', async (t) => {
+  useClock(t);
+  const k = await noTrip([{ toolCalls: [{ name: 'read', input: { path: '/waiting/files/hotel.png' } }] }, say('The Hotel Aurora Test.')], { utility: [{ text: 'A booking: Hotel Aurora Test, Nov 20–27' }] });
+  const { hash } = await k.ws.write(SYS_WAITING, '/files/hotel.png', utf8('4000x3000'), { author: 'user', type: 'image/png', meta: { width: 4000, height: 3000 } });
+  const blobs = async () => (await k.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.listBlobs())).map((/** @type {any} */ b) => b.hash);
+  const before = await blobs();
+  k.agent.send('', { handed: [{ path: '/waiting/files/hotel.png', type: 'image/png', name: 'hotel.png', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  const [result] = (await meEvents(k, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read');
+  assert.match(await contentOf(k, result), /side task[\s\S]*Hotel Aurora Test/);
+  assert.equal(result.data.images, undefined);
+  assert.equal((await meEvents(k)).some((/** @type {any} */ e) => (e.refs ?? []).includes(hash)), false);
+  // What the turn stored is its words (texts kept as blobs), never a photo: no request copy.
+  const added = (await blobs()).filter((h) => !before.includes(h));
+  const types = await k.store.tx(['blobs'], 'readonly', async (/** @type {any} */ t) => Promise.all(added.map(async (h) => (await t.getBlob(h)).type)));
+  assert.equal(types.some((/** @type {string} */ x) => x.startsWith('image/')), false);
+  assert.equal(k.sent['model-0'].some((/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'image'))), false);
+});
+
+test('in a trip, a handed PDF is read as before: a document her model gets', async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/flight.pdf' } }] }, say('Filed.')]], { models: [readsPdf], utility: [{ text: SAID }], utilityModel: readsPdf });
+  await k.ws.write(k.trip, '/files/flight.pdf', PDF, { author: 'user', type: 'application/pdf' });
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  const [result] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read');
+  assert.equal(result.data.document?.mediaType, 'application/pdf');
+  assert.ok(k.sent['model-0'].at(-1).messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'document')));
+  assert.equal(k.sent['model-u'], undefined);
+});
+
+test('with no model that can read it, she is told which setting fixes it, and nothing of the file is kept', async (t) => {
+  useClock(t);
+  const k = await noTrip([{ toolCalls: [{ name: 'read', input: { path: '/waiting/files/flight.pdf' } }] }, say("I can't read PDFs.")], { models: [{ input: ['text'] }] });
+  const { hash: pdfHash } = await k.ws.write(SYS_WAITING, '/files/flight.pdf', PDF, { author: 'user', type: 'application/pdf' });
+  k.agent.send('', { handed: [{ path: '/waiting/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  const [result] = (await meEvents(k, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read');
+  assert.match(await contentOf(k, result), /Takes PDFs on its page in Settings → Models/);
+  assert.equal((await meEvents(k)).some((/** @type {any} */ e) => (e.refs ?? []).includes(pdfHash) || e.data?.hash === pdfHash), false);
 });
