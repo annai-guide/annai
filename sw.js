@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '55fb2802f92c';
+const BUILD = '9612e8f46517';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -55,6 +55,7 @@ const SHELL = [
   '/src/core/agent/listen.js',
   '/src/core/agent/log.js',
   '/src/core/agent/loop.js',
+  '/src/core/agent/reading.js',
   '/src/core/agent/personalities.js',
   '/src/core/agent/refusals.js',
   '/src/core/agent/self-tools.js',
@@ -134,6 +135,7 @@ const SHELL = [
   '/src/core/pack/plan.js',
   '/src/core/pack/read.js',
   '/src/core/patch.js',
+  '/src/core/pdf-pages.js',
   '/src/core/photo-meta.js',
   '/src/core/pkpass.js',
   '/src/core/photos.js',
@@ -227,6 +229,7 @@ const SHELL = [
   '/src/ui/offline-pack.js',
   '/src/ui/open-file.js',
   '/src/ui/photo-codec.js',
+  '/src/ui/preview.js',
   '/src/ui/photo-viewer.js',
   '/src/ui/platform.js',
   '/src/ui/privacy.js',
@@ -532,8 +535,11 @@ function openExisting() {
   });
 }
 
-/** Plugin files a page may load: code, data, styles, plain text, raster images and fonts. Never HTML or SVG. */
-const SAFE_PLUGIN_TYPES = new Set(['text/javascript', 'application/json', 'text/css', 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'font/woff2']);
+/**
+ * Plugin files a page may load: code, data, styles, plain text, raster images, fonts, and bytes of no named type (PDF.js's packed CMaps
+ * and fonts, read with fetch; nosniff keeps a browser from running them as anything). Never HTML or SVG.
+ */
+const SAFE_PLUGIN_TYPES = new Set(['text/javascript', 'application/json', 'text/css', 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'font/woff2', 'application/octet-stream']);
 
 /** @param {string} why */
 function deny(why) {

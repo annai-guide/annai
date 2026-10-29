@@ -38,6 +38,27 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user meets it on a site they can't change.
 - **Approved:** 2026-10-27, the user: "Accept as known limitation".
 
+### PDF pages draws at most a PDF's first 10 pages for a model
+- **Kind:** known limitation.
+- **What the user sees:** when no model here reads PDFs and the PDF pages plugin shows a PDF to a model that sees photos, only its first 10 pages go, at 1600 px on the longest side. The model is told how many were left out ("pages 1–10 of 23; the rest weren't sent"), so Shiori can say so. A model that reads PDFs itself still gets the whole file.
+- **Why:** each page is a picture of about 1,600 tokens, and a booking's facts are on its first pages. More pages would cost more and take longer on the phone, for pages a booking rarely needs.
+- **Revisit when:** a booking needs more than its first 10 pages.
+- **Approved:** 2026-10-28, the user: "Accept".
+
+### JPEG 2000 and JBIG2 pictures in a PDF may come out blank in PDF pages
+- **Kind:** known limitation.
+- **What the user sees:** a picture inside a PDF that is stored as JPEG 2000 or JBIG2 (some scanned documents) may be left blank on the page PDF pages draws. The page's text still draws.
+- **Why:** PDF.js imports the decoders for those two formats from inside its worker. Where the worker's own requests don't reach annai's service worker, which serves the installed plugin's files, the decoders can't load (docs/deps.md).
+- **Revisit when:** a booking PDF the user gets shows it.
+- **Approved:** 2026-10-28, the user: "Accept".
+
+### PDF pages is untested on iOS 16.4 to 17.3
+- **Kind:** known limitation.
+- **What the user sees:** nothing known. PDF.js 6 is built for Safari 17.4 and later; on older iPhones annai adds the one missing piece we found (`Promise.withResolvers`) and runs PDF.js on the page. Where PDF.js still can't run, the plugin says so in words ("This browser can't run PDF.js…") instead of crashing, and Safari's own first-page preview of a PDF still works.
+- **Why:** there is no iOS 16.4–17.3 device or engine to test on.
+- **Revisit when:** someone on an older iPhone reports it.
+- **Approved:** 2026-10-28, the user: "Accept".
+
 ### Claude's reasoning isn't carried between tool steps within a turn
 - **Kind:** deferred.
 - **What the user sees:** nothing on screen. Within one turn, a Claude model (Opus, Sonnet, Haiku) plans each tool step from what it sees, without the reasoning it wrote at the step before. Anthropic's documentation calls passing that reasoning back "Required" within a tool turn, for reasoning quality, though the API accepts a request without it.

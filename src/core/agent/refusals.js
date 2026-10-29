@@ -28,18 +28,53 @@ export function readRefusal(message) {
   return Object.keys(out).length ? out : null;
 }
 
-/** The photos over the count, oldest first, sent as stubs. @param {Message[]} messages @param {number | null | undefined} maxCount */
+/** A copy of a picture sent at an earlier place in the request. @param {any} p */
+/* en */
+const same = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF, the same picture as above]` : `[photo${p.path ? ` ${p.path}` : ''}, the same as above]` });
+/** A picture the limit left out. @param {any} p */
+/* en */
+const notSent = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` : `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') });
+
+/**
+ * The pictures a request sends to a model (spec §4.8; the round-8 review of reading-files): one rule, applied once, per model, to the
+ * request as the conversation holds it. The distinct pictures (by hash; one without a hash is its own) are ranked by their newest
+ * appearance, and the model's count of them kept, newest first; within one message, its PDF's pages give way before its own photos, its
+ * last page first. Each kept picture goes at its earliest place, so a new copy of one already sent changes nothing earlier; only a picture
+ * the limit drops, or one that comes back (read again after it was dropped), changes its own places. Every other copy is a stub: "the same as above", or "not sent" for one the limit left out.
+ * @param {Message[]} messages @param {number | null | undefined} [maxCount] none: every distinct picture, each once
+ * @returns {Message[]}
+ */
 export function limitImages(messages, maxCount) {
-  if (!maxCount) return messages;
-  const total = messages.reduce((n, m) => n + m.parts.filter((p) => p.type === 'image').length, 0);
-  let drop = total - maxCount;
-  if (drop <= 0) return messages;
-  return messages.map((m) => ({
-    role: m.role,
-    parts: m.parts.map((p) => {
-      if (p.type !== 'image' || drop <= 0) return p;
-      drop--;
-      /* en */ return { type: /** @type {const} */ ('text'), text: `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') };
+  /** @typedef {{ mi: number, pi: number, p: any, key: string }} Seen */
+  /** @type {Seen[]} */
+  const seen = [];
+  messages.forEach((m, mi) => m.parts.forEach((p, pi) => {
+    if (p.type === 'image') seen.push({ mi, pi, p, key: p.hash ? `h:${p.hash}` : `#${seen.length}` });
+  }));
+  /** @type {Map<string, { first: Seen, last: Seen }>} */
+  const pictures = new Map();
+  for (const s of seen) {
+    const had = pictures.get(s.key);
+    if (had) had.last = s;
+    else pictures.set(s.key, { first: s, last: s });
+  }
+  /** Newer first: a later message; in one message its photos (the later first) before its PDF's pages (page 1 first). @param {Seen} s */
+  const rank = (s) => [s.mi, s.p.page ? 0 : 1, s.p.page ? -s.p.page : s.pi];
+  const newer = (/** @type {Seen} */ a, /** @type {Seen} */ b) => {
+    const [x, y] = [rank(a), rank(b)];
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i];
+    return 0;
+  };
+  const kept = new Set([...pictures.values()].sort((a, b) => newer(a.last, b.last)).slice(0, maxCount || Infinity).map((x) => x.first));
+  if (kept.size === seen.length) return messages;
+  const keptKeys = new Set([...kept].map((s) => s.key));
+  const at = new Map(seen.map((s) => [`${s.mi}:${s.pi}`, s]));
+  return messages.map((m, mi) => ({
+    ...m,
+    parts: m.parts.map((p, pi) => {
+      const s = at.get(`${mi}:${pi}`);
+      if (!s || kept.has(s)) return p;
+      return keptKeys.has(s.key) ? same(p) : notSent(p);
     }),
   }));
 }

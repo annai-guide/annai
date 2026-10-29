@@ -252,3 +252,85 @@ test('a model removed while the photo limit it taught is learned needs no limit:
   assert.equal((await readConfig(k.ws)).models['m-0'], undefined, 'not recreated');
   assert.deepEqual(warned.filter((w) => /photo repair/.test(w)), [], 'the repair does not fail on a model that is gone');
 });
+
+test("limitImages: a PDF's page pictures in one message go from the last page back, and each stub names its page (the re-check of reading-files)", () => {
+  const page = (/** @type {number} */ n) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash: `h${n}`, page: n });
+  const messages = [
+    { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: '[a PDF: booking.pdf] Its pages as pictures, as you can\'t read PDFs: pages 1–3 of 3.' }, page(1), page(2), page(3)] },
+    { role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'BBBB', path: '/trip/files/new.webp' }] },
+  ];
+  const out = limitImages(messages, 3);
+  assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => p.page ?? p.text), ['[a PDF: booking.pdf] Its pages as pictures, as you can\'t read PDFs: pages 1–3 of 3.', 1, 2, '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
+  assert.equal(out[1].parts[0].type, 'image', 'the newest photo still wins');
+});
+
+test("limitImages: within one message, its own photos stay before its PDF's pages, which give way from the last page (round 4)", () => {
+  const page = (/** @type {number} */ n) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash: `h${n}`, page: n });
+  const photo = { type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'BBBB', path: '/trip/files/menu.webp' };
+  const messages = [{ role: /** @type {const} */ ('user'), parts: [photo, { type: /** @type {const} */ ('text'), text: '[a PDF: booking.pdf] …' }, page(1), page(2), page(3)] }];
+  const out = limitImages(messages, 2);
+  assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.page ?? p.path : p.text)), ['/trip/files/menu.webp', '[a PDF: booking.pdf] …', 1, '[page 2 of the PDF above, not sent: this model takes fewer pictures at a time]', '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
+});
+
+test('a photo sent again after the limit still goes, at its earliest place (rounds 7 and 8)', () => {
+  const text = (/** @type {string} */ t) => ({ type: /** @type {const} */ ('text'), text: t });
+  const photo = (/** @type {string} */ hash, /** @type {string} */ path) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'AAAA', hash, path });
+  const msgs = [
+    { role: /** @type {const} */ ('user'), parts: [text('Here is the menu'), photo('hA', '/trip/files/menu.webp')] },
+    { role: /** @type {const} */ ('user'), parts: [text('And the hotel'), photo('hB', '/trip/files/hotel.webp')] },
+    { role: /** @type {const} */ ('user'), parts: [text('Look at the menu again'), photo('hA', '/trip/files/menu.webp')] },
+  ];
+  const out = limitImages(msgs, 1);
+  // Round 8: the newest picture is kept, and sent at its earliest place; the later copy says so.
+  assert.deepEqual(out.map((m) => m.parts.filter((p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)), [['hA'], [], []]);
+});
+
+test("limitImages counts each distinct picture once: a picture that fits isn't dropped for a copy (round 8, S6, B1, B3)", () => {
+  const img = (/** @type {string} */ hash, /** @type {any} */ extra = {}) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash, ...extra });
+  const text = (/** @type {string} */ t) => ({ type: /** @type {const} */ ('text'), text: t });
+  const hashes = (/** @type {any[]} */ out) => out.map((m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash));
+  // S6: a sign photo, a PDF's 3 kept pages, and a read with the same 3 pages, at 4.
+  const s6 = [
+    { role: /** @type {const} */ ('user'), parts: [text('the sign'), img('X', { path: '/trip/files/sign.webp' })] },
+    { role: /** @type {const} */ ('user'), parts: [text('[a PDF: booking.pdf] Its pages'), img('P1', { page: 1 }), img('P2', { page: 2 }), img('P3', { page: 3 })] },
+    { role: /** @type {const} */ ('user'), parts: [text('read again'), img('P1', { page: 1 }), img('P2', { page: 2 }), img('P3', { page: 3 })] },
+  ];
+  const out = limitImages(s6, 4);
+  assert.deepEqual(hashes(out), [['X'], ['P1', 'P2', 'P3'], []]);
+  assert.equal(/** @type {any} */ (out[2].parts[1]).text, '[page 1 of the PDF, the same picture as above]');
+  // B1: X, Y, Y at 2: both go.
+  const b1 = [{ role: /** @type {const} */ ('user'), parts: [img('X', { path: '/x.webp' })] }, { role: /** @type {const} */ ('user'), parts: [img('Y', { path: '/y.webp' })] }, { role: /** @type {const} */ ('user'), parts: [img('Y', { path: '/y.webp' })] }];
+  assert.deepEqual(hashes(limitImages(b1, 2)), [['X'], ['Y'], []]);
+  // B3: a message's own photo stays before its PDF's pages, and goes again later as "the same".
+  const b3 = [{ role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('[a PDF]'), img('h1', { page: 1 }), img('h2', { page: 2 })] }, { role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('again')] }];
+  assert.deepEqual(hashes(limitImages(b3, 2)), [['P', 'h1'], []]);
+});
+
+test("a size repair never deletes a picture a kept reading or a tool result in this conversation still names (round 10)", async () => {
+  const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+  const k = await agentKit([[readPdf, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, done]], { models: [{ input: ['text', 'image'] }] });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: 1, pages: [{ type: 'image/jpeg', bytes: Uint8Array.from({ length: 400 }, (_, i) => (i < 3 ? [0xff, 0xd8, 0xff][i] : i % 251)), width: 10, height: 10 }] }) }); // over the 300 bytes the model will take
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const [kept] = await k.events(['reading']);
+  assert.ok((await k.events(['photo.replace'])).some((e) => e.data.old === kept.data.images[0].hash), 'the page was sent again as a smaller copy');
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(kept.data.images[0].hash)), true, 'the kept page stays');
+});
+
+test("a size repair never deletes content the trip's file history still names: an earlier version can still be restored (round 11)", async () => {
+  const k = await agentKit([[done, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 3 bytes' }, done]]);
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [msg] = await k.events(['msg.user']);
+  const sent = msg.data.images[0].hash;
+  const was = (await k.ws.read(k.trip, '/files/p.webp')).entry.hash;
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('640x480'), { author: 'user', type: 'image/webp', meta: { width: 640, height: 480 } });
+  k.agent.send('And now?');
+  await k.agent.idle();
+  assert.ok((await k.events(['photo.replace'])).some((e) => e.data.old === sent), 'the sent copy was replaced');
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(was)), true, "the file's earlier version is still stored");
+  await k.ws.restore(k.trip, '/files/p.webp', was, { author: 'user' });
+  assert.equal((await k.ws.read(k.trip, '/files/p.webp')).entry.hash, was);
+});

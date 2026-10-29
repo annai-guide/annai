@@ -126,7 +126,7 @@ test("task: with no model that reads PDFs, the helper's result says it can't be 
   k.agent.send('What does the booking say?');
   await k.agent.idle();
   const last = helperRequests(k)[1].messages.at(-1);
-  assert.match(last.parts[0].content, /\nNo model here can read PDFs, so what it says can't be told\.$/);
+  assert.match(last.parts[0].content, /\nNo model here can read PDFs, so what it says can't be told\. Tell the user what fixes it: .*Takes PDFs on its page in Settings → Models\)/);
 });
 
 test("task: a helper's photo goes to it as an image when its model sees photos", async () => {
