@@ -1,5 +1,5 @@
 {
-  "build": "a46c7d820abc",
+  "build": "9675f1a7a2c0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -67,7 +67,7 @@
     "/src/core/errors.js": "803212c6404d",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "bd57e8662ab6",
-    "/src/core/handover.js": "8bf46048fa27",
+    "/src/core/handover.js": "d58df96b7875",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
@@ -197,14 +197,15 @@
     "/src/plugins/web/index.js": "b0f3b38401b5",
     "/src/ui/base.css": "08d47a86ee95",
     "/src/ui/cards.js": "516990c53957",
+    "/src/ui/composer.js": "664396b41f4e",
     "/src/ui/credits.js": "6a90a3274f4d",
-    "/src/ui/dock.js": "6871d6d465bc",
+    "/src/ui/dock.js": "87bd37703fb3",
     "/src/ui/dom.js": "498aaecc1614",
     "/src/ui/add-files.js": "9aa460e42e98",
     "/src/ui/auto-backup.js": "94bd1244a50a",
     "/src/ui/ask.js": "c4ab8fb83d2f",
     "/src/ui/avatar.js": "e2cdc17ea45f",
-    "/src/ui/bring-in.js": "cc91b39779fa",
+    "/src/ui/bring-in.js": "96f51d3fb1df",
     "/src/ui/export-panel.js": "c81cc915598f",
     "/src/ui/format.js": "26132d71d942",
     "/src/ui/grounding.html": "5dab86abb302",
@@ -271,7 +272,7 @@
     "/src/ui/shell.js": "cdcbacc39168",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
-    "/src/ui/shiori.css": "307e1eec45ef",
+    "/src/ui/shiori.css": "5725be272fad",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "b12c573be9a4",
@@ -284,8 +285,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "d439cbb948a3",
-    "/l10n/zh-Hans.json": "6c04bd6b1ccf",
-    "/l10n/zh-Hant.json": "84840131183c"
+    "/l10n/ja.json": "089d1a0159dc",
+    "/l10n/zh-Hans.json": "e541cc88db82",
+    "/l10n/zh-Hant.json": "ac3107694e9e"
   }
 }

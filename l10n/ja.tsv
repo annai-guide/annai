@@ -974,6 +974,11 @@ rs50uy	ok	Opening the backup…	バックアップを開いています…	src/u
 io1qx	ok	Open the booking	予約を開く	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori が見せた写真	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	このカードの種類（{0}）は、オンになっていないプラグインのものです。	src/ui/cards.js:97	{0} = card.type
+rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/composer.js:50	
+36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/composer.js:51	
+1e5dete	ok	Remove {0}	{0}を外す	src/ui/composer.js:81	context: a file in the message; {0} = name; Note: a chip's button in the type box: takes the file out of the message, never deletes it, so 外す, not 削除.
+1il2ncj	ok	Give Shiori photos or files	Shiori に写真やファイルを渡す	src/ui/composer.js:96	Note: the + in the type box: 渡す (hand over), as the user hands a booking to a travel agent.
+13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/composer.js:139	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や予定に沿った場所。Shiori の nearby ツールとオフラインパックで使い、Overpass（overpass-api.de、混雑時は private.coffee のサーバー）で探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探し、地点から場所の名前を調べます。Shiori の geocode と reverse ツールで使い、無料検索の最後の手段として場所の公式サイトも探します。annai は利用規約に従い、問い合わせを1秒に1回までにしています。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shiori が読む記事にはアドレスが付きます。常に有効な無料検索の最後の手段として、検索した言葉を問い合わせます。	src/ui/credits.js:33	
@@ -985,16 +990,17 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_search の Web 検索。Serper 検索プラグインを入れると、あなたのキーで使います。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Web アプリからは読めないページを読み、Web を検索します。Shiori の fetch と web_search ツールで、設定 → ツールの選択に従って使います。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori のイラスト：annai のために AI 画像生成でデザインし、ベクター画像になぞり直しました。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	Shiori へのメッセージ	src/ui/dock.js:43	
-1vatbdb	ok	Send	送信	src/ui/dock.js:58	
-1m2zofh	ok	Type	入力	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	写真は旅に保存します。「旅」から旅を開いて、もう一度撮ってください。	src/ui/dock.js:109	
-drtui7	ok	Open a trip first	先に旅を開いてください	src/ui/dock.js:109	
-1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:120	
-1xmvmzh	ok	Kokoro is working	Kokoro が作業中	src/ui/dock.js:209	
-1ndyc8s	ok	Stop Kokoro	Kokoro を止める	src/ui/dock.js:210	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:210	
-1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:223	
+gb19et	ok	Message to Shiori	Shiori へのメッセージ	src/ui/dock.js:44	
+1vatbdb	ok	Send	送信	src/ui/dock.js:59	
+abxwjc	ok	Your files didn't reach Shiori	ファイルを Shiori に渡せませんでした	src/ui/dock.js:81	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
+1m2zofh	ok	Type	入力	src/ui/dock.js:84	Note: The dock's keyboard button: it opens the box to type in (a verb).
+178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	写真は旅に保存します。「旅」から旅を開いて、もう一度撮ってください。	src/ui/dock.js:120	
+drtui7	ok	Open a trip first	先に旅を開いてください	src/ui/dock.js:120	
+1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:131	
+1xmvmzh	ok	Kokoro is working	Kokoro が作業中	src/ui/dock.js:220	
+1ndyc8s	ok	Stop Kokoro	Kokoro を止める	src/ui/dock.js:221	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:221	
+1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:234	
 1rm0t76	ok	{0} isn't valid JSON.	{0}が正しい JSON ではありません。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）にしてください。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存しています…	src/ui/dom.js:258	
@@ -1606,8 +1612,6 @@ jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	API �
 8w8k36	ok	a file	ファイル	src/ui/screens/import.js:307	
 ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:310	{0} = trip.title
 odevmc	ok	Adding {0} of {1}…	追加しています（{0}/{1}）…	src/ui/screens/import.js:316	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/screens/import.js:322	
-36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/screens/import.js:323	
 liuhl8#other	ok	Added {0}, and # plan items from the calendar	{0}と、カレンダーから予定#件を追加しました	src/ui/screens/import.js:324	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
 f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:344	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
 1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:347	
