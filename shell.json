@@ -1,5 +1,5 @@
 {
-  "build": "27f8f1ddac31",
+  "build": "209696ccc9e3",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -183,7 +183,7 @@
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
     "/src/plugins/core-schemas/schemas.js": "46e418d3707a",
-    "/src/plugins/files/index.js": "cefc4a2f9697",
+    "/src/plugins/files/index.js": "f4b1d73b435f",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "5b6ad6ee60a8",
     "/src/plugins/mcp/index.js": "094b457aa562",
