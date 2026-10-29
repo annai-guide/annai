@@ -1,9 +1,8 @@
 {
   "id": "scripted-model",
   "name": "Scripted model",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "A model that replies from a script, for tests and plugin authors. It never uses the network.",
   "provides": { "endpoint-type": ["scripted"] }

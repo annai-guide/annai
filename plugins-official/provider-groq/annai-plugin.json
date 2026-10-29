@@ -1,9 +1,8 @@
 {
   "id": "provider-groq",
   "name": "Groq",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "api": 1,
-  "l10n": ["ja", "zh-Hans"],
   "description": "Fast open models, and fast Whisper transcription.",
   "category": "providers",
   "requires": [

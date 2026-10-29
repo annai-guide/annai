@@ -106,10 +106,13 @@ export const PROVIDER = (id, requires, types, version = '1.0.0') => ({
 
 /**
  * annai's catalog and official plugin files, stood in for: what fetch asked for is kept; failNext makes the next request
- * for one path fail as a dropped connection does; offline makes every request fail.
+ * for one path fail as a dropped connection does; offline makes every request fail. translations: each language's words of each
+ * plugin, served beside the catalog (catalog/l10n/<tag>/<id>.json) and listed by hash in catalog/l10n/<tag>.json, as
+ * scripts/catalog.mjs writes them; change them with s.translations, and serve other bytes than listed with s.tampered.
  * @param {Record<string, Record<string, string>>} plugins by id, each its files
+ * @param {Record<string, Record<string, any>>} [translations] by tag, then by plugin id
  */
-export async function site(plugins) {
+export async function site(plugins, translations = {}) {
   const entries = [];
   for (const [id, f] of Object.entries(plugins)) {
     const m = JSON.parse(f['annai-plugin.json']);
@@ -122,6 +125,8 @@ export async function site(plugins) {
     /** @type {string[]} */ asked: [],
     /** @type {Set<string>} */ failing: new Set(),
     offline: false,
+    /** @type {Record<string, Record<string, any>>} */ translations: structuredClone(translations),
+    /** @type {Set<string>} paths answered with other bytes than the catalog lists */ tampered: new Set(),
     /** @param {string} path */ failNext: (path) => { s.failing.add(path); },
     /** @param {any} url */
     fetch: async (url) => {
@@ -130,6 +135,14 @@ export async function site(plugins) {
       if (s.offline) throw new TypeError('Failed to fetch');
       if (s.failing.delete(path)) throw new TypeError('Failed to fetch');
       if (path === '/catalog/plugins.json') return new Response(JSON.stringify({ format: 1, plugins: entries }));
+      const lang = /^\/catalog\/l10n\/([^/]+)\.json$/.exec(path);
+      if (lang && s.translations[lang[1]]) {
+        const listed = Object.entries(s.translations[lang[1]]);
+        return new Response(JSON.stringify({ format: 1, plugins: {}, translations: Object.fromEntries(await Promise.all(listed.map(async ([id, w]) => [id, await sha256Hex(utf8(JSON.stringify(w)))]))) }));
+      }
+      const own = /^\/catalog\/l10n\/([^/]+)\/([^/]+)\.json$/.exec(path);
+      const words = own ? s.translations[own[1]]?.[decodeURIComponent(own[2])] : undefined;
+      if (words) return new Response(s.tampered.has(path) ? JSON.stringify({ manifest: {}, messages: {} }) : JSON.stringify(words));
       const m = /^\/plugins-official\/([^/]+)\/(.+)$/.exec(path);
       const text = m ? plugins[m[1]]?.[m[2]] : undefined;
       return text === undefined ? new Response('not found', { status: 404 }) : new Response(text);

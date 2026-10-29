@@ -360,6 +360,7 @@ test('a recap\'s blocks turn on their own letters, not on the first of the whole
 const JA = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
 const TRIPS_JA = JA[key('Trips')];
 const ZH = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new URL('../../l10n/zh-Hans.json', import.meta.url), 'utf8')));
+const HANT = /** @type {Record<string, string>} */ (JSON.parse(readFileSync(new URL('../../l10n/zh-Hant.json', import.meta.url), 'utf8')));
 const SCREENS = "annai's screens in";
 
 /** The catalog of a language in the worker's caches, by cache name: null where a cache lacks it. @param {import('@playwright/test').Page} page @param {string} tag */
@@ -383,19 +384,20 @@ test('a choice kept on the device that annai no longer offers is the phone\'s la
   await expect(page.getByRole('status').locator('.notice')).toHaveCount(0);
 });
 
-test("annai's screens in: As this phone is set (English), then English, 日本語 and 简体中文 by their own names, with nothing to turn on; Distances beside it (localization L6)", async ({ page }) => {
+test("annai's screens in: As this phone is set (English), then English, 日本語, 简体中文 and 繁體中文 by their own names, with nothing to turn on; Distances beside it (localization L6, l10n-zh-Hant)", async ({ page }) => {
   await openApp(page, '#/languages');
   const panel = page.getByRole('region', { name: 'Languages' });
   const screens = panel.getByLabel(SCREENS);
   // The first rows, above the languages you speak.
   expect(await panel.locator('.field-label, h3').allTextContents()).toEqual([SCREENS, 'Distances', 'Languages you speak', 'Add a language', 'Shiori answers in']);
-  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文']);
-  for (const tag of ['en', 'ja', 'zh-Hans']) await expect(screens.locator(`option[value="${tag}"]`)).toHaveAttribute('lang', tag);
-  // Both ship: Experimental has no unfinished translations to offer.
+  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', '繁體中文']);
+  for (const tag of ['en', 'ja', 'zh-Hans', 'zh-Hant']) await expect(screens.locator(`option[value="${tag}"]`)).toHaveAttribute('lang', tag);
+  // All ship: Experimental has no unfinished translations to offer.
   await page.evaluate(() => { location.hash = '#/experimental'; });
   await expect(page.getByRole('heading', { level: 1, name: 'Experimental' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Unfinished translations' })).toHaveCount(0);
 });
+
 
 test('Distances: Kilometres on an American phone shows kilometres at once and after a reload; Automatic is miles again (localization L6)', async ({ page }) => {
   await openApp(page, '#/languages');
@@ -421,7 +423,7 @@ test("the welcome's first step has the screens' language to choose, and choosing
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
   const screens = page.locator('main').getByLabel(SCREENS);
   await expect(screens).toHaveValue('');
-  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文']);
+  await expect(screens.locator('option')).toHaveText(['As this phone is set (English)', 'English', '日本語', '简体中文', '繁體中文']);
   const restarted = page.waitForEvent('load');
   await screens.selectOption('ja');
   await restarted;
@@ -504,10 +506,37 @@ test.describe('on a phone set to Chinese (China)', () => {
 
 test.describe('on a phone set to Chinese (Taiwan)', () => {
   test.use({ locale: 'zh-TW' });
-  test('Traditional Chinese is not Simplified: annai opens in English (localization L6)', async ({ page }) => {
+  test('As this phone is set opens annai in Traditional Chinese, not Simplified, with its region, zh-Hant-TW (l10n-zh-Hant)', async ({ page }) => {
     await openApp(page, '#/trips');
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-TW');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
+    await page.evaluate(() => { location.hash = '#/languages'; });
+    await expect(page.locator('#language-ui option').first()).toHaveText(HANT[key('As this phone is set ({0})')].replace('{0}', '繁體中文'));
+  });
+
+  test('Traditional Chinese, chosen, opens in Traditional characters with the phone\'s region, zh-Hant-TW, and draws in the platform\'s Chinese fonts, never Japanese (l10n-zh-Hant)', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'zh-Hant'); } catch { /* storage blocked */ } });
+    await openApp(page, '#/trips');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-TW');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
+    const fonts = await page.evaluate(() => ({
+      body: getComputedStyle(document.body).fontFamily,
+      title: getComputedStyle(document.querySelector('h1.title') ?? document.body).fontFamily,
+      display: getComputedStyle(document.documentElement).getPropertyValue('--f-display'),
+      zh: document.documentElement.matches(':lang(zh)'),
+    }));
+    // No CJK font is named, so the browser picks the Traditional Chinese one by the page's lang (PingFang TC, Noto Sans CJK TC).
+    for (const [where, stack] of Object.entries(fonts)) if (typeof stack === 'string') expect(stack, where).not.toMatch(/Hiragino|Noto Sans JP|Noto Sans CJK|PingFang SC|SC\b/);
+    expect(fonts.zh).toBe(true);
+  });
+});
+
+test.describe('on a phone set to Chinese (Hong Kong)', () => {
+  test.use({ locale: 'zh-HK' });
+  test('a Hong Kong phone gets the one Traditional catalog, with Taiwan\'s words, and its own region, zh-Hant-HK (l10n-zh-Hant)', async ({ page }) => {
+    await openApp(page, '#/trips');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant-HK');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HANT[key('Trips')]);
   });
 });
 
@@ -848,4 +877,32 @@ test('under Japanese screens each of the voice menu\'s buttons is one line, at 3
   }));
   expect(lines.length).toBeGreaterThan(1);
   for (const l of lines) expect(l).toMatch(/: 1$/);
+});
+
+test.describe('with no service worker, so the words come by a plain fetch', () => {
+  test.use({ serviceWorkers: 'block' });
+  test("a language picked again while a slow change waits wins: the slow one, picked over, keeps nothing and doesn't restart (plugin-l10n-fetch)", async ({ page }) => {
+    await openApp(page, '#/languages');
+    /** @type {() => void} */
+    let release = () => {};
+    const slow = new Promise((r) => { release = () => r(undefined); });
+    let asked = false;
+    await page.route('**/l10n/ja.json', async (route) => { asked = true; await slow; await route.continue(); });
+    await page.locator('#language-ui').selectOption('ja');
+    await expect.poll(() => asked).toBe(true);
+    // The screen left and opened again while Japanese is coming: its row works, and English, picked there, is kept at once.
+    await page.evaluate(() => { location.hash = '#/trips'; });
+    await page.evaluate(() => { location.hash = '#/languages'; });
+    await page.locator('#language-ui').selectOption('en');
+    await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible();
+    // Japanese's words arrive; its change goes on from there at once (its plugins' words, none here, settled long before).
+    const arrived = page.waitForResponse((r) => r.url().endsWith('/l10n/ja.json'));
+    release();
+    await arrived;
+    // Japanese, picked over, would have kept itself and restarted into it.
+    const reloaded = page.waitForEvent('load', { timeout: 3000 }).then(() => true, () => false);
+    expect(await reloaded).toBe(false);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+    expect(await page.evaluate(() => localStorage.getItem('annai.ui'))).toBe('en');
+  });
 });

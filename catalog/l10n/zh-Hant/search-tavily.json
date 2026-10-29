@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "description": "為 AI 代理打造的網頁搜尋，附帶每個頁面的摘要。每月 1,000 個免費額度，無需信用卡。",
+    "name": "Tavily 搜尋",
+    "search.key.note": "免費金鑰每月有 1,000 個額度，無需信用卡。基本搜尋消耗 1 個額度，深入搜尋消耗 2 個。",
+    "settings.properties.depth.description": "「基本」每次搜尋消耗 1 個額度；「深入」讀得更深，消耗 2 個。",
+    "settings.properties.depth.oneOf.0.title": "基本",
+    "settings.properties.depth.oneOf.1.title": "深入",
+    "settings.properties.depth.title": "深度",
+    "settings.properties.key.title": "Tavily API 金鑰",
+    "keywords": [
+      "Tavily"
+    ]
+  },
+  "messages": {
+    "1lf6xjz": "需要金鑰（設定 → 外掛程式 → Tavily 搜尋）"
+  }
+}

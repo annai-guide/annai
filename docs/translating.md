@@ -1,7 +1,7 @@
 # Translating annai
 
-annai's screens are in English, Japanese (`ja`) and Chinese, Simplified (`zh-Hans`). This page is for anyone who
-translates them, a person or an agent. The design is
+annai's screens are in English, Japanese (`ja`), Chinese, Simplified (`zh-Hans`) and Chinese, Traditional (`zh-Hant`), with
+Taiwan's words. This page is for anyone who translates them, a person or an agent. The design is
 [the localization design](superpowers/specs/2026-10-23-localization-design.md); the spec's rule is §14.3.
 
 ## Where the words are
@@ -14,9 +14,14 @@ translates them, a person or an agent. The design is
 - **annai's official plugins** are in the same files (localization L7): a row keyed `<plugin id>:@<field>` is its manifest's field
   (its name, description, a provider's notes, a setting's title), and `<plugin id>:<key>` its code's words (`l10n.t`, `l10n.tc`,
   `l10n.plural` and `l10n.both`, or `t` and the rest taken out of `annai.l10n`). Their `where` names the plugin. `npm run strings`
-  writes each plugin's `plugins-official/<id>/l10n/<tag>.json` from them; run `npm run catalog` after it, since the catalog
-  holds every plugin file's hash, and bump the plugin's version. A third party's plugin ships its own translations
-  ([docs/plugins.md](plugins.md), "Translations").
+  writes each plugin's words in each language beside annai's catalog, `catalog/l10n/<tag>/<id>.json`; run `npm run catalog`
+  after it, which lists each one's hash in `catalog/l10n/<tag>.json`. **What needs no new version:** changing the words of a
+  field or message the plugin's released versions have. A phone in that language fetches that one file at its next check, and no
+  other phone fetches anything. **What ships with a version:** words for a field or message the code or manifest adds. The one
+  file per language serves every version: a phone still on an older version skips the fields its manifest hasn't and keeps the
+  rest, and one with an update waiting keeps the words it has until it updates, when the new version's come with it. So never
+  drop or change the meaning of a row an older version still uses while that version is in use. A third party's plugin
+  ships its own translations ([docs/plugins.md](plugins.md), "Translations").
 - **The glossary,** `l10n/glossary.tsv` (and `glossary.md` to read it), fixes the names of annai's screens and things
   in each language, the names iPhone and Android use for their own settings, and what is never translated.
 
@@ -78,6 +83,13 @@ someone who has read it in place: the `where` column says where it is used.
 A language is added to `l10n/languages.json` as `experimental`: it is offered only under Settings → Experimental →
 Unfinished translations. It becomes `shipped` once someone who reads the language has reviewed every row. Japanese
 and Chinese were reviewed by Opus, at the user's word (2026-10-26).
+
+**Traditional Chinese** (`zh-Hant`, 2026-10-28) started from the Simplified catalog, converted by OpenCC's `s2twp`
+(Simplified to Taiwan, with phrases; `opencc-js`, run once outside the repo), then given Taiwan's words where the
+converter left the mainland's (透過, 傳送, 供應商, 網址, 權杖, 存取, 重新啟動, 行事曆…) and 「」 for quotes. There is one
+Traditional catalog, with Taiwan's words: a phone set to Hong Kong, Macau or Cantonese gets it too (the user's choice). Its
+glossary column follows Taiwan's iPhone (加入主畫面, 分享, 隱私權與安全性). Opus reviewed every row against its English
+and its place, with Taiwan's usage as the standard, and it shipped (2026-10-28).
 
 Look at the screens in the language before marking rows `ok`: choose it under Settings → Languages, or
 set `localStorage['annai.ui']` to its tag. The phone-fit test (`test/e2e/phone-fit.spec.js`) runs every screen at
