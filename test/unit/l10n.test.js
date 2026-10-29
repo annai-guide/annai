@@ -1,6 +1,6 @@
 import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { t, tc, plural, setWords, key, lang, dir, holes, chooseTag } from '../../src/core/l10n.js';
+import { t, tc, plural, setWords, key, lang, dir, holes, chooseTag, sameLanguage } from '../../src/core/l10n.js';
 
 beforeEach(() => setWords('en', null));
 after(() => setWords('en', null));
@@ -136,6 +136,32 @@ test('the phone\'s languages are matched by language and script: zh-TW is not zh
   assert.deepEqual(chooseTag(null, ['fr-FR'], both), { tag: 'en', region: '' }, 'nothing annai has is English');
   assert.deepEqual(chooseTag(null, [], both), { tag: 'en', region: '' });
   assert.deepEqual(chooseTag(null, ['not a tag', 'ja-JP'], both), { tag: 'ja', region: 'JP' }, 'a tag that is none is passed over');
+});
+
+test('Taiwan, Hong Kong, Macau and any zh-Hant phone choose Traditional Chinese, a mainland or Singapore one Simplified (l10n-zh-Hant)', () => {
+  const all = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+  assert.deepEqual(chooseTag(null, ['zh-TW'], all), { tag: 'zh-Hant', region: 'TW' });
+  assert.deepEqual(chooseTag(null, ['zh-HK', 'en-GB'], all), { tag: 'zh-Hant', region: 'HK' }, 'one Traditional catalog, with Taiwan\'s words, for Hong Kong too');
+  assert.deepEqual(chooseTag(null, ['zh-MO'], all), { tag: 'zh-Hant', region: 'MO' });
+  assert.deepEqual(chooseTag(null, ['zh-Hant-TW'], all), { tag: 'zh-Hant', region: 'TW' });
+  assert.deepEqual(chooseTag(null, ['zh-Hant'], all), { tag: 'zh-Hant', region: '' });
+  assert.deepEqual(chooseTag(null, ['zh-CN'], all), { tag: 'zh-Hans', region: 'CN' });
+  assert.deepEqual(chooseTag(null, ['zh-SG'], all), { tag: 'zh-Hans', region: 'SG' });
+  assert.deepEqual(chooseTag(null, ['zh'], all), { tag: 'zh-Hans', region: '' }, 'Chinese with neither script nor region is Simplified, as Intl takes it');
+  assert.deepEqual(chooseTag(null, ['zh-TW', 'ja-JP'], all, ['en', 'ja', 'zh-Hans']), { tag: 'ja', region: 'JP' }, 'while it is unfinished, a Taiwan phone is not given it');
+  assert.deepEqual(chooseTag('zh-Hant', ['zh-TW'], all, ['en', 'ja', 'zh-Hans']), { tag: 'zh-Hant', region: 'TW' }, 'but a choice of it is kept, with the phone\'s region');
+});
+
+test('a Cantonese phone opens in Traditional Chinese, the Chinese it writes, with its region: yue, yue-HK, yue-Hant-HK and zh-yue (review F5)', () => {
+  const all = ['en', 'ja', 'zh-Hans', 'zh-Hant'];
+  assert.deepEqual(chooseTag(null, ['yue'], all), { tag: 'zh-Hant', region: '' });
+  assert.deepEqual(chooseTag(null, ['yue-HK'], all), { tag: 'zh-Hant', region: 'HK' });
+  assert.deepEqual(chooseTag(null, ['yue-Hant-HK', 'en-US'], all), { tag: 'zh-Hant', region: 'HK' });
+  assert.deepEqual(chooseTag(null, ['zh-yue'], all), { tag: 'zh-Hant', region: '' });
+  assert.deepEqual(chooseTag(null, ['yue-CN'], all), { tag: 'zh-Hans', region: 'CN' }, 'Cantonese written in Simplified is Simplified');
+  assert.deepEqual(chooseTag(null, ['yue-Hans'], all), { tag: 'zh-Hans', region: '' });
+  assert.deepEqual(chooseTag(null, ['yue-HK'], ['en', 'ja']), { tag: 'en', region: '' });
+  assert.ok(!sameLanguage('yue-HK', 'zh-Hant'), 'only the screens\' choice reads Cantonese as Chinese: a plugin\'s Cantonese is not its Chinese (Step on ae4c81db)');
 });
 
 test('an unfinished language is never picked for the user, only by them', () => {

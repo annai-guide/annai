@@ -1,0 +1,10 @@
+{
+  "manifest": {
+    "description": "把 PDF 的頁面轉成圖片，給能看照片但讀不了 PDF 的模型看；也能在任何瀏覽器中繪製 PDF 的第一頁作為預覽。內含 Mozilla 的 PDF.js，約 4.5 MB。",
+    "name": "PDF 頁面",
+    "keywords": [
+      "PDF.js"
+    ]
+  },
+  "messages": {}
+}

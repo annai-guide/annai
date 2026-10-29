@@ -1,0 +1,41 @@
+{
+  "manifest": {
+    "description": "開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。從不傳送金鑰。",
+    "name": "遠端記錄（開發人員）",
+    "settings.properties.device.description": "隨每批一起傳送，讓伺服器能把本裝置與其他裝置區分開。annai 會在第一次傳送時產生一個；你也可以自己命名。",
+    "settings.properties.device.title": "裝置 ID",
+    "settings.properties.location.description": "同時傳送 GPS 開啟時 annai 記錄的位置點（駕駛時約每秒一個）。關閉時，其他條目仍可能包含地點，正如「記錄」中顯示的：天氣請求的網址、工具的輸入等。",
+    "settings.properties.location.title": "傳送位置點",
+    "settings.properties.send.description": "開啟後，從現在起「記錄」所記下的內容會在幾秒內傳送到伺服器：你寫的、Shiori 說的、她的工具、請求和錯誤。金鑰會被遮蓋，已儲存的內容（照片、長文字）留在這裡。關閉會立即停止。",
+    "settings.properties.send.title": "傳送",
+    "settings.properties.server.description": "annai 傳送記錄的去處：你自己執行的伺服器，例如 annai 的 scripts/trace-sink.mjs。用 https://…，http:// 只能用於 localhost 或 127.0.0.1。",
+    "settings.properties.server.title": "伺服器網址",
+    "settings.properties.token.description": "伺服器的權杖。annai 以 Authorization: Bearer 傳送它，並和你的金鑰一起儲存，從不放進檔案。",
+    "settings.properties.token.title": "權杖"
+  },
+  "messages": {
+    "14w66x9": "無法連線伺服器。",
+    "15ggh6g": "伺服器網址中含有使用者名稱或密碼，請求無法攜帶它們。請把它們去掉，並把伺服器的權杖填到「權杖」中。",
+    "16cfxwg": "annai 會繼續大約每分鐘嘗試一次，並保留最新的 {0} 筆，直到送出為止。請在設定 → 外掛程式 → 遠端記錄（開發人員）中檢查伺服器網址和權杖，或在那裡關閉「傳送」。",
+    "18ckgf7": "{0} 連續 {2} 次傳回了 {1}。",
+    "1ahd84q": "權杖中含有請求無法攜帶的字元：只能用字母、數字和標點，不能有空格。",
+    "1kwbgo3": "手機處於離線狀態。",
+    "1qhwapr": "記錄伺服器拒絕了 annai 傳送的內容",
+    "1t53c9s": "正在傳送記錄",
+    "46d80m": "伺服器傳回了 {0}。",
+    "4clmw9": "需要你的伺服器網址。",
+    "ata72m": "記錄",
+    "bbadl": "遠端記錄沒有在傳送",
+    "dslm8u": "{0} 連續 {2} 次傳回了 {1}：權杖可能不對。",
+    "m3chyg": "開啟遠端記錄",
+    "q62pwu": "權杖無法傳送。",
+    "rr1ir8": "請在設定 → 外掛程式 → 遠端記錄（開發人員）中更改。",
+    "rt350m": "annai 無法準備好這一批。",
+    "s7tmcq": "需要伺服器的權杖。請在設定 → 外掛程式 → 遠端記錄（開發人員）中新增。",
+    "u2jqcp": "伺服器網址必須以 https:// 開頭（http:// 只能用於 localhost 或 127.0.0.1）。",
+    "zr5o1w": "沒有權杖。",
+    "zzw26r": {
+      "other": "正在傳送記錄：# 筆等待中。"
+    }
+  }
+}

@@ -1,9 +1,8 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "api": 2,
-  "l10n": ["ja", "zh-Hans"],
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
   "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
