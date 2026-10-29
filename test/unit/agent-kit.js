@@ -14,6 +14,7 @@ import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.j
 import { Agent } from '../../src/core/agent/loop.js';
 import { Halves } from '../../src/core/agent/halves.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
+import { syncNames } from '../../src/core/names.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -81,6 +82,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
+  syncNames(ws); // as the app does
   const host = new PluginHost({ registry, workspace: ws, importModule: (/** @type {string} */ u) => import(u) });
   await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
   await host.addBuiltin(new URL('../../src/plugins/files/index.js', import.meta.url).href);

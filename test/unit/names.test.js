@@ -6,7 +6,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { Registry } from '../../src/core/registry.js';
 import { ensureBaseScopes, createTrip, kindOf } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { readNames, shortName, NAMES_FILE, NAME_MAX } from '../../src/core/names.js';
+import { readNames, shortName, syncNames, NAMES_FILE, NAME_MAX } from '../../src/core/names.js';
 
 const SYS_WAITING = 'sys:waiting';
 
@@ -49,4 +49,20 @@ test('names.json takes only paths under /files/ with names of 1 to 80 characters
   await assert.rejects(ws.write(trip, '/names.json', { '/notes/a.md': 'A note' }, { author: 'shiori' }), ValidationError);
   await assert.rejects(ws.write(SYS_WAITING, '/names.json', { '/files/a.pdf': 7 }, { author: 'shiori' }), ValidationError);
   await ws.write(SYS_WAITING, '/names.json', { '/files/a.pdf': 'ANNAI AIR flight · Nov 20' }, { author: 'shiori' });
+});
+
+test("a deleted file's short name goes with it, whoever deleted it, so a new file at that path starts with none", async () => {
+  const { ws, trip } = await kit();
+  const off = syncNames(ws);
+  await ws.write(trip, '/files/confirmation.pdf', 'hotel', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/files/other.pdf', 'other', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/names.json', { '/files/confirmation.pdf': 'Hotel Aurora · Nov 20', '/files/other.pdf': 'Other' }, { author: 'shiori' });
+  await ws.delete(trip, '/files/confirmation.pdf', { author: 'user' });
+  assert.deepEqual(await readNames(ws, trip), { '/files/other.pdf': 'Other' });
+  await ws.write(trip, '/files/confirmation.pdf', 'flight', { author: 'user', type: 'application/pdf' });
+  assert.equal(shortName(await readNames(ws, trip), '/files/confirmation.pdf'), 'confirmation.pdf');
+  // A file outside /files/ has no name to lose; me has no names.
+  await ws.write(trip, '/notes/a.md', 'a', { author: 'user' });
+  await ws.delete(trip, '/notes/a.md', { author: 'user' });
+  off();
 });
