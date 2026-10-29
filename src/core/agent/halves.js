@@ -639,7 +639,8 @@ export class Halves {
 
   /**
    * To Koe while it talks (Kokoro reads it and wakes), else to Kokoro; a half waiting for an answer gets it.
-   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean }} [o] chose: a tap on a live ask's buttons
+   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   chose: a tap on a live ask's buttons; handed, handover: a hand-over (handover.js)
    */
   send(text, o = {}) {
     this.#bothTold = false;
@@ -923,7 +924,8 @@ export class Halves {
     const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed && !this.#stopHeld;
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
-    if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true });
+    // A hand-over typed to Koe is Kokoro's to file: its turn carries it, so what it does can be undone.
+    if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true, ...(e.data.handover ? { handover: e.data.handover } : {}) });
     else if (answered) this.#wakeKokoro({ kind: 'cue', text: /* en */ 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
     if (typed || answered || !LINES.includes(e.type) || !this.#works()) return;
