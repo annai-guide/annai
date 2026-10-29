@@ -189,12 +189,17 @@ export class Transcript {
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
+      // Where the files went: back to wait (an older mark says nothing, as they then always did), or back to the trips they came from.
+      const backTo = (Array.isArray(d.back) ? d.back : []).map((x) => JSON.stringify(String(x)));
+      /* en */
+      const where = d.waiting || !('back' in d) ? ', and the files wait with you again' : '';
+      /* en */
+      const where2 = backTo.length ? `${where ? '' : ','} ${where ? 'and some are' : 'and the files are'} back in ${backTo.join(' and ')}` : '';
       /* en */
       const said = [
         n ? `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}` : '',
         kept ? `${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '',
-        trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed, and the files wait with you again` : '',
-        trips.length > 1 ? `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed, and the files wait with you again` : '',
+        trips.length ? `${trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed` : `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed`}${where}${where2}` : '',
       ].filter(Boolean).join('; ');
       /* en */
       this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you${said ? `: ${said}` : ''}. Don't do it again unless they ask.` }]);

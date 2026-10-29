@@ -1,5 +1,5 @@
 {
-  "build": "d011e7a895a9",
+  "build": "6f698115eb95",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -51,7 +51,7 @@
     "/src/core/agent/net.js": "da9a89765c53",
     "/src/core/agent/tools.js": "bf886adf64d9",
     "/src/core/agent/trip-tools.js": "26c7bc9f926a",
-    "/src/core/agent/transcript.js": "84487f8c1ae0",
+    "/src/core/agent/transcript.js": "16f84543f55e",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "ea988f822316",
     "/src/core/address.js": "e821e53d2023",
@@ -67,7 +67,7 @@
     "/src/core/errors.js": "803212c6404d",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "bd57e8662ab6",
-    "/src/core/handover.js": "a1fc841221b0",
+    "/src/core/handover.js": "1188f13b0277",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
@@ -260,7 +260,7 @@
     "/src/ui/screens/settings.js": "a99180404955",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
-    "/src/ui/screens/talk.js": "376fbfbf5c8d",
+    "/src/ui/screens/talk.js": "bf692b20a23f",
     "/src/ui/screens/tools.js": "011d8241ffa0",
     "/src/ui/screens/trace.js": "726d453c0c93",
     "/src/ui/screens/trip.js": "a1dd148207e3",
@@ -285,8 +285,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "a71f3a842b47",
-    "/l10n/zh-Hans.json": "8a94d70b369b",
-    "/l10n/zh-Hant.json": "bb7edb7d62cd"
+    "/l10n/ja.json": "3083113a6563",
+    "/l10n/zh-Hans.json": "dfe8953a874b",
+    "/l10n/zh-Hant.json": "7a8c312b2ada"
   }
 }

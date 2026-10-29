@@ -2237,30 +2237,32 @@ e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:415	Note
 4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:496	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
 15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。「旅」から開くか、ここで話しかけてください。Shiori は /me/ を使えます。	src/ui/screens/talk.js:514	
 159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:555	
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}は削除され、ファイルは Shiori が預かっています。	src/ui/screens/talk.js:569	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
-1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:571	Note: as the Undone row, a sentence.
-urusz7#other	ok	Left # files as you changed them.	あなたが変更したファイル#件はそのままにしました。	src/ui/screens/talk.js:571	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
-1v37fcy	ok	Undo what Shiori did with these files	このファイルについて Shiori がしたことを元に戻す	src/ui/screens/talk.js:577	Note: the Undo button's label for screen readers; 元に戻す as Undo.
-1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:618	
-bomkf4	ok	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:619	
-7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:633	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:635	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:635	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:635	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:635	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:638	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:643	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:650	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:651	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:652	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:662	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:665	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:665	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:665	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:665	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:685	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:686	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:708	
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	元に戻しました。{0}は削除され、ファイルは{1}に戻りました。	src/ui/screens/talk.js:570	plural; # = removed.length; {0} = listed(removed); {1} = listed(back.map((b) => b.title)); English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Undo removed the trips she started, and the files went back to the trips they came from; {0} and {1} are trip names as lists.
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}は削除され、ファイルは Shiori が預かっています。	src/ui/screens/talk.js:577	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
+svlg0f#other	ok	Undone. {0} are removed.	元に戻しました。{0}は削除されました。	src/ui/screens/talk.js:578	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:580	Note: as the Undone row, a sentence.
+urusz7#other	ok	Left # files as you changed them.	あなたが変更したファイル#件はそのままにしました。	src/ui/screens/talk.js:580	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
+1v37fcy	ok	Undo what Shiori did with these files	このファイルについて Shiori がしたことを元に戻す	src/ui/screens/talk.js:586	Note: the Undo button's label for screen readers; 元に戻す as Undo.
+1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:627	
+bomkf4	ok	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:628	
+7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:642	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:644	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:644	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:644	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:644	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:647	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:652	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:659	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:660	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:661	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:671	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:674	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:674	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:674	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:674	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:694	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:695	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:717	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
