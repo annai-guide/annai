@@ -184,8 +184,8 @@ async function nameBefore(ws, scope, path, seq) {
 
 /**
  * A moved file back where it came from, if it is as it was moved or changed only by her for this hand-over (her changes go first):
- * 'back'; 'changed' when anyone else changed it where it went (it stays there); 'gone' when it isn't there any more, or where it came
- * from is gone (moved back already, or removed).
+ * 'back'; 'changed' when anyone else changed it where it went (it stays there); 'home' when it is back where it came from already;
+ * 'gone' when it isn't there any more, or where it came from is gone (removed).
  * @param {import('./workspace.js').Workspace} ws @param {{ scope: string, path: string, hash: string }} at where it went
  * @param {{ scope: string, path: string, source?: string }} back where it came from @param {string} handover
  */
@@ -193,7 +193,12 @@ async function moveBack(ws, at, back, handover) {
   const [now, home, events] = await ws.store.tx(['files', 'scopes', 'events'], 'readonly', async (t) => [
     await t.getFile(at.scope, at.path), await t.getScope(back.scope), await t.listEvents(at.scope, { types: ['file.write', 'file.delete'] }),
   ]);
-  if (!now || !home) return 'gone';
+  if (!home) return 'gone';
+  if (!now) {
+    // Moved back already (a first Undo tap that then failed): home, if it is there as it was moved.
+    const there = await ws.store.tx(['files'], 'readonly', (t) => t.getFile(back.scope, back.path));
+    return there?.hash === at.hash ? 'home' : 'gone';
+  }
   if (now.hash !== at.hash) {
     const of = events.filter((e) => e.data?.path === at.path);
     const arrived = of.findLastIndex((e) => e.type === 'file.write' && e.data?.moved?.from === back.scope && e.data?.handover === handover);
@@ -252,14 +257,13 @@ export async function undoHandover(ws, scope, handover, o = {}) {
     const r = await moveBack(ws, { scope: m.to, path: m.there, hash: m.hash }, { scope, path: m.path, ...(m.source ? { source: m.source } : {}) }, handover);
     if (r === 'back') undone.add(m.path);
     else if (r === 'changed') kept.set(m.path, `${scope}\n${m.path}`);
+    if (r === 'back' || r === 'home') returned.add(scope);
   }
-  if (f.out.length) for (const m of f.out) if (undone.has(m.path)) returned.add(scope);
   for (const m of f.into) {
     const r = await moveBack(ws, { scope, path: m.path, hash: m.hash }, { scope: m.from, path: m.back, ...(m.source ? { source: m.source } : {}) }, handover);
-    if (r === 'back') {
-      undone.add(m.path);
-      returned.add(m.from);
-    } else if (r === 'changed') kept.set(m.path, `${m.from}\n${m.back}`);
+    if (r === 'back') undone.add(m.path);
+    else if (r === 'changed') kept.set(m.path, `${m.from}\n${m.back}`);
+    if (r === 'back' || r === 'home') returned.add(m.from);
   }
   const files = await brought();
   const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())], ...(returned.size ? { returned: [...returned] } : {}) };
@@ -345,7 +349,8 @@ export async function undoEverywhere(ws, scope, handover, o) {
     if (rec?.kind === 'trip') back.push({ id, title: rec.title });
   }
   for (const m of marks) {
-    const said = removed.length ? { removed, ...(waiting ? { waiting: true } : {}), ...(back.length ? { back: back.map((b) => b.title) } : {}) } : {};
+    // Where the files went is said whether or not a trip was removed.
+    const said = { ...(removed.length ? { removed } : {}), ...(waiting ? { waiting: true } : {}), ...(back.length ? { back: back.map((b) => b.title) } : {}) };
     await writeMark(ws, m.scope, { ...m.mark, data: { ...m.mark.data, ...said } }, o.log?.(m.scope));
   }
   return { removed, kept: kept.size, waiting, back };

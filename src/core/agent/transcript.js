@@ -189,17 +189,18 @@ export class Transcript {
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
-      // Where the files went: back to wait (an older mark says nothing, as they then always did), or back to the trips they came from.
+      // Where the files went: back to wait, or back to the trips they came from (an older mark that removed a trip and says neither: to wait).
       const backTo = (Array.isArray(d.back) ? d.back : []).map((x) => JSON.stringify(String(x)));
+      const waits = Boolean(d.waiting) || (trips.length > 0 && !('back' in d) && !('waiting' in d));
       /* en */
-      const where = d.waiting || !('back' in d) ? ', and the files wait with you again' : '';
+      const where = [waits ? 'the files wait with you again' : '', backTo.length ? `${waits ? 'some are' : 'the files are'} back in ${backTo.join(' and ')}` : ''].filter(Boolean).join(', and ');
       /* en */
-      const where2 = backTo.length ? `${where ? '' : ','} ${where ? 'and some are' : 'and the files are'} back in ${backTo.join(' and ')}` : '';
+      const gone = trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed` : trips.length > 1 ? `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed` : '';
       /* en */
       const said = [
         n ? `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}` : '',
         kept ? `${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '',
-        trips.length ? `${trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed` : `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed`}${where}${where2}` : '',
+        gone && where ? `${gone}, and ${where}` : gone || where,
       ].filter(Boolean).join('; ');
       /* en */
       this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you${said ? `: ${said}` : ''}. Don't do it again unless they ask.` }]);
