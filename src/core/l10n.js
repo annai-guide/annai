@@ -50,12 +50,23 @@ export function sameLanguage(a, b) {
   } catch { return false; /* not a language tag */ }
 }
 /**
+ * A phone's language as the screens read it: Cantonese is written Chinese, by its script, with its region (yue-HK is zh-Hant-HK,
+ * yue-CN zh-Hans-CN; zh-yue is yue). Only for choosing the screens: a plugin's Cantonese is not its Chinese. @param {string} tag
+ */
+export function screensTag(tag) {
+  try {
+    const l = new Intl.Locale(tag.replace(/^zh-yue(?=-|$)/i, 'yue'));
+    return l.language === 'yue' ? new Intl.Locale('zh', { script: l.maximize().script, region: l.region }).toString() : tag;
+  } catch { return tag; /* not a language tag */ }
+}
+/**
  * The screens' language at the start, and the phone's region for it. own: the device's choice; offered: what it may be; shipped: what
  * the phone's languages are matched against. A choice no longer offered is as none.
- * @param {string | null | undefined} own @param {readonly string[]} phone @param {readonly string[]} offered @param {readonly string[]} [shipped]
+ * @param {string | null | undefined} own @param {readonly string[]} phones the phone's languages @param {readonly string[]} offered @param {readonly string[]} [shipped]
  * @returns {{ tag: string, region: string }}
  */
-export function chooseTag(own, phone, offered, shipped = offered) {
+export function chooseTag(own, phones, offered, shipped = offered) {
+  const phone = phones.map(screensTag);
   const regionOf = (/** @type {string} */ tag) => {
     for (const wanted of phone) if (sameLanguage(wanted, tag)) { try { return new Intl.Locale(wanted).region ?? ''; } catch { return ''; } }
     return '';
@@ -121,20 +132,33 @@ function count(words, n, one, other, values) {
 
 /**
  * A plugin's words (localization design, section 8): t, tc and plural over its messages for the screens (null: its own words), and
- * both, { message, shown }: English for what is kept or a model reads, and the screens' words (the shown rule). @param {Record<string, any> | null} words
+ * both, { message, shown }: English for what is kept or a model reads, and the screens' words (the shown rule). words: its messages,
+ * or how to read them now, so words that arrive while it runs (annai's own plugins' fetched translations) are used from then on.
+ * @param {Record<string, any> | null | (() => Record<string, any> | null)} words
  */
 export function wordsOver(words) {
+  const read = typeof words === 'function' ? words : () => words;
+  let had = read();
   /** @type {WeakMap<TemplateStringsArray, string>} */
-  const cache = new WeakMap();
-  /** @param {TemplateStringsArray} strings @param {...unknown} values */
-  const tr = (strings, ...values) => say(strings, values, undefined, words, cache);
+  let cache = new WeakMap();
+  /** The words now; what was made from others is made again. */
+  const now = () => {
+    const w = read();
+    if (w !== had) [had, cache] = [w, new WeakMap()];
+    return w;
+  };
+  /** @param {TemplateStringsArray} strings @param {unknown[]} values @param {string | undefined} context */
+  const tr = (strings, values, context) => {
+    const w = now();
+    return say(strings, values, context, w, cache);
+  };
   return {
-    t: tr,
+    t: (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => tr(strings, values, undefined),
     /** @param {string} context */
-    tc: (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => say(strings, values, context, words, cache),
+    tc: (context) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => tr(strings, values, context),
     /** @param {number} n @param {string} one @param {string} other @param {...unknown} values */
-    plural: (n, one, other, ...values) => count(words, n, one, other, values),
+    plural: (n, one, other, ...values) => count(now(), n, one, other, values),
     /** @param {TemplateStringsArray} strings @param {...unknown} values */
-    both: (strings, ...values) => ({ message: english(strings, values), shown: tr(strings, ...values) }),
+    both: (strings, ...values) => ({ message: english(strings, values), shown: tr(strings, values, undefined) }),
   };
 }

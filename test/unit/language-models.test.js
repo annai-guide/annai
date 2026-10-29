@@ -91,6 +91,7 @@ test('Gemini Live: hints go only when every language listed has a code of Live\'
       return sent;
     };
     assert.deepEqual(await hints(['en', 'zh', 'ja', 'zh']), { languageCodes: ['en', 'zh-Hans', 'ja'] }, 'a language once');
+    assert.deepEqual(await hints(['zh-Hant', 'en']), { languageCodes: ['zh-Hant', 'en'] }, 'Chinese (Traditional): Live\'s Traditional code (review F4)');
     assert.deepEqual(await hints(['yue', 'en']), {}, 'Cantonese: no code of Live\'s, so none');
     assert.deepEqual(await hints(['yue']), {});
     assert.deepEqual(await hints(['en', 'ta']), { languageCodes: ['en', 'ta'] }, 'Tamil has one for Live (only Gemini\'s transcription model lacks it)');
@@ -286,6 +287,7 @@ const audio = { data: new Uint8Array([1, 2]), mediaType: 'audio/wav' };
 test('Whisper-style transcription: one language listed is the `language` field; several are none (auto-detect), and gpt-transcribe takes them all as languages[]', () => {
   const form = (/** @type {string} */ id, /** @type {any} */ languages, /** @type {any} */ tunables) => hear.transcribeRequest({ ...asr(id, tunables), audio, languages }).body;
   assert.equal(form('whisper-large-v3', english).get('language'), 'en');
+  assert.equal(form('whisper-large-v3', modelLanguages(languageSettings({ languages: { spoken: ['zh-Hant'] } }, 'en'))).get('language'), 'zh', 'Chinese (Traditional): Whisper has one Chinese');
   assert.equal(form('whisper-large-v3', english).get('languages[]'), null);
   assert.equal(form('whisper-large-v3', three).get('language'), null, 'several: auto-detect, not the first (it would force a Chinese sentence into English)');
   assert.equal(form('whisper-large-v3', none).get('language'), null);
@@ -335,7 +337,7 @@ test("Gemini transcription: Google's transcription model gets language_codes in 
   assert.deepEqual(body('gemini-3.5-transcribe', tamil).generation_config.transcription_config, { language_codes: [] }, 'a language Google\'s model has no tag for: no hints at all, which would bias the rest against it (review item 12)');
   assert.deepEqual(body('gemini-3.5-transcribe', modelLanguages(languageSettings({ languages: { spoken: ['yue', 'en'] } }, 'en'))).generation_config.transcription_config, { language_codes: ['yue-Hant-HK', 'en-US'] });
   const text = body('gemini-3-flash', three).input[0].content[0].text;
-  assert.equal(text, 'Transcribe this speech exactly, in its own language. The speaker uses English, Chinese (Mandarin) or Japanese: write each in the language spoken and never translate. Output only the words.');
+  assert.equal(text, 'Transcribe this speech exactly, in its own language. The speaker uses English, Chinese (Simplified) or Japanese: write each in the language spoken and never translate. Output only the words.');
   assert.equal(body('gemini-3-flash', none).input[0].content[0].text, 'Transcribe this speech exactly, in its own language. Output only the words.');
   assert.equal(body('gemini-3-flash', english).input[0].content[0].text, 'Transcribe this speech exactly, in its own language. The speaker uses English: write it in the language spoken and never translate. Output only the words.');
 });

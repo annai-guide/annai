@@ -1,7 +1,7 @@
 import { PluginError, TAKEN, TURN_ON, takenShown, turnOnShown } from './registry.js';
 import { t } from './l10n.js';
 import { sentences } from './intl.js';
-import { officialPlugins, download, officialName, pluginName } from './llm/official.js';
+import { officialPlugins, download, officialName, pluginName, fetchTranslations } from './llm/official.js';
 import { SYS_PLUGINS } from './scopes.js';
 
 /**
@@ -146,6 +146,8 @@ export async function installRequirements(host, requires, env, { who, id, instal
       await install();
       if (!before[id]) fresh.push(id);
     }
+    // annai's own come with their words in the screens' language, before they start (never a reason to stop).
+    await fetchTranslations(host, { fetch: env.fetch, base: env.base, ids: [...got.map(([e]) => e.id), id] });
     for (const x of [...requires.map((r) => r.id).filter((x) => x !== id), ...(install ? [id] : [])]) await running(host, x, { tap: env.tap, fresh: fresh.includes(x) });
   } catch (e) {
     for (const x of fresh.reverse()) await host.uninstall(x).catch(() => {});

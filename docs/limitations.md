@@ -17,13 +17,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a phone trace shows a device that gates this way.
 - **Approved:** 2026-10-23, the user: "Accept".
 
-### Official plugin downloads carry every language's translation
-- **Kind:** deferred.
-- **What the user sees:** nothing on screen. Each official plugin download includes its Japanese and its Chinese translation, whatever language the screens are in. For a typical OpenRouter user's three plugins that is about 4 KB of 20 KB compressed. Across all 31 official plugins, translations are about a quarter of the bytes, and each added language adds about 12%.
-- **Why:** annai verifies an official plugin by every file the catalog lists. A plugin downloaded with only the screens' language would look like a changed copy and be offered as an update forever. A language change would also need a fetch. For two languages the cost is small.
-- **Revisit when:** a third language ships. Then move official plugins' translations to a per-language fetch, as `catalog/l10n/<tag>.json` already does for the catalog's own words.
-- **Approved:** 2026-10-27, the user: "Defer to a 3rd language".
-
 ### A non-English value quoted in a developer's English is read in an English voice
 - **Kind:** known limitation.
 - **What the user sees:** with a screen reader on Japanese or Chinese screens, a developer's English error (a broken plugin's manifest, skill or package check; a Simulate itinerary error) is read in an English voice. A non-English value it quotes, such as a manifest's `"language": "日本語"`, a Japanese stop name in an itinerary, or a zip entry's name, is read in that English voice too. Before the errors were marked, the whole sentence was read in a Japanese voice.
@@ -65,3 +58,24 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** there is no iOS 16.4–17.3 device or engine to test on.
 - **Revisit when:** someone on an older iPhone reports it.
 - **Approved:** 2026-10-28, the user: "Accept".
+
+### Claude's reasoning isn't carried between tool steps within a turn
+- **Kind:** deferred.
+- **What the user sees:** nothing on screen. Within one turn, a Claude model (Opus, Sonnet, Haiku) plans each tool step from what it sees, without the reasoning it wrote at the step before. Anthropic's documentation calls passing that reasoning back "Required" within a tool turn, for reasoning quality, though the API accepts a request without it.
+- **Why:** annai changes a request between steps (each step's now block, and each half's and tidy-up's own instructions). Anthropic binds a thinking block to everything before it, so every block sent back was refused with a 400, which put Kokoro on weak fallback models. So annai stopped sending thinking back (anthropic-messages 0.4.1).
+- **Revisit when:** next, after the bookings plans. Make each turn's requests append-only (keep each step's now block, and freeze the instructions and tools within a turn), then send Claude's thinking back again.
+- **Approved:** 2026-10-28, the user: "Defer, do it next".
+
+### A repeated note can be said twice in live voice
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on a live (realtime) model, if Kokoro sends a second note that repeats the first while Koe is already speaking, Koe may say it twice.
+- **Why:** live audio can't be cut and rerun the way a typed call can (Classic Koe's call is cut and rerun with both notes). The only guard in live voice is Koe's instruction to skip a note she has already said, which a weak model can ignore.
+- **Revisit when:** it happens on the user's phone with a live model.
+- **Approved:** 2026-10-28, the user: "Accept as known limitation".
+
+### A page on the old annai deletes official plugins' translations if it applies their updates before restarting
+- **Kind:** known limitation.
+- **What the user sees:** once, at the release that moved official plugins' translations out of their packages. A phone still running the old annai sees the plugins' new versions before it restarts. If the user taps Update before Restart, the old code installs each new package and deletes the translation it doesn't contain. Those plugins show English for the rest of that session. After the restart, the first plugin check downloads their words again (a few KB).
+- **Why:** the old code already on phones can't change. Releasing the new code first and moving the translations a release later would cost every user two update rounds instead of one.
+- **Revisit when:** never needed; it heals by itself at the next restart plus one check.
+- **Approved:** 2026-10-28, the user: "Accept as known limitation".

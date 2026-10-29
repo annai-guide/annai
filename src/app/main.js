@@ -27,7 +27,7 @@ import { selfTools } from '../core/agent/self-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
-import { screensAtStart } from '../ui/languages.js';
+import { screensAtStart, nextScreens } from '../ui/languages.js';
 import { setDistances } from '../core/intl.js';
 import { Voice } from '../core/voice/voice.js';
 import { mediaKeys } from '../ui/media-keys.js';
@@ -207,7 +207,7 @@ async function boot() {
   }
   // Updates (spec §5.3, §17 rule 5): annai's own and its plugins', checked at start, on coming back to the screen,
   // once a day, and on Check now. Packages installed from an address are checked there, each request in the trace.
-  const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }) } });
+  const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;
   updates.voice = voice;
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });

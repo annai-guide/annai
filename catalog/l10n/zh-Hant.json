@@ -1,0 +1,199 @@
+{
+  "format": 1,
+  "plugins": {
+    "anthropic-messages": {
+      "name": "Anthropic Messages",
+      "description": "連線 Anthropic 的 Messages API，以及支援它的端點。"
+    },
+    "chat-completions": {
+      "name": "Chat Completions",
+      "description": "連線 OpenAI 風格的 Chat Completions 端點：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本機伺服器。"
+    },
+    "gemini-api": {
+      "name": "Gemini API",
+      "description": "透過 Gemini 自己的 API（Interactions）進行對話、語音轉文字和聲音：支援所有音訊格式，原樣保留 Gemini 3 的思考簽名，用量包含快取和思考 token，聲音可串流播放，對話由 Google 在輪次之間儲存，因此每次只傳送新內容；付費金鑰還可使用 Google 搜尋，答案按 Google 給出的樣子顯示。"
+    },
+    "gemini-live": {
+      "name": "Gemini Live",
+      "description": "連線 Gemini 的 Live API：為 Koe 提供在單一串流中雙向進行的語音對話。"
+    },
+    "openai-realtime": {
+      "name": "OpenAI Realtime",
+      "description": "連線 OpenAI 的 Realtime API：為 Koe 提供在單一串流中雙向進行的語音對話。"
+    },
+    "openai-responses": {
+      "name": "OpenAI Responses",
+      "description": "連線 OpenAI 的 Responses API 以及支援它的伺服器。對話由 OpenAI 在輪次之間儲存，因此每次只傳送新內容；annai 收到指示時會刪除已儲存的回覆。"
+    },
+    "pdf-pages": {
+      "name": "PDF 頁面",
+      "description": "把 PDF 的頁面轉成圖片，給能看照片但讀不了 PDF 的模型看；也能在任何瀏覽器中繪製 PDF 的第一頁作為預覽。內含 Mozilla 的 PDF.js，約 4.5 MB。",
+      "keywords": [
+        "PDF.js"
+      ]
+    },
+    "provider-another-address": {
+      "name": "自訂供應商",
+      "description": "任何其他伺服器：OpenAI 相容的伺服器、路由或代理，或你自己執行的伺服器。填寫它的網址，annai 會免費檢視它提供什麼。",
+      "keywords": [
+        "OpenAI 相容",
+        "路由",
+        "自訂",
+        "代理",
+        "自架"
+      ]
+    },
+    "provider-anthropic": {
+      "name": "Anthropic",
+      "description": "透過 Anthropic 的 Messages API 使用 Claude 模型，支援網頁搜尋，快取最長可保留一小時。"
+    },
+    "provider-deepseek": {
+      "name": "DeepSeek",
+      "description": "DeepSeek 的模型，思考時會顯示推理過程。"
+    },
+    "provider-gemini": {
+      "name": "Google Gemini",
+      "description": "透過 Google 自己的 API 使用 Gemini 模型，付費金鑰可使用 Google 搜尋，另有 Google 的語音轉文字和聲音，以及用於語音對話的 Gemini Live。"
+    },
+    "provider-groq": {
+      "name": "Groq",
+      "description": "快速的開放模型，以及快速的 Whisper 語音轉文字。"
+    },
+    "provider-llamacpp": {
+      "name": "llama.cpp",
+      "description": "你自己執行的 llama.cpp 伺服器（llama-server）上的模型，或基於它的伺服器（如 Unsloth Studio、KoboldCpp）上的模型。快速判斷時會關閉思考。",
+      "keywords": [
+        "Unsloth",
+        "LM Studio",
+        "KoboldCpp"
+      ]
+    },
+    "provider-lmstudio": {
+      "name": "LM Studio",
+      "description": "LM Studio 伺服器上的模型。"
+    },
+    "provider-local-speech": {
+      "name": "本機語音伺服器",
+      "description": "由你自己執行的伺服器（如 Speaches、whisper.cpp 或 Kokoro）提供語音轉文字和聲音。",
+      "keywords": [
+        "Speaches",
+        "whisper.cpp",
+        "Kokoro"
+      ]
+    },
+    "provider-mistral": {
+      "name": "Mistral",
+      "description": "Mistral 的模型。"
+    },
+    "provider-ollama": {
+      "name": "Ollama",
+      "description": "Ollama 上的模型，快速判斷時會關閉思考。"
+    },
+    "provider-openai": {
+      "name": "OpenAI",
+      "description": "透過 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的語音轉文字和聲音，以及供 Koe 使用的 Realtime 語音，全部用一個金鑰。"
+    },
+    "provider-openrouter": {
+      "name": "OpenRouter",
+      "description": "一個金鑰即可使用許多模型（其中有免費的），還有語音轉文字和聲音。請「使用 OpenRouter 登入」，或填寫金鑰。",
+      "featured": "「使用 OpenRouter 登入」是最快的方式，並且會先讓你用免費模型。"
+    },
+    "provider-scripted": {
+      "name": "腳本模型（測試用）",
+      "description": "按腳本回覆的模型，供測試和外掛程式作者使用。它從不使用網路。"
+    },
+    "provider-sglang": {
+      "name": "SGLang",
+      "description": "你自己執行的 SGLang 伺服器上的模型，思考透過聊天範本開關。"
+    },
+    "provider-vllm": {
+      "name": "vLLM",
+      "description": "你自己執行的 vLLM 伺服器上的模型，思考透過聊天範本開關，另有用於語音轉文字的 Whisper 模型。"
+    },
+    "remote-trace": {
+      "name": "遠端記錄（開發人員）",
+      "description": "開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。從不傳送金鑰。"
+    },
+    "scripted-model": {
+      "name": "腳本模型",
+      "description": "按腳本回覆的模型，供測試和外掛程式作者使用。它從不使用網路。"
+    },
+    "search-searxng": {
+      "name": "SearXNG 搜尋",
+      "description": "透過你自己執行的 SearXNG 執行個體搜尋。無需金鑰，沒有限制（除了你自己設的）。執行個體必須允許 JSON 和網頁應用程式。",
+      "keywords": [
+        "SearXNG",
+        "自架"
+      ]
+    },
+    "search-serper": {
+      "name": "Serper 搜尋",
+      "description": "透過 Serper 取得 Google 的搜尋結果，附帶它的答案框。註冊即送 2,500 次免費搜尋，無需信用卡。",
+      "keywords": [
+        "Serper",
+        "Google"
+      ]
+    },
+    "search-tavily": {
+      "name": "Tavily 搜尋",
+      "description": "為 AI 代理打造的網頁搜尋，附帶每個頁面的摘要。每月 1,000 個免費額度，無需信用卡。",
+      "keywords": [
+        "Tavily"
+      ]
+    },
+    "speech-openai": {
+      "name": "OpenAI 相容語音",
+      "description": "透過 OpenAI 音訊 API 提供語音轉文字和聲音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本機伺服器。"
+    },
+    "storage-forgejo": {
+      "name": "Forgejo / Gitea",
+      "description": "把所有內容備份到 Forgejo 或 Gitea 伺服器（比如你自己的或 Codeberg）上的私有儲存庫：每次備份是一次提交，只上傳有變化的檔案。"
+    },
+    "storage-github": {
+      "name": "GitHub",
+      "description": "把所有內容備份到 GitHub 的私有儲存庫：每次備份是一次提交，只上傳有變化的檔案。"
+    },
+    "storage-s3": {
+      "name": "S3 相容儲存",
+      "description": "把所有內容備份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 相容儲存的儲存桶中，每次備份一個封存檔案。"
+    },
+    "storage-webdav": {
+      "name": "WebDAV",
+      "description": "把所有內容備份到允許瀏覽器存取的 WebDAV 伺服器上的資料夾，每次備份一個封存檔案。"
+    }
+  },
+  "translations": {
+    "anthropic-messages": "f27a002d2cb8a2bf6e80b2ea0ad2a652ec9c532ec1935314995921b99bb16a1b",
+    "chat-completions": "721c87e1829232dd569a114805ca2f5788d9482141d74714eeb8c4eb53ec9608",
+    "gemini-api": "bdcce2b0d8eb6fb42a75314b5ab86434f059657ffb32a8fe33da0dc367eda27f",
+    "gemini-live": "b0d1a5450ffe3e68d0444bdf36e503a71818f09f5a21b76d71d0817a866b02cc",
+    "openai-realtime": "932776257eec3b35d5a9e798a4fee3e8e9a4898bc6a31c98bcc5accde02c8066",
+    "openai-responses": "bc378e6f28469edab01457bbce93c39743fb545a90cf1c1d52a9216ab6474b51",
+    "pdf-pages": "36ab4133ee82de174010e88aeb3268d3b81491cd65cf5f1adf992c8ac61e9468",
+    "provider-another-address": "7a36c6b16d4d69bc8b21c4f6190faa17bad16c7842269cd2716d885a71ec9d79",
+    "provider-anthropic": "d9734f139f9c8a81803337efc12b68b02b1e3829627160d16bbf0482fcd7d8a6",
+    "provider-deepseek": "46b69e1d842a5414309a1983800fd852f96c875666085b228f8475b5f12253cc",
+    "provider-gemini": "15fe0d487735237c56d5325c3c3cf4fa67ff05f1bbe5c1e48344cb852ec74b6a",
+    "provider-groq": "8f6c794189f5627904c4f685f3dc8999ecd27e2ed08694e835adf4f5ebde6547",
+    "provider-llamacpp": "d017cc4a6f8d99a34a4e2c7bd541f99aa10b7b7ebb0cab51094f19a21d849a97",
+    "provider-lmstudio": "0571d521cce117e57de4e0a6d665612ca4d402725a9241a226e8121a5bf53422",
+    "provider-local-speech": "57be6a1d677d9e751acab628e566b9149ba8fd30912cb4aae328c785316836e0",
+    "provider-mistral": "14fc54a1e4a5555abbb87f01b0d4c754177858ab8baf931ed653bf25d309eff3",
+    "provider-ollama": "91476931f93626cce12d3a062f997ce890ab858db48a5a58f885716d05a1adac",
+    "provider-openai": "d8b3bc0257776a71f89b845a94dfb9411cf8c238bd1eff4c9632909267fee5fe",
+    "provider-openrouter": "8dd4ddc17d98e0f6b7473a8c587fc41f36eb32c357eacb403c92bc04a57d1d14",
+    "provider-scripted": "82a7b879e22071a767765ccdcf064f7ae675719753d9fb7bf4e169cdccfc8971",
+    "provider-sglang": "ed6f8629475ad83e31d73f292d397d2e93a8f83876caee9754223825f6534ddf",
+    "provider-vllm": "b3b0051d42e846d04814ebe2ddc865412bbe7ea395e045c6fbb9e16de884294c",
+    "remote-trace": "0e8e0dee2bde5c464e4264f7eb016bca91e7bbeaac8360289be3bbc47135e03d",
+    "scripted-model": "b4b0b6b30046bb7e1f3babc38ae2199f157bf52c12887ec1196429e1b90228a5",
+    "search-searxng": "240e0259328ccdfd9aba0a487df90e6f289c44189664d0155fcdc4a4c6e1b18f",
+    "search-serper": "820d733fd7b218474d3f44bd1d5f5a51029e347198d496b2e07d56b37eba89ba",
+    "search-tavily": "e5e7ea7fae92bf3bac9a273d5bc3cf21e10199482fa35d2b93cddb76bea791d8",
+    "speech-openai": "a6e95bf4bf60a2d5a9b1f11e597c83290f679a78fbced3e0cfd9a5e845369658",
+    "storage-forgejo": "d60631aa9e76a58337270e7ad3d4c3b9eeb807ed079d297b05457f948871841e",
+    "storage-github": "b9a4af69b84e530b0ba51f7bc469172fbe6ebfe154df71e9681ddd32675f5ed0",
+    "storage-s3": "d6686c61ed9b053d94bd3d275a0fdb17929781031a9f801e779b12b16583d2d4",
+    "storage-webdav": "3cbaea7d215e2ffd52176a18b3677a1388fbc8345df0f4fafbce4cc55ee9f64a"
+  }
+}

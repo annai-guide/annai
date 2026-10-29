@@ -1,7 +1,7 @@
 // How annai formats for people (localization design, section 4): one set of Intl helpers, each formatter made once per locale.
 // The locale is the screens' language with the phone's region (l10n.js): English screens on a German phone format as en-DE.
 import { t, tc, locale, lang } from './l10n.js';
-import { LANGUAGES } from './languages.js';
+import { LANGUAGES, displayCode } from './languages.js';
 
 export { locale };
 
@@ -156,14 +156,14 @@ export const list = (items, kind = 'and') => make(Intl.ListFormat, kind === 'pla
 
 /**
  * A language's name in the interface language ("Japanese", "日本語"). English screens keep annai's own English names ("Chinese
- * (Mandarin)", not the browser's "Chinese"), and so does any language the browser can't name. @param {string} id
+ * (Simplified)", not the browser's "Chinese"), and so does any language the browser can't name. @param {string} id
  */
 export function languageName(id) {
   const ours = LANGUAGES.find((l) => l.id === id)?.name;
   if (ours && lang().split('-')[0] === 'en') return ours;
   let name;
   try {
-    name = make(Intl.DisplayNames, { type: 'language' }).of(id);
+    name = make(Intl.DisplayNames, { type: 'language' }).of(displayCode(id));
   } catch { /* not a code Intl knows */ }
   return name && name !== id ? name : ours ?? id;
 }

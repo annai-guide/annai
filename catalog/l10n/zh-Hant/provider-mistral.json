@@ -1,0 +1,8 @@
+{
+  "manifest": {
+    "description": "Mistral 的模型。",
+    "name": "Mistral",
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型。"
+  },
+  "messages": {}
+}
