@@ -229,3 +229,18 @@ test("the case fallback never stands in for a file that existed: a deleted path 
   await assert.rejects(run('delete', { path: '/trip/NOTES/HOTEL.md' }));
   assert.ok(await ws.read(trip, '/notes/hotel.md'));
 });
+
+test("Shiori's file tools put the turn's hand-over on what they write and delete", async () => {
+  const { ws, trip, tools } = await setup();
+  const call = { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori', handover: 'h-1' };
+  await tools.write.run({ path: '/trip/notes/a.md', content: 'one' }, call);
+  await tools.edit.run({ path: '/trip/notes/a.md', old: 'one', new: 'two' }, call);
+  await tools.patch.run({ path: '/trip/names.json', changes: { '/files/a.pdf': 'Alaska flight' } }, call);
+  await tools.delete.run({ path: '/trip/notes/a.md' }, call);
+  await tools.write.run({ path: '/trip/notes/b.md', content: 'later' }, { ...call, handover: undefined });
+  const ev = await ws.store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: ['file.write', 'file.delete'] }));
+  const hers = ev.filter((e) => e.actor === 'shiori');
+  assert.deepEqual(hers.map((e) => [e.data.path, e.data.handover ?? null]), [
+    ['/notes/a.md', 'h-1'], ['/notes/a.md', 'h-1'], ['/names.json', 'h-1'], ['/notes/a.md', 'h-1'], ['/notes/b.md', null],
+  ]);
+});

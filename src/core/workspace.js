@@ -11,7 +11,8 @@ export { StorageFullError } from './errors.js';
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').Tx} Tx
  * @typedef {import('./types.js').FileEntry} FileEntry
- * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta, guard?: (before: any, next: any) => any }} WriteOptions
+ * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta, guard?: (before: any, next: any) => any, handover?: string }} WriteOptions
+ *   handover: the hand-over a write of Shiori's was made for (the user's message with files), kept on its log entry so Undo can find it
  *   guard: for a JSON file, called inside the path's lock with what is stored (undefined if nothing, or not JSON) and the
  *   value about to be stored, read as the format check reads it; what it returns is stored, and what it throws stops the write
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
@@ -146,7 +147,7 @@ export class Workspace {
     const p = normPath(path);
     return this.#locked(scope, p, async () => {
       const now = this.now();
-      await this.store.tx(['files', 'events', 'scopes'], 'readwrite', (t) => removeFile(t, scope, p, opts.author, now));
+      await this.store.tx(['files', 'events', 'scopes'], 'readwrite', (t) => removeFile(t, scope, p, opts, now));
       await this.#emit({ op: 'delete', scope, path: p });
     });
   }
@@ -179,7 +180,7 @@ export class Workspace {
         const out = [];
         for (const { path, version } of prepared) {
           if (!version) {
-            await removeFile(t, scope, path, opts.author, now);
+            await removeFile(t, scope, path, opts, now);
             out.push({ op: 'delete', scope, path });
             continue;
           }
@@ -356,7 +357,7 @@ async function putVersion(t, scope, path, version, opts, now) {
   await t.putFile(next);
   await t.appendEvent(scope, {
     ts: now, type: 'file.write', actor: opts.author,
-    data: { path, old: old?.hash ?? null, new: version.hash, size: version.size, type: version.type },
+    data: { path, old: old?.hash ?? null, new: version.hash, size: version.size, type: version.type, ...handoverOf(opts) },
   });
   return next;
 }
@@ -374,11 +375,14 @@ export async function keepBlob(t, hash, type, bytes) {
   await t.putBlob({ hash, type, size: bytes.byteLength, data: ownBuffer(bytes) });
 }
 
-/** @param {Tx} t @param {string} scope @param {string} path @param {string} author @param {number} now */
-async function removeFile(t, scope, path, author, now) {
+/** @param {Tx} t @param {string} scope @param {string} path @param {WriteOptions} opts @param {number} now */
+async function removeFile(t, scope, path, opts, now) {
   await touchScope(t, scope, now);
   const old = await t.getFile(scope, path);
   if (!old) throw new NotFoundError(path);
   await t.deleteFile(scope, path);
-  await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: author, data: { path, old: old.hash } });
+  await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: opts.author, data: { path, old: old.hash, ...handoverOf(opts) } });
 }
+
+/** A log entry's hand-over, only when the change was made for one. @param {WriteOptions} opts */
+const handoverOf = (opts) => (opts.handover ? { handover: opts.handover } : {});
