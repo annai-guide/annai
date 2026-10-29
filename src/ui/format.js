@@ -1,5 +1,6 @@
 import { validZone, dayIn } from '../core/time.js';
 import { checkOf } from '../core/bookings.js';
+import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
@@ -62,6 +63,11 @@ export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(p
 export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /** A plan item's details. @param {string} id @param {string} path "/plan/…" @param {string} [from] as bookingHref's */
 export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/**
+ * Where a link to a trip's file goes: a booking's or a plan item's details, never its raw form (the user, 2026-10-28: "it just shows me
+ * the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
+ */
+export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
 /**
  * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
  * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]

@@ -278,6 +278,12 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     const last = asText(llm.bodies(MESSAGES).at(-1).messages.at(-1));
     expect(last).toContain('Read it again');
     expect(last).toContain('The user is asking about the booking \\"/trip/bookings/flight.json\\"');
+    // The chip on the sent line opens the booking's details, never its raw JSON (the review of seeing-bookings, E1).
+    const chip = page.locator('.convo .chips.handed .attach-chip').first();
+    await expect(chip).toHaveAttribute('href', /\/booking\?path=/);
+    await chip.click();
+    await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+    await expect(page.locator('textarea')).toHaveCount(0);
   } finally {
     await llm.stop();
   }
