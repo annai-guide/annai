@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { ensureBaseScopes, createTrip, removeTrip, kindOf } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, removeTrip, kindOf, SYS_WAITING } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { record } from '../../src/core/agent/log.js';
 import { undoHandover, undoable, filesToRead } from '../../src/core/handover.js';
@@ -81,7 +81,7 @@ test("a trip she started for the hand-over: empty of the user's, tripEmpty with 
   await ws.write(started, '/files/flight.pdf', utf8('%PDF flight'), { author: 'user', type: 'application/pdf', handover: 'h-1' });
   await record(store, started, { type: 'msg.user', actor: 'user', data: { handed: [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1', from: 'me' }, texts: [['text', '(files)']] });
   await ws.write(started, '/bookings/flight.json', flightBooking, HERS);
-  assert.deepEqual(await undoHandover(ws, started, 'h-1'), { undone: ['/bookings/flight.json'], kept: [], tripEmpty: true, files: ['/files/flight.pdf'] });
+  assert.deepEqual(await undoHandover(ws, started, 'h-1'), { undone: ['/bookings/flight.json'], kept: [], keptKeys: [], tripEmpty: true, files: ['/files/flight.pdf'] });
   assert.ok(await ws.read(started, '/trip.json'));
   assert.ok(await ws.read(started, '/memory.md'));
 
@@ -107,14 +107,14 @@ test('undoable: true with something to take back, false once undone; a second un
   await undoHandover(ws, trip, 'h-1');
   assert.equal(await undoable(store, trip, 'h-1'), false);
   const before = await eventsIn(store, trip, ['file.write', 'file.delete', 'handover.undo']);
-  assert.deepEqual(await undoHandover(ws, trip, 'h-1'), { undone: [], kept: [], tripEmpty: false, files: [] });
+  assert.deepEqual(await undoHandover(ws, trip, 'h-1'), { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] });
   assert.equal((await eventsIn(store, trip, ['file.write', 'file.delete', 'handover.undo'])).length, before.length);
   // A trip she started is undoable for it; once removed by hand, undo is no error.
   const started = await createTrip(ws, { title: 'Kyoto' }, { author: 'shiori', handover: 'h-2' });
   assert.equal(await undoable(store, started, 'h-2'), true);
   await removeTrip(store, started);
   assert.equal(await undoable(store, started, 'h-2'), false);
-  assert.deepEqual(await undoHandover(ws, started, 'h-2'), { undone: [], kept: [], tripEmpty: false, files: [] });
+  assert.deepEqual(await undoHandover(ws, started, 'h-2'), { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] });
 });
 
 test('filesToRead: the files of wakes after her last turn; none once a turn has answered them', async () => {
@@ -211,4 +211,43 @@ test('an Undo cut off before the trip she started was removed can finish: it is 
   assert.equal(await undoable(store, started, 'h-1'), true);
   assert.equal((await undoHandover(ws, started, 'h-1')).tripEmpty, true);
   assert.equal((await eventsIn(store, started, ['handover.undo'])).length, 1);
+});
+
+// Fix round 2.
+
+test('a handed file she deleted in a trip she started is put back by Undo, and goes back to wait with the others', async () => {
+  const { ws } = await kit();
+  syncNames(ws);
+  const started = await createTrip(ws, { title: 'Testville' }, { author: 'shiori', handover: 'h-1' });
+  await ws.write(SYS_WAITING, '/files/flight.pdf', utf8('%PDF flight'), { author: 'user', type: 'application/pdf' });
+  await ws.write(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt', utf8('Thanks!\nSee you\nSam\nx'), { author: 'user', type: 'text/plain' });
+  for (const p of ['/files/flight.pdf', '/files/pasted-2026-10-28-0310.txt']) await moveFile(ws, { scope: SYS_WAITING, path: p }, started, { handover: 'h-1' });
+  // She names both, then deletes the note that isn't a booking: the name goes with it (syncNames, annai's own write).
+  await ws.patch(started, '/names.json', { '/files/flight.pdf': 'ANNAI AIR flight', '/files/pasted-2026-10-28-0310.txt': 'A thank-you note' }, { ...HERS, create: true });
+  await ws.delete(started, '/files/pasted-2026-10-28-0310.txt', HERS);
+  const out = await undoHandover(ws, started, 'h-1');
+  assert.equal(out.tripEmpty, true, 'annai keeping names in step is nothing of the user\'s');
+  assert.deepEqual(out.files.sort(), ['/files/flight.pdf', '/files/pasted-2026-10-28-0310.txt']);
+});
+
+test("Undo's counts: a file moved out and changed by her where it went, for the same hand-over, goes back and counts once as undone; one the user changed is kept, counted once", async () => {
+  for (const who of ['shiori', 'user']) {
+    for (const order of ['from first', 'to first']) {
+      const { ws, trip } = await kit();
+      const kyoto = await createTrip(ws, { title: 'Kyoto' });
+      await ws.write(trip, '/files/note.txt', utf8('temple at 9'), { author: 'user', type: 'text/plain' });
+      const there = await moveFile(ws, { scope: trip, path: '/files/note.txt' }, kyoto, { handover: 'h-1' });
+      await ws.write(kyoto, there, utf8('temple at 10'), { author: who, type: 'text/plain', ...(who === 'shiori' ? { handover: 'h-1' } : {}) });
+      const outs = [];
+      for (const s of order === 'from first' ? [trip, kyoto] : [kyoto, trip]) outs.push(await undoHandover(ws, s, 'h-1'));
+      const kept = new Set(outs.flatMap((o) => o.keptKeys));
+      const inTrip = await ws.readText(trip, '/files/note.txt');
+      const inKyoto = await ws.readText(kyoto, there);
+      if (who === 'shiori') {
+        assert.deepEqual([inTrip, inKyoto, kept.size], ['temple at 9', undefined, 0], `${who} ${order}`);
+      } else {
+        assert.deepEqual([inTrip, inKyoto, kept.size], [undefined, 'temple at 10', 1], `${who} ${order}`);
+      }
+    }
+  }
 });

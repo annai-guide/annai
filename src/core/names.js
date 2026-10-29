@@ -36,12 +36,13 @@ export function shortName(names, path) {
 
 /**
  * Keeps names with their files: a file deleted under /files/ (by the user, by Shiori, or moved away) loses its short name, so a new file
- * at that path never takes it. Its older versions stay in names.json's history, as any file's do. @param {Workspace} ws
+ * at that path never takes it, written as annai's (system). A trip's names.json keeps its history, which goes with the trip; the waiting space's goes with the file dropped (waiting.js). @param {Workspace} ws
  * @returns {() => void} stops it
  */
 export function syncNames(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
     if (op !== 'delete' || !/^\/files\/[^/]+$/.test(path) || (!scope.startsWith('trip-') && scope !== 'sys:waiting')) return;
-    if (Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: null }, { author: 'user' });
+    // annai's own write, keeping names in step: never the user's work, nor hers (Undo reads authors).
+    if (Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: null }, { author: 'system' });
   });
 }
