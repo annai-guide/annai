@@ -93,7 +93,7 @@ export function createComposer(ctx, o = {}) {
   /** @type {string[]} */
   let suggestions = [];
   let keeping = false;
-  const status = h('p', { class: 'sub keeping', role: 'status' });
+  const status = h('p', { class: 'keeping', role: 'status' });
   const chips = h('span', { class: 'chip-list' });
   const el = h('div', { class: 'chips', hidden: true }, chips, status);
   /** @param {number} i */
