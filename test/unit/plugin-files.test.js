@@ -125,7 +125,7 @@ test('read: a Wallet pass as what it says, and an email as its text', async () =
 
 test('bookings: Shiori writes them unverified, never confirms one, and her change to a confirmed one goes back to the user', async () => {
   const { ws, trip, run } = await setup();
-  const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', title: 'Hotel Hoboken' };
+  const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', title: 'Hotel Hoboken', unsure: [] };
   await assert.rejects(run('write', { path: '/trip/bookings/hotel.json', content: { ...booking, status: 'confirmed' } }), /Only the user confirms a booking/);
   assert.equal(await ws.read(trip, '/bookings/hotel.json'), undefined);
   await run('write', { path: '/trip/bookings/hotel.json', content: booking });
@@ -143,6 +143,24 @@ test('bookings: Shiori writes them unverified, never confirms one, and her chang
   await assert.rejects(run('patch', { path: '/trip/bookings/none.json', changes: { title: 'x' } }), /No file at \/trip\/bookings\/none\.json/);
   // Other records are not bookings.
   await run('write', { path: '/trip/notes/confirmed.json', content: { status: 'confirmed' } });
+});
+
+test("bookings: Shiori's new booking needs unsure; the schema takes a list of names", async () => {
+  const { ws, trip, run } = await setup();
+  const booking = { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123' };
+  await assert.rejects(run('write', { path: '/trip/bookings/flight.json', content: booking }), /lists the fields you are unsure of in unsure/);
+  assert.equal(await ws.read(trip, '/bookings/flight.json'), undefined);
+  await assert.rejects(run('write', { path: '/trip/bookings/flight.json', content: { ...booking, unsure: 'seat' } }), /doesn't match its format/);
+  await assert.rejects(run('write', { path: '/trip/bookings/flight.json', content: { ...booking, unsure: [''] } }), /doesn't match its format/);
+  await run('write', { path: '/trip/bookings/flight.json', content: { ...booking, unsure: ['seat'], fields: { seat: '14C' } } });
+  // Told the seat is right, she takes it out of unsure.
+  await run('patch', { path: '/trip/bookings/flight.json', changes: { unsure: [] } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/flight.json')).unsure, []);
+  // A booking from before unsure changes as it did: she may write unsure: [] when the user says it is right.
+  await ws.write(trip, '/bookings/old.json', { id: 'old', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf' }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/old.json', changes: { title: 'Hotel Aurora Test' } });
+  await run('patch', { path: '/trip/bookings/old.json', changes: { unsure: [] } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/old.json')).unsure, []);
 });
 
 test('bookings: deleting one the user confirmed goes ahead, and Shiori is told they had confirmed it', async () => {
@@ -164,7 +182,7 @@ test('bookings: deleting one the user confirmed goes ahead, and Shiori is told t
 
 test("bookings: Shiori can't confirm one through text the rule would read differently, or by racing the user", async () => {
   const { ws, trip, run } = await setup();
-  const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf' };
+  const booking = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
   // A byte-order mark before the JSON: the store reads it as JSON, so the rule must too.
   await assert.rejects(run('write', { path: '/trip/bookings/hotel.json', content: `﻿${JSON.stringify({ ...booking, status: 'confirmed' })}` }), /Only the user confirms a booking/);
   assert.equal(await ws.read(trip, '/bookings/hotel.json'), undefined);

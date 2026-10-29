@@ -130,7 +130,8 @@ test('newFilesText: what Shiori is told when files are added', () => {
   const text = newFilesText([{ path: '/files/flight.pkpass', type: 'application/vnd.apple.pkpass' }, { path: '/files/trip.ics', type: 'text/calendar' }], ['/plan/ics-a-1.json']);
   assert.match(text, /^The user added 2 files to the trip: "\/trip\/files\/flight\.pkpass" \(application\/vnd\.apple\.pkpass\), "\/trip\/files\/trip\.ics" \(text\/calendar\)\./);
   assert.match(text, /annai made 1 plan item from the calendar: \/trip\/plan\/ics-a-1\.json\./);
-  assert.match(text, /write an unverified booking in \/trip\/bookings\//);
+  assert.match(text, /write a booking in \/trip\/bookings\/.*unsure/);
+  assert.doesNotMatch(text, /unverified/);
   assert.doesNotMatch(text, /trip photos/);
   const photos = newFilesText(Array.from({ length: 25 }, (_, i) => ({ path: `/files/p${i}.webp`, type: 'image/webp' })), []);
   assert.match(photos, /^The user added 25 files to the trip: .*, and 5 more\./);
