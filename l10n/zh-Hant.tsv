@@ -16,7 +16,7 @@ openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversa
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	連線 OpenAI 的 Responses API 以及支援它的伺服器。對話由 OpenAI 在輪次之間儲存，因此每次只傳送新內容；annai 收到指示時會刪除已儲存的回覆。	plugins-official/openai-responses/annai-plugin.json:7	
 pdf-pages:@name	ok	PDF pages	PDF 頁面	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the Models note (1xx9c0t) says it.
-pdf-pages:@description	ok	Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.	把 PDF 的頁面轉成圖片，給能看照片但讀不了 PDF 的模型看；也能在任何瀏覽器中繪製 PDF 的第一頁作為預覽。內含 Mozilla 的 PDF.js，約 4.5 MB。	plugins-official/pdf-pages/annai-plugin.json:8	Note: "brings" read as the package includes it, so 內含.
+pdf-pages:@description	ok	Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.	把 PDF 的頁面轉成圖片，給能看照片但無法讀取 PDF 的模型看；也能在任何瀏覽器中繪製 PDF 的第一頁作為預覽。內含 Mozilla 的 PDF.js，約 4.5 MB。	plugins-official/pdf-pages/annai-plugin.json:8	Note: "brings" read as the package includes it, so 內含.
 pdf-pages:@keywords.0	ok	PDF.js	PDF.js	plugins-official/pdf-pages/annai-plugin.json:9	Note: a product name, kept.
 provider-another-address:@name	ok	Custom provider	自訂供應商	plugins-official/provider-another-address/annai-plugin.json:3	
 provider-another-address:@description	ok	Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.	任何其他伺服器：OpenAI 相容的伺服器、路由或代理，或你自己執行的伺服器。填寫它的網址，annai 會免費檢視它提供什麼。	plugins-official/provider-another-address/annai-plugin.json:11	
@@ -1728,7 +1728,7 @@ el9rbx	ok	Uses the main list.	使用主要清單。	src/ui/screens/models.js:172
 1rqw64m	ok	Wait for the voice (seconds)	等待聲音（秒）	src/ui/screens/models.js:173	
 48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:173	
 796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:173	
-1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	當 Shiori 的模型看不了照片或讀不了 PDF 時，由 Koe 中能做到的模型來讀；沒有的話由這裡的模型讀，再沒有則由主要模型讀。安裝「PDF 頁面」外掛程式後，能看照片的模型可以讀 PDF 的頁面。	src/ui/screens/models.js:178	Note: "one here" is a model of this role (輔助), so 這裡的模型; PDF 頁面 is the plugin's name (its pdf-pages:@name).
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	當 Shiori 的模型無法看照片或讀取 PDF 時，由 Koe 中能做到的模型來讀；沒有的話由這裡的模型讀，再沒有則由主要模型讀。安裝「PDF 頁面」外掛程式後，能看照片的模型可以讀 PDF 的頁面。	src/ui/screens/models.js:178	Note: "one here" is a model of this role (輔助), so 這裡的模型; PDF 頁面 is the plugin's name (its pdf-pages:@name).
 14w2ppx	ok	Add a provider for {0}	為{0}新增供應商	src/ui/screens/models.js:180	{0} = called
 17olz31	ok	Add a model to {0}	向{0}新增模型	src/ui/screens/models.js:182	{0} = called
 58mvoq	ok	Reasoning for {0}	推理等級（{0}）	src/ui/screens/models.js:190	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
@@ -2307,9 +2307,9 @@ scvxkf	ok	ok	成功	src/ui/screens/trace.js:185
 udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (輪).
 hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:190	Note: A kept turn is one of the conversation turns a provider keeps (輪).
 1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:191	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為讀不了 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:193	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	為看不了照片的模型保留的照片描述	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為讀不了 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a PDF's pages as pictures.
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:193	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	為無法看照片的模型保留的照片描述	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a PDF's pages as pictures.
 12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:197	{0} = app
 13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:197	{0} = app
 fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:198	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)

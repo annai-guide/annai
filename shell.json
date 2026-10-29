@@ -1,5 +1,5 @@
 {
-  "build": "772c2843059f",
+  "build": "ef04df513ebf",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -282,6 +282,6 @@
     "/src/ui/welcome.js": "23fcd35c12df",
     "/l10n/ja.json": "20fb33f39399",
     "/l10n/zh-Hans.json": "98723ea187ee",
-    "/l10n/zh-Hant.json": "561080bcd7f5"
+    "/l10n/zh-Hant.json": "4ea35ac455fc"
   }
 }
