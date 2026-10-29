@@ -227,3 +227,22 @@ test('with no model that can read it, she is told which setting fixes it, and no
   assert.match(await contentOf(k, result), /Takes PDFs on its page in Settings → Models/);
   assert.equal((await meEvents(k)).some((/** @type {any} */ e) => (e.refs ?? []).includes(pdfHash) || e.data?.hash === pdfHash), false);
 });
+
+test("a hand-over whose turn failed is still owed: Try again's turn, or the user's next, carries it, until a turn of hers answers it", async (t) => {
+  useClock(t);
+  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+  const k = await agentKit([[fails, fails, fails, fails,
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/later.md', content: 'later' } }, { name: 'speak', input: { text: 'Noted.' } }, { name: 'sleep', input: {} }] },
+  ]]);
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  assert.ok((await k.events(['error'])).length >= 1, 'the turn failed');
+  assert.equal((await hers(k)).length, 0);
+  k.agent.tryAgain();
+  await k.agent.idle();
+  k.agent.send('And a note for later');
+  await k.agent.idle();
+  assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/flight.md', 'h-1'], ['/notes/later.md', null]]);
+});
