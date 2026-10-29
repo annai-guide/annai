@@ -11,7 +11,7 @@ import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { shownFor } from '../errors.js';
-import { sendable } from '../agent/refusals.js';
+import { limitImages } from '../agent/refusals.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -36,13 +36,10 @@ export class Bench {
   #until = new Map();
   /** Why a model rests, when that is worth saying while it does. @type {Map<string, string>} */
   #why = new Map();
-  /** When each rest began, to tell which model has rested longest. @type {Map<string, number>} */
-  #since = new Map();
   /** What failed, for a rest only the user can end (a refused key, no credit): such a model isn't asked anyway. @type {Map<string, string>} */
   #kind = new Map();
   /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] @param {string} [kind] the failure's kind */
   bench(id, ms, now = Date.now(), why, kind) {
-    if (!(this.until(id) > now)) this.#since.set(id, now);
     if (kind) this.#kind.set(id, kind);
     else this.#kind.delete(id);
     this.#until.set(id, Math.max(this.#until.get(id) ?? 0, now + ms));
@@ -57,10 +54,6 @@ export class Bench {
   why(id) {
     return this.#why.get(id);
   }
-  /** When its rest began (0: it isn't resting). @param {string} id */
-  since(id) {
-    return this.#since.get(id) ?? 0;
-  }
   /** Whether it rests after a failure only the user can end: its key refused, or out of credit. @param {string} id */
   usersToEnd(id) {
     return ['auth', 'credit'].includes(this.#kind.get(id) ?? '');
@@ -68,7 +61,6 @@ export class Bench {
   /** @param {string} id */
   clear(id) {
     this.#until.delete(id);
-    this.#since.delete(id);
     this.#kind.delete(id);
     this.#why.delete(id);
   }
@@ -337,7 +329,7 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     /* en */
     const stub = p.type === 'image' ? `[a photo${p.path ? `: ${p.path}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${p.name}` : ''}]`;
     if (!r) return [{ type: 'text', text: stub }];
-    // A picture already in the request goes once: the caller sends the request through sendable() (the photo limit, then each once).
+    // A picture already in the request goes once: callRole sends every request through limitImages (the photo limit, each picture once).
     const pages = sees ? r.images : [];
     // With their hashes, so a provider's files API can take them by upload rather than as bytes in every request.
     return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}), ...(i.page ? { page: i.page } : {}) }))];
@@ -363,7 +355,7 @@ async function readFor(request, model, read, signal, readings) {
   })));
   const sees = model.input.includes('image');
   const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
-  return { ...out, messages: sendable(out.messages, model.images?.maxCount) };
+  return { ...out, messages: limitImages(out.messages, model.images?.maxCount) };
 }
 
 /**
@@ -453,7 +445,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   read: after every model was tried, those passed over for a photo or PDF in the newest message are tried again, in order, each with what
  *   read makes of those files (§9.6; without it, as for plugins' calls, there is no second pass)
  *   readings: what the conversation has kept of its files, put in place of a file a model can't take wherever it is (§7.2)
- *   askResting: a turn's own call (Shiori's): when every model it could use rests, the one rested longest is asked anyway; side jobs
+ *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are (round 6)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
@@ -494,10 +486,16 @@ export async function callRole(c) {
   const byOf = (name) => ({ name, first, tried: sentTo.has(firstId) || attempts.some((a) => a.model === firstId && a.outcome === 'benched') });
   const first = firstId && config.models[firstId] ? modelOf(config.models[firstId]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
-  const ordered = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
+  const preferred = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
+  // In a turn's own call (Shiori's), a model resting after an error isn't passed over: it goes to the end of the list, the one whose rest
+  // ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
+  // check and round 8). Not Koe's list (Kokoro answers when she can't), and not a rest only the user can end (a refused key, no credit)
+  // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
+  const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
+  const ordered = [...preferred.filter((id) => !restingNow.has(id)), ...preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b))];
+  /** The resting model asked in this call, when one was. @type {string | null} */
+  let restingAsked = null;
   let began = false;
-  /** Resting models asked anyway, as every model the role could use was resting. @type {Set<string>} */
-  const anyway = new Set();
   /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
   let last = '';
   /**
@@ -522,14 +520,14 @@ export async function callRole(c) {
       // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
       const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
       if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-      // Kept page pictures count toward the model's photo limit too: the oldest over it go as stubs (spec §4.8); then each picture once.
-      if (sent !== r || model?.images?.maxCount) sent = { ...sent, messages: sendable(sent.messages, model?.images?.maxCount) };
+      // The model's photo limit of the request's distinct pictures, kept pages included, each once (spec §4.8; round 8).
+      sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount) };
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;
     };
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() && !anyway.has(id) ? 'benched' : gap(model, forModel(request), provider ?? undefined);
+    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(model, forModel(request), provider ?? undefined);
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
       attempts.push({
@@ -567,6 +565,7 @@ export async function callRole(c) {
       // Another model starts over: what the last one had begun to say is cut, and named by it.
       if (began) c.onEvent?.({ type: 'restart', by: byOf(last) });
       sentTo.add(id);
+      if (restingNow.has(id)) restingAsked = id;
       last = model.name;
       began = true;
       const started = now();
@@ -579,7 +578,7 @@ export async function callRole(c) {
         cost = addCost(cost, reply.cost);
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
-        if (anyway.has(id)) bench.clear(id);
+        if (restingAsked === id) bench.clear(id);
         const full = said ? prefixed(reply, said) : reply;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
         await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
@@ -666,28 +665,17 @@ export async function callRole(c) {
   const passed = c.read ? [...new Set(attempts.filter((a) => a.outcome === 'no-images' || a.outcome === 'no-documents').map((a) => a.model))] : [];
   for (const id of passed) {
     const model = modelOf(config.models[id]);
+    // What else keeps it out (too long, no tools…) is checked before anything is read for it (round 8).
+    const pRec = config.providers[config.models[id].provider];
+    const other = gap(model, photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') }), pRec ? providerOf(pRec) : undefined);
+    if (other) {
+      attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
+      continue;
+    }
     base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
     request = said ? continueAfter(base, said) : base;
     const r = await one(id);
     if (r) return r;
-  }
-  // Every model the role could use is resting, and none was asked: the one that has rested longest is asked anyway, rather than a turn
-  // failing for nothing (the coordinator's call after the real-PDF check: one stall of the only model failed the next turn).
-  // Not Koe's: when her list rests, Kokoro answers instead (§9.6). Not a model resting after a refused key or no credit: asking it fails
-  // the same way, and only the user can end that.
-  // Every model left to try in this call rests (round 7: whether or not another was asked): the longest-resting one not yet asked, among
-  // those that can take the request (with its newest files read, when read is given), is asked once.
-  const resting = !c.askResting || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !sentTo.has(a.model) && !bench.usersToEnd(a.model)).map((a) => a.model))]
-    .sort((a, b) => bench.since(a) - bench.since(b));
-  for (const id of resting) {
-    const model = modelOf(config.models[id]);
-    anyway.add(id);
-    base = c.read ? await readFor(c.request, model, c.read, c.signal, c.readings) : c.request;
-    request = said ? continueAfter(base, said) : base;
-    const asked = sentTo.size;
-    const r = await one(id);
-    if (r) return r;
-    if (sentTo.size > asked) break; // asked, and failed: once is enough
   }
   await record(null, said);
   throw new AllFailedError(attempts, said);

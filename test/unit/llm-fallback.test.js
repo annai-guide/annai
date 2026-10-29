@@ -634,13 +634,13 @@ test("output that started and then stopped says so, not that none started (the r
   await assert.rejects(call(s, { firstOutputMs: 1000 }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'timeout' && /^Its output stopped for 1 second\.$/.test(e.attempts[0].error ?? '') && e.attempts[0].said?.code === 'paused');
 });
 
-test("when every model the role could use is resting, the one that has rested longest is asked anyway (the real-PDF check: one stall failed the next turn)", async () => {
+test("when every model the role could use is resting, the one whose rest ends soonest is asked anyway (the real-PDF check: one stall failed the next turn; round 8)", async () => {
   const s = setup([[{ text: 'From model-0.' }], [{ text: 'From model-1.' }]]);
-  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // resting the longest
+  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // its rest ends first
   s.bench.bench('m-0', 300_000, 1_000_000 - 1_000);
   const r = await call(s, { askResting: true });
   assert.equal(r.answeredBy, 'model-1');
-  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:benched', 'm-1:benched', 'm-1:ok']);
+  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-1:ok'], 'a resting model goes at the end of the list, the soonest first');
   // Only a turn's own call: a side job (a reader, housekeeping, a plugin's call) fails as before (round 6).
   s.bench.bench('m-1', 300_000, 1_000_000);
   await assert.rejects(call(s), (e) => e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched'));
@@ -680,15 +680,22 @@ test('the resting pass asks only a model that can take the request: the longest-
   assert.deepEqual(seen.map((x) => x.model), ['model-1']);
 });
 
-test('the resting pass with read: the longest-resting text model is asked with the photo read (round 7)', async () => {
+test('with read, a resting model that can take the request as it is goes before one that needs its files read (rounds 7 and 8)', async () => {
   const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
   s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
   s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
   const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
   const read = async () => [{ type: 'text', text: '[a photo: /trip/files/menu.webp] It shows a menu.' }];
   const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
-  assert.equal(r.answeredBy, 'model-0');
-  assert.match(JSON.stringify(seen[0].request.messages), /It shows a menu/);
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+  // With no resting model that sees photos, the text one is asked with the photo read.
+  const t = spyWorld([{ input: ['text'] }, { input: ['text'] }]);
+  t.s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  t.s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const u = await call(t.s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(u.answeredBy, 'model-0');
+  assert.match(JSON.stringify(t.seen[0].request.messages), /It shows a menu/);
 });
 
 test('a model resting from before is asked when the one tried in this call failed and now rests too (round 7)', async () => {
@@ -720,4 +727,54 @@ test("the second pass's pictures go once: a page the read returns that an earlie
   const images = seen[0].request.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
   assert.equal(images.length, 1);
   assert.equal(seen[0].request.messages[0].parts[1].type, 'image', 'the earlier copy stays');
+});
+
+// Round 8.
+test("a dead model asked anyway doesn't stay first: whose rest ends soonest is asked, so the choice turns to the other (round 8, S1)", async () => {
+  const { s, seen } = spyWorld([{ script: [{ error: 'timeout' }] }, { script: [{ error: 'timeout' }, { text: 'B is back.' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 60_000); // A rests from an earlier turn
+  await assert.rejects(call(s, { askResting: true }), AllFailedError); // B fails; A is asked anyway, fails
+  let clock = 1_000_000;
+  /** @type {any} */ let answered = null;
+  for (let turn = 2; turn <= 6 && !answered; turn++) {
+    clock += 30_000;
+    answered = await call(s, { askResting: true, now: () => clock }).catch(() => null);
+  }
+  assert.equal(answered?.answeredBy, 'model-1', 'B is asked again, and answers');
+  assert.ok(seen.filter((x) => x.model === 'model-1').length >= 2);
+});
+
+test('a model resting on a long rest the provider stated is never asked anyway (round 8)', async () => {
+  const { s, seen } = spyWorld([{}]);
+  s.bench.bench('m-0', 3_600_000, 1_000_000 - 1_000, 'It is resting until 17:00 (its daily limit).');
+  await assert.rejects(call(s, { askResting: true }), AllFailedError);
+  assert.equal(seen.length, 0);
+});
+
+test("a candidate that can't take the request for another reason (too long) isn't read for: no reading wasted (round 8, S4)", async () => {
+  const { s } = spyWorld([{ input: ['text'] }, { input: ['text'] }]);
+  s.config.models['m-0'].user.contextWindow = 5;
+  let reads = 0;
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => { reads++; return [{ type: 'text', text: '[a photo] It shows a menu.' }]; };
+  const r = await call(s, { read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this? '.repeat(20) }] }] } });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.equal(reads, 1, 'read only for the model that then answered');
+});
+
+test("each model gets its photo limit of the raw request's distinct pictures, the newest first, each sent once at its earliest place (round 8, D1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'], images: { maxCount: 1 } }]);
+  const photo = (/** @type {string} */ hash, /** @type {string} */ path) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path });
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Here is the menu' }, photo('hA', '/trip/files/menu.webp')] },
+    { role: 'user', parts: [{ type: 'text', text: 'And the hotel' }, photo('hB', '/trip/files/hotel.webp')] },
+    { role: 'user', parts: [{ type: 'text', text: 'Look at the menu again' }, photo('hA', '/trip/files/menu.webp')] },
+  ] };
+  await call(s, { request });
+  const shown = seen[0].request.messages.map((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.hash : p.text)));
+  assert.deepEqual(shown, [
+    ['Here is the menu', 'hA'],
+    ['And the hotel', '[photo /trip/files/hotel.webp, not sent again: read it to see it]'],
+    ['Look at the menu again', '[photo /trip/files/menu.webp, the same as above]'],
+  ]);
 });
