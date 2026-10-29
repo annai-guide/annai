@@ -550,16 +550,26 @@ export async function callRole(c) {
    * Tries one model, its retries and repairs included: its answer, or null when it was passed over or failed (an attempt says why).
    * @param {string} id @returns {Promise<Awaited<ReturnType<typeof callRole>> | null>}
    */
-  const one = async (id) => {
+  /**
+   * What a model is, and why it can't be asked at all, whatever the request: removed, switched off, its type (protocol plugin) not
+   * running, or not a chat model. One and the hold-back both use it (round 14).
+   * @param {string} id
+   */
+  const lookUp = (id) => {
     const rec = config.models[id];
     const pRec = rec ? config.providers[rec.provider] : undefined;
     const provider = pRec ? providerOf(pRec) : null;
     const ability = rec && provider ? provider.abilities[rec.ability] : undefined;
     const type = ability ? types.get(ability.type) : undefined;
     const model = rec ? modelOf(rec) : null;
-    const forModel = requestFor(model, id);
     // A model of a switched-off ability is skipped as off; calls never install a missing type (decision 9).
-    const skip = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(model, forModel(request), provider ?? undefined);
+    const out = !rec || !ability || !model ? 'removed' : !ability.on ? 'off' : !type ? 'type-missing' : type.speech || type.realtime ? 'not-chat' : null;
+    return { rec, pRec, provider, ability, type, model, out };
+  };
+  const one = async (id) => {
+    const { rec, pRec, provider, type, model, out } = lookUp(id);
+    const forModel = requestFor(model, id);
+    const skip = out ?? (bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(/** @type {Model} */ (model), forModel(request), provider ?? undefined));
     if (skip || !model || !type || !pRec || !provider) {
       const why = skip === 'benched' ? bench.why(id) : skip === 'type-missing' ? c.missing : undefined;
       attempts.push({
@@ -687,11 +697,10 @@ export async function callRole(c) {
         if (step.bench !== undefined) {
           const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
           if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
-          const ended = bench.until(id);
           bench.bench(id, step.bench, now(), long, err.kind);
-          // Asked while it rested, and this failure moved its rest's end later: it doesn't hold an awake model back again in this rest
-          // (rounds 11–13).
-          if (restingAsked === id && bench.until(id) > ended) bench.askedResting(id);
+          // Asked while it rested, and this failure benched it: it doesn't hold an awake model back again in this rest, and goes after the
+          // other resting models (rounds 11, 12, 14).
+          if (restingAsked === id) bench.askedResting(id);
         }
         break;
       }
@@ -709,10 +718,8 @@ export async function callRole(c) {
   // One that failed when asked in this rest (and was rested again for it) holds no one back: it is only asked at the list's end (round 12).
   const restingTakes = () => !restingAsked && resting.some((x) => {
     if (bench.triedResting(x)) return false;
-    const rec = config.models[x];
-    const pRec = rec ? config.providers[rec.provider] : undefined;
-    const m = rec ? modelOf(rec) : null;
-    return Boolean(m && gap(m, requestFor(m, x)(c.request), pRec ? providerOf(pRec) : undefined) === null);
+    const { model, provider, out } = lookUp(x);
+    return Boolean(!out && model && gap(model, requestFor(model, x)(c.request), provider ?? undefined) === null);
   });
   const passes = async (/** @type {string[]} */ ids, holdBlind = false) => {
     base = c.request;
