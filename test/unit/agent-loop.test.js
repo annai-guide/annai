@@ -1755,19 +1755,21 @@ test("a photo limit under a PDF's kept pages keeps page 1 and on, and says which
   await k.agent.idle();
   const parts = k.sent['model-1'][0].messages.at(-1).parts;
   assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image').map(pageOf), [1, 2]);
-  assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /pages 1–2 of 3; the rest weren't sent\./.test(p.text)), JSON.stringify(parts.map((/** @type {any} */ p) => p.text ?? p.type)));
+  assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /^\[page 3 of the PDF above, not sent/.test(p.text)), JSON.stringify(parts.map((/** @type {any} */ p) => p.text ?? p.type)));
 });
 
-test("a PDF read for a model that sees photos draws at most its photo limit, from page 1, and the line says so (round 3)", async (t) => {
+test("a PDF read for a model with a small photo limit is drawn whole, and only its limit's pages go, from page 1 (rounds 3 and 6)", async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'], images: { maxCount: 2 } }] });
   const asked = numberedPages(k, 3);
   k.agent.send('Read it');
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
-  assert.equal(asked[0].max, 2);
-  assert.match(r.data.content, /pages 1–2 of 3; the rest weren't sent\.$/);
-  assert.equal(r.data.images.length, 2);
+  assert.equal(asked[0].max, 10, 'drawn up to MAX_PAGES, for any model later');
+  assert.match(r.data.content, /pages 1–3 of 3\.$/);
+  const parts = k.sent['model-0'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts);
+  assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image').map(pageOf), [1, 2]);
+  assert.ok(parts.some((/** @type {any} */ p) => p.type === 'text' && /^\[page 3 of the PDF above, not sent/.test(p.text)));
 });
 
 test("a later reading as pages doesn't take a PDF's words from a model that sees no photos: each kind's newest is kept (round 3)", async (t) => {
@@ -1846,4 +1848,31 @@ test('a forced re-read that draws the same pages sends each picture once a reque
   assert.equal(images.length, 3);
   assert.equal(new Set(images.map((/** @type {any} */ i) => i.hash)).size, 3);
   assert.match(JSON.stringify(last.messages), /\[page 1 of the PDF, the same picture as above\]/);
+});
+
+test("pages kept for a model with a small photo limit serve a later model that takes more: all of them (round 6)", async (t) => {
+  useClock(t);
+  const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
+  // m-0 reads PDFs, reads it, then is out of credit; m-1 sees photos, at most 2 a request; m-2 sees photos with no limit.
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Done.')], [say('All three.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'], images: { maxCount: 2 } }, { input: ['text', 'image'] }] });
+  numberedPages(k, 3);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-2'] } });
+  k.agent.send('And the rest?');
+  await k.agent.idle();
+  const images = k.sent['model-2'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
+  assert.deepEqual(images.map(pageOf), [1, 2, 3]);
+});
+
+test("a reader is never asked anyway while it rests: only the turn's own call is (round 6)", async (t) => {
+  useClock(t);
+  // m-0 reads PDFs, reads it, then stalls; m-1 sees photos and reads none. Main's m-0 is the only PDF reader, and it rests.
+  const k = await bookingKit([[readPdf, { delayMs: 200_000, text: 'late' }, { delayMs: 200_000, text: 'late again' }], [say('Done.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'] }] });
+  numberedPages(k, 1);
+  k.agent.send('When is check-in?');
+  await k.agent.idle();
+  assert.equal(k.sent['model-0'].length, 2, 'not asked again to read for model-1');
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /Its pages as pictures/);
 });

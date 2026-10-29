@@ -76,8 +76,7 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
- * @param {FileToRead} file @param {{ input?: string[], images?: { maxCount?: number } }} model the model the reading is for: a PDF drawn for it
- *   (it sees photos) is drawn at most its photo limit of pages, from page 1
+ * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain?: (e: unknown, role: string) => string }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online)
@@ -150,9 +149,9 @@ export async function readFile(file, model, o) {
         /** @type {import('../pdf-pages.js').Drawn} */
         let drawn;
         try {
-          // For a model that sees photos, no more pages than it takes in one request, from page 1 (the re-check of reading-files).
-          const max = sees ? Math.min(MAX_PAGES, model.images?.maxCount ?? MAX_PAGES) : MAX_PAGES;
-          drawn = await Promise.race([o.pages.pages(fromBase64(file.data), { max, edge: PAGE_EDGE, signal: stop.signal }), stopped]);
+          // Up to MAX_PAGES, whatever this model's photo limit: the reading is kept for every model, and each request sends only its
+          // model's limit, from page 1 (round 6).
+          drawn = await Promise.race([o.pages.pages(fromBase64(file.data), { max: MAX_PAGES, edge: PAGE_EDGE, signal: stop.signal }), stopped]);
         } catch (e) {
           if (stop.signal.aborted) throw e;
           /* en */

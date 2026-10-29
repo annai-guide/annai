@@ -439,7 +439,8 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
- *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings }} c
+ *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
+ *   askResting?: boolean }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
@@ -454,6 +455,8 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   read: after every model was tried, those passed over for a photo or PDF in the newest message are tried again, in order, each with what
  *   read makes of those files (§9.6; without it, as for plugins' calls, there is no second pass)
  *   readings: what the conversation has kept of its files, put in place of a file a model can't take wherever it is (§7.2)
+ *   askResting: a turn's own call (Shiori's): when every model it could use rests, the one rested longest is asked anyway; side jobs
+ *   (readers, housekeeping, plugins', quick decisions) never are (round 6)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
@@ -522,7 +525,7 @@ export async function callRole(c) {
       const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
       if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
       // Kept page pictures count toward the model's photo limit too: the oldest over it go as stubs (spec §4.8).
-      if (sent !== r && model?.images?.maxCount) sent = { ...sent, messages: limitImages(sent.messages, model.images.maxCount) };
+      if (model?.images?.maxCount) sent = { ...sent, messages: limitImages(sent.messages, model.images.maxCount) };
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;
@@ -672,7 +675,7 @@ export async function callRole(c) {
   // failing for nothing (the coordinator's call after the real-PDF check: one stall of the only model failed the next turn).
   // Not Koe's: when her list rests, Kokoro answers instead (§9.6). Not a model resting after a refused key or no credit: asking it fails
   // the same way, and only the user can end that.
-  const resting = sentTo.size || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !bench.usersToEnd(a.model)).map((a) => a.model))];
+  const resting = !c.askResting || sentTo.size || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !bench.usersToEnd(a.model)).map((a) => a.model))];
   if (resting.length) {
     const id = resting.reduce((a, b) => (bench.since(b) < bench.since(a) ? b : a));
     anyway.add(id);

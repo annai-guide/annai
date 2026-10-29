@@ -638,11 +638,14 @@ test("when every model the role could use is resting, the one that has rested lo
   const s = setup([[{ text: 'From model-0.' }], [{ text: 'From model-1.' }]]);
   s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // resting the longest
   s.bench.bench('m-0', 300_000, 1_000_000 - 1_000);
-  const r = await call(s);
+  const r = await call(s, { askResting: true });
   assert.equal(r.answeredBy, 'model-1');
   assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:benched', 'm-1:benched', 'm-1:ok']);
+  // Only a turn's own call: a side job (a reader, housekeeping, a plugin's call) fails as before (round 6).
+  s.bench.bench('m-1', 300_000, 1_000_000);
+  await assert.rejects(call(s), (e) => e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched'));
   // With a model that can answer, resting still passes the others over.
   const t = setup([[{ text: 'never' }], [{ text: 'From model-1.' }]]);
   t.bench.bench('m-0', 300_000, 1_000_000);
-  assert.equal((await call(t)).answeredBy, 'model-1');
+  assert.equal((await call(t, { askResting: true })).answeredBy, 'model-1');
 });

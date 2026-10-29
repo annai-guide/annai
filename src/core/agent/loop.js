@@ -1791,6 +1791,8 @@ export class Agent {
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
           // What this conversation has kept of its files, for a model that can't take one (the review of reading-files, finding 1).
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
+          // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
+          askResting: true,
           // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
         });
