@@ -390,6 +390,8 @@ export class Agent {
   #mayVoice = true;
   /** The hand-over the turn running took (its wakes' newest), which every tool call of the turn carries (ToolCall.handover). @type {string | null} */
   #handover = null;
+  /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
+  #handovers = [];
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
@@ -1640,6 +1642,7 @@ export class Agent {
     // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(isTheirs) ? this.transcript.owedHandover : null;
+    this.#handovers = this.#handover ? [this.#handover] : [];
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
     const last = this.#warmth.last;
@@ -1693,6 +1696,7 @@ export class Agent {
     /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
+      for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(isTheirs);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
@@ -2223,7 +2227,7 @@ export class Agent {
       const scope = this.scope;
       const call = {
         id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
       ({ output, ms } = await runTool(tool, input, call));
