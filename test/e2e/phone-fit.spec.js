@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf } from './helpers.js';
+import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf, writeRecords } from './helpers.js';
 
 // In headless WebKit no tap unlocks sound, so every tap, a swipe's pointerup too, starts the silent clip again; and a
 // page that goes away while one starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A swipe test
@@ -490,7 +490,8 @@ for (const [width, height] of [[360, 760], [320, 544]]) {
     await waitForServiceWorker(page);
     /** The controls that can't be brought above the dock, scrolling as far as the screen goes. */
     const underDock = () => page.evaluate(() => [...document.querySelectorAll('main.view :is(a[href], button:not([disabled]), input, select, textarea, summary)')].flatMap((el) => {
-      if (!el.getClientRects().length) return [];
+      // Not shown: hidden, or folded in a closed <details> (its summary shows; Chromium still gives what it folds a box).
+      if (!el.getClientRects().length || el.closest('details:not([open]) > :not(summary)')) return [];
       el.scrollIntoView({ block: 'center' });
       const r = el.getBoundingClientRect();
       const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -576,4 +577,33 @@ test('landscape at SE size (568 × 296) with the dock\'s text box open: the page
   expect((/** @type {{ height: number }} */ (await box.boundingBox())).height).toBeGreaterThanOrEqual(30);
   await page.getByRole('button', { name: 'Type', exact: true }).click();
   await expect(box).toBeHidden();
+});
+
+test('the type box with three chips, Trips with files waiting, and a trip without dates fit a phone 320 px wide, in ja', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'ja'); } catch { /* storage blocked */ } });
+  await openApp(page);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  const long = 'Your flight is booked- TESTQ1 to Anchorage on 11:20:2026 with a very long confirmation name.pdf';
+  await writeRecords(page, 'sys:waiting', { text: { [`/files/${long}`]: 'a', '/files/hotel.txt': 'b', '/files/car.txt': 'c' } });
+  // A trip with no dates.
+  await page.getByLabel('旅の名前').fill('アンカレッジとその周辺をめぐる長い名前の旅');
+  await page.getByRole('button', { name: '旅を始める' }).last().click();
+  await expect(page.getByRole('heading', { name: 'アンカレッジとその周辺をめぐる長い名前の旅' })).toBeVisible();
+  const wide = async () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(await wide()).toBeLessThanOrEqual(0);
+  await page.goto('/#/trips');
+  await expect(page.locator('.waiting-file')).toHaveCount(3);
+  expect(await wide()).toBeLessThanOrEqual(0);
+  // Three chips in the type box: a long name, cut, and two short.
+  await page.locator('.dock .ib[aria-expanded]').click();
+  await page.getByLabel('Shiori に写真やファイルを渡す').setInputFiles([
+    { name: long, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') },
+    { name: 'hotel.txt', mimeType: 'text/plain', buffer: Buffer.from('hotel') },
+    { name: 'car.txt', mimeType: 'text/plain', buffer: Buffer.from('car') },
+  ]);
+  await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(3);
+  expect(await wide()).toBeLessThanOrEqual(0);
+  const out = await page.evaluate(() => [...document.querySelectorAll('.type-sheet .attach-chip')].filter((c) => c.getBoundingClientRect().right > innerWidth + 1).length);
+  expect(out).toBe(0);
 });

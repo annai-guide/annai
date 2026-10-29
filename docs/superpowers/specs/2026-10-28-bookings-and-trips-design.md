@@ -175,6 +175,8 @@ The mockups the user approved (screens 1, 2b and 3) are at https://claude.ai/art
 
 This builds on phone-fixes-1 once it is merged (Back from the original, Claude reading PDFs by default, the Language section), since both touch the dock, the router and the booking screen.
 
+**Built: handing over** (the plan `docs/superpowers/plans/2026-10-28-handing-over.md`, 2026-10-28): goals 1 to 4 and 10's names as data, and My calls 2, 3, 4, 6, 7, 8 and 9. The + in the type box and pasted emails; the waiting space; Shiori's trip tools (start, open, list, move a file); a trip that needs only a name; the side task that reads a waiting file; Undo; Trips' Waiting with Shiori and files waiting to be read. The main spec says how (§4.3, §4.4, §4.5, §6.1, §7.2, §7.3, §16.2). Goals 5 to 9, the screens that show the bookings, are the seeing-bookings plan's; goals 11 and 12 were built by Reading files.
+
 ## Out of scope here
 
 - The bug fixes from the same session (Claude's thinking blocks, model labels, the updates card, dragging on iPhone, Back navigation, the Language section). Those are batch phone-fixes-1.
