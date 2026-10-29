@@ -31,6 +31,8 @@ import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
 import { planWords } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
+import { readFile } from './reading.js';
+import { runningPdfPages } from '../pdf-pages.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -135,22 +137,22 @@ export const FORCED_STEPS = 10;
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
+/** Pages as words: "page 2", "pages 1 and 3", "pages 1, 2 and 4". @param {number[]} n */
+const pagesWords = (n) => (n.length === 1 ? `page ${n[0]}` : `pages ${n.slice(0, -1).join(', ')} and ${n.at(-1)}`);
 /**
- * How long a photo's description may take, in seconds (review A5): the same as a role waits for a model's first words (§9.6),
- * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
+ * What a kept reading says when some of its page pictures are gone: which pages went, and which didn't. Pages are named when the entry
+ * named them, else counted. @param {(number | undefined)[]} sent @param {(number | undefined)[]} gone
  */
-export const DESCRIBE_S = 30;
-/**
- * And a PDF's telling (the fix pass): its words, up to 3,000 tokens, take a slow model (a local one, at some 35 tokens a second)
- * near 90 seconds, where a photo's few sentences fit in 30. Only Kokoro and one Shiori wait for it; Koe never does.
- */
-export const DESCRIBE_PDF_S = 90;
-/** What a PDF told only up to the output limit ends with. */
-const GOES_ON = /* en */ ' …(it stops here: the PDF goes on)';
-/** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
-const DESCRIBE = /* en */ 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
-/** And for one that can't read PDFs (the second emulator pass): the PDF's own words, as annai has no PDF library (spec §7.2). */
-const DESCRIBE_PDF = /* en */ "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
+function goneWords(sent, gone) {
+  const named = [...sent, ...gone].every((p) => typeof p === 'number');
+  /* en */
+  if (!named) return `Of these, only ${sent.length} of ${sent.length + gone.length} pictures went; the others are no longer on this device.`;
+  /* en */
+  return `Of these, only ${pagesWords(/** @type {number[]} */ (sent))} went; ${pagesWords(/** @type {number[]} */ (gone))} ${gone.length === 1 ? 'is' : 'are'} no longer on this device.`;
+}
+
+/** A reading kept with its conversation: the line a model reads, and for 'pages' the page pictures, by their blob hashes and pages. @typedef {{ how: 'told' | 'pages', text: string, images: { mediaType: string, data: string, hash: string, page?: number }[] }} KeptReading */
+
 /**
  * Gathering the user's messages before a turn starts (spec §6.1), in seconds. quiet: how long their input must be still before
  * Kokoro behind Koe starts (a line typed in parts); photo: after a photo on its own, which words often follow; typing: a typing
@@ -403,10 +405,12 @@ export class Agent {
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
   /**
-   * PDFs told in words in the open conversation, by its scope and the hash of the bytes told: a second read isn't sent again. A
-   * conversation switch and Erase forget them. @type {Map<string, string>}
+   * The readings kept in the open conversation's log (`reading` entries; the review of reading-files, finding 1), by the hash of what was
+   * read: told in words (for any model) and drawn as pages (for one that sees photos). Loaded from the log after the last entry read, so a
+   * reading the other half kept arrives at the next call; a conversation switch loads the new one's, and Erase forgets them.
+   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }> }}
    */
-  #toldPdfs = new Map();
+  #kept = { scope: '', through: 0, map: new Map() };
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
 
@@ -514,7 +518,7 @@ export class Agent {
 
   /** Erase: what it keeps in memory of the conversations' files goes. */
   forgetTold() {
-    this.#toldPdfs.clear();
+    this.#kept = { scope: '', through: 0, map: new Map() };
   }
 
   /** The user's Try again after a turn that said nothing to them: her turn again, answering their last message. */
@@ -582,7 +586,6 @@ export class Agent {
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
-    this.#toldPdfs.clear(); // a conversation's told PDFs are its own
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start (review A2)
     const generation = ++this.#generation;
@@ -1143,12 +1146,13 @@ export class Agent {
   }
 
   /**
-   * The conversation as it is sent: no photo whose bytes are gone, and the oldest photos over the
-   * main models' count as stubs (spec §4.8).
+   * The conversation as it is sent: no photo whose bytes are gone. Each model's call then sends its own photo limit of it, each picture
+   * once (callRole, limitImages; spec §4.8).
    */
   async #sendable() {
     const messages = this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
-    const out = limitImages(messages, (await this.#mainImages()).maxCount);
+    // As the conversation holds it: each model's call sends its own photo limit of it, each picture once (callRole, limitImages).
+    const out = messages;
     return this.#half.sendable ? this.#half.sendable(out) : out;
   }
 
@@ -1353,8 +1357,12 @@ export class Agent {
     this.#tidy = tidy;
     try {
       for (let step = 0; step < 4; step++) {
-        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools };
-        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+        const request = { ...buildRequest({ snapshot: this.#snapshot, ...(shows ? { system: systemText(this.#snapshot) + shows } : {}), tools: definitions(tools), transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools,
+          // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
+          // each as words, wherever it is (the user's session, 2026-10-28: a PDF just read kept every model from tidying up).
+          newestPhoto: false, newestDocument: false };
+        await this.#loadKept(this.scope);
+        const r = await this.llm.call({ role: 'main', request, scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees), ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
         const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
         if (!calls.length) return r.reply.text.trim() || null;
         /** @type {import('../llm/contract.js').Part[]} */
@@ -1743,7 +1751,9 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      // What the main models are sent: their photo limit of the pictures, each once (round 9: the raw request counted every copy).
+      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) };
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(sent, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -1768,6 +1778,9 @@ export class Agent {
       let result;
       const cut = new AbortController();
       const before = this.#reached;
+      /** This call's readings, for its second pass: one per file, the same file twice or for the next model. @type {Map<string, Promise<import('./reading.js').Reading>>} */
+      const readMemo = new Map();
+      await this.#loadKept(this.scope);
       try {
         this.#half.calling?.(context);
         this.#calling = true;
@@ -1779,6 +1792,12 @@ export class Agent {
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
+          // What this conversation has kept of its files, for a model that can't take one (the review of reading-files, finding 1).
+          readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
+          // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
+          askResting: true,
+          // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
+          ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
         });
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
         this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
@@ -1838,7 +1857,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       await this.#grounded(result.reply.attribution, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
@@ -1854,9 +1873,11 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
+      /** This step's readings: two reads of one file in one reply read it once (the re-review of reading-files). @type {Map<string, Promise<import('./reading.js').Reading>>} */
+      const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more });
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, reads });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -2027,8 +2048,12 @@ export class Agent {
     for (const [old, copy] of swaps) {
       await this.#log({ type: 'photo.replace', actor: 'system', data: { old, new: copy.hash, mediaType: copy.mediaType, wake: wakeId }, blobs: [copy.data ? { bytes: fromBase64(copy.data), type: copy.mediaType } : { hash: copy.hash, type: copy.mediaType }] });
       await this.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
-        // The refused copy goes, unless a file is that photo or another conversation sent it too (spec §4.9).
-        if (!(await t.blobInUse(old, { exceptScope: this.scope }))) await t.deleteBlob(old);
+        // The refused copy goes, unless a file is that photo, another conversation sent it too, or here a kept reading, a tool result or
+        // a file's history still names it (a PDF's page pictures; a version that can be restored: spec §4.2, §4.9; rounds 10 and 11).
+        if (await t.blobInUse(old, { exceptScope: this.scope })) return;
+        const named = (await t.listEvents(this.scope, { types: ['reading', 'tool.result', 'file.write', 'file.delete'] }))
+          .some((/** @type {any} */ e) => (e.refs ?? []).includes(old) || e.data?.old === old || e.data?.new === old);
+        if (!named) await t.deleteBlob(old);
       });
     }
     // A copy made before, or a stored photo sent as it is, has no data with it: its bytes come from storage.
@@ -2149,7 +2174,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>> }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2185,7 +2210,7 @@ export class Agent {
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
-      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope);
+      if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
@@ -2193,7 +2218,7 @@ export class Agent {
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
     const media = async (/** @type {any} */ m) => {
-      const where = { ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}), ...(m.name ? { name: m.name } : {}) };
+      const where = { ...(m.path ? { path: m.path } : {}), ...(m.region ? { region: m.region } : {}), ...(m.name ? { name: m.name } : {}), ...(m.page ? { page: m.page } : {}) };
       if (m.data) {
         // New bytes (a request copy made now, a crop, an image a page had): stored with this event, by the hash of what is stored.
         const bytes = fromBase64(m.data);
@@ -2235,75 +2260,166 @@ export class Agent {
   }
 
   /**
-   * A tool's photos and PDF in words, for a model that can't see photos or read PDFs (emulator pass, 5b; the second pass, a PDF):
-   * described by the utility role's models, then Main's, that can (the utility list first: a side job, like a summary, on the
-   * cheaper model); the crop when a part was asked for, as that is what the tool returned. It stops with the turn, and within
-   * DESCRIBE_S; either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
+   * A tool's photos and PDF for a model that can't see photos or read PDFs (emulator pass, 5b; the bookings design, goals 11 and 12):
+   * read by whoever can (reading.js), the crop when a part was asked for, as that is what the tool returned; a PDF's pages, drawn for a
+   * model that sees photos, go with the result as its photos. It stops with the turn, and within reading.js's DESCRIBE_S (DESCRIBE_PDF_S for a PDF);
+   * either way the result says so in words. @param {import('./tools.js').ToolOutput} output @param {string} wakeId
    * @param {AbortSignal} signal @param {{ input?: string[] }} [model] the model the result is for
-   * @param {Map<string, string>} [failed] a helper's tellings that failed, by what was sent: not sent again in its task
+   * @param {Map<string, string>} [failed] a helper's readings that failed, by what was sent: not sent again in its task
    * @param {string} [scope] the conversation the tool ran for, its photos read for it
+   * @param {boolean} [fresh] an explicit read: read afresh, and the new reading replaces the kept one (the re-review of reading-files:
+   *   "read it again" must read it again)
+   * @param {Map<string, Promise<import('./reading.js').Reading>>} [stepReads] this step's readings: two reads of one file in one reply read it once
    */
-  async #described(output, wakeId, signal, model, failed, scope = this.scope) {
-    const cfg = await this.llm.config();
-    const roles = [...(cfg.roles?.utility?.models?.length ? ['utility'] : []), 'main'];
+  async #described(output, wakeId, signal, model, failed, scope = this.scope, fresh = false, stepReads = new Map()) {
+    const sees = Boolean(model?.input?.includes('image'));
+    const reads = Boolean(model?.input?.includes('pdf'));
     /** @type {string[]} */
     const said = [];
+    /** @type {{ mediaType: string, data: string }[]} */
+    const pages = [];
     /** @param {'image' | 'pdf'} kind @param {any} m */
     const tell = async (kind, m) => {
-      const pdf = kind === 'pdf';
-      if (!roles.some((role) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes(kind)))) {
-        /* en */
-        said.push(pdf ? "No model here can read PDFs, so what it says can't be told." : "No model here can see photos, so what it shows can't be told.");
-        return;
-      }
       const bytes = m.data ? null : await blobBytes(this.store, scope, m.hash ?? '');
-      // A PDF told already in this conversation is told from those words, not sent again (the fix pass): keyed by the bytes told,
-      // their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
+      // A file read already in this conversation is read from what was kept, not sent again (the fix pass; the review of reading-files):
+      // keyed by the bytes read, their own hash, or the one the store gave them by (never a hash a tool claims beside bytes of its own).
       const key = m.data ? await sha256Hex(fromBase64(m.data)) : bytes ? String(m.hash) : '';
-      const told = pdf && key ? `${scope}\n${key}` : '';
-      if (told && this.#toldPdfs.has(told)) return void said.push(/** @type {string} */ (this.#toldPdfs.get(told)));
       const tried = key ? `${kind}\n${key}` : '';
-      if (failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
-      const data = m.data ?? (bytes ? toBase64(bytes) : '');
-      const part = pdf ? { type: /** @type {const} */ ('document'), mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}) } : { type: /** @type {const} */ ('image'), mediaType: m.mediaType, data };
-      let why = '';
-      // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
-      const stop = new AbortController();
-      const end = () => stop.abort();
-      const late = setTimeout(end, (pdf ? DESCRIBE_PDF_S : DESCRIBE_S) * this.secondMs);
-      signal.addEventListener('abort', end, { once: true });
-      if (signal.aborted) end(); // stopped while the bytes were read
-      try {
-        for (const role of roles) {
-          if (stop.signal.aborted) break;
-          try {
-            /* en */
-            const r = await this.llm.call({ role, level: 'off', signal: stop.signal, scope: this.scope, record: { tag: 'describe', wake: wakeId }, request: { system: pdf ? DESCRIBE_PDF : DESCRIBE, maxOutput: pdf ? 3000 : 600, messages: [{ role: 'user', parts: [part, { type: 'text', text: pdf ? 'Give this PDF\'s content.' : 'Describe this photo.' }] }] } });
-            /* en */
-            why = r.reply.text.trim() ? `${pdf ? 'What it says' : 'What it shows'} (${pdf ? 'told' : 'described'} by ${r.answeredBy}, as you can't ${pdf ? 'read PDFs' : 'see photos'}): ${r.reply.text.trim()}${pdf && r.reply.stop === 'length' ? GOES_ON : ''}` : '';
-          } catch (e) {
-            /* en */
-            why ||= `It couldn't be described: ${this.#explain(e, role, true)}`;
-            continue;
-          }
-          if (why) break;
-        }
-      } finally {
-        clearTimeout(late);
-        signal.removeEventListener('abort', end);
+      const once = key ? `${scope}\n${key}\n${sees}` : '';
+      /** @type {import('./reading.js').Reading | null | undefined} */
+      let reading = once ? await stepReads.get(once) : null;
+      if (!reading && key && !fresh) reading = await this.#keptReading(scope, key, sees);
+      if (!reading && failed && tried && failed.has(tried)) return void said.push(/** @type {string} */ (failed.get(tried)));
+      if (!reading) {
+        const data = m.data ?? (bytes ? toBase64(bytes) : '');
+        const pending = (async () => {
+          const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
+            llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
+          });
+          return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
+        })();
+        if (once) stepReads.set(once, pending);
+        reading = await pending;
+        if (failed && tried && (reading.how === 'failed' || reading.how === 'late')) failed.set(tried, reading.text);
       }
-      /* en */
-      if (stop.signal.aborted && !/^What it (shows|says)/.test(why)) why = signal.aborted ? `It wasn't described: ${STOPPED}` : `It couldn't be described in time (${pdf ? DESCRIBE_PDF_S : DESCRIBE_S} seconds).`;
-      if (told && why.startsWith('What it says')) this.#toldPdfs.set(told, why);
-      /* en */
-      if (!why) why = "It couldn't be described.";
-      if (failed && tried && why.startsWith("It couldn't be described")) failed.set(tried, why);
-      said.push(why);
+      said.push(reading.text);
+      if (reading.how === 'pages') pages.push(...reading.images);
     };
-    if (!model || !model.input?.includes('image')) for (const m of output.images ?? []) await tell('image', m);
-    if (output.document && !model?.input?.includes('pdf')) await tell('pdf', output.document);
+    if (!sees) for (const m of output.images ?? []) await tell('image', m);
+    if (output.document && !reads) await tell('pdf', output.document);
     const { images, document, ...rest } = output;
-    return { ...rest, ...(model?.input?.includes('image') ? { images } : {}), ...(model?.input?.includes('pdf') ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
+    const shown = [...(sees ? images ?? [] : []), ...pages];
+    return { ...rest, ...(shown.length ? { images: shown } : {}), ...(reads ? { document } : {}), content: `${output.content}\n${said.join('\n')}` };
+  }
+
+  /**
+   * What a model a photo or PDF in the newest message kept out gets in its place, at callRole's second pass (the bookings design, goal 11):
+   * the file read by whoever can, as reading.js reads a tool's, with the stub photosAsWords writes before it, and a PDF's pages for a model
+   * that sees photos. A file read in this conversation is read from what was kept. It never throws.
+   * @param {Extract<import('../llm/contract.js').Part, { type: 'image' | 'document' }>} part @param {{ input: string[] }} model
+   * @param {AbortSignal} signal @param {string} wakeId @param {Map<string, Promise<import('./reading.js').Reading>>} [memo] this call's readings, done
+   *   or under way, by hash and whether the model sees photos @returns {Promise<import('../llm/contract.js').Part[]>}
+   */
+  async #readFor(part, model, signal, wakeId, memo = new Map()) {
+    const pdf = part.type === 'document';
+    /* en */
+    const stub = pdf ? `[a PDF${part.name ? `: ${part.name}` : ''}]` : `[a photo${part.path ? `: ${part.path}` : ''}]`;
+    try {
+      const bytes = part.data ? fromBase64(part.data) : part.type === 'image' && part.hash ? await blobBytes(this.store, this.scope, part.hash) : null;
+      const key = part.hash || (bytes ? await sha256Hex(bytes) : '');
+      const sees = model.input.includes('image');
+      const once = `${key}\n${sees}`;
+      // One reading per file in a call: the same file twice in a message (or for the next model, after one that failed) takes the
+      // first's, while it is still being read too (the re-review of reading-files).
+      let pending = memo.get(once);
+      if (!pending) {
+        pending = (async () => {
+          const kept = key ? await this.#keptReading(this.scope, key, sees) : null;
+          if (kept) return kept;
+          const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
+            llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
+            explain: (e, role) => this.#explain(e, role, true),
+          });
+          return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
+        })();
+        memo.set(once, pending);
+      }
+      const reading = await pending;
+      /** @type {import('../llm/contract.js').Part[]} */
+      const parts = [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}), ...(/** @type {any} */ (i).page ? { page: /** @type {any} */ (i).page } : {}) }))];
+      // A reading that read nothing says so, so callRole can ask a resting model that takes the file first (round 10).
+      return reading.how === 'told' || reading.how === 'pages' ? parts : Object.assign(parts, { unread: true });
+    } catch (e) {
+      /* en */
+      return Object.assign([{ type: /** @type {const} */ ('text'), text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }], { unread: true });
+    }
+  }
+
+  /**
+   * The readings kept in a conversation's log, loaded from after the last entry read (another half's arrive this way); a conversation
+   * switch loads the new one's from its start. @param {string} scope
+   */
+  async #loadKept(scope) {
+    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map() };
+    const kept = this.#kept;
+    const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['reading'], after: kept.through }));
+    for (const e of entries) {
+      kept.through = Math.max(kept.through, e.seq);
+      const text = (await storedTexts(this.store, e)).text ?? e.data?.text;
+      const how = e.data?.how;
+      if (typeof e.data?.hash !== 'string' || typeof text !== 'string' || (how !== 'told' && how !== 'pages')) continue;
+      /** @type {KeptReading['images']} */
+      const images = [];
+      for (const im of how === 'pages' ? e.data.images ?? [] : []) {
+        const bytes = await blobBytes(this.store, scope, im.hash, { named: e, via: e.type });
+        if (bytes) images.push({ mediaType: im.mediaType, data: toBase64(bytes), hash: im.hash, ...(im.page ? { page: im.page } : {}) });
+      }
+      if (how === 'pages' && !images.length) continue; // every picture gone: the file is read again when it is next needed
+      const all = how === 'pages' ? e.data.images ?? [] : [];
+      // Some pictures gone (a refused copy, removed): the line names the pages that go, so it stays true.
+      const note = images.length < all.length ? ` ${goneWords(images.map((i) => i.page), all.filter((/** @type {any} */ im) => !images.some((i) => i.hash === im.hash)).map((/** @type {any} */ im) => im.page))}` : '';
+      // The newest reading of each kind replaces what was kept of that kind (an explicit read reads afresh).
+      kept.map.set(e.data.hash, { ...kept.map.get(e.data.hash), [how]: { how, text: `${text}${note}`, images }, newest: how });
+    }
+  }
+
+  /**
+   * The reading kept for a file in a conversation, for a model: told in words for any model, its pages for one that sees photos; null
+   * when there is none. @param {string} scope @param {string} hash @param {boolean} sees @returns {Promise<KeptReading | null>}
+   */
+  async #keptReading(scope, hash, sees) {
+    await this.#loadKept(scope);
+    return this.#keptNow(hash, sees);
+  }
+
+  /** The same, from what is loaded now (callRole asks for it while it builds a request). @param {string} hash @param {boolean} sees */
+  #keptNow(hash, sees) {
+    const k = this.#kept.map.get(hash);
+    // A model that sees photos takes the newer of the two kinds; one that doesn't, the newest words (the re-check of reading-files).
+    return (sees ? (k?.newest ? k[k.newest] : undefined) ?? k?.told ?? k?.pages : k?.told) ?? null;
+  }
+
+  /**
+   * Keeps a reading that read the file (told in words, or drawn as pages) with its conversation: a `reading` entry in its log, its page
+   * pictures named by the entry (spec §4.9), so it outlives a reload and goes with the conversation.
+   * @param {string} scope @param {string} hash @param {'image' | 'pdf'} kind @param {import('./reading.js').Reading} reading @param {string} wakeId
+   * @returns {Promise<KeptReading | null>} what was kept, its pictures with their hashes; null for a reading that read nothing
+   */
+  async #keep(scope, hash, kind, reading, wakeId) {
+    if (reading.how !== 'told' && reading.how !== 'pages') return null;
+    const how = reading.how;
+    const pages = await Promise.all(reading.images.map(async (i) => { const bytes = fromBase64(i.data); return { hash: await sha256Hex(bytes), bytes, type: i.mediaType }; }));
+    await record(this.store, scope, {
+      now: this.#stamp(scope), type: 'reading', actor: 'system',
+      data: { hash, kind, how, wake: wakeId, ...(pages.length ? { images: pages.map((p, n) => ({ hash: p.hash, mediaType: p.type, ...(reading.images[n].page ? { page: reading.images[n].page } : {}) })) } : {}) },
+      texts: [['text', reading.text]], blobs: pages,
+    });
+    /** @type {KeptReading} */
+    const kept = { how, text: reading.text, images: reading.images.map((i, n) => ({ ...i, hash: pages[n].hash })) };
+    // The newest reading of each kind replaces what was kept of that kind; the older stays in the log, its pictures named by its entry.
+    if (this.#kept.scope === scope) this.#kept.map.set(hash, { ...this.#kept.map.get(hash), [how]: kept, newest: how });
+    return kept;
   }
 
   /**

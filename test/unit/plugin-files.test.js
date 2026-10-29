@@ -197,3 +197,35 @@ test('list and search leave the offline pack out unless asked for it (choice 8)'
   assert.match(await run('list', { path: '/trip/offline/' }), /\/trip\/offline\/osm\/o1\.json/);
   assert.match(await run('search', { query: 'nepenthe', path: '/trip/offline' }), /\/trip\/offline\/osm\/o1\.json/);
 });
+
+test("a path whose case differs from the one file it names is used, and the result says so (the real-PDF check, 2026-10-28: /trip/Files/…)", async () => {
+  const { ws, trip, run } = await setup();
+  await ws.write(trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/notes/dinner.md', '# Dinner\nNepenthe at 6:30\n', { author: 'user' });
+  const read = await run('read', { path: '/trip/Files/booking.pdf' }, { input: ['text', 'pdf'] });
+  assert.match(read.content, /^\(read \/trip\/files\/booking\.pdf: the path's case differed\)\nThe PDF \/trip\/files\/booking\.pdf\.$/);
+  assert.equal(read.document.path, '/trip/files/booking.pdf');
+  assert.match(await run('edit', { path: '/trip/Notes/Dinner.md', old: '6:30', new: '7:00' }), /^\(edited \/trip\/notes\/dinner\.md: the path's case differed\)\nEdited \/trip\/notes\/dinner\.md\.$/);
+  assert.match(await ws.readText(trip, '/notes/dinner.md'), /7:00/);
+  // Two files that match ignoring case: nothing is guessed.
+  await ws.write(trip, '/notes/Dinner.md', 'Other', { author: 'user' });
+  await assert.rejects(run('read', { path: '/trip/NOTES/DINNER.md' }), /No file at \/trip\/NOTES\/DINNER\.md/);
+});
+
+test("the case fallback never stands in for a file that existed: a deleted path is no file, and delete never falls back (round 6)", async () => {
+  const { ws, trip, run } = await setup();
+  await ws.write(trip, '/notes/Hotel.md', 'Hotel A', { author: 'user' });
+  await ws.write(trip, '/notes/hotel.md', 'Hotel B', { author: 'user' });
+  await run('delete', { path: '/trip/notes/Hotel.md' });
+  await assert.rejects(run('delete', { path: '/trip/notes/Hotel.md' }));
+  assert.equal((await ws.read(trip, '/notes/hotel.md'))?.entry.size, 7, 'the other file stays');
+  await assert.rejects(run('read', { path: '/trip/notes/Hotel.md' }), /No file at \/trip\/notes\/Hotel\.md/);
+  await ws.write(trip, '/plan/dinner.json', { id: 'dinner', title: 'Dinner B', fixed: true, tags: [] }, { author: 'user' });
+  await ws.write(trip, '/plan/Dinner.json', { id: 'Dinner', title: 'Dinner A', fixed: true, tags: [] }, { author: 'user' });
+  await ws.delete(trip, '/plan/dinner.json', { author: 'user' });
+  await assert.rejects(run('patch', { path: '/trip/plan/dinner.json', changes: { notes: 'x' } }), /No file at/);
+  assert.equal((await ws.readJSON(trip, '/plan/Dinner.json')).notes, undefined);
+  // A path that never was: the fallback still helps, but delete says there's no file.
+  await assert.rejects(run('delete', { path: '/trip/NOTES/HOTEL.md' }));
+  assert.ok(await ws.read(trip, '/notes/hotel.md'));
+});

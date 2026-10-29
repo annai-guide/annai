@@ -84,6 +84,35 @@ export function activate(annai) {
     // The offline pack is for the places tools (spec §11.5): it stays out unless asked for.
     return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
   };
+  /**
+   * The one existing path a path names but for its case (a model wrote /trip/Files/… for /trip/files/…, the real-PDF check), as Shiori
+   * writes paths; null when there is none, or more than one. @param {string} raw @param {any} call @returns {Promise<string | null>}
+   */
+  const sameButCase = async (raw, call) => {
+    const { scope, path } = where(raw, call);
+    // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file (round 6).
+    if ((await ws.history(scope, path)).length) return null;
+    const root = raw.startsWith('/trip') ? '/trip' : '/me';
+    const found = (await ws.list(scope, '/')).filter((/** @type {any} */ f) => f.path.toLowerCase() === path.toLowerCase());
+    return found.length === 1 ? `${root}${found[0].path}` : null;
+  };
+  /**
+   * A tool that, for a path naming no file, uses the one file it names but for its case, and says so first in its result (the rules:
+   * an error with one obvious fix is fixed, and said). @param {string} done how the result says it, "read" @param {(i: any, call: any) => Promise<any>} run
+   */
+  const caseTolerant = (done, run) => async (/** @type {any} */ i, /** @type {any} */ call) => {
+    try {
+      return await run(i, call);
+    } catch (e) {
+      const missing = e instanceof NotFoundError || /^No file at /.test(String(/** @type {any} */ (e)?.message));
+      const path = missing ? await sameButCase(i.path, call).catch(() => null) : null;
+      if (!path || path === i.path) throw e;
+      const out = await run({ ...i, path }, call);
+      /* en */
+      const note = `(${done} ${path}: the path's case differed)`;
+      return typeof out === 'string' ? `${note}\n${out}` : { ...out, content: `${note}\n${out.content}` };
+    }
+  };
   /* en */
   const tools = [
     {
@@ -96,7 +125,7 @@ export function activate(annai) {
     },
     {
       name: 'read', group: 'Files',
-      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document (in words, if your model reads no PDFs), a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
+      description: 'Read a file: text and JSON as text, a photo as an image you can see, a PDF as a document (in words or as pictures of its pages, if your model reads no PDFs), a Wallet pass (.pkpass) as what it says. Long text comes in pieces; read again with from. With a region, a photo is cropped to that part and sent with more detail.',
       input: {
         type: 'object', required: ['path'],
         properties: {
@@ -105,7 +134,7 @@ export function activate(annai) {
         },
       },
       /** @param {{ path: string, from?: number, region?: number[] }} i @param {any} call */
-      run: async (i, call) => {
+      run: caseTolerant('read', async (i, call) => {
         const { scope, path } = where(i.path, call);
         const got = await ws.read(scope, path);
         if (!got) throw new Error(`No file at ${i.path}. list shows what is there.`);
@@ -149,7 +178,7 @@ export function activate(annai) {
         const piece = all.slice(from, from + TEXT_MAX);
         const rest = all.length - from - piece.length;
         return rest > 0 ? `${piece}\n… ${rest} more characters; read again with from: ${from + piece.length}` : piece;
-      },
+      }),
     },
     {
       name: 'write', group: 'Files',
@@ -170,7 +199,7 @@ export function activate(annai) {
       description: 'Replace text in a text file. old must appear exactly once.',
       input: { type: 'object', properties: { path: PATH, old: { type: 'string' }, new: { type: 'string' } }, required: ['path', 'old', 'new'] },
       /** @param {{ path: string, old: string, new: string }} i @param {any} call */
-      run: async (i, call) => {
+      run: caseTolerant('edited', async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
@@ -182,14 +211,14 @@ export function activate(annai) {
         const r = rule(scope, path);
         await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.${r.note}`;
-      },
+      }),
     },
     {
       name: 'patch', group: 'Files',
       description: 'Change a JSON file with a JSON Merge Patch: given keys replace, null removes, and a key ending in "+" appends to a list.',
       input: { type: 'object', properties: { path: PATH, changes: { type: 'object' } }, required: ['path', 'changes'] },
       /** @param {{ path: string, changes: object }} i @param {any} call */
-      run: async (i, call) => {
+      run: caseTolerant('patched', async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         // A merge patch that isn't an object would replace the whole file with it.
@@ -198,7 +227,7 @@ export function activate(annai) {
         const r = rule(scope, path);
         await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.${r.note}`;
-      },
+      }),
     },
     {
       name: 'search', group: 'Files',
@@ -224,14 +253,15 @@ export function activate(annai) {
       description: 'Delete a file. Its history is kept, so the user can restore it.',
       input: { type: 'object', properties: { path: PATH }, required: ['path'] },
       /** @param {{ path: string }} i @param {any} call */
-      run: async (i, call) => {
+      // Not case-tolerant: for a delete, "no file" is the true answer (round 6).
+      run: (async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
         const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
         await ws.delete(scope, path, { author: 'shiori' });
         return `Deleted ${i.path}.${confirmed ? ' The user had confirmed this booking. If deleting it was a mistake, tell them: its history keeps it, so they can restore it.' : ''}`;
-      },
+      }),
     },
   ];
   const off = tools.map((t) => annai.tools.register(t));

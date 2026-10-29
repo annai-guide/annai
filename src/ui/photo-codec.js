@@ -32,7 +32,8 @@ export function canEncode(type) {
     answer = (async () => {
       try {
         const c = canvas(1, 1);
-        c.getContext('2d')?.fillRect(0, 0, 1, 1);
+        // Typed as at encodePhoto: tsc resolves getContext on the canvas union differently by the order it checks files in.
+        /** @type {OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null} */ (c.getContext('2d'))?.fillRect(0, 0, 1, 1);
         return (await toBlob(c, type, 0.9))?.type === type;
       } catch {
         return false;

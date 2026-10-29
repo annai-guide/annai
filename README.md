@@ -32,7 +32,7 @@ memories afterwards.
 
 ## Plan and bookings
 
-- Add confirmations to a trip: PDFs, Apple Wallet passes, screenshots, calendar files, or text shared from another app (Android). annai keeps the files; Shiori reads them and writes each booking as unverified.
+- Add confirmations to a trip: PDFs, Apple Wallet passes, screenshots, calendar files, or text shared from another app (Android). annai keeps the files; Shiori reads them (or a model that can, for a model that can't; with the PDF pages plugin, a model that sees photos reads a PDF's first 10 pages) and writes each booking as unverified.
 - The Plan shows the trip day by day: ● fixed, ○ flexible, the distance between stops with directions, and "Check this" on every booking you haven't confirmed. "Add to calendar" saves the plan as an .ics file.
 - Shiori researches and hands you search links for flights, hotels and cars. You book; annai never books for you.
 

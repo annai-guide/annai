@@ -464,15 +464,17 @@ export function createLlm({
      * A role call with fallback, traced in scope (spec §9.6).
      * @param {{ role?: string, request: import('./contract.js').Request, level?: string, onEvent?: (e: import('./contract.js').StreamEvent) => void,
      *   signal?: AbortSignal, scope?: string, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
-     *   prefer?: string, borrow?: boolean, repairImages?: Parameters<typeof callRole>[0]['repairImages'], speech?: Parameters<typeof callRole>[0]['speech'], firstOutputMs?: number }} c
+     *   prefer?: string, borrow?: boolean, repairImages?: Parameters<typeof callRole>[0]['repairImages'], speech?: Parameters<typeof callRole>[0]['speech'], firstOutputMs?: number, read?: Parameters<typeof callRole>[0]['read'], readings?: Parameters<typeof callRole>[0]['readings'], askResting?: boolean }} c
      *   prefer: the model whose cache is warm, tried first; borrow: warm housekeeping continues the conversation's kept chain and deletes its own response; repairImages: fixes a refused photo (spec §9.6, §9.9); speech: resolves heard
      *   speech for each attempt (§10.3); firstOutputMs: how long the first words may take, when not the role's own setting
+     *   read: what a model a photo or PDF in the newest message kept out gets in its place, for the second pass (§9.6); readings: what
+     *   the conversation kept of its files (§7.2)
      */
-    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, borrow, repairImages, speech, firstOutputMs }) {
+    async call({ role = 'main', request, level, onEvent, signal, scope = SYS, record, prefer, borrow, repairImages, speech, firstOutputMs, read, readings, askResting }) {
       await ready;
       const run = callRole({
         role, request, level, config: await readConfig(ws), types: types(), keyFor: (id) => getKey(store, id), bench, missing: whyNoPlugins(),
-        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, borrow, repairImages, uploads, speech, firstOutputMs, kept, scope, tally: ws,
+        fetch: get, signal, onEvent, trace: modelTrace(store, scope), registry: plugins.registry, record, prefer, borrow, repairImages, uploads, speech, firstOutputMs, read, readings, askResting, kept, scope, tally: ws,
       });
       if (!record?.keepParts && !borrow) return run;
       inflight.add(run);

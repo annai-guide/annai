@@ -1,4 +1,4 @@
-import { t } from '../l10n.js';
+import { t, plural } from '../l10n.js';
 import { list } from '../intl.js';
 
 /**
@@ -7,16 +7,16 @@ import { list } from '../intl.js';
  * translate between this and one wire protocol; the core contains no protocol.
  *
  * @typedef {{ type: 'text', text: string, heard?: string }
- *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], fileId?: string, missing?: boolean }
- *   | { type: 'document', mediaType: string, data: string, name?: string, missing?: boolean }
+ *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], page?: number, fileId?: string, missing?: boolean }
+ *   | { type: 'document', mediaType: string, data: string, hash?: string, name?: string, missing?: boolean }
  *   | { type: 'audio', mediaType: string, data: string, heard?: string }
  *   | { type: 'speech', id: string, text?: string, clip?: string }
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
  *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
- *   image.data and document.data are base64 (a document is a PDF). An image's hash is its bytes' fingerprint, path and
- *   region where it came from (for stubs), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
+ *   image.data and document.data are base64 (a document is a PDF). An image's or a document's hash is its bytes' fingerprint, path and
+ *   region where it came from (for stubs), page the PDF page it shows (a drawn page's picture), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
  *   or fileId when they upload. missing marks one whose bytes are gone: annai never sends it. provider is a provider's own block (a server
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
@@ -27,13 +27,14 @@ import { list } from '../intl.js';
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
- *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, toolRequired?: boolean }} Request
+ *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, newestDocument?: boolean, toolRequired?: boolean }} Request
  *   tail: the now block, last, after any cache marker: in the final user message, or where the type puts it (OpenAI Responses: a developer message).
  *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token. toolRequired: the model must call
  *   one of the tools, any (Shiori's turns: she reaches the user only through tools), where its endpoint type can say so; toolChoice wins.
  *   providerTools: turn on the model's own tools of these kinds, except the ids switched off (spec §9.5);
  *   needsProviderTool: only models with such a tool of this kind may answer.
  *   newestPhoto: the user's newest message holds a photo, so a model that takes none can't answer (older photos go to it as words).
+ *   newestDocument: the newest message holds a PDF (else read from it); false sends one to a model that reads none as a note, as newestPhoto: false does a photo.
  * @typedef {{ input: number, cacheRead: number, cacheWrite: number, cacheWrite1h: number, output: number, reasoning: number, cost?: number,
  *   serverTools?: Record<string, number>, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number, cacheReadImage?: number }} Usage
  *   Tokens. input leaves out cache reads and writes; output includes reasoning, which is also
@@ -121,9 +122,9 @@ function shown(kind, provider) {
 /**
  * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
- * @typedef {{ code: 'kind' | 'late' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
+ * @typedef {{ code: 'kind' | 'late' | 'paused' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
  *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
- *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string }} Said
+ *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string, seconds?: number }} Said
  * ability: the ability's name where its description gives one; abilityKind: its kind, which the screens name otherwise.
  */
 
@@ -142,6 +143,7 @@ export function saidWords(s, kind, provider) {
   const ability = s.ability ?? kindWords(s.abilityKind) ?? s.abilityKind;
   switch (s.code) {
     case 'late': return t`No output started in time.`;
+    case 'paused': return plural(Number(s.seconds) || 0, 'Its output stopped for # second.', 'Its output stopped for # seconds.');
     case 'stalled': return t`The voice stopped arriving for longer than its wait.`;
     case 'held': return t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
     case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;

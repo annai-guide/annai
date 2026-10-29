@@ -25,6 +25,13 @@
       "name": "OpenAI Responses",
       "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
     },
+    "pdf-pages": {
+      "name": "PDF ページ",
+      "description": "写真は見られても PDF を読めないモデルに、PDF のページを画像として見せます。どのブラウザでも、PDF の1ページ目をプレビューとして描きます。Mozilla の PDF.js（約 4.5 MB）を含みます。",
+      "keywords": [
+        "PDF.js"
+      ]
+    },
     "provider-another-address": {
       "name": "カスタムプロバイダー",
       "description": "そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。",
@@ -162,6 +169,7 @@
     "gemini-live": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
     "openai-realtime": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
     "openai-responses": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
+    "pdf-pages": "57a2211e73b0ff4dd0b43159eb8e086dd700994c4386bec18d8e487b89827dc5",
     "provider-another-address": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
     "provider-anthropic": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
     "provider-deepseek": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",

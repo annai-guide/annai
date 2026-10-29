@@ -15,6 +15,9 @@ openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai
 openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。	plugins-official/openai-responses/annai-plugin.json:7	
+pdf-pages:@name	ok	PDF pages	PDF ページ	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the screens and the Models note (1xx9c0t) say it.
+pdf-pages:@description	ok	Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.	写真は見られても PDF を読めないモデルに、PDF のページを画像として見せます。どのブラウザでも、PDF の1ページ目をプレビューとして描きます。Mozilla の PDF.js（約 4.5 MB）を含みます。	plugins-official/pdf-pages/annai-plugin.json:8	Note: "brings" read as the package includes it, so を含みます.
+pdf-pages:@keywords.0	ok	PDF.js	PDF.js	plugins-official/pdf-pages/annai-plugin.json:9	Note: a product name, kept.
 provider-another-address:@name	ok	Custom provider	カスタムプロバイダー	plugins-official/provider-another-address/annai-plugin.json:3	
 provider-another-address:@description	ok	Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.	そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。	plugins-official/provider-another-address/annai-plugin.json:11	
 provider-another-address:@keywords.0	ok	OpenAI-compatible	OpenAI 互換	plugins-official/provider-another-address/annai-plugin.json:14	
@@ -459,53 +462,53 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:535	
 bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:656	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:656	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:112	
-1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:112	
-4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:112	
-89yydm	ok	Listening	聞いています	src/core/agent/loop.js:112	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:112	
-yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:112	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:113	
-izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:113	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:543	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:543	
-19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:860	
-16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1083	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1083	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1116	
-oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1116	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1249	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1447	
-1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1447	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1547	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1547	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1547	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1602	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1873	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1873	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:1910	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:1914	
-1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:1978	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2006	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2061	
-vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2422	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2565	
-guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2565	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2566	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2566	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2704	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2839	
-43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3013	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3014	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3015	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3016	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3017	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3018	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3025	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3035	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3036	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3037	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3038	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:114	
+1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:114	
+4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:114	
+89yydm	ok	Listening	聞いています	src/core/agent/loop.js:114	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:114	
+yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:114	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:115	
+izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:115	
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:547	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:547	
+19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:863	
+16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1086	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1086	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1119	
+oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1119	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1253	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1455	
+1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1455	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1555	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1555	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1555	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1610	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1894	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1894	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:1931	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:1935	
+1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:1999	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2027	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2086	
+vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2538	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2681	
+guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2681	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2682	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2682	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2820	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2955	
+43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3129	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3130	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3131	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3132	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3133	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3134	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3141	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3151	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3152	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3153	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3154	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -636,48 +639,49 @@ mlh3jc	ok	Main	メイン	src/core/llm/check.js:134
 1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに {0} という機能はありません。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	プロバイダーのモデル ID を入力してください。	src/core/llm/config.js:387	
 3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:391	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:97	
-1do8abu	ok	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:98	
-99g6ol	ok	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:99	
-1f1gofm	ok	The provider is overloaded right now.	プロバイダーは今、混み合っています。	src/core/llm/contract.js:100	
-1m90sjx	ok	The conversation is too long for this model.	会話がこのモデルには長すぎます。	src/core/llm/contract.js:101	
-ofpdqd	ok	This model didn't accept the photo.	このモデルは写真を受け付けませんでした。	src/core/llm/contract.js:102	
-1acsflt	ok	A photo uploaded earlier has expired.	以前にアップロードした写真の期限が切れています。	src/core/llm/contract.js:103	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	このアドレスは、annai のような Web アプリからの呼び出しを許可していません。	src/core/llm/contract.js:104	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai はこのアドレスにつながりませんでした。止まっているか、Web アプリを許可していないのかもしれません。	src/core/llm/contract.js:105	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	プロバイダーはリクエストを受け付けませんでした。プロバイダーのページで調整項目を確認してください。	src/core/llm/contract.js:106	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	プロバイダーはこのモデルかアドレスを知りません。モデル ID とベース URL を確認してください。	src/core/llm/contract.js:107	
-11ib30k	ok	The provider had a problem on its side.	プロバイダー側で問題が起きました。	src/core/llm/contract.js:108	
-1sdnnoc	ok	The connection dropped.	接続が切れました。	src/core/llm/contract.js:109	
-vfwfwf	ok	The model took too long to start answering.	モデルが答え始めるまでに時間がかかりすぎました。	src/core/llm/contract.js:110	
-5x3mf4	ok	Stopped.	停止しました。	src/core/llm/contract.js:111	
-1jk8mhk	ok	The plugin for this model's protocol failed.	このモデルのプロトコルのプラグインが失敗しました。	src/core/llm/contract.js:112	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	このモデルのプロトコルのプラグインが動いていません。設定 → モデルでプロバイダーを開いてインストールしてください。	src/core/llm/contract.js:113	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	プロバイダーには以前のターンがもう残っていません。annai は会話全体を送ります。	src/core/llm/contract.js:114	
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} はリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:115	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:116	
-17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:134	
-9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:134	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	ok	Voice	声	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
-su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:134	
-izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:144	
-13fumpt	ok	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:145	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:146	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:147	
-1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:148	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} にはプラグインが必要ですが、動いていません。インストールするには、設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
-11neb14	ok	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:150	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:152	{0} = name
-x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:153	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:154	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:156	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:157	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:158	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:162	{0} = name
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。設定 → モデルで確認してください。	src/core/llm/contract.js:98	
+1do8abu	ok	This account is out of credit.	このアカウントのクレジットがなくなりました。	src/core/llm/contract.js:99	
+99g6ol	ok	The provider says too many requests for now.	プロバイダーによると、今はリクエストが多すぎます。	src/core/llm/contract.js:100	
+1f1gofm	ok	The provider is overloaded right now.	プロバイダーは今、混み合っています。	src/core/llm/contract.js:101	
+1m90sjx	ok	The conversation is too long for this model.	会話がこのモデルには長すぎます。	src/core/llm/contract.js:102	
+ofpdqd	ok	This model didn't accept the photo.	このモデルは写真を受け付けませんでした。	src/core/llm/contract.js:103	
+1acsflt	ok	A photo uploaded earlier has expired.	以前にアップロードした写真の期限が切れています。	src/core/llm/contract.js:104	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	このアドレスは、annai のような Web アプリからの呼び出しを許可していません。	src/core/llm/contract.js:105	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai はこのアドレスにつながりませんでした。止まっているか、Web アプリを許可していないのかもしれません。	src/core/llm/contract.js:106	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	プロバイダーはリクエストを受け付けませんでした。プロバイダーのページで調整項目を確認してください。	src/core/llm/contract.js:107	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	プロバイダーはこのモデルかアドレスを知りません。モデル ID とベース URL を確認してください。	src/core/llm/contract.js:108	
+11ib30k	ok	The provider had a problem on its side.	プロバイダー側で問題が起きました。	src/core/llm/contract.js:109	
+1sdnnoc	ok	The connection dropped.	接続が切れました。	src/core/llm/contract.js:110	
+vfwfwf	ok	The model took too long to start answering.	モデルが答え始めるまでに時間がかかりすぎました。	src/core/llm/contract.js:111	
+5x3mf4	ok	Stopped.	停止しました。	src/core/llm/contract.js:112	
+1jk8mhk	ok	The plugin for this model's protocol failed.	このモデルのプロトコルのプラグインが失敗しました。	src/core/llm/contract.js:113	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	このモデルのプロトコルのプラグインが動いていません。設定 → モデルでプロバイダーを開いてインストールしてください。	src/core/llm/contract.js:114	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	プロバイダーには以前のターンがもう残っていません。annai は会話全体を送ります。	src/core/llm/contract.js:115	
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} はリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:116	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーはリダイレクトで答えました。annai はあなたのキーを付けたままリダイレクトをたどりません。アドレスを確認してください。	src/core/llm/contract.js:117	
+17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:135	
+9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:135	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	ok	Voice	声	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
+su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:135	
+izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:145	
+1l28lx6#other	ok	Its output stopped for # seconds.	出力が#秒間止まりました。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	声が、待てる時間より長く途切れました。	src/core/llm/contract.js:147	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai の再読み込みが必要です。オフラインサービスなしで開いたため、プラグインを起動できません。	src/core/llm/contract.js:148	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に annai が保存した会話がサーバーにありませんでした。このアカウントでは保存していないようです（Zero Data Retention）。annai は次に起動するまでそこに何も保存せず、会話全体を送ります。	src/core/llm/contract.js:149	
+1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:150	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} の {1} にはプラグインが必要ですが、動いていません。インストールするには、設定 → モデルで {2} を開いてください。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
+11neb14	ok	{0} isn't a transcription model.	{0} は文字起こしのモデルではありません。	src/core/llm/contract.js:152	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} は声ではありません。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} はライブ音声のモデルではありません。	src/core/llm/contract.js:154	{0} = name
+x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:155	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもうないか、そのプラグインが動いていません。	src/core/llm/contract.js:156	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} は annai のような Web アプリからの呼び出しを許可していません（CORS ヘッダーがありません）。そのため annai はブラウザからモデルの一覧も使用もできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに頼んでください。	src/core/llm/contract.js:158	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai は {0} につながりませんでした。アドレスと接続を確認してください。	src/core/llm/contract.js:159	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} はここではモデルの一覧を出せません。ID で追加してください。	src/core/llm/contract.js:160	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} はこのスマートフォンで作れる音声形式を受け付けません（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} の {1} が、自分のアドレス {3} ではなく {2} へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} の {1} が、自分のアドレス {2} ではなく、アドレスになっていない宛先へのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	{0} のために聞き取れるものが、聞き取りのリストにありません。	src/core/llm/contract.js:164	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	料金はオブジェクトです。例：{"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	"tiers" の段階にある {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	"schedule" の中の {0} は料金ではありません：0 以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 予定 is the Plan screen's word.
@@ -690,32 +694,32 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" の項目に "from" がありません：各項目は 2027-01-01 のような日付で始まります。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" に {0} が2回あります：その日に変わるものは1つの項目にまとめてください。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" に「{0}」がありますが、annai が知っている料金ではありません。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	エラーの後、数分間休んでいます。	src/core/llm/fallback.js:101	
-9bk0c8	ok	It doesn't take photos.	写真を受け付けません。	src/core/llm/fallback.js:102	
-12h1lml	ok	It doesn't read PDFs.	PDF を読めません。	src/core/llm/fallback.js:103	
-uxj42v	ok	It doesn't take audio.	音声を受け付けません。	src/core/llm/fallback.js:104	
-19lcshx	ok	It can't use tools.	ツールを使えません。	src/core/llm/fallback.js:105	
-1coimht	ok	The conversation is too long for it.	会話が長すぎます。	src/core/llm/fallback.js:106	
-6o9g3j	ok	It doesn't have the provider tool this needs.	これに必要なプロバイダーのツールがありません。	src/core/llm/fallback.js:107	
-8xm1wt	ok	It isn't a chat model.	チャットモデルではありません。	src/core/llm/fallback.js:108	
-1i0eq06	ok	It is switched off.	オフになっています。	src/core/llm/fallback.js:109	
-10vxomx	ok	It was removed.	削除されました。	src/core/llm/fallback.js:110	
-s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:111	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:130	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:153	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 辅助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:203	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	エラーの後、数分間休んでいます。	src/core/llm/fallback.js:124	
+9bk0c8	ok	It doesn't take photos.	写真を受け付けません。	src/core/llm/fallback.js:125	
+12h1lml	ok	It doesn't read PDFs.	PDF を読めません。	src/core/llm/fallback.js:126	
+uxj42v	ok	It doesn't take audio.	音声を受け付けません。	src/core/llm/fallback.js:127	
+19lcshx	ok	It can't use tools.	ツールを使えません。	src/core/llm/fallback.js:128	
+1coimht	ok	The conversation is too long for it.	会話が長すぎます。	src/core/llm/fallback.js:129	
+6o9g3j	ok	It doesn't have the provider tool this needs.	これに必要なプロバイダーのツールがありません。	src/core/llm/fallback.js:130	
+8xm1wt	ok	It isn't a chat model.	チャットモデルではありません。	src/core/llm/fallback.js:131	
+1i0eq06	ok	It is switched off.	オフになっています。	src/core/llm/fallback.js:132	
+10vxomx	ok	It was removed.	削除されました。	src/core/llm/fallback.js:133	
+s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:134	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休みます。	src/core/llm/fallback.js:153	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:179	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:228	Note: the role by its screen name (補助 / 辅助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · クラシックにモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:229	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。設定 → モデルで追加してください。	src/core/llm/fallback.js:230	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	annai のプラグインの一覧を読み込めませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	annai のプラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:35	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:148	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:150	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:152	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:255	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:257	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:269	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:278	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:280	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。接続を確認して、もう一度お試しください。	src/core/llm/official.js:157	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:159	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0} が annai のカタログと一致しません	src/core/llm/official.js:161	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:275	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annai が知らないエンドポイントの種類です。それを提供するプラグインをインストールしてください。	src/core/llm/official.js:277	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした {0} は、この操作ではオンになりません。	src/core/llm/official.js:289	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類 {0} を提供しませんでした	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類 {0} を提供しませんでした	src/core/llm/official.js:300	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhost はスマートフォン自身です。別のコンピューターのサーバーには https のアドレスが必要です：ブラウザは https のページからの平文の http をブロックするため、annai はネットワーク上の https のアドレスにしかつなぎません。方法の1つは Tailscale Serve で、スマートフォンを tailnet に入れておきます：サーバーのある場所で {0} を実行し、annai に {1} を入力します。サーバーは annai.guide からの CORS も許可する必要があります。Chrome 142 以降では、ローカルネットワークへのアクセスの許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} は Web アドレスではありません：先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// は localhost か 127.0.0.1 のときだけ）。ブラウザは https のページからの平文の http をブロックし、annai はネットワーク上の https のアドレスにしかつながないため、別のコンピューターのサーバーには https のアドレスが必要です。Tailscale Serve で用意できます：{0}。サーバーは annai.guide からの CORS も許可する必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -1121,21 +1125,21 @@ uqmge3	ok	Open the browser menu (⋮).	ブラウザのメニュー（⋮）を�
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari は、7日間開かないと旅を消去することがあります。また、ホーム画面のアプリは旅を別に保存するので、ここで始めた旅はそちらにはありません。annai をホーム画面に追加して、そこで旅を始めてください。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	ブラウザは、空き容量が少なくなると旅を消去することがあります。annai をインストールして、旅を守ってください。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	手順を見る	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:223	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
-967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:238	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:242	{0} = name
-1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:258	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:262	
-v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:265	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
-1c7q9dt	ok	Miles	マイル	src/ui/languages.js:271	Note: A choice of Distances.
-86ef5k	ok	Kilometres	キロメートル	src/ui/languages.js:271	Note: A choice of Distances.
-r122ro	ok	Automatic	自動	src/ui/languages.js:271	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	ok	Distances	距離の単位	src/ui/languages.js:287	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:300	{0} = name
-dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:300	
-8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:307	{0} = name
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:308	{0} = name
-1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:309	
+n3y7d4	ok	As this phone is set ({0})	この端末の設定に従う（{0}）	src/ui/languages.js:226	{0} = ownName(chooseTag(null, phone, SHIPPED).tag); Note: ja 端末 (the device) covers phones and computers alike.
+967kb3	ok	Getting {0}…	{0}を取得しています…	src/ui/languages.js:243	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai は{0}を取得できませんでした。言語を取得するには、一度だけ接続が必要です。	src/ui/languages.js:249	{0} = name
+1t9l1f1	ok	Saved. Restarting…	保存しました。再起動しています…	src/ui/languages.js:266	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	保存しました。次に annai を再起動したときに反映されます。	src/ui/languages.js:270	
+v4uyh0	ok	annai's screens in	annai の表示言語	src/ui/languages.js:273	Note: Not in the glossary yet. 表示言語 (display language) as apps say it; iOS says iPhone の使用言語.
+1c7q9dt	ok	Miles	マイル	src/ui/languages.js:279	Note: A choice of Distances.
+86ef5k	ok	Kilometres	キロメートル	src/ui/languages.js:279	Note: A choice of Distances.
+r122ro	ok	Automatic	自動	src/ui/languages.js:279	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離の単位	src/ui/languages.js:295	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	{0}を読み込めませんでした	src/ui/languages.js:308	{0} = name
+dc30do	ok	annai shows English until it is online.	オンラインになるまで、annai は英語で表示されます。	src/ui/languages.js:308	
+8rqn0k	ok	Restart to show annai in {0}	再起動して annai を{0}で表示	src/ui/languages.js:315	{0} = name
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定では annai の表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:316	{0} = name
+1of7r8x	ok	Restart annai	annai を再起動	src/ui/languages.js:317	
 15kmah9	ok	Simulation · moving fast	シミュレーション · 高速で移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	シミュレーション · 停止中	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	シミュレーション · 歩行中	src/ui/live-chip.js:22	
@@ -1245,8 +1249,8 @@ qdh58i	ok	No offline pack for this trip yet.	この旅のオフラインパッ�
 ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 dbm7fe	ok	Open a trip someone sent you	送られてきた旅を開く	src/ui/open-file.js:6	
-ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:72	
-11dn6um	ok	This browser could not write {0}.	このブラウザでは {0} を書き出せませんでした。	src/ui/photo-codec.js:80	{0} = type
+ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:73	
+11dn6um	ok	This browser could not write {0}.	このブラウザでは {0} を書き出せませんでした。	src/ui/photo-codec.js:81	{0} = type
 1l0xxoj	ok	Close	閉じる	src/ui/photo-viewer.js:32	
 1s1o4yb	ok	Show Shiori this part	この部分を Shiori に見せる	src/ui/photo-viewer.js:33	
 u3xlwb	ok	The plugin "{0}" was turned off	プラグイン「{0}」はオフになりました	src/ui/plugin-cards.js:12	{0} = name
@@ -1724,7 +1728,7 @@ el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/scr
 1rqw64m	ok	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:173	
 48wtk9	ok	Wait for the words (seconds)	言葉を待つ時間（秒）	src/ui/screens/models.js:173	
 796n77	ok	Wait for the first words (seconds)	最初の言葉を待つ時間（秒）	src/ui/screens/models.js:173	
-q0h89m	ok	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	写真を見られない、PDF を読めないモデルには、読む写真や PDF を、ここにある対応モデルが説明します。なければメインのモデルが説明します。	src/ui/screens/models.js:178	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shiori のモデルが写真を見られない、または PDF を読めないときは、それができる Koe のモデルが読みます。なければここにあるモデル、それもなければメインのモデルが読みます。PDF ページのプラグインがあれば、写真を見られるモデルが PDF のページを読みます。	src/ui/screens/models.js:178	Note: "one here" is a model of this role (補助), so ここにあるモデル; PDF ページ is the plugin's name in Japanese (its pdf-pages:@name).
 14w2ppx	ok	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:180	{0} = called
 17olz31	ok	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:182	{0} = called
 58mvoq	ok	Reasoning for {0}	{0}の推論	src/ui/screens/models.js:190	{0} = called
@@ -2277,86 +2281,89 @@ pghiva	ok	Location	位置情報	src/ui/screens/trace.js:33
 1jije2k	ok	Nothing here yet.	まだ何もありません。	src/ui/screens/trace.js:76	
 zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai が記録したすべて：ファイルの変更、モデルの呼び出し、読み込み、プラグインの問題、エラー。新しい順。	src/ui/screens/trace.js:87	
 vv1pu6	ok	Type contains	タイプに含む文字	src/ui/screens/trace.js:88	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	Android スマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:145	
-obwhc7	ok	a newer backup from an iPhone is there	iPhone からの新しいバックアップがあります	src/ui/screens/trace.js:145	
-oh532o	ok	a newer backup from an iPad is there	iPad からの新しいバックアップがあります	src/ui/screens/trace.js:145	
-1ds6m85	ok	a newer backup from a computer is there	パソコンからの新しいバックアップがあります	src/ui/screens/trace.js:146	
-1r6qy12	ok	the user wrote	ユーザーが書いた	src/ui/screens/trace.js:167	
-yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップした	src/ui/screens/trace.js:167	
-1eo2nlm	ok	Kokoro to Koe	Kokoro から Koe へ	src/ui/screens/trace.js:171	
-l7yvjm	ok	Koe to Kokoro	Koe から Kokoro へ	src/ui/screens/trace.js:171	
-omff16	ok	annai to Kokoro	annai から Kokoro へ	src/ui/screens/trace.js:172	
-1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:175	
-piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:175	{0} = duration(d.ms ?? 0)
-1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:176	
-1x13vat	ok	not for Shiori	Shiori 宛てではない	src/ui/screens/trace.js:176	
-k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:176	
-an9lly	ok	clip kept: {0}, {1}	クリップを保存：{0}、{1}	src/ui/screens/trace.js:177	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	クリップを保存	src/ui/screens/trace.js:177	
-1gqj9yn	ok	written down by {0}	{0}が書き起こし	src/ui/screens/trace.js:179	{0} = d.by
-o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:182	{0} = d.source
-v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:182	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	エラー	src/ui/screens/trace.js:184	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:184	
-1qafm6e	ok	kept turn not deleted yet	保持されたターンはまだ削除されていません	src/ui/screens/trace.js:188	
-7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:188	
-udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:188	
-hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:189	
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:190	{0} = d.mediaType
-12y45gf	ok	from a backup, annai {0}	バックアップから、annai {0}	src/ui/screens/trace.js:194	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	旅のファイルから、annai {0}	src/ui/screens/trace.js:194	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	持っていない内容#件を除外	src/ui/screens/trace.js:195	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	この旅のものではない内容を求め、何も得られませんでした	src/ui/screens/trace.js:198	
-1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求め、何も得られませんでした	src/ui/screens/trace.js:198	
-17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:199	
-130nh2w	ok	events {0}–{1} summarized ({2})	イベント {0}–{1} を要約（{2}）	src/ui/screens/trace.js:200	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	イベント {0} のあとで新しく始めた	src/ui/screens/trace.js:200	{0} = d.to
-1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:202	{0} = d.late
-1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:202	
-1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:203	
-1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:205	
-1nk1wxu	ok	audio route {0}	音声の経路 {0}	src/ui/screens/trace.js:206	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:206	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	接続されているデバイスから	src/ui/screens/trace.js:206	
-3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:207	
-1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:213	
-z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:213	
-1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:216	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:216	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:217	
-cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:218	
-3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:228	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	処理の遅延 {0} ms	src/ui/screens/trace.js:232	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	出力の遅延 {0} ms	src/ui/screens/trace.js:233	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	ライブセッション {0}	src/ui/screens/trace.js:234	{0} = d.state
-beya44	ok	sound at {0} kHz	音声 {0} kHz	src/ui/screens/trace.js:236	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	Shiori の声：{0}再生	src/ui/screens/trace.js:241	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
-1wcl60z	ok	cut	中断	src/ui/screens/trace.js:241	
-njy1uz	ok	her voice: cut before it played	Shiori の声：再生前に中断	src/ui/screens/trace.js:241	Note: "her" is written as Shiori.
-9atabi	ok	started after {0} ms	{0} ms 後に開始	src/ui/screens/trace.js:242	{0} = d.waitMs
-j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:242	
-1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:243	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:243	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:244	{0} = d.player
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	あなたのターン終了：{0} · {1}送信 · 下限 {2} dB、最大 {3} dB	src/ui/screens/trace.js:247	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:250	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:252	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:252	{0} = size(d.bytes)
-15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:256	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:256	{0} = d.failed
-1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:257	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:257	
-rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:259	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:260	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:262	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:262	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:263	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:264	{0} = d.backup
-57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:266	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:266	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:289	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:289	
-1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:306	
+g9esrd	ok	a newer backup from an Android phone is there	Android スマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:146	
+obwhc7	ok	a newer backup from an iPhone is there	iPhone からの新しいバックアップがあります	src/ui/screens/trace.js:146	
+oh532o	ok	a newer backup from an iPad is there	iPad からの新しいバックアップがあります	src/ui/screens/trace.js:146	
+1ds6m85	ok	a newer backup from a computer is there	パソコンからの新しいバックアップがあります	src/ui/screens/trace.js:147	
+1r6qy12	ok	the user wrote	ユーザーが書いた	src/ui/screens/trace.js:168	
+yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップした	src/ui/screens/trace.js:168	
+1eo2nlm	ok	Kokoro to Koe	Kokoro から Koe へ	src/ui/screens/trace.js:172	
+l7yvjm	ok	Koe to Kokoro	Koe から Kokoro へ	src/ui/screens/trace.js:172	
+omff16	ok	annai to Kokoro	annai から Kokoro へ	src/ui/screens/trace.js:173	
+1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:176	
+piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:176	{0} = duration(d.ms ?? 0)
+1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:177	
+1x13vat	ok	not for Shiori	Shiori 宛てではない	src/ui/screens/trace.js:177	
+k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:177	
+an9lly	ok	clip kept: {0}, {1}	クリップを保存：{0}、{1}	src/ui/screens/trace.js:178	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	クリップを保存	src/ui/screens/trace.js:178	
+1gqj9yn	ok	written down by {0}	{0}が書き起こし	src/ui/screens/trace.js:180	{0} = d.by
+o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:183	{0} = d.source
+v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:183	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	エラー	src/ui/screens/trace.js:185	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:185	
+1qafm6e	ok	kept turn not deleted yet	保持されたターンはまだ削除されていません	src/ui/screens/trace.js:189	
+7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:189	
+udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:189	
+hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:190	
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:191	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	PDF を読めないモデルのために残した PDF の内容（文字）	src/ui/screens/trace.js:193	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	写真を見られないモデルのために残した写真の説明	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	PDF を読めないモデルのために残した PDF のページ（画像）	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	バックアップから、annai {0}	src/ui/screens/trace.js:197	{0} = app
+13f9wx2	ok	from a trip's file, annai {0}	旅のファイルから、annai {0}	src/ui/screens/trace.js:197	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	持っていない内容#件を除外	src/ui/screens/trace.js:198	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	ok	asked for content that isn't this trip's, and got none	この旅のものではない内容を求め、何も得られませんでした	src/ui/screens/trace.js:201	
+1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求め、何も得られませんでした	src/ui/screens/trace.js:201	
+17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:202	
+130nh2w	ok	events {0}–{1} summarized ({2})	イベント {0}–{1} を要約（{2}）	src/ui/screens/trace.js:203	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	イベント {0} のあとで新しく始めた	src/ui/screens/trace.js:203	{0} = d.to
+1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:205	{0} = d.late
+1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:205	
+1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:206	
+1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:208	
+1nk1wxu	ok	audio route {0}	音声の経路 {0}	src/ui/screens/trace.js:209	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:209	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	接続されているデバイスから	src/ui/screens/trace.js:209	
+3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:210	
+1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:216	
+z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:216	
+1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:219	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:219	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:220	
+cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:221	
+3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:231	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	処理の遅延 {0} ms	src/ui/screens/trace.js:235	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	出力の遅延 {0} ms	src/ui/screens/trace.js:236	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	ライブセッション {0}	src/ui/screens/trace.js:237	{0} = d.state
+beya44	ok	sound at {0} kHz	音声 {0} kHz	src/ui/screens/trace.js:239	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	Shiori の声：{0}再生	src/ui/screens/trace.js:244	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
+1wcl60z	ok	cut	中断	src/ui/screens/trace.js:244	
+njy1uz	ok	her voice: cut before it played	Shiori の声：再生前に中断	src/ui/screens/trace.js:244	Note: "her" is written as Shiori.
+9atabi	ok	started after {0} ms	{0} ms 後に開始	src/ui/screens/trace.js:245	{0} = d.waitMs
+j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:245	
+1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:246	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:246	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:247	{0} = d.player
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	あなたのターン終了：{0} · {1}送信 · 下限 {2} dB、最大 {3} dB	src/ui/screens/trace.js:250	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:255	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:255	{0} = size(d.bytes)
+15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:259	{0} = d.failed
+1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:260	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:260	
+rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:263	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:267	{0} = d.backup
+57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:292	
+1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:309	
 1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:38	
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:48	
 qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:50	
