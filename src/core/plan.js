@@ -1,4 +1,4 @@
-import { dayIn, timeIn, validZone, offsetMinutes, instantOf } from './time.js';
+import { dayIn, timeIn, validZone, offsetMinutes, instantAt } from './time.js';
 import { checkOf } from './bookings.js';
 import { zone, sortWords } from './intl.js';
 import { t } from './l10n.js';
@@ -43,27 +43,17 @@ export function bookingRef(ref) {
 const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? /** @type {Record<string, any>} */ (v) : null);
 
 /**
- * A time as an instant: its own offset, or, with none written ("2026-11-20T15:00"), its wall clock in tz. NaN when it isn't a time.
- * @param {unknown} at @param {string} tz
- */
-function instant(at, tz) {
-  if (typeof at !== 'string') return NaN;
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec(at);
-  return m ? instantOf({ year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5], second: +(m[6] ?? 0) }, tz) : Date.parse(at);
-}
-
-/**
  * One row's times and where it stands: the start in its own zone (else the fallback's, with a note), the end in its own.
  * @param {Record<string, any>} item @param {string} fallbackTz
  */
 function timesOf(item, fallbackTz) {
   const own = record(item.start)?.tz;
   const tz = validZone(own) ? own : fallbackTz;
-  const at = instant(record(item.start)?.at, tz);
+  const at = instantAt(record(item.start)?.at, tz);
   const timed = Number.isFinite(at);
   const endTz = validZone(record(item.end)?.tz) ? item.end.tz : tz;
   const allDay = item.kind === 'all-day';
-  const endAt = instant(record(item.end)?.at, endTz);
+  const endAt = instantAt(record(item.end)?.at, endTz);
   const ends = timed && !allDay && Number.isFinite(endAt);
   const day = timed ? dayIn(at, tz) : null;
   return {
@@ -86,8 +76,8 @@ function nightsOf(b) {
   const s = record(b.start);
   const e = record(b.end);
   if (b.kind !== 'lodging' || !s || !e || !validZone(s.tz) || !validZone(e.tz)) return { of: 0, days: [] };
-  const from = instant(s.at, s.tz);
-  const to = instant(e.at, e.tz);
+  const from = instantAt(s.at, s.tz);
+  const to = instantAt(e.at, e.tz);
   const first = Number.isFinite(from) ? dayIn(from, s.tz) : null;
   const last = Number.isFinite(to) ? dayIn(to, e.tz) : null;
   if (!first || !last || !(to > from)) return { of: 0, days: [] };

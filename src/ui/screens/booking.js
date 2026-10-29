@@ -3,7 +3,7 @@ import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, day } from '../form
 import { isBookingPath, checkOf } from '../../core/bookings.js';
 import { PLAN_FILE, bookingRef } from '../../core/plan.js';
 import { normPath } from '../../core/paths.js';
-import { validZone, deviceZone, dayIn } from '../../core/time.js';
+import { validZone, deviceZone, dayIn, instantAt } from '../../core/time.js';
 import { readNames, shortName } from '../../core/names.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
@@ -32,8 +32,9 @@ export async function renderBooking(ctx, route) {
   const marks = checkOf(booking);
   const kind = BOOKING_KINDS[booking.kind] ?? t`Booking`;
   const title = typeof booking.title === 'string' && booking.title.trim() ? booking.title : kind;
-  const start = Date.parse(booking.start?.at ?? '');
-  const on = Number.isFinite(start) ? dayIn(start, validZone(booking.start?.tz) ? booking.start.tz : tz) : null;
+  const startTz = validZone(booking.start?.tz) ? booking.start.tz : tz;
+  const start = instantAt(booking.start?.at, startTz);
+  const on = Number.isFinite(start) ? dayIn(start, startTz) : null;
   const facts = bookingFacts(booking, { fallbackTz: tz });
   return h('div', { class: 'screen details' }, crumbs,
     h('h1', { class: 'title', dir: 'auto' }, title, marks.fields.includes('title') ? [' ', checkMark()] : null),
