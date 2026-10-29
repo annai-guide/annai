@@ -529,7 +529,7 @@ test('a model that sees no photos gets the pages told in words by a reader role\
   k.agent.send('Read it');
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
-  assert.match(r.data.content, /What it says \(told by model-u from pictures of its pages, as you can't read PDFs\): Flight AN 123, SEA 08:05\.$/);
+  assert.match(r.data.content, /What it says \(told by model-u from pictures of pages 1–3 of 3, as you can't read PDFs\): Flight AN 123, SEA 08:05\.$/);
   assert.equal(r.data.images, undefined);
   assert.equal(k.sent['model-u'][0].messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image').length, 3);
 });
@@ -1875,4 +1875,20 @@ test("a reader is never asked anyway while it rests: only the turn's own call is
   await k.agent.idle();
   assert.equal(k.sent['model-0'].length, 2, 'not asked again to read for model-1');
   assert.match(JSON.stringify(k.sent['model-1'][0].messages), /Its pages as pictures/);
+});
+
+test("a reader that takes fewer pictures than the pages drawn is sent its limit from page 1, no stubs, and its words say which pages they cover (round 7)", async (t) => {
+  useClock(t);
+  const { saveModel } = await import('../../src/core/llm/config.js');
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123.' }] }, ['text', 'image']);
+  const u = (await k.llm.config()).models['m-u'];
+  await saveModel(k.ws, { ...u, user: { ...u.user, images: { maxCount: 2 } } });
+  numberedPages(k, 3);
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const parts = k.sent['model-u'][0].messages[0].parts;
+  assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image').map(pageOf), [1, 2]);
+  assert.doesNotMatch(JSON.stringify(parts), /the PDF above/);
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /What it says \(told by model-u from pictures of pages 1–2 of 3, as you can't read PDFs\): Flight AN 123\.$/);
 });
