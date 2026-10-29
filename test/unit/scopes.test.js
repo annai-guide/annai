@@ -318,3 +318,18 @@ test('removing a trip keeps content another trip names, and frees content nobody
   const left = await store.tx(['blobs'], 'readonly', async (t) => [await t.hasBlob(sharedHash), await t.hasBlob(orphanHash)]);
   assert.deepEqual(left, [true, false]);
 });
+
+test("createTrip: a name is enough; Shiori's trip is hers, with the hand-over on its scope.create", async () => {
+  const { store, ws } = setup();
+  const mine = await createTrip(ws, { title: 'Somewhere' });
+  assert.deepEqual(Object.keys(await ws.readJSON(mine, '/trip.json')).sort(), ['id', 'party', 'places', 'title']);
+  const [made] = await store.tx(['events'], 'readonly', (t) => t.listEvents(mine, { types: ['scope.create'] }));
+  assert.equal(made.actor, 'user');
+  assert.equal('handover' in made.data, false);
+  const hers = await createTrip(ws, { title: 'Anchorage · Nov 20–27', start: '2026-11-20', end: '2026-11-27', places: ['Anchorage'], timezones: ['America/Anchorage'] }, { author: 'shiori', handover: 'h-1' });
+  const tj = await ws.readJSON(hers, '/trip.json');
+  assert.deepEqual([tj.start, tj.end, tj.places, tj.timezones], ['2026-11-20', '2026-11-27', ['Anchorage'], ['America/Anchorage']]);
+  const ev = await store.tx(['events'], 'readonly', (t) => t.listEvents(hers));
+  assert.deepEqual(ev.filter((e) => e.type === 'scope.create').map((e) => [e.actor, e.data.handover]), [['shiori', 'h-1']]);
+  assert.deepEqual(ev.filter((e) => e.type === 'file.write').map((e) => [e.data.path, e.actor, e.data.handover]), [['/trip.json', 'shiori', 'h-1'], ['/memory.md', 'shiori', 'h-1']]);
+});

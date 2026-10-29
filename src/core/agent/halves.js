@@ -11,7 +11,7 @@ import { t } from '../l10n.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
-import { readAppSettings } from '../settings.js';
+import { readAppSettings, updateAppSettings } from '../settings.js';
 import { languageSettings, modelLanguages } from '../languages.js';
 import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.js';
 
@@ -135,6 +135,8 @@ export class Halves {
   #routes = 0;
   /** @type {Set<Promise<unknown>>} annai's own notes from Kokoro to Koe, being written: idle() waits for them */
   #sending = new Set();
+  /** @type {Set<Promise<unknown>>} trips Shiori started or opened, opening once both halves are done (openWhenDone): idle() waits for them */
+  #going = new Set();
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
@@ -188,7 +190,7 @@ export class Halves {
   /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
   #ready;
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set(), went: new Set() };
 
   /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, the talking half's (plan decision 17) */
   constructor(c) {
@@ -383,7 +385,10 @@ export class Halves {
     return this.#split;
   }
 
-  /** saying: a live Koe's words so far, while she speaks them. @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying'} kind @param {(x: any) => void} fn */
+  /**
+   * saying: a live Koe's words so far, while she speaks them; went: Shiori opened a trip she started or chose for a hand-over ({ trip })
+   * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
+   */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
@@ -829,12 +834,38 @@ export class Halves {
 
   async idle() {
     do {
+      await this.#quiet();
+      await Promise.all(this.#going);
+    } while (this.busy || this.#going.size);
+  }
+
+  /** Both halves are done, and what annai sends between them (a trip opening waits for this, so it is not part of it). */
+  async #quiet() {
+    do {
       await this.#routing;
       await Promise.all(this.#sending);
       await this.kokoro.idle();
       await this.koe.idle();
       await this.live.idle();
     } while (this.busy);
+  }
+
+  /**
+   * Opens a trip Shiori started or chose for a hand-over once both halves are done, as the user would (it becomes the open trip):
+   * only if the user hasn't opened another conversation meanwhile. Then 'went' tells the screens. @param {string} trip
+   */
+  openWhenDone(trip) {
+    const from = this.target;
+    const going = this.#quiet()
+      .then(async () => {
+        if (this.target !== from || this.target === trip) return;
+        await updateAppSettings(this.ws, { activeTrip: trip });
+        await this.open(trip);
+        this.#emit('went', { trip });
+      })
+      .catch((e) => console.warn(/* en */ "Shiori couldn't open the trip she started", e))
+      .finally(() => this.#going.delete(going));
+    this.#going.add(going);
   }
 
   /** @param {boolean} [yes] */

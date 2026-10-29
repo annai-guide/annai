@@ -24,6 +24,7 @@ import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
+import { tripTools } from '../core/agent/trip-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
@@ -141,6 +142,8 @@ async function boot() {
   // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent.kokoro));
+  // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
+  agent.addLoopTools(tripTools(agent));
   // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
   // Notifications for a closed annai (spec §11.6): what the service worker saw is read at each
   // catch-up; the mirror keeps the push relay in step with live mode.
