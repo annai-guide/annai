@@ -32,6 +32,10 @@ test('Open the original shows a PDF in the browser where it can, else a card wit
     const { imgDrawsPdf } = await load('/src/ui/preview.js');
     return Boolean(navigator.pdfViewerEnabled) || (await imgDrawsPdf());
   });
+  // What this can and can't check: that the frame is there, named, and loads the PDF's object URL; not that the PDF is drawn in it.
+  // Playwright's Linux WebKit says it has a viewer, but its viewer is PDF.js as inline HTML, which the blob document's inherited policy
+  // (annai's CSP) refuses, so its frame is blank there and this still passes. Headless Chromium has no viewer and takes the card path.
+  // Whether Safari on an iPhone draws the PDF in the frame is checked by hand on the phone.
   if (shows) {
     await expect(page.locator('iframe.pdf-view')).toHaveAttribute('title', 'flight.pdf');
     await expect(page.locator('iframe.pdf-view')).toHaveAttribute('src', /^blob:/);
