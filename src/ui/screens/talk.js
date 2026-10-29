@@ -565,19 +565,20 @@ function undoLine(ctx, scope, list) {
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       done();
-      if (removed.length && !waiting && back.length) {
-        // The files went back to the trip they came from: say so, and open its conversation.
-        ctx.notices.toast(plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), listed(back.map((b) => b.title))));
+      // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens, Waiting is on Trips.
+      const home = listed(back.map((b) => b.title));
+      const said = removed.length
+        ? waiting ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
+          : back.length ? plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), home)
+            : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
+        : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
+      ctx.notices.toast(kept ? sentences(said, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : said);
+      if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
         await ctx.agent.open(back[0].id).catch(() => {});
         if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
         else await ctx.render();
-      } else if (removed.length) {
-        ctx.notices.toast(waiting
-          ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
-          : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed)));
-        ctx.go('#/trips');
-      } else ctx.notices.toast(kept ? sentences(t`Undone.`, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
+      } else if (waiting || removed.length) ctx.go('#/trips');
     } catch (e) {
       button.disabled = false;
       ctx.notices.toast(messageOf(e));
