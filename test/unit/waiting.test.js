@@ -110,3 +110,15 @@ test('dropWaiting: removes the file, its history and its name, and frees what no
   assert.equal(await dropWaiting(ws, '/files/shared.pdf'), 0);
   assert.ok(await ws.read(trip, '/files/shared.pdf'));
 });
+
+test("a waiting file dropped for good takes its short name with it, history and all: no stored content keeps it", async () => {
+  const { store, ws, hand } = await kit();
+  await hand('a.pdf', 'a');
+  await hand('b.pdf', 'b');
+  await ws.patch(SYS_WAITING, '/names.json', { '/files/a.pdf': 'Name of the dropped file' }, { author: 'shiori', create: true });
+  await ws.patch(SYS_WAITING, '/names.json', { '/files/b.pdf': 'Name of B' }, { author: 'shiori' });
+  await dropWaiting(ws, '/files/a.pdf');
+  const texts = await store.tx(['blobs'], 'readonly', async (t) => Promise.all((await t.listBlobs()).map(async (b) => new TextDecoder().decode((await t.getBlob(b.hash)).data))));
+  assert.equal(texts.some((x) => x.includes('Name of the dropped file')), false);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/b.pdf': 'Name of B' });
+});
