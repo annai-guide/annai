@@ -388,9 +388,9 @@ export class Agent {
   #turning = false;
   /** Whether the half might use the voice when its turn's voice was last worked out. */
   #mayVoice = true;
-  /** What the running turn did (Half.ended). */
   /** The hand-over the turn running took (its wakes' newest), which every tool call of the turn carries (ToolCall.handover). @type {string | null} */
   #handover = null;
+  /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
