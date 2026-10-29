@@ -399,3 +399,31 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     await llm.stop();
   }
 });
+
+test('a trip from before: unverified and confirmed bookings without unsure, plan items linking them, a trip with no dates; the Plan, the details and Files all show them, the old unverified one marked whole', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  await records(page, trip, { write: THANKSGIVING.write });
+  await putFile(page, trip, '/files/hotel.pdf', Buffer.from('%PDF-1.4 hotel'), 'application/pdf');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  // No dates: the days with something on them.
+  await expect(page.getByRole('tab')).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Sat, Nov 28', 'No time yet (1)']);
+  await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
+  const day = page.getByRole('tabpanel');
+  await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check this' })).toBeVisible();
+  await expect(day.locator('.plan-row', { hasText: 'Hoboken Inn' }).locator('.chip')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Not on a day' })).toHaveCount(0);
+  // The details: the unverified one marked whole, the confirmed one not at all.
+  await day.getByRole('link', { name: /UA 123 to Newark/ }).click();
+  await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
+  await expect(page.getByRole('note')).toContainText('Check this');
+  await page.goBack();
+  await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
+  await day.getByRole('link', { name: /Check in: Hoboken Inn/ }).click();
+  await expect(page.getByRole('heading', { name: 'Hoboken Inn' })).toBeVisible();
+  await expect(page.getByRole('note')).toHaveCount(0);
+  await expect(page.locator('.mark-check')).toHaveCount(0);
+  // Files: the hotel's PDF became the stay.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
+  await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: 'hotel.pdf' })).toContainText('A stay: Hoboken Inn');
+});

@@ -607,3 +607,45 @@ test('the type box with three chips, Trips with files waiting, and a trip withou
   const out = await page.evaluate(() => [...document.querySelectorAll('.type-sheet .attach-chip')].filter((c) => c.getBoundingClientRect().right > innerWidth + 1).length);
   expect(out).toBe(0);
 });
+
+// Seeing bookings: the Plan with a stay, a booking's and a plan item's details, and a trip's Files, in the screens' languages with tall
+// glyphs and no spaces to break at, and with a long booking title and file name.
+for (const ui of ['ja', 'zh-Hans', 'zh-Hant']) {
+  test(`the Plan with a stay, a booking's details, an item's details and a trip's Files fit a phone 320 px wide, in ${ui}`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.addInitScript((tag) => { try { localStorage.setItem('annai.ui', tag); } catch { /* storage blocked */ } }, ui);
+    await openApp(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', ui);
+    const trip = await page.evaluate(async () => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const { createTrip } = await load('/src/core/scopes.js');
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const id = await createTrip(ws, { title: 'Anchorage', start: '2026-11-20', end: '2026-11-27' });
+      await ws.write(id, '/files/Your flight is booked- TESTQ1 to Testville on 11:20:2026.pdf', new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52]), { author: 'user', type: 'application/pdf' });
+      store.close();
+      return id;
+    });
+    const AK = 'America/Anchorage';
+    await writeRecords(page, trip, { write: {
+      '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/Your flight is booked- TESTQ1 to Testville on 11:20:2026.pdf', title: 'ANNAI-AIR-AN-123-SEATTLE-TO-ANCHORAGE-NONSTOP-ECONOMY', confirmation: 'TESTQ1TESTQ1TESTQ1TESTQ1', unsure: ['seat'],
+        start: { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-20T14:05:00-09:00', tz: AK }, fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', seat: '14C', 'loyalty-programme-number': 'TESTQ1-0000000000000000' } },
+      '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'unverified', source: '/files/hotel.png', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test', address: '1 Test Way, Testville' },
+        start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: '2026-11-27T11:00:00-09:00', tz: AK } },
+      '/plan/dinner.json': { id: 'dinner', title: 'Dinner with Sam', fixed: true, start: { at: '2026-11-21T18:30:00-09:00', tz: AK }, place: { name: 'Testville Grill' }, notes: 'Ask for a window table.' },
+    } });
+    const id = encodeURIComponent(trip);
+    /** @type {string[]} */
+    const wide = [];
+    for (const s of [`#/trip/${id}/plan`, `#/trip/${id}/booking?path=%2Fbookings%2Fflight.json`, `#/trip/${id}/booking?path=%2Fbookings%2Fstay.json`, `#/trip/${id}/item?path=%2Fplan%2Fdinner.json`, `#/trip/${id}`]) {
+      await page.evaluate((hash) => { document.querySelector('main')?.firstElementChild?.setAttribute('data-old', ''); location.hash = hash; }, s);
+      await page.waitForFunction(() => document.querySelector('main')?.firstElementChild && !document.querySelector('main > [data-old]'));
+      await page.waitForTimeout(150);
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (over > 0) wide.push(`${s} by ${over}px`);
+    }
+    expect(wide).toEqual([]);
+  });
+}
