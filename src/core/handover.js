@@ -131,12 +131,13 @@ async function undoFacts(store, scope, handover) {
     for (const e of events) {
       if (e.type !== 'file.write' && e.type !== 'file.delete') continue;
       const h = hers.get(String(e.data?.path));
-      if (h && e.seq > h.last && !its(e)) changed.add(String(e.data.path));
+      if (h && e.seq > h.last && !its(e) && e.data?.undo !== handover) changed.add(String(e.data.path));
     }
     // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it (its name and memory too);
     // annai's own writes (system: names kept in step) are no one's work.
-    const theirs = events.some((e) => (e.type === 'msg.user' && e.data?.handover !== handover) || (e.type === 'heard' && !e.data?.dismissed)
-      || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover));
+    // A message copied in from where it was handed (from) is the hand-over's, not work done here; a move, or a write an Undo made, is no one's.
+    const theirs = events.some((e) => (e.type === 'msg.user' && e.data?.handover !== handover && !e.data?.from) || (e.type === 'heard' && !e.data?.dismissed)
+      || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover && !e.data?.moved && !e.data?.undo));
     // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
     const brought = [...new Set(events.filter((e) => its(e) && e.type === 'file.write' && e.actor === 'user' && String(e.data.path).startsWith('/files/')
       && !e.data.moved).map((e) => String(e.data.path)))];
@@ -193,10 +194,10 @@ async function moveBack(ws, at, back, handover) {
     const arrived = of.findLastIndex((e) => e.type === 'file.write' && e.data?.moved?.from === back.scope && e.data?.handover === handover);
     const since = arrived < 0 ? [] : of.slice(arrived + 1);
     if (!since.length || !since.every((e) => e.actor === 'shiori' && e.data?.handover === handover)) return 'changed';
-    await ws.restore(at.scope, at.path, at.hash, { author: 'user' });
+    await ws.restore(at.scope, at.path, at.hash, { author: 'user', undo: handover });
   }
   const folder = back.path.slice(0, back.path.lastIndexOf('/') + 1);
-  await moveFile(ws, { scope: at.scope, path: at.path }, back.scope, { author: 'user', folder, ...(back.source ? { source: back.source } : {}) });
+  await moveFile(ws, { scope: at.scope, path: at.path }, back.scope, { author: 'user', undo: handover, folder, ...(back.source ? { source: back.source } : {}) });
   return 'back';
 }
 
@@ -206,7 +207,8 @@ async function moveBack(ws, at, back, handover) {
  * of or into it goes back where it came from, unless it was changed where it went (never in both places). Said once in the log
  * (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing more than say whether a trip it emptied still waits to go.
  * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover
- * @param {{ log?: (ev: { type: string, actor: string, data: any }) => Promise<unknown> }} [o] log: the open conversation's, when it is this scope
+ * @param {{ log?: (ev: { type: string, actor: string, data: any }) => Promise<unknown>, removed?: string }} [o] log: the open conversation's, when it
+ *   is this scope; removed: the title of a trip she started for it that this Undo removed, said on its mark
  * @returns {Promise<UndoOutcome>}
  */
 export async function undoHandover(ws, scope, handover, o = {}) {
@@ -231,9 +233,9 @@ export async function undoHandover(ws, scope, handover, o = {}) {
       kept.set(path, `${scope}\n${path}`);
       continue;
     }
-    if (before === null) await ws.delete(scope, path, { author: 'user' });
+    if (before === null) await ws.delete(scope, path, { author: 'user', undo: handover });
     else {
-      await ws.restore(scope, path, before, { author: 'user' });
+      await ws.restore(scope, path, before, { author: 'user', undo: handover });
       const name = path.startsWith('/files/') ? await nameBefore(ws, scope, path, first) : null;
       if (name && !Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: name }, { author: 'user', create: true });
     }
@@ -251,7 +253,7 @@ export async function undoHandover(ws, scope, handover, o = {}) {
   }
   const files = await brought();
   const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())] };
-  const mark = { type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept } };
+  const mark = { type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept, ...(o.removed ? { removed: o.removed } : {}) } };
   // Through the open conversation's own log when given, so she is told at once (her transcript), else straight into the scope's.
   if (o.log) await o.log(mark);
   else {
@@ -260,4 +262,32 @@ export async function undoHandover(ws, scope, handover, o = {}) {
     });
   }
   return { ...out, tripEmpty: f.started && !f.theirs && !kept.size, files };
+}
+
+/**
+ * Undo, as the Conversation's button runs it, for a hand-over in a conversation: the trips its files went to first, then the conversation
+ * itself, then the one it was handed in (a trip's copy of the message says which), so each conversation she talks in is told what was
+ * taken back, and the last ones that a trip she started was removed. A trip it empties is removed by `remove` (its waiting files sent
+ * back first). @param {import('./workspace.js').Workspace} ws @param {string} scope the conversation's @param {string} handover
+ * @param {{ remove: (scope: string) => Promise<{ title: string }>, log?: (scope: string) => ((ev: any) => Promise<unknown>) | undefined }} o
+ *   remove: removes a trip as Remove trip does; log: the open conversation's log, for the scope it is open on
+ * @returns {Promise<{ removed: string | null, kept: number }>} removed: the title of a trip it removed; kept: files left as the user changed them
+ */
+export async function undoEverywhere(ws, scope, handover, o) {
+  const [went, came] = await ws.store.tx(['events'], 'readonly', async (t) => [
+    (await t.listEvents(scope, { types: ['handover.moved'] })).filter((e) => e.data?.handover === handover).map((e) => String(e.data.to)),
+    (await t.listEvents(scope, { types: ['msg.user'] })).filter((e) => e.data?.handover === handover && typeof e.data?.from === 'string').map((e) => String(e.data.from)),
+  ]);
+  /** @type {string | null} */
+  let removed = null;
+  /** Each file left as the user changed it, once, though both ends of a move may say so. @type {Set<string>} */
+  const kept = new Set();
+  for (const s of [...new Set([...went.filter((x) => x !== scope), scope, ...came.filter((x) => x !== scope && !went.includes(x))])]) {
+    const out = await undoHandover(ws, s, handover, { ...(o.log?.(s) ? { log: o.log(s) } : {}), ...(removed ? { removed } : {}) });
+    for (const k of out.keptKeys) kept.add(k);
+    if (!out.tripEmpty) continue;
+    for (const f of out.files) await moveFile(ws, { scope: s, path: f }, SYS_WAITING, { author: 'user', undo: handover });
+    removed = (await o.remove(s)).title;
+  }
+  return { removed, kept: kept.size };
 }
