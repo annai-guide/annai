@@ -621,7 +621,8 @@ export async function callRole(c) {
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
         // The resting models it never reached are in the Trace too, as passed over (round 9).
-        for (const x of resting) if (x !== id && !attempts.some((a) => a.model === x)) attempts.push({ model: x, name: config.models[x] ? modelOf(config.models[x]).name : x, outcome: 'benched', ms: 0 });
+        // One that can't be asked at all (switched off, say) says so, not that it rests.
+        for (const x of resting) if (x !== id && !attempts.some((a) => a.model === x)) attempts.push({ model: x, name: config.models[x] ? modelOf(config.models[x]).name : x, outcome: lookUp(x).out ?? 'benched', ms: 0 });
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
         if (restingAsked === id) bench.clear(id);
