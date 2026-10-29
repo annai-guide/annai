@@ -1,5 +1,5 @@
 {
-  "build": "9612e8f46517",
+  "build": "6a27f36e8d8c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -114,6 +114,7 @@
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",
+    "/src/core/names.js": "72c7bb62367c",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
     "/src/core/packages.js": "e2590d11f926",
@@ -140,7 +141,7 @@
     "/src/core/realtime/open.js": "e30bb7522c11",
     "/src/core/registry.js": "b5cd1b435640",
     "/src/core/request-photos.js": "578af6b3ca9c",
-    "/src/core/schema.js": "a94e9c92dad2",
+    "/src/core/schema.js": "8a2e0d7a3bf3",
     "/src/core/search.js": "5dba2561c957",
     "/src/core/scopes.js": "e8de8f4c8d58",
     "/src/core/settings.js": "7291aae0a8cd",
@@ -178,7 +179,7 @@
     "/src/core/workspace.js": "ece898d1519a",
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
-    "/src/plugins/core-schemas/schemas.js": "eb2402943012",
+    "/src/plugins/core-schemas/schemas.js": "46e418d3707a",
     "/src/plugins/files/index.js": "c0ca05a08914",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "5b6ad6ee60a8",
