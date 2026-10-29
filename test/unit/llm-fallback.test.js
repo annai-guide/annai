@@ -989,3 +989,29 @@ test("two resting photo models, the first dead on a short rest: turn 2 asks the 
   assert.equal(next.answeredBy, 'model-2');
   assert.deepEqual(seen.map((x) => x.model), ['model-2']);
 });
+
+// Round 13.
+test("models go in three groups, each through both passes: awake, resting, then resting ones that failed when asked; a resting text model is read for before a marked photo model takes the one resting ask (round 13, P1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 180_000, 1_000_000);
+  s.bench.askedResting('m-1');
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => [{ type: 'text', text: '[a photo: /trip/files/menu.webp] What it shows (described by model-u, as you can\'t see photos): a menu.' }];
+  const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does the menu say?' }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0']);
+});
+
+test("a failure that doesn't move a long rest's end later doesn't mark the model: it still holds the awake model back next turn (round 13, S8)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }, { error: 'overloaded' }, { error: 'overloaded' }, { text: 'A menu.' }] }]);
+  s.bench.bench('m-1', 600_000, 1_000_000 - 10_000); // until +590 s; an overload's rest is far shorter
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does the menu say?' }] }] };
+  await call(s, { askResting: true, read: failed, request });
+  assert.equal(s.bench.triedResting('m-1'), false, 'its rest was not extended');
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: failed, request, now: () => 1_020_000 });
+  assert.equal(next.answeredBy, 'model-1');
+});
