@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_WAITING, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
 import { utf8, ownBuffer } from '../../src/core/bytes.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -34,7 +34,7 @@ test('ensureBaseScopes creates me and the system scopes once', async () => {
   await ensureBaseScopes(ws);
   await ensureBaseScopes(ws);
   const ids = (await store.tx(['scopes'], 'readonly', (t) => t.listScopes())).map((s) => s.id).sort();
-  assert.deepEqual(ids, [ME, SYS, SYS_PLUGINS, SYS_SETTINGS].sort());
+  assert.deepEqual(ids, [ME, SYS, SYS_PLUGINS, SYS_SETTINGS, SYS_WAITING].sort());
   assert.match(await ws.readText(ME, '/profile.md'), /^# Profile/);
   assert.equal((await ws.history(ME, '/profile.md')).length, 1);
   assert.equal(await ws.readText(ME, '/memory.md'), '# Memory\n');
