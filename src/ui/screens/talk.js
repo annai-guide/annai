@@ -565,7 +565,8 @@ function undoLine(ctx, scope, list) {
       /** Each file left as the user changed it, once, though both ends of a move may say so. @type {Set<string>} */
       const kept = new Set();
       for (const s of new Set([scope, ...(went.get(hh) ?? [])])) {
-        const out = await undoHandover(ctx.ws, s, hh);
+        // The open conversation's mark goes through its log, so she is told at once what was taken back.
+        const out = await undoHandover(ctx.ws, s, hh, s === ctx.agent.scope ? { log: (/** @type {any} */ ev) => ctx.agent.log(ev) } : {});
         for (const k of out.keptKeys) kept.add(k);
         if (!out.tripEmpty) continue;
         for (const f of out.files) await moveFile(ctx.ws, { scope: s, path: f }, SYS_WAITING, { author: 'user' });

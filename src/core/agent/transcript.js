@@ -25,7 +25,7 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo']);
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -145,8 +145,9 @@ export class Transcript {
       if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
-      // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over before it.
-      if (this.#mine(d) && (this.#ends || !this.#last.length)) this.#handover = null;
+      // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
+      // which (no handover key), whatever came before it. A reminder's turn settles no hand-over.
+      if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
@@ -182,6 +183,17 @@ export class Transcript {
         }),
       }));
       return;
+    } else if (e.type === 'handover.undo') {
+      // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
+      if (d.handover === this.#handover) this.#handover = null;
+      const n = Number(d.undone) || 0;
+      const kept = Array.isArray(d.kept) ? d.kept.length : 0;
+      /* en */
+      const back = `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}`;
+      /* en */
+      const left = kept ? `; ${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '';
+      /* en */
+      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you: ${back}${left}. Don't do it again unless they ask.` }]);
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
