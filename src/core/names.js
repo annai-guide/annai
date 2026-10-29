@@ -33,3 +33,15 @@ export async function readNames(ws, scope) {
 export function shortName(names, path) {
   return Object.hasOwn(names, path) ? names[path] : path.split('/').pop() ?? path;
 }
+
+/**
+ * Keeps names with their files: a file deleted under /files/ (by the user, by Shiori, or moved away) loses its short name, so a new file
+ * at that path never takes it. Its older versions stay in names.json's history, as any file's do. @param {Workspace} ws
+ * @returns {() => void} stops it
+ */
+export function syncNames(ws) {
+  return ws.onChange(async ({ op, scope, path }) => {
+    if (op !== 'delete' || !/^\/files\/[^/]+$/.test(path) || (!scope.startsWith('trip-') && scope !== 'sys:waiting')) return;
+    if (Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: null }, { author: 'user' });
+  });
+}

@@ -44,8 +44,8 @@ export async function moveFile(ws, from, to, o = {}) {
 }
 
 /**
- * Removes a waiting file for good: the file, its history and its short name (the names file keeps no older versions here),
- * then the content nothing else names (spec §4.9).
+ * Removes a waiting file for good: the file and its history, and its short name, then the content nothing else names (spec §4.9).
+ * names.json's older versions stay in its history, as any file's do.
  * @param {Workspace} ws @param {string} path in the waiting space (/files/…) @returns {Promise<number>} the bytes freed
  */
 export async function dropWaiting(ws, path) {
@@ -58,10 +58,8 @@ export async function dropWaiting(ws, path) {
       named.add(file.hash);
       await t.deleteFile(SYS_WAITING, path);
     }
-    const events = await t.listEvents(SYS_WAITING, { types: ['file.write', 'file.delete'] });
-    const lastName = events.filter((e) => e.data?.path === NAMES_FILE).at(-1);
-    for (const e of events) {
-      if (e.data?.path !== path && (e.data?.path !== NAMES_FILE || e === lastName)) continue;
+    for (const e of await t.listEvents(SYS_WAITING, { types: ['file.write', 'file.delete'] })) {
+      if (e.data?.path !== path) continue;
       for (const h of [e.data.old, e.data.new]) if (typeof h === 'string') named.add(h);
       await t.deleteEvent(SYS_WAITING, e.seq);
     }
