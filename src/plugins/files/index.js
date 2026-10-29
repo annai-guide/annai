@@ -90,6 +90,8 @@ export function activate(annai) {
    */
   const sameButCase = async (raw, call) => {
     const { scope, path } = where(raw, call);
+    // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file (round 6).
+    if ((await ws.history(scope, path)).length) return null;
     const root = raw.startsWith('/trip') ? '/trip' : '/me';
     const found = (await ws.list(scope, '/')).filter((/** @type {any} */ f) => f.path.toLowerCase() === path.toLowerCase());
     return found.length === 1 ? `${root}${found[0].path}` : null;
@@ -251,7 +253,8 @@ export function activate(annai) {
       description: 'Delete a file. Its history is kept, so the user can restore it.',
       input: { type: 'object', properties: { path: PATH }, required: ['path'] },
       /** @param {{ path: string }} i @param {any} call */
-      run: caseTolerant('deleted', async (i, call) => {
+      // Not case-tolerant: for a delete, "no file" is the true answer (round 6).
+      run: (async (i, call) => {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
