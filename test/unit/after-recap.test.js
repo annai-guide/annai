@@ -24,7 +24,7 @@ async function aTrip(/** @type {any[]} */ utility = [{ text: RECAP }], /** @type
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Sam wants to see the sea lions.' } }, at('09:36'));
   await k.ws.write(k.trip, '/notes/day1.md', '# Day 1\nThe fog lifted at ten.\n', { author: 'shiori' });
   for (let i = 0; i < 8; i++) {
-    await k.ws.write(k.trip, `/files/2026-11-27-10${i}0.jpg`, new TextEncoder().encode('3000x2000'), { author: 'user', type: 'image/jpeg', meta: { taken: `2026-11-27T10:${i}0:00`, width: 3000, height: 2000 } });
+    await k.ws.write(k.trip, `/files/2026-11-27-10${i}0.jpg`, new TextEncoder().encode(`3000x${1000 + i * 150}`), { author: 'user', type: 'image/jpeg', meta: { taken: `2026-11-27T10:${i}0:00`, width: 3000, height: 1000 + i * 150 } }); // six different photos: identical ones go once (round 8)
   }
   return k;
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
-import { readRefusal, limitImages, sendable } from '../../src/core/agent/refusals.js';
+import { readRefusal, limitImages } from '../../src/core/agent/refusals.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelOf } from '../../src/core/llm/config.js';
 
@@ -272,7 +272,7 @@ test("limitImages: within one message, its own photos stay before its PDF's page
   assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.page ?? p.path : p.text)), ['/trip/files/menu.webp', '[a PDF: booking.pdf] …', 1, '[page 2 of the PDF above, not sent: this model takes fewer pictures at a time]', '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
 });
 
-test('a photo sent again after the limit: the limit runs first, then each picture once, so the newest copy goes (round 7)', () => {
+test('a photo sent again after the limit still goes, at its earliest place (rounds 7 and 8)', () => {
   const text = (/** @type {string} */ t) => ({ type: /** @type {const} */ ('text'), text: t });
   const photo = (/** @type {string} */ hash, /** @type {string} */ path) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'AAAA', hash, path });
   const msgs = [
@@ -280,6 +280,28 @@ test('a photo sent again after the limit: the limit runs first, then each pictur
     { role: /** @type {const} */ ('user'), parts: [text('And the hotel'), photo('hB', '/trip/files/hotel.webp')] },
     { role: /** @type {const} */ ('user'), parts: [text('Look at the menu again'), photo('hA', '/trip/files/menu.webp')] },
   ];
-  const out = sendable(msgs, 1);
-  assert.deepEqual(out.map((m) => m.parts.filter((p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)), [[], [], ['hA']]);
+  const out = limitImages(msgs, 1);
+  // Round 8: the newest picture is kept, and sent at its earliest place; the later copy says so.
+  assert.deepEqual(out.map((m) => m.parts.filter((p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)), [['hA'], [], []]);
+});
+
+test("limitImages counts each distinct picture once: a picture that fits isn't dropped for a copy (round 8, S6, B1, B3)", () => {
+  const img = (/** @type {string} */ hash, /** @type {any} */ extra = {}) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'AAAA', hash, ...extra });
+  const text = (/** @type {string} */ t) => ({ type: /** @type {const} */ ('text'), text: t });
+  const hashes = (/** @type {any[]} */ out) => out.map((m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash));
+  // S6: a sign photo, a PDF's 3 kept pages, and a read with the same 3 pages, at 4.
+  const s6 = [
+    { role: /** @type {const} */ ('user'), parts: [text('the sign'), img('X', { path: '/trip/files/sign.webp' })] },
+    { role: /** @type {const} */ ('user'), parts: [text('[a PDF: booking.pdf] Its pages'), img('P1', { page: 1 }), img('P2', { page: 2 }), img('P3', { page: 3 })] },
+    { role: /** @type {const} */ ('user'), parts: [text('read again'), img('P1', { page: 1 }), img('P2', { page: 2 }), img('P3', { page: 3 })] },
+  ];
+  const out = limitImages(s6, 4);
+  assert.deepEqual(hashes(out), [['X'], ['P1', 'P2', 'P3'], []]);
+  assert.equal(/** @type {any} */ (out[2].parts[1]).text, '[page 1 of the PDF, the same picture as above]');
+  // B1: X, Y, Y at 2: both go.
+  const b1 = [{ role: /** @type {const} */ ('user'), parts: [img('X', { path: '/x.webp' })] }, { role: /** @type {const} */ ('user'), parts: [img('Y', { path: '/y.webp' })] }, { role: /** @type {const} */ ('user'), parts: [img('Y', { path: '/y.webp' })] }];
+  assert.deepEqual(hashes(limitImages(b1, 2)), [['X'], ['Y'], []]);
+  // B3: a message's own photo stays before its PDF's pages, and goes again later as "the same".
+  const b3 = [{ role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('[a PDF]'), img('h1', { page: 1 }), img('h2', { page: 2 })] }, { role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('again')] }];
+  assert.deepEqual(hashes(limitImages(b3, 2)), [['P', 'h1'], []]);
 });

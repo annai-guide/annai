@@ -18,7 +18,7 @@ import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
 import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
-import { readRefusal, stricter, tighter, limitImages, sendable } from './refusals.js';
+import { readRefusal, stricter, tighter, limitImages } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
@@ -1146,12 +1146,13 @@ export class Agent {
   }
 
   /**
-   * The conversation as it is sent: no photo whose bytes are gone, and the oldest photos over the
-   * main models' count as stubs (spec §4.8).
+   * The conversation as it is sent: no photo whose bytes are gone. Each model's call then sends its own photo limit of it, each picture
+   * once (callRole, limitImages; spec §4.8).
    */
   async #sendable() {
     const messages = this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
-    const out = sendable(messages, (await this.#mainImages()).maxCount);
+    // As the conversation holds it: each model's call sends its own photo limit of it, each picture once (callRole, limitImages).
+    const out = messages;
     return this.#half.sendable ? this.#half.sendable(out) : out;
   }
 
@@ -1750,7 +1751,7 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes({ ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) }, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -1854,7 +1855,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(request, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes({ ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) }, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       await this.#grounded(result.reply.attribution, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
