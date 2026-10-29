@@ -321,3 +321,20 @@ test('start_trip with no files takes the waiting files of every hand-over its tu
   const copies = await eventsIn(k, trip.id, ['msg.user']);
   assert.deepEqual(copies.map((/** @type {any} */ e) => [e.data.handover, e.data.handed.map((/** @type {any} */ f) => f.path)]), [['h-1', ['/trip/files/flight.pdf']], ['h-2', ['/trip/files/hotel.png']]]);
 });
+
+test("a waiting calendar file filed by start_trip has its events planned in the trip, and she is told; Undo takes them back", async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  await k.ws.write(SYS_WAITING, '/files/dinner.ics', utf8(ICS), { author: 'user', type: 'text/calendar' });
+  k.agent.send('', { handed: [{ path: '/waiting/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Testville', timezones: ['America/Anchorage'], files: ['/waiting/files/dinner.ics'] }, 'h-1');
+  const trip = await tripNamed(k, 'Testville');
+  const plan = await k.ws.list(trip.id, '/plan/');
+  assert.equal(plan.length, 2);
+  assert.ok(plan.every((/** @type {any} */ f) => f.source === '/files/dinner.ics'));
+  const copy = (await eventsIn(k, trip.id, ['msg.user']))[0];
+  assert.equal(copy.data.handed[0].planned, 2);
+  await undoHandover(k.ws, trip.id, 'h-1');
+  assert.deepEqual(await k.ws.list(trip.id, '/plan/'), []);
+});

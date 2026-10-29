@@ -96,7 +96,10 @@ async function undoFacts(store, scope, handover) {
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
     if (!(await t.getScope(scope))) return null; // removed by hand meanwhile: nothing to undo, and no error
     const events = await t.listEvents(scope, { types: ['file.write', 'file.delete', 'scope.create', 'msg.user', 'heard', 'handover.undo'] });
-    const done = events.some((e) => e.type === 'handover.undo' && e.data?.handover === handover);
+    const marks = events.filter((e) => e.type === 'handover.undo' && e.data?.handover === handover);
+    const done = marks.length > 0;
+    // What an earlier Undo left as changed: a trip holding it is not emptied by a later tap.
+    const keptBefore = marks.some((e) => Array.isArray(e.data?.kept) && e.data.kept.length > 0);
     const started = events.some((e) => e.type === 'scope.create' && e.actor === 'shiori' && e.data?.handover === handover);
     const its = (/** @type {any} */ e) => (e.type === 'file.write' || e.type === 'file.delete') && e.data?.handover === handover;
     /** Her writes and deletes, by path: how it was before her first, her first and last entries. @type {Map<string, { before: string | null, first: number, last: number }>} */
@@ -134,10 +137,10 @@ async function undoFacts(store, scope, handover) {
     // annai's own writes (system: names kept in step) are no one's work.
     const theirs = events.some((e) => (e.type === 'msg.user' && e.data?.handover !== handover) || (e.type === 'heard' && !e.data?.dismissed)
       || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover));
-    // The files it brought from the waiting space: they stay in the trip, or go back to wait if the trip goes (older moves had no mark).
+    // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
     const brought = [...new Set(events.filter((e) => its(e) && e.type === 'file.write' && e.actor === 'user' && String(e.data.path).startsWith('/files/')
-      && (!e.data.moved || e.data.moved.from === SYS_WAITING)).map((e) => String(e.data.path)))];
-    return { done, started, hers, out, into: into.filter((x) => x.from !== SYS_WAITING), changed, theirs, brought, movedAway };
+      && !e.data.moved).map((e) => String(e.data.path)))];
+    return { done, keptBefore, started, hers, out, into, changed, theirs, brought, movedAway };
   });
 }
 
@@ -145,7 +148,7 @@ async function undoFacts(store, scope, handover) {
 export async function undoable(store, scope, handover) {
   const f = await undoFacts(store, scope, handover);
   if (!f) return false;
-  return f.done ? f.started && !f.theirs : Boolean(f.hers.size || f.out.length || f.into.length || f.started);
+  return f.done ? f.started && !f.theirs && !f.keptBefore : Boolean(f.hers.size || f.out.length || f.into.length || f.started);
 }
 
 /**
@@ -216,7 +219,7 @@ export async function undoHandover(ws, scope, handover, o = {}) {
     for (const p of f.brought) if (await fileNow(p)) out.push(p);
     return out;
   };
-  if (f.done) return f.started && !f.theirs ? { undone: [], kept: [], keptKeys: [], tripEmpty: true, files: await brought() } : { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
+  if (f.done) return f.started && !f.theirs && !f.keptBefore ? { undone: [], kept: [], keptKeys: [], tripEmpty: true, files: await brought() } : { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
   /** @type {Set<string>} */ const undone = new Set();
   /** @type {Map<string, string>} kept paths here, each by the one place it is known by (a move's: where it came from) */
   const kept = new Map();
