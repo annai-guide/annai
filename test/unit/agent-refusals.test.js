@@ -305,3 +305,15 @@ test("limitImages counts each distinct picture once: a picture that fits isn't d
   const b3 = [{ role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('[a PDF]'), img('h1', { page: 1 }), img('h2', { page: 2 })] }, { role: /** @type {const} */ ('user'), parts: [img('P', { path: '/p.webp' }), text('again')] }];
   assert.deepEqual(hashes(limitImages(b3, 2)), [['P', 'h1'], []]);
 });
+
+test("a size repair never deletes a picture a kept reading or a tool result in this conversation still names (round 10)", async () => {
+  const readPdf = { toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] };
+  const k = await agentKit([[readPdf, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 300 bytes' }, done]], { models: [{ input: ['text', 'image'] }] });
+  await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: 1, pages: [{ type: 'image/jpeg', bytes: Uint8Array.from({ length: 400 }, (_, i) => (i < 3 ? [0xff, 0xd8, 0xff][i] : i % 251)), width: 10, height: 10 }] }) }); // over the 300 bytes the model will take
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const [kept] = await k.events(['reading']);
+  assert.ok((await k.events(['photo.replace'])).some((e) => e.data.old === kept.data.images[0].hash), 'the page was sent again as a smaller copy');
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(kept.data.images[0].hash)), true, 'the kept page stays');
+});

@@ -2048,8 +2048,11 @@ export class Agent {
     for (const [old, copy] of swaps) {
       await this.#log({ type: 'photo.replace', actor: 'system', data: { old, new: copy.hash, mediaType: copy.mediaType, wake: wakeId }, blobs: [copy.data ? { bytes: fromBase64(copy.data), type: copy.mediaType } : { hash: copy.hash, type: copy.mediaType }] });
       await this.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
-        // The refused copy goes, unless a file is that photo or another conversation sent it too (spec §4.9).
-        if (!(await t.blobInUse(old, { exceptScope: this.scope }))) await t.deleteBlob(old);
+        // The refused copy goes, unless a file is that photo, another conversation sent it too, or a kept reading or a tool result here
+        // still names it (a PDF's page pictures: spec §4.9; round 10).
+        if (await t.blobInUse(old, { exceptScope: this.scope })) return;
+        const named = (await t.listEvents(this.scope, { types: ['reading', 'tool.result'] })).some((/** @type {any} */ e) => (e.refs ?? []).includes(old));
+        if (!named) await t.deleteBlob(old);
       });
     }
     // A copy made before, or a stored photo sent as it is, has no data with it: its bytes come from storage.
@@ -2342,10 +2345,13 @@ export class Agent {
         memo.set(once, pending);
       }
       const reading = await pending;
-      return [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}), ...(/** @type {any} */ (i).page ? { page: /** @type {any} */ (i).page } : {}) }))];
+      /** @type {import('../llm/contract.js').Part[]} */
+      const parts = [{ type: 'text', text: `${stub} ${reading.text}` }, ...reading.images.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(/** @type {any} */ (i).hash ? { hash: /** @type {any} */ (i).hash } : {}), ...(/** @type {any} */ (i).page ? { page: /** @type {any} */ (i).page } : {}) }))];
+      // A reading that read nothing says so, so callRole can ask a resting model that takes the file first (round 10).
+      return reading.how === 'told' || reading.how === 'pages' ? parts : Object.assign(parts, { unread: true });
     } catch (e) {
       /* en */
-      return [{ type: 'text', text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }];
+      return Object.assign([{ type: /** @type {const} */ ('text'), text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }], { unread: true });
     }
   }
 
