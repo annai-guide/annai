@@ -5,6 +5,8 @@ import { moveFile } from '../waiting.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { quotedPath, FILES_ONLY } from '../handover.js';
+import { importCalendar } from '../imports.js';
+import { validZone, deviceZone } from '../time.js';
 
 /**
  * Shiori's trip tools (the bookings-and-trips design, goals 2–4): she starts a trip for what the user handed her, opens one it fits,
@@ -112,12 +114,21 @@ export function tripTools(app) {
       const entry = await store.tx(['files'], 'readonly', (t) => t.getFile(f.scope, f.path));
       const there = await moveFile(ws, { scope: f.scope, path: f.path }, to, handover);
       moved.set(f.shown, `/trip${there}`);
-      // A calendar file's events annai put on the plan go with it (each a plan item naming it as its source), but one the user changed.
-      if (kindOf(f.scope) !== 'trip' || !(/\.ics$/i.test(f.path) || /^text\/calendar/i.test(entry?.type ?? ''))) continue;
+      if (!(/\.ics$/i.test(f.path) || /^text\/calendar/i.test(entry?.type ?? ''))) continue;
+      // A calendar file from the waiting space has its events planned in the trip it goes to, as one handed in a trip has (keepFiles),
+      // for the hand-over, so Undo takes them back; one it can't read is hers to read.
+      if (f.scope === SYS_WAITING) {
+        const tj = await ws.readJSON(to, '/trip.json').catch(() => null);
+        const defaultTz = [tj?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
+        const made = await importCalendar(ws, to, there, { defaultTz, author: 'shiori', ...handover }).catch(() => []);
+        if (made.length) planned.set(`/trip${there}`, made.length);
+        continue;
+      }
+      // A calendar file's events annai put on the plan go with it (each a plan item naming it as its source), but one anyone changed since.
+      if (kindOf(f.scope) !== 'trip') continue;
       let n = 0;
       for (const item of (await ws.list(f.scope, '/plan/')).filter((x) => x.source === f.path)) {
-        const history = await ws.history(f.scope, item.path);
-        if (history.length !== 1 || history[0].actor !== 'user') continue;
+        if ((await ws.history(f.scope, item.path)).length !== 1) continue;
         await moveFile(ws, { scope: f.scope, path: item.path }, to, { ...handover, folder: '/plan/', source: there });
         n++;
       }
