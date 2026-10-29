@@ -1541,34 +1541,36 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	此页
 ata72m	ok	Trace	记录	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	无法绘制此页面；插件的错误在{0}中。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:56	
-10rafvo	ok	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:42	
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/file.js:42	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:44	
-krcze5	ok	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:47	
-1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:53	
-1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/file.js:53	
-1hnv6ua	ok	Content	内容	src/ui/screens/file.js:78	
-lewgh4	ok	Save	保存	src/ui/screens/file.js:78	
-1m183es	ok	Open the photo full size	放大查看照片	src/ui/screens/file.js:86	
-wbyn1d	ok	Look at this part of {0}.	请看{0}的这一部分。	src/ui/screens/file.js:91	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此浏览器无法显示这张照片。它在 Safari 浏览器中可以显示，用“分享”方式导出时会尽可能转换格式。	src/ui/screens/file.js:98	Note: A Share export is the export panel's "Share" choice (分享), not the platform's Share button (共享).
-t8quxl	ok	Download	下载	src/ui/screens/file.js:105	
-4g2gbm	ok	Taken {0}	拍摄于{0}	src/ui/screens/file.js:114	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	按原样保存	src/ui/screens/file.js:115	
-1v3hapr	ok	Where it was taken	拍摄地点	src/ui/screens/file.js:118	
-1ooqziz	ok	No earlier versions.	没有更早的版本。	src/ui/screens/file.js:125	
-yugfpb	ok	History	历史	src/ui/screens/file.js:126	
-q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:131	
-1q136y3	ok	That version isn't stored on this device.	此设备上没有存储该版本。	src/ui/screens/file.js:137	
-twulcv	ok	Version restored	已恢复版本	src/ui/screens/file.js:141	
-16qw3bf	ok	Restore this version	恢复此版本	src/ui/screens/file.js:142	
-1dw4k8q	ok	Current	当前	src/ui/screens/file.js:143	
-3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:149	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:149	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:155	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:155	{0} = who; {1} = ago
-1cdkli8	ok	Saved by you {0}	你{0}保存	src/ui/screens/file.js:156	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:156	{0} = who; {1} = ago
+10rafvo	ok	This trip isn't on this device	此设备上没有这个旅行	src/ui/screens/file.js:45	
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/file.js:45	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:47	
+krcze5	ok	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:50	
+1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:56	
+1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/file.js:56	
+1lwovru	ok	This file isn't waiting with Shiori any more.	这个文件已不在 Shiori 的暂存中。	src/ui/screens/file.js:70	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
+3ul42n	ok	Deleted {0}. {1} freed.	已删除{0}，释放了{1}。	src/ui/screens/file.js:77	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: as Removed {0}. {1} freed. (已移除{0}，释放了{1}。), with 删除 for a file; {0} is a file name.
+1hnv6ua	ok	Content	内容	src/ui/screens/file.js:101	
+lewgh4	ok	Save	保存	src/ui/screens/file.js:101	
+1m183es	ok	Open the photo full size	放大查看照片	src/ui/screens/file.js:114	
+wbyn1d	ok	Look at this part of {0}.	请看{0}的这一部分。	src/ui/screens/file.js:119	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此浏览器无法显示这张照片。它在 Safari 浏览器中可以显示，用“分享”方式导出时会尽可能转换格式。	src/ui/screens/file.js:126	Note: A Share export is the export panel's "Share" choice (分享), not the platform's Share button (共享).
+t8quxl	ok	Download	下载	src/ui/screens/file.js:136	
+4g2gbm	ok	Taken {0}	拍摄于{0}	src/ui/screens/file.js:145	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	按原样保存	src/ui/screens/file.js:146	
+1v3hapr	ok	Where it was taken	拍摄地点	src/ui/screens/file.js:149	
+1ooqziz	ok	No earlier versions.	没有更早的版本。	src/ui/screens/file.js:156	
+yugfpb	ok	History	历史	src/ui/screens/file.js:157	
+q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:162	
+1q136y3	ok	That version isn't stored on this device.	此设备上没有存储该版本。	src/ui/screens/file.js:168	
+twulcv	ok	Version restored	已恢复版本	src/ui/screens/file.js:172	
+16qw3bf	ok	Restore this version	恢复此版本	src/ui/screens/file.js:173	
+1dw4k8q	ok	Current	当前	src/ui/screens/file.js:174	
+3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:180	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:180	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	你{0}删除	src/ui/screens/file.js:186	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:186	{0} = who; {1} = ago
+1cdkli8	ok	Saved by you {0}	你{0}保存	src/ui/screens/file.js:187	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:187	{0} = who; {1} = ago
 f0ig49	ok	Open a trip	打开旅行	src/ui/screens/import.js:36	
 1azyvjt	ok	Choose a file instead	改为选择文件	src/ui/screens/import.js:39	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	选择一个 annai 文件（.annai.zip 或 .annai）即可打开。	src/ui/screens/import.js:52	
@@ -2405,19 +2407,23 @@ ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:215
 16gte2l	ok	Create	创建	src/ui/screens/trip.js:219	
 knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:220	
 12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:221	
-yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:23	
-33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:26	{0} = relTime(latest.last.at); {1} = latest.name; Note: {1} is the backup place's name.
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:27	
-sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:29	{0} = archived.length
-ru2yru	ok	updated {0}	{0}更新	src/ui/screens/trips.js:43	{0} = relTime(s.updated)
-1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:49	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
-axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:69	
-ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:70	
-1yii6kb	ok	Ends	结束日期	src/ui/screens/trips.js:71	
-fc4c10	ok	Starts	开始日期	src/ui/screens/trips.js:71	
-1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:73	Note: The same words as the form's heading, "Start a trip".
-vr6m26	ok	Give the trip a name.	请为旅行命名。	src/ui/screens/trips.js:79	
-152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:80	
+yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:27	
+33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:31	{0} = relTime(latest.last.at); {1} = latest.name; Note: {1} is the backup place's name.
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:32	
+sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:34	{0} = archived.length
+1q78pfk#other	ok	# files waiting to be read	# 个文件等待读取	src/ui/screens/trips.js:49	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
+ru2yru	ok	updated {0}	{0}更新	src/ui/screens/trips.js:49	{0} = relTime(s.updated)
+158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/screens/trips.js:67	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
+oay2cq	ok	Delete	删除	src/ui/screens/trips.js:68	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
+1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:78	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
+axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:98	
+ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:99	
+1776dho	ok	Add dates (optional)	添加日期（可选）	src/ui/screens/trips.js:101	Note: 添加 as the glossary's Add; 可选 as forms say optional.
+1yii6kb	ok	Ends	结束日期	src/ui/screens/trips.js:101	
+fc4c10	ok	Starts	开始日期	src/ui/screens/trips.js:101	
+1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:103	Note: The same words as the form's heading, "Start a trip".
+vr6m26	ok	Give the trip a name.	请为旅行命名。	src/ui/screens/trips.js:109	
+152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:110	
 ric74d	ok	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
