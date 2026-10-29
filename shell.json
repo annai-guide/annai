@@ -1,5 +1,5 @@
 {
-  "build": "62015d7c6d14",
+  "build": "df9fd32b0f81",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -195,7 +195,7 @@
     "/src/plugins/voice-browser/index.js": "4b8e07716086",
     "/src/plugins/web/free.js": "be161cb903a1",
     "/src/plugins/web/index.js": "b0f3b38401b5",
-    "/src/ui/base.css": "71535112873a",
+    "/src/ui/base.css": "5ec6761b484c",
     "/src/ui/cards.js": "516990c53957",
     "/src/ui/composer.js": "db0bf12f873f",
     "/src/ui/credits.js": "6a90a3274f4d",
@@ -207,7 +207,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/format.js": "343318dffd93",
+    "/src/ui/format.js": "9e004bdcad6e",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
@@ -239,12 +239,13 @@
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "190ae121753e",
     "/src/ui/screens/backups.js": "cb4c5d840205",
-    "/src/ui/screens/booking.js": "4cec7dc532fb",
+    "/src/ui/screens/booking.js": "8a6c90d7dcd7",
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "03c80bf16505",
     "/src/ui/screens/ext.js": "b2e02413774e",
-    "/src/ui/screens/file.js": "e5e9c5909191",
+    "/src/ui/screens/file.js": "4fec240d21a7",
     "/src/ui/screens/import.js": "fd44391c00ce",
+    "/src/ui/screens/item.js": "c1dac8851e20",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "61681d998143",
@@ -269,7 +270,7 @@
     "/src/ui/screens/voice.js": "0fdfe5528a1a",
     "/src/ui/screens/welcome.js": "7d0ed4080e90",
     "/src/ui/search-panel.js": "61251e7a5617",
-    "/src/ui/shell.js": "4e5f115556f5",
+    "/src/ui/shell.js": "63665974b0e9",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
     "/src/ui/shiori.css": "570cae923ebc",
@@ -285,8 +286,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "d6c0b25d0dc3",
-    "/l10n/zh-Hans.json": "81e6f33194ab",
-    "/l10n/zh-Hant.json": "9f1abd09c053"
+    "/l10n/ja.json": "2ed9e1c3f112",
+    "/l10n/zh-Hans.json": "d7eacfc0aedf",
+    "/l10n/zh-Hant.json": "cb5a5efafe33"
   }
 }
