@@ -1,5 +1,5 @@
 {
-  "build": "c9fd5967af83",
+  "build": "bbfc5bf4ea8f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -197,7 +197,7 @@
     "/src/plugins/web/index.js": "b0f3b38401b5",
     "/src/ui/base.css": "ed204d42ec24",
     "/src/ui/cards.js": "516990c53957",
-    "/src/ui/composer.js": "91806aa2dc40",
+    "/src/ui/composer.js": "4c192edb0d57",
     "/src/ui/credits.js": "6a90a3274f4d",
     "/src/ui/dock.js": "a2cefcf2fdb8",
     "/src/ui/dom.js": "498aaecc1614",
@@ -272,7 +272,7 @@
     "/src/ui/shell.js": "e1910a27116d",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
-    "/src/ui/shiori.css": "016c4d57c6c8",
+    "/src/ui/shiori.css": "e93f0cdac198",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "b12c573be9a4",
