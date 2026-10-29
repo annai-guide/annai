@@ -188,15 +188,16 @@ export class Transcript {
       if (d.handover === this.#handover) this.#handover = null;
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
+      const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
       /* en */
-      const back = `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}`;
+      const said = [
+        n ? `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}` : '',
+        kept ? `${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '',
+        trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed, and the files wait with you again` : '',
+        trips.length > 1 ? `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed, and the files wait with you again` : '',
+      ].filter(Boolean).join('; ');
       /* en */
-      const left = kept ? `; ${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '';
-      /* en */
-      /* en */
-      const gone = typeof d.removed === 'string' ? `; the trip you started for them, ${JSON.stringify(d.removed)}, was removed, and the files wait with you again` : '';
-      /* en */
-      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you: ${back}${left}${gone}. Don't do it again unless they ask.` }]);
+      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you${said ? `: ${said}` : ''}. Don't do it again unless they ask.` }]);
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
