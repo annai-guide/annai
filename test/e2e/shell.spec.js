@@ -101,8 +101,9 @@ test('Erase everything starts annai again as on a new device, the welcome then a
 
 test("minors 26: a field in a column keeps its own height: no empty gap between a trip's name and its dates", async ({ page }) => {
   await openApp(page);
+  await page.getByText('Add dates (optional)').click();
   const name = page.locator('label.field', { has: page.getByLabel('Trip name') });
-  const dates = page.locator('.row', { has: page.getByLabel('Starts') });
+  const dates = page.locator('details.dates');
   const [a, b] = [await name.boundingBox(), await dates.boundingBox()];
   expect(a && b).toBeTruthy();
   if (!a || !b) return;

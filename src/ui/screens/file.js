@@ -8,6 +8,8 @@ import { relTime, size, num, takenText, pathParts, authorName, speaksScreens } f
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
+import { SYS_WAITING } from '../../core/scopes.js';
+import { dropWaiting } from '../../core/waiting.js';
 
 /** @type {string | null} */
 let objectUrl = null;
@@ -29,8 +31,9 @@ export function cameFrom(from, id, open) {
   return r.name === 'plan' ? { hash: `#/trip/${encodeURIComponent(id)}/plan`, name: 'plan' } : null;
 }
 
-/** @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route */
+/** @param {any} ctx @param {{ name?: string, parts: string[], params: Record<string, string> }} route */
 export async function renderFile(ctx, route) {
+  if (route.name === 'waiting-file') return waitingFile(ctx, route.params.path ?? '');
   const id = route.parts[1];
   const path = route.params.path ?? '';
   // Back is where the file was opened from (Plan → Check this → Open the original, the user, 2026-10-28), else the trip.
@@ -56,6 +59,26 @@ export async function renderFile(ctx, route) {
     })));
 }
 
+/**
+ * A file waiting with Shiori (handed over while no trip was open): the file as a trip's file screen shows one (a photo, or Download),
+ * by its own name, and Delete, which gives its space back. No editor and no history: it is the user's file as it came, until she files it.
+ * @param {any} ctx @param {string} path
+ */
+async function waitingFile(ctx, path) {
+  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path })];
+  const r = path.startsWith('/files/') ? await ctx.ws.read(SYS_WAITING, path) : undefined;
+  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file isn't waiting with Shiori any more.` }));
+  const { entry, bytes } = r;
+  return h('div', { class: 'screen' }, ...head,
+    h('p', { class: 'sub', text: [entry.type, size(entry.size), relTime(entry.modified)].join(' · ') }),
+    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : download(entry, bytes),
+    h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
+      const freed = await dropWaiting(ctx.ws, path);
+      ctx.notices.toast(t`Deleted ${entry.path.split('/').pop() ?? ''}. ${size(freed)} freed.`);
+      ctx.go('#/trips');
+    })));
+}
+
 /** @param {any} ctx @param {string} id @param {any} entry @param {Uint8Array} content */
 function editor(ctx, id, entry, content) {
   if (isTextType(entry.type)) {
@@ -77,28 +100,36 @@ function editor(ctx, id, entry, content) {
     };
     return h('div', { class: 'panel' }, field(t`Content`, area), errors, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: save }, t`Save`)));
   }
-  if (entry.type.startsWith('image/')) {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type })));
-    const img = h('img', { src: url, alt: entry.path });
-    const figure = h('figure', { class: 'preview' },
-      h('button', {
-        class: 'photo', type: 'button', 'aria-label': t`Open the photo full size`,
-        // In the trip Shiori is in, the viewer can show her the part on screen (spec §16.2).
-        onclick: () => openPhotoViewer(url, entry.path, ctx.agent?.target === id ? {
-          onShowPart: async (/** @type {number[]} */ region) => {
-            const shown = `/trip${entry.path}`;
-            ctx.agent.send(asUser(speaksScreens(await readAppSettings(ctx.ws)))`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
-            ctx.go('#/talk');
-          },
-        } : {}),
-      }, img),
-      photoFacts(entry));
-    img.addEventListener('error', () => figure.replaceChildren(
-      h('p', { class: 'sub', text: t`This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.` }),
-      photoFacts(entry)));
-    return figure;
-  }
+  if (entry.type.startsWith('image/')) return preview(ctx, id, entry, content);
+  return download(entry, content);
+}
+
+/** A photo, a tap opening it full size. @param {any} ctx @param {string} id its trip, or the waiting space @param {any} entry @param {Uint8Array} content */
+function preview(ctx, id, entry, content) {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type })));
+  const img = h('img', { src: url, alt: entry.path });
+  const figure = h('figure', { class: 'preview' },
+    h('button', {
+      class: 'photo', type: 'button', 'aria-label': t`Open the photo full size`,
+      // In the trip Shiori is in, the viewer can show her the part on screen (spec §16.2).
+      onclick: () => openPhotoViewer(url, entry.path, ctx.agent?.target === id ? {
+        onShowPart: async (/** @type {number[]} */ region) => {
+          const shown = `/trip${entry.path}`;
+          ctx.agent.send(asUser(speaksScreens(await readAppSettings(ctx.ws)))`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
+          ctx.go('#/talk');
+        },
+      } : {}),
+    }, img),
+    photoFacts(entry));
+  img.addEventListener('error', () => figure.replaceChildren(
+    h('p', { class: 'sub', text: t`This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.` }),
+    photoFacts(entry)));
+  return figure;
+}
+
+/** A file annai doesn't show, to save. @param {any} entry @param {Uint8Array} content */
+function download(entry, content) {
   return h('div', { class: 'acts' }, h('button', {
     class: 'btn', type: 'button',
     onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (content)], { type: entry.type }), entry.path.split('/').pop() ?? 'file'),

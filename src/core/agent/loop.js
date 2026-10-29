@@ -33,6 +33,7 @@ import { planWords } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
 import { readFile } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
+import { FILES_ONLY, handoverOf } from '../handover.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -49,8 +50,11 @@ import { runningPdfPages } from '../pdf-pages.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string }} Wake
  *   by: a note's, the model that wrote it
+ *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
+ *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
+ *   written into another conversation, the one it came from
  *   files, titles: a file wake's paths, and what a trigger's watches are for: the screens' data for its line
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
@@ -125,6 +129,9 @@ export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn
 
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
+/** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
+const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
+
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
@@ -381,6 +388,10 @@ export class Agent {
   #turning = false;
   /** Whether the half might use the voice when its turn's voice was last worked out. */
   #mayVoice = true;
+  /** The hand-over the turn running took (its wakes' newest), which every tool call of the turn carries (ToolCall.handover). @type {string | null} */
+  #handover = null;
+  /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
+  #handovers = [];
   /** What the running turn did (Half.ended). */
   #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
@@ -632,7 +643,8 @@ export class Agent {
         : transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed, or before annai restarted."
           : transcript.waiting === 'turn' ? 'The conversation closed in the middle of your turn (annai restarted, or another one was opened): your tool calls had come back, and you had not gone on yet.'
             : 'The conversation closed before you answered (annai restarted, or another one was opened).';
-      this.#queue.push({ kind: 'restart', text, scope }); // it runs once the open is done
+      // A hand-over still owed is the restart turn's, so what she does with it can be undone (the page closed before she was done).
+      this.#queue.push({ kind: 'restart', text, scope, ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
     }
     this.#emit('open', { trip, scope });
   }
@@ -775,22 +787,24 @@ export class Agent {
   }
 
   /**
-   * The user wrote, or sent photos (spec §4.8, §16.2). It answers a pending ask or wait; otherwise
-   * it wakes Shiori, or reaches her next call. Photos sent with an answer reach her right after it.
-   * @param {string} text @param {{ photos?: SentPhoto[] }} [o]
+   * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). It answers a pending ask or wait; otherwise
+   * it wakes Shiori, or reaches her next call. Photos and files sent with an answer reach her right after it.
+   * @param {string} text @param {{ photos?: SentPhoto[], handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
    */
   send(text, o = {}) {
     const photos = (o.photos ?? []).filter((x) => x && typeof x.path === 'string');
-    const said = String(text ?? '').trim() || (photos.length ? PHOTO_ONLY : '');
+    const handed = (o.handed ?? []).filter((x) => x && typeof x.path === 'string');
+    const given = { ...(handed.length ? { handed } : {}), ...(handed.length && o.handover ? { handover: o.handover } : {}) };
+    const said = String(text ?? '').trim() || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '');
     if (!said) return;
     const p = this.#pending;
     if (p) {
       this.#pending = null;
       p.resolve({ text: said });
-      if (photos.length) this.#push({ kind: 'user', text: PHOTO_ONLY, photos });
+      if (photos.length || handed.length) this.#push({ kind: 'user', text: photos.length ? PHOTO_ONLY : FILES_ONLY, ...(photos.length ? { photos } : {}), ...given });
       return;
     }
-    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}) });
+    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}), ...given });
     this.#drain();
   }
 
@@ -887,11 +901,17 @@ export class Agent {
 
   /**
    * What the user typed or sent to a live session (K5), written as a turn writes it, photos as request copies.
-   * @param {string} text @param {SentPhoto[]} photos @param {boolean} [chose] a tap on a live ask's buttons
+   * @param {string} text @param {SentPhoto[]} photos
+   * @param {{ chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o] chose: a tap on a live ask's buttons; handed, handover: a hand-over
    */
-  async logUser(text, photos, chose = false) {
+  async logUser(text, photos, o = {}) {
     const { images, blobs } = photos.length ? await this.#userPhotos(photos, this.trip) : { images: [], blobs: [] };
-    return this.#log({ type: 'msg.user', actor: 'user', data: { ...(images.length ? { images } : {}), ...(chose ? { chose: true } : {}) }, texts: [['text', String(text ?? '').trim() || PHOTO_ONLY]], blobs });
+    const handed = o.handed ?? [];
+    const words = String(text ?? '').trim() || (photos.length || !handed.length ? PHOTO_ONLY : FILES_ONLY);
+    return this.#log({
+      type: 'msg.user', actor: 'user', texts: [['text', words]], blobs,
+      data: { ...(images.length ? { images } : {}), ...(o.chose ? { chose: true } : {}), ...(handed.length ? { handed, ...(o.handover ? { handover: o.handover } : {}) } : {}) },
+    });
   }
 
   /** A live session's tools (K5): this half's now, less speak, wait and sleep (plan decision 29). */
@@ -1510,7 +1530,10 @@ export class Agent {
    * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log] @param {string | null} [trip] the trip paths in photos refer to
    */
   async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
-    const reasonOf = (/** @type {Wake} */ w) => ({ kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}) });
+    const reasonOf = (/** @type {Wake} */ w) => ({
+      kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
+      ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
+    });
     if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map(reasonOf) } });
     else {
       // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
@@ -1525,7 +1548,8 @@ export class Agent {
       }
       if (w.kind !== 'user' && w.kind !== 'choice') continue;
       const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
-      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}) }, texts: [['text', w.text]], blobs });
+      const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
+      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...handed }, texts: [['text', w.text]], blobs });
     }
   }
 
@@ -1615,6 +1639,10 @@ export class Agent {
    * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
    */
   async #steps(wakes, wakeId, abort) {
+    // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
+    // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
+    this.#handover = wakes.some(isTheirs) ? this.transcript.owedHandover : null;
+    this.#handovers = this.#handover ? [this.#handover] : [];
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
     const last = this.#warmth.last;
@@ -1667,6 +1695,8 @@ export class Agent {
     const unanswered = () => wrote || (theirs && !this.#facts.told);
     /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
+      this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
+      for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(isTheirs);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
@@ -1787,7 +1817,8 @@ export class Agent {
         this.#callCut = cut;
         result = await this.llm.call({
           role, request, signal: anySignal([abort.signal, cut.signal]), scope: this.scope, prefer,
-          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
+          // The hand-over the turn carries, null for none, on every reply: a reply that ends a turn settles only its own (transcript.js).
+          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
@@ -2196,7 +2227,7 @@ export class Agent {
       const scope = this.scope;
       const call = {
         id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -2208,6 +2239,13 @@ export class Agent {
         const { document, ...rest } = output;
         /* en */
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
+      }
+      // With no trip open, a file waiting with Shiori is read by a side task, and only what it says is kept here: the no-trip conversation
+      // never holds a waiting file's bytes, so a trip it is filed into, once removed, gives all of its space back (the user, 2026-10-28).
+      if (scope === ME && waitingMedia(output)) {
+        /* en */
+        const told = { ...output, content: `${output.content}\nFiles waiting with you are read by a side task here, so only what it says is kept in this conversation.` };
+        output = await this.#described(told, o.wakeId, o.signal, { input: ['text'] }, undefined, scope, c.name === 'read', o.reads);
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);

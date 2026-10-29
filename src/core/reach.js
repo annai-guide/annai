@@ -1,10 +1,10 @@
-import { ME, kindOf } from './scopes.js';
+import { ME, SYS_WAITING, kindOf } from './scopes.js';
 import { blobsOf, isName } from './events.js';
 
 /**
  * Reading stored content by its hash for one scope (spec §4.1). Content is stored once for every trip, so a hash alone
  * would read any trip's. A scope reaches a hash that one of its files or log entries names (refs, data.old, data.new),
- * or, from a trip, one of the user's own files; anything else reads as not stored, and a refused read of content the
+ * or, from a trip, one of the user's own files, or, from the no-trip conversation (me), a file waiting with Shiori; anything else reads as not stored, and a refused read of content the
  * device holds is logged once in the scope (`content.refused`: what asked and the start of the hash, never the bytes).
  * Names written without the bytes are held to the same rule (log.js, workspace.js, archive.js).
  * @typedef {import('./types.js').Store} Store @typedef {import('./types.js').BlobRecord} BlobRecord
@@ -17,7 +17,8 @@ import { blobsOf, isName } from './events.js';
 export async function reachable(t, scope, hash, { me = true } = {}) {
   if (!isName(hash)) return false;
   const h = /** @type {string} */ (hash);
-  return (await t.blobNamedIn(h, scope)) || (me && kindOf(scope) === 'trip' && t.blobNamedIn(h, ME, { events: false }));
+  return (await t.blobNamedIn(h, scope)) || (me && kindOf(scope) === 'trip' && t.blobNamedIn(h, ME, { events: false }))
+    || (scope === ME && t.blobNamedIn(h, SYS_WAITING, { events: false }));
 }
 
 /**

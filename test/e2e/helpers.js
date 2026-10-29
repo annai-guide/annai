@@ -140,7 +140,9 @@ export async function buildAndSave(page) {
  * An empty request (no model: {}, or only an output limit), as Custom provider sends to look for what a server
  * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
  * among the bodies.
- * @param {Record<string, { status: number, type: string, body: string | Buffer, delayMs?: number } | { status: number, type: string, body: string | Buffer, delayMs?: number }[]>} routes
+ * A reply may be a function of the request's body, for a reply that names what annai chose (a stored file's path, a trip's id).
+ * @param {Record<string, Reply | Reply[]>} routes
+ * @typedef {{ status: number, type: string, body: string | Buffer, delayMs?: number } | ((body: any) => { status: number, type: string, body: string | Buffer, delayMs?: number })} Reply
  */
 export async function startModelServer(routes) {
   /** @type {Map<any, number>} */
@@ -180,7 +182,9 @@ export async function startModelServer(routes) {
       }
       const n = served.get(route) ?? 0;
       served.set(route, n + 1);
-      const r = Array.isArray(route) ? route[Math.min(n, route.length - 1)] : route;
+      const step = Array.isArray(route) ? route[Math.min(n, route.length - 1)] : route;
+      // A reply made from the request (a path or an id annai chose that the stand-in must name back).
+      const r = typeof step === 'function' ? step(received.get(path)?.at(-1)) : step;
       if (!r) {
         res.writeHead(404, cors).end('not found');
         return;

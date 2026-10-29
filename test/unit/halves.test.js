@@ -922,3 +922,21 @@ test("Kokoro's card, gated while Koe talks and never passed on, is shown by anna
   assert.equal(shownCards.length, 1, 'annai showed it');
   assert.equal(shownCards[0].data.by?.name, 'model-0');
 });
+
+test("with two halves, Kokoro's turn for a typed hand-over carries it: its writes have the hand-over; Koe hears what came, and that Kokoro files it", async (t) => {
+  useClock(t);
+  const kokoro = { rules: [{ match: 'the user wrote', reply: calls(['write', { path: '/trip/notes/flight.md', content: 'AS 123' }], ['tell_koe', { text: 'Filed the flight.' }]) }, { match: '.', reply: sleep }] };
+  const koe = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Let me look.' }]) }, { match: '.', reply: calls(['speak', { text: 'Filed.' }]) }] };
+  const k = await agentKit([kokoro], { koe: { type: koe } });
+  await k.ws.write(k.trip, '/files/flight.pdf', new TextEncoder().encode('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('', { handed: [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  const wrote = (await k.events(['file.write'])).find((/** @type {any} */ e) => e.data.path === '/notes/flight.md');
+  assert.equal(wrote?.data.handover, 'h-1');
+  const toKokoro = userTexts(k.sent['model-0'][0]);
+  assert.ok(toKokoro.includes('[the user typed] "(files)"'));
+  assert.ok(toKokoro.some((/** @type {string} */ x) => /^\[annai\] The user handed you a file: "\/trip\/files\/flight\.pdf" \(application\/pdf\)\. .*names\.json/.test(x)));
+  const toKoe = userTexts(k.sent['model-koe'][0]);
+  assert.ok(toKoe.some((/** @type {string} */ x) => /The user handed you a file: .*Kokoro reads them and files them/.test(x)));
+  assert.ok(!toKoe.some((/** @type {string} */ x) => /move_file/.test(x)));
+});

@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { openApp, buildAndSave, writeEvent } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 /** @param {import('@playwright/test').Page} page @param {string} title */
 async function startTrip(page, title) {
   await page.getByLabel('Trip name').fill(title);
+  await page.getByText('Add dates (optional)').click();
   await page.getByLabel('Starts').fill('2026-11-25');
   await page.getByLabel('Ends').fill('2026-11-29');
   await page.getByRole('button', { name: 'Start trip' }).click();
@@ -461,4 +462,63 @@ test('a fresh start reopens the trip screen that was open, and shows Trips when 
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   expect(page.url()).not.toContain('/trip/');
+});
+
+test('Start a trip needs only a name: the trip opens with no dates, and its card says none', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByLabel('Starts')).toBeHidden(); // folded under Add dates (optional)
+  await startNamed(page, 'Somewhere north');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  const card = page.locator('.trip-card', { hasText: 'Somewhere north' });
+  await expect(card.locator('.sub')).toHaveText(/^updated /);
+});
+
+test('files waiting with Shiori are listed on Trips: one opens, one is asked about (a chip in the type box), one is deleted', async ({ page }) => {
+  await openApp(page);
+  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/car.txt': 'Midnight Sun Rentals', '/files/note.txt': 'Not a booking' } });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
+  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
+  await row('hotel.txt').getByRole('link', { name: 'Open' }).click();
+  await expect(page.getByRole('heading', { name: 'hotel.txt' })).toBeVisible();
+  await page.getByRole('link', { name: 'Trips' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
+  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
+  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click();
+  await expect(page.getByText(/^Deleted note\.txt\./)).toBeVisible();
+  await expect(row('note.txt')).toHaveCount(0);
+  await row('car.txt').getByRole('button', { name: 'Ask Shiori about this' }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.locator('.type-sheet .attach-chip')).toHaveText(['car.txt×']);
+  await expect(page.getByRole('button', { name: 'Remove car.txt' })).toBeVisible();
+  await expect(page.getByLabel('Message to Shiori')).toBeFocused();
+});
+
+test("a trip's card says when a file is waiting to be read", async ({ page }) => {
+  await openApp(page);
+  const trip = await startNamed(page, 'Kyoto');
+  await writeRecords(page, trip, { text: { '/files/temple.txt': 'Temple tickets' } });
+  await writeEvent(page, trip, { type: 'wake', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'A file was moved here.', files: ['/files/temple.txt'] }] } });
+  await page.goto('/#/trips');
+  await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
+});
+
+test('with a trip open, Trips has a way back to the conversation outside any trip', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0); // none open: the Conversation is that one already
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.getByText(/No trip is open/)).toBeVisible();
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0);
+});
+
+test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {
+  await openApp(page);
+  const summary = page.locator('details.dates summary');
+  expect(await summary.evaluate((el) => getComputedStyle(el).display)).toBe('list-item');
+  expect((await summary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
 });

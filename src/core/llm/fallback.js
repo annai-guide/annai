@@ -447,7 +447,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
  *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
- *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean },
+ *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean, handover?: string | null },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
