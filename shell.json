@@ -1,5 +1,5 @@
 {
-  "build": "a0d5d2c1d7d9",
+  "build": "759388d795d2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -198,7 +198,7 @@
     "/src/plugins/web/index.js": "b0f3b38401b5",
     "/src/ui/base.css": "ea536ecf461b",
     "/src/ui/cards.js": "516990c53957",
-    "/src/ui/composer.js": "db0bf12f873f",
+    "/src/ui/composer.js": "a9b030e1baed",
     "/src/ui/credits.js": "6a90a3274f4d",
     "/src/ui/dock.js": "a51258f0e8cd",
     "/src/ui/dom.js": "498aaecc1614",
@@ -244,7 +244,7 @@
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "03c80bf16505",
     "/src/ui/screens/ext.js": "b2e02413774e",
-    "/src/ui/screens/file.js": "4fec240d21a7",
+    "/src/ui/screens/file.js": "8e339cdaedf7",
     "/src/ui/screens/import.js": "fd44391c00ce",
     "/src/ui/screens/item.js": "c1dac8851e20",
     "/src/ui/screens/mcp.js": "8594db2419e8",
@@ -262,11 +262,11 @@
     "/src/ui/screens/settings.js": "a99180404955",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
-    "/src/ui/screens/talk.js": "c4b8f6c99f38",
+    "/src/ui/screens/talk.js": "867c96adc1a4",
     "/src/ui/screens/tools.js": "011d8241ffa0",
     "/src/ui/screens/trace.js": "726d453c0c93",
     "/src/ui/screens/trip.js": "e9c63c8f458c",
-    "/src/ui/screens/trips.js": "d058ff9dc323",
+    "/src/ui/screens/trips.js": "05e38a4a9349",
     "/src/ui/screens/updates.js": "61d9ab6e11e6",
     "/src/ui/screens/voice.js": "0fdfe5528a1a",
     "/src/ui/screens/welcome.js": "7d0ed4080e90",
@@ -287,8 +287,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "cb46f2898a64",
-    "/l10n/zh-Hans.json": "478e4bbdfe48",
-    "/l10n/zh-Hant.json": "0b6b3b80d392"
+    "/l10n/ja.json": "baf67dd6ab89",
+    "/l10n/zh-Hans.json": "07e7195057ba",
+    "/l10n/zh-Hant.json": "cb5424dc65f8"
   }
 }

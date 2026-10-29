@@ -199,7 +199,7 @@ export const canAsk = (ctx) => typeof ctx.dock?.attach === 'function';
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
  * that trip first; a file waiting with Shiori is asked about with no trip open, where she sees it.
- * @param {any} ctx @param {{ scope: string, path: string }} ref @param {{ suggestions?: string[] }} [o]
+ * @param {any} ctx @param {{ scope: string, path: string, name?: string }} ref name: what its chip calls it @param {{ suggestions?: string[] }} [o]
  */
 export async function askAbout(ctx, ref, o = {}) {
   const want = ref.scope === SYS_WAITING ? null : ref.scope;
