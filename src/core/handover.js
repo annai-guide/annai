@@ -56,3 +56,104 @@ export function handoverOf(wakes) {
   for (let i = wakes.length - 1; i >= 0; i--) if (wakes[i].handover) return /** @type {string} */ (wakes[i].handover);
   return null;
 }
+
+/**
+ * The files a conversation's Shiori hasn't read yet: those of its wakes after her last turn (files added or moved in while it was
+ * closed), still there. @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
+ */
+export async function filesToRead(store, scope) {
+  return store.tx(['events', 'files'], 'readonly', async (t) => {
+    const events = await t.listEvents(scope, { types: ['wake', 'model.turn'] });
+    const after = events.slice(events.findLastIndex((e) => e.type === 'model.turn') + 1);
+    /** @type {string[]} */
+    const out = [];
+    for (const e of after) {
+      if (e.data?.meanwhile) continue;
+      for (const r of e.data?.reasons ?? []) for (const p of Array.isArray(r?.files) ? r.files : []) if (typeof p === 'string' && !out.includes(p)) out.push(p);
+    }
+    const there = [];
+    for (const p of out) if (await t.getFile(scope, p)) there.push(p);
+    return there;
+  });
+}
+
+/**
+ * What Undo of a hand-over finds in a scope (My call 2 of the bookings-and-trips design): her writes and deletes with it, but for her
+ * short names, by path; whether she started the scope's trip for it; and whether it was undone already.
+ * @param {import('./types.js').Store} store @param {string} scope @param {string} handover
+ */
+async function undoFacts(store, scope, handover) {
+  return store.tx(['scopes', 'events'], 'readonly', async (t) => {
+    if (!(await t.getScope(scope))) return null; // removed by hand meanwhile: nothing to undo, and no error
+    const events = await t.listEvents(scope, { types: ['file.write', 'file.delete', 'scope.create', 'msg.user', 'heard', 'handover.undo'] });
+    const done = events.some((e) => e.type === 'handover.undo' && e.data?.handover === handover);
+    const started = events.some((e) => e.type === 'scope.create' && e.actor === 'shiori' && e.data?.handover === handover);
+    /** @type {Map<string, { before: string | null, last: number }>} */
+    const hers = new Map();
+    for (const e of events) {
+      if ((e.type !== 'file.write' && e.type !== 'file.delete') || e.actor !== 'shiori' || e.data?.handover !== handover) continue;
+      const path = String(e.data.path);
+      // Her short names stay (names.js), and a trip she started keeps the trip.json and memory.md it was made with.
+      if (path === NAMES_PATH || (started && (path === '/trip.json' || path === '/memory.md'))) continue;
+      hers.set(path, { before: hers.get(path)?.before ?? e.data.old ?? null, last: e.seq });
+    }
+    // Changed since: any later write or delete of the path that isn't hers for this hand-over.
+    /** @type {Set<string>} */
+    const changed = new Set();
+    for (const e of events) {
+      if (e.type !== 'file.write' && e.type !== 'file.delete') continue;
+      const h = hers.get(String(e.data?.path));
+      if (h && e.seq > h.last) changed.add(String(e.data.path));
+    }
+    // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it.
+    const theirs = events.some((e) => (e.type === 'msg.user' && e.data?.handover !== handover) || (e.type === 'heard' && !e.data?.dismissed)
+      || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover && !(started && (e.data?.path === '/trip.json' || e.data?.path === '/memory.md'))));
+    const brought = [...new Set(events.filter((e) => e.type === 'file.write' && e.actor === 'user' && e.data?.handover === handover && String(e.data.path).startsWith('/files/')).map((e) => String(e.data.path)))];
+    return { done, started, hers, changed, theirs, brought };
+  });
+}
+
+/** names.js's file, not imported to keep this module the screens' and the loop's alike. */
+const NAMES_PATH = '/names.json';
+
+/** Whether Undo has something to take back for a hand-over in a scope. @param {import('./types.js').Store} store @param {string} scope @param {string} handover */
+export async function undoable(store, scope, handover) {
+  const f = await undoFacts(store, scope, handover);
+  return Boolean(f && !f.done && (f.hers.size || f.started));
+}
+
+/**
+ * @typedef {{ undone: string[], kept: string[], tripEmpty: boolean, files: string[] }} UndoOutcome
+ *   undone: paths put back as they were before her first write for it; kept: paths changed since, left as they are; tripEmpty: she
+ *   started the trip for it and nothing of the user's is in it, so the caller removes it; files: the trip's files it brought, still there
+ */
+
+/**
+ * Takes back exactly what Shiori wrote for a hand-over in a scope, and nothing of the user's: each file she wrote or deleted for it
+ * goes back to how it was before (one she added goes), as the user, unless it changed since. Said once in the log (handover.undo);
+ * a second Undo finds nothing to do and says nothing.
+ * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover @returns {Promise<UndoOutcome>}
+ */
+export async function undoHandover(ws, scope, handover) {
+  const f = await undoFacts(ws.store, scope, handover);
+  if (!f || f.done) return { undone: [], kept: [], tripEmpty: false, files: [] };
+  /** @type {string[]} */ const undone = [];
+  /** @type {string[]} */ const kept = [];
+  for (const [path, { before }] of f.hers) {
+    if (f.changed.has(path)) {
+      kept.push(path);
+      continue;
+    }
+    const now = await ws.store.tx(['files'], 'readonly', (t) => t.getFile(scope, path));
+    if ((now?.hash ?? null) === before) continue;
+    if (before === null) await ws.delete(scope, path, { author: 'user' });
+    else await ws.restore(scope, path, before, { author: 'user' });
+    undone.push(path);
+  }
+  const files = [];
+  for (const p of f.brought) if (await ws.store.tx(['files'], 'readonly', (t) => t.getFile(scope, p))) files.push(p);
+  await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
+    if (await t.getScope(scope)) await t.appendEvent(scope, { ts: ws.now(), type: 'handover.undo', actor: 'user', data: { handover, undone: undone.length, kept } });
+  });
+  return { undone, kept, tripEmpty: f.started && !f.theirs && !kept.length, files };
+}
