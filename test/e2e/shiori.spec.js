@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip, allFiles } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -448,6 +448,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
     // The note is a file in the trip.
     await page.getByRole('link', { name: 'Trips' }).click();
     await page.getByRole('link', { name: /Big Sur/ }).click();
+    await allFiles(page);
     await expect(page.getByText('/notes/dinner.md')).toBeVisible();
 
     // The trace: every model request, every tool call with what it sent, and what it read.
