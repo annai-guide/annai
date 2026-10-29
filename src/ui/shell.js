@@ -340,6 +340,9 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
+  // Shiori opened a trip she started or chose for a hand-over (Halves.openWhenDone): the screen shows it, its top bar the trip, once
+  // nothing typed would be lost.
+  /** @type {any} */ (core.agent)?.on?.('went', () => redraw());
   render({ moved: true });
   let readyCard = () => {};
   return {

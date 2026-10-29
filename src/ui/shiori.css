@@ -123,6 +123,10 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .attach-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .attach-remove { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); font-size: 18px; cursor: pointer; padding: 0; }
 .attach-remove:focus-visible { outline: 2px solid var(--ai); outline-offset: -2px; }
+/* A message's files in the Conversation: each a link to where it is now, plain once it has moved on. */
+.convo .chips.handed { margin-block: 6px 0; justify-content: flex-end; }
+a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; }
+.attach-chip.gone { color: var(--ink-2); }
 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */

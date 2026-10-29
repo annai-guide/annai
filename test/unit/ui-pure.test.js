@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced, wokeText, wokeTitles, reminderParts } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, wokeTitles, reminderParts, movedWords } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -798,4 +798,14 @@ test("the Trace's line marks what an entry keeps as written (English) apart from
   for (const x of [e('error', { kind: 'budget', message: 'x'.repeat(150) }), e('backup.peek', { type: 's3', backup: 'c2', problem: '$.files[0].hash: does not match' })]) {
     for (const kept of traceStored(x)) assert.ok(traceSummary(x).includes(kept), kept);
   }
+});
+
+test('movedWords: started, took one, took several, and to a trip since removed', () => {
+  assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'Anchorage · Nov 20–27'), 'Shiori started Anchorage · Nov 20–27 with these files.');
+  assert.equal(movedWords({ to: 't', started: true, count: 0 }, 'Anchorage'), 'Shiori started Anchorage.');
+  assert.equal(movedWords({ to: 't', started: false, count: 1 }, 'Kyoto'), 'Shiori took 1 file to Kyoto.');
+  assert.equal(movedWords({ to: 't', started: false, count: 3 }, 'Kyoto'), 'Shiori took 3 files to Kyoto.');
+  assert.equal(movedWords({ to: 't', started: false, count: 3 }, null), 'Shiori took these files to a trip that has since been removed.');
+  // Not her lines: the announcer says nothing of them.
+  assert.deepEqual(announced('handover.moved', '', 'Shiori took 1 file to Kyoto.'), ['', '', '']);
 });
