@@ -86,3 +86,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** avoiding it needs annai to remember what each previous request sent, per model: more moving parts for a rare, one-turn cost.
 - **Revisit when:** long trips with many photos get slow or expensive after a re-read.
 - **Approved:** 2026-10-28, the user: "Accept as known limitation".
+
+### A booking's PDF shows a blank frame on Linux WebKit browsers
+- **Kind:** known limitation.
+- **What the user sees:** on a Linux browser built on WebKit (GNOME Web, and Playwright's WebKit), Open the original shows an empty frame where the PDF should be. Open and Download sit under it, and Download always gives the file. Chrome draws the PDF in the frame, and Safari on iPhone and Mac uses Apple's own viewer.
+- **Why:** these browsers' PDF viewer is PDF.js running as a small page with inline script and style. A PDF shown from an object URL takes annai's security policy, which refuses inline script, so the viewer never starts. Serving the PDF from annai's offline worker under a looser policy would fix it, at the cost of one more moving part for very few users.
+- **Revisit when:** an iPhone or Mac shows the frame blank too, or someone on GNOME Web asks.
+- **Approved:** 2026-10-29, the user: "Known limitation (Recommended)".
