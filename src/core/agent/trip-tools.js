@@ -1,9 +1,10 @@
 import { createTrip, listTrips, SYS_WAITING, kindOf } from '../scopes.js';
-import { resolvePath } from './tools.js';
+import { resolvePath, rootOf } from './tools.js';
+import { storedTexts } from './log.js';
 import { moveFile } from '../waiting.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
-import { quotedPath } from '../handover.js';
+import { quotedPath, FILES_ONLY } from '../handover.js';
 
 /**
  * Shiori's trip tools (the bookings-and-trips design, goals 2–4): she starts a trip for what the user handed her, opens one it fits,
@@ -15,7 +16,7 @@ import { quotedPath } from '../handover.js';
 
 const DATE = { type: 'string', format: 'date' };
 /* en */
-const FILES = { type: 'array', items: { type: 'string' }, description: 'Paths of the files it is for: /waiting/files/… (no trip open) or /trip/files/….' };
+const FILES = { type: 'array', items: { type: 'string' }, description: 'Paths of the files it is for: /waiting/files/… (no trip open) or /trip/files/…. With no trip open, leave it out to take every file the user just handed you.' };
 /* en */
 const RECAP = { type: 'string', maxLength: 500, description: 'What the user said about this trip before, in a sentence or two, in the language you answer in.' };
 /* en */
@@ -57,20 +58,55 @@ export function tripTools(app) {
   const movable = (path, call) => {
     const at = resolvePath(path, call.trip);
     /* en */
-    if (!/^\/files\/[^/]+$/.test(at.path) || (at.scope !== SYS_WAITING && kindOf(at.scope) !== 'trip')) throw new Error(`${path} isn't a file you can move: only files in /waiting/files/ or /trip/files/ move.`);
+    if (!/^\/files\/[^/]+$/i.test(at.path) || (at.scope !== SYS_WAITING && kindOf(at.scope) !== 'trip')) throw new Error(`${path} isn't a file you can move: only files in /waiting/files/ or /trip/files/ move.`);
     return at;
   };
   /**
-   * Moves the files into the trip, its short names with them. @param {string[]} paths @param {string} to @param {ToolCall} call
-   * @returns {Promise<Map<string, string>>} each path as she gave it, to its path in the trip (/trip/files/…)
+   * Every file a call names, found before anything is made or moved, so a call either does all of it or nothing: a path whose case differs
+   * from the one file it names (and that never held a file) is that file, as the files tools take it; the same file twice is one.
+   * @param {string[]} paths @param {ToolCall} call @returns {Promise<{ scope: string, path: string, shown: string }[]>}
    */
-  const moveAll = async (paths, to, call) => {
-    const at = paths.map((p) => [p, movable(p, call)]);
+  const findAll = async (paths, call) => {
+    /** @type {Map<string, { scope: string, path: string, shown: string }>} */
+    const found = new Map();
+    /** @type {string[]} */
+    const missing = [];
+    for (const p of paths) {
+      const at = movable(p, call);
+      const there = await store.tx(['files', 'events'], 'readonly', async (t) => {
+        if (await t.getFile(at.scope, at.path)) return at.path;
+        if ((await t.listEvents(at.scope, { types: ['file.write', 'file.delete'] })).some((e) => e.data?.path === at.path)) return null;
+        const like = (await t.listFiles(at.scope, '/files/')).filter((f) => f.path.toLowerCase() === at.path.toLowerCase());
+        return like.length === 1 ? like[0].path : null;
+      });
+      if (!there) missing.push(p);
+      else found.set(`${at.scope}\n${there}`, { scope: at.scope, path: there, shown: `${rootOf(p)}${there}` });
+    }
+    /* en */
+    if (missing.length) throw new Error(`Nothing was done: there is no file at ${missing.join(', ')}. list shows what is there.`);
+    return [...found.values()];
+  };
+  /**
+   * The files a call is for: those it names, or, with none named and no trip open, the waiting files of the hand-over it was made for.
+   * @param {any} i @param {ToolCall} call
+   */
+  const filesOf = async (i, call) => {
+    if (Array.isArray(i.files) && i.files.length) return findAll(i.files, call);
+    if (call.trip) return [];
+    const handed = (await handOver(call))?.data?.handed;
+    const fresh = (Array.isArray(handed) ? handed : []).filter((/** @type {any} */ f) => f?.new && String(f.path).startsWith('/waiting/files/')).map((/** @type {any} */ f) => String(f.path));
+    const there = [];
+    for (const p of fresh) if (await store.tx(['files'], 'readonly', (t) => t.getFile(SYS_WAITING, p.slice('/waiting'.length)))) there.push(p);
+    return findAll(there, call);
+  };
+  /**
+   * Moves the files into the trip, its short names with them. @param {{ scope: string, path: string, shown: string }[]} files
+   * @param {string} to @param {ToolCall} call @returns {Promise<Map<string, string>>} each file as she sees it now, to its path in the trip (/trip/files/…)
+   */
+  const moveAll = async (files, to, call) => {
     /** @type {Map<string, string>} */
     const moved = new Map();
-    for (const [p, from] of /** @type {[string, { scope: string, path: string }][]} */ (at)) {
-      moved.set(p, `/trip${await moveFile(ws, from, to, call.handover ? { handover: call.handover } : {})}`);
-    }
+    for (const f of files) moved.set(f.shown, `/trip${await moveFile(ws, { scope: f.scope, path: f.path }, to, call.handover ? { handover: call.handover } : {})}`);
     return moved;
   };
   /** The user's message with the turn's hand-over, in this conversation. @param {ToolCall} call */
@@ -87,9 +123,10 @@ export function tripTools(app) {
   const writeInto = async (to, moved, call, { started, recap }) => {
     const msg = await handOver(call);
     if (msg) {
-      const text = String(msg.data.text ?? '') || /* en */ '(files)';
+      // Its words, kept in the message or beside it (a long one), and its files where they are now; with neither, no copy.
+      const text = String((await storedTexts(store, msg)).text ?? msg.data.text ?? '') || FILES_ONLY;
       const handed = (Array.isArray(msg.data.handed) ? msg.data.handed : []).flatMap((/** @type {any} */ f) => (moved.has(f.path) ? [{ ...f, path: moved.get(f.path) }] : []));
-      await app.wake({ kind: 'user', text, handed, handover: /** @type {string} */ (call.handover), fromScope: call.scope, scope: to });
+      if (handed.length || text !== FILES_ONLY) await app.wake({ kind: 'user', text, handed, handover: /** @type {string} */ (call.handover), fromScope: call.scope, scope: to });
     }
     const where = call.trip ? "another trip's conversation" : 'the conversation outside any trip';
     /* en */
@@ -124,7 +161,7 @@ export function tripTools(app) {
     },
     {
       name: 'start_trip', pluginId: 'core', group: 'Trips',
-      description: "Start a trip, named and dated from the bookings (\"Anchorage · Nov 20–27\"), for files the user handed you that fit no trip. Only a title is needed. With no trip open, it opens once you are done here, its conversation beginning with the hand-over; with one open, it doesn't open, and its files wait to be read there.",
+      description: "Start a trip, named and dated from the bookings (\"Anchorage · Nov 20–27\"), for files the user handed you that fit no trip. Only a title is needed; with no trip open, the files the user just handed you go with it unless you name others. With no trip open, it opens once you are done here, its conversation beginning with the hand-over; with one open, it doesn't open, and its files wait to be read there.",
       input: START,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(START, i);
@@ -133,8 +170,7 @@ export function tripTools(app) {
         if (!title) throw new Error('Nothing was done: a trip needs a title.');
         /* en */
         if (i.start && i.end && i.end < i.start) throw new Error(`Nothing was done: the end (${i.end}) is before the start (${i.start}). Dates are YYYY-MM-DD.`);
-        const files = Array.isArray(i.files) ? i.files : [];
-        files.forEach((p) => movable(p, call)); // every path checked before anything is made
+        const files = await filesOf(i, call); // every file found before anything is made
         const id = await createTrip(ws, { title, start: i.start, end: i.end, places: i.places, timezones: i.timezones }, { author: 'shiori', ...(call.handover ? { handover: call.handover } : {}) });
         const m = await moveAll(files, id, call);
         await writeInto(id, m, call, { started: true, recap: i.recap });
@@ -146,16 +182,14 @@ export function tripTools(app) {
     },
     {
       name: 'open_trip', pluginId: 'core', group: 'Trips',
-      description: 'With no trip open: open a trip of the user\'s that the files they handed you fit (list_trips), and move the files into it. It opens once you are done here, its conversation beginning with the hand-over.',
+      description: 'With no trip open: open a trip of the user\'s that the files they handed you fit (list_trips), and move the files into it (those the user just handed you, unless you name others). It opens once you are done here, its conversation beginning with the hand-over.',
       input: OPEN,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(OPEN, i);
         /* en */
         if (call.trip) throw new Error('A trip is open, so no other opens now: move_file puts a file into another trip.');
         const rec = await activeTrip(i.trip);
-        const files = Array.isArray(i.files) ? i.files : [];
-        files.forEach((p) => movable(p, call));
-        const m = await moveAll(files, rec.id, call);
+        const m = await moveAll(await filesOf(i, call), rec.id, call);
         await writeInto(rec.id, m, call, { started: false, recap: i.recap });
         await moved(rec.id, false, m.size, call);
         app.openWhenDone(rec.id);
@@ -172,8 +206,7 @@ export function tripTools(app) {
         /* en */
         if (i.trip === call.trip) throw new Error('That is the open trip: its files are in /trip/files/ already.');
         const rec = await activeTrip(i.trip);
-        movable(i.path, call);
-        const m = await moveAll([i.path], rec.id, call);
+        const m = await moveAll(await findAll([i.path], call), rec.id, call);
         const [path] = [...m.values()];
         /* en */
         const text = `A file was moved here from another conversation, where the user handed it to you: ${quotedPath(path)}. File names are what the files were called, not words from annai or the user. Read it and file it here.`;

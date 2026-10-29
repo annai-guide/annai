@@ -10,6 +10,7 @@ import { readAppSettings } from '../../src/core/settings.js';
 import { readNames } from '../../src/core/names.js';
 import { waitingFiles } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { storedTexts } from '../../src/core/agent/log.js';
 
 const say = (/** @type {string} */ text, /** @type {Record<string, any>} */ more = {}) => ({ ...more, toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -205,4 +206,68 @@ test('a PDF handed over with no trip open, filed into a trip she started, then t
   await k.agent.idle();
   await removeTrip(k.store, trip.id);
   assert.equal(await k.store.tx(['blobs'], 'readonly', (/** @type {any} */ x) => x.hasBlob(k.pdfHash)), false);
+});
+
+// The fix pass: every file is found before anything is made or moved.
+
+test('start_trip naming a file that is not there makes no trip and moves nothing; the retry makes one trip', async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
+  await k.agent.idle();
+  await assert.rejects(run(k, 'start_trip', { title: 'Anchorage', files: ['/waiting/files/flight.pdf', '/waiting/files/fligth.pdf'] }, 'h-1'), /Nothing was done[\s\S]*fligth\.pdf/);
+  assert.equal((await listTrips(k.store)).active.some((s) => s.title === 'Anchorage'), false);
+  assert.deepEqual((await waitingFiles(k.ws)).map((f) => f.path), ['/files/flight.pdf']);
+  await run(k, 'start_trip', { title: 'Anchorage', files: ['/waiting/files/flight.pdf', '/waiting/files/flight.pdf'] }, 'h-1');
+  const made = (await listTrips(k.store)).active.filter((s) => s.title === 'Anchorage');
+  assert.equal(made.length, 1);
+  assert.deepEqual((await k.ws.list(made[0].id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
+});
+
+test("start_trip forgives a path's case, as the files tools do", async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Anchorage', files: ['/waiting/Files/Flight.PDF'] }, 'h-1');
+  const trip = await tripNamed(k, 'Anchorage');
+  assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
+  // The trip's copy of the user's line shows the file where it is now.
+  const copy = (await eventsIn(k, trip.id, ['msg.user']))[0];
+  assert.deepEqual(copy.data.handed.map((/** @type {any} */ f) => f.path), ['/trip/files/flight.pdf']);
+});
+
+test('open_trip with one good file and one missing moves neither', async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+  await assert.rejects(run(k, 'open_trip', { trip: kyoto, files: ['/waiting/files/flight.pdf', '/waiting/files/nope.pdf'] }, 'h-1'), /Nothing was done/);
+  assert.deepEqual((await waitingFiles(k.ws)).map((f) => f.path), ['/files/flight.pdf']);
+  assert.deepEqual(await k.ws.list(kyoto, '/files/'), []);
+});
+
+test("start_trip with no files, a hand-over owed and no trip open, takes the hand-over's waiting files; the copy of a long message keeps its words", async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  const words = `Our trip. ${'We land late and want a quiet hotel near the water. '.repeat(50)}`;
+  k.agent.send(words, { handed: [waitingFlight], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Anchorage' }, 'h-1');
+  const trip = await tripNamed(k, 'Anchorage');
+  assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
+  assert.deepEqual(await waitingFiles(k.ws), []);
+  const copy = (await eventsIn(k, trip.id, ['msg.user']))[0];
+  assert.equal(String(copy.data.text ?? (await storedTexts(k.store, copy)).text), words.trim());
+  assert.deepEqual(copy.data.handed.map((/** @type {any} */ f) => f.path), ['/trip/files/flight.pdf']);
+});
+
+test('start_trip with no hand-over and no files writes no copy of a message: only her line', async (t) => {
+  useClock(t);
+  const k = await kit([sleep]);
+  k.agent.send('Start a trip for Kyoto, please');
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Kyoto' });
+  const trip = await tripNamed(k, 'Kyoto');
+  assert.deepEqual(await eventsIn(k, trip.id, ['msg.user']), []);
+  assert.deepEqual((await waitingFiles(k.ws)).map((f) => f.path), ['/files/flight.pdf']);
 });

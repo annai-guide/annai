@@ -7,6 +7,8 @@
  *   new: handed now (stored by this message), else a reference to something kept (Ask Shiori about this)
  */
 
+import { NAMES_FILE } from './names.js';
+
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
 export const FILES_ONLY = /* en */ '(files)';
 /** How many handed files Shiori is told of by name; the rest are counted. */
@@ -96,7 +98,7 @@ async function undoFacts(store, scope, handover) {
       if ((e.type !== 'file.write' && e.type !== 'file.delete') || e.actor !== 'shiori' || e.data?.handover !== handover) continue;
       const path = String(e.data.path);
       // Her short names stay (names.js), and a trip she started keeps the trip.json and memory.md it was made with.
-      if (path === NAMES_PATH || (started && (path === '/trip.json' || path === '/memory.md'))) continue;
+      if (path === NAMES_FILE || (started && (path === '/trip.json' || path === '/memory.md'))) continue;
       hers.set(path, { before: hers.get(path)?.before ?? e.data.old ?? null, last: e.seq });
     }
     // Changed since: any later write or delete of the path that isn't hers for this hand-over.
@@ -115,8 +117,6 @@ async function undoFacts(store, scope, handover) {
   });
 }
 
-/** names.js's file, not imported to keep this module the screens' and the loop's alike. */
-const NAMES_PATH = '/names.json';
 
 /** Whether Undo has something to take back for a hand-over in a scope. @param {import('./types.js').Store} store @param {string} scope @param {string} handover */
 export async function undoable(store, scope, handover) {
