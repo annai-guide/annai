@@ -974,6 +974,11 @@ rs50uy	ok	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:125
 io1qx	ok	Open the booking	打开预订	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的类型（{0}）来自一个未开启的插件。	src/ui/cards.js:97	{0} = card.type
+rcp6ga	ok	A photo was kept as it is	照片已按原样保存	src/ui/composer.js:50	
+36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:51	
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:81	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
+1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:96	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
+13548dd	ok	That conversation didn't open	没能打开那段对话	src/ui/composer.js:139	Note: 对话 as the glossary's Conversation.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地点，用于 Shiori 的 nearby 工具和离线包，通过 Overpass（overpass-api.de，繁忙时用 private.coffee 的服务器）查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或说出某个位置的地名，用于 Shiori 的 geocode 和 reverse 工具；作为免费搜索的最后手段，也会查找地点的官网。annai 按其使用政策，每秒最多询问一次。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地点的文章，以及离线包中的摘要。Shiori 读到的每篇文章都附有地址。免费搜索始终开启的最后手段会用搜索的词向它查询。	src/ui/credits.js:33	
@@ -985,16 +990,17 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	为 web_search 提供网页搜索，安装“Serper 搜索”插件后用你的密钥。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜索 (L7).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并搜索网页，用于 Shiori 的 fetch 和 web_search 工具，按设置 → 工具的选择使用。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：为 annai 用 AI 图像生成设计，再描摹成矢量图。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	给 Shiori 的消息	src/ui/dock.js:43	
-1vatbdb	ok	Send	发送	src/ui/dock.js:58	
-1m2zofh	ok	Type	输入	src/ui/dock.js:73	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片保存在旅行中。请在“旅行”中打开一个旅行，再拍一次。	src/ui/dock.js:109	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
-drtui7	ok	Open a trip first	请先打开一个旅行	src/ui/dock.js:109	
-1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:120	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:209	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:210	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:210	
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:223	
+gb19et	ok	Message to Shiori	给 Shiori 的消息	src/ui/dock.js:44	
+1vatbdb	ok	Send	发送	src/ui/dock.js:59	
+abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:81	Note: built on 交给, as the + says.
+1m2zofh	ok	Type	输入	src/ui/dock.js:84	Note: The dock's keyboard button: it opens the box to type in (a verb).
+178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片保存在旅行中。请在“旅行”中打开一个旅行，再拍一次。	src/ui/dock.js:120	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
+drtui7	ok	Open a trip first	请先打开一个旅行	src/ui/dock.js:120	
+1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:131	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:220	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:221	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:221	
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:234	
 1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:258	
@@ -1606,8 +1612,6 @@ jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	保�
 8w8k36	ok	a file	一个文件	src/ui/screens/import.js:307	
 ci7mt7	ok	Add to {0}	添加到{0}	src/ui/screens/import.js:310	{0} = trip.title
 odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:316	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-rcp6ga	ok	A photo was kept as it is	照片已按原样保存	src/ui/screens/import.js:322	
-36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/screens/import.js:323	
 liuhl8#other	ok	Added {0}, and # plan items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/import.js:324	plural; # = planned.length; {0} = what; English: "Added {0}, and # plan item from the calendar" (one), "Added {0}, and # plan items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
 f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:344	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
 1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:347	
