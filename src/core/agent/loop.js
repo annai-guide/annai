@@ -2228,18 +2228,18 @@ export class Agent {
       // A photo or PDF by its hash alone must be this conversation's (reach.js): another trip's is the tool's error (as in 8c-1).
       /* en */
       if (!(await this.#readable(output, scope, c.name))) output = { content: `Error: ${c.name} gave back an image annai can't read, so its answer was left out.`, isError: true };
+      // Koe answers at once (the fix pass): a PDF its model can't read (a live one reads none) is Kokoro's to read, not told for it.
+      if (output.document && this.#half.name === 'koe' && !o.model?.input?.includes('pdf')) {
+        const { document, ...rest } = output;
+        /* en */
+        output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
+      }
       // With no trip open, a file waiting with Shiori is read by a side task, and only what it says is kept here: the no-trip conversation
       // never holds a waiting file's bytes, so a trip it is filed into, once removed, gives all of its space back (the user, 2026-10-28).
       if (scope === ME && waitingMedia(output)) {
         /* en */
         const told = { ...output, content: `${output.content}\nFiles waiting with you are read by a side task here, so only what it says is kept in this conversation.` };
         output = await this.#described(told, o.wakeId, o.signal, { input: ['text'] }, undefined, scope, c.name === 'read', o.reads);
-      }
-      // Koe answers at once (the fix pass): a PDF its model can't read (a live one reads none) is Kokoro's to read, not told for it.
-      if (output.document && this.#half.name === 'koe' && !o.model?.input?.includes('pdf')) {
-        const { document, ...rest } = output;
-        /* en */
-        output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);

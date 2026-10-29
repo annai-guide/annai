@@ -247,3 +247,17 @@ test("a hand-over whose turn failed is still owed: Try again's turn, or the user
   await k.agent.idle();
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/flight.md', 'h-1'], ['/notes/later.md', null]]);
 });
+
+test('Koe reading a waiting PDF hears at once to ask Kokoro: no side task reads it for Koe', async (t) => {
+  useClock(t);
+  const koe = [{ toolCalls: [{ name: 'read', input: { path: '/waiting/files/flight.pdf' } }] }, say('Kokoro is looking at it.'), sleep];
+  const k = await agentKit([[sleep]], { open: false, koe: { type: koe, input: ['text', 'image'] }, utility: [{ text: SAID }], utilityModel: readsPdf });
+  await k.agent.open(null);
+  await k.ws.write(SYS_WAITING, '/files/flight.pdf', PDF, { author: 'user', type: 'application/pdf' });
+  k.agent.send('What is this?', { handed: [{ path: '/waiting/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
+  await k.agent.idle();
+  const read = (await meEvents(k, ['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'read' && e.data.half === 'koe');
+  assert.match(await contentOf(k, read), /You can't read PDFs; ask Kokoro about it\./);
+  assert.doesNotMatch(await contentOf(k, read), /side task/);
+  assert.equal(k.sent['model-u'], undefined);
+});
