@@ -1,6 +1,7 @@
 import { h, crumb, t, tc } from '../dom.js';
 import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, day } from '../format.js';
 import { isBookingPath, checkOf } from '../../core/bookings.js';
+import { PLAN_FILE, bookingRef } from '../../core/plan.js';
 import { normPath } from '../../core/paths.js';
 import { validZone, deviceZone, dayIn } from '../../core/time.js';
 import { readNames, shortName } from '../../core/names.js';
@@ -42,11 +43,29 @@ export async function renderBooking(ctx, route) {
     facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
       h('dt', { lang: f.lang, text: f.label }),
       h('dd', {}, h('span', { dir: 'auto', text: f.value }), f.unsure ? [' ', checkMark()] : null)])) : null,
+    await itemNotes(ctx, id, path),
     await original(ctx, id, booking.source, here),
     h('div', { class: 'acts' },
       booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
       askAboutButton(ctx, { scope: id, path, name: title }),
       h('a', { class: 'btn', href: fileHref(id, path, here) }, t`Change it`)));
+}
+
+/**
+ * The notes of the plan items that stand for this booking ("Terminal S, arrive 2 h early"): a tap on such an item opens these details,
+ * so its notes are read here, each under its item's title when there are several. @param {any} ctx @param {string} id @param {string} path
+ */
+async function itemNotes(ctx, id, path) {
+  /** @type {{ title: string, notes: string }[]} */
+  const found = [];
+  for (const f of await ctx.ws.list(id, '/plan/')) {
+    if (!PLAN_FILE.test(f.path)) continue;
+    const item = await ctx.ws.readJSON(id, f.path).catch(() => null);
+    if (item && bookingRef(item.booking) === path && typeof item.notes === 'string' && item.notes.trim()) found.push({ title: String(item.title ?? ''), notes: item.notes });
+  }
+  if (!found.length) return null;
+  return h('section', { class: 'item-notes', 'aria-label': t`Notes` }, h('h2', { class: 'section', text: t`Notes` }),
+    ...found.map((n) => h('p', { class: 'sub notes', dir: 'auto' }, found.length > 1 && n.title ? [h('strong', { dir: 'auto', text: n.title }), ' '] : null, n.notes)));
 }
 
 /** A detail Shiori isn't sure of: a light mark, with words for screen readers. */
