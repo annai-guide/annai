@@ -72,6 +72,17 @@ export function instantOf(w, tz) {
   return valid.length ? Math.min(...valid) : guess - offsets[0] * 60_000;
 }
 
+/**
+ * A stored time as an instant, the one reading every screen uses: its own offset, or, with none written ("2026-11-20T15:00": the format
+ * check asks for one, but an imported trip or a restored version may lack it), its wall clock in tz. NaN when it isn't a time.
+ * @param {unknown} at @param {string} tz
+ */
+export function instantAt(at, tz) {
+  if (typeof at !== 'string') return NaN;
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec(at);
+  return m ? instantOf({ year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5], second: +(m[6] ?? 0) }, tz) : Date.parse(at);
+}
+
 /** @param {string | number} at @returns {number | null} */
 function ms(at) {
   const t = typeof at === 'number' ? at : Date.parse(at);
