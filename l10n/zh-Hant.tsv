@@ -566,8 +566,8 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加�
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一個分頁中開啟，所以在這個分頁中停止了。要在這裡使用 annai，請重新載入這個分頁。	src/core/errors.js:40	
 gnrtev	ok	Shiori can't reach her model.	Shiori 無法連線她的模型。	src/core/errors.js:41	
 iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此行事曆中有超過 {0} 個事件。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
-10s60wn	ok	No file at {0}.	{0} 處沒有檔案。	src/core/imports.js:13	{0} = path
-5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:14	{0} = path; {1} = size(MAX_ICS_BYTES)
+10s60wn	ok	No file at {0}.	{0} 處沒有檔案。	src/core/imports.js:14	{0} = path
+5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:405	
@@ -764,7 +764,14 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:659	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	你的搜尋會傳送到的網址：{0}	src/core/packages.js:659	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此瀏覽器無法轉換 {0}，因此 annai 保留了原樣。它可能只能在 Safari 中顯示。	src/core/photos.js:135	{0} = name
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	時區「{0}」不是 annai 認識的時區；依 {1} 顯示。	src/core/plan.js:65	{0} = String(own ?? ''); {1} = fallbackTz
+1009iza	ok	Restaurant	餐廳	src/core/plan.js:33	
+1lrcegv	ok	Event	活動	src/core/plan.js:33	
+56ee40	ok	Booking	預訂	src/core/plan.js:33	
+8cdq15	ok	Train	火車	src/core/plan.js:33	
+d57q3n	ok	Flight	航班	src/core/plan.js:33	
+jj8u9s	ok	Stay	住宿	src/core/plan.js:33	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	租車	src/core/plan.js:33	Note: A kind of booking: a car, nearly always a rental.
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	時區「{0}」不是 annai 認識的時區；依 {1} 顯示。	src/core/plan.js:77	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此檔案不是 annai 能開啟的外掛程式套件：{0}	src/core/plugins.js:176	{0} = why
 hs0rw0	ok	is a name annai uses for one of its own parts, so a skill can't have it.	這是 annai 用於自身某部分的名稱，所以技能不能使用。	src/core/plugins.js:193	
 85vpp4	ok	has the same id as a plugin built into annai	與 annai 內建外掛程式的 ID 相同	src/core/plugins.js:194	
@@ -1067,56 +1074,52 @@ l7u7vc	ok	its plugin is missing	缺少其外掛程式	src/ui/format.js:46
 710q7y	ok	conversation too long for it	對話過長	src/ui/format.js:47	
 7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:47	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
 w70v2a	ok	doesn't take audio	不支援音訊	src/ui/format.js:47	
-1009iza	ok	Restaurant	餐廳	src/ui/format.js:63	
-1lrcegv	ok	Event	活動	src/ui/format.js:63	
-8cdq15	ok	Train	火車	src/ui/format.js:63	
-d57q3n	ok	Flight	航班	src/ui/format.js:63	
-jj8u9s	ok	Stay	住宿	src/ui/format.js:63	Note: A kind of booking: a hotel or other lodging.
-sksosh	ok	Car	租車	src/ui/format.js:63	Note: A kind of booking: a car, nearly always a rental.
-ukzedx	ok	Other	其他	src/ui/format.js:63	
-hqumoz	ok	Kind	類型	src/ui/format.js:78	
-j6u2ti	ok	Starts	開始	src/ui/format.js:80	context: booking; Note: A booking's start, its day and time shown beside it.
-1pcvk9l	ok	Ends	結束	src/ui/format.js:82	context: booking
-16ygujg	ok	Place	地點	src/ui/format.js:83	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:83	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	確認碼	src/ui/format.js:84	Note: A booking's confirmation code.
-t05i6w	ok	Cost	費用	src/ui/format.js:85	
-1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:102	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:102	
-fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:106	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:107	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:107	
-1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:108	
-sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:108	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:113	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:113	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:114	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:114	
-14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:115	
-12hcbva	ok	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:119	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:119	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:120	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:120	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:121	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:125	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:125	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:126	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:126	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:127	
-wn3ejs	ok	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:127	
-1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:142	
-1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:147	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:147	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:148	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:150	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:151	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:152	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:153	
-173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:154	{0} = at
-1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:154	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:166	
-hmr3pn	ok	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:166	
-8091b1	ok	no limit	無限制	src/ui/format.js:191	
+1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:72	{0} = name; Note: Taiwan wording: 退房, as hotels say; a stay's last row on the Plan.
+1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:73	{0} = name; Note: Taiwan wording: 入住, as hotels say; a stay's first row on the Plan.
+ukzedx	ok	Other	其他	src/ui/format.js:76	
+hqumoz	ok	Kind	類型	src/ui/format.js:91	
+j6u2ti	ok	Starts	開始	src/ui/format.js:93	context: booking; Note: A booking's start, its day and time shown beside it.
+1pcvk9l	ok	Ends	結束	src/ui/format.js:95	context: booking
+16ygujg	ok	Place	地點	src/ui/format.js:96	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:96	context: booking; {0} = b.place.name; {1} = b.place.address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	確認碼	src/ui/format.js:97	Note: A booking's confirmation code.
+t05i6w	ok	Cost	費用	src/ui/format.js:98	
+1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:115	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:115	
+fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:119	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:120	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:120	
+1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:121	
+sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:121	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:126	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:126	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:127	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:127	
+14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:128	
+12hcbva	ok	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:132	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:132	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:133	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:133	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:134	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:138	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:138	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:139	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:139	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:140	
+wn3ejs	ok	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:140	
+1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:155	
+1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:160	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:160	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:161	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:163	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:164	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:165	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:166	
+173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:167	{0} = at
+1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:167	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:179	
+hmr3pn	ok	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:179	
+8091b1	ok	no limit	無限制	src/ui/format.js:204	
 1y3qo2k#other	ok	# trips	# 個旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
 12lprg	ok	Imported {0} from {1}.	已從{1}匯入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已匯入{0}。	src/ui/import-state.js:48	{0} = what
@@ -1496,7 +1499,6 @@ fl5bce	ok	Confirmed	已確認	src/ui/screens/booking.js:35
 bigbss	ok	Try again.	請重試。	src/ui/screens/booking.js:42	
 dqldb5	ok	It wasn't confirmed: {0}	未能確認：{0}	src/ui/screens/booking.js:42	{0} = why.textContent
 19dss4d	ok	Looks right	沒問題	src/ui/screens/booking.js:48	Note: The button that confirms a booking.
-56ee40	ok	Booking	預訂	src/ui/screens/booking.js:50	
 1rnayr2	ok	Check this against the original, then confirm it.	請對照原件核對後再確認。	src/ui/screens/booking.js:51	
 bamrei	ok	Change it	修改	src/ui/screens/booking.js:55	
 d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:69	{0} = path
@@ -1791,29 +1793,31 @@ tdmj58	ok	Flexible:	可調整：	src/ui/screens/now.js:145	Note: Read aloud befo
 u35e3n	ok	said aloud	已朗讀	src/ui/screens/now.js:167	Note: the mark on a line of hers that was said aloud.
 16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/now.js:169	
 1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/now.js:170	
-ls5hgo	ok	Open a trip to see its plan.	開啟一個旅行即可檢視其行程。	src/ui/screens/plan.js:24	
-ow5t4g	ok	No time yet ({0})	未定時間（{0}）	src/ui/screens/plan.js:36	{0} = num(untimed.length)
-u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:46	
-15tmy2k	ok	Saved the plan.	已儲存行程。	src/ui/screens/plan.js:56	
-g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒有時間，因此未包含在內。	src/ui/screens/plan.js:56	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
-foy2yl	ok	Add to calendar	新增到行事曆	src/ui/screens/plan.js:58	
-1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:61	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
-3ucp64#other	ok	# plan files	# 個行程檔案	src/ui/screens/plan.js:61	plural; # = plan.broken; English: "# plan file" (one), "# plan files" (other)
-pxfr8q	ok	Days	日期	src/ui/screens/plan.js:66	
-1i4j351	ok	No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	還沒有行程。請 Shiori 和你一起規劃，或把行事曆檔案（.ics）新增到旅行中。	src/ui/screens/plan.js:67	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:68	{0} = unread
-sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:68	{0} = unread
-1r3c8qh	ok	Bookings	預訂	src/ui/screens/plan.js:69	
-1gmgpvl	ok	Check this	請核對	src/ui/screens/plan.js:74	
-dqozwm	ok	All day	全天	src/ui/screens/plan.js:117	
-1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:128	
-1ud2u1e	ok	Shiori added this to the plan. Remove it?	這是 Shiori 新增到行程的。要移除嗎？	src/ui/screens/plan.js:145	
-11b6pmv	ok	Undone: {0} is off the plan.	已復原：{0}已從行程中移除。	src/ui/screens/plan.js:147	{0} = title
-19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:150	
-1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原：{0}已恢復到 Shiori 修改之前的樣子。	src/ui/screens/plan.js:156	{0} = title
-1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:159	
-pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:170	{0} = distance(km)
-1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:171	
+ls5hgo	ok	Open a trip to see its plan.	開啟一個旅行即可檢視其行程。	src/ui/screens/plan.js:23	
+ow5t4g	ok	No time yet ({0})	未定時間（{0}）	src/ui/screens/plan.js:35	{0} = num(untimed.length)
+u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:45	
+15tmy2k	ok	Saved the plan.	已儲存行程。	src/ui/screens/plan.js:55	
+g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒有時間，因此未包含在內。	src/ui/screens/plan.js:55	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
+foy2yl	ok	Add to calendar	新增到行事曆	src/ui/screens/plan.js:57	
+1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:60	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
+3ucp64#other	ok	# plan files	# 個行程檔案	src/ui/screens/plan.js:60	plural; # = plan.broken; English: "# plan file" (one), "# plan files" (other)
+1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:65	Note: Taiwan wording; a heading above the day tabs, for bookings with no day of their own (a pass for the whole trip).
+pxfr8q	ok	Days	日期	src/ui/screens/plan.js:68	
+1i4j351	ok	No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	還沒有行程。請 Shiori 和你一起規劃，或把行事曆檔案（.ics）新增到旅行中。	src/ui/screens/plan.js:69	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:70	{0} = unread
+sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:70	{0} = unread
+cdkfoc	ok	Staying at {0} · night {1} of {2}	住在{0} · 第{1}晚（共{2}晚）	src/ui/screens/plan.js:113	{0} = String(it.title ?? ''); {1} = num(r.night.n); {2} = num(r.night.of); Note: Taiwan wording; a quiet line on each night of a stay, nights counted with 晚.
+dqozwm	ok	All day	全天	src/ui/screens/plan.js:116	
+1gmgpvl	ok	Check this	請核對	src/ui/screens/plan.js:126	
+wioqt8#other	ok	Check # details	請核對#項	src/ui/screens/plan.js:128	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: Taiwan wording; how many of a booking's details Shiori is unsure of; 請核對 as the Check this chip.
+1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:129	
+1ud2u1e	ok	Shiori added this to the plan. Remove it?	這是 Shiori 新增到行程的。要移除嗎？	src/ui/screens/plan.js:146	
+11b6pmv	ok	Undone: {0} is off the plan.	已復原：{0}已從行程中移除。	src/ui/screens/plan.js:148	{0} = title
+19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:151	
+1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原：{0}已恢復到 Shiori 修改之前的樣子。	src/ui/screens/plan.js:157	{0} = title
+1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:160	
+pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:171	{0} = distance(km)
+1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:172	
 1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此外掛程式可以完全存取你的旅行和 API 金鑰。	src/ui/screens/plugin-install.js:16	
 h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方：目前有你的 {0} 金鑰。	src/ui/screens/plugin-install.js:43	{0} = list(names)
 7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方。	src/ui/screens/plugin-install.js:44	

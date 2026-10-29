@@ -8,7 +8,7 @@ import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho } from '../cards.js';
 import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
-import { fileHref, distance, wording, sentenceGap } from '../format.js';
+import { detailsHref, rowName, distance, wording, sentenceGap } from '../format.js';
 import { packLine } from '../offline-pack.js';
 import { component, mount, slotEntries } from '../slots.js';
 
@@ -109,7 +109,7 @@ export function planRowOf(ctx, trip, r, when, own) {
   if (!c) return own();
   const it = r.item;
   const li = h('li', { class: ['plan-row', 'plugin-row', it.fixed ? 'fixed' : 'flexible'] });
-  const row = { trip, path: r.path, when, title: String(it.title ?? r.path), fixed: Boolean(it.fixed), place: it.place?.name ? String(it.place.name) : '', kind: String(it.kind ?? '') };
+  const row = { trip, path: r.path, when, title: rowName(r), fixed: Boolean(it.fixed), place: it.place?.name ? String(it.place.name) : '', kind: String(it.kind ?? '') };
   /** @type {HTMLElement | null} */
   let instead = null;
   mount(ctx, c, li, (ui) => c.item.render(li, row, ui), {
@@ -141,9 +141,9 @@ function nowRow(id, r) {
   return h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: r.time }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
-    h('a', { class: 'what', href: fileHref(id, r.path, '#/now') },
+    h('a', { class: 'what', href: detailsHref(id, r, '#/now') },
       h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
-      h('span', { class: 'name', text: String(it.title ?? r.path) }),
+      h('span', { class: 'name', text: rowName(r) }),
       it.place?.name ? h('span', { class: 'sub', text: String(it.place.name) }) : null));
 }
 

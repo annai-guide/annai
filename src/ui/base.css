@@ -231,6 +231,8 @@ textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .plan-row .mark { color: var(--ai); }
 .plan-row .what { display: flex; flex-direction: column; color: var(--ink); text-decoration: none; min-height: 44px; justify-content: center; }
 .plan-row .chips, .plan-row .note { grid-column: 3; }
+.plan-row.night { padding: 4px 0; border-bottom: 0; }
+.plan-row.night .stay { grid-column: 2 / -1; font-size: 13px; color: var(--ink-2); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; min-height: 28px; padding: 2px 10px; border-radius: 999px; font-size: 13px; background: var(--paper); color: var(--ink-2); text-decoration: none; }
 a.chip { min-height: 44px; }

@@ -57,8 +57,21 @@ export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/fi
 /** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
 export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
-/** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
-export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
+/** A trip's booking's details (spec §16.2). @param {string} id @param {string} path "/bookings/…" @param {string} [from] the screen its crumb goes back to (Now), else the Plan */
+export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/** A plan item's details. @param {string} id @param {string} path "/plan/…" @param {string} [from] as bookingHref's */
+export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/**
+ * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
+ * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]
+ */
+export const detailsHref = (id, r, from) => (r.booking && r.bookingPath ? bookingHref(id, r.bookingPath, from) : itemHref(id, r.path, from));
+/** A Plan row's name: a stay's own row is its check-in, and its end its check-out (goal 5). @param {import('../core/plan.js').PlanRow} r */
+export function rowName(r) {
+  const name = String(r.item.title ?? r.path);
+  if (r.from === 'checkout') return t`Check out · ${name}`;
+  return r.from === 'booking' && r.booking?.kind === 'lodging' ? t`Check in · ${name}` : name;
+}
 
 const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
 
