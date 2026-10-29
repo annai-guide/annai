@@ -1,7 +1,8 @@
 import { h, t, tc, plural, messageOf } from './dom.js';
 import { num } from '../core/intl.js';
 import { keepFiles } from './bring-in.js';
-import { SYS_WAITING, newId } from '../core/scopes.js';
+import { SYS_WAITING, ME, newId } from '../core/scopes.js';
+import { FILES_ONLY } from '../core/handover.js';
 import { updateAppSettings } from '../core/settings.js';
 
 /**
@@ -77,7 +78,14 @@ export async function handOver(ctx, text, items, o = {}) {
     handed.push(handedOf(a, { type: entry?.type ?? 'application/octet-stream', name: a.path.split('/').pop() ?? a.path }));
   }
   if (!text.trim() && !handed.length) return;
-  ctx.agent.send(text, handed.length ? { handed, handover: newId('h') } : {});
+  const handover = handed.length ? { handed, handover: newId('h') } : {};
+  // Another conversation was opened while the files were kept: the message goes to the one they were kept for, written into it, and
+  // answered when it opens.
+  if ((ctx.agent.target ?? SYS_WAITING) !== scope) {
+    await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...handover, scope: scope === SYS_WAITING ? ME : scope });
+    return;
+  }
+  ctx.agent.send(text, handover);
   if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
 }
 
