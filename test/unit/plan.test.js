@@ -271,3 +271,18 @@ test("a plan item linking a booking stands for it only on its own day: a stay ke
   const untimed = { path: '/bookings/pass.json', booking: { ...pass.booking } };
   assert.deepEqual(days([at('museum', '2026-11-21T10:00:00-09:00', '/bookings/pass.json')], untimed), ['item@2026-11-21']);
 });
+
+test('a restored plan item with no offset gives the same instant everywhere a stored time is read: the Plan, its reminders and the calendar file', async () => {
+  const { planWatches } = await import('../../src/core/live/plan-watches.js');
+  const { planToIcs } = await import('../../src/core/ics.js');
+  const dinner = { id: 'dinner', title: 'Dinner with Sam', fixed: true, start: { at: '2026-11-21T18:30', tz: AK }, end: { at: '2026-11-21T20:00', tz: AK } };
+  const want = Date.parse('2026-11-21T18:30:00-09:00');
+  const [row] = planRows([{ path: '/plan/dinner.json', item: dinner }], [], { fallbackTz: 'UTC' });
+  assert.equal(row.at, want);
+  const watches = planWatches([{ path: '/plan/dinner.json', item: dinner }], new Map(), { fallbackTz: 'UTC' });
+  assert.ok(watches.length > 0);
+  for (const w of watches) assert.deepEqual([w.when.at, w.when.end], [want, Date.parse('2026-11-21T20:00:00-09:00')], w.id);
+  const { text } = planToIcs([dinner, { id: 'museum', title: 'Museum day', kind: 'all-day', fixed: true, start: { at: '2026-11-22T00:00', tz: AK } }], { name: 'Anchorage', tripId: 't-1', now: 0 });
+  assert.match(text, /DTSTART:20261122T033000Z\r\nDTEND:20261122T050000Z/);
+  assert.match(text, /DTSTART;VALUE=DATE:20261122/);
+});
