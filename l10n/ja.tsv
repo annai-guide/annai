@@ -540,9 +540,9 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊�
 1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:451	{0} = name
 21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:477	{0} = i + 1; {1} = name
 1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:481	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:561	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:665	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:666	
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:564	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:668	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:669	
 e0756x	ok	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:45	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:47	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:48	{0} = name
@@ -824,10 +824,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:206	
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	自分	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	システムログ	src/core/scopes.js:42	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:43	
-13w3r95	ok	This device	この端末	src/core/scopes.js:45	
+stkvyf	ok	Me	自分	src/core/scopes.js:43	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	システムログ	src/core/scopes.js:44	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:45	
+13w3r95	ok	This device	この端末	src/core/scopes.js:47	
+1jqhjwe	ok	Waiting with Shiori	Shiori が預かっているファイル	src/core/scopes.js:48	Note: the files handed to Shiori while no trip was open, which she holds until she files them: 預かる (holds for you), with ファイル so a heading says what is listed.
 ulzb3n	ok	Midnight sun	白夜	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日の出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -899,8 +900,8 @@ i7rrx1	ok	This voice is gone: it is skipped.	この声はもうないため、�
 mf44l1	ok	Her words go to {0}, which sends back the sound.	言葉は{0}に送られ、音声になって返ってきます。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
 1izzjz4	ok	Trip record checks	旅の記録チェック	src/plugins/core-schemas/index.js:7	
 1y0f0hr	ok	Checks trip.json, plan items, bookings and watches when they are saved.	旅の trip.json、予定の項目、予約、ウォッチを保存するときにチェックします。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:13	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅のファイルとあなたのファイルを扱う Shiori のツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:15	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅のファイルとあなたのファイルを扱う Shiori のツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	移動ツール	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link と search_link：道順と、あなたが予約するための入力済みのフライト・ホテル・レンタカー検索。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCPサーバー「{0}」の MCP のバージョンが不明です。annai が対応するのは 2025-03-26 から 2025-11-25 までです。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.

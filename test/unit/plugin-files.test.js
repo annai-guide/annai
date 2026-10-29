@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';
+import { readNames } from '../../src/core/names.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -243,4 +244,34 @@ test("Shiori's file tools put the turn's hand-over on what they write and delete
   assert.deepEqual(hers.map((e) => [e.data.path, e.data.handover ?? null]), [
     ['/notes/a.md', 'h-1'], ['/notes/a.md', 'h-1'], ['/names.json', 'h-1'], ['/notes/a.md', 'h-1'], ['/notes/b.md', null],
   ]);
+});
+
+test('with no trip open, list / shows /waiting/ files, and read reads one; with a trip open, /waiting/ is refused in words', async () => {
+  const { ws, trip, tools } = await setup();
+  await ws.write(SYS_WAITING, '/files/confirmation.txt', 'Car: Midnight Sun Rentals, Nov 20', { author: 'user' });
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  const listed = await tools.list.run({ path: '/' }, none);
+  assert.match(listed, /^\/waiting\/files\/confirmation\.txt\t/m);
+  assert.match(listed, /^\/me\/profile\.md\t/m);
+  assert.match(await tools.list.run({ path: '/waiting/' }, none), /^\/waiting\/files\/confirmation\.txt\t/m);
+  assert.match(await tools.read.run({ path: '/waiting/files/confirmation.txt' }, none), /Midnight Sun/);
+  // Her short name for it, beside it.
+  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/confirmation.txt': 'Car · Nov 20' } }, none);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/confirmation.txt': 'Car · Nov 20' });
+  const open = { ...none, scope: trip, trip };
+  await assert.rejects(tools.read.run({ path: '/waiting/files/confirmation.txt' }, open), /with a trip open, its files are in \/trip\/files\//);
+  assert.doesNotMatch(await tools.list.run({ path: '/' }, open), /waiting/);
+});
+
+test("Shiori's delete of a /waiting/ file drops it: the file, its history and its name go, and its space comes back", async () => {
+  const { ws, tools } = await setup();
+  const body = 'Thanks for your note! See you at the reunion.';
+  const { hash } = await ws.write(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt', body, { author: 'user' });
+  await ws.write(SYS_WAITING, '/names.json', { '/files/pasted-2026-10-28-0310.txt': 'A note' }, { author: 'shiori' });
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  assert.match(await tools.delete.run({ path: '/waiting/files/pasted-2026-10-28-0310.txt' }, none), /Deleted \/waiting\/files\/pasted-2026-10-28-0310\.txt/);
+  assert.equal(await ws.read(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), undefined);
+  assert.deepEqual(await ws.history(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), []);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), {});
+  assert.equal(await ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash)), false);
 });

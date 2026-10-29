@@ -1,7 +1,8 @@
 import { VERSION } from '../../app/version.js';
-import { resolvePath } from '../../core/agent/tools.js';
+import { resolvePath, rootOf } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
-import { kindOf } from '../../core/scopes.js';
+import { kindOf, SYS_WAITING } from '../../core/scopes.js';
+import { dropWaiting } from '../../core/waiting.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
@@ -21,7 +22,7 @@ export const manifest = {
 
 const TEXT_MAX = 40_000;
 /* en */
-const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes).' };
+const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes); with no trip open, /waiting/ holds what the user handed you.' };
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -79,10 +80,11 @@ export function activate(annai) {
   const filesUnder = async (path, call) => {
     /** @type {any[]} */
     let all;
-    if (path === '/' || path === '') all = [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me'))];
-    else {
+    if (path === '/' || path === '') {
+      all = [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me')), ...(call.trip ? [] : await listed(SYS_WAITING, '/', '/waiting'))];
+    } else {
       const { scope, path: inner } = where(path, call);
-      all = await listed(scope, inner.endsWith('/') ? inner : `${inner}/`, path.startsWith('/trip') ? '/trip' : '/me');
+      all = await listed(scope, inner.endsWith('/') ? inner : `${inner}/`, rootOf(path));
     }
     // The offline pack is for the places tools (spec §11.5): it stays out unless asked for.
     return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
@@ -95,7 +97,7 @@ export function activate(annai) {
     const { scope, path } = where(raw, call);
     // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file (round 6).
     if ((await ws.history(scope, path)).length) return null;
-    const root = raw.startsWith('/trip') ? '/trip' : '/me';
+    const root = rootOf(raw);
     const found = (await ws.list(scope, '/')).filter((/** @type {any} */ f) => f.path.toLowerCase() === path.toLowerCase());
     return found.length === 1 ? `${root}${found[0].path}` : null;
   };
@@ -263,6 +265,12 @@ export function activate(annai) {
         writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
         const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
+        // What waits with her is dropped for good, its space given back: nothing there is the user's to restore (a pasted text that wasn't a booking).
+        if (scope === SYS_WAITING) {
+          if (!(await ws.store.tx(['files'], 'readonly', (/** @type {any} */ t) => t.getFile(scope, path)))) throw new Error(`No file at ${i.path}, so nothing was changed.`);
+          await dropWaiting(ws, path);
+          return `Deleted ${i.path}.`;
+        }
         await ws.delete(scope, path, { author: 'shiori', ...turnOf(call) });
         return `Deleted ${i.path}.${confirmed ? ' The user had confirmed this booking. If deleting it was a mistake, tell them: its history keeps it, so they can restore it.' : ''}`;
       }),

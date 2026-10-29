@@ -9,6 +9,8 @@ export const ME = 'me';
 export const SYS = 'sys';
 export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
+/** What the user handed Shiori while no trip was open waits here, outside every trip and outside /me/, until she files it (waiting.js). */
+export const SYS_WAITING = 'sys:waiting';
 /** This device's own scope: never exported, never imported (see ensureDeviceScope). */
 export const SYS_DEVICE = 'sys:device';
 /** Secrets that belong to this device alone: backup places' sign-ins and the push relay's cancel tokens. No archive holds them. @param {string} id */
@@ -43,6 +45,7 @@ export function scopeTitle(rec) {
     case SYS_SETTINGS: return t`Settings`;
     case SYS_PLUGINS: return t`Plugins`;
     case SYS_DEVICE: return t`This device`;
+    case SYS_WAITING: return t`Waiting with Shiori`;
     default: return rec.title;
   }
 }
@@ -52,7 +55,7 @@ export async function ensureBaseScopes(ws) {
   const now = ws.now();
   /** @type {[string, ScopeRecord['kind'], string][]} */
   /* en */
-  const base = [[ME, 'me', 'Me'], [SYS, 'sys', 'System log'], [SYS_SETTINGS, 'sys', 'Settings'], [SYS_PLUGINS, 'sys', 'Plugins']];
+  const base = [[ME, 'me', 'Me'], [SYS, 'sys', 'System log'], [SYS_SETTINGS, 'sys', 'Settings'], [SYS_PLUGINS, 'sys', 'Plugins'], [SYS_WAITING, 'sys', 'Waiting with Shiori']];
   const made = await ws.store.tx(['scopes'], 'readwrite', async (t) => {
     /** @type {string[]} */
     const created = [];
@@ -146,12 +149,13 @@ export async function removeTrip(store, id, now = Date.now()) {
 
 /**
  * Deletes every stored content no file and no log entry names, through the indexes of what they
- * name: no log is read in full (spec §4.9). @param {Tx} t @returns {Promise<number>} the bytes freed
+ * name: no log is read in full (spec §4.9). @param {Tx} t @param {Set<string>} [only] just these, when only they may have been let go
+ * @returns {Promise<number>} the bytes freed
  */
-async function freeUnused(t) {
+export async function freeUnused(t, only) {
   let bytes = 0;
   for (const b of await t.listBlobs()) {
-    if (await t.blobInUse(b.hash)) continue;
+    if ((only && !only.has(b.hash)) || (await t.blobInUse(b.hash))) continue;
     await t.deleteBlob(b.hash);
     bytes += b.size;
   }

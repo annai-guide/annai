@@ -540,9 +540,9 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺�
 1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:451	{0} = name
 21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:477	{0} = i + 1; {1} = name
 1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:481	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:561	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:665	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:666	
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:564	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:668	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:669	
 e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:45	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:47	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:48	{0} = name
@@ -824,10 +824,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:206	
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	我	src/core/scopes.js:41	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	系统日志	src/core/scopes.js:42	
-ktdb8o	ok	Settings	设置	src/core/scopes.js:43	
-13w3r95	ok	This device	这台设备	src/core/scopes.js:45	
+stkvyf	ok	Me	我	src/core/scopes.js:43	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系统日志	src/core/scopes.js:44	
+ktdb8o	ok	Settings	设置	src/core/scopes.js:45	
+13w3r95	ok	This device	这台设备	src/core/scopes.js:47	
+1jqhjwe	ok	Waiting with Shiori	Shiori 暂存的文件	src/core/scopes.js:48	Note: files Shiori holds until she files them into a trip: 暂存 (held for now), with 文件 so the heading says what is listed.
 ulzb3n	ok	Midnight sun	极昼	src/core/sun.js:78	
 1fjho8h	ok	Polar night	极夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -899,8 +900,8 @@ i7rrx1	ok	This voice is gone: it is skipped.	这个声音已不存在：已跳�
 mf44l1	ok	Her words go to {0}, which sends back the sound.	她的话发给{0}，由它传回声音。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
 1izzjz4	ok	Trip record checks	旅行记录检查	src/plugins/core-schemas/index.js:7	
 1y0f0hr	ok	Checks trip.json, plan items, bookings and watches when they are saved.	保存时检查旅行的 trip.json、行程项目、预订和监测项。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	ok	File tools	文件工具	src/plugins/files/index.js:13	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 处理旅行文件和你自己文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:16	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	文件工具	src/plugins/files/index.js:15	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 处理旅行文件和你自己文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	出行工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：路线，以及预先填好的航班、酒店和租车搜索，供你预订。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用的 MCP 版本未知；annai 支持 2025-03-26 至 2025-11-25。	src/plugins/mcp/client.js:88	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
