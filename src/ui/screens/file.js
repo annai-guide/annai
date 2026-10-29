@@ -10,12 +10,13 @@ import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
 import { SYS_WAITING } from '../../core/scopes.js';
 import { dropWaiting } from '../../core/waiting.js';
+import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 
 /** @type {string | null} */
 let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
-const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, now: t`Now` });
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, item: t`Details`, now: t`Now` });
 /**
  * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
  * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip (the review of phone-fixes-1).
@@ -51,7 +52,7 @@ export async function renderFile(ctx, route) {
   const { entry, bytes: content } = r;
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),
-    editor(ctx, id, entry, content),
+    await editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
       await ctx.ws.delete(id, path, { author: 'user' });
@@ -71,7 +72,7 @@ async function waitingFile(ctx, path) {
   const { entry, bytes } = r;
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), relTime(entry.modified)].join(' · ') }),
-    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : download(entry, bytes),
+    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes),
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
       const freed = await dropWaiting(ctx.ws, path);
       ctx.notices.toast(t`Deleted ${entry.path.split('/').pop() ?? ''}. ${size(freed)} freed.`);
@@ -101,7 +102,23 @@ function editor(ctx, id, entry, content) {
     return h('div', { class: 'panel' }, field(t`Content`, area), errors, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: save }, t`Save`)));
   }
   if (entry.type.startsWith('image/')) return preview(ctx, id, entry, content);
+  if (entry.type === 'application/pdf') return pdfView(entry, content);
   return download(entry, content);
+}
+
+/**
+ * A PDF shown by the browser itself (Open the original: "shows the file itself"), where it has a viewer for one in a page (Chrome and
+ * Firefox say so; Safari's <img> drawing a PDF says it is Safari, which shows PDFs in frames); elsewhere its card, with Open (the
+ * browser's own handling of the file) and Download. @param {any} entry @param {Uint8Array} content
+ */
+async function pdfView(entry, content) {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: 'application/pdf' })));
+  const name = entry.path.split('/').pop() ?? entry.path;
+  const acts = h('div', { class: 'acts' }, h('a', { class: 'btn', href: url, target: '_blank', rel: 'noopener' }, t`Open`), download(entry, content));
+  // Open and Download stay under the frame too: a viewer that can't draw this one leaves a way to it.
+  if (navigator.pdfViewerEnabled || (await imgDrawsPdf())) return h('div', { class: 'original' }, h('iframe', { class: 'pdf-view', src: url, title: name }), acts);
+  return h('div', { class: 'original' }, fileCard({ name, type: entry.type, pages: pdfPages(content) }), acts);
 }
 
 /** A photo, a tap opening it full size. @param {any} ctx @param {string} id its trip, or the waiting space @param {any} entry @param {Uint8Array} content */

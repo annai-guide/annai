@@ -1,5 +1,5 @@
 {
-  "build": "9c0608dc742d",
+  "build": "8d4c406b819f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -195,7 +195,7 @@
     "/src/plugins/voice-browser/index.js": "4b8e07716086",
     "/src/plugins/web/free.js": "be161cb903a1",
     "/src/plugins/web/index.js": "b0f3b38401b5",
-    "/src/ui/base.css": "53c8af0827d3",
+    "/src/ui/base.css": "71535112873a",
     "/src/ui/cards.js": "516990c53957",
     "/src/ui/composer.js": "cd1624b332ab",
     "/src/ui/credits.js": "6a90a3274f4d",
@@ -223,7 +223,7 @@
     "/src/ui/offline-pack.js": "569092a05266",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/photo-codec.js": "3006ab90b0ab",
-    "/src/ui/preview.js": "bed528cdf639",
+    "/src/ui/preview.js": "19eafcef74a5",
     "/src/ui/photo-viewer.js": "cdb466165727",
     "/src/ui/platform.js": "d92cd56df069",
     "/src/ui/privacy.js": "fbe514b232cf",
@@ -243,7 +243,7 @@
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "03c80bf16505",
     "/src/ui/screens/ext.js": "b2e02413774e",
-    "/src/ui/screens/file.js": "db4575cb614a",
+    "/src/ui/screens/file.js": "e5e9c5909191",
     "/src/ui/screens/import.js": "fd44391c00ce",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
@@ -285,8 +285,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "5ce2d7df5d64",
-    "/l10n/zh-Hans.json": "2b0fad6e65e2",
-    "/l10n/zh-Hant.json": "962249faaae6"
+    "/l10n/ja.json": "61f2a4d2efd6",
+    "/l10n/zh-Hans.json": "086f52dfb0e6",
+    "/l10n/zh-Hant.json": "03419da84390"
   }
 }

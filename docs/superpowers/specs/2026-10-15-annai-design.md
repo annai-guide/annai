@@ -1118,7 +1118,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - `img-src 'self' blob: data: https:`
   - `media-src 'self' blob:`
   - `worker-src 'self' blob:`
-  - `frame-ancestors 'none'`
+  - `frame-src 'self' blob:` and `frame-ancestors 'self'` (a PDF the user kept, shown by the browser's own viewer in a frame: Open the original, seeing-bookings; the PDF's object URL takes annai's policy, so annai must be allowed to frame its own; no other site can)
   - `object-src 'none'`
   - `'wasm-unsafe-eval'` joins `script-src` when the first WebAssembly encoder plugin does (§4.8). It allows compiling WebAssembly, not running text as JavaScript.
 - **Model output never goes into `innerHTML`.** Our own small Markdown renderer builds DOM nodes and escapes everything else. One exception, by Google's terms: Google's search suggestions (§9.5), Google's own HTML, are set with `innerHTML` in `src/ui/grounding.html`, a frame sandboxed without `allow-same-origin` (its origin opaque, so it can't reach annai, its storage or its keys). Its own policy, `default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'; frame-ancestors 'self'`, is in `_headers` (which detaches annai's there, as Cloudflare Pages would otherwise join the two) and, but for `frame-ancestors`, in the page itself, for a host that doesn't serve `_headers`: no script runs there but the one that sets the HTML, and that one takes HTML only while sandboxed, and only from annai as its parent. A frame that loads a second time is removed. annai's own policy is unchanged.

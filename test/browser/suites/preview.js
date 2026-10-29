@@ -40,4 +40,8 @@ export default function (test, assert) {
     if (await imgDrawsPdf()) URL.revokeObjectURL(/** @type {string} */ (url));
     else assert.equal(url, null);
   });
+  test("a PDF no browser here can draw (broken), and a photo it can't take, are null without the plugin: never a broken picture", async () => {
+    assert.equal(await previewOf(new Blob(['%PDF-1.4 booking'], { type: 'application/pdf' }), { registry: new Registry() }), null);
+    assert.equal(await previewOf(new Blob(['not a photo'], { type: 'image/jpeg' })), null);
+  });
 }

@@ -1298,6 +1298,7 @@ zymqne	ok	Only update if you trust where it came from.	入手元を信頼でき�
 1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:148	
 15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:150	
 c9wfke	ok	Not now	今はしない	src/ui/plugin-updates.js:151	
+vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annai にはアカウントがなく、あなたの旅やキーを保存する annai のサーバーもありません。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	必要な所にだけ送信。	src/ui/privacy.js:22	
@@ -1546,36 +1547,37 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	この
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}にあります。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅	src/ui/screens/ext.js:56	
-10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:45	
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/file.js:45	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:47	
-krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:50	
-1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:56	
-1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:56	
-1lwovru	ok	This file isn't waiting with Shiori any more.	このファイルはもう Shiori が預かっていません。	src/ui/screens/file.js:70	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
-3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/screens/file.js:77	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
-1hnv6ua	ok	Content	内容	src/ui/screens/file.js:101	
-lewgh4	ok	Save	保存	src/ui/screens/file.js:101	
-1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:114	
-wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:119	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:126	
-t8quxl	ok	Download	ダウンロード	src/ui/screens/file.js:136	
-4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:145	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:146	
-1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:149	
-1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:156	
-yugfpb	ok	History	履歴	src/ui/screens/file.js:157	
-q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:162	
-1q136y3	ok	That version isn't stored on this device.	そのバージョンはこの端末に保存されていません。	src/ui/screens/file.js:168	
-twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:172	
-16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:173	
-1dw4k8q	ok	Current	現在	src/ui/screens/file.js:174	
-3g3rkl	ok	changed by you {0}	あなたが変更（{0}）	src/ui/screens/file.js:180	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0} が変更（{1}）	src/ui/screens/file.js:180	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	あなたが削除（{0}）	src/ui/screens/file.js:186	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:186	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:187	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:187	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+43f6md	ok	Details	詳細	src/ui/screens/file.js:19	Note: the crumb back to a plan item's details screen, from the file it came from.
+10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:46	
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/file.js:46	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:48	
+krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:51	
+1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:57	
+1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:57	
+1lwovru	ok	This file isn't waiting with Shiori any more.	このファイルはもう Shiori が預かっていません。	src/ui/screens/file.js:71	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
+3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/screens/file.js:78	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
+1hnv6ua	ok	Content	内容	src/ui/screens/file.js:102	
+lewgh4	ok	Save	保存	src/ui/screens/file.js:102	
+1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:131	
+wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:136	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:143	
+t8quxl	ok	Download	ダウンロード	src/ui/screens/file.js:153	
+4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:162	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:163	
+1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:166	
+1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:173	
+yugfpb	ok	History	履歴	src/ui/screens/file.js:174	
+q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:179	
+1q136y3	ok	That version isn't stored on this device.	そのバージョンはこの端末に保存されていません。	src/ui/screens/file.js:185	
+twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:189	
+16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:190	
+1dw4k8q	ok	Current	現在	src/ui/screens/file.js:191	
+3g3rkl	ok	changed by you {0}	あなたが変更（{0}）	src/ui/screens/file.js:197	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0} が変更（{1}）	src/ui/screens/file.js:197	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	あなたが削除（{0}）	src/ui/screens/file.js:203	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:203	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:204	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:204	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 f0ig49	ok	Open a trip	旅を開く	src/ui/screens/import.js:36	
 1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:39	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには annai のファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:52	
