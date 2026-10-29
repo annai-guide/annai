@@ -38,7 +38,7 @@ export class Bench {
   #why = new Map();
   /** What failed, for a rest only the user can end (a refused key, no credit): such a model isn't asked anyway. @type {Map<string, string>} */
   #kind = new Map();
-  /** Models asked while resting that failed: not asked again until this rest ends (round 11). @type {Set<string>} */
+  /** Models asked while resting whose failure renewed the rest: they hold no awake model back until this rest ends (rounds 11, 12). @type {Set<string>} */
   #askedWhileResting = new Set();
   /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] @param {string} [kind] the failure's kind */
   bench(id, ms, now = Date.now(), why, kind) {
@@ -58,7 +58,7 @@ export class Bench {
   why(id) {
     return this.#why.get(id);
   }
-  /** Asked while it rested, and it failed: it isn't asked again until its rest ends (round 11). @param {string} id */
+  /** Asked while it rested, and the failure renewed its rest: it holds no awake model back until that rest ends (rounds 11, 12). @param {string} id */
   askedResting(id) {
     this.#askedWhileResting.add(id);
   }
@@ -512,9 +512,11 @@ export async function callRole(c) {
   // both passes (round 9), the one whose rest ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
   // check and round 8). Not Koe's list (Kokoro answers when she can't), and not a rest only the user can end (a refused key, no credit)
   // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
-  const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id) && !bench.triedResting(id)) : []);
+  const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
   const awake = preferred.filter((id) => !restingNow.has(id));
-  const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b));
+  // The one whose rest ends soonest first; one that failed when asked in this rest after the others (round 12: a dead model on a short rest
+  // would otherwise take the one resting ask from a live one).
+  const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => Number(bench.triedResting(a)) - Number(bench.triedResting(b)) || bench.until(a) - bench.until(b));
   /** The resting model asked in this call, when one was. @type {string | null} */
   let restingAsked = null;
   let began = false;
@@ -684,12 +686,12 @@ export async function callRole(c) {
           const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
           if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
           bench.bench(id, step.bench, now(), long, err.kind);
+          // Asked while it rested, and this failure renewed its rest: it doesn't hold an awake model back again in this rest (rounds 11, 12).
+          if (restingAsked === id) bench.askedResting(id);
         }
         break;
       }
     }
-    // Asked while it rested, and it failed: not asked again until this rest ends, so a dead model doesn't hold up every turn (round 11).
-    if (restingAsked === id) bench.askedResting(id);
     return null;
   };
   /**
@@ -700,7 +702,9 @@ export async function callRole(c) {
   /** Awake models whose reading of a file failed, held back until a resting model that takes it as it is was tried (round 10). @type {{ id: string, base: Request }[]} */
   const blind = [];
   /** Whether a resting model would be asked with the request as it is: nothing keeps it out, as it would be sent it (round 11). */
+  // One that failed when asked in this rest (and was rested again for it) holds no one back: it is only asked at the list's end (round 12).
   const restingTakes = () => !restingAsked && resting.some((x) => {
+    if (bench.triedResting(x)) return false;
     const rec = config.models[x];
     const pRec = rec ? config.providers[rec.provider] : undefined;
     const m = rec ? modelOf(rec) : null;
