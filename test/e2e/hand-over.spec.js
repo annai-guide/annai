@@ -178,7 +178,7 @@ test("with no trip open, a pasted text that is not a booking is dropped: once sh
   ] });
   try {
     await setUp(page, llm.origin);
-    await paste(page, 'Thanks for dinner last night!\nSee you at the reunion.');
+    await paste(page, 'Thanks for dinner last night!\nIt was lovely to see you.\nSee you at the reunion.\nSam');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.convo').getByText('That was a note, not a booking, so I let it go.')).toBeVisible({ timeout: 60_000 });
     await page.goto('/#/trips');
@@ -234,4 +234,21 @@ test("a booking for another trip, while in a trip: she moves the file there and 
   } finally {
     await llm.stop();
   }
+});
+
+test('a short paste stays words; a long one into an empty box becomes a chip, which can be put back as words', async ({ page }) => {
+  await openApp(page);
+  await paste(page, 'Seat 14D\nAisle, please');
+  await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
+  const text = (await fixture('confirmation.txt', 'text/plain')).buffer.toString('utf8');
+  await page.getByLabel('Message to Shiori').fill('');
+  await page.getByLabel('Message to Shiori').evaluate((el, t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+  await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
+  await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.replace(/\n/g, ''));
 });
