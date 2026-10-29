@@ -1049,4 +1049,7 @@ test("a resting model switched off holds no awake model back: the text model's a
   const r = await call(s, { askResting: true, read: undescribed, request: menu() });
   assert.equal(r.answeredBy, 'model-0');
   assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the dead photo model is not asked');
+  // The Trace gives each one it never reached its own reason: switched off, not resting.
+  assert.equal(r.attempts.find((a) => a.model === 'm-1')?.outcome, 'off');
+  assert.equal(r.attempts.find((a) => a.model === 'm-2')?.outcome, 'benched');
 });
