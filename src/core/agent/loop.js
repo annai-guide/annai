@@ -129,6 +129,9 @@ export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn
 
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
+/** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
+const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
+
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
@@ -2224,6 +2227,13 @@ export class Agent {
       // A photo or PDF by its hash alone must be this conversation's (reach.js): another trip's is the tool's error (as in 8c-1).
       /* en */
       if (!(await this.#readable(output, scope, c.name))) output = { content: `Error: ${c.name} gave back an image annai can't read, so its answer was left out.`, isError: true };
+      // With no trip open, a file waiting with Shiori is read by a side task, and only what it says is kept here: the no-trip conversation
+      // never holds a waiting file's bytes, so a trip it is filed into, once removed, gives all of its space back (the user, 2026-10-28).
+      if (scope === ME && waitingMedia(output)) {
+        /* en */
+        const told = { ...output, content: `${output.content}\nFiles waiting with you are read by a side task here, so only what it says is kept in this conversation.` };
+        output = await this.#described(told, o.wakeId, o.signal, { input: ['text'] }, undefined, scope, c.name === 'read', o.reads);
+      }
       // Koe answers at once (the fix pass): a PDF its model can't read (a live one reads none) is Kokoro's to read, not told for it.
       if (output.document && this.#half.name === 'koe' && !o.model?.input?.includes('pdf')) {
         const { document, ...rest } = output;
