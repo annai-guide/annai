@@ -75,7 +75,9 @@ dialog.ask .acts { justify-content: flex-end; }
 dialog.ask.plain { position: fixed; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); max-height: calc(100% - 32px); overflow-y: auto; z-index: 61; }
 details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
 /* Start a trip: a name is enough, its dates folded away. */
-details.dates summary { cursor: pointer; color: var(--ink-2); min-height: 44px; display: flex; align-items: center; }
+details.dates summary { cursor: pointer; color: var(--ink-2); padding: 12px 0; } /* its disclosure marker kept: no flex; 44 px by padding */
+/* The way back to the conversation outside any trip, above the trip cards. */
+.card.no-trip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; font: inherit; text-align: start; cursor: pointer; margin-block-end: 12px; }
 /* What waits with Shiori, on Trips: each file by its name, its buttons beside it, below it on a narrow phone. */
 .waiting-file { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .waiting-file .path { flex: 1 1 12em; min-width: 0; overflow-wrap: anywhere; }

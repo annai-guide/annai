@@ -124,6 +124,16 @@ export function movedWords(d, title) {
   return plural(d.count, 'Shiori took # file to {0}.', 'Shiori took # files to {0}.', title);
 }
 
+/**
+ * Shiori's turn, settled: Undo tapped while she works stops her turn first and waits for it, so nothing she writes for the hand-over
+ * lands after Undo has looked. @param {{ busy: boolean, stopKokoro?: () => void, idle: () => Promise<void> }} agent
+ */
+export async function settled(agent) {
+  if (!agent.busy) return;
+  agent.stopKokoro?.();
+  await agent.idle();
+}
+
 /** What fired, each to be marked with its language; the line ends them. @param {{ kind: string, titles?: string[] }[]} reasons */
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
@@ -549,6 +559,7 @@ function undoLine(ctx, scope, list) {
     const hh = /** @type {string} */ (handover);
     button.disabled = true;
     try {
+      await settled(ctx.agent);
       /** @type {{ title: string } | null} */
       let removed = null;
       /** @type {string[]} */
