@@ -189,7 +189,11 @@ export async function readFile(file, model, o) {
           const told = await ask('image', (role) => images.slice(0, most(role)).map((i) => ({ type: 'image', ...i })), DESCRIBE_PAGES, /* en */ 'Give the content of these pages.', 3000);
           const covered = told ? told.sent.map((/** @type {any} */ p) => p.page).filter((/** @type {any} */ n) => typeof n === 'number') : [];
           /* en */
-          const which = !covered.length ? 'its pages' : covered.length === 1 ? `page ${covered[0]} of ${drawn.count}` : covered.every((n, i) => n === covered[0] + i) ? `pages ${covered[0]}–${covered.at(-1)} of ${drawn.count}` : `pages ${covered.slice(0, -1).join(', ')} and ${covered.at(-1)} of ${drawn.count}`;
+          const read = !covered.length ? 'its pages' : covered.length === 1 ? `page ${covered[0]} of ${drawn.count}` : covered.every((n, i) => n === covered[0] + i) ? `pages ${covered[0]}–${covered.at(-1)} of ${drawn.count}` : `pages ${covered.slice(0, -1).join(', ')} and ${covered.at(-1)} of ${drawn.count}`;
+          // A blank page among them is said to be blank, as the pages line says it, so it doesn't look unread (round 8).
+          const blanks = !blank.length ? '' : blank.length === 1 ? `; page ${blank[0]} is blank` : `; pages ${blank.slice(0, -1).join(', ')} and ${blank.at(-1)} are blank`;
+          /* en */
+          const which = `${read}${blanks}`;
           /* en */
           if (told) return reading('told', `What it says (told by ${told.answeredBy} from pictures of ${which}, as you can't read PDFs): ${told.reply.text.trim()}${told.reply.stop === 'length' ? GOES_ON : ''}`);
         }

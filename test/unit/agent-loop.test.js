@@ -1805,9 +1805,8 @@ test('the same photo twice in one message is read once: one reader call, one kep
   await k.agent.idle();
   assert.equal(k.sent['model-u'].length, 1);
   assert.equal((await k.events(['reading'])).length, 1);
-  const sent = JSON.stringify(k.sent['model-0'][0].messages);
-  assert.equal((sent.match(/the fish is circled/g) ?? []).length, 1, 'the first carries it');
-  assert.match(sent, /\[photo \/trip\/files\/[^,\]]+, the same as above\]/, 'the second is the same photo, said once');
+  // Both places carry the one reading, in words: a model that sees no photos gets no picture to send once (round 8).
+  assert.equal((JSON.stringify(k.sent['model-0'][0].messages).match(/the fish is circled/g) ?? []).length, 2);
 });
 
 test('two reads of one file in one step read it once (round 4)', async (t) => {
@@ -1891,4 +1890,15 @@ test("a reader that takes fewer pictures than the pages drawn is sent its limit 
   assert.doesNotMatch(JSON.stringify(parts), /the PDF above/);
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
   assert.match(r.data.content, /What it says \(told by model-u from pictures of pages 1–2 of 3, as you can't read PDFs\): Flight AN 123\.$/);
+});
+
+test("a reader's words name a blank page as blank, not as unread (round 8)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123.' }] }, ['text', 'image']);
+  const page = (/** @type {number} */ i) => ({ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0 + i]), width: 10, height: 10 });
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: 3, pages: [page(0), page(1)], blank: [3] }) });
+  k.agent.send('Read it');
+  await k.agent.idle();
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /told by model-u from pictures of pages 1–2 of 3; page 3 is blank, as you can't read PDFs\): Flight AN 123\.$/);
 });
