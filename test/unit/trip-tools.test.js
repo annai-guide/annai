@@ -11,6 +11,8 @@ import { readNames } from '../../src/core/names.js';
 import { waitingFiles } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { storedTexts } from '../../src/core/agent/log.js';
+import { importCalendar } from '../../src/core/imports.js';
+import { undoHandover, handOverText } from '../../src/core/handover.js';
 
 const say = (/** @type {string} */ text, /** @type {Record<string, any>} */ more = {}) => ({ ...more, toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -270,4 +272,36 @@ test('start_trip with no hand-over and no files writes no copy of a message: onl
   const trip = await tripNamed(k, 'Kyoto');
   assert.deepEqual(await eventsIn(k, trip.id, ['msg.user']), []);
   assert.deepEqual((await waitingFiles(k.ws)).map((f) => f.path), ['/files/flight.pdf']);
+});
+
+const ICS = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:dinner@test.invalid\r\nDTSTART:20261120T180000Z\r\nDTEND:20261120T190000Z\r\nSUMMARY:Dinner in Testville\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:tour@test.invalid\r\nDTSTART:20261121T090000Z\r\nDTEND:20261121T110000Z\r\nSUMMARY:Walking tour\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+
+test("move_file takes a calendar file's plan items with it, but one the user changed; Undo brings them back", async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+  await k.ws.write(k.trip, '/files/dinner.ics', utf8(ICS), { author: 'user', type: 'text/calendar' });
+  const planned = await importCalendar(k.ws, k.trip, '/files/dinner.ics', { defaultTz: 'UTC' });
+  assert.equal(planned.length, 2);
+  const [kept, moving] = planned.sort();
+  await k.ws.patch(k.trip, kept, { notes: 'Bring an umbrella' }, { author: 'user' });
+  assert.match(await run(k, 'move_file', { path: '/trip/files/dinner.ics', trip: kyoto }, 'h-1'), /1 event/);
+  const there = await k.ws.list(kyoto, '/plan/');
+  assert.deepEqual(there.map((/** @type {any} */ f) => [f.path, f.source]), [[moving, '/files/dinner.ics']]);
+  assert.ok(await k.ws.read(k.trip, kept));
+  assert.equal(await k.ws.read(k.trip, moving), undefined);
+  // That trip is told its events are on its plan already.
+  const [wake] = await eventsIn(k, kyoto, ['wake']);
+  assert.match(wake.data.reasons[0].text, /1 of its events/);
+  await undoHandover(k.ws, k.trip, 'h-1');
+  assert.deepEqual(await k.ws.list(kyoto, '/plan/'), []);
+  assert.equal((await k.ws.list(k.trip, '/plan/')).find((/** @type {any} */ f) => f.path === moving)?.source, '/files/dinner.ics');
+  assert.ok(await k.ws.read(k.trip, '/files/dinner.ics'));
+});
+
+test("a waiting calendar file filed into a trip she started is not said to be on its plan: nothing put it there", async () => {
+  const text = handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true }]);
+  assert.doesNotMatch(text, /on the plan already/);
+  assert.match(handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true, planned: 2 }]), /"\/trip\/files\/dinner\.ics": annai put its 2 events on the plan already/);
 });
