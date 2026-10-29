@@ -139,7 +139,8 @@ export function bookingFacts(b, o = {}) {
   };
   /** @type {ReturnType<typeof bookingFacts>} */
   const out = [];
-  const shown = new Set(flight ? ['from', 'to'] : []);
+  // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen.
+  const shown = new Set(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []);
   for (const key of ORDER[b.kind] ?? OTHER) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
