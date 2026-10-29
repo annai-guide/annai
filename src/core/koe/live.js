@@ -544,14 +544,16 @@ export class LiveKoe {
   }
 
   /**
-   * What the user typed or sent: written first (Kokoro has it at once), then its photos, each a turn that waits, and its words.
-   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean }} [o] @returns {Promise<boolean>} false: no session
+   * What the user typed or sent: written first (Kokoro has it at once), then its photos, each a turn that waits, and its words. Files
+   * handed over are Kokoro's to read: the session hears only that they came.
+   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @returns {Promise<boolean>} false: no session
    */
-  async send(text, { photos = [], chose = false } = {}) {
+  async send(text, { photos = [], chose = false, handed = [], handover } = {}) {
     this.#brief = false;
     this.#watched = true;
     await this.c.held?.(); // typed while Start fresh runs: written below its divider
-    const e = await this.c.koe.logUser(text, photos, chose);
+    const e = await this.c.koe.logUser(text, photos, { chose, handed, ...(handover ? { handover } : {}) });
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
     const takes = Boolean(rec && modelOf(rec).input.includes('image'));
@@ -559,8 +561,11 @@ export class LiveKoe {
     const { images } = await resolveEvent(this.c.store, e);
     for (const im of takes ? images : []) if (im.type === 'image' && im.data) this.#send((s) => s.image({ mediaType: im.mediaType, data: im.data }));
     const words = String(text ?? '').trim();
+    /* en */
+    const files = handed.length ? `[the user handed you ${handed.length === 1 ? 'a file' : `${handed.length} files`}; Kokoro reads them]` : '';
     /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
-      : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]` : theirs(words));
+      : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]`
+        : files && !words ? files : `${theirs(words)}${files ? ` ${files}` : ''}`);
     return true;
   }
 

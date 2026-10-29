@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';
+import { readNames } from '../../src/core/names.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -228,4 +229,64 @@ test("the case fallback never stands in for a file that existed: a deleted path 
   // A path that never was: the fallback still helps, but delete says there's no file.
   await assert.rejects(run('delete', { path: '/trip/NOTES/HOTEL.md' }));
   assert.ok(await ws.read(trip, '/notes/hotel.md'));
+});
+
+test("Shiori's file tools put the turn's hand-over on what they write and delete", async () => {
+  const { ws, trip, tools } = await setup();
+  const call = { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori', handover: 'h-1' };
+  await tools.write.run({ path: '/trip/notes/a.md', content: 'one' }, call);
+  await tools.edit.run({ path: '/trip/notes/a.md', old: 'one', new: 'two' }, call);
+  await tools.patch.run({ path: '/trip/names.json', changes: { '/files/a.pdf': 'Alaska flight' } }, call);
+  await tools.delete.run({ path: '/trip/notes/a.md' }, call);
+  await tools.write.run({ path: '/trip/notes/b.md', content: 'later' }, { ...call, handover: undefined });
+  const ev = await ws.store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: ['file.write', 'file.delete'] }));
+  const hers = ev.filter((e) => e.actor === 'shiori');
+  assert.deepEqual(hers.map((e) => [e.data.path, e.data.handover ?? null]), [
+    ['/notes/a.md', 'h-1'], ['/notes/a.md', 'h-1'], ['/names.json', 'h-1'], ['/notes/a.md', 'h-1'], ['/notes/b.md', null],
+  ]);
+});
+
+test('with no trip open, list / shows /waiting/ files, and read reads one; with a trip open, /waiting/ is refused in words', async () => {
+  const { ws, trip, tools } = await setup();
+  await ws.write(SYS_WAITING, '/files/confirmation.txt', 'Car: Midnight Sun Rentals, Nov 20', { author: 'user' });
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  const listed = await tools.list.run({ path: '/' }, none);
+  assert.match(listed, /^\/waiting\/files\/confirmation\.txt\t/m);
+  assert.match(listed, /^\/me\/profile\.md\t/m);
+  assert.match(await tools.list.run({ path: '/waiting/' }, none), /^\/waiting\/files\/confirmation\.txt\t/m);
+  assert.match(await tools.read.run({ path: '/waiting/files/confirmation.txt' }, none), /Midnight Sun/);
+  // Her short name for it, beside it.
+  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/confirmation.txt': 'Car · Nov 20' } }, none);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/confirmation.txt': 'Car · Nov 20' });
+  const open = { ...none, scope: trip, trip };
+  await assert.rejects(tools.read.run({ path: '/waiting/files/confirmation.txt' }, open), /with a trip open, its files are in \/trip\/files\//);
+  assert.doesNotMatch(await tools.list.run({ path: '/' }, open), /waiting/);
+});
+
+test("Shiori's delete of a /waiting/ file drops it: the file, its history and its name go, and its space comes back", async () => {
+  const { ws, tools } = await setup();
+  const body = 'Thanks for your note! See you at the reunion.';
+  const { hash } = await ws.write(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt', body, { author: 'user' });
+  await ws.write(SYS_WAITING, '/names.json', { '/files/pasted-2026-10-28-0310.txt': 'A note' }, { author: 'shiori' });
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  assert.match(await tools.delete.run({ path: '/waiting/files/pasted-2026-10-28-0310.txt' }, none), /Deleted \/waiting\/files\/pasted-2026-10-28-0310\.txt/);
+  assert.equal(await ws.read(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), undefined);
+  assert.deepEqual(await ws.history(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), []);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), {});
+  assert.equal(await ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash)), false);
+});
+
+test("in the waiting space she writes only her short names, and deletes only annai's own pasted texts: the user's files are theirs to delete, on Trips", async () => {
+  const { ws, tools } = await setup();
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  await ws.write(SYS_WAITING, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  await assert.rejects(tools.delete.run({ path: '/waiting/files/flight.pdf' }, none), /theirs to delete[\s\S]*Trips/);
+  assert.ok(await ws.read(SYS_WAITING, '/files/flight.pdf'));
+  for (const [name, input] of /** @type {const} */ ([['write', { path: '/waiting/bookings/stray.json', content: { id: 'stray' } }], ['write', { path: '/waiting/files/flight.pdf', content: 'x' }],
+    ['patch', { path: '/waiting/notes.json', changes: { a: 1 } }]])) {
+    await assert.rejects(tools[name].run(input, none), /only \/waiting\/names\.json/, `${name} ${input.path}`);
+  }
+  assert.deepEqual((await ws.list(SYS_WAITING, '/')).map((f) => f.path), ['/files/flight.pdf']);
+  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR · Nov 20' } }, none);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/flight.pdf': 'ANNAI AIR · Nov 20' });
 });

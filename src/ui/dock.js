@@ -10,6 +10,7 @@ import { SYS_SETTINGS } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
+import { createComposer, handOver } from './composer.js';
 
 /** How long her last words stay in the bubble once she has stopped, to read them. */
 const CAPTION_LINGER_MS = 2500;
@@ -56,25 +57,60 @@ export function createDock(ctx) {
     if (e.key === 'Enter' && (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100))) e.preventDefault();
   });
   const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': t`Send`, title: t`Send` }, icon(/* en */ 'M12 19V6M6.5 11.5L12 6l5.5 5.5'));
+  // The + inside the box, before the words, and the chips of what it picked (the bookings-and-trips design, goal 1): sent with the
+  // words, or alone. A long paste into an empty box (a confirmation email) becomes a chip too, which can be put back as words.
+  const composer = createComposer(ctx, {
+    onChange: () => ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)),
+    onPutBack: (/** @type {string} */ pasted) => {
+      // The box is one line: the paste's lines become words with spaces between, never glued together.
+      const words = pasted.trim().replace(/\s*[\r\n]+\s*/g, ' ');
+      input.value = input.value.trim() ? `${input.value} ${words}` : words;
+      input.focus();
+      ctx.agent.typing?.(true);
+    },
+  });
+  input.addEventListener('paste', (/** @type {ClipboardEvent} */ e) => { composer.paste(e, !input.value.trim()); });
+  /** The files being kept: the box stays, saying how far it is, until they are all in (the user, 2026-10-29: "Show progress"). */
+  let keepingNow = false;
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
       e.preventDefault();
-      if (composing) return; // an IME's candidate is not yet text to send
+      if (composing || keepingNow) return; // an IME's candidate is not yet text to send; files being kept are sent once kept
       const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      closeTyping();
-      typeButton.focus(); // not left in the hidden box
-      ctx.agent.send(text);
-      if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+      const items = composer.items();
+      if (!text && !items.length) return;
+      const done = () => {
+        input.value = '';
+        composer.clear();
+        closeTyping();
+        typeButton.focus(); // not left in the hidden box
+      };
+      if (!items.some((a) => 'file' in a)) {
+        done();
+        if (items.length) return void handOver(ctx, text, items).catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }));
+        ctx.agent.send(text);
+        if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+        return;
+      }
+      keepingNow = true;
+      input.readOnly = true;
+      composer.keeping(0, items.filter((a) => 'file' in a).length);
+      handOver(ctx, text, items, { progress: (n, total) => composer.keeping(n, total) })
+        .catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }))
+        .finally(() => {
+          keepingNow = false;
+          input.readOnly = false;
+          composer.keeping(null);
+          done();
+        });
     },
-  }, h('div', { class: 'type-box' }, input, sendArrow));
+  }, composer.el, h('div', { class: 'type-box' }, composer.plus, input, sendArrow));
   const typeButton = h('button', { class: 'ib', type: 'button', 'aria-label': t`Type`, 'aria-expanded': 'false', title: t`Type`, onclick: () => (sheet.hidden ? openTyping() : closeTyping()) }, keyboardIcon());
   /** A tap elsewhere on the page (onTap: never at its press): an empty box closes; one with a draft stays. @param {EventTarget | null} at */
   const elsewhere = (at) => {
     const node = /** @type {Node} */ (at);
-    if (!input.value.trim() && !sheet.contains(node) && !typeButton.contains(node)) closeTyping();
+    if (!input.value.trim() && !composer.items().length && !sheet.contains(node) && !typeButton.contains(node)) closeTyping();
   };
   /** @type {(() => void) | undefined} */
   let offTap;
@@ -98,7 +134,7 @@ export function createDock(ctx) {
     input.focus();
     offTap?.();
     offTap = onTap(elsewhere);
-    ctx.agent.typing?.(Boolean(input.value.trim())); // a draft kept from before is typed text again
+    ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)); // a draft kept from before is typed text again
   };
   const camera = h('input', { id: 'dock-camera', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
   camera.addEventListener('change', async () => {
@@ -249,9 +285,12 @@ export function createDock(ctx) {
   offs.push(ctx.voice?.onChange(layout));
   if (ctx.voice) layout(ctx.voice.mode);
   return {
-    el, avatar, refreshSlots,
+    el, avatar, refreshSlots, openTyping,
+    /** Files in the box as chips (Ask Shiori about this), with what to suggest under them. @param {import('./composer.js').Attachment[]} items @param {{ suggestions?: string[] }} [o] */
+    attach: (items, o) => composer.attach(items, o),
     dispose: () => {
       for (const off of offs.splice(0)) off?.();
+      composer.dispose();
       composing = false;
       offTap?.();
       ctx.agent.typing?.(false);

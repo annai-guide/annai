@@ -1,12 +1,14 @@
 import { VERSION } from '../../app/version.js';
-import { resolvePath } from '../../core/agent/tools.js';
+import { resolvePath, rootOf } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
-import { kindOf } from '../../core/scopes.js';
+import { kindOf, SYS_WAITING } from '../../core/scopes.js';
+import { dropWaiting } from '../../core/waiting.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
+import { NAMES_FILE } from '../../core/names.js';
 
 export const manifest = {
   id: 'files',
@@ -19,8 +21,10 @@ export const manifest = {
 // Below, Shiori's words: English (localization design, section 7).
 
 const TEXT_MAX = 40_000;
+/** A pasted text annai kept as a file (the type box): one that isn't a booking is Shiori's to drop. */
+const PASTED = /^\/files\/pasted-\d{4}-\d{2}-\d{2}-\d{4}(?: \(\d+\))?\.txt$/;
 /* en */
-const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes).' };
+const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes); with no trip open, /waiting/ holds what the user handed you.' };
 
 /** @param {any} annai */
 export function activate(annai) {
@@ -28,10 +32,15 @@ export function activate(annai) {
   const { tsv } = annai.helpers;
   /** @param {string} path @param {any} call */
   const where = (path, call) => resolvePath(path, call.trip);
+  /** The turn's hand-over, for what she writes and deletes in it, so Undo can take it back. @param {any} call */
+  const turnOf = (call) => (call.handover ? { handover: String(call.handover) } : {});
   /** Checked on the path as resolved, so no way of writing it gets around the rule (spec §14.1). @param {string} scope @param {string} path */
   const writable = (scope, path) => {
     /* en */
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
+    // What waits with her is the user's, as they handed it: her short names are all she writes there.
+    /* en */
+    if (scope === SYS_WAITING && path !== NAMES_FILE) throw new Error('/waiting/ holds the user\'s files as they handed them: only /waiting/names.json, your short names for them, is yours to write. File a file into a trip to work with it.');
   };
   /**
    * Plan items and bookings sit directly in their folders, where the format check and the booking rule cover them (spec §4.4).
@@ -76,10 +85,11 @@ export function activate(annai) {
   const filesUnder = async (path, call) => {
     /** @type {any[]} */
     let all;
-    if (path === '/' || path === '') all = [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me'))];
-    else {
+    if (path === '/' || path === '') {
+      all = [...(call.trip ? await listed(call.trip, '/', '/trip') : []), ...(await listed('me', '/', '/me')), ...(call.trip ? [] : await listed(SYS_WAITING, '/', '/waiting'))];
+    } else {
       const { scope, path: inner } = where(path, call);
-      all = await listed(scope, inner.endsWith('/') ? inner : `${inner}/`, path.startsWith('/trip') ? '/trip' : '/me');
+      all = await listed(scope, inner.endsWith('/') ? inner : `${inner}/`, rootOf(path));
     }
     // The offline pack is for the places tools (spec §11.5): it stays out unless asked for.
     return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
@@ -92,7 +102,7 @@ export function activate(annai) {
     const { scope, path } = where(raw, call);
     // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file (round 6).
     if ((await ws.history(scope, path)).length) return null;
-    const root = raw.startsWith('/trip') ? '/trip' : '/me';
+    const root = rootOf(raw);
     const found = (await ws.list(scope, '/')).filter((/** @type {any} */ f) => f.path.toLowerCase() === path.toLowerCase());
     return found.length === 1 ? `${root}${found[0].path}` : null;
   };
@@ -190,7 +200,7 @@ export function activate(annai) {
         writable(scope, path);
         recordPlace(scope, path);
         const r = rule(scope, path);
-        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).${r.note}`;
       },
     },
@@ -209,7 +219,7 @@ export function activate(annai) {
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
         const r = rule(scope, path);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.${r.note}`;
       }),
     },
@@ -225,7 +235,8 @@ export function activate(annai) {
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         const r = rule(scope, path);
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, guard: r.guard }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        // Her short names for files start with her first one (names.js): no write of an empty file first.
+        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.${r.note}`;
       }),
     },
@@ -250,16 +261,25 @@ export function activate(annai) {
     },
     {
       name: 'delete', group: 'Files',
-      description: 'Delete a file. Its history is kept, so the user can restore it.',
+      description: 'Delete a file. Its history is kept, so the user can restore it; a pasted text waiting with you (/waiting/files/pasted-…) goes for good.',
       input: { type: 'object', properties: { path: PATH }, required: ['path'] },
       /** @param {{ path: string }} i @param {any} call */
       // Not case-tolerant: for a delete, "no file" is the true answer (round 6).
       run: (async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(scope, path);
+        // Of what waits with her, only annai's own pasted texts are hers to drop; the user's files are theirs to delete, on Trips.
+        /* en */
+        if (scope === SYS_WAITING && !PASTED.test(path)) throw new Error(`${i.path} is the user's, theirs to delete: they do it on Trips (Waiting with Shiori). Leave it, or file it into a trip.`);
+        if (scope !== SYS_WAITING) writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
         const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
-        await ws.delete(scope, path, { author: 'shiori' });
+        // What waits with her is dropped for good, its space given back: nothing there is the user's to restore (a pasted text that wasn't a booking).
+        if (scope === SYS_WAITING) {
+          if (!(await ws.store.tx(['files'], 'readonly', (/** @type {any} */ t) => t.getFile(scope, path)))) throw new Error(`No file at ${i.path}, so nothing was changed.`);
+          await dropWaiting(ws, path);
+          return `Deleted ${i.path}.`;
+        }
+        await ws.delete(scope, path, { author: 'shiori', ...turnOf(call) });
         return `Deleted ${i.path}.${confirmed ? ' The user had confirmed this booking. If deleting it was a mistake, tell them: its history keeps it, so they can restore it.' : ''}`;
       }),
     },

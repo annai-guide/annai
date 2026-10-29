@@ -3,6 +3,7 @@ import { blobBytes } from '../reach.js';
 import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
 import { strayNote } from '../languages.js';
+import { handOverText } from '../handover.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -24,7 +25,7 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo']);
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -54,6 +55,8 @@ export class Transcript {
   waiting = '';
   /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
   newestPhoto = false;
+  /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
+  #handover = null;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -92,6 +95,7 @@ export class Transcript {
     const koe = this.half === 'koe';
     this.#at = e.seq;
     if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
+    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = d.handover;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
@@ -106,6 +110,7 @@ export class Transcript {
       else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
+      for (const w of d.reasons ?? []) if (typeof w?.handover === 'string') this.#handover = w.handover;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
@@ -114,14 +119,14 @@ export class Transcript {
         this.waiting = 'wake';
       }
     } else if (e.type === 'msg.user' && this.half === 'kokoro' && d.split) {
-      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images]);
+      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images, ...this.#handed(d)]);
       this.unanswered = true;
       this.waiting = 'user';
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         const typed = koe ? theirs(texts.text) : texts.text;
-        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images]);
+        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images, ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -140,6 +145,9 @@ export class Transcript {
       if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
+      // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
+      // which (no handover key), whatever came before it. A reminder's turn settles no hand-over.
+      if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
@@ -175,6 +183,27 @@ export class Transcript {
         }),
       }));
       return;
+    } else if (e.type === 'handover.undo') {
+      // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
+      if (d.handover === this.#handover) this.#handover = null;
+      const n = Number(d.undone) || 0;
+      const kept = Array.isArray(d.kept) ? d.kept.length : 0;
+      const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
+      // Where the files went: back to wait, or back to the trips they came from (an older mark that removed a trip and says neither: to wait).
+      const backTo = (Array.isArray(d.back) ? d.back : []).map((x) => JSON.stringify(String(x)));
+      const waits = Boolean(d.waiting) || (trips.length > 0 && !('back' in d) && !('waiting' in d));
+      /* en */
+      const where = [waits ? 'the files wait with you again' : '', backTo.length ? `${waits ? 'some are' : 'the files are'} back in ${backTo.join(' and ')}` : ''].filter(Boolean).join(', and ');
+      /* en */
+      const gone = trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed` : trips.length > 1 ? `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed` : '';
+      /* en */
+      const said = [
+        n ? `${n === 1 ? '1 file' : `${n} files`} put back as ${n === 1 ? 'it was' : 'they were'}` : '',
+        kept ? `${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '',
+        gone && where ? `${gone}, and ${where}` : gone || where,
+      ].filter(Boolean).join('; ');
+      /* en */
+      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you${said ? `: ${said}` : ''}. Don't do it again unless they ask.` }]);
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
@@ -242,6 +271,26 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
+  get handover() {
+    return this.unanswered ? this.#handover : null;
+  }
+
+  /**
+   * The newest hand-over no reply of hers has answered yet, even when a turn for it ended in an error: Try again's turn, or the user's
+   * next, carries it, so what she then does with it can be undone. @returns {string | null}
+   */
+  get owedHandover() {
+    return this.#handover;
+  }
+
+  /** What annai tells her of a message's files, after its words (handover.js), from its data. @param {any} d @returns {Part[]} */
+  #handed(d) {
+    if (!Array.isArray(d.handed) || !d.handed.length) return [];
+    const text = handOverText(d.handed, { koe: this.half === 'koe' });
+    return text ? [{ type: 'text', text: /* en */ `[annai] ${text}` }] : [];
   }
 
   #waitsForResults() {

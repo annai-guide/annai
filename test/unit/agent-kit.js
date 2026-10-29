@@ -14,6 +14,7 @@ import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.j
 import { Agent } from '../../src/core/agent/loop.js';
 import { Halves } from '../../src/core/agent/halves.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
+import { syncNames } from '../../src/core/names.js';
 import { readFile } from 'node:fs/promises';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -60,14 +61,14 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted provider and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], codecFormats?: string[], uploading?: boolean,
+ * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
  *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
  *   endpoint type (anthropic-messages), its requests sent through fetch (a stand-in)
- *   utility: a script for one more scripted model, in the utility role
+ *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for two chat models in
@@ -76,11 +77,12 @@ export function fakeCodec(formats) {
  *   first false chooses Koe · Classic; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
+  syncNames(ws); // as the app does
   const host = new PluginHost({ registry, workspace: ws, importModule: (/** @type {string} */ u) => import(u) });
   await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
   await host.addBuiltin(new URL('../../src/plugins/files/index.js', import.meta.url).href);
@@ -124,7 +126,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.roles['koe-realtime'].models = ['m-live'];
   }
   if (utility) {
-    add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'] });
+    add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'], ...utilityModel });
     config.roles.utility.models = ['m-u'];
   }
   if (v) {

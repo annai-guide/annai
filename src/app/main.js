@@ -24,6 +24,8 @@ import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
+import { syncNames } from '../core/names.js';
+import { tripTools } from '../core/agent/trip-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
 import { readAppSettings } from '../core/settings.js';
@@ -102,6 +104,7 @@ async function boot() {
   // Koe's one list from before Realtime and Classic is written split, once (spec §9.6).
   await splitOldKoe(ws).catch((e) => console.warn(/* en */ "Koe's old list couldn't be split", e));
   syncTripTitles(ws);
+  syncNames(ws); // a deleted file's short name goes with it
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);
   await plugins.addBuiltin(new URL('../plugins/files/index.js', import.meta.url).href);
@@ -141,6 +144,8 @@ async function boot() {
   // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent.kokoro));
+  // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
+  agent.addLoopTools(tripTools(agent));
   // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
   // Notifications for a closed annai (spec §11.6): what the service worker saw is read at each
   // catch-up; the mirror keeps the push relay in step with live mode.
