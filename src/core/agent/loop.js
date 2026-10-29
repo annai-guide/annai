@@ -1637,7 +1637,8 @@ export class Agent {
    * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
    */
   async #steps(wakes, wakeId, abort) {
-    this.#handover = null; // the newest hand-over among its wakes, those that join included (join)
+    // The newest hand-over among its wakes, those that join included (join); else one a failed turn left owed.
+    this.#handover = this.transcript.owedHandover;
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
     const last = this.#warmth.last;

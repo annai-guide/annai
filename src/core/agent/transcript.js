@@ -256,6 +256,14 @@ export class Transcript {
     return this.unanswered ? this.#handover : null;
   }
 
+  /**
+   * The newest hand-over no reply of hers has answered yet, even when a turn for it ended in an error: Try again's turn, or the user's
+   * next, carries it, so what she then does with it can be undone. @returns {string | null}
+   */
+  get owedHandover() {
+    return this.#handover;
+  }
+
   /** What annai tells her of a message's files, after its words (handover.js), from its data. @param {any} d @returns {Part[]} */
   #handed(d) {
     if (!Array.isArray(d.handed) || !d.handed.length) return [];
