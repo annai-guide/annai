@@ -133,7 +133,7 @@ const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-st
 
 test('milestone 4 done: a pass and a calendar are added, Shiori writes the booking and its plan item, the user confirms it, and the plan goes to the calendar', async ({ page }) => {
   const booking = {
-    id: 'ua123', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123 SFO → EWR', confirmation: 'ABC123',
+    id: 'ua123', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123 SFO → EWR', confirmation: 'ABC123', unsure: [],
     start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
   };
   const item = { id: 'ua123', title: 'UA 123 to Newark', kind: 'flight', fixed: true, start: booking.start, end: booking.end, booking: '/trip/bookings/ua123.json' };

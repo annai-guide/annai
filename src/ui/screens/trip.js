@@ -154,7 +154,7 @@ function fileList(id, files) {
 function starter(path) {
   const base = path.split('/').pop()?.replace(/\.[^.]+$/, '') || 'item';
   if (path.startsWith('/plan/') && path.endsWith('.json')) return JSON.stringify({ id: base, title: base, fixed: false }, null, 2) + '\n';
-  if (path.startsWith('/bookings/') && path.endsWith('.json')) return JSON.stringify({ id: base, kind: 'other', status: 'unverified', source: '/files/' }, null, 2) + '\n';
+  if (path.startsWith('/bookings/') && path.endsWith('.json')) return JSON.stringify({ id: base, kind: 'other', status: 'unverified', source: '/files/', unsure: [] }, null, 2) + '\n';
   if (path.endsWith('.json')) return '{}\n';
   if (path.endsWith('.md')) return `# ${base}\n`;
   return '';

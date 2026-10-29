@@ -119,7 +119,6 @@ test('handOverText: waiting files ask for list_trips and open_trip or start_trip
   assert.doesNotMatch(waiting, /move_file/);
   const trip = handOverText([flight]);
   assert.match(trip, /move_file/);
-  assert.match(trip, /unverified booking/);
   assert.match(trip, /\/trip\/names\.json/);
   assert.doesNotMatch(trip, /start_trip/);
   const ref = handOverText([{ path: '/trip/bookings/flight.json', type: 'application/json', name: 'flight.json', new: false }]);
@@ -128,6 +127,11 @@ test('handOverText: waiting files ask for list_trips and open_trip or start_trip
   const koe = handOverText([flight], { koe: true });
   assert.match(koe, /Kokoro reads them and files them/);
   assert.doesNotMatch(koe, /move_file|names\.json/);
+});
+
+test("handOverText's booking sentence asks for unsure, not for an unverified booking to confirm", () => {
+  assert.doesNotMatch(handOverText([flight]), /until the user confirms|unverified/);
+  assert.match(handOverText([flight]), /unsure/);
 });
 
 test('handOverText: a pasted text that is not a booking is to be deleted, one that is kept with its booking', () => {

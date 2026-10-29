@@ -13,7 +13,7 @@ const MESSAGES = '/b/v1/messages';
 /** A request as text, to find what annai chose (a stored file's path, a trip's id). @param {any} body */
 const asText = (body) => JSON.stringify(body ?? {});
 /** A booking she writes, from a file. @param {string} id @param {string} kind @param {string} source */
-const booking = (id, kind, source) => ({ id, kind, status: 'unverified', source, title: `${kind} ${id}` });
+const booking = (id, kind, source) => ({ id, kind, status: 'unverified', source, title: `${kind} ${id}`, unsure: [] });
 
 /** Shiori's main model on the stand-in (/b), and with reader, a utility model too (/u); no trip made. @param {import('@playwright/test').Page} page @param {string} origin @param {{ reader?: boolean }} [o] */
 async function setUp(page, origin, { reader = false } = {}) {

@@ -210,6 +210,8 @@ test("recorded (gemini-3.5-flash-lite, 2026-10-22): Gemini writes Shiori's booki
   };
   const write = await callIn('tools-write.sse');
   assert.equal(write?.name, 'write');
+  // Recorded before bookings carried unsure: a new booking now needs it, so this one rewrites a booking from before.
+  await ws.write(trip, '/bookings/post-ranch-inn.json', { id: 'post-ranch-inn', kind: 'lodging', status: 'unverified', source: '/files/x.pdf' }, { author: 'user' });
   assert.equal(typeof write.input.content, 'string');
   await run('write', write.input);
   const booking = await ws.readJSON(trip, '/bookings/post-ranch-inn.json');
