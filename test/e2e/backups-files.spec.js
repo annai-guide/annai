@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, pastWelcome } from './helpers.js';
+import { openApp, pastWelcome, allFiles } from './helpers.js';
 import { startS3, ACCESS, SECRET } from '../fakes/s3.js';
 import { startWebDAV, USER, PASSWORD } from '../fakes/webdav.js';
 
@@ -19,6 +19,7 @@ async function tripWithNote(page, title, path, content) {
   await page.getByLabel('Trip name').fill(title);
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await allFiles(page);
   await page.getByLabel('File path').fill(path);
   await page.getByRole('button', { name: 'Create' }).click();
   await page.getByLabel('Content').fill(content);
@@ -76,6 +77,7 @@ test('S3: encrypted automatic backups, and a wiped phone restores one with its p
     await page.getByRole('button', { name: 'Unlock' }).click();
     await page.getByRole('button', { name: 'Import' }).click();
     await page.getByRole('link', { name: 'Open Big Sur' }).click();
+    await allFiles(page);
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932');
   } finally {

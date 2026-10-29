@@ -351,3 +351,12 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .credit { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .credit-name { font-size: 16px; font-weight: 700; }
 pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-mono); font-size: 12px; line-height: 1.5; margin: 0; padding: 12px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); }
+
+/* A trip's Files (seeing bookings): each file, what it became, and Ask Shiori about this; All files folded below. */
+.trip-file { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.trip-file .file-row { min-height: 44px; justify-content: center; overflow-wrap: anywhere; }
+.trip-file .real { font-family: var(--f-mono); font-size: 12px; }
+.trip-file .became { overflow-wrap: anywhere; }
+.trip-file .btn { align-self: flex-start; }
+.all-files { margin-top: 16px; }
+.all-files > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }

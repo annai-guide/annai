@@ -161,8 +161,8 @@ test('in a trip, a pasted confirmation email becomes a chip, then a text file in
     expect(asText(first.messages.at(-1))).toMatch(/The user handed you a file: \\"\/trip\/files\/pasted-[0-9-]+\.txt\\" \(text\/plain\)/);
     expect(asText(first.messages.at(-1))).not.toContain('Midnight Test Rentals'); // the email is a file she reads, not words in the message
     await page.goto(trip);
-    await expect(page.getByRole('link', { name: /\/files\/pasted-[0-9-]+\.txt/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /\/bookings\/car\.json/ })).toBeVisible();
+    // In the trip's Files, with what it became.
+    await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: /pasted-[0-9-]+\.txt/ })).toContainText('A car: car car');
   } finally {
     await llm.stop();
   }

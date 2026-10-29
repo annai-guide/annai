@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker } from './helpers.js';
+import { openApp, waitForServiceWorker, allFiles } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -25,6 +25,7 @@ test('two files with the same name are both kept; nothing asks for a model', asy
   await startTrip(page, 'Thanksgiving');
   const pdf = (/** @type {string} */ body) => ({ name: 'confirmation.pdf', mimeType: 'application/pdf', buffer: Buffer.from(`%PDF-1.4 ${body}`) });
   await page.getByLabel('Add photos or files').setInputFiles(pdf('flight'));
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/confirmation\.pdf/ })).toBeVisible();
   await page.getByLabel('Add photos or files').setInputFiles(pdf('hotel'));
   await expect(page.getByRole('link', { name: /\/files\/confirmation \(2\)\.pdf/ })).toBeVisible();
@@ -36,6 +37,7 @@ test('a calendar file becomes plan items when it is added', async ({ page }) => 
   await startTrip(page, 'Thanksgiving');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'thanksgiving.ics', mimeType: 'text/calendar', buffer: Buffer.from(ICS) });
   await expect(page.getByText('Added /files/thanksgiving.ics, and 2 plan items from the calendar')).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/plan\/ics-museum-[0-9a-f]{8}\.json/ })).toBeVisible();
 });
@@ -61,6 +63,7 @@ test('a shared pass and shared text go to the trip you choose', async ({ page })
   await expect(page.getByText('Add only what you just shared yourself.')).toBeVisible();
   await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
   await expect(page.getByRole('heading', { name: 'Thanksgiving' })).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
   await page.getByRole('link', { name: /\/files\/shared text\.txt/ }).click();
   await expect(page.locator('#file-content')).toHaveValue('Your stay at Hoboken Inn\n\nConfirmation 7788, Nov 25–29');
@@ -80,6 +83,7 @@ test('a pass dropped on annai goes to a trip, not to the archive reader', async 
   await page.dispatchEvent('main.view', 'drop', { dataTransfer: files });
   await expect(page.getByRole('heading', { name: 'Add a file' })).toBeVisible();
   await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
 });
 
@@ -88,6 +92,7 @@ test('a calendar without .ics in its name, sent as text/calendar, becomes plan i
   await startTrip(page, 'Thanksgiving');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'invite', mimeType: 'text/calendar', buffer: Buffer.from(ICS) });
   await expect(page.getByText('Added /files/invite, and 2 plan items from the calendar')).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
 });
 

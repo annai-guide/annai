@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, pickFile, pickProvider, fixtureFiles, zipOf } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, pickProvider, fixtureFiles, zipOf, allFiles } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
 /** A test plugin from test/fixtures/plugins, as a zip. @param {string} [dir] */
@@ -34,6 +34,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await expect(page.getByText('On', { exact: true })).toBeVisible();
 
   await page.goto(tripUrl);
+  await allFiles(page);
   await page.getByLabel('File path').fill('/hello/a.json');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('alert')).toContainText('greeting');
@@ -42,6 +43,7 @@ test('install a plugin, see it work, turn it off, uninstall it', async ({ page }
   await page.getByRole('button', { name: 'Turn off' }).click();
   await expect(page.getByText('Off', { exact: true })).toBeVisible();
   await page.goto(tripUrl);
+  await allFiles(page);
   await page.getByLabel('File path').fill('/hello/a.json');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/hello/a.json' })).toBeVisible();
@@ -173,6 +175,7 @@ test('after a reload that skips the service worker, a code plugin still runs', a
   await loaded;
   await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
   await expect(page.getByText(`The plugin "hello" didn't start`)).toHaveCount(0);
+  await allFiles(page);
   await page.getByLabel('File path').fill('/hello/a.json');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('alert')).toContainText('greeting', { timeout: 15_000 });
