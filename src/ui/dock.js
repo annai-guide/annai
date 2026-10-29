@@ -61,7 +61,9 @@ export function createDock(ctx) {
   // words, or alone. A long paste into an empty box (a confirmation email) becomes a chip too, which can be put back as words.
   const composer = createComposer(ctx, {
     onChange: () => ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)),
-    onPutBack: (/** @type {string} */ words) => {
+    onPutBack: (/** @type {string} */ pasted) => {
+      // The box is one line: the paste's lines become words with spaces between, never glued together.
+      const words = pasted.trim().replace(/\s*[\r\n]+\s*/g, ' ');
       input.value = input.value.trim() ? `${input.value} ${words}` : words;
       input.focus();
       ctx.agent.typing?.(true);
