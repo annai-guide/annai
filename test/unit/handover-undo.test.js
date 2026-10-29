@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { ensureBaseScopes, createTrip, removeTrip, kindOf, SYS_WAITING } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, removeTrip, kindOf, SYS_WAITING, ME } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { record } from '../../src/core/agent/log.js';
-import { undoHandover, undoable, filesToRead } from '../../src/core/handover.js';
+import { undoHandover, undoable, filesToRead, undoEverywhere } from '../../src/core/handover.js';
+import { Transcript } from '../../src/core/agent/transcript.js';
 import { readNames, syncNames } from '../../src/core/names.js';
 import { moveFile } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -281,4 +282,55 @@ test('Undo of files moved from the waiting space into a trip that stays sends th
   assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path), ['/files/hotel.pdf']);
   assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/hotel.pdf': 'Hotel Aurora' });
   assert.deepEqual((await ws.list(kyoto, '/files/')).map((f) => f.path), ['/files/car.txt']);
+});
+
+// Round 3: Undo's own writes, copies, and telling where the hand-over came from.
+
+/** A trip she started from conversation `from` for hand-over h, its user line copied in, as start_trip makes one. @param {any} ws @param {any} store @param {string} from @param {string} h */
+async function startedFrom(ws, store, from, h, title = 'Kyoto') {
+  const id = await createTrip(ws, { title }, { author: 'shiori', handover: h });
+  await record(store, id, { type: 'msg.user', actor: 'user', data: { handed: [], handover: h, from }, texts: [['text', '(files)']] });
+  await record(store, from, { type: 'handover.moved', actor: 'shiori', data: { handover: h, to: id, started: true, count: 1 } });
+  return id;
+}
+
+test("Undo from the trip a file came from: its move back is Undo's own, not the user's, so the trip she started goes", async () => {
+  const { store, ws, trip } = await kit();
+  await ws.write(trip, '/files/note.txt', utf8('Original note'), { author: 'user', type: 'text/plain' });
+  const started = await startedFrom(ws, store, trip, 'h-2');
+  await moveFile(ws, { scope: trip, path: '/files/note.txt' }, started, { handover: 'h-2' });
+  await ws.write(started, '/files/note.txt', utf8('Edited by Shiori'), { author: 'shiori', type: 'text/plain', handover: 'h-2' });
+  const out = await undoEverywhere(ws, trip, 'h-2', { remove: async (s) => removeTrip(store, s) });
+  assert.equal(out.removed, 'Kyoto');
+  assert.equal(await ws.readText(trip, '/files/note.txt'), 'Original note');
+  assert.equal(await store.tx(['scopes'], 'readonly', (t) => t.getScope(started)), undefined);
+});
+
+test("a message copied into a trip is not the user's own work there; an older hand-over of the same turn has no Undo of its own", async () => {
+  const { store, ws } = await kit();
+  syncNames(ws);
+  for (const [h, name] of [['h-1', 'a.pdf'], ['h-2', 'b.pdf']]) {
+    await ws.write(SYS_WAITING, `/files/${name}`, utf8(name), { author: 'user', type: 'application/pdf' });
+    await record(store, ME, { type: 'msg.user', actor: 'user', data: { handed: [{ path: `/waiting/files/${name}`, type: 'application/pdf', name, new: true }], handover: h }, texts: [['text', '(files)']] });
+  }
+  const started = await startedFrom(ws, store, ME, 'h-2', 'Anchorage');
+  await record(store, started, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from: ME }, texts: [['text', '(files)']] });
+  for (const name of ['a.pdf', 'b.pdf']) await moveFile(ws, { scope: SYS_WAITING, path: `/files/${name}` }, started, { handover: 'h-2' });
+  assert.equal(await undoable(store, ME, 'h-1'), false);
+  assert.equal(await undoable(store, started, 'h-1'), false);
+  const out = await undoEverywhere(ws, ME, 'h-2', { remove: async (s) => removeTrip(store, s) });
+  assert.equal(out.removed, 'Anchorage');
+  assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path), ['/files/a.pdf', '/files/b.pdf']);
+});
+
+test('Undo in the trip she started tells the conversation the hand-over came from: the trip was removed and the files wait again', async () => {
+  const { store, ws } = await kit();
+  await ws.write(SYS_WAITING, '/files/a.pdf', utf8('a'), { author: 'user', type: 'application/pdf' });
+  const started = await startedFrom(ws, store, ME, 'h-1', 'Anchorage');
+  await moveFile(ws, { scope: SYS_WAITING, path: '/files/a.pdf' }, started, { handover: 'h-1' });
+  await undoEverywhere(ws, started, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  const [mark] = await eventsIn(store, ME, ['handover.undo']);
+  assert.deepEqual([mark.data.handover, mark.data.removed], ['h-1', 'Anchorage']);
+  const words = (await Transcript.load(store, ME)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
+  assert.match(words, /\[annai\] The user tapped Undo[^\n]*the trip you started for them, "Anchorage", was removed, and the files wait with you again/);
 });

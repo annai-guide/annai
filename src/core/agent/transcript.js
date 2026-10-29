@@ -193,7 +193,10 @@ export class Transcript {
       /* en */
       const left = kept ? `; ${kept === 1 ? '1 file' : `${kept} files`} the user had changed since ${kept === 1 ? 'was' : 'were'} left as ${kept === 1 ? 'it is' : 'they are'}` : '';
       /* en */
-      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you: ${back}${left}. Don't do it again unless they ask.` }]);
+      /* en */
+      const gone = typeof d.removed === 'string' ? `; the trip you started for them, ${JSON.stringify(d.removed)}, was removed, and the files wait with you again` : '';
+      /* en */
+      this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you: ${back}${left}${gone}. Don't do it again unless they ask.` }]);
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
