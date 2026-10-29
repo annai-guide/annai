@@ -1,5 +1,5 @@
 import { normPath } from '../paths.js';
-import { ME } from '../scopes.js';
+import { ME, SYS_WAITING } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { anySignal } from '../signals.js';
 
@@ -127,20 +127,27 @@ export class Stuck {
 
 /**
  * A path Shiori gives, as a scope and a path in it (spec §4.3): /trip/… is the open trip, /me/…
- * is the user's own files. Nothing else is in her view.
+ * is the user's own files, and /waiting/… what the user handed her while no trip was open (the waiting space), seen only
+ * then. Nothing else is in her view.
  * @param {string} path @param {string | null} trip @returns {{ scope: string, path: string }}
  */
 export function resolvePath(path, trip) {
   const p = String(path ?? '');
-  const m = /^\/(trip|me)(\/.*)?$/.exec(p);
-  if (!m) /* en */ throw new Error(`Paths start with /trip/ or /me/, not ${p || 'nothing'}.`);
+  const m = /^\/(trip|me|waiting)(\/.*)?$/.exec(p);
+  /* en */
+  if (!m) throw new Error(`Paths start with ${trip ? '/trip/ or /me/' : '/me/ or /waiting/ (no trip is open)'}, not ${p || 'nothing'}.`);
   if (m[1] === 'trip' && !trip) /* en */ throw new Error('No trip is open, so /trip/ has nothing in it. Use /me/ for your own notes.');
+  /* en */
+  if (m[1] === 'waiting' && trip) throw new Error('/waiting/ holds what was handed to you while no trip was open; with a trip open, its files are in /trip/files/.');
   // A folder keeps its trailing slash, and /trip or /me alone is the root.
   const raw = (m[2] || '/').replace(/\/{2,}/g, '/');
   const inner = raw === '/' ? '/' : `${normPath(raw.replace(/\/$/, ''))}${raw.endsWith('/') ? '/' : ''}`;
   if (inner === '/.annai' || inner.startsWith('/.annai/')) /* en */ throw new Error('/.annai is reserved for annai itself.');
-  return { scope: m[1] === 'trip' ? /** @type {string} */ (trip) : ME, path: inner };
+  return { scope: m[1] === 'trip' ? /** @type {string} */ (trip) : m[1] === 'waiting' ? SYS_WAITING : ME, path: inner };
 }
+
+/** The root a path Shiori gives starts with, as she writes it: /trip, /me or /waiting. @param {string} path */
+export const rootOf = (path) => /^\/(trip|waiting)(?=\/|$)/.exec(String(path))?.[0] ?? '/me';
 
 /** @param {import('../workspace.js').Workspace} ws @returns {Promise<Record<string, boolean>>} */
 export async function toolSwitches(ws) {

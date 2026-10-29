@@ -4,7 +4,7 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, FORMAT, newId, isDeviceSecret } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf, isName } from './events.js';
@@ -89,7 +89,7 @@ export class NeedsPassphraseError extends ArchiveError {
 }
 
 /** @type {Record<string, string>} */
-const DIRS = { [ME]: 'me', [SYS]: 'system/log', [SYS_SETTINGS]: 'system/settings', [SYS_PLUGINS]: 'system/plugins' };
+const DIRS = { [ME]: 'me', [SYS]: 'system/log', [SYS_SETTINGS]: 'system/settings', [SYS_PLUGINS]: 'system/plugins', [SYS_WAITING]: 'system/waiting' };
 const dirFor = (/** @type {string} */ id) => DIRS[id] ?? `trips/${id}`;
 
 const HASH = { type: 'string', pattern: '^[0-9a-f]{64}$' };
@@ -540,6 +540,9 @@ export async function importArchive(store, opened, choices = {}) {
       mode = choice;
     } else if (rec.id === ME && choices.me === 'replace') {
       target = ME; mode = 'system';
+    } else if (rec.id === SYS_WAITING && choices.me === 'replace') {
+      // What waits with Shiori is the no-trip conversation's, so it comes and stays with your own files.
+      target = SYS_WAITING; mode = 'system';
     } else if (rec.id === SYS_SETTINGS && choices.settings === 'replace') {
       target = SYS_SETTINGS; mode = 'system';
     } else if (rec.id === SYS_PLUGINS && choices.plugins === 'replace') {
