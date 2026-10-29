@@ -323,7 +323,7 @@ export async function renderTalk(ctx) {
     if (e.type === 'msg.user') {
       // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words. Files handed over alone: no words.
       const said = d.images?.length && texts.text === PHOTO_ONLY ? t`(a photo)` : String(texts.text ?? '');
-      const words = Array.isArray(d.handed) && said === FILES_ONLY ? null : h('p', { ...(said === texts.text ? mine(said) : {}), text: said });
+      const words = (Array.isArray(d.handed) || typeof d.handover === 'string') && said === FILES_ONLY ? null : h('p', { ...(said === texts.text ? mine(said) : {}), text: said });
       return h('li', { class: 'you' }, words, ...(await sentPhotos(e)), await handedChips(d));
     }
     if (e.type === 'out.speak') {
