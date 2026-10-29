@@ -514,9 +514,11 @@ export async function callRole(c) {
   // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
   const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
   const awake = preferred.filter((id) => !restingNow.has(id));
-  // The one whose rest ends soonest first; one that failed when asked in this rest after the others (round 12: a dead model on a short rest
-  // would otherwise take the one resting ask from a live one).
-  const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => Number(bench.triedResting(a)) - Number(bench.triedResting(b)) || bench.until(a) - bench.until(b));
+  // The one whose rest ends soonest first; those that failed when asked in this rest form a group of their own, tried last (rounds 12, 13:
+  // a dead model would otherwise take the one resting ask from a live one).
+  const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b));
+  const fresh = resting.filter((id) => !bench.triedResting(id));
+  const marked = resting.filter((id) => bench.triedResting(id));
   /** The resting model asked in this call, when one was. @type {string | null} */
   let restingAsked = null;
   let began = false;
@@ -685,9 +687,11 @@ export async function callRole(c) {
         if (step.bench !== undefined) {
           const long = err.kind === 'rate' && step.bench > LONG_REST_MS ? restText(now() + step.bench, now()) : undefined;
           if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
+          const ended = bench.until(id);
           bench.bench(id, step.bench, now(), long, err.kind);
-          // Asked while it rested, and this failure renewed its rest: it doesn't hold an awake model back again in this rest (rounds 11, 12).
-          if (restingAsked === id) bench.askedResting(id);
+          // Asked while it rested, and this failure moved its rest's end later: it doesn't hold an awake model back again in this rest
+          // (rounds 11–13).
+          if (restingAsked === id && bench.until(id) > ended) bench.askedResting(id);
         }
         break;
       }
@@ -745,7 +749,9 @@ export async function callRole(c) {
     return null;
   };
   // Every model that isn't resting has both passes before a resting one is asked (round 9: a dead photo model at rest held up every photo turn).
-  const answer = (await passes(awake, true)) ?? (await passes(resting));
+  // Three groups, each through both passes, with at most one resting model asked in all: awake models, resting ones, then resting ones
+  // that failed when asked in this rest (round 13).
+  const answer = (await passes(awake, true)) ?? (await passes(fresh)) ?? (await passes(marked));
   if (answer) return answer;
   for (const b of blind) {
     base = b.base;
