@@ -1,5 +1,5 @@
 {
-  "build": "15600065e4d6",
+  "build": "ad625d493613",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -208,7 +208,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/format.js": "9e004bdcad6e",
+    "/src/ui/format.js": "dda13fedb7c2",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
@@ -262,7 +262,7 @@
     "/src/ui/screens/settings.js": "a99180404955",
     "/src/ui/screens/simulate.js": "e552d051e0fe",
     "/src/ui/screens/shiori.js": "a43750d57c5b",
-    "/src/ui/screens/talk.js": "867c96adc1a4",
+    "/src/ui/screens/talk.js": "bc8748bcf973",
     "/src/ui/screens/tools.js": "011d8241ffa0",
     "/src/ui/screens/trace.js": "726d453c0c93",
     "/src/ui/screens/trip.js": "e9c63c8f458c",

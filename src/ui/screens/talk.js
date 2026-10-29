@@ -10,7 +10,7 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, fileHref, waitingHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref } from '../format.js';
 import { ask } from '../ask.js';
 import { ME, SYS_WAITING } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
@@ -325,7 +325,7 @@ export async function renderTalk(ctx) {
       const shown = m && Object.hasOwn(theirs, m[2]) ? theirs[m[2]] : own;
       const name = h('span', { class: 'attach-name', dir: 'auto', text: shown });
       const title = shown !== own ? own : undefined;
-      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : fileHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
+      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };
