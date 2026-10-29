@@ -339,23 +339,31 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
 
 /**
  * What to send in place of a photo or PDF a model can't take, for the model about to be called; it never throws.
- * @typedef {(part: Extract<import('./contract.js').Part, { type: 'image' | 'document' }>, model: Model, signal?: AbortSignal) => Promise<import('./contract.js').Part[]>} ReadFor
+ * @typedef {(part: Extract<import('./contract.js').Part, { type: 'image' | 'document' }>, model: Model, signal?: AbortSignal) => Promise<import('./contract.js').Part[] & { unread?: boolean }>} ReadFor
+ *   unread: the reading failed (the parts say so in words)
  */
 
 /**
  * The request for the second pass's model: each photo or PDF of the newest user message that it can't take, as read gives it, and
  * older ones as words (whatever newestPhoto says). The request passed in is not changed.
- * @param {Request} request @param {Model} model @param {ReadFor} read @param {AbortSignal} [signal] @param {Readings} [readings] @returns {Promise<Request>}
+ * @param {Request} request @param {Model} model @param {ReadFor} read @param {AbortSignal} [signal] @param {Readings} [readings]
+ * @returns {Promise<{ request: Request, unread: boolean }>} unread: a file's reading failed
  */
 async function readFor(request, model, read, signal, readings) {
   const newest = request.messages.findLastIndex((m) => m.role === 'user');
   const cant = (/** @type {import('./contract.js').Part} */ p) => (p.type === 'image' && !model.input.includes('image')) || (p.type === 'document' && !model.input.includes('pdf'));
+  let unread = false;
   const messages = await Promise.all(request.messages.map(async (m, i) => (i !== newest ? m : {
-    ...m, parts: (await Promise.all(m.parts.map((p) => (cant(p) ? read(/** @type {any} */ (p), model, signal) : [p])))).flat(),
+    ...m, parts: (await Promise.all(m.parts.map(async (p) => {
+      if (!cant(p)) return [p];
+      const got = await read(/** @type {any} */ (p), model, signal);
+      if (got.unread) unread = true;
+      return got;
+    }))).flat(),
   })));
   const sees = model.input.includes('image');
   const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
-  return { ...out, messages: limitImages(out.messages, model.images?.maxCount) };
+  return { request: { ...out, messages: limitImages(out.messages, model.images?.maxCount) }, unread };
 }
 
 /**
@@ -549,9 +557,11 @@ export async function callRole(c) {
     let plain = false;
     let whole = false;
     let again = false;
+    /** This model's own request once a refused photo was repaired for it: never the next model's (round 10). @type {Request | null} */
+    let repaired = null;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
-      const asked = forModel(request);
+      const asked = repaired ?? forModel(request);
       let sendable = asked;
       if (c.speech) {
         try {
@@ -634,11 +644,12 @@ export async function callRole(c) {
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
-          // The request as the model received it (its kept pages and limit in it), so a learned limit applies to all of it (round 9).
-          const fixed = await c.repairImages(err, id, forModel(request)).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
+          // The request as the model received it (its kept pages and limit in it), so a learned limit applies to all of it (round 9); the
+          // repaired request is this model's alone, and the next model starts from the shared one (round 10).
+          const fixed = await c.repairImages(err, id, asked).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
           if (fixed) {
             repairs++;
-            request = fixed;
+            repaired = fixed;
             continue; // the same model again (spec §9.9)
           }
         }
@@ -665,7 +676,15 @@ export async function callRole(c) {
    * in the newest message kept out, with each one it can't take read by whoever can (c.read), and older ones as words.
    * @param {string[]} ids
    */
-  const passes = async (ids) => {
+  /** Awake models whose reading of a file failed, held back until a resting model that takes it as it is was tried (round 10). @type {{ id: string, base: Request }[]} */
+  const blind = [];
+  /** Whether a resting model takes the request as it is, its files and all. */
+  const restingTakes = () => !restingAsked && resting.some((x) => {
+    const m = modelOf(config.models[x]);
+    const g = gap(m, { ...c.request, messages: limitImages(c.request.messages, m.images?.maxCount) });
+    return g !== 'no-images' && g !== 'no-documents';
+  });
+  const passes = async (/** @type {string[]} */ ids, holdBlind = false) => {
     base = c.request;
     request = said ? continueAfter(base, said) : base;
     for (const id of ids) {
@@ -685,16 +704,29 @@ export async function callRole(c) {
         attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
         continue;
       }
-      base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
+      const read = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
+      base = read.request;
       request = said ? continueAfter(base, said) : base;
+      // Its reading failed, and a resting model takes the file as it is: that one is asked first; this one answers without the file
+      // only if it fails too (round 10). A reading that worked is answered at once (a dead resting model is never waited on).
+      if (holdBlind && read.unread && restingTakes()) {
+        blind.push({ id, base });
+        continue;
+      }
       const r = await one(id);
       if (r) return r;
     }
     return null;
   };
   // Every model that isn't resting has both passes before a resting one is asked (round 9: a dead photo model at rest held up every photo turn).
-  const answer = (await passes(awake)) ?? (await passes(resting));
+  const answer = (await passes(awake, true)) ?? (await passes(resting));
   if (answer) return answer;
+  for (const b of blind) {
+    base = b.base;
+    request = said ? continueAfter(base, said) : base;
+    const r = await one(b.id);
+    if (r) return r;
+  }
   await record(null, said);
   throw new AllFailedError(attempts, said);
 }
