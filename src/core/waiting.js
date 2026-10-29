@@ -13,23 +13,28 @@ import { NAMES_FILE, readNames } from './names.js';
 export const waitingFiles = (ws) => ws.list(SYS_WAITING, '/files/');
 
 /**
- * Moves a file into a trip's Files, under a name no file there has, keeping its type, details, source and author, with
- * its short name. From the waiting space, the file and its history go (its space comes back); from a trip, it is deleted
- * there with its history kept (spec §4.2).
+ * Moves a file into a trip's Files (or another folder), under a name no file there has, keeping its type, details, source and author,
+ * with its short name. From the waiting space, the file and its history go (its space comes back); from a trip, it is deleted there
+ * with its history kept (spec §4.2). Both ends say it was a move (`moved` on their log entries), so Undo puts it back where it was.
  * @param {Workspace} ws @param {{ scope: string, path: string }} from @param {string} to the trip
- * @param {{ handover?: string, author?: string }} [o] handover: the hand-over it was moved for, on what it writes;
- *   author: who deletes it from a trip (Shiori, unless the user moved it)
+ * @param {{ handover?: string, author?: string, folder?: string, source?: string }} [o] handover: the hand-over it was moved for, on what it
+ *   writes; author: who deletes it from a trip (Shiori, unless the user moved it); folder: where it goes, /files/ unless said;
+ *   source: the file it now comes from (a calendar's plan item, moved with its calendar)
  * @returns {Promise<string>} its path in the trip
  */
 export async function moveFile(ws, from, to, o = {}) {
   const got = await ws.read(from.scope, from.path);
   if (!got) throw new NotFoundError(from.path);
   const { entry, bytes } = got;
-  const taken = new Set((await ws.list(to, '/files/')).map((f) => f.path));
-  const path = freeName(normPath(`/files/${from.path.split('/').pop()}`), taken);
+  const folder = o.folder ?? '/files/';
+  const taken = new Set((await ws.list(to, folder)).map((f) => f.path));
+  const path = freeName(normPath(`${folder}${from.path.split('/').pop()}`), taken);
   const handover = o.handover ? { handover: o.handover } : {};
+  const source = o.source ?? entry.source;
+  const was = o.source && entry.source !== o.source && entry.source ? { source: entry.source } : {};
   await ws.write(to, path, bytes, {
-    author: entry.author, type: entry.type, ...(entry.source ? { source: entry.source } : {}), ...(entry.meta ? { meta: entry.meta } : {}), ...handover,
+    author: entry.author, type: entry.type, ...(source ? { source } : {}), ...(entry.meta ? { meta: entry.meta } : {}), ...handover,
+    moved: { from: from.scope, path: from.path, ...was },
   });
   const names = await readNames(ws, from.scope);
   const name = Object.hasOwn(names, from.path) ? names[from.path] : null;
@@ -37,8 +42,8 @@ export async function moveFile(ws, from, to, o = {}) {
   if (from.scope === SYS_WAITING) await dropWaiting(ws, from.path);
   else {
     const author = o.author ?? 'shiori';
-    await ws.delete(from.scope, from.path, { author, ...handover });
-    if (name) await ws.patch(from.scope, NAMES_FILE, { [from.path]: null }, { author, ...handover });
+    await ws.delete(from.scope, from.path, { author, ...handover, moved: { to, path, ...was } });
+    if (name && Object.hasOwn(await readNames(ws, from.scope), from.path)) await ws.patch(from.scope, NAMES_FILE, { [from.path]: null }, { author, ...handover });
   }
   return path;
 }

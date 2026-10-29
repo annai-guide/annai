@@ -7,15 +7,16 @@ import { validZone, deviceZone } from '../core/time.js';
  * Files kept in a scope (spec §7.3): under /files/ (photos through ingest), and in a trip, calendar files made into plan items (§8).
  * Shiori isn't told: the caller does that (bringIn, or a hand-over from the type box).
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files @param {(done: number, total: number) => void} [progress]
- * @returns {Promise<{ paths: string[], notes: string[], problems: string[], planned: string[] }>}
- *   notes: about photos (addFiles); problems: calendar files that couldn't be read
+ * @returns {Promise<{ paths: string[], notes: string[], problems: string[], planned: string[], plannedBy: Record<string, number> }>}
+ *   notes: about photos (addFiles); problems: calendar files that couldn't be read; plannedBy: how many plan items each calendar file made
  */
 export async function keepFiles(ctx, scope, files, progress) {
   const { paths, notes } = await addFiles(ctx, scope, files, progress);
   /** @type {string[]} */ const planned = [];
   /** @type {string[]} */ const problems = [];
+  /** @type {Record<string, number>} */ const plannedBy = {};
   // Calendar files handed over with no trip open wait as files: Shiori reads them like any other once they are in a trip.
-  if (!scope.startsWith('trip-')) return { paths, notes, problems, planned };
+  if (!scope.startsWith('trip-')) return { paths, notes, problems, planned, plannedBy };
   const trip = await ctx.ws.readJSON(scope, '/trip.json').catch(() => null);
   const defaultTz = [trip?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
   const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
@@ -23,12 +24,14 @@ export async function keepFiles(ctx, scope, files, progress) {
   const calendar = (/** @type {string} */ p) => /\.ics$/i.test(p) || /^text\/calendar\s*(;|$)/i.test(typeOf.get(p) ?? '');
   for (const path of paths.filter(calendar)) {
     try {
-      planned.push(...(await importCalendar(ctx.ws, scope, path, { defaultTz })));
+      const made = await importCalendar(ctx.ws, scope, path, { defaultTz });
+      planned.push(...made);
+      if (made.length) plannedBy[path] = made.length;
     } catch (e) {
       problems.push(`${path}: ${messageOf(e)}`);
     }
   }
-  return { paths, notes, problems, planned };
+  return { paths, notes, problems, planned, plannedBy };
 }
 
 /**
