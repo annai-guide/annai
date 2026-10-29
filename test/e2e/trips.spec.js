@@ -503,3 +503,22 @@ test("a trip's card says when a file is waiting to be read", async ({ page }) =>
   await page.goto('/#/trips');
   await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
 });
+
+test('with a trip open, Trips has a way back to the conversation outside any trip', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0); // none open: the Conversation is that one already
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.getByText(/No trip is open/)).toBeVisible();
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0);
+});
+
+test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {
+  await openApp(page);
+  const summary = page.locator('details.dates summary');
+  expect(await summary.evaluate((el) => getComputedStyle(el).display)).toBe('list-item');
+  expect((await summary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+});

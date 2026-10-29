@@ -1,4 +1,5 @@
-import { h, t, tc, messageOf } from './dom.js';
+import { h, t, tc, plural, messageOf } from './dom.js';
+import { num } from '../core/intl.js';
 import { keepFiles } from './bring-in.js';
 import { SYS_WAITING, newId } from '../core/scopes.js';
 import { updateAppSettings } from '../core/settings.js';
@@ -7,17 +8,22 @@ import { updateAppSettings } from '../core/settings.js';
  * The type box's attachments (the bookings-and-trips design, goal 1): a + picks photos or files, and a pasted confirmation email
  * becomes a file, each a chip above the box; sending hands them to Shiori with the words, if any (a hand-over, handover.js). Ask
  * Shiori about this puts a file kept already in the box the same way.
- * @typedef {{ file: Blob & { name?: string } } | { scope: string, path: string }} Attachment  a file handed now, or one kept already
+ * @typedef {{ file: Blob & { name?: string }, pasted?: string } | { scope: string, path: string }} Attachment  a file handed now (pasted: the
+ *   text a paste became), or one kept already
  * @typedef {import('../core/handover.js').HandedFile} HandedFile
  */
 
 /** What the + picks: photos, PDFs, Wallet passes, texts, emails and calendar files. */
 const ACCEPT = 'image/*,application/pdf,.pdf,.pkpass,application/vnd.apple.pkpass,text/plain,.txt,.eml,.ics,text/calendar';
-/** A paste longer than this is a confirmation to hand over, not a sentence to type. */
+/** A paste longer than this, or of this many lines, is a confirmation to hand over, not words to type. */
 const PASTE_MAX = 280;
+const PASTE_LINES = 4;
 
-/** Whether pasted text is a confirmation to hand over (a line break, or past 280 characters), not words to type (My call 6). @param {string} text */
-export const pasteBecomesFile = (text) => /[\r\n]/.test(text.trim()) || [...text].length > PASTE_MAX;
+/**
+ * Whether pasted text is a confirmation to hand over (over 280 characters, or 4 lines or more), not words to type (My call 6; the user,
+ * 2026-10-29: "Long pastes only, plus undo"). @param {string} text
+ */
+export const pasteBecomesFile = (text) => [...text].length > PASTE_MAX || text.trim().split(/\r\n|\r|\n/).length >= PASTE_LINES;
 
 /** A pasted text's file name: when it was pasted, in the phone's time (pasted-2026-10-28-0310.txt). @param {number} ms */
 export function pastedName(ms) {
@@ -37,26 +43,40 @@ const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.path.split('/
 
 /**
  * Hands Shiori what is in the box: the new files are kept first (in the open trip's Files, or waiting with Shiori when none is open), one
- * at a time, then the message goes with them all, and the Conversation shows it.
+ * at a time, saying how far it is, then the message goes with them all, and the Conversation shows it. A file that can't be kept (no
+ * room) stops the rest: what was kept goes, and a card says what wasn't. A file kept already goes only to its own conversation's Shiori.
  * @param {any} ctx @param {string} text @param {Attachment[]} items
+ * @param {{ progress?: (done: number, total: number) => void }} [o] progress: kept so far, of how many
  */
-export async function handOver(ctx, text, items) {
+export async function handOver(ctx, text, items, o = {}) {
   const scope = ctx.agent.target ?? SYS_WAITING;
   /** @type {HandedFile[]} */
   const handed = [];
   const files = items.flatMap((a) => ('file' in a ? [a.file] : []));
-  if (files.length) {
-    const { paths, notes, problems } = await keepFiles(ctx, scope, files);
-    for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
-    for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-    const kept = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
-    paths.forEach((p, i) => handed.push({ path: shownPath(scope, p), type: kept.get(p) ?? 'application/octet-stream', name: files[i]?.name || p.split('/').pop() || p, new: true }));
+  /** @type {{ path: string, name: string, planned: number }[]} */
+  const kept = [];
+  for (const [i, file] of files.entries()) {
+    o.progress?.(i, files.length);
+    try {
+      const { paths, notes, problems, plannedBy } = await keepFiles(ctx, scope, [file]);
+      for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
+      for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
+      for (const p of paths) kept.push({ path: p, name: file.name || p.split('/').pop() || p, planned: plannedBy[p] ?? 0 });
+    } catch (e) {
+      const left = files.length - i;
+      ctx.notices.card({ tone: 'warn', title: plural(left, "# file wasn't kept", "# files weren't kept"), body: messageOf(e) });
+      break;
+    }
   }
+  o.progress?.(files.length, files.length);
+  const types = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
+  for (const k of kept) handed.push({ path: shownPath(scope, k.path), type: types.get(k.path) ?? 'application/octet-stream', name: k.name, new: true, ...(k.planned ? { planned: k.planned } : {}) });
   for (const a of items) {
-    if ('file' in a) continue;
+    if ('file' in a || a.scope !== scope) continue;
     const entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(a.scope, a.path));
     handed.push(handedOf(a, { type: entry?.type ?? 'application/octet-stream', name: a.path.split('/').pop() ?? a.path }));
   }
+  if (!text.trim() && !handed.length) return;
   ctx.agent.send(text, handed.length ? { handed, handover: newId('h') } : {});
   if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
 }
@@ -64,26 +84,36 @@ export async function handOver(ctx, text, items) {
 /**
  * The box's chips and its +. A chip shows the file's own name and a real Remove button; suggestions (Read it again) are kept with the
  * chips for whoever draws them.
- * @param {any} ctx @param {{ onChange?: () => void }} [o] onChange: the chips changed
+ * @param {any} ctx @param {{ onChange?: () => void, onPutBack?: (text: string) => void }} [o] onChange: the chips changed; onPutBack: a pasted
+ *   text's chip was turned back into words, for the box
  */
 export function createComposer(ctx, o = {}) {
   /** @type {Attachment[]} */
   let list = [];
   /** @type {string[]} */
   let suggestions = [];
-  const el = h('div', { class: 'chips', hidden: true });
+  let keeping = false;
+  const status = h('p', { class: 'sub keeping', role: 'status' });
+  const chips = h('span', { class: 'chip-list' });
+  const el = h('div', { class: 'chips', hidden: true }, chips, status);
+  /** @param {number} i */
+  const drop = (i) => {
+    list = list.filter((_, j) => j !== i);
+    if (!list.length) suggestions = [];
+    draw();
+    o.onChange?.();
+  };
   const draw = () => {
     el.hidden = !list.length;
-    el.replaceChildren(...list.map((a, i) => {
+    chips.replaceChildren(...list.map((a, i) => {
       const name = nameOf(a);
+      const pasted = 'file' in a && typeof a.pasted === 'string' ? a.pasted : null;
       return h('span', { class: 'attach-chip' },
         h('span', { class: 'attach-name', dir: 'auto', text: name }),
-        h('button', { class: 'attach-remove', type: 'button', 'aria-label': tc('a file in the message')`Remove ${name}`, title: tc('a file in the message')`Remove ${name}`, onclick: () => {
-          list = list.filter((_, j) => j !== i);
-          if (!list.length) suggestions = [];
-          draw();
-          o.onChange?.();
-        } }, h('span', { 'aria-hidden': 'true', text: '×' })));
+        // A paste that became a file can be words again (the user, 2026-10-29: "plus undo").
+        pasted !== null ? h('button', { class: 'attach-back', type: 'button', disabled: keeping, onclick: () => { drop(i); o.onPutBack?.(pasted); } }, t`Put back as text`) : null,
+        h('button', { class: 'attach-remove', type: 'button', disabled: keeping, 'aria-label': tc('a file in the message')`Remove ${name}`, title: tc('a file in the message')`Remove ${name}`, onclick: () => drop(i) },
+          h('span', { 'aria-hidden': 'true', text: '×' })));
     }));
   };
   const input = h('input', { id: 'dock-attach', type: 'file', multiple: true, accept: ACCEPT, class: 'visually-hidden' });
@@ -101,6 +131,16 @@ export function createComposer(ctx, o = {}) {
     draw();
     o.onChange?.();
   };
+  // A file kept already belongs to its conversation: opening another lets go of its chip, so it is never asked about in the wrong one.
+  const offOpen = ctx.agent.on?.('open', () => {
+    const here = ctx.agent.target ?? SYS_WAITING;
+    const before = list.length;
+    list = list.filter((a) => 'file' in a || a.scope === here);
+    if (list.length !== before) {
+      draw();
+      o.onChange?.();
+    }
+  });
   return {
     el, plus, attach,
     items: () => [...list],
@@ -108,19 +148,28 @@ export function createComposer(ctx, o = {}) {
     clear() {
       list = [];
       suggestions = [];
+      status.textContent = '';
+      draw();
+    },
+    /** While the files are being kept: the chips stay, can't be removed, and say how far it is. @param {number | null} done @param {number} [total] */
+    keeping(done, total = 0) {
+      keeping = done !== null;
+      input.disabled = keeping;
+      status.textContent = keeping && total ? t`Keeping ${num(Math.min(/** @type {number} */ (done) + 1, total))} of ${num(total)}…` : '';
       draw();
     },
     /**
-     * A paste: a confirmation email becomes a file chip, its text not typed (My call 6). @param {ClipboardEvent} e
-     * @returns {boolean} whether it was taken
+     * A paste into an empty box: a long one (a confirmation email) becomes a file chip, its text not typed (My call 6); anything else is
+     * typed. @param {ClipboardEvent} e @param {boolean} empty the box holds no words @returns {boolean} whether it was taken
      */
-    paste(e) {
+    paste(e, empty) {
       const text = e.clipboardData?.getData('text/plain') ?? '';
-      if (!text || !pasteBecomesFile(text)) return false;
+      if (!text || !empty || !pasteBecomesFile(text)) return false;
       e.preventDefault();
-      attach([{ file: new File([text], pastedName(Date.now()), { type: 'text/plain' }) }]);
+      attach([{ file: new File([text], pastedName(Date.now()), { type: 'text/plain' }), pasted: text }]);
       return true;
     },
+    dispose: () => offOpen?.(),
   };
 }
 

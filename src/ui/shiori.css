@@ -117,8 +117,12 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .attach-plus { position: absolute; inset-inline-start: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--sheet); color: var(--ink-2); font-size: 24px; line-height: 1; cursor: pointer; }
 .attach:focus-within .attach-plus { outline: 2px solid var(--ai); outline-offset: 2px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 6px; }
-.chips[hidden] { display: none; }
+.chips, .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { margin-block-end: 6px; }
+.chips[hidden], .keeping:empty { display: none; }
+.chip-list, .keeping { flex-basis: 100%; min-width: 0; margin: 0; }
+.attach-back { flex: none; min-height: 32px; border: 0; border-radius: 16px; background: none; color: var(--ai); font: inherit; font-size: 13px; cursor: pointer; padding-inline: 6px; }
+.attach-back:focus-visible { outline: 2px solid var(--ai); outline-offset: -2px; }
 .attach-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-height: 32px; padding-inline: 12px 2px; border: 1px solid var(--line); border-radius: 16px; background: var(--sheet); color: var(--ink); font-size: 14px; }
 .attach-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .attach-remove { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); font-size: 18px; cursor: pointer; padding: 0; }

@@ -8,7 +8,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced, wokeText, wokeTitles, reminderParts, movedWords } from '../../src/ui/screens/talk.js';
+import { follow, announcement, announced, wokeText, wokeTitles, reminderParts, movedWords, settled } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -812,4 +812,14 @@ test('movedWords: started, took one, took several, and to a trip since removed',
 
 test('parseHash: #/waiting/file?path=/files/a.pdf is the waiting file screen', () => {
   assert.deepEqual(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), { name: 'waiting-file', parts: ['waiting', 'file'], params: { path: '/files/a.pdf' } });
+});
+
+test('Undo tapped while Shiori works stops her turn and waits for it to settle before it takes anything back', async () => {
+  /** @type {string[]} */
+  const did = [];
+  const agent = { busy: true, stopKokoro: () => did.push('stop'), idle: async () => { did.push('idle'); agent.busy = false; } };
+  await settled(agent);
+  assert.deepEqual(did, ['stop', 'idle']);
+  await settled(agent);
+  assert.deepEqual(did, ['stop', 'idle']);
 });

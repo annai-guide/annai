@@ -3,7 +3,7 @@ import { listTrips, createTrip, backupState, SYS_WAITING } from '../../core/scop
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
 import { askAbout, canAsk } from '../composer.js';
-import { readAppSettings } from '../../core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, dateRange, backupText, wording, size, waitingHref } from '../format.js';
@@ -24,6 +24,7 @@ export async function renderTrips(ctx) {
   const waiting = await waitingFiles(ctx.ws);
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: t`Trips` }),
+    noTrip(ctx),
     active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: t`No trips yet. Start one below, or open a trip someone sent you.` }),
     waiting.length ? waitingList(ctx, waiting) : null,
     newTripForm(ctx),
@@ -48,6 +49,22 @@ function tripCard(s, trip, backup, stamps, say, unread) {
       h('span', { class: 'name', ...say(s.title), text: s.title }),
       h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, t`updated ${relTime(s.updated)}`, backupText(backup)]))),
     stampMarks(stamps)));
+}
+
+/**
+ * The way back to the conversation outside any trip, while a trip is open (the user, 2026-10-29: "Add a way back"): what she was
+ * handed with no trip open, and what she said of it, are there. @param {any} ctx
+ */
+function noTrip(ctx) {
+  if (!ctx.agent?.target) return null;
+  return h('button', {
+    class: 'card no-trip', type: 'button',
+    onclick: async () => {
+      await updateAppSettings(ctx.ws, { activeTrip: null });
+      await ctx.agent.open(null).catch(() => {});
+      ctx.go('#/talk');
+    },
+  }, h('span', { class: 'name', text: t`Shiori, no trip` }), h('span', { class: 'sub', text: t`Talk with her outside any trip.` }));
 }
 
 /**
