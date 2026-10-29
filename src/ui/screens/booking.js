@@ -5,6 +5,7 @@ import { normPath } from '../../core/paths.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
 import { explainStorageFull } from '../storage-full.js';
+import { askAboutButton } from '../composer.js';
 
 /**
  * Booking confirmation (spec §16.2, §7.3): what a booking says, beside the original it was read
@@ -52,7 +53,7 @@ export async function renderBooking(ctx, route) {
     h('dl', { class: 'facts' }, ...bookingLines(booking).flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
     booking.place?.name ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: mapsUrl(booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`)) : null,
     await original(ctx, id, booking.source, bookingHref(id, path)),
-    h('div', { class: 'acts' }, confirm, h('a', { class: 'btn', href: fileHref(id, path, bookingHref(id, path)) }, t`Change it`)),
+    h('div', { class: 'acts' }, confirm, askAboutButton(ctx, { scope: id, path, name: String(booking.title || booking.id || t`Booking`) }), h('a', { class: 'btn', href: fileHref(id, path, bookingHref(id, path)) }, t`Change it`)),
     problem);
 }
 
