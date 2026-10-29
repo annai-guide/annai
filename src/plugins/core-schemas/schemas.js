@@ -74,6 +74,8 @@ export const BOOKING_SCHEMA = {
       properties: { amount: { type: 'number' }, currency: { type: 'string', pattern: '^[A-Z]{3}$' } },
     },
     fields: { type: 'object' },
+    // The fields Shiori isn't sure of, by name ("seat", "end"): [] when she is sure; none on a booking from before (bookings.js checkOf).
+    unsure: { type: 'array', items: { type: 'string', minLength: 1 }, maxItems: 30 },
   },
 };
 
