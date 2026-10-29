@@ -15,6 +15,9 @@ openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai
 openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	連線 OpenAI 的 Realtime API：為 Koe 提供在單一串流中雙向進行的語音對話。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	連線 OpenAI 的 Responses API 以及支援它的伺服器。對話由 OpenAI 在輪次之間儲存，因此每次只傳送新內容；annai 收到指示時會刪除已儲存的回覆。	plugins-official/openai-responses/annai-plugin.json:7	
+pdf-pages:@name	ok	PDF pages	PDF 頁面	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the Models note (1xx9c0t) says it.
+pdf-pages:@description	ok	Shows a PDF's pages as pictures to models that see photos but can't read PDFs, and draws a PDF's first page for its preview in any browser. It brings Mozilla's PDF.js, about 4.5 MB.	把 PDF 的頁面轉成圖片，給能看照片但無法讀取 PDF 的模型看；也能在任何瀏覽器中繪製 PDF 的第一頁作為預覽。內含 Mozilla 的 PDF.js，約 4.5 MB。	plugins-official/pdf-pages/annai-plugin.json:8	Note: "brings" read as the package includes it, so 內含.
+pdf-pages:@keywords.0	ok	PDF.js	PDF.js	plugins-official/pdf-pages/annai-plugin.json:9	Note: a product name, kept.
 provider-another-address:@name	ok	Custom provider	自訂供應商	plugins-official/provider-another-address/annai-plugin.json:3	
 provider-another-address:@description	ok	Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.	任何其他伺服器：OpenAI 相容的伺服器、路由或代理，或你自己執行的伺服器。填寫它的網址，annai 會免費檢視它提供什麼。	plugins-official/provider-another-address/annai-plugin.json:11	
 provider-another-address:@keywords.0	ok	OpenAI-compatible	OpenAI 相容	plugins-official/provider-another-address/annai-plugin.json:14	
@@ -459,53 +462,53 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:535	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
 bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:656	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:656	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:112	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:112	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:112	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:112	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:112	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:112	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:113	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:113	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:543	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:543	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:860	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1083	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1083	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1116	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1116	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1249	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1447	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1447	
-nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1547	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1547	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1547	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1602	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:1873	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:1873	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:1910	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:1914	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:1978	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2006	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2061	
-vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2422	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2565	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2565	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2566	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2566	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2704	
-8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:2839	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3013	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3014	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3015	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3016	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3017	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3018	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3025	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3035	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3036	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3037	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3038	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:114	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:114	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:114	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:114	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:114	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:114	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:115	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:115	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:547	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:547	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:863	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1086	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1086	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1119	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1119	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1253	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1455	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1455	
+nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1555	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1555	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1555	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1610	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:1894	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:1894	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:1931	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:1935	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:1999	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2027	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2086	
+vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2538	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2681	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2681	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2682	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2682	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2820	
+8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:2955	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3129	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3130	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3131	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3132	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3133	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3134	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3141	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3151	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3152	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3153	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3154	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -636,48 +639,49 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:134
 1qjc2dh	ok	That provider has no ability called {0}.	這個供應商沒有名為 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	請填寫供應商的模型 ID。	src/core/llm/config.js:387	
 3i9i3z	ok	"{0}" is already used by another model	「{0}」已被另一個模型使用	src/core/llm/config.js:391	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:97	
-1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:98	Note: Credit is a prepaid balance (餘額), not a quota (額度).
-99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:99	
-1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:100	
-1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:101	
-ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:102	
-1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:103	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:104	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:105	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:106	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:107	
-11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:108	
-1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:109	
-vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:110	
-5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:111	
-1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:112	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:113	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:114	
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:115	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:116	
-17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:134	
-9kdcjv	ok	Chat	對話	src/core/llm/contract.js:134	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
-b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:134	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:134	
-izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:144	
-13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:145	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:146	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:147	
-1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:148	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:149	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:150	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:151	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:152	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
-x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:153	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:154	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:156	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:157	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:158	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:159	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:160	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:161	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:162	{0} = name
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:98	
+1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:99	Note: Credit is a prepaid balance (餘額), not a quota (額度).
+99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:100	
+1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:101	
+1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:102	
+ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:103	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:104	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:105	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:106	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:107	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:108	
+11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:109	
+1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:110	
+vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:111	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:112	
+1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:113	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:114	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:115	
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:116	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:117	
+17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:135	
+9kdcjv	ok	Chat	對話	src/core/llm/contract.js:135	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
+b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:135	
+izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:145	
+1l28lx6#other	ok	Its output stopped for # seconds.	輸出中斷了 # 秒。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:147	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:148	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:149	
+1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:150	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:152	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:154	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
+x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:155	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:156	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:158	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:159	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:160	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:164	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	價格是一個物件，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 的階梯中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 計劃 read as a plan.
@@ -690,32 +694,32 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" 的某一項缺少 "from"：每一項都以 2027-01-01 這樣的日期開始。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" 中 {0} 出現了兩次：請把那天的變化放在同一項裡。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" 中有「{0}」，但它不是 annai 認識的價格。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	出錯後正在休息幾分鐘。	src/core/llm/fallback.js:101	
-9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:102	
-12h1lml	ok	It doesn't read PDFs.	它不能讀 PDF。	src/core/llm/fallback.js:103	
-uxj42v	ok	It doesn't take audio.	它不接受音訊。	src/core/llm/fallback.js:104	
-19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:105	
-1coimht	ok	The conversation is too long for it.	對話對它來說太長了。	src/core/llm/fallback.js:106	
-6o9g3j	ok	It doesn't have the provider tool this needs.	它沒有這裡需要的供應商工具。	src/core/llm/fallback.js:107	
-8xm1wt	ok	It isn't a chat model.	它不是對話模型。	src/core/llm/fallback.js:108	Note: chat model → 對話模型, as the glossary's Koe · Classic note names Koe's list of chat models.
-1i0eq06	ok	It is switched off.	它已關閉。	src/core/llm/fallback.js:109	
-10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:110	Note: 移除, as Remove model.
-s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/core/llm/fallback.js:111	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限額，將暫停到 {0}。	src/core/llm/fallback.js:130	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	這台裝置處於離線狀態。	src/core/llm/fallback.js:153	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	輔助角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:202	Note: the role by its screen name (補助 / 輔助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 經典沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:203	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:204	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	出錯後正在休息幾分鐘。	src/core/llm/fallback.js:124	
+9bk0c8	ok	It doesn't take photos.	它不接受照片。	src/core/llm/fallback.js:125	
+12h1lml	ok	It doesn't read PDFs.	它不能讀 PDF。	src/core/llm/fallback.js:126	
+uxj42v	ok	It doesn't take audio.	它不接受音訊。	src/core/llm/fallback.js:127	
+19lcshx	ok	It can't use tools.	它不能使用工具。	src/core/llm/fallback.js:128	
+1coimht	ok	The conversation is too long for it.	對話對它來說太長了。	src/core/llm/fallback.js:129	
+6o9g3j	ok	It doesn't have the provider tool this needs.	它沒有這裡需要的供應商工具。	src/core/llm/fallback.js:130	
+8xm1wt	ok	It isn't a chat model.	它不是對話模型。	src/core/llm/fallback.js:131	Note: chat model → 對話模型, as the glossary's Koe · Classic note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	它已關閉。	src/core/llm/fallback.js:132	
+10vxomx	ok	It was removed.	它已被移除。	src/core/llm/fallback.js:133	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/core/llm/fallback.js:134	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限額，將暫停到 {0}。	src/core/llm/fallback.js:153	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	這台裝置處於離線狀態。	src/core/llm/fallback.js:179	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	輔助角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:228	Note: the role by its screen name (補助 / 輔助).
+d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 經典沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:229	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:230	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:35	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:148	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:150	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:152	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:255	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:257	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:269	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:278	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:280	{0} = type; Note: said of a plugin, whose name is the card's title.
+mprjic	ok	couldn't be downloaded. Check the connection and try again.	無法下載。請檢查網路連線，然後重試。	src/core/llm/official.js:157	Note: said of a plugin, whose name is the card's title.
+zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	無法下載（{0}：HTTP {1}）。請稍後再試。	src/core/llm/official.js:159	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安裝：{0} 與 annai 的目錄不符	src/core/llm/official.js:161	{0} = name; Note: said of a plugin, whose name is the card's title.
+1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	這不是 annai 認識的備份位置類型。請安裝提供它的外掛程式。	src/core/llm/official.js:275	Note: said of a kind of backup place, whose id comes before it in the log.
+1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	這不是 annai 認識的端點類型。請安裝提供它的外掛程式。	src/core/llm/official.js:277	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你關閉的 {0} 不會因此被開啟。	src/core/llm/official.js:289	{0} = name
+tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類型 {0}	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
+8lvx94	ok	didn't provide an endpoint type {0}	沒有提供端點類型 {0}	src/core/llm/official.js:300	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手機上，localhost 指的是手機本身。另一台電腦上的伺服器需要 https 網址：瀏覽器會攔截 https 頁面送出的普通 http 請求，所以 annai 只連線你網路上的 https 網址。一個辦法是用 Tailscale Serve，並讓手機加入你的 tailnet：在伺服器所在的電腦上執行 {0}，然後把 {1} 填給 annai。伺服器還必須允許來自 annai.guide 的 CORS。Chrome 142 及以後的版本可能會請你允許存取本機網路。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是網址：請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（http:// 只用於 localhost 或 127.0.0.1）。瀏覽器會攔截 https 頁面送出的普通 http 請求，而 annai 只連線你網路上的 https 網址，所以另一台電腦上的伺服器需要一個 https 網址。Tailscale Serve 可以提供：{0}。伺服器還必須允許來自 annai.guide 的 CORS。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -1121,21 +1125,21 @@ uqmge3	ok	Open the browser menu (⋮).	開啟瀏覽器選單（⋮）。	src/ui/
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 可能會在 7 天未造訪後清除你的旅行，而且主畫面上的 App 會另外儲存旅行：在這裡開始的旅行不會出現在那裡。請將 annai 加入主畫面，並在那裡開始旅行。	src/ui/install.js:51	
 o22iaq	ok	Your browser may clear your trips when space runs low. Install annai to keep them safe.	空間不足時，瀏覽器可能會清除你的旅行。請安裝 annai，讓旅行安全儲存。	src/ui/install.js:52	
 hz0ihc	ok	Show me how	檢視步驟	src/ui/install.js:53	
-n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:223	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
-967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:238	{0} = name
-ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:242	{0} = name
-1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:258	
-1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:262	
-v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:265	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
-1c7q9dt	ok	Miles	英里	src/ui/languages.js:271	Note: A choice of Distances.
-86ef5k	ok	Kilometres	公里	src/ui/languages.js:271	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
-r122ro	ok	Automatic	自動	src/ui/languages.js:271	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
-v4r0ir	ok	Distances	距離單位	src/ui/languages.js:287	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
-15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:300	{0} = name
-dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:300	
-8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:307	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:308	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
-1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:309	
+n3y7d4	ok	As this phone is set ({0})	跟隨手機設定（{0}）	src/ui/languages.js:226	{0} = ownName(chooseTag(null, phone, SHIPPED).tag)
+967kb3	ok	Getting {0}…	正在取得{0}…	src/ui/languages.js:243	{0} = name
+ixc7cw	ok	annai couldn't get {0}. It needs a connection once to get a language.	annai 無法取得{0}。取得語言需要連網一次。	src/ui/languages.js:249	{0} = name
+1t9l1f1	ok	Saved. Restarting…	已儲存。正在重新啟動…	src/ui/languages.js:266	
+1lycsu9	ok	Saved. It applies the next time annai restarts.	已儲存。下次重新啟動 annai 時生效。	src/ui/languages.js:270	
+v4uyh0	ok	annai's screens in	annai 介面語言	src/ui/languages.js:273	Note: Not in the glossary yet. 介面語言 (interface language) as apps say it; 顯示語言 is the alternative.
+1c7q9dt	ok	Miles	英里	src/ui/languages.js:279	Note: A choice of Distances.
+86ef5k	ok	Kilometres	公里	src/ui/languages.js:279	Note: A choice of Distances; 公里 is the everyday word (千米 is formal).
+r122ro	ok	Automatic	自動	src/ui/languages.js:279	Note: A choice of Distances: by the phone's region (as the voice menu's Auto, 自動).
+v4r0ir	ok	Distances	距離單位	src/ui/languages.js:295	Note: The setting beside the screens' language: which unit distances are shown in; 距離 alone would read as a distance.
+15go2in	ok	{0} couldn't be loaded	無法載入{0}	src/ui/languages.js:308	{0} = name
+dc30do	ok	annai shows English until it is online.	連網之前，annai 顯示英文。	src/ui/languages.js:308	
+8rqn0k	ok	Restart to show annai in {0}	重新啟動，以 {0} 顯示 annai	src/ui/languages.js:315	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	你的設定中 annai 介面語言為 {0}，但此裝置顯示的是其他語言。	src/ui/languages.js:316	{0} = name; Note: {0} is a language's own name, often Latin (English), so spaces around it.
+1of7r8x	ok	Restart annai	重新啟動 annai	src/ui/languages.js:317	
 15kmah9	ok	Simulation · moving fast	模擬 · 快速移動中	src/ui/live-chip.js:22	
 17gqu8c	ok	Simulation · stopped	模擬 · 已停下	src/ui/live-chip.js:22	
 he6p5i	ok	Simulation · walking	模擬 · 步行中	src/ui/live-chip.js:22	
@@ -1245,8 +1249,8 @@ qdh58i	ok	No offline pack for this trip yet.	這個旅行還沒有離線資料�
 ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 dbm7fe	ok	Open a trip someone sent you	開啟別人傳來的旅行	src/ui/open-file.js:6	
-ow6fak	ok	This browser could not draw the photo.	這個瀏覽器無法繪製這張照片。	src/ui/photo-codec.js:72	
-11dn6um	ok	This browser could not write {0}.	這個瀏覽器無法寫出 {0}。	src/ui/photo-codec.js:80	{0} = type
+ow6fak	ok	This browser could not draw the photo.	這個瀏覽器無法繪製這張照片。	src/ui/photo-codec.js:73	
+11dn6um	ok	This browser could not write {0}.	這個瀏覽器無法寫出 {0}。	src/ui/photo-codec.js:81	{0} = type
 1l0xxoj	ok	Close	關閉	src/ui/photo-viewer.js:32	
 1s1o4yb	ok	Show Shiori this part	把這部分給 Shiori 看	src/ui/photo-viewer.js:33	
 u3xlwb	ok	The plugin "{0}" was turned off	外掛程式「{0}」已關閉	src/ui/plugin-cards.js:12	{0} = name
@@ -1724,7 +1728,7 @@ el9rbx	ok	Uses the main list.	使用主要清單。	src/ui/screens/models.js:172
 1rqw64m	ok	Wait for the voice (seconds)	等待聲音（秒）	src/ui/screens/models.js:173	
 48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:173	
 796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:173	
-q0h89m	ok	A model that can't see photos or read PDFs gets each photo or PDF it reads described by a model here that can, else by Main's.	不能看照片或讀 PDF 的模型，讀到的每張照片或每個 PDF 會由這裡能做到的模型描述，否則由主要模型描述。	src/ui/screens/models.js:178	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	當 Shiori 的模型無法看照片或讀取 PDF 時，由 Koe 中能做到的模型來讀；沒有的話由這裡的模型讀，再沒有則由主要模型讀。安裝「PDF 頁面」外掛程式後，能看照片的模型可以讀 PDF 的頁面。	src/ui/screens/models.js:178	Note: "one here" is a model of this role (輔助), so 這裡的模型; PDF 頁面 is the plugin's name (its pdf-pages:@name).
 14w2ppx	ok	Add a provider for {0}	為{0}新增供應商	src/ui/screens/models.js:180	{0} = called
 17olz31	ok	Add a model to {0}	向{0}新增模型	src/ui/screens/models.js:182	{0} = called
 58mvoq	ok	Reasoning for {0}	推理等級（{0}）	src/ui/screens/models.js:190	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
@@ -2277,86 +2281,89 @@ pghiva	ok	Location	位置	src/ui/screens/trace.js:33
 1jije2k	ok	Nothing here yet.	這裡還沒有內容。	src/ui/screens/trace.js:76	
 zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 記錄的一切：檔案變更、模型呼叫、匯入、外掛程式問題和錯誤。最新的在前。	src/ui/screens/trace.js:87	
 vv1pu6	ok	Type contains	事件類型包含	src/ui/screens/trace.js:88	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 型別).
-g9esrd	ok	a newer backup from an Android phone is there	有一個來自 Android 手機的更新備份	src/ui/screens/trace.js:145	
-obwhc7	ok	a newer backup from an iPhone is there	有一個來自 iPhone 的更新備份	src/ui/screens/trace.js:145	
-oh532o	ok	a newer backup from an iPad is there	有一個來自 iPad 的更新備份	src/ui/screens/trace.js:145	
-1ds6m85	ok	a newer backup from a computer is there	有一個來自電腦的更新備份	src/ui/screens/trace.js:146	
-1r6qy12	ok	the user wrote	使用者寫了	src/ui/screens/trace.js:167	
-yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:167	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:171	
-l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:171	
-omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:172	
-1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:175	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
-piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:175	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	一個回答	src/ui/screens/trace.js:176	
-1x13vat	ok	not for Shiori	不是給 Shiori 的	src/ui/screens/trace.js:176	
-k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:176	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:177	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:177	
-1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:179	{0} = d.by
-o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:182	{0} = d.source
-v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:182	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:184	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:184	
-1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:188	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
-7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:188	
-udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:188	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:190	{0} = d.mediaType
-12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:194	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:194	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:195	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:198	
-1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:198	
-17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:199	
-130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:200	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:200	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:202	{0} = d.late
-1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:202	
-1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:203	
-1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:205	
-1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:206	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:206	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:206	
-3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:207	
-1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:213	Note: The glossary's Voice on mode (語音開啟).
-z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:213	Note: The glossary's Voice off mode (語音關閉).
-1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:216	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:216	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:217	
-cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:218	
-3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:228	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:232	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:233	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:234	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
-beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:236	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:241	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:241	
-njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:241	
-9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:242	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:242	
-1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:243	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:243	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:244	{0} = d.player
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:247	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:250	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:252	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:252	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:256	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:256	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:257	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:257	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:259	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:260	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:262	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:262	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:263	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:264	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:266	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:266	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:289	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:289	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:306	
+g9esrd	ok	a newer backup from an Android phone is there	有一個來自 Android 手機的更新備份	src/ui/screens/trace.js:146	
+obwhc7	ok	a newer backup from an iPhone is there	有一個來自 iPhone 的更新備份	src/ui/screens/trace.js:146	
+oh532o	ok	a newer backup from an iPad is there	有一個來自 iPad 的更新備份	src/ui/screens/trace.js:146	
+1ds6m85	ok	a newer backup from a computer is there	有一個來自電腦的更新備份	src/ui/screens/trace.js:147	
+1r6qy12	ok	the user wrote	使用者寫了	src/ui/screens/trace.js:168	
+yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:168	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:172	
+l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:172	
+omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:173	
+1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:176	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
+piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:176	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	一個回答	src/ui/screens/trace.js:177	
+1x13vat	ok	not for Shiori	不是給 Shiori 的	src/ui/screens/trace.js:177	
+k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:177	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:178	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:178	
+1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:180	{0} = d.by
+o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:183	{0} = d.source
+v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:183	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:185	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:185	
+1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
+7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:189	
+udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:189	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:190	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:191	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:193	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	為無法看照片的模型保留的照片描述	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:193	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:197	{0} = app
+13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:197	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:198	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:201	
+1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:201	
+17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:202	
+130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:203	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:203	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:205	{0} = d.late
+1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:205	
+1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:206	
+1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:208	
+1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:209	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:209	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:209	
+3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:210	
+1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:216	Note: The glossary's Voice on mode (語音開啟).
+z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:216	Note: The glossary's Voice off mode (語音關閉).
+1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:219	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:219	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:220	
+cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:221	
+3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:231	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:235	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:236	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:237	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
+beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:239	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:244	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:244	
+njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:244	
+9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:245	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:245	
+1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:246	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:246	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:247	{0} = d.player
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:250	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:255	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:255	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:259	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:260	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:260	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:263	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:267	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:292	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:309	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:38	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:48	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:50	

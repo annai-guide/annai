@@ -789,6 +789,8 @@ test("the Trace's line marks what an entry keeps as written (English) apart from
   const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data });
   assert.deepEqual(traceStored(e('error', { kind: 'budget', message: 'Steps used up.' })), ['budget: Steps used up.']);
   assert.deepEqual(traceStored(e('live.session', { state: 'closed', why: 'the socket closed' })), ['the socket closed']);
+  // A reading kept for a model that can't take a file is a model's English (the re-review of reading-files).
+  assert.deepEqual(traceStored(e('reading', { kind: 'pdf', how: 'told', text: "What it says (told by model-u, as you can't read PDFs): Check-in 3 PM." })), ["What it says (told by model-u, as you can't read PDFs): Check-in 3 PM."]);
   assert.deepEqual(traceStored(e('net.request', { kind: 'web', tool: 'fetch', url: 'https://x.test/', error: 'Failed to fetch' })), ['Failed to fetch']);
   assert.deepEqual(traceStored(e('wake', { reasons: [{ kind: 'user', text: 'typed' }, { kind: 'file', text: 'A new file' }] })), ['A new file']);
   assert.deepEqual(traceStored(e('heard', { text: 'どこで食べる？', ms: 900 })), []);

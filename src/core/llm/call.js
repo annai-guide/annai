@@ -287,7 +287,14 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     }
   } catch (e) {
     clearTimeout(t);
-    const err = asProviderError(e, linked, type, registry);
+    let err = asProviderError(e, linked, type, registry);
+    // Output that started and then stopped is not "no output in time" (the real-PDF check, 2026-10-28: a piece at 0.7 s, then 30 s of
+    // nothing): it says so, and how long it waited.
+    if (err.said?.code === 'late' && firstMs !== null) {
+      const seconds = Math.max(1, Math.round(firstOutputMs / 1000));
+      /* en */
+      err = new ProviderError('timeout', `Its output stopped for ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`, { cause: e, said: { code: 'paused', seconds } });
+    }
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
     // What the provider had reported using, and what that costs: a call stopped part-way is billed for it (the second review of
     // phone-fixes-1). Searches it made count all the same.

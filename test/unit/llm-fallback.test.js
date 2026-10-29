@@ -182,18 +182,21 @@ test('a model that takes no photos gets older ones as words, and is passed over 
   await assert.rejects(call(t, { request: asked }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-images');
 });
 
+/** A PDF a tool's result brought, and a conversation that read it and went on. */
+const pdf = { type: 'document', mediaType: 'application/pdf', data: 'AAAA', name: 'booking.pdf' };
+/** @type {any} */
+const older = { messages: [
+  { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'read', input: { path: '/trip/files/booking.pdf' } }] },
+  { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'The PDF.' }, pdf] },
+  { role: 'assistant', parts: [{ type: 'text', text: 'Read it.' }] },
+  { role: 'user', parts: [{ type: 'text', text: "What's around here?" }] },
+] };
+
 test('a model that reads no PDFs gets an older one as a note, and is passed over only for a PDF in the newest message (the second emulator pass)', async () => {
   /** @type {any[]} */
   const seen = [];
   const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) { seen.push(c.request); yield { type: 'text', text: 'Fine.' }; yield { type: 'stop', reason: 'end' }; } });
   const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spy]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
-  const pdf = { type: 'document', mediaType: 'application/pdf', data: 'AAAA', name: 'booking.pdf' };
-  const older = { messages: [
-    { role: 'assistant', parts: [{ type: 'tool_call', id: 't1', name: 'read', input: { path: '/trip/files/booking.pdf' } }] },
-    { role: 'user', parts: [{ type: 'tool_result', id: 't1', content: 'The PDF.' }, pdf] },
-    { role: 'assistant', parts: [{ type: 'text', text: 'Read it.' }] },
-    { role: 'user', parts: [{ type: 'text', text: "What's around here?" }] },
-  ] };
   const r = await call(s, { request: older });
   assert.equal(r.reply.text, 'Fine.');
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
@@ -203,6 +206,58 @@ test('a model that reads no PDFs gets an older one as a note, and is passed over
   const t = setup([[{ text: 'never' }]], { models: [{ input: ['text', 'image'] }] });
   const fresh = { messages: [older.messages[0], older.messages[1]] };
   await assert.rejects(call(t, { request: fresh }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'no-documents' && /PDFs/.test(e.message + failedText(e.attempts)));
+});
+
+/** A model type that answers 'Booked.' and keeps each request it got. @param {any[]} seen */
+const spyType = (seen) => /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) { seen.push(c.request); yield { type: 'text', text: 'Booked.' }; yield { type: 'stop', reason: 'end' }; } });
+
+test("a model a PDF in the newest message kept out is tried again once the rest failed, with what read made of it (the user's session, 2026-10-28)", async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[{ error: 'credit', status: 402 }], []], { types: [['spy', spyType(seen)]], endpointTypes: ['scripted', 'spy'], models: [{ input: ['text', 'pdf'] }, { input: ['text'] }] });
+  const fresh = { messages: [older.messages[0], older.messages[1]] };
+  /** @type {any[]} */ const asked = [];
+  const read = async (/** @type {any} */ part, /** @type {any} */ model) => { asked.push([part.type, model.providerId]); return [{ type: 'text', text: '[a PDF: booking.pdf] What it says (told by model-u, as you can\'t read PDFs): Flight AN 123.' }]; };
+  const r = await call(s, { request: fresh, read });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'no-documents', 'ok']);
+  assert.deepEqual(asked, [['document', 'model-1']]);
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: "[a PDF: booking.pdf] What it says (told by model-u, as you can't read PDFs): Flight AN 123." });
+  assert.equal(fresh.messages[1].parts[1], pdf, 'the request itself is not changed');
+});
+
+test("read is asked only for the newest message's files: an older photo goes as words", async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[]], { types: [['spy', spyType(seen)]], endpointTypes: ['spy'], models: [{ input: ['text'] }] });
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/2026-10-18-1530.webp' };
+  const fresh = { type: 'image', mediaType: 'image/webp', data: 'BBBB', hash: 'h2', path: '/trip/files/new.webp' };
+  const request = { newestPhoto: true, messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Look at this' }, photo] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'A beach.' }] },
+    { role: 'user', parts: [{ type: 'text', text: "What's this?" }, fresh] },
+  ] };
+  /** @type {any[]} */ const asked = [];
+  const read = async (/** @type {any} */ part, /** @type {any} */ model) => { asked.push([part.type, model.providerId]); return [{ type: 'text', text: `[a photo: ${part.path}] What it shows (described by model-u, as you can't see photos): A menu.` }]; };
+  const r = await call(s, { request, read });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'ok']);
+  assert.deepEqual(asked, [['image', 'model-0']]);
+  assert.match(JSON.stringify(seen[0].messages), /"text":"\[a photo: \/trip\/files\/2026-10-18-1530\.webp\]"/);
+  assert.deepEqual(seen[0].messages[2].parts[1], { type: 'text', text: "[a photo: /trip/files/new.webp] What it shows (described by model-u, as you can't see photos): A menu." });
+});
+
+test('a model passed over for another reason is not tried again: too long, switched off', async () => {
+  const s = setup([[{ text: 'never' }], [{ text: 'never' }]], { models: [{ input: ['text', 'pdf'], contextWindow: 10 }, { input: ['text'] }], off: [1] });
+  let n = 0;
+  await assert.rejects(call(s, { request: { messages: [older.messages[0], older.messages[1]] }, read: async () => { n++; return []; } }),
+    (e) => e instanceof AllFailedError && e.attempts.map((a) => a.outcome).join() === 'too-long,off');
+  assert.equal(n, 0);
+});
+
+test('newestDocument: false sends a newest PDF as a note, as newestPhoto: false does a photo', async () => {
+  /** @type {any[]} */ const seen = [];
+  const s = setup([[]], { types: [['spy', spyType(seen)]], endpointTypes: ['spy'], models: [{ input: ['text'] }] });
+  const r = await call(s, { request: { messages: [older.messages[0], older.messages[1]], newestDocument: false } });
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['ok']);
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: booking.pdf]' });
 });
 
 test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
@@ -534,6 +589,10 @@ test("a first model that never got the request (it can't read the PDF in it) was
   s.bench.bench('m-0', 60_000);
   const rested = await call(s);
   assert.deepEqual([rested.answeredBy, rested.first, rested.tried], ['model-1', 'model-0', true], 'resting: it "didn\'t answer"');
+  // In a turn's own call too, where a resting model goes to the end and another answers first (round 9).
+  const own = await call(s, { askResting: true });
+  assert.deepEqual([own.answeredBy, own.first, own.tried], ['model-1', 'model-0', true]);
+  assert.deepEqual(own.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:benched', 'm-1:ok'], 'the Trace lists the resting model it never reached');
 });
 
 test("a call that times out or is cut off part-way costs what it had used too: the turn's cost counts it with the answer's (third review of phone-fixes-1)", async () => {
@@ -568,4 +627,429 @@ test("speech cut when another model starts over is named by the model that spoke
   assert.ok(r.attempts.some((a) => a.model === 'm-1' && a.outcome === 'benched'), 'model-1 rested in between');
   assert.ok(restarts.length >= 1);
   assert.ok(restarts.every((by) => by.name === 'model-0'), JSON.stringify(restarts));
+});
+
+test("output that started and then stopped says so, not that none started (the real-PDF check, 2026-10-28)", async () => {
+  const stalls = /** @type {any} */ ({ type: 'stalls', name: 'Stalls', pluginId: 'stalls', run: async function* (/** @type {any} */ c) {
+    yield { type: 'text', text: 'Let me' };
+    await new Promise((_, no) => c.signal?.addEventListener('abort', () => no(c.signal.reason)));
+  } });
+  const s = setup([[]], { types: [['stalls', stalls]], endpointTypes: ['stalls'] });
+  await assert.rejects(call(s, { firstOutputMs: 1000 }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'timeout' && /^Its output stopped for 1 second\.$/.test(e.attempts[0].error ?? '') && e.attempts[0].said?.code === 'paused');
+});
+
+test("when every model the role could use is resting, the one whose rest ends soonest is asked anyway (the real-PDF check: one stall failed the next turn; round 8)", async () => {
+  const s = setup([[{ text: 'From model-0.' }], [{ text: 'From model-1.' }]]);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // its rest ends first
+  s.bench.bench('m-0', 300_000, 1_000_000 - 1_000);
+  const r = await call(s, { askResting: true });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:benched', 'm-1:ok'], 'a resting model goes at the end of the list, the soonest first; the one not reached is in the Trace (round 9)');
+  // Only a turn's own call: a side job (a reader, housekeeping, a plugin's call) fails as before (round 6).
+  s.bench.bench('m-1', 300_000, 1_000_000);
+  await assert.rejects(call(s), (e) => e instanceof AllFailedError && e.attempts.every((a) => a.outcome === 'benched'));
+  // With a model that can answer, resting still passes the others over.
+  const t = setup([[{ text: 'never' }], [{ text: 'From model-1.' }]]);
+  t.bench.bench('m-0', 300_000, 1_000_000);
+  assert.equal((await call(t, { askResting: true })).answeredBy, 'model-1');
+});
+
+// Round 7.
+/** A spy type answering each model by its own script (one step per call), and keeping each request it gets, by model. */
+function spyWorld(/** @type {{ input?: string[], images?: any, script?: any[] }[]} */ models, /** @type {number[]} */ off = []) {
+  /** @type {{ model: string, request: any }[]} */
+  const seen = [];
+  const n = new Map();
+  const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) {
+    seen.push({ model: c.model.providerId, request: c.request });
+    const i = n.get(c.model.providerId) ?? 0;
+    n.set(c.model.providerId, i + 1);
+    const script = c.endpoint?.tunables?.script ?? [];
+    const step = script.length ? script[Math.min(i, script.length - 1)] : { text: `From ${c.model.providerId}.` };
+    if (step.error) throw new ProviderError(step.error, step.error);
+    yield { type: 'text', text: step.text };
+    yield { type: 'stop', reason: 'end' };
+  } });
+  const s = setup(models.map((m) => m.script ?? []), { types: [['spy', spy]], endpointTypes: models.map(() => 'spy'), off, models: models.map((m) => ({ input: m.input ?? ['text'], ...(m.images ? { images: m.images } : {}) })) });
+  return { s, seen };
+}
+
+test('the resting pass asks only a model that can take the request: the longest-resting text model is passed over for a photo (round 7)', async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const r = await call(s, { askResting: true, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+});
+
+test('with read, a resting model that can take the request as it is goes before one that needs its files read (rounds 7 and 8)', async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => [{ type: 'text', text: '[a photo: /trip/files/menu.webp] It shows a menu.' }];
+  const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+  // With no resting model that sees photos, the text one is asked with the photo read.
+  const t = spyWorld([{ input: ['text'] }, { input: ['text'] }]);
+  t.s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  t.s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const u = await call(t.s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(u.answeredBy, 'model-0');
+  assert.match(JSON.stringify(t.seen[0].request.messages), /It shows a menu/);
+});
+
+test('a model resting from before is asked when the one tried in this call failed and now rests too (round 7)', async () => {
+  const { s, seen } = spyWorld([{ script: [{ error: 'overloaded' }] }, { script: [{ text: 'From model-1.' }] }]);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000);
+  const r = await call(s, { askResting: true });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.equal(seen.at(-1).model, 'model-1');
+});
+
+test('a model asked anyway that answers rests no more: the next call asks it first again (round 7)', async () => {
+  const { s } = spyWorld([{}, {}]);
+  s.bench.bench('m-0', 400_000, 1_000_000 - 200_000);
+  s.bench.bench('m-1', 400_000, 1_000_000 - 100_000);
+  assert.equal((await call(s, { askResting: true })).answeredBy, 'model-0');
+  assert.equal(s.bench.until('m-0'), 0);
+  const next = await call(s, { askResting: true });
+  assert.deepEqual(next.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-1:benched', 'm-0:ok'], 'the primary answers at once; the other still rests');
+});
+
+test("the second pass's pictures go once: a page the read returns that an earlier message holds stays there, the later copy said once (round 7)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'] }]);
+  const page = { type: 'image', mediaType: 'image/jpeg', data: 'AAAA', hash: 'h1', page: 1 };
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: '[a PDF: booking.pdf] Its pages as pictures: page 1 of 1.' }, page] },
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'Read the booking' }] },
+  ] };
+  const read = async () => [{ type: 'text', text: '[a PDF: booking.pdf] Its pages as pictures: page 1 of 1.' }, { ...page }];
+  await call(s, { request, read });
+  const images = seen[0].request.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
+  assert.equal(images.length, 1);
+  assert.equal(seen[0].request.messages[0].parts[1].type, 'image', 'the earlier copy stays');
+});
+
+// Round 8.
+test("a dead model asked anyway doesn't stay first: whose rest ends soonest is asked, so the choice turns to the other (round 8, S1)", async () => {
+  const { s, seen } = spyWorld([{ script: [{ error: 'timeout' }] }, { script: [{ error: 'timeout' }, { text: 'B is back.' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 60_000); // A rests from an earlier turn
+  await assert.rejects(call(s, { askResting: true }), AllFailedError); // B fails; A is asked anyway, fails
+  let clock = 1_000_000;
+  /** @type {any} */ let answered = null;
+  for (let turn = 2; turn <= 6 && !answered; turn++) {
+    clock += 30_000;
+    answered = await call(s, { askResting: true, now: () => clock }).catch(() => null);
+  }
+  assert.equal(answered?.answeredBy, 'model-1', 'B is asked again, and answers');
+  assert.ok(seen.filter((x) => x.model === 'model-1').length >= 2);
+});
+
+test('a model resting on a long rest the provider stated is never asked anyway (round 8)', async () => {
+  const { s, seen } = spyWorld([{}]);
+  s.bench.bench('m-0', 3_600_000, 1_000_000 - 1_000, 'It is resting until 17:00 (its daily limit).');
+  await assert.rejects(call(s, { askResting: true }), AllFailedError);
+  assert.equal(seen.length, 0);
+});
+
+test("a candidate that can't take the request for another reason (too long) isn't read for: no reading wasted (round 8, S4)", async () => {
+  const { s } = spyWorld([{ input: ['text'] }, { input: ['text'] }]);
+  s.config.models['m-0'].user.contextWindow = 5;
+  let reads = 0;
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => { reads++; return [{ type: 'text', text: '[a photo] It shows a menu.' }]; };
+  const r = await call(s, { read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this? '.repeat(20) }] }] } });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.equal(reads, 1, 'read only for the model that then answered');
+});
+
+test("each model gets its photo limit of the raw request's distinct pictures, the newest first, each sent once at its earliest place (round 8, D1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'], images: { maxCount: 1 } }]);
+  const photo = (/** @type {string} */ hash, /** @type {string} */ path) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path });
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'Here is the menu' }, photo('hA', '/trip/files/menu.webp')] },
+    { role: 'user', parts: [{ type: 'text', text: 'And the hotel' }, photo('hB', '/trip/files/hotel.webp')] },
+    { role: 'user', parts: [{ type: 'text', text: 'Look at the menu again' }, photo('hA', '/trip/files/menu.webp')] },
+  ] };
+  await call(s, { request });
+  const shown = seen[0].request.messages.map((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.hash : p.text)));
+  assert.deepEqual(shown, [
+    ['Here is the menu', 'hA'],
+    ['And the hotel', '[photo /trip/files/hotel.webp, not sent again: read it to see it]'],
+    ['Look at the menu again', '[photo /trip/files/menu.webp, the same as above]'],
+  ]);
+});
+
+// Round 9.
+test("the second pass's check before reading counts the model's photo limit, not every picture (round 9, N7)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'], images: { maxCount: 2 } }]);
+  s.config.models['m-0'].user.contextWindow = 8000;
+  let reads = 0;
+  const older = Array.from({ length: 10 }, (_, i) => ({ role: 'user', parts: [{ type: 'text', text: `photo ${i}` }, { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: `h${i}`, path: `/trip/files/${i}.webp` }] }));
+  const request = { messages: [...older, { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'When is my flight?' }] }] };
+  const read = async () => { reads++; return [{ type: 'text', text: '[a PDF: booking.pdf] What it says: flight AN 123 at 08:05.' }]; };
+  const r = await call(s, { read, request });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.equal(reads, 1);
+  assert.equal(seen.length, 1);
+});
+
+test("models that aren't resting have both passes before a resting one is asked: a dead photo model at rest doesn't hold up every photo turn (round 9, N2)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => [{ type: 'text', text: '[a photo] It shows a menu.' }];
+  const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the resting photo model was never asked');
+});
+
+test('the second pass never reads for a resting model once another resting model was asked (round 9, N1)', async () => {
+  const { s } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }]);
+  s.bench.bench('m-0', 300_000, 1_000_000 - 200_000);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  let reads = 0;
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => { reads++; return [{ type: 'text', text: '[a photo] It shows a menu.' }]; };
+  await assert.rejects(call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] } }), AllFailedError);
+  assert.equal(reads, 0);
+});
+
+test('a refused photo count is repaired though the request carries kept pages: the model gets what the repair allowed (round 9)', async () => {
+  /** @type {number[]} */ const sizes = [];
+  const strict = /** @type {any} */ ({ type: 'strict', name: 'Strict', pluginId: 'strict', run: async function* (/** @type {any} */ c) {
+    const n = c.request.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').length;
+    sizes.push(n);
+    if (n > 3) throw new ProviderError('image', 'Too many images: at most 3 images per request.');
+    yield { type: 'text', text: 'ok' };
+    yield { type: 'stop', reason: 'end' };
+  } });
+  const s = setup([[]], { types: [['strict', strict]], endpointTypes: ['strict'], models: [{ input: ['text', 'image'] }] });
+  const { limitImages } = await import('../../src/core/agent/refusals.js');
+  const img = (/** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path: `/trip/files/${hash}.webp` });
+  const pages = [1, 2, 3].map((n) => ({ mediaType: 'image/jpeg', data: 'AAAA', hash: `P${n}`, page: n }));
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'two photos' }, img('A'), img('B')] },
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'my booking' }] },
+    { role: 'user', parts: [{ type: 'text', text: 'When is the flight?' }] },
+  ] };
+  const readings = (/** @type {string} */ hash, /** @type {boolean} */ sees) => (hash === 'd1' && sees ? { text: 'Its pages as pictures: pages 1–3 of 3.', images: pages } : null);
+  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitImages(req.messages, 3) });
+  const r = await call(s, { request, readings, repairImages });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(sizes, [5, 3]);
+});
+
+// Round 10.
+test("a repair is that model's own: the next model gets the request as the conversation holds it (round 10)", async () => {
+  /** @type {Record<string, any[]>} */ const got = {};
+  const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) {
+    const id = c.model.providerId;
+    const parts = c.request.messages.flatMap((/** @type {any} */ m) => m.parts);
+    (got[id] ??= []).push(parts.map((/** @type {any} */ p) => (p.type === 'image' ? `IMG:${p.hash}` : p.type === 'document' ? 'DOC' : String(p.text ?? p.type).slice(0, 80))));
+    if (id === 'model-0' && parts.filter((/** @type {any} */ p) => p.type === 'image').length > 3) throw new ProviderError('image', 'Too many images: at most 3 images per request.');
+    if (id !== 'model-2') throw new ProviderError('timeout', 'stalled');
+    yield { type: 'text', text: `ok from ${id}` };
+    yield { type: 'stop', reason: 'end' };
+  } });
+  const s = setup([[], [], []], { types: [['spy', spy]], endpointTypes: ['spy', 'spy', 'spy'], models: [{ input: ['text', 'image'] }, { input: ['text', 'image', 'pdf'] }, { input: ['text'] }] });
+  const { limitImages } = await import('../../src/core/agent/refusals.js');
+  const img = (/** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path: `/trip/files/${hash}.webp` });
+  const pages = [1, 2, 3].map((n) => ({ mediaType: 'image/jpeg', data: 'AAAA', hash: `P${n}`, page: n }));
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'two photos' }, img('A'), img('B')] },
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'my booking' }] },
+    { role: 'user', parts: [{ type: 'text', text: 'When is the flight?' }] },
+  ] };
+  const readings = (/** @type {string} */ hash, /** @type {boolean} */ sees) => (hash !== 'd1' ? null : sees ? { text: 'Its pages as pictures: pages 1–3 of 3.', images: pages } : { text: 'What it says: flight AN 123 at 08:05.', images: [] });
+  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitImages(req.messages, 3) });
+  const r = await call(s, { request, readings, repairImages });
+  assert.equal(r.answeredBy, 'model-2');
+  assert.deepEqual(got['model-1'][0], ['two photos', 'IMG:A', 'IMG:B', 'DOC', 'my booking', 'When is the flight?'], 'the PDF reader gets the document and both photos');
+  assert.ok(got['model-2'][0].some((/** @type {string} */ x) => /flight AN 123/.test(x)), "the text model gets the booking's kept words");
+});
+
+test("when an awake model's reading of the file failed, a resting model that takes the file as it is is asked first (round 10, R1)", async () => {
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described: model-1 is resting." }], { unread: true });
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const r = await call(s, { askResting: true, read: failed, request });
+  assert.equal(r.answeredBy, 'model-1', 'the resting photo model answers from the photo');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+  // If it fails too, the awake model answers with the failed reading, as before.
+  const t = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }]);
+  t.s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const u = await call(t.s, { askResting: true, read: failed, request });
+  assert.equal(u.answeredBy, 'model-0');
+  assert.match(JSON.stringify(t.seen.at(-1).request.messages), /It couldn't be described/);
+});
+
+// Round 11.
+test("the hold-back asks a resting photo model that reads no PDFs, when the older PDF would go to it as its note (round 11, B3)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'my booking' }] },
+    { role: 'assistant', parts: [{ type: 'text', text: 'Got it.' }] },
+    { role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] },
+  ] };
+  const r = await call(s, { askResting: true, read: failed, request });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+});
+
+test("the hold-back counts only a resting model that would be asked: one too long doesn't hold the awake model back (round 11, B4)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }, { input: ['text'], script: [{ error: 'timeout' }] }]);
+  s.config.models['m-1'].user.contextWindow = 5;
+  s.bench.bench('m-1', 180_000, 1_000_000 - 20_000);
+  s.bench.bench('m-2', 180_000, 1_000_000 - 10_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const r = await call(s, { askResting: true, read: failed, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say? '.repeat(10) }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'no resting model was waited on');
+});
+
+test("a resting model that failed when asked doesn't hold an awake model back again in this rest: no wait on every photo turn (rounds 11 and 12, T1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  assert.equal((await call(s, { askResting: true, read: failed, request })).answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1', 'model-0'], 'tried once, while it rests');
+  seen.length = 0;
+  assert.equal((await call(s, { askResting: true, read: failed, request })).answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'not held for again in the same rest: the text model answers at once');
+});
+
+test('two resting photo models, the first dead: the first turn tries it and answers blind; the next turn asks the live one (round 11, T3)', async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 20_000); // its rest ends first
+  s.bench.bench('m-2', 180_000, 1_000_000 - 10_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  const first = await call(s, { askResting: true, read: failed, request });
+  assert.equal(first.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1', 'model-0']);
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: failed, request });
+  assert.equal(next.answeredBy, 'model-2');
+  assert.deepEqual(seen.map((x) => x.model), ['model-2']);
+});
+
+// Round 12.
+test("the only model, resting after two stalls, is still asked once a turn: the next turn answers as soon as the server is back (round 12, T1)", async () => {
+  const { s, seen } = spyWorld([{ script: [{ error: 'timeout' }, { error: 'timeout' }, { text: 'Back.' }] }]);
+  let clock = 1_000_000;
+  const turn = () => call(s, { askResting: true, now: () => clock });
+  await assert.rejects(turn(), AllFailedError); // stalls: it rests
+  clock += 10_000;
+  await assert.rejects(turn(), AllFailedError); // asked while resting, stalls again
+  clock += 10_000;
+  const r = await turn(); // the server is back: asked, not failed at once as "resting"
+  assert.equal(r.answeredBy, 'model-0');
+  assert.equal(seen.length, 3);
+});
+
+test('asked while resting and offline: the failure renews no rest, so nothing marks it, and it is asked when the connection is back (round 12, T3)', async () => {
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'network' }, { text: 'A menu.' }] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  let online = false;
+  await call(s, { askResting: true, read: failed, request, online: () => online }); // offline: the photo model's ask fails, the text model answers blind
+  assert.equal(s.bench.triedResting('m-1'), false);
+  online = true;
+  seen.length = 0;
+  const r = await call(s, { askResting: true, read: failed, request, online: () => online });
+  assert.equal(r.answeredBy, 'model-1', 'asked again once online, held for as before');
+});
+
+test("two resting photo models, the first dead on a short rest: turn 2 asks the live one, as a model that failed when asked goes after the other resting ones (round 12, T3-2turns)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 60_000); // its rest ends first
+  s.bench.bench('m-2', 300_000, 1_000_000 - 60_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  assert.equal((await call(s, { askResting: true, read: failed, request })).answeredBy, 'model-0');
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: failed, request, now: () => 1_030_000 });
+  assert.equal(next.answeredBy, 'model-2');
+  assert.deepEqual(seen.map((x) => x.model), ['model-2']);
+});
+
+// Round 13.
+test("models go in three groups, each through both passes: awake, resting, then resting ones that failed when asked; a resting text model is read for before a marked photo model takes the one resting ask (round 13, P1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 180_000, 1_000_000);
+  s.bench.askedResting('m-1');
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => [{ type: 'text', text: '[a photo: /trip/files/menu.webp] What it shows (described by model-u, as you can\'t see photos): a menu.' }];
+  const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does the menu say?' }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0']);
+});
+
+const menu = () => ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' }, { type: 'text', text: 'What does the menu say?' }] }] });
+const described = async () => [{ type: 'text', text: "[a photo: /trip/files/menu.webp] What it shows (described by model-u, as you can't see photos): a menu." }];
+const undescribed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+
+test("a resting photo model that fails when asked is marked even on a rest longer than the failure's: it holds the awake model back no more that rest (round 14, N1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-1', 600_000, 1_000_000);
+  await call(s, { askResting: true, read: undescribed, request: menu(), now: () => 1_010_000 });
+  assert.equal(s.bench.triedResting('m-1'), true);
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: undescribed, request: menu(), now: () => 1_020_000 });
+  assert.equal(next.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the dead photo model is not asked again');
+});
+
+test("a dead photo model on a long rest takes the one resting ask once; on the next turn a resting text model behind it is read for and answers (round 14, P2)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 600_000, 1_000_000 - 10_000);
+  await assert.rejects(call(s, { askResting: true, read: described, request: menu() }));
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: described, request: menu(), now: () => 1_030_000 });
+  assert.equal(next.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0']);
+});
+
+test("a live marked photo model behind a dead one on a long rest is asked on the next turn (round 14, P3)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'], script: [{ error: 'overloaded' }] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 600_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  s.bench.askedResting('m-1');
+  await assert.rejects(call(s, { askResting: true, request: menu() }));
+  seen.length = 0;
+  const next = await call(s, { askResting: true, request: menu(), now: () => 1_030_000 });
+  assert.equal(next.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+});
+
+test("a resting model switched off holds no awake model back: the text model's answer comes before a marked dead photo model is asked (round 14)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }], [1]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-2', 180_000, 1_000_000 - 5_000);
+  s.bench.askedResting('m-2');
+  const r = await call(s, { askResting: true, read: undescribed, request: menu() });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the dead photo model is not asked');
+  // The Trace gives each one it never reached its own reason: switched off, not resting.
+  assert.equal(r.attempts.find((a) => a.model === 'm-1')?.outcome, 'off');
+  assert.equal(r.attempts.find((a) => a.model === 'm-2')?.outcome, 'benched');
 });
