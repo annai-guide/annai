@@ -1,5 +1,5 @@
 {
-  "build": "ffc75d0a49d9",
+  "build": "8cf5712ef7e4",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "0f29fc062d38",
     "/src/app/claim.js": "6b9f4f7eb997",
-    "/src/app/main.js": "d0c833c1106a",
+    "/src/app/main.js": "721185b8cedb",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "6ee60f3d1f0d",
     "/src/core/after/recap.js": "6238f6093ac3",
@@ -116,7 +116,7 @@
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "c47b701f7e42",
-    "/src/core/names.js": "ee4ffdacc9ee",
+    "/src/core/names.js": "968df0573d67",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",
     "/src/core/packages.js": "e2590d11f926",
@@ -157,7 +157,7 @@
     "/src/core/time.js": "f9bc802fdfa7",
     "/src/core/xml.js": "8b39081ef29a",
     "/src/core/tsv.js": "f2206ca7c32f",
-    "/src/core/waiting.js": "e3080f1ff430",
+    "/src/core/waiting.js": "4ca345b725c0",
     "/src/core/voice/detector.js": "d435883670a4",
     "/src/core/voice/formats.js": "1b037e1a12bc",
     "/src/core/voice/g711.js": "66f5baeb9a02",
