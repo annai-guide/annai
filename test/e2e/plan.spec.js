@@ -76,7 +76,8 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
   await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Bookings' })).toContainText('UA 123');
+  // The trip's bookings are on their days: there is no separate Bookings list (goal 9).
+  await expect(page.getByRole('region', { name: 'Bookings' })).toHaveCount(0);
   // The calendar file: every timed item, in UTC.
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Add to calendar' }).click();
@@ -87,6 +88,95 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(page.getByText(/1 item has no time yet/)).toBeVisible();
   // Nothing on a phone screen scrolls sideways, the top bar included.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+const AK = 'America/Anchorage';
+/** A trip to Anchorage, synthetic: a flight and a stay no plan item stands for, a pass with no day, and a plain plan item. */
+const ANCHORAGE = {
+  patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-27', timezones: [AK] } },
+  write: {
+    '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', confirmation: 'TESTQ1', unsure: [], start: { at: '2026-11-20T11:20:00-08:00', tz: LA }, end: { at: '2026-11-20T14:05:00-09:00', tz: AK }, fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', seat: '14C' } },
+    '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'unverified', source: '/files/hotel.png', title: 'Hotel Aurora Test', unsure: [], place: { name: 'Hotel Aurora Test', address: '1 Test Way, Testville' }, start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: '2026-11-27T11:00:00-09:00', tz: AK } },
+    '/bookings/pass.json': { id: 'pass', kind: 'event', status: 'unverified', source: '/files/pass.pkpass', title: 'Museum pass', unsure: [] },
+    '/plan/dinner.json': { id: 'dinner', title: 'Dinner with Sam', fixed: true, start: { at: '2026-11-21T18:30:00-09:00', tz: AK }, place: { name: 'Testville Grill' }, notes: 'Ask for a window table.' },
+  },
+};
+
+test("the Plan: the flight on Nov 20 with its times, the stay's check-in, a line for each night, its check-out; a pass under Not on a day; no Bookings list", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  // Not on a day is above the day tabs.
+  const notOnDay = page.getByRole('region', { name: 'Not on a day' });
+  await expect(notOnDay).toContainText('Museum pass');
+  expect(await notOnDay.evaluate((el) => Boolean(el.compareDocumentPosition(/** @type {Node} */ (document.querySelector('[role="tablist"]'))) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(page.getByRole('tab')).toHaveText(['Fri, Nov 20', 'Sat, Nov 21', 'Sun, Nov 22', 'Mon, Nov 23', 'Tue, Nov 24', 'Wed, Nov 25', 'Thu, Nov 26', 'Fri, Nov 27']);
+  const day = page.getByRole('tabpanel');
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await expect(day.locator('.plan-row').first()).toContainText(/11:20–14:05 AK/);
+  await expect(day.locator('.plan-row').first()).toContainText('ANNAI AIR AN 123');
+  await expect(day.getByRole('link', { name: /Check in · Hotel Aurora Test/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
+  // The night comes first in its day, a quiet line that isn't a link, then the day's own rows.
+  await expect(day.locator('.plan-row').first()).toHaveText('Staying at Hotel Aurora Test · night 2 of 7');
+  await expect(day.locator('.plan-row.night a')).toHaveCount(0);
+  await expect(day.locator('.plan-row').nth(1)).toContainText('Dinner with Sam');
+  await page.getByRole('tab', { name: 'Thu, Nov 26' }).click();
+  await expect(day.locator('.plan-row.night')).toHaveText('Staying at Hotel Aurora Test · night 7 of 7');
+  await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
+  await expect(day.getByRole('link', { name: /Check out · Hotel Aurora Test/ })).toBeVisible();
+  await expect(day.locator('.plan-row.night')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Bookings' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('a tap on any row opens its details, never the raw file', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /ANNAI AIR AN 123/ }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  await expect(page.locator('textarea')).toHaveCount(0);
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await page.getByRole('region', { name: 'Not on a day' }).getByRole('link', { name: /Museum pass/ }).click();
+  await expect(page.getByRole('heading', { name: 'Museum pass' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Check out · Hotel Aurora Test/ }).click();
+  await expect(page.getByRole('heading', { name: 'Hotel Aurora Test' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Dinner with Sam/ }).click();
+  await expect(page.getByRole('heading', { name: 'Dinner with Sam' })).toBeVisible();
+  await expect(page.locator('textarea')).toHaveCount(0);
+});
+
+test('an old unverified booking says Check this; a new one with an unsure seat says Check 1 detail; an old confirmed one says neither', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  const at = (/** @type {string} */ h) => ({ at: `2026-11-20T${h}:00-09:00`, tz: AK });
+  await records(page, trip, { patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-20', timezones: [AK] } }, write: {
+    '/bookings/old.json': { id: 'old', kind: 'flight', status: 'unverified', source: '/files/a.pdf', title: 'Old unverified', start: at('08:00') },
+    '/bookings/seat.json': { id: 'seat', kind: 'flight', status: 'unverified', source: '/files/b.pdf', title: 'New with a seat', unsure: ['seat'], fields: { seat: '14C' }, start: at('09:00') },
+    '/bookings/ok.json': { id: 'ok', kind: 'flight', status: 'confirmed', source: '/files/c.pdf', title: 'Old confirmed', start: at('10:00') },
+  } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  const rows = page.getByRole('tabpanel').locator('.plan-row');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0).getByRole('link', { name: 'Check this' })).toBeVisible();
+  await expect(rows.nth(1).getByRole('link', { name: 'Check 1 detail' })).toBeVisible();
+  await expect(rows.nth(1).getByText('Check this')).toHaveCount(0);
+  await expect(rows.nth(2).locator('.chip')).toHaveCount(0);
+  await rows.nth(1).getByRole('link', { name: 'Check 1 detail' }).click();
+  await expect(page.getByRole('heading', { name: 'New with a seat' })).toBeVisible();
 });
 
 test('the Plan with nothing in it, and with no trip open', async ({ page }) => {

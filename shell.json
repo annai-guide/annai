@@ -1,5 +1,5 @@
 {
-  "build": "e31ecf019280",
+  "build": "9c0608dc742d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -195,7 +195,7 @@
     "/src/plugins/voice-browser/index.js": "4b8e07716086",
     "/src/plugins/web/free.js": "be161cb903a1",
     "/src/plugins/web/index.js": "b0f3b38401b5",
-    "/src/ui/base.css": "ed204d42ec24",
+    "/src/ui/base.css": "53c8af0827d3",
     "/src/ui/cards.js": "516990c53957",
     "/src/ui/composer.js": "cd1624b332ab",
     "/src/ui/credits.js": "6a90a3274f4d",
@@ -207,7 +207,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/format.js": "4d9a07614400",
+    "/src/ui/format.js": "343318dffd93",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
@@ -233,7 +233,7 @@
     "/src/ui/plugin-updates.js": "20ebd825675c",
     "/src/ui/push.js": "d86ed631d3b2",
     "/src/ui/resume.js": "bf9b0a3dbac0",
-    "/src/ui/router.js": "3800ed9b0b12",
+    "/src/ui/router.js": "72f06d56f023",
     "/src/ui/save.js": "513ac16dd31a",
     "/src/ui/settings-form.js": "29a0c1fd9fdc",
     "/src/ui/screens/about.js": "e9280ce2cb0b",
@@ -249,8 +249,8 @@
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "61681d998143",
     "/src/ui/screens/notifications.js": "360e6f3ab25f",
-    "/src/ui/screens/now.js": "8ae0aec5dac4",
-    "/src/ui/screens/plan.js": "ed857ad55515",
+    "/src/ui/screens/now.js": "db9b86ff9117",
+    "/src/ui/screens/plan.js": "c4a1f7a3b854",
     "/src/ui/screens/plugin-install.js": "39adc9688179",
     "/src/ui/screens/plugin.js": "410ef7c10113",
     "/src/ui/screens/plugins.js": "940520eb5e18",
@@ -269,7 +269,7 @@
     "/src/ui/screens/voice.js": "0fdfe5528a1a",
     "/src/ui/screens/welcome.js": "7d0ed4080e90",
     "/src/ui/search-panel.js": "61251e7a5617",
-    "/src/ui/shell.js": "e1910a27116d",
+    "/src/ui/shell.js": "4e5f115556f5",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
     "/src/ui/shiori.css": "e93f0cdac198",
@@ -285,8 +285,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "fe7211974d2f",
-    "/l10n/zh-Hans.json": "b692f53a02d7",
-    "/l10n/zh-Hant.json": "17cff0065089"
+    "/l10n/ja.json": "5ce2d7df5d64",
+    "/l10n/zh-Hans.json": "2b0fad6e65e2",
+    "/l10n/zh-Hant.json": "962249faaae6"
   }
 }
