@@ -18,9 +18,9 @@ export const waitingFiles = (ws) => ws.list(SYS_WAITING, '/files/');
  * with its short name. From the waiting space, the file and its history go (its space comes back); from a trip, it is deleted there
  * with its history kept (spec §4.2). Both ends say it was a move (`moved` on their log entries), so Undo puts it back where it was.
  * @param {Workspace} ws @param {{ scope: string, path: string }} from @param {string} to the trip
- * @param {{ handover?: string, author?: string, folder?: string, source?: string }} [o] handover: the hand-over it was moved for, on what it
+ * @param {{ handover?: string, author?: string, folder?: string, source?: string, undo?: string }} [o] handover: the hand-over it was moved for, on what it
  *   writes; author: who deletes it from a trip (Shiori, unless the user moved it); folder: where it goes, /files/ unless said;
- *   source: the file it now comes from (a calendar's plan item, moved with its calendar)
+ *   source: the file it now comes from (a calendar's plan item, moved with its calendar); undo: an Undo's move back, for that hand-over
  * @returns {Promise<string>} its path in the trip
  */
 export async function moveFile(ws, from, to, o = {}) {
@@ -30,7 +30,7 @@ export async function moveFile(ws, from, to, o = {}) {
   const folder = o.folder ?? '/files/';
   const taken = new Set((await ws.list(to, folder)).map((f) => f.path));
   const path = freeName(normPath(`${folder}${from.path.split('/').pop()}`), taken);
-  const handover = o.handover ? { handover: o.handover } : {};
+  const handover = { ...(o.handover ? { handover: o.handover } : {}), ...(o.undo ? { undo: o.undo } : {}) };
   const source = o.source ?? entry.source;
   const was = o.source && entry.source !== o.source && entry.source ? { source: entry.source } : {};
   await ws.write(to, path, bytes, {

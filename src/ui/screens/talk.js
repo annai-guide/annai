@@ -13,8 +13,7 @@ import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost, wording, mark, sentences, sentenceGap, list as listed, fileHref, waitingHref } from '../format.js';
 import { ask } from '../ask.js';
 import { ME, SYS_WAITING } from '../../core/scopes.js';
-import { FILES_ONLY, undoable, undoHandover } from '../../core/handover.js';
-import { moveFile } from '../../core/waiting.js';
+import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
 
@@ -560,23 +559,16 @@ function undoLine(ctx, scope, list) {
     button.disabled = true;
     try {
       await settled(ctx.agent);
-      /** @type {{ title: string } | null} */
-      let removed = null;
-      /** Each file left as the user changed it, once, though both ends of a move may say so. @type {Set<string>} */
-      const kept = new Set();
-      for (const s of new Set([scope, ...(went.get(hh) ?? [])])) {
-        // The open conversation's mark goes through its log, so she is told at once what was taken back.
-        const out = await undoHandover(ctx.ws, s, hh, s === ctx.agent.scope ? { log: (/** @type {any} */ ev) => ctx.agent.log(ev) } : {});
-        for (const k of out.keptKeys) kept.add(k);
-        if (!out.tripEmpty) continue;
-        for (const f of out.files) await moveFile(ctx.ws, { scope: s, path: f }, SYS_WAITING, { author: 'user' });
-        removed = await removeTripNow(ctx, s);
-      }
+      // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
+      const { removed, kept } = await undoEverywhere(ctx.ws, scope, hh, {
+        remove: (s) => removeTripNow(ctx, s),
+        log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
+      });
       done();
       if (removed) {
-        ctx.notices.toast(t`Undone. ${removed.title} is removed, and your files are waiting with Shiori.`);
+        ctx.notices.toast(t`Undone. ${removed} is removed, and your files are waiting with Shiori.`);
         ctx.go('#/trips');
-      } else ctx.notices.toast(kept.size ? sentences(t`Undone.`, plural(kept.size, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
+      } else ctx.notices.toast(kept ? sentences(t`Undone.`, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
     } catch (e) {
       button.disabled = false;
       ctx.notices.toast(messageOf(e));
