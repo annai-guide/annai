@@ -1,4 +1,4 @@
-import { validZone, dayIn } from '../core/time.js';
+import { validZone, dayIn, instantAt } from '../core/time.js';
 import { checkOf } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { TIMINGS } from '../core/backup-auto.js';
@@ -112,8 +112,8 @@ export function bookingFacts(b, o = {}) {
   const marked = new Set(checkOf(b).fields);
   /** @param {any} time */
   const at = (time) => {
-    const ms = Date.parse(time?.at ?? '');
     const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
+    const ms = tz ? instantAt(time?.at, tz) : NaN;
     if (!Number.isFinite(ms) || !tz) return null;
     return t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`;
   };
@@ -127,10 +127,11 @@ export function bookingFacts(b, o = {}) {
     place: () => ({ label: t`Place`, value: b.place?.name ? (b.place.address ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
     nights: () => {
       if (Object.hasOwn(fields, 'nights')) return null; // hers, among the fields
-      const from = Date.parse(b.start?.at ?? '');
-      const to = Date.parse(b.end?.at ?? '');
       const tz = (/** @type {any} */ x) => (validZone(x?.tz) ? x.tz : null);
-      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || !tz(b.start) || !tz(b.end)) return null;
+      if (!tz(b.start) || !tz(b.end)) return null;
+      const from = instantAt(b.start.at, tz(b.start));
+      const to = instantAt(b.end.at, tz(b.end));
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return null;
       const days = Math.round((Date.parse(`${dayIn(to, tz(b.end))}T00:00:00Z`) - Date.parse(`${dayIn(from, tz(b.start))}T00:00:00Z`)) / 86_400_000);
       return days > 0 ? { label: t`Nights`, value: num(days) } : null;
     },

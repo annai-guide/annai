@@ -1,7 +1,7 @@
 import { h, t, tc } from '../dom.js';
 import { BOOKING_KINDS, fileHref, itemHref, bookingHref, when } from '../format.js';
 import { PLAN_FILE, bookingRef } from '../../core/plan.js';
-import { validZone } from '../../core/time.js';
+import { validZone, instantAt } from '../../core/time.js';
 import { zone } from '../../core/intl.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
@@ -57,9 +57,9 @@ export async function renderItem(ctx, route) {
 
 /** A time in its own zone, named (else the trip's): with the day; an all-day item's day alone. @param {any} time @param {string} tz @param {boolean} dayOnly */
 function timeText(time, tz, dayOnly) {
-  const ms = Date.parse(time?.at ?? '');
-  if (!Number.isFinite(ms)) return null;
   const own = validZone(time?.tz) ? time.tz : tz;
+  const ms = instantAt(time?.at, own);
+  if (!Number.isFinite(ms)) return null;
   if (dayOnly) return when(ms, own, { weekday: 'short', month: 'short', day: 'numeric' });
   return t`${when(ms, own, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, own)})`;
 }

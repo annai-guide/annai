@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
+import { planRows } from '../../src/core/plan.js';
 import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
@@ -240,6 +241,17 @@ test('bookingFacts: a flight whose from and to are not words keeps them as field
   assert.match(f[1].value, /SEA.*Seattle/);
   // One in words goes in the route; the other stays a field.
   assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', '{"code":"ANC"}']]);
+});
+
+test("bookingFacts: a time with no offset (an imported or restored record) reads on its zone's clock, as the Plan does (the review of seeing-bookings, R7)", () => {
+  const NY = 'America/New_York';
+  const stay = { kind: 'lodging', unsure: [], start: { at: '2026-10-31T15:00', tz: NY }, end: { at: '2026-11-03T11:00', tz: NY } };
+  const f = Object.fromEntries(bookingFacts(stay).map((x) => [x.key, x.value]));
+  assert.match(f.start, /^Sat, Oct 31, 3:00\sPM \(ET\)$/);
+  assert.match(f.end, /^Tue, Nov 3, 11:00\sAM \(ET\)$/);
+  assert.equal(f.nights, '3');
+  const [r] = planRows([], [{ path: '/bookings/s.json', booking: stay }], { fallbackTz: 'UTC' });
+  assert.equal(r.time, '15:00');
 });
 
 test('bookingFacts: a stay counts its nights; an unknown field is shown as written, its label marked English', () => {
