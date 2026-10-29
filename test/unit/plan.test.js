@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX } from '../../src/core/plan.js';
+import { upcoming } from '../../src/core/now.js';
+import { tripRows } from '../../src/ui/trip-rows.js';
 import { setWords } from '../../src/core/l10n.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -150,4 +152,108 @@ test("the Plan's Undos come from one read of the log, however many items Shiori 
   assert.ok(undo.get('/plan/stop-3.json') && 'restore' in /** @type {any} */ (undo.get('/plan/stop-3.json')));
   assert.deepEqual(undo.get('/plan/new.json'), { remove: true });
   assert.equal(undo.has('/plan/mine.json'), false);
+});
+
+const AK = 'America/Anchorage';
+const flight = { path: '/bookings/flight.json', booking: { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: [], start: { at: '2026-11-20T11:20:00-08:00', tz: LA }, end: { at: '2026-11-20T14:05:00-09:00', tz: AK } } };
+const stay = { path: '/bookings/stay.json', booking: { id: 'stay', kind: 'lodging', status: 'unverified', source: '/files/hotel.png', title: 'Hotel Aurora Test', unsure: [], place: { name: 'Hotel Aurora Test', lat: 61.2, lng: -149.9 }, start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: '2026-11-27T11:00:00-09:00', tz: AK } } };
+const pass = { path: '/bookings/pass.json', booking: { id: 'pass', kind: 'event', status: 'unverified', source: '/files/pass.pkpass', title: 'Museum pass', unsure: [] } };
+/** A stay of so many nights from Nov 20. @param {string} id @param {string} end */
+const stayTo = (id, end, tz = AK) => ({ path: `/bookings/${id}.json`, booking: { ...stay.booking, id, start: { at: '2026-11-20T15:00:00-09:00', tz }, end: { at: end, tz } } });
+
+test('a flight no plan item stands for is on the day it leaves, at its own clock, its arrival zone named', () => {
+  const [r] = planRows([], [flight], { fallbackTz: 'UTC' });
+  assert.deepEqual([r.from, r.day, r.time, r.end, r.endZone], ['booking', '2026-11-20', '11:20', '14:05', 'AKT']);
+  assert.deepEqual([r.path, r.bookingPath, r.item.title, r.item.fixed, r.night, r.check, r.missing, r.note], ['/bookings/flight.json', '/bookings/flight.json', 'ANNAI AIR AN 123', true, null, false, false, '']);
+  assert.equal(r.booking, flight.booking);
+});
+
+test('a stay: check-in, a night line on each day between (night 2 of 7 … 7 of 7), then check-out', () => {
+  const rows = planRows([], [stay], { fallbackTz: 'UTC' });
+  assert.deepEqual(rows.map((r) => [r.from, r.day, r.night && `${r.night.n}/${r.night.of}`]), [
+    ['booking', '2026-11-20', null], ['checkout', '2026-11-27', null],
+    ['night', '2026-11-21', '2/7'], ['night', '2026-11-22', '3/7'], ['night', '2026-11-23', '4/7'],
+    ['night', '2026-11-24', '5/7'], ['night', '2026-11-25', '6/7'], ['night', '2026-11-26', '7/7']]);
+  // Check-in is at its own time, with no end: the stay's end is its check-out row.
+  assert.deepEqual([rows[0].time, rows[0].end, rows[1].time, rows[1].end], ['15:00', '', '11:00', '']);
+  // A night is a quiet line: no time, the check-in's place.
+  assert.deepEqual([rows[2].at, rows[2].time, rows[2].item.place.name, rows[2].path], [null, '', 'Hotel Aurora Test', '/bookings/stay.json']);
+});
+
+test("a plan item linking a booking stands for it; a stay's check-out is still shown unless an item is on that day", () => {
+  const fly = { path: '/plan/fly.json', item: { id: 'fly', title: 'Fly to Anchorage', fixed: true, start: flight.booking.start, end: flight.booking.end, booking: '/trip/bookings/flight.json' } };
+  const checkIn = { path: '/plan/in.json', item: { id: 'in', title: 'Check in', fixed: true, start: stay.booking.start, booking: '/bookings/stay.json' } };
+  const rows = planRows([fly, checkIn], [flight, stay], { fallbackTz: 'UTC' });
+  assert.deepEqual(rows.map((r) => [r.from, r.path, r.day]), [
+    ['item', '/plan/fly.json', '2026-11-20'], ['item', '/plan/in.json', '2026-11-20'], ['checkout', '/bookings/stay.json', '2026-11-27'],
+    ...['21', '22', '23', '24', '25', '26'].map((d) => ['night', '/bookings/stay.json', `2026-11-${d}`])]);
+  assert.equal(rows[1].bookingPath, '/bookings/stay.json');
+  const checkOut = { path: '/plan/out.json', item: { id: 'out', title: 'Check out', fixed: true, start: stay.booking.end, booking: '/bookings/stay.json' } };
+  assert.equal(planRows([checkIn, checkOut], [stay], { fallbackTz: 'UTC' }).some((r) => r.from === 'checkout'), false);
+});
+
+test('a booking with no time is Not on a day; plan items with no time stay under No time yet', () => {
+  const untimedItem = { path: '/plan/u.json', item: { id: 'u', title: 'Ice skating', fixed: false } };
+  const { notOnDay, untimed } = planDays(planRows([untimedItem], [pass], { fallbackTz: 'UTC' }), {});
+  assert.deepEqual(notOnDay.map((r) => r.path), ['/bookings/pass.json']);
+  assert.deepEqual(untimed.map((r) => r.path), ['/plan/u.json']);
+  assert.deepEqual(planDays(planRows([untimedItem], [], { fallbackTz: 'UTC' }), {}).notOnDay, []);
+});
+
+test('nights come first in their day, before its other rows; a 0- or 1-night stay has none; a 200-night one stops at 60', () => {
+  const dinnerOn21st = { path: '/plan/dinner.json', item: { id: 'dinner', title: 'Dinner', fixed: true, start: { at: '2026-11-21T00:30:00-09:00', tz: AK } } };
+  const { days } = planDays(planRows([dinnerOn21st], [stay], { fallbackTz: 'UTC' }), {});
+  assert.deepEqual(days.find((d) => d.key === '2026-11-21')?.rows.map((r) => r.from), ['night', 'item']);
+  const nights = (/** @type {any} */ b) => planRows([], [b], { fallbackTz: 'UTC' }).filter((r) => r.from === 'night');
+  assert.equal(nights(stayTo('same', '2026-11-20T22:00:00-09:00')).length, 0);
+  assert.equal(nights(stayTo('one', '2026-11-21T11:00:00-09:00')).length, 0);
+  const long = nights(stayTo('long', '2027-06-08T11:00:00-08:00'));
+  assert.equal(NIGHTS_MAX, 60);
+  assert.equal(long.length, 60);
+  assert.deepEqual([long[0].night, long[59].night], [{ n: 2, of: 200 }, { n: 61, of: 200 }]);
+});
+
+test('a booking with a time zone annai does not know, or an end before its start, still shows, in the fallback zone with the note; no nights', () => {
+  const odd = stayTo('odd', '2026-11-27T11:00:00-09:00', 'Alaska');
+  const rows = planRows([], [odd], { fallbackTz: AK });
+  assert.deepEqual(rows.map((r) => [r.from, r.day, r.time]), [['booking', '2026-11-20', '15:00'], ['checkout', '2026-11-27', '11:00']]);
+  assert.match(rows[0].note, /"Alaska" isn't one annai knows; shown in America\/Anchorage/);
+  const none = planRows([], [{ path: '/bookings/n.json', booking: { ...stay.booking, start: { at: '2026-11-20T15:00:00-09:00' }, end: { at: '2026-11-27T11:00:00-09:00' } } }], { fallbackTz: AK });
+  assert.deepEqual(none.map((r) => r.from), ['booking', 'checkout']);
+  assert.match(none[0].note, /"" isn't one annai knows/);
+  // An end before its start: shown as written, no nights.
+  const back = planRows([], [stayTo('back', '2026-11-18T11:00:00-09:00')], { fallbackTz: 'UTC' });
+  assert.deepEqual(back.map((r) => [r.from, r.day]), [['booking', '2026-11-20'], ['checkout', '2026-11-18']]);
+  // A time with no offset is read on its zone's clock (here the fallback's), not the phone's.
+  const bare = planRows([], [{ path: '/bookings/b.json', booking: { ...flight.booking, start: { at: '2026-11-20T11:20:00', tz: 'Nowhere' }, end: undefined } }], { fallbackTz: AK });
+  assert.deepEqual([bare[0].day, bare[0].time], ['2026-11-20', '11:20']);
+  assert.match(bare[0].note, /"Nowhere" isn't one annai knows/);
+  // Odd shapes: never thrown, never dropped.
+  for (const b of [{ kind: 'lodging', start: 'soon', end: 7 }, { kind: 'lodging', start: { at: 3 }, end: { at: null } }, { kind: 7 }, {}]) {
+    assert.equal(planRows([], [{ path: '/bookings/x.json', booking: /** @type {any} */ (b) }], { fallbackTz: 'UTC' }).filter((r) => r.from === 'booking').length, 1);
+  }
+});
+
+test('check and checkFields come from checkOf: an old unverified booking is check, a new one lists its fields, an old confirmed one neither', () => {
+  const old = { path: '/bookings/old.json', booking: { id: 'old', kind: 'flight', status: 'unverified', source: '/files/a.pdf', start: flight.booking.start } };
+  const seat = { path: '/bookings/seat.json', booking: { ...flight.booking, id: 'seat', unsure: ['seat', 'wings'], fields: { seat: '14C' } } };
+  const ok = { path: '/bookings/ok.json', booking: { id: 'ok', kind: 'flight', status: 'confirmed', source: '/files/a.pdf', start: flight.booking.start } };
+  const by = Object.fromEntries(planRows([], [old, seat, ok], { fallbackTz: 'UTC' }).map((r) => [r.path, [r.check, r.checkFields]]));
+  assert.deepEqual(by, { '/bookings/old.json': [true, []], '/bookings/seat.json': [false, ['seat']], '/bookings/ok.json': [false, []] });
+  // A plan item that stands for a booking carries its marks.
+  const item = { path: '/plan/fly.json', item: { id: 'fly', title: 'Fly', fixed: true, booking: '/bookings/seat.json' } };
+  const [r] = planRows([item], [seat], { fallbackTz: 'UTC' });
+  assert.deepEqual([r.from, r.check, r.checkFields], ['item', false, ['seat']]);
+});
+
+test("Now's next items include a flight booking no plan item stands for, and never a night line", async () => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Anchorage' });
+  for (const b of [flight, stay]) await ws.write(trip, b.path, b.booking, { author: 'user' });
+  const { rows } = await tripRows({ store, ws }, trip);
+  const next = upcoming(rows, Date.parse('2026-11-20T08:00:00-08:00'), 10);
+  assert.deepEqual(next.map((r) => [r.from, r.path]), [['booking', '/bookings/flight.json'], ['booking', '/bookings/stay.json'], ['checkout', '/bookings/stay.json']]);
+  assert.equal(rows.filter((r) => r.from === 'night').length, 6);
 });
