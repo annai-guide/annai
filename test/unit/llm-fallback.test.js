@@ -656,7 +656,7 @@ test("when every model the role could use is resting, the one whose rest ends so
 
 // Round 7.
 /** A spy type answering each model by its own script (one step per call), and keeping each request it gets, by model. */
-function spyWorld(/** @type {{ input?: string[], images?: any, script?: any[] }[]} */ models) {
+function spyWorld(/** @type {{ input?: string[], images?: any, script?: any[] }[]} */ models, /** @type {number[]} */ off = []) {
   /** @type {{ model: string, request: any }[]} */
   const seen = [];
   const n = new Map();
@@ -670,7 +670,7 @@ function spyWorld(/** @type {{ input?: string[], images?: any, script?: any[] }[
     yield { type: 'text', text: step.text };
     yield { type: 'stop', reason: 'end' };
   } });
-  const s = setup(models.map((m) => m.script ?? []), { types: [['spy', spy]], endpointTypes: models.map(() => 'spy'), models: models.map((m) => ({ input: m.input ?? ['text'], ...(m.images ? { images: m.images } : {}) })) });
+  const s = setup(models.map((m) => m.script ?? []), { types: [['spy', spy]], endpointTypes: models.map(() => 'spy'), off, models: models.map((m) => ({ input: m.input ?? ['text'], ...(m.images ? { images: m.images } : {}) })) });
   return { s, seen };
 }
 
@@ -1003,15 +1003,50 @@ test("models go in three groups, each through both passes: awake, resting, then 
   assert.deepEqual(seen.map((x) => x.model), ['model-0']);
 });
 
-test("a failure that doesn't move a long rest's end later doesn't mark the model: it still holds the awake model back next turn (round 13, S8)", async () => {
-  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }, { error: 'overloaded' }, { error: 'overloaded' }, { text: 'A menu.' }] }]);
-  s.bench.bench('m-1', 600_000, 1_000_000 - 10_000); // until +590 s; an overload's rest is far shorter
-  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
-  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
-  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does the menu say?' }] }] };
-  await call(s, { askResting: true, read: failed, request });
-  assert.equal(s.bench.triedResting('m-1'), false, 'its rest was not extended');
+const menu = () => ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' }, { type: 'text', text: 'What does the menu say?' }] }] });
+const described = async () => [{ type: 'text', text: "[a photo: /trip/files/menu.webp] What it shows (described by model-u, as you can't see photos): a menu." }];
+const undescribed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+
+test("a resting photo model that fails when asked is marked even on a rest longer than the failure's: it holds the awake model back no more that rest (round 14, N1)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-1', 600_000, 1_000_000);
+  await call(s, { askResting: true, read: undescribed, request: menu(), now: () => 1_010_000 });
+  assert.equal(s.bench.triedResting('m-1'), true);
   seen.length = 0;
-  const next = await call(s, { askResting: true, read: failed, request, now: () => 1_020_000 });
+  const next = await call(s, { askResting: true, read: undescribed, request: menu(), now: () => 1_020_000 });
+  assert.equal(next.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the dead photo model is not asked again');
+});
+
+test("a dead photo model on a long rest takes the one resting ask once; on the next turn a resting text model behind it is read for and answers (round 14, P2)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }]);
+  s.bench.bench('m-0', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 600_000, 1_000_000 - 10_000);
+  await assert.rejects(call(s, { askResting: true, read: described, request: menu() }));
+  seen.length = 0;
+  const next = await call(s, { askResting: true, read: described, request: menu(), now: () => 1_030_000 });
+  assert.equal(next.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0']);
+});
+
+test("a live marked photo model behind a dead one on a long rest is asked on the next turn (round 14, P3)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'], script: [{ error: 'overloaded' }] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 600_000, 1_000_000 - 10_000);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  s.bench.askedResting('m-1');
+  await assert.rejects(call(s, { askResting: true, request: menu() }));
+  seen.length = 0;
+  const next = await call(s, { askResting: true, request: menu(), now: () => 1_030_000 });
   assert.equal(next.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+});
+
+test("a resting model switched off holds no awake model back: the text model's answer comes before a marked dead photo model is asked (round 14)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }, { input: ['text', 'image'], script: [{ error: 'overloaded' }] }], [1]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  s.bench.bench('m-2', 180_000, 1_000_000 - 5_000);
+  s.bench.askedResting('m-2');
+  const r = await call(s, { askResting: true, read: undescribed, request: menu() });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(seen.map((x) => x.model), ['model-0'], 'the dead photo model is not asked');
 });
