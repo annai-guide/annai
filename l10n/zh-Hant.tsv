@@ -1298,6 +1298,7 @@ zymqne	ok	Only update if you trust where it came from.	只有在你信任它的�
 1dfe53s	ok	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:148	
 15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:150	
 c9wfke	ok	Not now	現在不要	src/ui/plugin-updates.js:151	Note: 現在不要, as Taiwan's iPhone says Not Now.
+vq7cdg#other	ok	# pages	#頁	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: Taiwan wording; a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、檔案、設定和金鑰都儲存在此裝置的這個瀏覽器中。annai 沒有帳號，也沒有任何 annai 的伺服器儲存你的旅行或金鑰。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只傳送到需要的地方。	src/ui/privacy.js:22	
@@ -1546,36 +1547,37 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	此頁
 ata72m	ok	Trace	記錄	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	無法繪製此頁面；外掛程式的錯誤在{0}中。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:56	
-10rafvo	ok	This trip isn't on this device	此裝置上沒有這個旅行	src/ui/screens/file.js:45	
-1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/file.js:45	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:47	
-krcze5	ok	This file was deleted. You can bring back a version below.	此檔案已刪除。你可以在下方還原某個版本。	src/ui/screens/file.js:50	
-1jlj988	ok	Delete file	刪除檔案	src/ui/screens/file.js:56	
-1ygxf36	ok	Tap again to delete	再點一次以刪除	src/ui/screens/file.js:56	
-1lwovru	ok	This file isn't waiting with Shiori any more.	這個檔案已不在 Shiori 的暫存中。	src/ui/screens/file.js:70	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
-3ul42n	ok	Deleted {0}. {1} freed.	已刪除{0}，釋放了{1}。	src/ui/screens/file.js:77	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: Taiwan wording: 刪除 for a file, as Removed {0}. {1} freed. (已移除{0}，釋放了{1}。).
-1hnv6ua	ok	Content	內容	src/ui/screens/file.js:101	
-lewgh4	ok	Save	儲存	src/ui/screens/file.js:101	
-1m183es	ok	Open the photo full size	放大檢視照片	src/ui/screens/file.js:114	
-wbyn1d	ok	Look at this part of {0}.	請看{0}的這一部分。	src/ui/screens/file.js:119	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此瀏覽器無法顯示這張照片。它在 Safari 中可以顯示，用「分享」方式匯出時會盡可能轉換格式。	src/ui/screens/file.js:126	Note: A Share export is the export panel's "Share" choice (分享), the same word as the platform's Share button.
-t8quxl	ok	Download	下載	src/ui/screens/file.js:136	
-4g2gbm	ok	Taken {0}	拍攝於{0}	src/ui/screens/file.js:145	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	按原樣儲存	src/ui/screens/file.js:146	
-1v3hapr	ok	Where it was taken	拍攝地點	src/ui/screens/file.js:149	
-1ooqziz	ok	No earlier versions.	沒有更早的版本。	src/ui/screens/file.js:156	
-yugfpb	ok	History	歷史	src/ui/screens/file.js:157	
-q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:162	
-1q136y3	ok	That version isn't stored on this device.	此裝置上沒有儲存該版本。	src/ui/screens/file.js:168	
-twulcv	ok	Version restored	已還原版本	src/ui/screens/file.js:172	
-16qw3bf	ok	Restore this version	還原此版本	src/ui/screens/file.js:173	
-1dw4k8q	ok	Current	目前	src/ui/screens/file.js:174	
-3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:180	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:180	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	你{0}刪除	src/ui/screens/file.js:186	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0} {1}刪除	src/ui/screens/file.js:186	{0} = who; {1} = ago
-1cdkli8	ok	Saved by you {0}	你{0}儲存	src/ui/screens/file.js:187	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0} {1}儲存	src/ui/screens/file.js:187	{0} = who; {1} = ago
+43f6md	ok	Details	詳細資料	src/ui/screens/file.js:19	Note: Taiwan wording: 詳細資料, as apps there name a details page; the crumb back to a plan item's details.
+10rafvo	ok	This trip isn't on this device	此裝置上沒有這個旅行	src/ui/screens/file.js:46	
+1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/file.js:46	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:48	
+krcze5	ok	This file was deleted. You can bring back a version below.	此檔案已刪除。你可以在下方還原某個版本。	src/ui/screens/file.js:51	
+1jlj988	ok	Delete file	刪除檔案	src/ui/screens/file.js:57	
+1ygxf36	ok	Tap again to delete	再點一次以刪除	src/ui/screens/file.js:57	
+1lwovru	ok	This file isn't waiting with Shiori any more.	這個檔案已不在 Shiori 的暫存中。	src/ui/screens/file.js:71	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
+3ul42n	ok	Deleted {0}. {1} freed.	已刪除{0}，釋放了{1}。	src/ui/screens/file.js:78	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: Taiwan wording: 刪除 for a file, as Removed {0}. {1} freed. (已移除{0}，釋放了{1}。).
+1hnv6ua	ok	Content	內容	src/ui/screens/file.js:102	
+lewgh4	ok	Save	儲存	src/ui/screens/file.js:102	
+1m183es	ok	Open the photo full size	放大檢視照片	src/ui/screens/file.js:131	
+wbyn1d	ok	Look at this part of {0}.	請看{0}的這一部分。	src/ui/screens/file.js:136	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此瀏覽器無法顯示這張照片。它在 Safari 中可以顯示，用「分享」方式匯出時會盡可能轉換格式。	src/ui/screens/file.js:143	Note: A Share export is the export panel's "Share" choice (分享), the same word as the platform's Share button.
+t8quxl	ok	Download	下載	src/ui/screens/file.js:153	
+4g2gbm	ok	Taken {0}	拍攝於{0}	src/ui/screens/file.js:162	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	按原樣儲存	src/ui/screens/file.js:163	
+1v3hapr	ok	Where it was taken	拍攝地點	src/ui/screens/file.js:166	
+1ooqziz	ok	No earlier versions.	沒有更早的版本。	src/ui/screens/file.js:173	
+yugfpb	ok	History	歷史	src/ui/screens/file.js:174	
+q1nl48	ok	Not kept in this copy	此副本中未保留	src/ui/screens/file.js:179	
+1q136y3	ok	That version isn't stored on this device.	此裝置上沒有儲存該版本。	src/ui/screens/file.js:185	
+twulcv	ok	Version restored	已還原版本	src/ui/screens/file.js:189	
+16qw3bf	ok	Restore this version	還原此版本	src/ui/screens/file.js:190	
+1dw4k8q	ok	Current	目前	src/ui/screens/file.js:191	
+3g3rkl	ok	changed by you {0}	你{0}修改	src/ui/screens/file.js:197	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0} {1}修改	src/ui/screens/file.js:197	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	你{0}刪除	src/ui/screens/file.js:203	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0} {1}刪除	src/ui/screens/file.js:203	{0} = who; {1} = ago
+1cdkli8	ok	Saved by you {0}	你{0}儲存	src/ui/screens/file.js:204	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0} {1}儲存	src/ui/screens/file.js:204	{0} = who; {1} = ago
 f0ig49	ok	Open a trip	開啟旅行	src/ui/screens/import.js:36	
 1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:39	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	選擇一個 annai 檔案（.annai.zip 或 .annai）即可開啟。	src/ui/screens/import.js:52	
