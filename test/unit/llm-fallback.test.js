@@ -843,3 +843,49 @@ test('a refused photo count is repaired though the request carries kept pages: t
   assert.equal(r.answeredBy, 'model-0');
   assert.deepEqual(sizes, [5, 3]);
 });
+
+// Round 10.
+test("a repair is that model's own: the next model gets the request as the conversation holds it (round 10)", async () => {
+  /** @type {Record<string, any[]>} */ const got = {};
+  const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) {
+    const id = c.model.providerId;
+    const parts = c.request.messages.flatMap((/** @type {any} */ m) => m.parts);
+    (got[id] ??= []).push(parts.map((/** @type {any} */ p) => (p.type === 'image' ? `IMG:${p.hash}` : p.type === 'document' ? 'DOC' : String(p.text ?? p.type).slice(0, 80))));
+    if (id === 'model-0' && parts.filter((/** @type {any} */ p) => p.type === 'image').length > 3) throw new ProviderError('image', 'Too many images: at most 3 images per request.');
+    if (id !== 'model-2') throw new ProviderError('timeout', 'stalled');
+    yield { type: 'text', text: `ok from ${id}` };
+    yield { type: 'stop', reason: 'end' };
+  } });
+  const s = setup([[], [], []], { types: [['spy', spy]], endpointTypes: ['spy', 'spy', 'spy'], models: [{ input: ['text', 'image'] }, { input: ['text', 'image', 'pdf'] }, { input: ['text'] }] });
+  const { limitImages } = await import('../../src/core/agent/refusals.js');
+  const img = (/** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path: `/trip/files/${hash}.webp` });
+  const pages = [1, 2, 3].map((n) => ({ mediaType: 'image/jpeg', data: 'AAAA', hash: `P${n}`, page: n }));
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: 'two photos' }, img('A'), img('B')] },
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'my booking' }] },
+    { role: 'user', parts: [{ type: 'text', text: 'When is the flight?' }] },
+  ] };
+  const readings = (/** @type {string} */ hash, /** @type {boolean} */ sees) => (hash !== 'd1' ? null : sees ? { text: 'Its pages as pictures: pages 1–3 of 3.', images: pages } : { text: 'What it says: flight AN 123 at 08:05.', images: [] });
+  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitImages(req.messages, 3) });
+  const r = await call(s, { request, readings, repairImages });
+  assert.equal(r.answeredBy, 'model-2');
+  assert.deepEqual(got['model-1'][0], ['two photos', 'IMG:A', 'IMG:B', 'DOC', 'my booking', 'When is the flight?'], 'the PDF reader gets the document and both photos');
+  assert.ok(got['model-2'][0].some((/** @type {string} */ x) => /flight AN 123/.test(x)), "the text model gets the booking's kept words");
+});
+
+test("when an awake model's reading of the file failed, a resting model that takes the file as it is is asked first (round 10, R1)", async () => {
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described: model-1 is resting." }], { unread: true });
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const r = await call(s, { askResting: true, read: failed, request });
+  assert.equal(r.answeredBy, 'model-1', 'the resting photo model answers from the photo');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+  // If it fails too, the awake model answers with the failed reading, as before.
+  const t = spyWorld([{ input: ['text'] }, { input: ['text', 'image'], script: [{ error: 'timeout' }] }]);
+  t.s.bench.bench('m-1', 180_000, 1_000_000 - 10_000);
+  const u = await call(t.s, { askResting: true, read: failed, request });
+  assert.equal(u.answeredBy, 'model-0');
+  assert.match(JSON.stringify(t.seen.at(-1).request.messages), /It couldn't be described/);
+});
