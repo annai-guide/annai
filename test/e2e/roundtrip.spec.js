@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, pastWelcome } from './helpers.js';
+import { openApp, buildAndSave, pastWelcome, allFiles } from './helpers.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
@@ -17,6 +17,7 @@ async function startTrip(page, title) {
 
 /** @param {import('@playwright/test').Page} page @param {string} path @param {string} content */
 async function writeNote(page, path, content) {
+  await allFiles(page);
   await page.getByLabel('File path').fill(path);
   await page.getByRole('button', { name: 'Create' }).click();
   await page.getByLabel('Content').fill(content);
@@ -50,6 +51,7 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByLabel('Replace my profile and memory with the ones in this file').check();
   await page.getByRole('button', { name: 'Import' }).click();
   await page.getByRole('link', { name: 'Open 京都 in spring' }).click();
+  await allFiles(page);
   await page.getByRole('link', { name: /伏見稲荷\.md/ }).click();
   await expect(page.getByLabel('Content')).toHaveValue('千本鳥居 at dawn, before the crowds');
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
@@ -136,6 +138,7 @@ test.describe('opening a hosted archive', () => {
     await expect(page.getByText('Shared Big Sur')).toBeVisible();
     await page.getByRole('button', { name: 'Import' }).click();
     await page.getByRole('link', { name: 'Open Shared Big Sur' }).click();
+    await allFiles(page);
     await expect(page.getByRole('link', { name: /bixby\.md/ })).toBeVisible();
   });
 

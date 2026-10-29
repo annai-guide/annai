@@ -2424,33 +2424,44 @@ scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:269	plural; # = (d
 mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
 tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:292	
 1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:309	
-1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:38	
-jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:48	
-qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:50	
-xqmps	ok	Archive trip	归档旅行	src/ui/screens/trip.js:50	
-1hqo9yw	ok	Remove trip	移除旅行	src/ui/screens/trip.js:51	
-86ci06	ok	Export trip	导出旅行	src/ui/screens/trip.js:63	
-vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}保存了其对话中的 # 轮：等你重新联网后，annai 会请求删除它们。	src/ui/screens/trip.js:111	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}保存了其对话中的 # 轮：annai 会请求删除它们。	src/ui/screens/trip.js:112	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
-1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:113	
-1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	这会从此设备移除这个旅行中的一切：文件、照片、笔记和历史。	src/ui/screens/trip.js:113	
-1db5a9q	ok	Remove anyway	仍然移除	src/ui/screens/trip.js:116	
-1ndoeek	ok	This trip hasn't been backed up since it last changed. Remove it anyway?	这个旅行自上次更改后还没有备份。仍要移除吗？	src/ui/screens/trip.js:116	
-45yyxd	ok	Not backed up	未备份	src/ui/screens/trip.js:116	
-1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，释放了{1}。	src/ui/screens/trip.js:121	{0} = scope.title; {1} = size(freed)
-1964rl0	ok	That trip was already removed.	这个旅行已被移除。	src/ui/screens/trip.js:125	
-1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:129	
-4fm217	ok	That trip wasn't removed	这个旅行未被移除	src/ui/screens/trip.js:129	
-deqm9f	ok	No files yet.	还没有文件。	src/ui/screens/trip.js:136	
-1s4j38w	ok	Files	文件	src/ui/screens/trip.js:145	
-1kuasfa	ok	That file doesn't match its format: {0}	该文件不符合其格式：{0}	src/ui/screens/trip.js:171	{0} = why; Note: {0} is the format check's own words, in English.
-q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/screens/trip.js:190	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:207	{0} = p
-ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:215	
-1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:216	
-16gte2l	ok	Create	创建	src/ui/screens/trip.js:219	
-knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:220	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:221	
+1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:43	
+jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:53	
+qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:55	
+xqmps	ok	Archive trip	归档旅行	src/ui/screens/trip.js:55	
+1hqo9yw	ok	Remove trip	移除旅行	src/ui/screens/trip.js:56	
+8jz3l7	ok	All files	所有文件	src/ui/screens/trip.js:68	Note: a fold below Files on the trip screen: every file by folder.
+1kgx9ri	ok	A train: {0}	火车：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became; {0} the booking's title.
+1vjpx7v	ok	A stay: {0}	住宿：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became; {0} the booking's title.
+f25yxm	ok	A car: {0}	租车：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became; {0} the booking's title.
+wl9iwa	ok	A flight: {0}	航班：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became; {0} the booking's title.
+193ekse	ok	An event: {0}	活动：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became; {0} the booking's title.
+1t5b0ut	ok	A restaurant: {0}	餐厅：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became; {0} the booking's title.
+xn3hah	ok	A booking: {0}	预订：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became; {0} the booking's title.
+1s4j38w	ok	Files	文件	src/ui/screens/trip.js:95	
+deqm9f	ok	No files yet.	还没有文件。	src/ui/screens/trip.js:102	
+1gfvwcc	ok	Nothing yet	暂无	src/ui/screens/trip.js:113	Note: what a file became on the trip's Files: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/screens/trip.js:113	Note: a file on the trip's Files that Shiori hasn't read yet.
+1wjykgt	ok	Plan items from a calendar	来自日历的行程项目	src/ui/screens/trip.js:116	Note: what a calendar file (.ics) became; Plan is 行程.
+86ci06	ok	Export trip	导出旅行	src/ui/screens/trip.js:127	
+vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}保存了其对话中的 # 轮：等你重新联网后，annai 会请求删除它们。	src/ui/screens/trip.js:175	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}保存了其对话中的 # 轮：annai 会请求删除它们。	src/ui/screens/trip.js:176	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
+1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:177	
+1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	这会从此设备移除这个旅行中的一切：文件、照片、笔记和历史。	src/ui/screens/trip.js:177	
+1db5a9q	ok	Remove anyway	仍然移除	src/ui/screens/trip.js:180	
+1ndoeek	ok	This trip hasn't been backed up since it last changed. Remove it anyway?	这个旅行自上次更改后还没有备份。仍要移除吗？	src/ui/screens/trip.js:180	
+45yyxd	ok	Not backed up	未备份	src/ui/screens/trip.js:180	
+1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，释放了{1}。	src/ui/screens/trip.js:185	{0} = scope.title; {1} = size(freed)
+1964rl0	ok	That trip was already removed.	这个旅行已被移除。	src/ui/screens/trip.js:189	
+1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:193	
+4fm217	ok	That trip wasn't removed	这个旅行未被移除	src/ui/screens/trip.js:193	
+q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/screens/trip.js:249	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:263	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:264	
+1kuasfa	ok	That file doesn't match its format: {0}	该文件不符合其格式：{0}	src/ui/screens/trip.js:276	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:286	{0} = p
+ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:294	
+1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:295	
+16gte2l	ok	Create	创建	src/ui/screens/trip.js:297	
 yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:28	
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:32	{0} = relTime(latest.last.at); {1} = latest.name; Note: {1} is the backup place's name.
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:33	
