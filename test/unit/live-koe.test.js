@@ -1454,3 +1454,22 @@ test('F1: tap, tap, tap with a slow microphone: the third session opens a microp
     await k.done();
   }
 });
+
+test('a hand-over typed while Koe is live is logged with its files, and Kokoro is woken for it: its turn carries the hand-over', async () => {
+  const kokoro = [{ rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AS 123' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }];
+  const k = await liveKit([{ said: 'Let me look at it.', audio: tone(0.2) }], { kokoro });
+  try {
+    await k.ws.write(k.trip, '/files/flight.pdf', new TextEncoder().encode('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
+    k.agent.send('', { handed: [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
+    await soon(async () => (await k.events(['file.write'])).some((/** @type {any} */ e) => e.data.path === '/notes/flight.md'));
+    await k.agent.idle();
+    const typed = (await k.events(['msg.user'])).at(-1);
+    assert.deepEqual([typed.data.split, typed.data.handover, typed.data.handed.length], [true, 'h-1', 1]);
+    assert.equal(texts(k).at(-1), '[the user handed you a file; Kokoro reads them]');
+    assert.ok(read(k.agent.kokoro).some((/** @type {string} */ t) => /^\[annai\] The user handed you a file: "\/trip\/files\/flight\.pdf"/.test(t)));
+    const wrote = (await k.events(['file.write'])).find((/** @type {any} */ e) => e.data.path === '/notes/flight.md');
+    assert.equal(wrote.data.handover, 'h-1');
+  } finally {
+    await k.done();
+  }
+});
