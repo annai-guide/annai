@@ -1,5 +1,5 @@
 import { h, whenGone, t, plural, linkIn, messageOf } from '../dom.js';
-import { readAppSettings } from '../../core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho, cardKind } from '../cards.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
@@ -560,13 +560,22 @@ function undoLine(ctx, scope, list) {
     try {
       await settled(ctx.agent);
       // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
-      const { removed, kept } = await undoEverywhere(ctx.ws, scope, hh, {
+      const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
         remove: (s) => removeTripNow(ctx, s),
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       done();
-      if (removed.length) {
-        ctx.notices.toast(plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed)));
+      if (removed.length && !waiting && back.length) {
+        // The files went back to the trip they came from: say so, and open its conversation.
+        ctx.notices.toast(plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), listed(back.map((b) => b.title))));
+        await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
+        await ctx.agent.open(back[0].id).catch(() => {});
+        if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+        else await ctx.render();
+      } else if (removed.length) {
+        ctx.notices.toast(waiting
+          ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
+          : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed)));
         ctx.go('#/trips');
       } else ctx.notices.toast(kept ? sentences(t`Undone.`, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
     } catch (e) {
