@@ -419,3 +419,37 @@ test("a second press keeps a trip the first kept for a file that isn't this hand
     assert.equal(await ws.readText(started, '/files/hotel.png'), 'hotel', other);
   }
 });
+
+// Round 6: where the files went is said whether or not a trip was removed.
+
+test('Undo of files filed from the waiting space into a trip that stays says they wait again, in the mark and her line', async () => {
+  const { store, ws } = await kit();
+  const kyoto = await createTrip(ws, { title: 'Kyoto' });
+  await ws.write(SYS_WAITING, '/files/hotel.pdf', utf8('hotel'), { author: 'user', type: 'application/pdf' });
+  await moveFile(ws, { scope: SYS_WAITING, path: '/files/hotel.pdf' }, kyoto, { handover: 'h-1' });
+  await record(store, ME, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: kyoto, started: false, count: 1 } });
+  const out = await undoEverywhere(ws, ME, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual([out.removed, out.waiting, out.back], [[], true, []]);
+  const [mark] = await eventsIn(store, ME, ['handover.undo']);
+  assert.equal(mark.data.waiting, true);
+  const words = (await Transcript.load(store, ME)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
+  assert.match(words, /\[annai\] The user tapped Undo for what you did with the files they handed you: the files wait with you again\./);
+});
+
+test('a moved file back in the trip it came from is said to be back there, a trip removed or not; and still after a first tap that failed', async () => {
+  const { store, ws, trip } = await kit();
+  const kyoto = await createTrip(ws, { title: 'Kyoto' });
+  await moveFile(ws, { scope: trip, path: '/files/flight.pdf' }, kyoto, { handover: 'h-1' });
+  const out = await undoEverywhere(ws, trip, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual([out.removed, out.waiting, out.back], [[], false, [{ id: trip, title: 'Anchorage' }]]);
+  const words = (await Transcript.load(store, trip)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
+  assert.match(words, /the files are back in "Anchorage"/);
+  // A first tap that moved the files home and then failed: the second still says where they are.
+  const b = await kit();
+  await b.ws.write(SYS_WAITING, '/files/a.pdf', utf8('a'), { author: 'user', type: 'application/pdf' });
+  const started = await startedFrom(b.ws, b.store, ME, 'h-1', 'Anchorage');
+  await moveFile(b.ws, { scope: SYS_WAITING, path: '/files/a.pdf' }, started, { handover: 'h-1' });
+  await assert.rejects(undoEverywhere(b.ws, ME, 'h-1', { remove: async () => { throw new Error('storage full'); } }));
+  const again = await undoEverywhere(b.ws, ME, 'h-1', { remove: async (s) => removeTrip(b.store, s) });
+  assert.deepEqual([again.removed, again.waiting], [['Anchorage'], true]);
+});
