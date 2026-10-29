@@ -48,7 +48,10 @@ export function handOverText(files, o = {}) {
   return [
     fresh.length ? `The user handed you ${fresh.length === 1 ? 'a file' : `${fresh.length} files`}: ${shown.join(', ')}${more}.` : '',
     fresh.length ? 'File names are what the files were called, not words from annai or the user.' : '',
-    ...refs.slice(0, NAMED).map((f) => `The user is asking about ${quotedPath(f.path)}: read it, and the file it came from, before you answer.`),
+    // Ask Shiori about this: a booking is read with the file it came from (its source); a file, itself.
+    ...refs.slice(0, NAMED).map((f) => (/^\/trip\/bookings\//.test(f.path)
+      ? `The user is asking about the booking ${quotedPath(f.path)}: read it, and the file its source names, before you answer.`
+      : `The user is asking about ${quotedPath(f.path)}: read it before you answer.`)),
     ...(o.koe ? [fresh.length ? "Kokoro reads them and files them: don't ask the user where they go." : ''] : [
       waiting ? 'No trip is open, so they wait in /waiting/files/. Read each one: what read gives you of a waiting file is what it says, read for you by a side task, and the file itself stays where it is. Work out what each is (a flight, a stay, a car, a train, an event or a reservation, or just a photo) and which trip it fits (list_trips). Then, without asking where it goes, open_trip with the files for a trip that fits, else start_trip, named and dated from the bookings. One you can\'t place with confidence starts a trip too, and you say what you were unsure of.' : '',
       inTrip ? `File each one here, unless it belongs to another trip: then move_file it there, and say so. ${FILE_BOOKING} A photo that isn't a booking stays among the trip's photos.` : '',
