@@ -427,3 +427,22 @@ test('a trip from before: unverified and confirmed bookings without unsure, plan
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: 'hotel.pdf' })).toContainText('A stay: Hoboken Inn');
 });
+
+test("a plan item's notes on the booking it stands for show on the booking's details, which a tap on that item opens", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  await records(page, trip, { write: {
+    '/plan/fly.json': { id: 'fly', title: 'Fly to Anchorage', fixed: true, start: ANCHORAGE.write['/bookings/flight.json'].start, booking: '/trip/bookings/flight.json', notes: 'Terminal S, arrive 2 h early.' },
+    '/plan/bags.json': { id: 'bags', title: 'Bags', fixed: false, booking: '/bookings/flight.json', notes: 'One checked bag each.' },
+  } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Fly to Anchorage/ }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  const notes = page.getByRole('region', { name: 'Notes' });
+  await expect(notes).toContainText('Terminal S, arrive 2 h early.');
+  await expect(notes).toContainText('One checked bag each.');
+  // In reading order: after what she read, before the file.
+  expect(await notes.evaluate((el) => Boolean(/** @type {Node} */ (document.querySelector('dl.facts')).compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+});
