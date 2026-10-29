@@ -2,7 +2,7 @@ import { ZipWriter, ZipReader } from './zip.js';
 import { encrypt, decrypt, isEncrypted } from './archive-crypto.js';
 import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
-import { isCompressedType, normPath } from './paths.js';
+import { isCompressedType, normPath, freeName } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
@@ -525,14 +525,14 @@ export async function describeArchive(store, { manifest }) {
 export async function importArchive(store, opened, choices = {}) {
   const { manifest, zip } = opened;
   const now = choices.now ?? Date.now();
-  /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[]} */
+  /** @type {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system'|'add', files: ManifestFile[], events: EventRecord[] }[]} */
   const plan = [];
   /** @type {Map<string, { bytes: Uint8Array, hash: string }>} */
   const overrides = new Map();
   for (const s of manifest.scopes) {
     const rec = s.record;
     /** @type {string} */ let target;
-    /** @type {'new'|'replace'|'system'} */ let mode;
+    /** @type {'new'|'replace'|'system'|'add'} */ let mode;
     if (rec.kind === 'trip') {
       const choice = choices.trips?.[rec.id] ?? 'new';
       if (choice === 'skip') continue;
@@ -540,9 +540,10 @@ export async function importArchive(store, opened, choices = {}) {
       mode = choice;
     } else if (rec.id === ME && choices.me === 'replace') {
       target = ME; mode = 'system';
-    } else if (rec.id === SYS_WAITING && choices.me === 'replace') {
-      // What waits with Shiori is the no-trip conversation's, so it comes and stays with your own files.
-      target = SYS_WAITING; mode = 'system';
+    } else if (rec.id === SYS_WAITING) {
+      // What waits with Shiori is the user's files, as they handed them: the ones this device lacks are added, by their content, and
+      // nothing of this device's is removed or replaced (its names and history stay this device's).
+      target = SYS_WAITING; mode = 'add';
     } else if (rec.id === SYS_SETTINGS && choices.settings === 'replace') {
       target = SYS_SETTINGS; mode = 'system';
     } else if (rec.id === SYS_PLUGINS && choices.plugins === 'replace') {
@@ -550,8 +551,8 @@ export async function importArchive(store, opened, choices = {}) {
     } else {
       continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
-    const files = manifest.files.filter((f) => f.scope === rec.id);
-    const events = s.events ? await logOf(opened, s.events) : [];
+    const files = manifest.files.filter((f) => f.scope === rec.id && (mode !== 'add' || /^\/files\/[^/]+$/.test(f.path)));
+    const events = s.events && mode !== 'add' ? await logOf(opened, s.events) : [];
     plan.push({ rec, target, mode, files, events });
     // Imported plugins arrive switched off: running their code must be an explicit choice
     // on the plugins screen, with its "full access" warning (spec §5.1).
@@ -671,7 +672,7 @@ const changedMeanwhile = () => new ArchiveError(/* en */ `What this file replace
 /**
  * The last step of an import, in one transaction: scopes, files, history and keys appear together or not at all.
  * @param {Store} store
- * @param {{ manifest: Manifest, plan: { rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system', files: ManifestFile[], events: EventRecord[] }[],
+ * @param {{ manifest: Manifest, plan: { rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system'|'add', files: ManifestFile[], events: EventRecord[] }[],
  *   overrides: Map<string, { bytes: Uint8Array, hash: string }>, secrets: { id: string, value: any }[], now: number,
  *   content: Map<string, Content>, own: Set<string>, sizes: Map<string, number>,
  *   result: { trips: string[], archived: string[], me: boolean, settings: boolean, plugins: boolean, secrets: number, keptSecrets: string[] } }} job
@@ -701,6 +702,10 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
           await t.appendEvent(old.id, { ts: now, type: 'scope.archive', actor: 'user', data: { reason: /* en */ 'replaced by an import' } });
           result.archived.push(old.id);
         }
+      }
+      if (p.mode === 'add') {
+        await addWaiting(t, p, { now, sizes, overrides });
+        continue;
       }
       if (p.mode === 'system') await t.deleteScope(p.target);
       // The target decides the kind: a record that calls "me" a trip must not make it one.
@@ -735,8 +740,34 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
 }
 
 /**
+ * The waiting space's files an archive holds that this device's waiting space lacks, by their content, added under names no file there
+ * has; nothing there is removed or replaced. @param {import('./types.js').Tx} t
+ * @param {{ rec: ScopeRecord, target: string, files: ManifestFile[] }} p
+ * @param {{ now: number, sizes: Map<string, number>, overrides: Map<string, { bytes: Uint8Array, hash: string }> }} o
+ */
+async function addWaiting(t, p, { now, sizes, overrides }) {
+  if (!(await t.getScope(p.target))) {
+    const { backup: _b, ...rec } = p.rec;
+    await t.putScope({ ...rec, id: p.target, kind: 'sys', status: 'active', updated: now });
+  }
+  const mine = await t.listFiles(p.target, '/files/');
+  const have = new Set(mine.map((f) => f.hash));
+  const taken = new Set(mine.map((f) => f.path));
+  for (const f of p.files) {
+    const hash = overrides.get(f.name)?.hash ?? f.hash;
+    if (have.has(hash)) continue;
+    const path = freeName(f.path, taken);
+    const size = /** @type {number} */ (sizes.get(hash));
+    have.add(hash);
+    taken.add(path);
+    await t.putFile({ scope: p.target, path, hash, size, type: f.type, author: f.author, created: f.created, modified: f.modified, ...(f.meta ? { meta: f.meta } : {}) });
+    await t.appendEvent(p.target, { ts: now, type: 'file.write', actor: 'user', data: { path, old: null, new: hash, size, type: f.type } });
+  }
+}
+
+/**
  * The scopes an import's part replaces: "me", the settings or the plugins in place, or a trip's active copies ("Replace mine").
- * @param {import('./types.js').Tx} t @param {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system' }} p @returns {Promise<string[]>}
+ * @param {import('./types.js').Tx} t @param {{ rec: ScopeRecord, target: string, mode: 'new'|'replace'|'system'|'add' }} p @returns {Promise<string[]>}
  */
 async function replacedBy(t, p) {
   if (p.mode === 'system') return [p.target];
