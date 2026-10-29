@@ -21,6 +21,8 @@ export const manifest = {
 // Below, Shiori's words: English (localization design, section 7).
 
 const TEXT_MAX = 40_000;
+/** A pasted text annai kept as a file (the type box): one that isn't a booking is Shiori's to drop. */
+const PASTED = /^\/files\/pasted-\d{4}-\d{2}-\d{2}-\d{4}(?: \(\d+\))?\.txt$/;
 /* en */
 const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes); with no trip open, /waiting/ holds what the user handed you.' };
 
@@ -36,6 +38,9 @@ export function activate(annai) {
   const writable = (scope, path) => {
     /* en */
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
+    // What waits with her is the user's, as they handed it: her short names are all she writes there.
+    /* en */
+    if (scope === SYS_WAITING && path !== NAMES_FILE) throw new Error('/waiting/ holds the user\'s files as they handed them: only /waiting/names.json, your short names for them, is yours to write. File a file into a trip to work with it.');
   };
   /**
    * Plan items and bookings sit directly in their folders, where the format check and the booking rule cover them (spec §4.4).
@@ -256,13 +261,16 @@ export function activate(annai) {
     },
     {
       name: 'delete', group: 'Files',
-      description: 'Delete a file. Its history is kept, so the user can restore it.',
+      description: 'Delete a file. Its history is kept, so the user can restore it; a pasted text waiting with you (/waiting/files/pasted-…) goes for good.',
       input: { type: 'object', properties: { path: PATH }, required: ['path'] },
       /** @param {{ path: string }} i @param {any} call */
       // Not case-tolerant: for a delete, "no file" is the true answer (round 6).
       run: (async (i, call) => {
         const { scope, path } = where(i.path, call);
-        writable(scope, path);
+        // Of what waits with her, only annai's own pasted texts are hers to drop; the user's files are theirs to delete, on Trips.
+        /* en */
+        if (scope === SYS_WAITING && !PASTED.test(path)) throw new Error(`${i.path} is the user's, theirs to delete: they do it on Trips (Waiting with Shiori). Leave it, or file it into a trip.`);
+        if (scope !== SYS_WAITING) writable(scope, path);
         // She may delete a booking the user confirmed, but she hears that they had, so she can say so if it was a mistake.
         const confirmed = isBookingPath(scope, path) && (await ws.readJSON(scope, path).catch(() => undefined))?.status === 'confirmed';
         // What waits with her is dropped for good, its space given back: nothing there is the user's to restore (a pasted text that wasn't a booking).
