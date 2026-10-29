@@ -154,13 +154,12 @@ export async function removeTrip(store, id, now = Date.now()) {
 
 /**
  * Deletes every stored content no file and no log entry names, through the indexes of what they
- * name: no log is read in full (spec §4.9). @param {Tx} t @param {Set<string>} [only] just these, when only they may have been let go
- * @returns {Promise<number>} the bytes freed
+ * name: no log is read in full (spec §4.9). @param {Tx} t @returns {Promise<number>} the bytes freed
  */
-export async function freeUnused(t, only) {
+async function freeUnused(t) {
   let bytes = 0;
   for (const b of await t.listBlobs()) {
-    if ((only && !only.has(b.hash)) || (await t.blobInUse(b.hash))) continue;
+    if (await t.blobInUse(b.hash)) continue;
     await t.deleteBlob(b.hash);
     bytes += b.size;
   }

@@ -1,4 +1,5 @@
-import { SYS_WAITING, freeUnused } from './scopes.js';
+import { SYS_WAITING } from './scopes.js';
+import { forget } from './forget.js';
 import { NotFoundError } from './workspace.js';
 import { normPath, freeName } from './paths.js';
 import { NAMES_FILE, readNames } from './names.js';
@@ -49,25 +50,13 @@ export async function moveFile(ws, from, to, o = {}) {
 }
 
 /**
- * Removes a waiting file for good: the file and its history, and its short name, then the content nothing else names (spec §4.9).
- * names.json's older versions stay in its history, as any file's do.
- * @param {Workspace} ws @param {string} path in the waiting space (/files/…) @returns {Promise<number>} the bytes freed
+ * Removes a waiting file for good: the file and its history, then the content nothing else names (spec §4.9); and its short name with
+ * it, names.json's history included (the coordinator, 2026-10-29), so nothing stored keeps the dropped file's name.
+ * @param {Workspace} ws @param {string} path in the waiting space (/files/…) @returns {Promise<number>} the bytes the file's content freed
  */
 export async function dropWaiting(ws, path) {
-  if (Object.hasOwn(await readNames(ws, SYS_WAITING), path)) await ws.patch(SYS_WAITING, NAMES_FILE, { [path]: null }, { author: 'user' });
-  return ws.store.tx(['files', 'events', 'blobs'], 'readwrite', async (t) => {
-    /** @type {Set<string>} */
-    const named = new Set();
-    const file = await t.getFile(SYS_WAITING, path);
-    if (file) {
-      named.add(file.hash);
-      await t.deleteFile(SYS_WAITING, path);
-    }
-    for (const e of await t.listEvents(SYS_WAITING, { types: ['file.write', 'file.delete'] })) {
-      if (e.data?.path !== path) continue;
-      for (const h of [e.data.old, e.data.new]) if (typeof h === 'string') named.add(h);
-      await t.deleteEvent(SYS_WAITING, e.seq);
-    }
-    return freeUnused(t, named);
-  });
+  if (Object.hasOwn(await readNames(ws, SYS_WAITING), path)) await ws.patch(SYS_WAITING, NAMES_FILE, { [path]: null }, { author: 'system' });
+  const { bytes } = await forget(ws.store, SYS_WAITING, { files: (p) => p === path, history: (p) => p === path });
+  await forget(ws.store, SYS_WAITING, { history: (p) => p === NAMES_FILE });
+  return bytes;
 }

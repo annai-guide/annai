@@ -562,11 +562,11 @@ function undoLine(ctx, scope, list) {
       await settled(ctx.agent);
       /** @type {{ title: string } | null} */
       let removed = null;
-      /** @type {string[]} */
-      const kept = [];
+      /** Each file left as the user changed it, once, though both ends of a move may say so. @type {Set<string>} */
+      const kept = new Set();
       for (const s of new Set([scope, ...(went.get(hh) ?? [])])) {
         const out = await undoHandover(ctx.ws, s, hh);
-        kept.push(...out.kept);
+        for (const k of out.keptKeys) kept.add(k);
         if (!out.tripEmpty) continue;
         for (const f of out.files) await moveFile(ctx.ws, { scope: s, path: f }, SYS_WAITING, { author: 'user' });
         removed = await removeTripNow(ctx, s);
@@ -575,7 +575,7 @@ function undoLine(ctx, scope, list) {
       if (removed) {
         ctx.notices.toast(t`Undone. ${removed.title} is removed, and your files are waiting with Shiori.`);
         ctx.go('#/trips');
-      } else ctx.notices.toast(kept.length ? sentences(t`Undone.`, plural(kept.length, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
+      } else ctx.notices.toast(kept.size ? sentences(t`Undone.`, plural(kept.size, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
     } catch (e) {
       button.disabled = false;
       ctx.notices.toast(messageOf(e));
