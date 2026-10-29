@@ -6,9 +6,9 @@ import { searchPanel } from '../search-panel.js';
 import { list } from '../format.js';
 
 /** The built-in tools' groups in order, as their plugins name them. */
-const GROUPS = /* en */ ['Talk', 'Files', 'Web', 'Places', 'Go', 'Time', 'Self'];
+const GROUPS = /* en */ ['Talk', 'Files', 'Trips', 'Web', 'Places', 'Go', 'Time', 'Self'];
 /** The groups in the screens' words. @type {Record<string, string>} */
-const GROUP_NAMES = { Talk: tc('tool group')`Talk`, Files: tc('tool group')`Files`, Web: tc('tool group')`Web`, Places: tc('tool group')`Places`, Go: tc('tool group')`Go`, Time: tc('tool group')`Time`, Self: tc('tool group')`Self` };
+const GROUP_NAMES = { Talk: tc('tool group')`Talk`, Files: tc('tool group')`Files`, Trips: tc('tool group')`Trips`, Web: tc('tool group')`Web`, Places: tc('tool group')`Places`, Go: tc('tool group')`Go`, Time: tc('tool group')`Time`, Self: tc('tool group')`Self` };
 /** Jina's main page, which shows the key to copy in its API box (the user, 2026-10-23: its API page "will not give you a copiable api there while the main page does"). */
 const JINA_KEYS = 'https://jina.ai/';
 
