@@ -202,9 +202,11 @@ async function moveBack(ws, at, back, handover) {
  * goes back to how it was before (one she added goes), as the user, with its short name, unless it changed since; a file moved out
  * of or into it goes back where it came from, unless it was changed where it went (never in both places). Said once in the log
  * (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing more than say whether a trip it emptied still waits to go.
- * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover @returns {Promise<UndoOutcome>}
+ * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover
+ * @param {{ log?: (ev: { type: string, actor: string, data: any }) => Promise<unknown> }} [o] log: the open conversation's, when it is this scope
+ * @returns {Promise<UndoOutcome>}
  */
-export async function undoHandover(ws, scope, handover) {
+export async function undoHandover(ws, scope, handover, o = {}) {
   const f = await undoFacts(ws.store, scope, handover);
   if (!f) return { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
   const fileNow = (/** @type {string} */ p) => ws.store.tx(['files'], 'readonly', (t) => t.getFile(scope, p));
@@ -246,8 +248,13 @@ export async function undoHandover(ws, scope, handover) {
   }
   const files = await brought();
   const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())] };
-  await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
-    if (await t.getScope(scope)) await t.appendEvent(scope, { ts: ws.now(), type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept } });
-  });
+  const mark = { type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept } };
+  // Through the open conversation's own log when given, so she is told at once (her transcript), else straight into the scope's.
+  if (o.log) await o.log(mark);
+  else {
+    await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
+      if (await t.getScope(scope)) await t.appendEvent(scope, { ts: ws.now(), ...mark });
+    });
+  }
   return { ...out, tripEmpty: f.started && !f.theirs && !kept.size, files };
 }

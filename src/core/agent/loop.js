@@ -1637,8 +1637,9 @@ export class Agent {
    * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
    */
   async #steps(wakes, wakeId, abort) {
-    // The newest hand-over among its wakes, those that join included (join); else one a failed turn left owed.
-    this.#handover = this.transcript.owedHandover;
+    // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
+    // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
+    this.#handover = wakes.some(isTheirs) ? this.transcript.owedHandover : null;
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
     const last = this.#warmth.last;
@@ -1691,7 +1692,7 @@ export class Agent {
     const unanswered = () => wrote || (theirs && !this.#facts.told);
     /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
     const join = (more) => {
-      this.#handover = handoverOf(more) ?? this.#handover;
+      this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
       theirs ||= more.some(isTheirs);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
@@ -1812,7 +1813,8 @@ export class Agent {
         this.#callCut = cut;
         result = await this.llm.call({
           role, request, signal: anySignal([abort.signal, cut.signal]), scope: this.scope, prefer,
-          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true },
+          // The hand-over the turn carries, null for none, on every reply: a reply that ends a turn settles only its own (transcript.js).
+          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),

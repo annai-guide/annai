@@ -6,7 +6,7 @@ import { record, storedTexts } from '../../src/core/agent/log.js';
 import { ME, SYS_WAITING } from '../../src/core/scopes.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { Agent } from '../../src/core/agent/loop.js';
-import { handOverText, FILES_ONLY } from '../../src/core/handover.js';
+import { handOverText, FILES_ONLY, undoHandover } from '../../src/core/handover.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -260,4 +260,35 @@ test('Koe reading a waiting PDF hears at once to ask Kokoro: no side task reads 
   assert.match(await contentOf(k, read), /You can't read PDFs; ask Kokoro about it\./);
   assert.doesNotMatch(await contentOf(k, read), /side task/);
   assert.equal(k.sent['model-u'], undefined);
+});
+
+test("an owed hand-over goes only to a turn of the user's (their message, a choice, what they said, Try again), never a reminder's", async (t) => {
+  useClock(t);
+  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+  const w = (/** @type {string} */ path) => ({ toolCalls: [{ name: 'write', input: { path, content: 'x' } }, { name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] });
+  const k = await agentKit([[fails, fails, fails, fails, w('/trip/notes/reminder.md'), w('/trip/notes/flight.md')]]);
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
+  await k.agent.idle();
+  k.agent.tryAgain();
+  await k.agent.idle();
+  assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
+});
+
+test('an Undo is told to her as a line of annai\'s, and settles the hand-over it undid', async (t) => {
+  useClock(t);
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+    say('Understood.'),
+  ]]);
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  await undoHandover(k.ws, k.trip, 'h-1', { log: (/** @type {any} */ ev) => k.agent.log(ev) });
+  assert.equal(k.agent.transcript.owedHandover, null);
+  k.agent.send('Thanks');
+  await k.agent.idle();
+  const words = k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => p.text ?? '')).join('\n');
+  assert.match(words, /\[annai\] The user tapped Undo for what you did with the files they handed you: 1 file put back as it was\./);
+  assert.equal((await Transcript.load(k.store, k.trip)).owedHandover, null);
 });
