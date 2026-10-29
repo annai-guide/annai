@@ -1,4 +1,5 @@
-import { h, crumb, t, asUser, field, twoStep, messageOf } from '../dom.js';
+import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
+import { readNames } from '../../core/names.js';
 import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -47,7 +48,8 @@ export async function renderFile(ctx, route) {
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
-  const head = [h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`)), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
+  const crumbs = h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`));
+  const head = [crumbs, ...named(await readNames(ctx.ws, id), path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
@@ -68,7 +70,7 @@ export async function renderFile(ctx, route) {
  * @param {any} ctx @param {string} path
  */
 async function waitingFile(ctx, path) {
-  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path })];
+  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), ...named(await readNames(ctx.ws, SYS_WAITING), path, h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path }))];
   const r = path.startsWith('/files/') ? await ctx.ws.read(SYS_WAITING, path) : undefined;
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file isn't waiting with Shiori any more.` }));
   const { entry, bytes } = r;
@@ -80,6 +82,19 @@ async function waitingFile(ctx, path) {
       ctx.notices.toast(t`Deleted ${entry.path.split('/').pop() ?? ''}. ${size(freed)} freed.`);
       ctx.go('#/trips');
     })));
+}
+
+/**
+ * A file's heading: once Shiori has named it (goal 10), its short name, then its real file name and its path beneath; else as it was.
+ * @param {Record<string, string>} names @param {string} path @param {HTMLElement} plain the heading for a file she hasn't named
+ * @returns {HTMLElement[]}
+ */
+function named(names, path, plain) {
+  if (!Object.hasOwn(names, path)) return [plain];
+  const real = path.split('/').pop() ?? path;
+  return [h('h1', { class: 'title', dir: 'auto', text: names[path] }),
+    h('p', { class: 'sub' }, ...linkIn(t`File name: ${real}`, h('span', { class: 'mono', dir: 'ltr', text: real }))),
+    h('p', { class: 'sub mono', dir: 'ltr' }, ...pathParts(path))];
 }
 
 /** @param {any} ctx @param {string} id @param {any} entry @param {Uint8Array} content */

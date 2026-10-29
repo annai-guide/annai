@@ -306,3 +306,34 @@ test('with "the seat is 14D" typed under the chip, her patch fixes the seat', as
     await llm.stop();
   }
 });
+
+test('once Shiori names a file, its chip, its Files row and its screen show the short name; its screen shows the real file name too', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' } } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'Named it.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Anchorage');
+    const trip = page.url();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('Named it.')).toBeVisible({ timeout: 60_000 });
+    // The chip on the user's line, drawn again: the short name, the real name as its title.
+    await page.goto(trip);
+    await page.goto('/#/talk');
+    const chip = page.locator('.convo .chips.handed .attach-chip');
+    await expect(chip.locator('.attach-name')).toHaveText(['ANNAI AIR flight · Nov 20']);
+    await expect(chip).toHaveAttribute('title', 'flight.pdf');
+    // Its Files row.
+    await page.goto(trip);
+    const row = page.getByRole('region', { name: 'Files' }).locator('.trip-file').first();
+    await expect(row.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
+    await expect(row.locator('.real')).toHaveText('flight.pdf');
+    // Its own screen: the short name, then the real file name and its path.
+    await row.getByRole('link').first().click();
+    await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
+    await expect(page.getByText('File name: flight.pdf')).toBeVisible();
+    await expect(page.getByText('/files/flight.pdf')).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
