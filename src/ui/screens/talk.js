@@ -565,8 +565,8 @@ function undoLine(ctx, scope, list) {
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       done();
-      if (removed) {
-        ctx.notices.toast(t`Undone. ${removed} is removed, and your files are waiting with Shiori.`);
+      if (removed.length) {
+        ctx.notices.toast(plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed)));
         ctx.go('#/trips');
       } else ctx.notices.toast(kept ? sentences(t`Undone.`, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : t`Undone.`);
     } catch (e) {
