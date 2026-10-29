@@ -234,6 +234,14 @@ test("bookingFacts: a flight reads from → to, departs and arrives in each airp
   assert.equal(bookingFacts({ ...flightBooking, unsure: ['to'] })[0].unsure, true);
 });
 
+test('bookingFacts: a flight whose from and to are not words keeps them as fields, never loses them (the review of seeing-bookings, R3)', () => {
+  const f = bookingFacts({ kind: 'flight', unsure: [], fields: { from: { code: 'SEA', city: 'Seattle' }, to: { code: 'ANC', city: 'Anchorage' }, seat: '14D' } });
+  assert.deepEqual(f.map((x) => x.key), ['seat', 'from', 'to']);
+  assert.match(f[1].value, /SEA.*Seattle/);
+  // One in words goes in the route; the other stays a field.
+  assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', '{"code":"ANC"}']]);
+});
+
 test('bookingFacts: a stay counts its nights; an unknown field is shown as written, its label marked English', () => {
   const stay = {
     id: 's', kind: 'lodging', status: 'unverified', source: '/files/hotel.png', title: 'Hotel Aurora Test', unsure: [],
