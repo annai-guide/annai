@@ -1,5 +1,5 @@
 {
-  "build": "392b16e312a3",
+  "build": "142a2c0cf034",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,10 +43,10 @@
     "/src/core/agent/instructions.js": "8694c7d678ac",
     "/src/core/agent/listen.js": "a2894bbb9741",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "3dad964dcfaa",
+    "/src/core/agent/loop.js": "8835ba3cbfa2",
     "/src/core/agent/reading.js": "4aa68253f39e",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
-    "/src/core/agent/refusals.js": "2d4659566066",
+    "/src/core/agent/refusals.js": "9ccce89c793b",
     "/src/core/agent/self-tools.js": "8e3f84d0ac8f",
     "/src/core/agent/net.js": "da9a89765c53",
     "/src/core/agent/tools.js": "32f50a08ed24",
@@ -74,7 +74,7 @@
     "/src/core/llm/config.js": "d32a97cf6da1",
     "/src/core/llm/contract.js": "5b39e3ebc5d1",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "5812dc336105",
+    "/src/core/llm/fallback.js": "efa965c7f2cb",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "3e88bd9e8ba3",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
