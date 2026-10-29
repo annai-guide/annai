@@ -64,8 +64,9 @@ export function handoverOf(wakes) {
  */
 export async function filesToRead(store, scope) {
   return store.tx(['events', 'files'], 'readonly', async (t) => {
-    const events = await t.listEvents(scope, { types: ['wake', 'model.turn'] });
-    const after = events.slice(events.findLastIndex((e) => e.type === 'model.turn') + 1);
+    // From her last turn on, by type: a long trip's log is never walked whole (A6).
+    const [last] = await t.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 1 });
+    const after = await t.listEvents(scope, { types: ['wake'], ...(last ? { after: last.seq } : {}) });
     /** @type {string[]} */
     const out = [];
     for (const e of after) {
