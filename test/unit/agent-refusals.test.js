@@ -317,3 +317,20 @@ test("a size repair never deletes a picture a kept reading or a tool result in t
   assert.ok((await k.events(['photo.replace'])).some((e) => e.data.old === kept.data.images[0].hash), 'the page was sent again as a smaller copy');
   assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(kept.data.images[0].hash)), true, 'the kept page stays');
 });
+
+test("a size repair never deletes content the trip's file history still names: an earlier version can still be restored (round 11)", async () => {
+  const k = await agentKit([[done, { error: 'image', status: 400, message: 'image exceeds 5 MB maximum: 6000000 bytes > 3 bytes' }, done]]);
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
+  await k.agent.idle();
+  const [msg] = await k.events(['msg.user']);
+  const sent = msg.data.images[0].hash;
+  const was = (await k.ws.read(k.trip, '/files/p.webp')).entry.hash;
+  await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('640x480'), { author: 'user', type: 'image/webp', meta: { width: 640, height: 480 } });
+  k.agent.send('And now?');
+  await k.agent.idle();
+  assert.ok((await k.events(['photo.replace'])).some((e) => e.data.old === sent), 'the sent copy was replaced');
+  assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(was)), true, "the file's earlier version is still stored");
+  await k.ws.restore(k.trip, '/files/p.webp', was, { author: 'user' });
+  assert.equal((await k.ws.read(k.trip, '/files/p.webp')).entry.hash, was);
+});
