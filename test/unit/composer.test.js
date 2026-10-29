@@ -83,3 +83,17 @@ test('a calendar file kept in a trip says how many of its events went on the pla
   await handOver(ctx, '', [{ file: Object.assign(new Blob([ics], { type: 'text/calendar' }), { name: 'dinner.ics' }) }, file('a.txt', 'a')]);
   assert.deepEqual(sent[0].handed.map((/** @type {any} */ f) => [f.name, f.planned ?? 0]), [['dinner.ics', 1], ['a.txt', 0]]);
 });
+
+test('another conversation opened while the files were kept: the message goes to the one they were kept for, written into it', async () => {
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  const { ctx, sent, other } = await phone();
+  /** @type {any[]} */ const woken = [];
+  const agent = /** @type {any} */ (ctx.agent);
+  agent.wake = (/** @type {any} */ w) => { woken.push(w); return Promise.resolve(); };
+  const trip = agent.target;
+  await handOver(ctx, '', [file('a.txt', 'a'), file('b.txt', 'b')], { progress: (done) => { if (done === 1) agent.target = other; } });
+  assert.deepEqual(sent, []);
+  assert.equal(woken.length, 1);
+  assert.deepEqual([woken[0].kind, woken[0].scope, woken[0].text, woken[0].handed.map((/** @type {any} */ f) => f.path)], ['user', trip, '(files)', ['/trip/files/a.txt', '/trip/files/b.txt']]);
+  assert.match(woken[0].handover, /^h-/);
+});

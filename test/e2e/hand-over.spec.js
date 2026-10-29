@@ -250,5 +250,6 @@ test('a short paste stays words; a long one into an empty box becomes a chip, wh
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(1);
   await page.getByRole('button', { name: 'Put back as text' }).click();
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
-  await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.replace(/\n/g, ''));
+  // Its lines are words with spaces between, never glued together (a one-line box drops line breaks).
+  await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.trim().replace(/\s*\n\s*/g, ' '));
 });
