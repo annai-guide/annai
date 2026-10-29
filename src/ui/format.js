@@ -54,6 +54,8 @@ export function outcomeText(outcome) {
 
 /** The address of a file in a trip; from, the screen its crumb goes back to (a Plan, a booking, Now), else the trip. @param {string} id @param {string} path @param {string} [from] */
 export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
+export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
 /** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
 export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
