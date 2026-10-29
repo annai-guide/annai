@@ -809,3 +809,7 @@ test('movedWords: started, took one, took several, and to a trip since removed',
   // Not her lines: the announcer says nothing of them.
   assert.deepEqual(announced('handover.moved', '', 'Shiori took 1 file to Kyoto.'), ['', '', '']);
 });
+
+test('parseHash: #/waiting/file?path=/files/a.pdf is the waiting file screen', () => {
+  assert.deepEqual(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), { name: 'waiting-file', parts: ['waiting', 'file'], params: { path: '/files/a.pdf' } });
+});
