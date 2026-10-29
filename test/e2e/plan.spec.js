@@ -190,7 +190,7 @@ test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
 
-test('Booking confirmation: what it says, beside its original; Looks right confirms it, and the plan stops asking', async ({ page }) => {
+test("Booking details from before: what it says, beside its original, marked whole as Check this, with no confirming step", async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, THANKSGIVING);
@@ -198,18 +198,115 @@ test('Booking confirmation: what it says, beside its original; Looks right confi
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
-  await expect(page.getByText('Check this against the original, then confirm it.')).toBeVisible();
+  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked single details. Tell her if anything is wrong.");
   await expect(page.locator('dl.facts')).toContainText('ABC123');
   // The booking's zone is named the way people say it, never by its id.
   await expect(page.locator('dl.facts')).toContainText('(PT)');
   await expect(page.locator('dl.facts')).not.toContainText('America/Los_Angeles');
-  await expect(page.getByText("The original, /files/flight.pkpass, isn't in the trip.")).toBeVisible();
-  await page.getByRole('button', { name: 'Looks right' }).click();
-  await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
+  await expect(page.getByText("The original, flight.pkpass, isn't in the trip.")).toBeVisible();
   await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
+});
+
+/**
+ * Stores a file in a trip through annai's own modules in the page, as the user's. @param {import('@playwright/test').Page} page
+ * @param {string} trip @param {string} path @param {Buffer} bytes @param {string} type
+ */
+async function putFile(page, trip, path, bytes, type) {
+  await page.evaluate(async ({ trip, path, data, type }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    await new Workspace(store).write(trip, path, new Uint8Array(data), { author: 'user', type });
+    store.close();
+  }, { trip, path, data: [...bytes], type });
+}
+
+test("a flight's details: what Shiori read, its PDF's preview or card, Open the original and Back, Ask Shiori about this, Change it; no Looks right", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  await records(page, trip, { patch: { '/bookings/flight.json': { unsure: ['seat'] } } });
+  await putFile(page, trip, '/files/flight.pdf', await readFile('test/fixtures/bookings/flight.pdf'), 'application/pdf');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /ANNAI AIR AN 123/ }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  // What she read, in reading order: the route, then each airport's own time.
+  const facts = page.locator('dl.facts');
+  await expect(facts.locator('dt')).toHaveText(['Route', 'Departs', 'Arrives', 'Seat', 'Confirmation']);
+  await expect(facts.locator('dd').first()).toHaveText('Seattle (SEA) → Anchorage (ANC)');
+  await expect(facts.locator('dd').nth(1)).toContainText('(PT)');
+  await expect(facts.locator('dd').nth(2)).toContainText('(AKT)');
+  // Only the seat is marked, with words for screen readers.
+  await expect(facts.locator('.mark-check')).toHaveCount(1);
+  await expect(facts.locator('dd').nth(3).locator('.mark-check')).toContainText("Shiori isn't sure of this");
+  await expect(page.getByRole('note')).toHaveCount(0);
+  // The file: the browser's drawing where an <img> draws PDFs, else its card naming 2 pages.
+  const original = page.getByRole('region', { name: 'The original' });
+  const draws = await page.evaluate(async () => { const load = (/** @type {string} */ u) => import(u); return (await load('/src/ui/preview.js')).imgDrawsPdf(); });
+  if (draws) await expect(original.locator('img.file-preview')).toBeVisible();
+  else await expect(original.locator('.file-card')).toHaveText('flight.pdf2 pages');
+  await expect(original).toContainText('From flight.pdf');
+  await page.getByRole('link', { name: 'Open the original' }).click();
+  await expect(page.getByRole('heading', { name: '/files/flight.pdf' })).toBeVisible();
+  await page.getByRole('main').getByRole('link', { name: 'Booking' }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask Shiori about this' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
+  // Change it is the raw form, and comes back here.
+  await page.getByRole('link', { name: 'Change it' }).click();
+  await expect(page.locator('#file-content')).toHaveValue(/"ANNAI AIR AN 123"/);
+  await page.getByRole('main').getByRole('link', { name: 'Booking' }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  // Its crumb goes back to the Plan.
   await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
-  await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
-  await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+});
+
+test("a plain item's details: what, when, where, notes and its calendar file; never raw JSON first", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:aurora@test.invalid', 'SUMMARY:Aurora walk', 'LOCATION:Testville Park', 'DTSTART;TZID=America/Anchorage:20261122T220000', 'DURATION:PT2H', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  await page.getByLabel('Add photos or files').setInputFiles([{ name: 'walks.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) }]);
+  await expect(page.getByText(/^Added .*walks\.ics, and 1 plan item from the calendar/)).toBeVisible();
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();
+  await expect(page.getByRole('heading', { name: 'Aurora walk' })).toBeVisible();
+  await expect(page.locator('textarea')).toHaveCount(0);
+  await expect(page.locator('dl.facts dt')).toHaveText(['Starts', 'Ends', 'Place']);
+  await expect(page.locator('dl.facts')).toContainText('(AKT)');
+  await expect(page.locator('dl.facts')).toContainText('Testville Park');
+  await expect(page.getByRole('region', { name: 'The original' })).toContainText('From walks.ics');
+  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
+  await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Dinner with Sam/ }).click();
+  await expect(page.getByRole('heading', { name: 'Dinner with Sam' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Notes' })).toContainText('Ask for a window table.');
+  await expect(page.getByRole('region', { name: 'The original' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask Shiori about this' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Change it' })).toBeVisible();
+  // A link to something that isn't a plan item says so in words, with a way back.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/trip.json')}`);
+  await expect(page.getByRole('heading', { name: "This isn't on the plan" })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Go to the plan' })).toBeVisible();
+});
+
+test('a booking whose file is gone says so, with no preview, and can still be asked about', async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  await records(page, trip, ANCHORAGE);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/stay.json')}`);
+  await expect(page.getByRole('heading', { name: 'Hotel Aurora Test' })).toBeVisible();
+  await expect(page.getByText("The original, hotel.png, isn't in the trip.")).toBeVisible();
+  await expect(page.locator('.file-preview, .file-card')).toHaveCount(0);
+  await expect(page.locator('dl.facts dt')).toHaveText(['Place', 'Check-in', 'Check-out', 'Nights']);
+  await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['Hotel Aurora Test']);
+  await expect(page.getByRole('button', { name: 'Read it again' })).toBeVisible();
 });
 
 test("a booking link to something that isn't a booking opens nothing", async ({ page }) => {
@@ -221,7 +318,7 @@ test("a booking link to something that isn't a booking opens nothing", async ({ 
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
-test('milestone 4 done: a pass and a calendar are added, Shiori writes the booking and its plan item, the user confirms it, and the plan goes to the calendar', async ({ page }) => {
+test('milestone 4 done: a pass and a calendar are added, Shiori writes the booking and its plan item, can\'t confirm it, and the plan goes to the calendar', async ({ page }) => {
   const booking = {
     id: 'ua123', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123 SFO → EWR', confirmation: 'ABC123', unsure: [],
     start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
@@ -271,12 +368,12 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[2])).toContain('Only the user confirms a booking');
     expect(llm.bodies('/b/v1/messages').length).toBe(3);
 
-    // The card opens the booking; the user checks it and confirms it.
+    // The card opens the booking's details: what she read and its pass, with nothing for the user to confirm (she was sure of it all).
     await page.locator('.convo').getByRole('link', { name: 'Open the booking' }).last().click();
     await expect(page.getByRole('heading', { name: 'UA 123 SFO → EWR' })).toBeVisible();
-    await expect(page.getByText('From /files/flight.pkpass')).toBeVisible();
-    await page.getByRole('button', { name: 'Looks right' }).click();
-    await expect(page.locator('.chip.ok')).toHaveText('Confirmed');
+    await expect(page.getByText('From flight.pkpass')).toBeVisible();
+    await expect(page.locator('.mark-check')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
 
     // The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
     await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();

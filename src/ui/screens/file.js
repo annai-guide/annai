@@ -17,6 +17,8 @@ let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
 const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, item: t`Details`, now: t`Now` });
+/** The words of a screen a crumb goes back to (cameFrom's name). @param {string} name */
+export const backLabel = (name) => BACK[name] ?? t`Plan`;
 /**
  * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
  * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip (the review of phone-fixes-1).

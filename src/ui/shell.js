@@ -18,6 +18,7 @@ import { renderTalk } from './screens/talk.js';
 import { renderTools } from './screens/tools.js';
 import { renderPlan } from './screens/plan.js';
 import { renderBooking } from './screens/booking.js';
+import { renderItem } from './screens/item.js';
 import { renderVoice } from './screens/voice.js';
 import { renderNow } from './screens/now.js';
 import { renderDrive } from './screens/drive.js';
@@ -47,7 +48,7 @@ const SECTION = /** @type {Record<string, string>} */ ({
   plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
   voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
 });
-const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, 'waiting-file': renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
+const SCREENS = { trips: renderTrips, trip: renderTrip, file: renderFile, 'waiting-file': renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
  * @param {HTMLElement} root
@@ -224,7 +225,7 @@ export function startShell(root, core) {
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
     // A file opened from the Plan, a booking or Now is in that tab (the user, 2026-10-28: back on Plan, the top bar said Trips).
-    const from = route.name === 'file' ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
+    const from = ['file', 'booking', 'item'].includes(route.name) ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
     const at = from ? parseHash(from.hash) : route;
     const section = SECTION[at.name] ?? (at.parts[0] === 'trip' ? 'trips' : at.parts[0]);
     const current = route.name === 'ext' ? location.hash : `#/${section}`;
