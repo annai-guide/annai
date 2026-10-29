@@ -3,6 +3,7 @@ import { blobBytes } from '../reach.js';
 import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
 import { strayNote } from '../languages.js';
+import { handOverText } from '../handover.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -54,6 +55,8 @@ export class Transcript {
   waiting = '';
   /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
   newestPhoto = false;
+  /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
+  #handover = null;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -92,6 +95,7 @@ export class Transcript {
     const koe = this.half === 'koe';
     this.#at = e.seq;
     if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
+    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = d.handover;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
@@ -106,6 +110,7 @@ export class Transcript {
       else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
+      for (const w of d.reasons ?? []) if (typeof w?.handover === 'string') this.#handover = w.handover;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
@@ -114,14 +119,14 @@ export class Transcript {
         this.waiting = 'wake';
       }
     } else if (e.type === 'msg.user' && this.half === 'kokoro' && d.split) {
-      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images]);
+      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images, ...this.#handed(d)]);
       this.unanswered = true;
       this.waiting = 'user';
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         const typed = koe ? theirs(texts.text) : texts.text;
-        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images]);
+        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images, ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -140,6 +145,8 @@ export class Transcript {
       if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
+      // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over before it.
+      if (this.#mine(d) && (this.#ends || !this.#last.length)) this.#handover = null;
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
@@ -242,6 +249,18 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
+  get handover() {
+    return this.unanswered ? this.#handover : null;
+  }
+
+  /** What annai tells her of a message's files, after its words (handover.js), from its data. @param {any} d @returns {Part[]} */
+  #handed(d) {
+    if (!Array.isArray(d.handed) || !d.handed.length) return [];
+    const text = handOverText(d.handed, { koe: this.half === 'koe' });
+    return text ? [{ type: 'text', text: /* en */ `[annai] ${text}` }] : [];
   }
 
   #waitsForResults() {

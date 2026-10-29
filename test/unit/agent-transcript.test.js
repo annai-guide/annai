@@ -97,3 +97,24 @@ test('the transcript starts at the latest compaction, with its summary; non-user
   ]);
   assert.ok(t.compaction > last);
 });
+
+test("a msg.user with handed reads as the user's words, then annai's line; Transcript.handover is its id until a reply answers it", async () => {
+  const store = createMemoryStore();
+  const live = new Transcript();
+  const add = async (/** @type {any} */ ev) => live.apply(ev, await resolveEvent(store, ev));
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  await add(await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } }));
+  await add(await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-1' }, texts: [['text', 'Our trip']] }));
+  assert.deepEqual(live.messages.at(-1).parts.map((/** @type {any} */ p) => p.text.slice(0, 40)), ['Our trip', '[annai] The user handed you a file: "/tr']);
+  assert.equal(live.handover, 'h-1');
+  // A reply with tool calls hasn't answered it yet; one that sleeps has.
+  await modelTrace(store, SCOPE).turn(info, '', '', [{ type: 'tool_call', id: 'c1', name: 'read', input: { path: '/trip/files/flight.pdf' } }]);
+  await add((await store.tx(['events'], 'readonly', (t) => t.listEvents(SCOPE, { types: ['model.turn'] }))).at(-1));
+  await add(await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, ms: 1, wake: 'w-1' }, texts: [['content', 'The PDF.']] }));
+  assert.equal(live.handover, 'h-1');
+  assert.equal((await Transcript.load(store, SCOPE)).handover, 'h-1');
+  await modelTrace(store, SCOPE).turn(info, '', '', [{ type: 'tool_call', id: 'c2', name: 'sleep', input: {} }]);
+  await add((await store.tx(['events'], 'readonly', (t) => t.listEvents(SCOPE, { types: ['model.turn'] }))).at(-1));
+  assert.equal(live.handover, null);
+  assert.deepEqual((await Transcript.load(store, SCOPE)).messages, live.messages);
+});
