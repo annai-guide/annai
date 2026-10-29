@@ -349,3 +349,14 @@ test("the retry after housekeeping for a request too long doesn't describe the u
   assert.equal(k.sent['model-u'].length, 2, 'one description and one summary');
   assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /the fish is circled/);
 });
+
+test("the housekeeping estimate counts what the main models are sent: one photo sent five times is one picture, not five (round 9)", async () => {
+  const k = await agentKit([[say('A view.')]], { models: [{ input: ['text', 'image'], contextWindow: 7000 }], utility: [{ text: 'Summary.' }] });
+  await k.ws.write(k.trip, '/files/view.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Look ${i}`, { photos: [{ path: '/trip/files/view.webp' }] });
+    await k.agent.idle();
+  }
+  assert.equal(new Set(k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)).size, 1);
+  assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction').length, 0, 'no tidy-up tried for copies it never sends');
+});

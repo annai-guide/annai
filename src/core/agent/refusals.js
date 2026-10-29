@@ -39,8 +39,8 @@ const notSent = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[
  * The pictures a request sends to a model (spec §4.8; the round-8 review of reading-files): one rule, applied once, per model, to the
  * request as the conversation holds it. The distinct pictures (by hash; one without a hash is its own) are ranked by their newest
  * appearance, and the model's count of them kept, newest first; within one message, its PDF's pages give way before its own photos, its
- * last page first. Each kept picture goes at its earliest place, so earlier messages stay as they were for the prompt cache; every other
- * copy is a stub: "the same as above", or "not sent" for one the limit left out.
+ * last page first. Each kept picture goes at its earliest place, so a new copy of one already sent changes nothing earlier; only a picture
+ * the limit drops, or one that comes back (read again after it was dropped), changes its own places. Every other copy is a stub: "the same as above", or "not sent" for one the limit left out.
  * @param {Message[]} messages @param {number | null | undefined} [maxCount] none: every distinct picture, each once
  * @returns {Message[]}
  */
