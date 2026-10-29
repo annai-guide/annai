@@ -93,8 +93,8 @@ export function tripTools(app) {
   const filesOf = async (i, call) => {
     if (Array.isArray(i.files) && i.files.length) return findAll(i.files, call);
     if (call.trip) return [];
-    const handed = (await handOver(call))?.data?.handed;
-    const fresh = (Array.isArray(handed) ? handed : []).filter((/** @type {any} */ f) => f?.new && String(f.path).startsWith('/waiting/files/')).map((/** @type {any} */ f) => String(f.path));
+    const handed = (await handOvers(call)).flatMap((e) => (Array.isArray(e.data?.handed) ? e.data.handed : []));
+    const fresh = handed.filter((/** @type {any} */ f) => f?.new && String(f.path).startsWith('/waiting/files/')).map((/** @type {any} */ f) => String(f.path));
     const there = [];
     for (const p of fresh) if (await store.tx(['files'], 'readonly', (t) => t.getFile(SYS_WAITING, p.slice('/waiting'.length)))) there.push(p);
     return findAll(there, call);
@@ -127,11 +127,12 @@ export function tripTools(app) {
   };
   /** The plan items each calendar file the tools moved took with it, by its path in the trip. @type {Map<string, number>} */
   const planned = new Map();
-  /** The user's message with the turn's hand-over, in this conversation. @param {ToolCall} call */
-  const handOver = async (call) => {
-    if (!call.handover) return null;
+  /** The user's messages with the turn's hand-overs, in this conversation, oldest first. @param {ToolCall} call */
+  const handOvers = async (call) => {
+    const ids = call.handovers?.length ? call.handovers : call.handover ? [call.handover] : [];
+    if (!ids.length) return [];
     const users = await store.tx(['events'], 'readonly', (t) => t.listEvents(call.scope, { types: ['msg.user'], reverse: true, limit: 50 }));
-    return users.find((e) => e.data?.handover === call.handover) ?? null;
+    return users.filter((e) => ids.includes(e.data?.handover)).reverse();
   };
   /**
    * The hand-over written into the trip's conversation, before anything of hers there: the user's message (its files where they are
@@ -139,8 +140,8 @@ export function tripTools(app) {
    * @param {{ started: boolean, recap?: string }} o
    */
   const writeInto = async (to, moved, call, { started, recap }) => {
-    const msg = await handOver(call);
-    if (msg) {
+    const msgs = await handOvers(call);
+    for (const msg of msgs) {
       // Its words, kept in the message or beside it (a long one), and its files where they are now; with neither, no copy.
       const text = String((await storedTexts(store, msg)).text ?? msg.data.text ?? '') || FILES_ONLY;
       const handed = (Array.isArray(msg.data.handed) ? msg.data.handed : []).flatMap((/** @type {any} */ f) => {
@@ -149,8 +150,9 @@ export function tripTools(app) {
         const { planned: _, ...rest } = f;
         return [{ ...rest, path, ...(planned.get(path) ? { planned: planned.get(path) } : {}) }];
       });
-      if (handed.length || text !== FILES_ONLY) await app.wake({ kind: 'user', text, handed, handover: /** @type {string} */ (call.handover), fromScope: call.scope, scope: to });
+      if (handed.length || text !== FILES_ONLY) await app.wake({ kind: 'user', text, handed, handover: String(msg.data.handover), fromScope: call.scope, scope: to });
     }
+    const msg = msgs.length > 0;
     const where = call.trip ? "another trip's conversation" : 'the conversation outside any trip';
     /* en */
     const what = `You ${started ? 'started' : 'opened'} this trip from ${where}${msg ? ', for what the user handed you there (their message is above)' : ''}.`;
