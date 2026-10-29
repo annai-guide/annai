@@ -79,3 +79,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the old code already on phones can't change. Releasing the new code first and moving the translations a release later would cost every user two update rounds instead of one.
 - **Revisit when:** never needed; it heals by itself at the next restart plus one check.
 - **Approved:** 2026-10-28, the user: "Accept as known limitation".
+
+### A photo brought back after the photo limit dropped it makes the provider's prompt cache miss once
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. A model takes at most so many pictures per request (often 100; fewer after a provider refuses for count). In a conversation holding more photos than that, the oldest are left out with a stub. When Shiori re-reads one of them, or the user sends it again, it goes back where it first appeared. The request then changes from that early message, so that one turn pays full input price and processing time for the conversation before it. Nothing is lost or wrong.
+- **Why:** avoiding it needs annai to remember what each previous request sent, per model: more moving parts for a rare, one-turn cost.
+- **Revisit when:** long trips with many photos get slow or expensive after a re-read.
+- **Approved:** 2026-10-28, the user: "Accept as known limitation".
