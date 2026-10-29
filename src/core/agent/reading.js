@@ -111,18 +111,20 @@ export async function readFile(file, model, o) {
   /** What failed last, in words. */
   let failed = '';
   /**
-   * The first reader role's model that takes kind and answers, else null. @param {string} kind @param {any[]} parts
+   * The first reader role's model that takes kind and answers, else null; sent: the parts it was sent. @param {string} kind
+   * @param {any[] | ((role: string) => any[])} parts what is sent, or what is sent to a role
    * @param {string} system @param {string} ask @param {number} maxOutput
    */
   const ask = async (kind, parts, system, ask, maxOutput) => {
     for (const role of roles.filter((r) => takes(r, kind))) {
       if (stop.signal.aborted) break;
       try {
+        const sent = typeof parts === 'function' ? parts(role) : parts;
         const r = await o.llm.call({
           role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role),
-          request: { system, maxOutput, messages: [{ role: 'user', parts: [...parts, { type: 'text', text: ask }] }] },
+          request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },
         });
-        if (r.reply.text.trim()) return r;
+        if (r.reply.text.trim()) return { ...r, sent };
       } catch (e) {
         /* en */
         failed ||= `It couldn't be described: ${explain(e, role)}`;
@@ -178,9 +180,18 @@ export async function readFile(file, model, o) {
         /* en */
         if (images.length && sees) return reading('pages', `Its pages as pictures, as you can't read PDFs: ${which}`, images);
         if (images.length) {
-          const told = await ask('image', images.map((i) => ({ type: 'image', ...i })), DESCRIBE_PAGES, /* en */ 'Give the content of these pages.', 3000);
+          // A reader is sent no more pages than its role's models all take, from page 1, and no stub for a PDF it can't see; its words say
+          // which pages they cover, as they are kept for every model (round 7).
+          const most = (/** @type {string} */ role) => Math.min(MAX_PAGES, ...chatCandidates(cfg, role).flatMap((id) => {
+            const m = cfg.models[id] ? modelOf(cfg.models[id]) : null;
+            return m?.input.includes('image') && m.images?.maxCount ? [m.images.maxCount] : [];
+          }));
+          const told = await ask('image', (role) => images.slice(0, most(role)).map((i) => ({ type: 'image', ...i })), DESCRIBE_PAGES, /* en */ 'Give the content of these pages.', 3000);
+          const covered = told ? told.sent.map((/** @type {any} */ p) => p.page).filter((/** @type {any} */ n) => typeof n === 'number') : [];
           /* en */
-          if (told) return reading('told', `What it says (told by ${told.answeredBy} from pictures of its pages, as you can't read PDFs): ${told.reply.text.trim()}${told.reply.stop === 'length' ? GOES_ON : ''}`);
+          const which = !covered.length ? 'its pages' : covered.length === 1 ? `page ${covered[0]} of ${drawn.count}` : covered.every((n, i) => n === covered[0] + i) ? `pages ${covered[0]}–${covered.at(-1)} of ${drawn.count}` : `pages ${covered.slice(0, -1).join(', ')} and ${covered.at(-1)} of ${drawn.count}`;
+          /* en */
+          if (told) return reading('told', `What it says (told by ${told.answeredBy} from pictures of ${which}, as you can't read PDFs): ${told.reply.text.trim()}${told.reply.stop === 'length' ? GOES_ON : ''}`);
         }
       } else if (!stop.signal.aborted && !reader) return reading('none', noReader('pdf', o.pages ? { photos: true } : { plugin: sees || seer }));
     }

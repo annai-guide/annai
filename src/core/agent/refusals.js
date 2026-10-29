@@ -79,6 +79,12 @@ export function onceEach(messages) {
   }));
 }
 
+/**
+ * The pictures a request sends: the oldest over the count as stubs first, then each picture once, so a picture sent again after the
+ * limit took its first copy still goes (round 7). @param {Message[]} messages @param {number | null | undefined} maxCount @returns {Message[]}
+ */
+export const sendable = (messages, maxCount) => onceEach(limitImages(messages, maxCount));
+
 /** The smaller of two limits each, for saving what a refusal taught. @param {Learned} a @param {Learned} b @returns {Learned} */
 export function stricter(a, b) {
   /** @type {Learned} */

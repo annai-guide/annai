@@ -649,3 +649,75 @@ test("when every model the role could use is resting, the one that has rested lo
   t.bench.bench('m-0', 300_000, 1_000_000);
   assert.equal((await call(t, { askResting: true })).answeredBy, 'model-1');
 });
+
+// Round 7.
+/** A spy type answering each model by its own script (one step per call), and keeping each request it gets, by model. */
+function spyWorld(/** @type {{ input?: string[], images?: any, script?: any[] }[]} */ models) {
+  /** @type {{ model: string, request: any }[]} */
+  const seen = [];
+  const n = new Map();
+  const spy = /** @type {any} */ ({ type: 'spy', name: 'Spy', pluginId: 'spy', run: async function* (/** @type {any} */ c) {
+    seen.push({ model: c.model.providerId, request: c.request });
+    const i = n.get(c.model.providerId) ?? 0;
+    n.set(c.model.providerId, i + 1);
+    const script = c.endpoint?.tunables?.script ?? [];
+    const step = script.length ? script[Math.min(i, script.length - 1)] : { text: `From ${c.model.providerId}.` };
+    if (step.error) throw new ProviderError(step.error, step.error);
+    yield { type: 'text', text: step.text };
+    yield { type: 'stop', reason: 'end' };
+  } });
+  const s = setup(models.map((m) => m.script ?? []), { types: [['spy', spy]], endpointTypes: models.map(() => 'spy'), models: models.map((m) => ({ input: m.input ?? ['text'], ...(m.images ? { images: m.images } : {}) })) });
+  return { s, seen };
+}
+
+test('the resting pass asks only a model that can take the request: the longest-resting text model is passed over for a photo (round 7)', async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const r = await call(s, { askResting: true, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(seen.map((x) => x.model), ['model-1']);
+});
+
+test('the resting pass with read: the longest-resting text model is asked with the photo read (round 7)', async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }, { input: ['text', 'image'] }]);
+  s.bench.bench('m-0', 300_000, 1_000_000 - 60_000);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 1_000);
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const read = async () => [{ type: 'text', text: '[a photo: /trip/files/menu.webp] It shows a menu.' }];
+  const r = await call(s, { askResting: true, read, request: { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What is this?' }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.match(JSON.stringify(seen[0].request.messages), /It shows a menu/);
+});
+
+test('a model resting from before is asked when the one tried in this call failed and now rests too (round 7)', async () => {
+  const { s, seen } = spyWorld([{ script: [{ error: 'overloaded' }] }, { script: [{ text: 'From model-1.' }] }]);
+  s.bench.bench('m-1', 300_000, 1_000_000 - 60_000);
+  const r = await call(s, { askResting: true });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.equal(seen.at(-1).model, 'model-1');
+});
+
+test('a model asked anyway that answers rests no more: the next call asks it first again (round 7)', async () => {
+  const { s } = spyWorld([{}, {}]);
+  s.bench.bench('m-0', 400_000, 1_000_000 - 200_000);
+  s.bench.bench('m-1', 400_000, 1_000_000 - 100_000);
+  assert.equal((await call(s, { askResting: true })).answeredBy, 'model-0');
+  assert.equal(s.bench.until('m-0'), 0);
+  assert.equal((await call(s, { askResting: true })).attempts[0].outcome, 'ok', 'the primary, first, at once');
+});
+
+test("the second pass's pictures go once: a page the read returns that an earlier message holds stays there, the later copy said once (round 7)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'] }]);
+  const page = { type: 'image', mediaType: 'image/jpeg', data: 'AAAA', hash: 'h1', page: 1 };
+  const request = { messages: [
+    { role: 'user', parts: [{ type: 'text', text: '[a PDF: booking.pdf] Its pages as pictures: page 1 of 1.' }, page] },
+    { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'Read the booking' }] },
+  ] };
+  const read = async () => [{ type: 'text', text: '[a PDF: booking.pdf] Its pages as pictures: page 1 of 1.' }, { ...page }];
+  await call(s, { request, read });
+  const images = seen[0].request.messages.flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'image'));
+  assert.equal(images.length, 1);
+  assert.equal(seen[0].request.messages[0].parts[1].type, 'image', 'the earlier copy stays');
+});

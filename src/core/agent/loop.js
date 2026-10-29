@@ -18,7 +18,7 @@ import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
 import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
-import { readRefusal, stricter, tighter, limitImages, onceEach } from './refusals.js';
+import { readRefusal, stricter, tighter, limitImages, sendable } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
@@ -1151,7 +1151,7 @@ export class Agent {
    */
   async #sendable() {
     const messages = this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
-    const out = limitImages(onceEach(messages), (await this.#mainImages()).maxCount);
+    const out = sendable(messages, (await this.#mainImages()).maxCount);
     return this.#half.sendable ? this.#half.sendable(out) : out;
   }
 

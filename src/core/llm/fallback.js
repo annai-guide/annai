@@ -11,7 +11,7 @@ import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { shownFor } from '../errors.js';
-import { limitImages } from '../agent/refusals.js';
+import { sendable } from '../agent/refusals.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -329,8 +329,6 @@ function newestDocument(request) {
  * @returns {Request}
  */
 export function photosAsWords(request, { photos = true, documents = true, sees = false, readings, kept = false } = {}) {
-  // A kept page picture already in the request (a tool result's pages) goes once: the copy there stays (the re-review of reading-files).
-  const sent = new Set(request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'image' && p.hash ? [p.hash] : []))));
   /** @param {import('./contract.js').Part} p @returns {import('./contract.js').Part[]} */
   const word = (p) => {
     if (!((photos && p.type === 'image') || (documents && p.type === 'document'))) return [p];
@@ -339,8 +337,8 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     /* en */
     const stub = p.type === 'image' ? `[a photo${p.path ? `: ${p.path}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${p.name}` : ''}]`;
     if (!r) return [{ type: 'text', text: stub }];
-    const pages = sees ? r.images.filter((i) => !i.hash || !sent.has(i.hash)) : [];
-    for (const i of pages) if (i.hash) sent.add(i.hash);
+    // A picture already in the request goes once: the caller sends the request through sendable() (the photo limit, then each once).
+    const pages = sees ? r.images : [];
     // With their hashes, so a provider's files API can take them by upload rather than as bytes in every request.
     return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}), ...(i.page ? { page: i.page } : {}) }))];
   };
@@ -365,7 +363,7 @@ async function readFor(request, model, read, signal, readings) {
   })));
   const sees = model.input.includes('image');
   const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
-  return model.images?.maxCount ? { ...out, messages: limitImages(out.messages, model.images.maxCount) } : out;
+  return { ...out, messages: sendable(out.messages, model.images?.maxCount) };
 }
 
 /**
@@ -524,8 +522,8 @@ export async function callRole(c) {
       // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
       const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
       if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-      // Kept page pictures count toward the model's photo limit too: the oldest over it go as stubs (spec §4.8).
-      if (model?.images?.maxCount) sent = { ...sent, messages: limitImages(sent.messages, model.images.maxCount) };
+      // Kept page pictures count toward the model's photo limit too: the oldest over it go as stubs (spec §4.8); then each picture once.
+      if (sent !== r || model?.images?.maxCount) sent = { ...sent, messages: sendable(sent.messages, model?.images?.maxCount) };
       if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
       const { toolRequired, ...rest } = sent;
       return rest;
@@ -580,6 +578,8 @@ export async function callRole(c) {
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
+        // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
+        if (anyway.has(id)) bench.clear(id);
         const full = said ? prefixed(reply, said) : reply;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
         await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
@@ -675,14 +675,19 @@ export async function callRole(c) {
   // failing for nothing (the coordinator's call after the real-PDF check: one stall of the only model failed the next turn).
   // Not Koe's: when her list rests, Kokoro answers instead (§9.6). Not a model resting after a refused key or no credit: asking it fails
   // the same way, and only the user can end that.
-  const resting = !c.askResting || sentTo.size || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !bench.usersToEnd(a.model)).map((a) => a.model))];
-  if (resting.length) {
-    const id = resting.reduce((a, b) => (bench.since(b) < bench.since(a) ? b : a));
+  // Every model left to try in this call rests (round 7: whether or not another was asked): the longest-resting one not yet asked, among
+  // those that can take the request (with its newest files read, when read is given), is asked once.
+  const resting = !c.askResting || role === KOE_CLASSIC ? [] : [...new Set(attempts.filter((a) => a.outcome === 'benched' && !sentTo.has(a.model) && !bench.usersToEnd(a.model)).map((a) => a.model))]
+    .sort((a, b) => bench.since(a) - bench.since(b));
+  for (const id of resting) {
+    const model = modelOf(config.models[id]);
     anyway.add(id);
-    base = c.request;
+    base = c.read ? await readFor(c.request, model, c.read, c.signal, c.readings) : c.request;
     request = said ? continueAfter(base, said) : base;
+    const asked = sentTo.size;
     const r = await one(id);
     if (r) return r;
+    if (sentTo.size > asked) break; // asked, and failed: once is enough
   }
   await record(null, said);
   throw new AllFailedError(attempts, said);

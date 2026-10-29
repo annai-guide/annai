@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
-import { readRefusal, limitImages } from '../../src/core/agent/refusals.js';
+import { readRefusal, limitImages, sendable } from '../../src/core/agent/refusals.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { modelOf } from '../../src/core/llm/config.js';
 
@@ -270,4 +270,16 @@ test("limitImages: within one message, its own photos stay before its PDF's page
   const messages = [{ role: /** @type {const} */ ('user'), parts: [photo, { type: /** @type {const} */ ('text'), text: '[a PDF: booking.pdf] …' }, page(1), page(2), page(3)] }];
   const out = limitImages(messages, 2);
   assert.deepEqual(out[0].parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.page ?? p.path : p.text)), ['/trip/files/menu.webp', '[a PDF: booking.pdf] …', 1, '[page 2 of the PDF above, not sent: this model takes fewer pictures at a time]', '[page 3 of the PDF above, not sent: this model takes fewer pictures at a time]']);
+});
+
+test('a photo sent again after the limit: the limit runs first, then each picture once, so the newest copy goes (round 7)', () => {
+  const text = (/** @type {string} */ t) => ({ type: /** @type {const} */ ('text'), text: t });
+  const photo = (/** @type {string} */ hash, /** @type {string} */ path) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'AAAA', hash, path });
+  const msgs = [
+    { role: /** @type {const} */ ('user'), parts: [text('Here is the menu'), photo('hA', '/trip/files/menu.webp')] },
+    { role: /** @type {const} */ ('user'), parts: [text('And the hotel'), photo('hB', '/trip/files/hotel.webp')] },
+    { role: /** @type {const} */ ('user'), parts: [text('Look at the menu again'), photo('hA', '/trip/files/menu.webp')] },
+  ];
+  const out = sendable(msgs, 1);
+  assert.deepEqual(out.map((m) => m.parts.filter((p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)), [[], [], ['hA']]);
 });
