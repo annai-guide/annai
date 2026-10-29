@@ -810,21 +810,28 @@ test('a damaged installed.json is refused when the plugins are replaced, and the
   await assert.rejects(importArchive(d.store, await peekArchive(plain), { secrets: true }), (e) => e instanceof ArchiveError && /damaged/.test(e.message));
 });
 
-test('an everything backup carries the waiting space and brings it back with your own files; a trip backup leaves it out', async () => {
+test("an everything backup carries the waiting space; restoring it adds the waiting files this device lacks (by content), and never removes or replaces this device's; a trip backup leaves it out", async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   await a.ws.write(SYS_WAITING, '/files/flight.pdf', utf8('a flight'), { author: 'user', type: 'application/pdf' });
+  await a.ws.write(SYS_WAITING, '/files/hotel.png', utf8('a hotel'), { author: 'user', type: 'image/png' });
   await a.ws.write(SYS_WAITING, '/names.json', { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' }, { author: 'shiori' });
   const all = await exportArchive(a.store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
   assert.ok(all.manifest.files.some((f) => f.name === 'system/waiting/files/flight.pdf'));
   const b = await device();
-  await importArchive(b.store, await peekArchive(await bytesOf(all.blob)), { me: 'replace' });
+  await importArchive(b.store, await peekArchive(await bytesOf(all.blob)));
   assert.equal(await b.ws.readText(SYS_WAITING, '/files/flight.pdf'), 'a flight');
-  assert.deepEqual(await b.ws.readJSON(SYS_WAITING, '/names.json'), { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' });
-  // Kept as it is when your own files are kept.
+  assert.equal(await b.ws.readText(SYS_WAITING, '/files/hotel.png'), 'a hotel');
+  // A device with waiting files of its own keeps them: one with the same content isn't added twice, one at the same path stays.
   const c = await device();
-  await importArchive(c.store, await peekArchive(await bytesOf(all.blob)));
-  assert.deepEqual(await c.ws.list(SYS_WAITING), []);
+  await c.ws.write(SYS_WAITING, '/files/hotel copy.png', utf8('a hotel'), { author: 'user', type: 'image/png' });
+  await c.ws.write(SYS_WAITING, '/files/flight.pdf', utf8('my own flight'), { author: 'user', type: 'application/pdf' });
+  await c.ws.write(SYS_WAITING, '/names.json', { '/files/flight.pdf': 'My flight' }, { author: 'shiori' });
+  await importArchive(c.store, await peekArchive(await bytesOf(all.blob)), { me: 'replace' });
+  assert.deepEqual((await c.ws.list(SYS_WAITING, '/files/')).map((f) => f.path), ['/files/flight (2).pdf', '/files/flight.pdf', '/files/hotel copy.png']);
+  assert.equal(await c.ws.readText(SYS_WAITING, '/files/flight.pdf'), 'my own flight');
+  assert.equal(await c.ws.readText(SYS_WAITING, '/files/flight (2).pdf'), 'a flight');
+  assert.deepEqual(await c.ws.readJSON(SYS_WAITING, '/names.json'), { '/files/flight.pdf': 'My flight' });
   const one = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   assert.equal(one.manifest.files.some((f) => f.name.startsWith('system/')), false);
 });
