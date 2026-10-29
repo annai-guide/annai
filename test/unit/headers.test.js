@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
 
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:* wss: ws://localhost:* ws://127.0.0.1:*; img-src 'self' blob: data: https:; media-src 'self' blob:; worker-src 'self' blob:; font-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:* wss: ws://localhost:* ws://127.0.0.1:*; img-src 'self' blob: data: https:; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; font-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
 
 test('parses rules and applies wildcard and exact paths', () => {
   const rules = parseHeaders('/*\n  A: 1\n  B: two words\n# comment\n/sw.js\n  C: 3\n');
