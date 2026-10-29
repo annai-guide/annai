@@ -2424,33 +2424,44 @@ scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:269	plural; # = (d.
 mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
 tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:292	
 1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:309	
-1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:38	
-jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:48	
-qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:50	
-xqmps	ok	Archive trip	旅をアーカイブ	src/ui/screens/trip.js:50	
-1hqo9yw	ok	Remove trip	旅を削除	src/ui/screens/trip.js:51	
-86ci06	ok	Export trip	旅をエクスポート	src/ui/screens/trip.js:63	
-vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}は会話の#ターン分を保存しています。オンラインに戻ったら、annai がその削除を依頼します。	src/ui/screens/trip.js:111	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}は会話の#ターン分を保存しています。annai がその削除を依頼します。	src/ui/screens/trip.js:112	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
-1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:113	
-1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	この旅のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:113	
-1db5a9q	ok	Remove anyway	それでも削除	src/ui/screens/trip.js:116	
-1ndoeek	ok	This trip hasn't been backed up since it last changed. Remove it anyway?	この旅は最後に変更されてからバックアップされていません。それでも削除しますか？	src/ui/screens/trip.js:116	
-45yyxd	ok	Not backed up	未バックアップ	src/ui/screens/trip.js:116	
-1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/screens/trip.js:121	{0} = scope.title; {1} = size(freed)
-1964rl0	ok	That trip was already removed.	その旅はすでに削除されています。	src/ui/screens/trip.js:125	
-1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:129	
-4fm217	ok	That trip wasn't removed	その旅は削除されませんでした	src/ui/screens/trip.js:129	
-deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:136	
-1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:145	
-1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:171	{0} = why; Note: {0} is the format check's own words, in English.
-q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/screens/trip.js:190	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:207	{0} = p
-ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:215	
-1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:216	
-16gte2l	ok	Create	作成	src/ui/screens/trip.js:219	
-knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:220	
-12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:221	
+1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:43	
+jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:53	
+qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:55	
+xqmps	ok	Archive trip	旅をアーカイブ	src/ui/screens/trip.js:55	
+1hqo9yw	ok	Remove trip	旅を削除	src/ui/screens/trip.js:56	
+8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:68	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
+1kgx9ri	ok	A train: {0}	列車：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+1vjpx7v	ok	A stay: {0}	宿泊：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+f25yxm	ok	A car: {0}	レンタカー：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+wl9iwa	ok	A flight: {0}	フライト：{0}	src/ui/screens/trip.js:75	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+193ekse	ok	An event: {0}	イベント：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+1t5b0ut	ok	A restaurant: {0}	レストラン：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+xn3hah	ok	A booking: {0}	予約：{0}	src/ui/screens/trip.js:76	{0} = x; Note: what a file became, on the trip's Files; {0} the booking's title.
+1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:95	
+deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:102	
+1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/screens/trip.js:113	Note: what a file became on the trip's Files: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	Shiori が読むのを待っています	src/ui/screens/trip.js:113	Note: a file on the trip's Files that Shiori hasn't read yet.
+1wjykgt	ok	Plan items from a calendar	カレンダーから予定に追加した項目	src/ui/screens/trip.js:116	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
+86ci06	ok	Export trip	旅をエクスポート	src/ui/screens/trip.js:127	
+vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}は会話の#ターン分を保存しています。オンラインに戻ったら、annai がその削除を依頼します。	src/ui/screens/trip.js:175	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}は会話の#ターン分を保存しています。annai がその削除を依頼します。	src/ui/screens/trip.js:176	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
+1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:177	
+1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	この旅のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:177	
+1db5a9q	ok	Remove anyway	それでも削除	src/ui/screens/trip.js:180	
+1ndoeek	ok	This trip hasn't been backed up since it last changed. Remove it anyway?	この旅は最後に変更されてからバックアップされていません。それでも削除しますか？	src/ui/screens/trip.js:180	
+45yyxd	ok	Not backed up	未バックアップ	src/ui/screens/trip.js:180	
+1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/screens/trip.js:185	{0} = scope.title; {1} = size(freed)
+1964rl0	ok	That trip was already removed.	その旅はすでに削除されています。	src/ui/screens/trip.js:189	
+1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:193	
+4fm217	ok	That trip wasn't removed	その旅は削除されませんでした	src/ui/screens/trip.js:193	
+q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/screens/trip.js:249	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:263	
+12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:264	
+1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:276	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:286	{0} = p
+ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:294	
+1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:295	
+16gte2l	ok	Create	作成	src/ui/screens/trip.js:297	
 yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	まだ旅はありません。下で始めることも、送られてきた旅を開くこともできます。	src/ui/screens/trips.js:28	Note: Keeps the glossary's 送られてきた旅を開く, the button's own words below it.
 33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:32	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:33	

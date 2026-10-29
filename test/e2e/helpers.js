@@ -572,3 +572,25 @@ export async function unmarked(page, mine = []) {
     return found;
   }, mine);
 }
+
+/** Opens the trip screen's All files fold, where every file by folder and the box that adds one by path are. @param {import('@playwright/test').Page} page */
+export async function allFiles(page) {
+  const fold = page.locator('details.all-files');
+  await expect(fold).toBeAttached();
+  if (!(await fold.evaluate((el) => /** @type {HTMLDetailsElement} */ (el).open))) await fold.locator('summary').click();
+}
+
+/**
+ * Stores a file in a scope through annai's own modules in the page, as the user's. @param {import('@playwright/test').Page} page
+ * @param {string} scope @param {string} path @param {Buffer | Uint8Array} bytes @param {string} type
+ */
+export async function putFile(page, scope, path, bytes, type) {
+  await page.evaluate(async ({ scope, path, data, type }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    await new Workspace(store).write(scope, path, new Uint8Array(data), { author: 'user', type });
+    store.close();
+  }, { scope, path, data: [...bytes], type });
+}

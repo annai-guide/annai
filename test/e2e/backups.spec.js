@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { openApp, filterTrace, pastWelcome } from './helpers.js';
+import { openApp, filterTrace, pastWelcome, allFiles } from './helpers.js';
 import { startGitHub } from '../fakes/github.js';
 
 const REPO = 'me/annai-backup';
@@ -25,6 +25,7 @@ async function startTrip(page, title) {
 
 /** @param {import('@playwright/test').Page} page @param {string} path @param {string} content */
 async function writeNote(page, path, content) {
+  await allFiles(page);
   await page.getByLabel('File path').fill(path);
   await page.getByRole('button', { name: 'Create' }).click();
   await page.getByLabel('Content').fill(content);
@@ -108,6 +109,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     const imported = gh.log.slice(mark).map((l) => (l.method === 'GET' ? /\/git\/commits\/([0-9a-f]{40})$/.exec(l.path)?.[1] : undefined)).find(Boolean);
     expect(imported, 'the import read a backup commit').toBeDefined();
     await page.getByRole('link', { name: 'Open Big Sur' }).click();
+    await allFiles(page);
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
     await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
@@ -164,6 +166,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await page.getByLabel('Replace mine (yours moves to archived trips)').check();
     await page.getByRole('button', { name: 'Import' }).click();
     await page.getByRole('link', { name: 'Open Kyoto' }).click();
+    await allFiles(page);
     await expect(page.getByRole('link', { name: /fushimi\.md/ })).toBeVisible();
 
     // From now on it builds on the other phone's backup.

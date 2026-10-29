@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, buildAndSave, savedBy, leaveSaved } from './helpers.js';
+import { openApp, waitForServiceWorker, buildAndSave, savedBy, leaveSaved, allFiles } from './helpers.js';
 import { readZip } from '../../src/core/zip.js';
 import { readPhotoMeta } from '../../src/core/photo-meta.js';
 import { text } from '../../src/core/bytes.js';
@@ -25,6 +25,7 @@ test('several photos and files are added at once', async ({ page }) => {
     await photo('upright.jpg'), await photo('screenshot.png'), { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Nepenthe at 7') },
   ]);
   await expect(page.getByText('Added 3 files')).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1230\.(webp|jpg)/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/screenshot\.(webp|jpg)/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/notes\.txt/ })).toBeVisible();
@@ -35,6 +36,7 @@ test("a HEIC photo this browser can't read is kept as it is, with a note", async
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.heic'));
   await expect(page.getByText('A photo was kept as it is')).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904\.heic/ })).toBeVisible();
 });
 
@@ -64,6 +66,7 @@ test('a sideways photo is added upright and named by when it was taken, with whe
   await startTrip(page, 'Big Sur');
   const ext = await savedAs(page);
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: new RegExp(`/files/2026-11-26-1904\\.${ext}`) }).click();
   const img = page.getByRole('img', { name: `/files/2026-11-26-1904.${ext}` });
   await expect(img).toBeVisible();
@@ -87,6 +90,7 @@ test('a 12-megapixel photo keeps its full size', async ({ page }) => {
     return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.92 })).arrayBuffer())];
   });
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'IMG_0001.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(bytes) });
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/IMG_0001\.(webp|jpg)/ }).click();
   await expect(page.locator('figcaption')).toContainText('4032 × 3024');
 });
@@ -95,6 +99,7 @@ test('a photo opens full size, zooms, and closes', async ({ page, browserName })
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
   const open = page.getByRole('button', { name: 'Open the photo full size' });
   await open.click();
@@ -122,6 +127,7 @@ test("a photo this browser can't show says so, with what is known about it", asy
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.heic'));
   // The card saying it was kept as taken covers much of a small phone's screen: read, then dismissed.
   await page.locator('.notice', { hasText: "can't convert portrait.heic" }).getByRole('button', { name: 'Dismiss' }).click();
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.heic/ }).click();
   await expect(page.getByText("This browser can't show this photo.")).toBeVisible();
   await expect(page.locator('figcaption')).toContainText('Stored as taken');
@@ -137,6 +143,7 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await expect(savedBy(keep)).toHaveText('Saved'); // saved as it changes: no Save button
   await page.goto(trip);
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.jpg/ }).click();
   await expect(page.locator('figcaption')).toContainText('Stored as taken');
 
@@ -153,6 +160,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
   await page.getByRole('button', { name: 'Export trip' }).click();
   const places = page.getByLabel('Include where photos were taken');
@@ -182,6 +190,7 @@ test('photos shared from another app go to the trip you choose', async ({ page }
   await expect(page.getByRole('heading', { name: 'Add 2 photos' })).toBeVisible();
   await page.getByRole('button', { name: 'Add to Big Sur' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/screenshot/ })).toBeVisible();
 });
@@ -190,6 +199,7 @@ test('Back closes the full-size photo and stays on its page', async ({ page }) =
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
   await page.getByRole('button', { name: 'Open the photo full size' }).click();
   const viewer = page.getByRole('dialog', { name: /^Photo / });
@@ -251,6 +261,7 @@ test('Show Shiori this part: zoomed in, the part on screen goes to her in your m
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
   await page.getByRole('button', { name: 'Open the photo full size' }).click();
   const viewer = page.getByRole('dialog', { name: /^Photo / });
@@ -268,6 +279,7 @@ test("leaving the conversation lets the memory of the photos you sent go", async
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904/ }).click();
   await page.getByRole('button', { name: 'Open the photo full size' }).click();
   await page.getByRole('dialog', { name: /^Photo / }).getByRole('button', { name: 'Show Shiori this part' }).click();
