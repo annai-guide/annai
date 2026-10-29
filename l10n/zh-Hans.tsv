@@ -981,14 +981,16 @@ rs50uy	ok	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:125
 io1qx	ok	Open the booking	打开预订	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的类型（{0}）来自一个未开启的插件。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	照片已按原样保存	src/ui/composer.js:63	
-36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:64	
-17olkn2#other	ok	# files weren't kept	有 # 个文件没能保存	src/ui/composer.js:68	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when there was no room for some handed files; 保存 as files are kept on the device.
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:122	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:123	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
-1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:134	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
-1uuz7zc	ok	Keeping {0} of {1}…	正在保存第 {0} 个，共 {1} 个…	src/ui/composer.js:166	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while handed files are kept on the device.
-13548dd	ok	That conversation didn't open	没能打开那段对话	src/ui/composer.js:196	Note: 对话 as the glossary's Conversation.
+rcp6ga	ok	A photo was kept as it is	照片已按原样保存	src/ui/composer.js:65	
+36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:66	
+17olkn2#other	ok	# files weren't kept	有 # 个文件没能保存	src/ui/composer.js:70	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when there was no room for some handed files; 保存 as files are kept on the device.
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:127	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:128	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
+1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:139	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
+1uuz7zc	ok	Keeping {0} of {1}…	正在保存第 {0} 个，共 {1} 个…	src/ui/composer.js:178	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while handed files are kept on the device.
+13548dd	ok	That conversation didn't open	没能打开那段对话	src/ui/composer.js:208	Note: 对话 as the glossary's Conversation.
+1npepge	ok	Read it again	请再读一遍	src/ui/composer.js:225	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
+158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/composer.js:226	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地点，用于 Shiori 的 nearby 工具和离线包，通过 Overpass（overpass-api.de，繁忙时用 private.coffee 的服务器）查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或说出某个位置的地名，用于 Shiori 的 geocode 和 reverse 工具；作为免费搜索的最后手段，也会查找地点的官网。annai 按其使用政策，每秒最多询问一次。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地点的文章，以及离线包中的摘要。Shiori 读到的每篇文章都附有地址。免费搜索始终开启的最后手段会用搜索的词向它查询。	src/ui/credits.js:33	
@@ -1002,15 +1004,15 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：为 annai 用 AI 图像生成设计，再描摹成矢量图。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	给 Shiori 的消息	src/ui/dock.js:44	
 1vatbdb	ok	Send	发送	src/ui/dock.js:59	
-abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:91	Note: built on 交给, as the + says.
-1m2zofh	ok	Type	输入	src/ui/dock.js:109	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片保存在旅行中。请在“旅行”中打开一个旅行，再拍一次。	src/ui/dock.js:145	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
-drtui7	ok	Open a trip first	请先打开一个旅行	src/ui/dock.js:145	
-1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:156	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:245	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:246	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:246	
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:259	
+abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:96	Note: built on 交给, as the + says.
+1m2zofh	ok	Type	输入	src/ui/dock.js:114	Note: The dock's keyboard button: it opens the box to type in (a verb).
+178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片保存在旅行中。请在“旅行”中打开一个旅行，再拍一次。	src/ui/dock.js:153	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
+drtui7	ok	Open a trip first	请先打开一个旅行	src/ui/dock.js:153	
+1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:164	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:253	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:254	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:254	
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:267	
 1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:258	
@@ -1298,7 +1300,7 @@ zymqne	ok	Only update if you trust where it came from.	只有在你信任它的�
 1dfe53s	ok	Nothing changes until you tap Update.	在你轻点“更新”之前什么都不会改变。	src/ui/plugin-updates.js:148	
 15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:150	
 c9wfke	ok	Not now	暂不	src/ui/plugin-updates.js:151	
-vq7cdg#other	ok	# pages	#页	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
+vq7cdg#other	ok	# pages	#页	src/ui/preview.js:134	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、文件、设置和密钥都存储在此设备的这个浏览器中。annai 没有账户，也没有任何 annai 的服务器保存你的旅行或密钥。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只发送到需要的地方。	src/ui/privacy.js:22	
@@ -1493,19 +1495,19 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 9patw8	ok	annai stops backing up here. The backups already there stay.	annai 会停止备份到这里。已经在那里的备份会保留。	src/ui/screens/backups.js:312	
 1hx8faa	ok	Tap again to remove it	再点一次以移除	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
-8icj76	ok	Plan	行程	src/ui/screens/booking.js:17	
-nq6gpo	ok	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:21	
-19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被删除或重命名。行程中列出了现有的预订。	src/ui/screens/booking.js:22	
-fl5bce	ok	Confirmed	已确认	src/ui/screens/booking.js:35	
-bigbss	ok	Try again.	请重试。	src/ui/screens/booking.js:42	
-dqldb5	ok	It wasn't confirmed: {0}	未能确认：{0}	src/ui/screens/booking.js:42	{0} = why.textContent
-19dss4d	ok	Looks right	没问题	src/ui/screens/booking.js:48	Note: The button that confirms a booking.
-1rnayr2	ok	Check this against the original, then confirm it.	请对照原件核对后再确认。	src/ui/screens/booking.js:51	
-bamrei	ok	Change it	修改	src/ui/screens/booking.js:55	
-d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行中。	src/ui/screens/booking.js:69	{0} = path
-yp5voz	ok	This booking doesn't say which file it came from.	这个预订没有说明来自哪个文件。	src/ui/screens/booking.js:69	
-98drsx	ok	Open the original	打开原件	src/ui/screens/booking.js:70	
-c4110z	ok	The original, {0}	原件：{0}	src/ui/screens/booking.js:72	{0} = entry.path
+8icj76	ok	Plan	行程	src/ui/screens/booking.js:18	
+nq6gpo	ok	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:22	
+19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被删除或重命名。行程中列出了现有的预订。	src/ui/screens/booking.js:23	
+fl5bce	ok	Confirmed	已确认	src/ui/screens/booking.js:36	
+bigbss	ok	Try again.	请重试。	src/ui/screens/booking.js:43	
+dqldb5	ok	It wasn't confirmed: {0}	未能确认：{0}	src/ui/screens/booking.js:43	{0} = why.textContent
+19dss4d	ok	Looks right	没问题	src/ui/screens/booking.js:49	Note: The button that confirms a booking.
+1rnayr2	ok	Check this against the original, then confirm it.	请对照原件核对后再确认。	src/ui/screens/booking.js:52	
+bamrei	ok	Change it	修改	src/ui/screens/booking.js:56	
+d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行中。	src/ui/screens/booking.js:70	{0} = path
+yp5voz	ok	This booking doesn't say which file it came from.	这个预订没有说明来自哪个文件。	src/ui/screens/booking.js:70	
+98drsx	ok	Open the original	打开原件	src/ui/screens/booking.js:71	
+c4110z	ok	The original, {0}	原件：{0}	src/ui/screens/booking.js:73	{0} = entry.path
 19jra30	ok	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什么？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	吃饭	src/ui/screens/drive.js:13	
@@ -2428,7 +2430,6 @@ sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.
 ru2yru	ok	updated {0}	{0}更新	src/ui/screens/trips.js:50	{0} = relTime(s.updated)
 9q9lbc	ok	Talk with her outside any trip.	在旅行之外和她聊。	src/ui/screens/trips.js:67	Note: under Shiori, no trip: the conversation outside any trip.
 v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/trips.js:67	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
-158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/screens/trips.js:84	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
 oay2cq	ok	Delete	删除	src/ui/screens/trips.js:85	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
 1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:95	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
 axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:115	

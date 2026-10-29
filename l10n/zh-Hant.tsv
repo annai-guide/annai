@@ -981,14 +981,16 @@ rs50uy	ok	Opening the backup…	正在開啟備份…	src/ui/auto-backup.js:125
 io1qx	ok	Open the booking	開啟預訂	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的類型（{0}）來自一個未開啟的外掛程式。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:63	
-36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:64	
-17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:68	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:122	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:123	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
-1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:134	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
-1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:166	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
-13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/composer.js:196	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
+rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:65	
+36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:66	
+17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:70	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:127	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:128	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
+1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:139	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
+1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:178	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
+13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/composer.js:208	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
+1npepge	ok	Read it again	請再讀一遍	src/ui/composer.js:225	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
+158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:226	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，用於 Shiori 的 nearby 工具和離線資料包，透過 Overpass（overpass-api.de，繁忙時用 private.coffee 的伺服器）查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或說出某個位置的地名，用於 Shiori 的 geocode 和 reverse 工具；作為免費搜尋的最後手段，也會查詢地點的官網。annai 依其使用政策，每秒最多詢問一次。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地點的文章，以及離線資料包中的摘要。Shiori 讀到的每篇文章都附有網址。免費搜尋始終開啟的最後手段會用搜尋的詞向它查詢。	src/ui/credits.js:33	
@@ -1002,15 +1004,15 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：為 annai 用 AI 影像生成設計，再描摹成向量圖。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	給 Shiori 的訊息	src/ui/dock.js:44	
 1vatbdb	ok	Send	傳送	src/ui/dock.js:59	
-abxwjc	ok	Your files didn't reach Shiori	檔案沒能交給 Shiori	src/ui/dock.js:91	Note: Taiwan wording: 檔案; built on 交給, as the + says.
-1m2zofh	ok	Type	輸入	src/ui/dock.js:109	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片儲存在旅行中。請在「旅行」中開啟一個旅行，再拍一次。	src/ui/dock.js:145	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
-drtui7	ok	Open a trip first	請先開啟一個旅行	src/ui/dock.js:145	
-1dcb0v0	ok	The photo wasn't added	未能新增照片	src/ui/dock.js:156	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:245	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:246	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:246	
-1s6dmy6	ok	Camera	相機	src/ui/dock.js:259	
+abxwjc	ok	Your files didn't reach Shiori	檔案沒能交給 Shiori	src/ui/dock.js:96	Note: Taiwan wording: 檔案; built on 交給, as the + says.
+1m2zofh	ok	Type	輸入	src/ui/dock.js:114	Note: The dock's keyboard button: it opens the box to type in (a verb).
+178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	照片儲存在旅行中。請在「旅行」中開啟一個旅行，再拍一次。	src/ui/dock.js:153	Note: The screen's name in quotes, so 旅行 the screen reads apart from 旅行 a trip.
+drtui7	ok	Open a trip first	請先開啟一個旅行	src/ui/dock.js:153	
+1dcb0v0	ok	The photo wasn't added	未能新增照片	src/ui/dock.js:164	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:253	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:254	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:254	
+1s6dmy6	ok	Camera	相機	src/ui/dock.js:267	
 1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:147	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}必須是物件：{ … }。	src/ui/dom.js:149	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在儲存…	src/ui/dom.js:258	
@@ -1298,7 +1300,7 @@ zymqne	ok	Only update if you trust where it came from.	只有在你信任它的�
 1dfe53s	ok	Nothing changes until you tap Update.	在你點一下「更新」之前什麼都不會改變。	src/ui/plugin-updates.js:148	
 15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:150	
 c9wfke	ok	Not now	現在不要	src/ui/plugin-updates.js:151	Note: 現在不要, as Taiwan's iPhone says Not Now.
-vq7cdg#other	ok	# pages	#頁	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: Taiwan wording; a PDF's page count on its file card.
+vq7cdg#other	ok	# pages	#頁	src/ui/preview.js:134	plural; # = pages; English: "# page" (one), "# pages" (other); Note: Taiwan wording; a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	你的旅行、檔案、設定和金鑰都儲存在此裝置的這個瀏覽器中。annai 沒有帳號，也沒有任何 annai 的伺服器儲存你的旅行或金鑰。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	只傳送到需要的地方。	src/ui/privacy.js:22	
@@ -1493,19 +1495,19 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 9patw8	ok	annai stops backing up here. The backups already there stay.	annai 會停止備份到這裡。已經在那裡的備份會保留。	src/ui/screens/backups.js:312	
 1hx8faa	ok	Tap again to remove it	再點一次以移除	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
-8icj76	ok	Plan	行程	src/ui/screens/booking.js:17	
-nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:21	
-19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:22	
-fl5bce	ok	Confirmed	已確認	src/ui/screens/booking.js:35	
-bigbss	ok	Try again.	請重試。	src/ui/screens/booking.js:42	
-dqldb5	ok	It wasn't confirmed: {0}	未能確認：{0}	src/ui/screens/booking.js:42	{0} = why.textContent
-19dss4d	ok	Looks right	沒問題	src/ui/screens/booking.js:48	Note: The button that confirms a booking.
-1rnayr2	ok	Check this against the original, then confirm it.	請對照原件核對後再確認。	src/ui/screens/booking.js:51	
-bamrei	ok	Change it	修改	src/ui/screens/booking.js:55	
-d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:69	{0} = path
-yp5voz	ok	This booking doesn't say which file it came from.	這個預訂沒有說明來自哪個檔案。	src/ui/screens/booking.js:69	
-98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:70	
-c4110z	ok	The original, {0}	原件：{0}	src/ui/screens/booking.js:72	{0} = entry.path
+8icj76	ok	Plan	行程	src/ui/screens/booking.js:18	
+nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:22	
+19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:23	
+fl5bce	ok	Confirmed	已確認	src/ui/screens/booking.js:36	
+bigbss	ok	Try again.	請重試。	src/ui/screens/booking.js:43	
+dqldb5	ok	It wasn't confirmed: {0}	未能確認：{0}	src/ui/screens/booking.js:43	{0} = why.textContent
+19dss4d	ok	Looks right	沒問題	src/ui/screens/booking.js:49	Note: The button that confirms a booking.
+1rnayr2	ok	Check this against the original, then confirm it.	請對照原件核對後再確認。	src/ui/screens/booking.js:52	
+bamrei	ok	Change it	修改	src/ui/screens/booking.js:56	
+d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:70	{0} = path
+yp5voz	ok	This booking doesn't say which file it came from.	這個預訂沒有說明來自哪個檔案。	src/ui/screens/booking.js:70	
+98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:71	
+c4110z	ok	The original, {0}	原件：{0}	src/ui/screens/booking.js:73	{0} = entry.path
 19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:13	
@@ -2428,7 +2430,6 @@ sjnfyu	ok	Archived trips ({0})	已封存的旅行（{0}）	src/ui/screens/trips.
 ru2yru	ok	updated {0}	{0}更新	src/ui/screens/trips.js:50	{0} = relTime(s.updated)
 9q9lbc	ok	Talk with her outside any trip.	在旅行之外和她聊。	src/ui/screens/trips.js:67	Note: Taiwan wording; the conversation outside any trip.
 v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/trips.js:67	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
-158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/screens/trips.js:84	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
 oay2cq	ok	Delete	刪除	src/ui/screens/trips.js:85	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
 1ceddv5	ok	Big Sur · Thanksgiving	花蓮 · 連假	src/ui/screens/trips.js:95	Note: An example trip name (the field's placeholder): a Taiwanese one (Hualien, a long weekend), as zh-Hans gives a mainland one.
 axugy7	ok	Start a trip	開始旅行	src/ui/screens/trips.js:115	

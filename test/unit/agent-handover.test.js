@@ -121,12 +121,19 @@ test('handOverText: waiting files ask for list_trips and open_trip or start_trip
   assert.match(trip, /move_file/);
   assert.match(trip, /\/trip\/names\.json/);
   assert.doesNotMatch(trip, /start_trip/);
-  const ref = handOverText([{ path: '/trip/bookings/flight.json', type: 'application/json', name: 'flight.json', new: false }]);
-  assert.match(ref, /^The user is asking about "\/trip\/bookings\/flight\.json": read it, and the file it came from, before you answer\.$/);
+  const ref = handOverText([{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: false }]);
+  assert.match(ref, /^The user is asking about "\/trip\/files\/flight\.pdf": read it before you answer\.$/);
   // Koe hears what was handed, and that Kokoro files it.
   const koe = handOverText([flight], { koe: true });
   assert.match(koe, /Kokoro reads them and files them/);
   assert.doesNotMatch(koe, /move_file|names\.json/);
+});
+
+test('asking about a booking: she is told which booking, and to read it and its file first', () => {
+  const ref = handOverText([{ path: '/trip/bookings/flight.json', type: 'application/json', name: 'ANNAI AIR AN 123', new: false }]);
+  assert.match(ref, /^The user is asking about the booking "\/trip\/bookings\/flight\.json": read it, and the file its source names, before you answer\./);
+  // Nothing to file: no hand-over steps, no names to give.
+  assert.doesNotMatch(ref, /names\.json|move_file|start_trip/);
 });
 
 test("handOverText's booking sentence asks for unsure, not for an unverified booking to confirm", () => {
