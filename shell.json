@@ -1,5 +1,5 @@
 {
-  "build": "759388d795d2",
+  "build": "15600065e4d6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -60,7 +60,7 @@
     "/src/core/backup.js": "d75cdfd9c6d5",
     "/src/core/backup-auto.js": "3f13bd8df6d5",
     "/src/core/backup-targets.js": "cd4f1e8f9035",
-    "/src/core/bookings.js": "fa5c43b79f79",
+    "/src/core/bookings.js": "030772beebca",
     "/src/core/bytes.js": "c26ffd4134dc",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -184,7 +184,7 @@
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
     "/src/plugins/core-schemas/schemas.js": "bf902b82c400",
-    "/src/plugins/files/index.js": "f4b1d73b435f",
+    "/src/plugins/files/index.js": "171f9dda8b82",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "5b6ad6ee60a8",
     "/src/plugins/mcp/index.js": "094b457aa562",

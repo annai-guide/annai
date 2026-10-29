@@ -5,7 +5,7 @@ import { BOOKING_FILE } from './plan.js';
  * Shiori's writes to bookings (spec §4.4, §7.3). There is no confirming step (the bookings-and-trips design, My call 1): a booking she
  * writes lists in `unsure` just the fields she isn't sure of (`[]` when none), and only those are marked for the user to check. A
  * booking without the `unsure` key is from before: an unverified one is marked whole until she is told it's right. She still never sets
- * `confirmed`, and her change to a confirmed one sends it back to `unverified`.
+ * `confirmed`.
  */
 
 /** What Shiori is told to do with a booking she reads (a hand-over, and files added on the trip screen). */
@@ -36,31 +36,21 @@ export function isBookingPath(scope, path) {
   return kindOf(scope) === 'trip' && BOOKING_FILE.test(path);
 }
 
-/** JSON with sorted keys, so records compare by what they hold. @param {any} v @returns {string} */
-function canonical(v) {
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
-  return JSON.stringify(v) ?? 'null';
-}
-
 /**
- * What to store when Shiori writes a booking, and what to tell her.
+ * What to store when Shiori writes a booking: what she wrote, or a refusal in words. She never sets `confirmed`; a change of hers to a
+ * booking the user confirmed keeps it confirmed (with no confirming step, nothing would ever clear it again).
  * @param {any} before the booking as stored, or undefined @param {any} next what she would store
- * @returns {{ value: any, note: string }}
+ * @returns {any}
  */
 export function shioriBooking(before, next) {
-  if (!next || typeof next !== 'object' || Array.isArray(next)) return { value: next, note: '' }; // the format check says what is wrong
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return next; // the format check says what is wrong
   const old = before && typeof before === 'object' && !Array.isArray(before) ? before : null;
-  const was = old ? old.status : undefined;
-  if (next.status === 'confirmed' && was !== 'confirmed') {
+  if (next.status === 'confirmed' && old?.status !== 'confirmed') {
     /* en */ throw new Error('Only the user confirms a booking. Write it with status "unverified", and list in unsure the fields you are not sure of.');
   }
   // A new booking, and one written with unsure, always carry it (LESSONS 2026-10-27): without it, it would read as one from before.
   if (!('unsure' in next) && (!old || 'unsure' in old)) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
   }
-  if (was === 'confirmed' && canonical({ ...before, status: null }) !== canonical({ ...next, status: null })) {
-    /* en */ return { value: { ...next, status: 'unverified' }, note: ' The user had confirmed it; after your change it is unverified again, so they check it.' };
-  }
-  return { value: next, note: '' };
+  return next;
 }

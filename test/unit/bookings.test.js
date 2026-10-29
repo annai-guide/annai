@@ -11,21 +11,24 @@ test('isBookingPath: a trip booking record, nothing else', () => {
   assert.equal(isBookingPath('me', '/bookings/hotel.json'), false);
 });
 
-test('shioriBooking: new ones unverified, never confirmed by her; her change to a confirmed one goes back to the user', () => {
-  assert.deepEqual(shioriBooking(undefined, b), { value: b, note: '' });
+test('shioriBooking: new ones unverified, never confirmed by her; her change to a confirmed one keeps it confirmed, with nothing marked', () => {
+  assert.equal(shioriBooking(undefined, b), b);
   assert.throws(() => shioriBooking(undefined, { ...b, status: 'confirmed' }), /Only the user confirms a booking/);
   assert.throws(() => shioriBooking(b, { ...b, status: 'confirmed' }), /Only the user confirms a booking/);
-  const confirmed = { ...b, status: 'confirmed', fields: { breakfast: true, rooms: [1, 2] } };
-  // The same record, keys in another order: nothing changed, it stays confirmed.
-  const same = { fields: { rooms: [1, 2], breakfast: true }, status: 'confirmed', source: b.source, kind: b.kind, id: b.id, unsure: [] };
-  assert.deepEqual(shioriBooking(confirmed, same), { value: same, note: '' });
-  const changed = shioriBooking(confirmed, { ...confirmed, confirmation: 'HX-7788' });
-  assert.deepEqual(changed.value, { ...confirmed, confirmation: 'HX-7788', status: 'unverified' });
-  assert.match(changed.note, /^ The user had confirmed it; after your change it is unverified again/);
+  // A booking the user confirmed, from before unsure: told "the seat is 14D", she patches it. There is no confirming step any more,
+  // so it stays as the user left it, with nothing marked (the review of seeing-bookings, R2).
+  const confirmed = { id: 'f', kind: 'flight', status: 'confirmed', source: '/files/f.pdf', title: 'ANNAI AIR AN 123', fields: { seat: '14C' } };
+  const changed = shioriBooking(confirmed, { ...confirmed, fields: { seat: '14D' } });
+  assert.deepEqual(changed, { ...confirmed, fields: { seat: '14D' } });
+  assert.deepEqual(checkOf(changed), { whole: false, fields: [] });
+  // R2b: one written with unsure: [] is stored as written, nothing marked.
+  const listed = shioriBooking(confirmed, { ...confirmed, fields: { seat: '14D' }, unsure: [] });
+  assert.equal(listed.status, 'confirmed');
+  assert.deepEqual(checkOf(listed), { whole: false, fields: [] });
   // She may take a confirmation back.
-  assert.deepEqual(shioriBooking(confirmed, { ...confirmed, status: 'unverified' }).value.status, 'unverified');
+  assert.equal(shioriBooking(confirmed, { ...confirmed, status: 'unverified' }).status, 'unverified');
   // Not a record: the format check says what is wrong.
-  assert.deepEqual(shioriBooking(b, 'text'), { value: 'text', note: '' });
+  assert.equal(shioriBooking(b, 'text'), 'text');
 });
 
 test('checkOf: an old unverified booking is marked whole; an old confirmed one not at all; a new one by its unsure fields', () => {
@@ -51,5 +54,5 @@ test("shioriBooking: a new booking without unsure is refused in words; an old on
   assert.doesNotThrow(() => shioriBooking(old, { ...old, confirmation: 'TESTQ1' }));
   // One written with unsure keeps it: a rewrite without it would turn it into an old record, marked whole.
   assert.throws(() => shioriBooking({ ...old, unsure: [] }, { ...old, confirmation: 'TESTQ1' }), /unsure/);
-  assert.deepEqual(shioriBooking(undefined, { ...old, unsure: ['seat'] }), { value: { ...old, unsure: ['seat'] }, note: '' });
+  assert.deepEqual(shioriBooking(undefined, { ...old, unsure: ['seat'] }), { ...old, unsure: ['seat'] });
 });
