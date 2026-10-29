@@ -1,0 +1,12 @@
+From: Midnight Test Rentals <bookings@example.com>
+Subject: Your car is reserved (TESTCAR7)
+
+Hi Sam,
+
+Your rental car is reserved.
+Pick-up: Fri Nov 20, 2026, 15:00, Anchorage Airport (ANC)
+Drop-off: Fri Nov 27, 2026, 13:00, Anchorage Airport (ANC)
+Car: compact, automatic
+Reservation: TESTCAR7
+
+Midnight Test Rentals

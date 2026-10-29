@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '9612e8f46517';
+const BUILD = 'bdc8d7e22a18';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -61,6 +61,7 @@ const SHELL = [
   '/src/core/agent/self-tools.js',
   '/src/core/agent/net.js',
   '/src/core/agent/tools.js',
+  '/src/core/agent/trip-tools.js',
   '/src/core/agent/transcript.js',
   '/src/core/agent/via.js',
   '/src/core/agent/warmth.js',
@@ -77,6 +78,7 @@ const SHELL = [
   '/src/core/errors.js',
   '/src/core/events.js',
   '/src/core/forget.js',
+  '/src/core/handover.js',
   '/src/core/hash.js',
   '/src/core/hooks.js',
   '/src/core/html-text.js',
@@ -125,6 +127,7 @@ const SHELL = [
   '/src/core/links.js',
   '/src/core/lock.js',
   '/src/core/now.js',
+  '/src/core/names.js',
   '/src/core/official-names.js',
   '/src/core/package-updates.js',
   '/src/core/packages.js',
@@ -165,6 +168,7 @@ const SHELL = [
   '/src/core/time.js',
   '/src/core/xml.js',
   '/src/core/tsv.js',
+  '/src/core/waiting.js',
   '/src/core/voice/detector.js',
   '/src/core/voice/formats.js',
   '/src/core/voice/g711.js',
@@ -204,6 +208,7 @@ const SHELL = [
   '/src/plugins/web/index.js',
   '/src/ui/base.css',
   '/src/ui/cards.js',
+  '/src/ui/composer.js',
   '/src/ui/credits.js',
   '/src/ui/dock.js',
   '/src/ui/dom.js',

@@ -112,6 +112,26 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 /* The send arrow sits inside the box, on its right: for a keyboard with no send key, and for a mouse. */
 .send-arrow { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; border: 0; background: var(--ai); color: var(--ai-ink); cursor: pointer; }
 .send-arrow:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* The + sits inside the box before the words; what it picked waits above the box as chips, each with its own Remove. */
+.type-sheet .type-box input { padding-inline-start: 52px; }
+.attach-plus { position: absolute; inset-inline-start: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--sheet); color: var(--ink-2); font-size: 24px; line-height: 1; cursor: pointer; }
+.attach:focus-within .attach-plus { outline: 2px solid var(--ai); outline-offset: 2px; }
+.chips, .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { margin-block-end: 6px; }
+.chips[hidden], .keeping:empty { display: none; }
+.chip-list, .keeping { flex-basis: 100%; min-width: 0; margin: 0; }
+.keeping { color: var(--ink-2); font-size: 13px; }
+.attach-back { flex: none; min-height: 32px; border: 0; border-radius: 16px; background: none; color: var(--ai); font: inherit; font-size: 13px; cursor: pointer; padding-inline: 6px; }
+.attach-back:focus-visible { outline: 2px solid var(--ai); outline-offset: -2px; }
+.attach-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-height: 32px; padding-inline: 12px 2px; border: 1px solid var(--line); border-radius: 16px; background: var(--sheet); color: var(--ink); font-size: 14px; }
+.attach-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.attach-remove { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ink-2); font-size: 18px; cursor: pointer; padding: 0; }
+.attach-remove:focus-visible { outline: 2px solid var(--ai); outline-offset: -2px; }
+/* A message's files in the Conversation: each a link to where it is now, plain once it has moved on. */
+.convo .chips.handed { margin-block: 6px 0; justify-content: flex-end; }
+a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; }
+.attach-chip.gone { color: var(--ink-2); }
 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */

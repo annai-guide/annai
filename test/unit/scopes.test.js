@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_WAITING, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
 import { utf8, ownBuffer } from '../../src/core/bytes.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -34,7 +34,7 @@ test('ensureBaseScopes creates me and the system scopes once', async () => {
   await ensureBaseScopes(ws);
   await ensureBaseScopes(ws);
   const ids = (await store.tx(['scopes'], 'readonly', (t) => t.listScopes())).map((s) => s.id).sort();
-  assert.deepEqual(ids, [ME, SYS, SYS_PLUGINS, SYS_SETTINGS].sort());
+  assert.deepEqual(ids, [ME, SYS, SYS_PLUGINS, SYS_SETTINGS, SYS_WAITING].sort());
   assert.match(await ws.readText(ME, '/profile.md'), /^# Profile/);
   assert.equal((await ws.history(ME, '/profile.md')).length, 1);
   assert.equal(await ws.readText(ME, '/memory.md'), '# Memory\n');
@@ -317,4 +317,19 @@ test('removing a trip keeps content another trip names, and frees content nobody
   await removeTrip(store, a);
   const left = await store.tx(['blobs'], 'readonly', async (t) => [await t.hasBlob(sharedHash), await t.hasBlob(orphanHash)]);
   assert.deepEqual(left, [true, false]);
+});
+
+test("createTrip: a name is enough; Shiori's trip is hers, with the hand-over on its scope.create", async () => {
+  const { store, ws } = setup();
+  const mine = await createTrip(ws, { title: 'Somewhere' });
+  assert.deepEqual(Object.keys(await ws.readJSON(mine, '/trip.json')).sort(), ['id', 'party', 'places', 'title']);
+  const [made] = await store.tx(['events'], 'readonly', (t) => t.listEvents(mine, { types: ['scope.create'] }));
+  assert.equal(made.actor, 'user');
+  assert.equal('handover' in made.data, false);
+  const hers = await createTrip(ws, { title: 'Anchorage · Nov 20–27', start: '2026-11-20', end: '2026-11-27', places: ['Anchorage'], timezones: ['America/Anchorage'] }, { author: 'shiori', handover: 'h-1' });
+  const tj = await ws.readJSON(hers, '/trip.json');
+  assert.deepEqual([tj.start, tj.end, tj.places, tj.timezones], ['2026-11-20', '2026-11-27', ['Anchorage'], ['America/Anchorage']]);
+  const ev = await store.tx(['events'], 'readonly', (t) => t.listEvents(hers));
+  assert.deepEqual(ev.filter((e) => e.type === 'scope.create').map((e) => [e.actor, e.data.handover]), [['shiori', 'h-1']]);
+  assert.deepEqual(ev.filter((e) => e.type === 'file.write').map((e) => [e.data.path, e.actor, e.data.handover]), [['/trip.json', 'shiori', 'h-1'], ['/memory.md', 'shiori', 'h-1']]);
 });

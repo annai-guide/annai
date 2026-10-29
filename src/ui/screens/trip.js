@@ -77,6 +77,29 @@ async function removeFlow(ctx, id, scope, button) {
   }
 }
 
+/**
+ * Removes a trip for good, as Remove trip does once the user has said yes (spec §4.9): Shiori leaves it first, its offline pack stops,
+ * then it goes with everything only it named, and what a provider, live mode and her memory keep of it goes too. Undo of a trip she
+ * started uses it with no question: the user asked for it by tapping Undo.
+ * @param {any} ctx @param {string} id @returns {Promise<{ title: string, bytes: number }>}
+ */
+export async function removeTripNow(ctx, id) {
+  // Shiori leaves the trip first, so nothing more is written into it once it is gone (spec §4.9).
+  if (ctx.agent && (ctx.agent.trip === id || ctx.agent.target === id)) {
+    await updateAppSettings(ctx.ws, { activeTrip: null });
+    await ctx.agent.open(null, { quiet: true });
+  }
+  // Its offline pack's download has ended, its last file written, before the trip goes.
+  if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
+  const removed = await removeTrip(ctx.store, id);
+  // What a provider keeps of its conversations is deleted too, when a connection allows (G2).
+  await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn(/* en */ "a removed trip's kept turns couldn't be queued for deletion", e));
+  // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
+  await ctx.live?.forget(id);
+  ctx.agent?.voice?.memory.forget(id);
+  return removed;
+}
+
 /** @param {any} ctx @param {string} id @param {any} scope */
 async function askAndRemove(ctx, id, scope) {
   // What a provider keeps of its conversations goes too, said before the tap (G2).
@@ -94,19 +117,7 @@ async function askAndRemove(ctx, id, scope) {
     if (!anyway) return;
   }
   try {
-    // Shiori leaves the trip first, so nothing more is written into it once it is gone (spec §4.9).
-    if (ctx.agent && (ctx.agent.trip === id || ctx.agent.target === id)) {
-      await updateAppSettings(ctx.ws, { activeTrip: null });
-      await ctx.agent.open(null, { quiet: true });
-    }
-    // Its offline pack's download has ended, its last file written, before the trip goes.
-    if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
-    const { bytes: freed } = await removeTrip(ctx.store, id);
-    // What a provider keeps of its conversations is deleted too, when a connection allows (G2).
-    await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn(/* en */ "a removed trip's kept turns couldn't be queued for deletion", e));
-    // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
-    await ctx.live?.forget(id);
-    ctx.agent?.voice?.memory.forget(id);
+    const { bytes: freed } = await removeTripNow(ctx, id);
     ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
     ctx.go('#/trips');
   } catch (e) {

@@ -23,6 +23,7 @@ test('the Trips screen speaks through t: its words, its form and its cards are p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(accented('Trips'));
   await expect(page.locator('p.empty')).toHaveText(accented('No trips yet. Start one below, or open a trip someone sent you.'));
   await expect(page.getByRole('heading', { level: 2, name: accented('Start a trip') })).toBeVisible();
+  await page.getByText(accented('Add dates (optional)')).click(); // the dates fold away: a name is enough
   await expect(page.getByLabel(accented('Starts'))).toBeVisible();
   await expect(page.getByLabel(accented('Ends'))).toBeVisible();
   await expect(page.getByPlaceholder(accented('Big Sur · Thanksgiving'))).toBeVisible();

@@ -3,8 +3,8 @@ import { matchPath } from './paths.js';
 /**
  * A small JSON Schema validator for the subset annai's record schemas use:
  * type, enum, const, properties, required, additionalProperties, items,
- * minItems, maxItems, minLength, maxLength, pattern, minimum, maximum and
- * format (date, date-time). Unknown keywords are ignored.
+ * minItems, maxItems, minLength, maxLength, pattern, minimum, maximum,
+ * propertyNames and format (date, date-time). Unknown keywords are ignored.
  * @param {any} schema
  * @param {any} value
  * @returns {string[]} errors, empty when the value is valid
@@ -54,6 +54,7 @@ function check(s, v, at, errors) {
     for (const r of s.required ?? []) if (!Object.hasOwn(v, r)) /* en */ errors.push(`${at}.${r}: is required`);
     const props = s.properties ?? {};
     for (const [k, val] of Object.entries(v)) {
+      if (s.propertyNames) check(s.propertyNames, k, `${at}[${JSON.stringify(k)}]`, errors);
       if (Object.hasOwn(props, k)) check(props[k], val, `${at}.${k}`, errors);
       else if (s.additionalProperties === false) /* en */ errors.push(`${at}.${k}: is not allowed`);
       else if (s.additionalProperties && typeof s.additionalProperties === 'object') check(s.additionalProperties, val, `${at}.${k}`, errors);

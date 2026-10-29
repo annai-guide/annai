@@ -9,6 +9,8 @@ export const ME = 'me';
 export const SYS = 'sys';
 export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
+/** What the user handed Shiori while no trip was open waits here, outside every trip and outside /me/, until she files it (waiting.js). */
+export const SYS_WAITING = 'sys:waiting';
 /** This device's own scope: never exported, never imported (see ensureDeviceScope). */
 export const SYS_DEVICE = 'sys:device';
 /** Secrets that belong to this device alone: backup places' sign-ins and the push relay's cancel tokens. No archive holds them. @param {string} id */
@@ -43,6 +45,7 @@ export function scopeTitle(rec) {
     case SYS_SETTINGS: return t`Settings`;
     case SYS_PLUGINS: return t`Plugins`;
     case SYS_DEVICE: return t`This device`;
+    case SYS_WAITING: return t`Waiting with Shiori`;
     default: return rec.title;
   }
 }
@@ -52,7 +55,7 @@ export async function ensureBaseScopes(ws) {
   const now = ws.now();
   /** @type {[string, ScopeRecord['kind'], string][]} */
   /* en */
-  const base = [[ME, 'me', 'Me'], [SYS, 'sys', 'System log'], [SYS_SETTINGS, 'sys', 'Settings'], [SYS_PLUGINS, 'sys', 'Plugins']];
+  const base = [[ME, 'me', 'Me'], [SYS, 'sys', 'System log'], [SYS_SETTINGS, 'sys', 'Settings'], [SYS_PLUGINS, 'sys', 'Plugins'], [SYS_WAITING, 'sys', 'Waiting with Shiori']];
   const made = await ws.store.tx(['scopes'], 'readwrite', async (t) => {
     /** @type {string[]} */
     const created = [];
@@ -85,23 +88,28 @@ export async function ensureDeviceScope(store, now = Date.now()) {
 }
 
 /**
+ * A new trip: a name is enough. Shiori starts one for a hand-over as hers (the bookings-and-trips design), its first entries carrying it.
  * @param {Workspace} ws
- * @param {{ title: string, start?: string, end?: string }} trip
+ * @param {{ title: string, start?: string, end?: string, places?: string[], timezones?: string[] }} trip
+ * @param {{ author?: 'user' | 'shiori', handover?: string }} [o] author: who starts it (the user, unless Shiori did); handover: the hand-over she started it for
  * @returns {Promise<string>} the new scope id
  */
-export async function createTrip(ws, { title, start, end }) {
+export async function createTrip(ws, { title, start, end, places, timezones }, o = {}) {
   const clean = (title ?? '').trim();
   if (!clean) throw new ValidationError('/trip.json', [/* en */ '$.title: is required']);
   const now = ws.now();
   const id = newId('trip');
   const tripId = newId('t');
+  const author = o.author ?? 'user';
+  const handover = o.handover ? { handover: o.handover } : {};
   await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
     await t.putScope({ id, kind: 'trip', title: clean, status: 'active', created: now, updated: now, format: FORMAT, tripId });
-    await t.appendEvent(id, { ts: now, type: 'scope.create', actor: 'user', data: { title: clean } });
+    await t.appendEvent(id, { ts: now, type: 'scope.create', actor: author, data: { title: clean, ...handover } });
   });
   try {
-    await ws.write(id, '/trip.json', { id: tripId, title: clean, ...(start ? { start } : {}), ...(end ? { end } : {}), places: [], party: [] }, { author: 'user' });
-    await ws.write(id, '/memory.md', /* en */ '# Trip memory\n', { author: 'user' });
+    const record = { id: tripId, title: clean, ...(start ? { start } : {}), ...(end ? { end } : {}), places: places ?? [], ...(timezones?.length ? { timezones } : {}), party: [] };
+    await ws.write(id, '/trip.json', record, { author, ...handover });
+    await ws.write(id, '/memory.md', /* en */ '# Trip memory\n', { author, ...handover });
   } catch (e) {
     await ws.store.tx(['scopes', 'files', 'events'], 'readwrite', (t) => t.deleteScope(id));
     throw e;

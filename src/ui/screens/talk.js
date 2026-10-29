@@ -1,5 +1,5 @@
 import { h, whenGone, t, plural, linkIn, messageOf } from '../dom.js';
-import { readAppSettings } from '../../core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho, cardKind } from '../cards.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
@@ -10,14 +10,16 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, fileHref, waitingHref } from '../format.js';
 import { ask } from '../ask.js';
-import { ME } from '../../core/scopes.js';
+import { ME, SYS_WAITING } from '../../core/scopes.js';
+import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
+import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -41,7 +43,7 @@ export const announcement = (type, kind, words, choices = [], card = {}) => anno
 
 /** The same in three parts: annai's label, the words, and the choices that follow. Only the words can carry a language. @param {string} type @param {string} kind @param {string} words @param {string[]} [choices] @param {{ image?: unknown }} [card] */
 export function announced(type, kind, words, choices = [], card = {}) {
-  if (type === 'msg.user' || type === 'note') return ['', '', ''];
+  if (type === 'msg.user' || type === 'note' || type.startsWith('handover.')) return ['', '', ''];
   if (type !== 'out.speak' && type !== 'out.show' && type !== 'out.ask') return ['', words, ''];
   const said = words || (type === 'out.show' ? (card.image ? t`a photo` : t`a card`) : '');
   const pick = choices.length ? `${sentenceGap()}${t`Choices: ${listed(choices, 'plain')}.`}` : '';
@@ -109,6 +111,26 @@ export function wokeText(reasons, nameOf = (id) => id) {
     return r.kind === 'plugin' ? t`Shiori woke for the plugin ${nameOf(String(r.plugin ?? ''))}.` : WHY[r.kind] ?? t`Shiori woke.`;
   };
   return sentences(...new Set(reasons.map(line)));
+}
+
+/**
+ * Where a hand-over's files went, from the entry's data (handover.moved): the trip she started or took them to, by its title, or one
+ * since removed (title null). @param {{ to: string, started: boolean, count: number }} d @param {string | null} title
+ */
+export function movedWords(d, title) {
+  if (title === null) return t`Shiori took these files to a trip that has since been removed.`;
+  if (d.started) return d.count ? t`Shiori started ${title} with these files.` : t`Shiori started ${title}.`;
+  return plural(d.count, 'Shiori took # file to {0}.', 'Shiori took # files to {0}.', title);
+}
+
+/**
+ * Shiori's turn, settled: Undo tapped while she works stops her turn first and waits for it, so nothing she writes for the hand-over
+ * lands after Undo has looked. @param {{ busy: boolean, stopKokoro?: () => void, idle: () => Promise<void> }} agent
+ */
+export async function settled(agent) {
+  if (!agent.busy) return;
+  agent.stopKokoro?.();
+  await agent.idle();
 }
 
 /** What fired, each to be marked with its language; the line ends them. @param {{ kind: string, titles?: string[] }[]} reasons */
@@ -284,6 +306,20 @@ export async function renderTalk(ctx) {
     li.append(h('span', { class: 'sub by', text: who }));
     return li;
   };
+  /** The files a message handed over, as chips under its words: each a link to where it is now, plain once it has moved on. @param {any} d */
+  const handedChips = async (d) => {
+    if (!Array.isArray(d.handed) || !d.handed.length) return null;
+    const chips = [];
+    for (const f of d.handed) {
+      const m = /^\/(trip|waiting)(\/.+)$/.exec(String(f?.path ?? ''));
+      const where = !m ? null : m[1] === 'waiting' ? SYS_WAITING : agent.trip;
+      const there = where ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ tx) => tx.getFile(where, m?.[2])) : null;
+      const name = h('span', { class: 'attach-name', dir: 'auto', text: String(f?.name || f?.path || '') });
+      chips.push(there && m ? h('a', { class: 'attach-chip', href: where === SYS_WAITING ? waitingHref(m[2]) : fileHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
+    }
+    return h('div', { class: 'chips handed' }, ...chips);
+  };
+  const undo = undoLine(ctx, scope, list);
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
@@ -294,9 +330,10 @@ export async function renderTalk(ctx) {
   const itemOf = async (e, d) => {
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
     if (e.type === 'msg.user') {
-      // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words.
+      // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words. Files handed over alone: no words.
       const said = d.images?.length && texts.text === PHOTO_ONLY ? t`(a photo)` : String(texts.text ?? '');
-      return h('li', { class: 'you' }, h('p', { ...(said === texts.text ? mine(said) : {}), text: said }), ...(await sentPhotos(e)));
+      const words = (Array.isArray(d.handed) || typeof d.handover === 'string') && said === FILES_ONLY ? null : h('p', { ...(said === texts.text ? mine(said) : {}), text: said });
+      return h('li', { class: 'you' }, words, ...(await sentPhotos(e)), await handedChips(d));
     }
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
@@ -352,12 +389,25 @@ export async function renderTalk(ctx) {
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
     if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: d.from === 'koe' ? t`Koe to Kokoro:` : t`Kokoro to Koe:` }), sentenceGap(), h('span', { ...hers(String(texts.text ?? '')), text: String(texts.text ?? '') })) : null;
     if (e.type === 'wake') {
+      // What Shiori said of a trip before, written into the trip she started or opened for a hand-over: her line, in her words.
+      const recap = (d.reasons ?? []).find((/** @type {any} */ r) => typeof r?.recap === 'string' && r.recap);
+      if (recap) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(recap.recap), text: recap.recap }));
       // Kokoro's wakes are its own: the conversation is Koe's. A watch's wake says a lot, for Shiori: the line is cut.
       if (d.half === 'kokoro') return null;
       const others = (d.reasons ?? []).filter((/** @type {any} */ r) => !NOT_WOKE.includes(r.kind));
       if (!others.length) return null;
       const said = wokeText(others, (id) => String(ctx.plugins?.active?.get(id)?.manifest?.name ?? id));
       return h('li', { class: 'system-line' }, ...linkIn(said, ...wokeTitles(others).map((w) => h('span', { ...hers(w), text: w }))));
+    }
+    // Where a hand-over's files went, from its data, linked to the trip while it is there.
+    if (e.type === 'handover.moved') {
+      const rec = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(String(d.to)));
+      const said = movedWords(d, rec?.kind === 'trip' ? rec.title : null);
+      return h('li', { class: 'system-line' }, rec?.kind === 'trip' ? h('a', { href: `#/trip/${encodeURIComponent(rec.id)}`, text: said }) : said);
+    }
+    if (e.type === 'handover.undo') {
+      if (d.handover === undo.handover) undo.done();
+      return null;
     }
     // Made from its type: the words stored with it are the card's English.
     if (e.type === 'paused') return h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });
@@ -421,6 +471,7 @@ export async function renderTalk(ctx) {
         }
         empty.remove();
         list.append(node);
+        undo.saw(e);
         if (e.type === 'heard') {
           const words = unheard.get(e.data?.id);
           if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
@@ -481,6 +532,89 @@ export async function renderTalk(ctx) {
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
+}
+
+/**
+ * The Undo line of the newest hand-over in a conversation (My call 2 of the bookings-and-trips design): a quiet line with a real button
+ * under her last line after it. It moves down as she adds lines, until the user writes or speaks again, then stays where it is; it is
+ * there until her next hand-over here, or until it is used, and only while there is something to take back. It takes back what she did
+ * here and in the trips the files went to; a trip she started for them, with nothing of the user's in it, goes, its files back with Shiori.
+ * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
+ */
+function undoLine(ctx, scope, list) {
+  /** @type {string | null} */
+  let handover = null;
+  let placing = false;
+  let used = false;
+  /** The trips each hand-over's files went to (handover.moved). @type {Map<string, Set<string>>} */
+  const went = new Map();
+  const line = h('li', { class: 'system-line undo-line', hidden: true });
+  const done = () => {
+    used = true;
+    line.hidden = false;
+    line.replaceChildren(h('span', { class: 'sub', role: 'status', text: t`Undone` }));
+  };
+  const run = async () => {
+    const hh = /** @type {string} */ (handover);
+    button.disabled = true;
+    try {
+      await settled(ctx.agent);
+      // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
+      const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
+        remove: (s) => removeTripNow(ctx, s),
+        log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
+      });
+      done();
+      // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens, Waiting is on Trips.
+      const home = listed(back.map((b) => b.title));
+      const said = removed.length
+        ? waiting ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
+          : back.length ? plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), home)
+            : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
+        : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
+      ctx.notices.toast(kept ? sentences(said, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : said);
+      if (!waiting && back.length) {
+        await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
+        await ctx.agent.open(back[0].id).catch(() => {});
+        if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+        else await ctx.render();
+      } else if (waiting || removed.length) ctx.go('#/trips');
+    } catch (e) {
+      button.disabled = false;
+      ctx.notices.toast(messageOf(e));
+    }
+  };
+  const button = h('button', { class: 'btn ghost', type: 'button', 'aria-label': t`Undo what Shiori did with these files`, onclick: run }, t`Undo`);
+  /** Shows it only while there is something to take back. */
+  const check = async () => {
+    const hh = handover;
+    if (!hh || used) return;
+    const any = (await Promise.all([scope, ...(went.get(hh) ?? [])].map((s) => undoable(ctx.store, s, hh)))).some(Boolean);
+    if (hh === handover && !used) line.hidden = !any;
+  };
+  return {
+    get handover() { return handover; },
+    done,
+    /** A line just shown: a hand-over starts its Undo; the user's own words stop it moving; her lines after it take it down with them. @param {any} e */
+    saw(e) {
+      const d = e.data ?? {};
+      if (e.type === 'msg.user' && typeof d.handover === 'string') {
+        handover = d.handover;
+        placing = true;
+        used = false;
+        line.hidden = true;
+        line.replaceChildren(button);
+        button.disabled = false;
+        line.remove();
+        return;
+      }
+      if (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed)) placing = false;
+      if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
+      if (!placing || !handover || used || !['out.speak', 'out.show', 'out.ask', 'handover.moved'].includes(e.type)) return;
+      list.append(line);
+      check();
+    },
+  };
 }
 
 /**

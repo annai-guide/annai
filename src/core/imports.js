@@ -3,17 +3,17 @@ import { t } from './l10n.js';
 import { size } from './intl.js';
 
 /**
- * Importing a calendar file creates plan items (spec §8): one per event, written as the user's,
- * each naming the file it came from.
- * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} path @param {{ defaultTz: string }} o
- * @returns {Promise<string[]>} the plan items' paths
+ * Importing a calendar file creates plan items (spec §8): one per event, written as the user's (or Shiori's, for a hand-over she
+ * filed, which Undo then takes back), each naming the file it came from.
+ * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} path
+ * @param {{ defaultTz: string, author?: string, handover?: string }} o @returns {Promise<string[]>} the plan items' paths
  */
-export async function importCalendar(ws, scope, path, { defaultTz }) {
+export async function importCalendar(ws, scope, path, { defaultTz, author = 'user', handover }) {
   const got = await ws.read(scope, path);
   if (!got) throw new Error(t`No file at ${path}.`);
   if (got.bytes.byteLength > MAX_ICS_BYTES) throw new Error(t`${path} is larger than a trip's calendar ever is (over ${size(MAX_ICS_BYTES)}). Export only the trip's dates from your calendar, and add that file.`);
   const items = planItems(parseIcs(new TextDecoder().decode(got.bytes), { defaultTz }));
-  for (const { path: p, item } of items) await ws.write(scope, p, item, { author: 'user', source: path });
+  for (const { path: p, item } of items) await ws.write(scope, p, item, { author, source: path, ...(handover ? { handover } : {}) });
   return items.map((x) => x.path);
 }
 

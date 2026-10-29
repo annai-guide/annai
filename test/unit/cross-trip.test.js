@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace, NotFoundError } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';
+import { canRead } from '../../src/core/reach.js';
 import { record } from '../../src/core/agent/log.js';
 import { text } from '../../src/core/bytes.js';
 
@@ -692,4 +693,11 @@ test("an honest import over a record an older annai left without its bytes: read
     const { trips } = await importArchive(v.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())));
     assert.equal(await v.ws.readText(trips[0], '/files/t.pdf'), 'the real ticket', sized ? 'with its size' : 'without its size');
   }
+});
+
+test("the no-trip conversation reaches waiting files' content by hash; a trip doesn't", async () => {
+  const { store, ws, a } = await twoTrips();
+  const flight = (await ws.write(SYS_WAITING, '/files/flight.pdf', new TextEncoder().encode('a flight'), { author: 'user', type: 'application/pdf' })).hash;
+  assert.equal(await canRead(store, ME, flight), true);
+  assert.equal(await canRead(store, a, flight), false);
 });
