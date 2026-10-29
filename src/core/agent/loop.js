@@ -1751,7 +1751,9 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(request, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes({ ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) }, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      // What the main models are sent: their photo limit of the pictures, each once (round 9: the raw request counted every copy).
+      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) };
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(sent, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -1855,7 +1857,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes({ ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) }, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       await this.#applyTurn(result.reply.parts, wakeId);
       await this.#grounded(result.reply.attribution, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');

@@ -483,16 +483,17 @@ export async function callRole(c) {
   /** The models the request went to: one passed over before it (no PDFs, too long) was never asked. */
   const sentTo = new Set();
   /** What a line written from a model's words says of it: the model, the role's first, and whether that was asked (a resting one was). @param {string} name */
-  const byOf = (name) => ({ name, first, tried: sentTo.has(firstId) || attempts.some((a) => a.model === firstId && a.outcome === 'benched') });
+  const byOf = (name) => ({ name, first, tried: sentTo.has(firstId) || restingNow.has(firstId) || attempts.some((a) => a.model === firstId && a.outcome === 'benched') });
   const first = firstId && config.models[firstId] ? modelOf(config.models[firstId]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const preferred = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
-  // In a turn's own call (Shiori's), a model resting after an error isn't passed over: it goes to the end of the list, the one whose rest
-  // ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
+  // In a turn's own call (Shiori's), a model resting after an error isn't passed over: it goes after every model that isn't resting has had
+  // both passes (round 9), the one whose rest ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
   // check and round 8). Not Koe's list (Kokoro answers when she can't), and not a rest only the user can end (a refused key, no credit)
   // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
   const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
-  const ordered = [...preferred.filter((id) => !restingNow.has(id)), ...preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b))];
+  const awake = preferred.filter((id) => !restingNow.has(id));
+  const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b));
   /** The resting model asked in this call, when one was. @type {string | null} */
   let restingAsked = null;
   let began = false;
@@ -576,6 +577,8 @@ export async function callRole(c) {
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
+        // The resting models it never reached are in the Trace too, as passed over (round 9).
+        for (const x of resting) if (x !== id && !attempts.some((a) => a.model === x)) attempts.push({ model: x, name: config.models[x] ? modelOf(config.models[x]).name : x, outcome: 'benched', ms: 0 });
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
         if (restingAsked === id) bench.clear(id);
@@ -631,7 +634,8 @@ export async function callRole(c) {
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
-          const fixed = await c.repairImages(err, id, request).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
+          // The request as the model received it (its kept pages and limit in it), so a learned limit applies to all of it (round 9).
+          const fixed = await c.repairImages(err, id, forModel(request)).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
           if (fixed) {
             repairs++;
             request = fixed;
@@ -656,27 +660,41 @@ export async function callRole(c) {
     }
     return null;
   };
-  for (const id of ordered) {
-    const r = await one(id);
-    if (r) return r;
-  }
-  // The second pass (the bookings design, goal 11): a model a photo or PDF in the newest message kept out is tried again, once the rest
-  // have failed, with each one it can't take read by whoever can (c.read), and older ones as words.
-  const passed = c.read ? [...new Set(attempts.filter((a) => a.outcome === 'no-images' || a.outcome === 'no-documents').map((a) => a.model))] : [];
-  for (const id of passed) {
-    const model = modelOf(config.models[id]);
-    // What else keeps it out (too long, no tools…) is checked before anything is read for it (round 8).
-    const pRec = config.providers[config.models[id].provider];
-    const other = gap(model, photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') }), pRec ? providerOf(pRec) : undefined);
-    if (other) {
-      attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
-      continue;
-    }
-    base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
+  /**
+   * Both passes over some models: the first with the request as it is; the second (the bookings design, goal 11) for those a photo or PDF
+   * in the newest message kept out, with each one it can't take read by whoever can (c.read), and older ones as words.
+   * @param {string[]} ids
+   */
+  const passes = async (ids) => {
+    base = c.request;
     request = said ? continueAfter(base, said) : base;
-    const r = await one(id);
-    if (r) return r;
-  }
+    for (const id of ids) {
+      const r = await one(id);
+      if (r) return r;
+    }
+    const passed = c.read ? [...new Set(attempts.filter((a) => ids.includes(a.model) && (a.outcome === 'no-images' || a.outcome === 'no-documents')).map((a) => a.model))] : [];
+    for (const id of passed) {
+      // Only one resting model is asked in a call: none is read for once one was (round 9).
+      if (restingAsked && restingAsked !== id && restingNow.has(id)) continue;
+      const model = modelOf(config.models[id]);
+      // What else keeps it out (too long, no tools…) is checked before anything is read for it, on what it would be sent (rounds 8, 9).
+      const pRec = config.providers[config.models[id].provider];
+      const worded = photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
+      const other = gap(model, { ...worded, messages: limitImages(worded.messages, model.images?.maxCount) }, pRec ? providerOf(pRec) : undefined);
+      if (other) {
+        attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
+        continue;
+      }
+      base = await readFor(c.request, model, /** @type {NonNullable<typeof c.read>} */ (c.read), c.signal, c.readings);
+      request = said ? continueAfter(base, said) : base;
+      const r = await one(id);
+      if (r) return r;
+    }
+    return null;
+  };
+  // Every model that isn't resting has both passes before a resting one is asked (round 9: a dead photo model at rest held up every photo turn).
+  const answer = (await passes(awake)) ?? (await passes(resting));
+  if (answer) return answer;
   await record(null, said);
   throw new AllFailedError(attempts, said);
 }
