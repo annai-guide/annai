@@ -257,3 +257,17 @@ test("Now's next items include a flight booking no plan item stands for, and nev
   assert.deepEqual(next.map((r) => [r.from, r.path]), [['booking', '/bookings/flight.json'], ['booking', '/bookings/stay.json'], ['checkout', '/bookings/stay.json']]);
   assert.equal(rows.filter((r) => r.from === 'night').length, 6);
 });
+
+test("a plan item linking a booking stands for it only on its own day: a stay keeps its check-in row when the item is its check-out or a breakfast (the review of seeing-bookings, R1)", () => {
+  const at = (/** @type {string} */ id, /** @type {string} */ when, /** @type {string} */ booking) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, start: { at: when, tz: AK }, booking } });
+  const days = (/** @type {any[]} */ items, /** @type {any} */ b) => planRows(items, [b], { fallbackTz: 'UTC' }).filter((r) => r.from !== 'night').map((r) => `${r.from}@${r.day}`);
+  // R1: only a check-out item: the check-in is still a row, the check-out the item.
+  assert.deepEqual(days([at('out', '2026-11-27T11:00:00-09:00', '/bookings/stay.json')], stay), ['item@2026-11-27', 'booking@2026-11-20']);
+  // R1b: a breakfast mid-stay: check-in and check-out both stay.
+  assert.deepEqual(days([at('breakfast', '2026-11-22T08:00:00-09:00', '/bookings/stay.json')], stay), ['item@2026-11-22', 'booking@2026-11-20', 'checkout@2026-11-27']);
+  // A flight whose linked item is on another day (a reminder to check in online the day before): the flight is still on its day.
+  assert.deepEqual(days([at('online', '2026-11-19T11:20:00-08:00', '/bookings/flight.json')], flight), ['item@2026-11-19', 'booking@2026-11-20']);
+  // A booking with no time that a plan item stands for isn't also "Not on a day".
+  const untimed = { path: '/bookings/pass.json', booking: { ...pass.booking } };
+  assert.deepEqual(days([at('museum', '2026-11-21T10:00:00-09:00', '/bookings/pass.json')], untimed), ['item@2026-11-21']);
+});

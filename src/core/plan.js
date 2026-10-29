@@ -6,7 +6,7 @@ import { t } from './l10n.js';
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the legs between stops, and each booking on
  * its day (the bookings-and-trips design, goal 5): a flight where it leaves, a stay's check-in, a quiet line for each night between and
- * its check-out, and one with no time "Not on a day". A plan item that links a booking stands for it.
+ * its check-out, and one with no time "Not on a day". A plan item that links a booking stands for it on the item's own day.
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'checkout' | 'night', at: number | null, day: string | null,
@@ -131,10 +131,15 @@ export function planRows(items, bookings, { fallbackTz }) {
     const row = (from, view) => ({
       path, item: view, from, ...timesOf(view, fallbackTz), night: null, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false,
     });
+    // A plan item that links the booking stands for it on the item's own day: a check-out or a breakfast item leaves the check-in, and
+    // a flight on its day, as rows of their own. A booking with no time that an item stands for is no "Not on a day" row too.
+    const on = linked.get(path);
+    const standsFor = (/** @type {PlanRow} */ r) => Boolean(on && (r.day ? on.includes(r.day) : true));
     // A stay's check-in is at its own time, with no end: its end is the check-out's row.
-    if (!linked.has(path)) out.push(row('booking', { title, kind: 'booking', fixed: true, start: b.start, ...(stay ? {} : { end: b.end }), place }));
+    const start = row('booking', { title, kind: 'booking', fixed: true, start: b.start, ...(stay ? {} : { end: b.end }), place });
+    if (!standsFor(start)) out.push(start);
     const checkout = stay ? row('checkout', { title, kind: 'booking', fixed: true, start: b.end, place }) : null;
-    if (checkout?.day && !(linked.get(path) ?? []).includes(checkout.day)) out.push(checkout);
+    if (checkout?.day && !standsFor(checkout)) out.push(checkout);
     const nights = nightsOf(b);
     nights.days.forEach((day, k) => out.push({
       path, item: { title, kind: 'booking', fixed: true, place }, from: 'night', at: null, day, time: '', end: '', endDays: 0, endZone: '',

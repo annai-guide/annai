@@ -539,7 +539,7 @@ If another conversation is opened while handed files are being kept, the message
 - **Plan items** are `fixed` (booked: flights, reservations, check-ins, last ferries) or `flexible`, each with a priority.
 - **Calendar files:** importing `.ics` creates plan items. Exporting the plan as `.ics` uses the share sheet or a download.
 - **Apple Wallet passes:** `.pkpass` files are zips containing `pass.json`, read by our own unzip. They become bookings.
-- **Bookings are on their day on the Plan** whether or not a plan item stands for them (seeing bookings): a flight on the day it leaves, with each airport's own time; a stay's check-in, a quiet "Staying at … · night 2 of 7" line on each night between (at most 60), and its check-out; a booking with no time at the top, under "Not on a day". A plan item that links a booking stands for it; a stay's check-out and nights still come from the booking. A booking with a time annai can't place (an unknown zone, no offset) still shows, in the trip's zone with a note.
+- **Bookings are on their day on the Plan** whether or not a plan item stands for them (seeing bookings): a flight on the day it leaves, with each airport's own time; a stay's check-in, a quiet "Staying at … · night 2 of 7" line on each night between (at most 60), and its check-out; a booking with no time at the top, under "Not on a day". A plan item that links a booking stands for it on the item's own day (a check-out item leaves the check-in a row of its own); a stay's nights always come from the booking. A booking with a time annai can't place (an unknown zone, no offset) still shows, in the trip's zone with a note.
 
 ## 9. Models and providers
 
