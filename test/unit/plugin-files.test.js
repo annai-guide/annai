@@ -275,3 +275,18 @@ test("Shiori's delete of a /waiting/ file drops it: the file, its history and it
   assert.deepEqual(await readNames(ws, SYS_WAITING), {});
   assert.equal(await ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash)), false);
 });
+
+test("in the waiting space she writes only her short names, and deletes only annai's own pasted texts: the user's files are theirs to delete, on Trips", async () => {
+  const { ws, tools } = await setup();
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  await ws.write(SYS_WAITING, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  await assert.rejects(tools.delete.run({ path: '/waiting/files/flight.pdf' }, none), /theirs to delete[\s\S]*Trips/);
+  assert.ok(await ws.read(SYS_WAITING, '/files/flight.pdf'));
+  for (const [name, input] of /** @type {const} */ ([['write', { path: '/waiting/bookings/stray.json', content: { id: 'stray' } }], ['write', { path: '/waiting/files/flight.pdf', content: 'x' }],
+    ['patch', { path: '/waiting/notes.json', changes: { a: 1 } }]])) {
+    await assert.rejects(tools[name].run(input, none), /only \/waiting\/names\.json/, `${name} ${input.path}`);
+  }
+  assert.deepEqual((await ws.list(SYS_WAITING, '/')).map((f) => f.path), ['/files/flight.pdf']);
+  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR · Nov 20' } }, none);
+  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/flight.pdf': 'ANNAI AIR · Nov 20' });
+});
