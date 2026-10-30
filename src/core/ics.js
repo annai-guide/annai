@@ -1,4 +1,4 @@
-import { validZone, instantOf, isoInZone, dayIn } from './time.js';
+import { validZone, instantOf, isoInZone, dayIn, instantAt } from './time.js';
 import { t } from './l10n.js';
 import { num } from './intl.js';
 
@@ -202,19 +202,21 @@ export function planToIcs(items, { name, tripId, now }) {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//annai//annai.guide//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escapeText(name)}`];
   let left = 0;
   for (const it of items) {
-    const start = Date.parse(it?.start?.at ?? '');
+    // Read as every screen reads a stored time (instantAt): a time with no offset is on its zone's clock.
+    const zoneOf = (/** @type {any} */ t) => (validZone(t?.tz) ? t.tz : validZone(it?.start?.tz) ? it.start.tz : 'UTC');
+    const start = instantAt(it?.start?.at, zoneOf(it?.start));
     if (!Number.isFinite(start)) {
       left++;
       continue;
     }
     lines.push('BEGIN:VEVENT', /* en */ `UID:${escapeText(`${String(it.id ?? '')}.${tripId}`)}@annai.guide`, `DTSTAMP:${utcStamp(now)}`);
     if (it.kind === 'all-day') {
-      const day = (/** @type {any} */ t) => String(dayIn(t.at, validZone(t.tz) ? t.tz : 'UTC')).replace(/-/g, '');
+      const day = (/** @type {any} */ t) => String(dayIn(instantAt(t.at, zoneOf(t)), zoneOf(t))).replace(/-/g, '');
       lines.push(`DTSTART;VALUE=DATE:${day(it.start)}`);
-      if (Number.isFinite(Date.parse(it?.end?.at ?? '')) && day(it.end) > day(it.start)) lines.push(`DTEND;VALUE=DATE:${day(it.end)}`);
+      if (Number.isFinite(instantAt(it?.end?.at, zoneOf(it?.end))) && day(it.end) > day(it.start)) lines.push(`DTEND;VALUE=DATE:${day(it.end)}`);
     } else {
       lines.push(`DTSTART:${utcStamp(start)}`);
-      const end = Date.parse(it?.end?.at ?? '');
+      const end = instantAt(it?.end?.at, zoneOf(it?.end));
       if (Number.isFinite(end) && end >= start) lines.push(`DTEND:${utcStamp(end)}`);
     }
     lines.push(`SUMMARY:${escapeText(String(it.title ?? ''))}`);
