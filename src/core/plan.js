@@ -95,7 +95,7 @@ function nightsOf(b) {
  */
 export function planRows(items, bookings, { fallbackTz }) {
   const byPath = new Map(bookings.filter((b) => record(b.booking)).map((b) => [b.path, b.booking]));
-  /** @type {Map<string, string[]>} the days of the plan items that stand for each booking */
+  /** @type {Map<string, number[]>} the instants of the plan items that stand for each booking (an untimed one adds none) */
   const linked = new Map();
   /** @type {PlanRow[]} */
   const out = [];
@@ -104,7 +104,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const ref = bookingRef(item.booking);
     const booking = ref ? byPath.get(ref) ?? null : null;
     const times = timesOf(item, fallbackTz);
-    if (ref && booking) linked.set(ref, [...(linked.get(ref) ?? []), ...(times.day ? [times.day] : [])]);
+    if (ref && booking) linked.set(ref, [...(linked.get(ref) ?? []), ...(times.at !== null ? [times.at] : [])]);
     const marks = checkOf(booking);
     out.push({
       path, item, from: 'item', ...times, night: null, bookingPath: ref, booking,
@@ -123,8 +123,15 @@ export function planRows(items, bookings, { fallbackTz }) {
     });
     // A plan item that links the booking stands for it on the item's own day: a check-out or a breakfast item leaves the check-in, and
     // a flight on its day, as rows of their own. A booking with no time that an item stands for is no "Not on a day" row too.
+    // Each item's day is taken in the row's own zone: an item written in the arrival's zone, or UTC, is still that flight.
     const on = linked.get(path);
-    const standsFor = (/** @type {PlanRow} */ r) => Boolean(on && (r.day ? on.includes(r.day) : true));
+    const standsFor = (/** @type {PlanRow} */ r) => {
+      if (!on) return false;
+      if (!r.day) return true;
+      const own = r.item.start?.tz;
+      const tz = validZone(own) ? own : fallbackTz;
+      return on.some((at) => dayIn(at, tz) === r.day);
+    };
     // A stay's check-in is at its own time, with no end: its end is the check-out's row.
     const start = row('booking', { title, kind: 'booking', fixed: true, start: b.start, ...(stay ? {} : { end: b.end }), place });
     if (!standsFor(start)) out.push(start);
