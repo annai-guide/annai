@@ -125,6 +125,16 @@ test('read: text with cache reads and writes of both lifetimes, and the stop rea
   ]);
 });
 
+test("read: the stream's last usage repeats the cache write as one total; after a split by lifetime it isn't counted again as 5-minute writes (the real check, 2026-10-30)", async () => {
+  // As the API sends it now: message_delta repeats input, cache read and the write's total, without the split.
+  const repeated = (await fixture('text.sse')).replace('"usage":{"output_tokens":7}', '"usage":{"input_tokens":50,"cache_creation_input_tokens":2000,"cache_read_input_tokens":8000,"output_tokens":7}');
+  const usage = (await read(repeated)).filter((e) => e.type === 'usage').map((e) => e.usage);
+  assert.deepEqual(usage, [{ input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 }, { input: 50, cacheRead: 8000, output: 7 }]);
+  // A server that gives only the total, never the split, still has its writes counted.
+  const total = repeated.replace(',"cache_creation":{"ephemeral_5m_input_tokens":1500,"ephemeral_1h_input_tokens":500}', '');
+  assert.deepEqual((await read(total)).filter((e) => e.type === 'usage').map((e) => e.usage.cacheWrite), [2000, 2000]);
+});
+
 test('read: thinking as words alone, redacted thinking left out, and a tool call streamed in pieces', async () => {
   const events = await read(await fixture('thinking-tools.sse'));
   // Kept for the Trace as words only (phone-fixes-1), so a signature, redacted thinking or an empty block (display "omitted") isn't
