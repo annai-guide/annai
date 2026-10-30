@@ -36,8 +36,9 @@ const TRIP = { title: 'Coast test trip', start: '2026-11-02', end: '2026-11-05' 
 const NOTES = { '/notes/hotel.md': 'Hotel: the Seaview Inn, 12 Harbor Road, Example Bay. Check-in from 15:00.', '/notes/dinner.md': 'Dinner on the 3rd: the Lantern, 19:30, table for two.' };
 /** What the user says, in turn. */
 export const SAYS = Object.freeze([
-  // Each asks for a little working out, so adaptive thinking thinks (the real check of 2026-10-30 had runs where it never did).
-  'Please look through my trip notes, read the hotel one, and tell me where we stay and when we can check in. We land at 11:40 and the drive takes 2 hours 50 minutes: how long would we wait for check-in?',
+  // Each asks for a little working out, so adaptive thinking thinks (the real check of 2026-10-30 had runs where it never did); the first
+  // before anything is looked up, so Kokoro's first step thinks and its own thinking has a step after it to go back in.
+  'Before you look anything up, work out when we reach the hotel: we land at 11:40, are out of the airport 35 minutes later, and the drive takes 2 hours 50 minutes. Then look through my trip notes, read the hotel one, and tell me where we stay and how long we would wait for check-in.',
   'Thanks! And where is dinner on the 3rd? If we check in as soon as we can that day, how long do we have between check-in and dinner?',
 ]);
 /** The negative control's turn, then the Claude-to-Claude turn: each needs a turn of three steps or more. */
@@ -395,9 +396,12 @@ export function checks(all) {
       if (was && list[0].cacheRead < was.cacheRead + was.cacheWrite) cache.push(`${whereOf(list[0])}: the next turn's first request read ${list[0].cacheRead}, but the turn before had read ${was.cacheRead} and written ${was.cacheWrite} at its first step`);
     }
   }
-  const sentAny = rows.some((r) => r.step >= 2 && (r.natives?.sent ?? 0) > 0);
+  const sentBy = (/** @type {string | null} */ half) => rows.some((r) => r.step >= 2 && (half === null || r.half === half) && (r.natives?.sent ?? 0) > 0);
   return [
-    { name: 'a native was sent on a step 2 or later: Claude\'s thinking went back at least once', problems: sentAny ? [] : [`${provider}: no request on a step 2 or later sent a native`] },
+    {
+      name: 'a native was sent on a step 2 or later, Kokoro\'s own among them: Claude\'s thinking went back, on the half the phone\'s 400s were on',
+      problems: [...(sentBy(null) ? [] : [`${provider}: no request on a step 2 or later sent a native`]), ...(sentBy(null) && !sentBy('Kokoro') ? [`${provider}: no Kokoro request on a step 2 or later sent a native (Koe's did)`] : [])],
+    },
     { name: 'every step after a reply with thinking sends it back', problems: back },
     { name: 'no attempt refused for its reasoning, and no 400', problems: rows.flatMap((r) => [...(r.outcomes.includes('reasoning') ? [`${whereOf(r)}: refused for its reasoning`] : []), ...(r.statuses.includes(400) ? [`${whereOf(r)}: a 400`] : [])]) },
     { name: "every call answered by the role's first model", problems: rows.filter((r) => r.outcomes.length !== 1 || r.outcomes[0] !== 'ok' || (r.first && r.answeredBy !== r.first)).map((r) => `${whereOf(r)}: ${r.outcomes.join(', ')}; answered by ${r.answeredBy}`) },
@@ -465,7 +469,9 @@ export function notes(all) {
   if (unkept.length) out.push(`${unkept.length} signed ${unkept.length === 1 ? 'reply' : 'replies'} kept no native, so their thinking could not go back: ${unkept.map(whereOf).join('; ')}.`);
   if (!main.length) out.push('The conversation produced no rows.');
   // Every need of a check below is a reply with thinking followed by another step: adaptive thinking may skip thinking on easy steps.
-  if (!turnsOf(main).some((list) => list.some((r, i) => (r.kept ?? r.signed) && i < list.length - 1))) out.push('no reply thought before another step: inconclusive, rerun (it is not a fault of annai until thinking is seen and not sent back).');
+  const thoughtBefore = (/** @type {Row[][]} */ turns) => turns.some((list) => list.some((r, i) => (r.kept ?? r.signed) && i < list.length - 1));
+  if (!thoughtBefore(turnsOf(main))) out.push('no reply thought before another step: inconclusive, rerun (it is not a fault of annai until thinking is seen and not sent back).');
+  else if (!thoughtBefore(turnsOf(main).filter((list) => list[0].half === 'Kokoro'))) out.push('Kokoro never thought before another step: inconclusive for Kokoro, rerun.');
   const failing = checks(all).filter((c) => c.problems.length);
   if (failing.length && failing.every((c) => /reads at least|writes its new part/.test(c.name))) {
     out.push(provider === 'openrouter'
