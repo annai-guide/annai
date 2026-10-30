@@ -125,11 +125,14 @@ test('read: text with cache reads and writes of both lifetimes, and the stop rea
   ]);
 });
 
-test("read: the stream's last usage repeats the cache write as one total; after a split by lifetime it isn't counted again as 5-minute writes (the real check, 2026-10-30)", async () => {
+test("read: the stream's last usage repeats the cache write as one total; after a split by lifetime only the total less the hour's writes is 5-minute (the real check, 2026-10-30)", async () => {
   // As the API sends it now: message_delta repeats input, cache read and the write's total, without the split.
   const repeated = (await fixture('text.sse')).replace('"usage":{"output_tokens":7}', '"usage":{"input_tokens":50,"cache_creation_input_tokens":2000,"cache_read_input_tokens":8000,"output_tokens":7}');
   const usage = (await read(repeated)).filter((e) => e.type === 'usage').map((e) => e.usage);
-  assert.deepEqual(usage, [{ input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 }, { input: 50, cacheRead: 8000, output: 7 }]);
+  assert.deepEqual(usage, [{ input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 }, { input: 50, cacheRead: 8000, cacheWrite: 1500, output: 7 }]);
+  // A split given as zeros at the start and the real total at the end still counts the writes.
+  const late = repeated.replace('"ephemeral_5m_input_tokens":1500,"ephemeral_1h_input_tokens":500', '"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0');
+  assert.deepEqual((await read(late)).filter((e) => e.type === 'usage').map((e) => [e.usage.cacheWrite, e.usage.cacheWrite1h]), [[0, 0], [2000, undefined]]);
   // A server that gives only the total, never the split, still has its writes counted.
   const total = repeated.replace(',"cache_creation":{"ephemeral_5m_input_tokens":1500,"ephemeral_1h_input_tokens":500}', '');
   assert.deepEqual((await read(total)).filter((e) => e.type === 'usage').map((e) => e.usage.cacheWrite), [2000, 2000]);

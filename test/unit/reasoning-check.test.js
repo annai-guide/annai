@@ -88,6 +88,11 @@ test('no natives, no pass: a run in which Claude never thought, or no thinking w
   const found = checks(vacuous);
   assert.equal(found[0].problems.length, 1);
   assert.match(found[0].problems[0], /no request on a step 2 or later sent a native/);
+  // Koe's thinking going back is not enough: Kokoro's own must (the last review: a PASS with only Haiku's natives).
+  const koeOnly = [...good(), row({ half: 'Koe', wake: 'w-9', step: 1, model: 'claude-haiku-5-5', kept: true }), row({ half: 'Koe', wake: 'w-9', step: 2, model: 'claude-haiku-5-5', natives: { sent: 1, changed: false } })]
+    .map((r) => (r.half === 'Kokoro' && r.phase === 'main' ? { ...r, signed: false, kept: false, natives: null } : r));
+  assert.match(checks(koeOnly)[0].problems.join(), /no Kokoro request on a step 2 or later sent a native \(Koe's did\)/);
+  assert.match(notes(koeOnly).join('\n'), /Kokoro never thought before another step: inconclusive for Kokoro, rerun/);
   // The same run read as the reviewer's: only the system prompt's entry was ever read.
   const system = [1, 2, 3].map((step) => row({ step, signed: false, cacheRead: 9000, cacheWrite: 10 }));
   assert.ok(checks(system).some((c) => c.problems.length && /reads at least/.test(c.name)), 'a read of 9000 is not what 9010 cached');
