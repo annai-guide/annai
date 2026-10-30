@@ -142,8 +142,8 @@ provider-openrouter:@name	ok	OpenRouter	OpenRouter	plugins-official/provider-ope
 provider-openrouter:@description	ok	One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.	1つのキーで多くのモデル（無料のものも含む）、さらに文字起こしと声も使えます。「OpenRouter でサインイン」するか、キーを入力してください。	plugins-official/provider-openrouter/annai-plugin.json:7	
 provider-openrouter:@featured	ok	Sign in with OpenRouter is the quickest way, and it starts you on free models.	「OpenRouter でサインイン」がいちばん手早い方法で、無料のモデルから始められます。	plugins-official/provider-openrouter/annai-plugin.json:8	
 provider-openrouter:@provider.note	ok	One key for many providers. Free models allow 50 requests a day (1,000 a day after $10 of credits). Its transcription and voices use the same key: none of the transcription models is free, and Fish Audio's free voice uses one of the free requests a day for each sentence it says. The others need credits you buy at OpenRouter.	1つのキーで多くのプロバイダーを使えます。無料のモデルは1日50リクエストまでです（$10分のクレジットを買うと1日1,000まで）。文字起こしと声も同じキーを使います：文字起こしのモデルに無料のものはなく、Fish Audio の無料の声は1文話すごとに1日の無料リクエストを1回使います。ほかの声には、OpenRouter で買うクレジットが必要です。	plugins-official/provider-openrouter/annai-plugin.json:28	
-provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	音声を受け付けないモデルのために、話した言葉を文字にします。料金は OpenRouter での最安値です。OpenRouter はより高い料金のプロバイダーにリクエストを送ることもあります。	plugins-official/provider-openrouter/annai-plugin.json:340	
-provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori の声。モデルごとに独自の声があり、モデルの「声」に候補が出ます（「モデルの一覧を取得」で OpenRouter が挙げる声が入ります）。ここで設定している声とスタイルは、Fish Audio のライブラリの声 Women KatKat（親しみやすく、はっきりした、若く明るい声）と、若く朗らかで生き生きとしつつ、落ち着いた優しいスタイルです。Fish Audio のモデルはすべて、下にあるものも ID で追加したものも、この声とスタイルで始まります（声を送らないと、Fish Audio は文ごとに別の話者を選びます）。一覧から追加したモデルは、OpenRouter がそのモデルに挙げる最初の温かみのある声で始まります。スタイルを受け付けるのは Fish Audio、Gemini、OpenAI の gpt-4o-mini-tts だけで、ほかのモデルではスタイルは保存されますが送られません。OpenRouter が送るのは MP3 か PCM だけです。	plugins-official/provider-openrouter/annai-plugin.json:383	
+provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	音声を受け付けないモデルのために、話した言葉を文字にします。料金は OpenRouter での最安値です。OpenRouter はより高い料金のプロバイダーにリクエストを送ることもあります。	plugins-official/provider-openrouter/annai-plugin.json:355	
+provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori の声。モデルごとに独自の声があり、モデルの「声」に候補が出ます（「モデルの一覧を取得」で OpenRouter が挙げる声が入ります）。ここで設定している声とスタイルは、Fish Audio のライブラリの声 Women KatKat（親しみやすく、はっきりした、若く明るい声）と、若く朗らかで生き生きとしつつ、落ち着いた優しいスタイルです。Fish Audio のモデルはすべて、下にあるものも ID で追加したものも、この声とスタイルで始まります（声を送らないと、Fish Audio は文ごとに別の話者を選びます）。一覧から追加したモデルは、OpenRouter がそのモデルに挙げる最初の温かみのある声で始まります。スタイルを受け付けるのは Fish Audio、Gemini、OpenAI の gpt-4o-mini-tts だけで、ほかのモデルではスタイルは保存されますが送られません。OpenRouter が送るのは MP3 か PCM だけです。	plugins-official/provider-openrouter/annai-plugin.json:398	
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	「OpenRouter でサインイン」をタップして、最初からやり直してください。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	OpenRouter に表示されたコードを貼り付けて、「接続」をタップしてください。	plugins-official/provider-openrouter/index.js:89	
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	このコードを待っているサインインがありません：すでに使われたか、別のブラウザで始めたものです。	plugins-official/provider-openrouter/index.js:91	
@@ -462,53 +462,53 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:540	
 bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:662	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:662	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:118	
-1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:118	
-4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:118	
-89yydm	ok	Listening	聞いています	src/core/agent/loop.js:118	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:118	
-yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:118	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:119	
-izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:119	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:558	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:558	
-19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:877	
-16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1106	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1106	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1139	
-oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1139	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1273	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1475	
-1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1475	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1579	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1579	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1579	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1634	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1925	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1925	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:1962	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:1966	
-1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:2030	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2058	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2117	
-vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2576	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2719	
-guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2719	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2720	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2720	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2858	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:2993	
-43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3167	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3168	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3169	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3170	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3171	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3172	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3179	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3189	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3190	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3191	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3192	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:124	
+1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:124	
+4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:124	
+89yydm	ok	Listening	聞いています	src/core/agent/loop.js:124	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:124	
+yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:124	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:125	
+izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:125	
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:569	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:569	
+19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:888	
+16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1117	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1117	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1150	
+oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1150	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1308	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1518	
+1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1518	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1622	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1622	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1622	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1679	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1993	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1993	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:2030	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:2034	
+1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:2098	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2126	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2185	
+vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2651	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2794	
+guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2794	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2795	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2795	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2933	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3068	
+43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3242	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3243	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3244	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3245	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3246	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3247	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3254	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3264	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3265	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3266	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3267	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.

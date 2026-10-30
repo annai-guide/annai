@@ -31,6 +31,7 @@ import { activate as geminiLive } from '../../plugins-official/gemini-live/index
 import { activate as openaiRealtime } from '../../plugins-official/openai-realtime/index.js';
 import { g711 } from '../../src/core/voice/g711.js';
 import { activate as anthropicMessages } from '../../plugins-official/anthropic-messages/index.js';
+import { activate as chatCompletions } from '../../plugins-official/chat-completions/index.js';
 
 /**
  * A codec that "decodes" a source written as "WxH" and reports what it was asked.
@@ -67,7 +68,7 @@ export function fakeCodec(formats) {
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
  *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
- *   endpoint type (anthropic-messages), its requests sent through fetch (a stand-in)
+ *   endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
  *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name
@@ -147,6 +148,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   /** The endpoint types: the scripted model, and fake speech types whose calls the llm below answers. */
   const types = new Map([['scripted', watched], ['say', { type: 'say', name: 'Say', speech: 'out', pluginId: 'test' }], ['hear', { type: 'hear', name: 'Hear', speech: 'in', pluginId: 'test' }]]);
   anthropicMessages({ providers: { register: (/** @type {any} */ x) => { types.set(x.type, { ...x, pluginId: 'anthropic-messages' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
+  chatCompletions({ providers: { register: (/** @type {any} */ x) => { types.set(x.type, { ...x, pluginId: 'chat-completions' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   for (const [id, activate] of /** @type {const} */ ([['gemini-live', geminiLive], ['openai-realtime', openaiRealtime]])) {
     activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 }, events: { append: async () => {} } });
   }

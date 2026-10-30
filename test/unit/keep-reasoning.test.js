@@ -391,3 +391,78 @@ test("14. no native, signature or reasoning_details is stored: not in the log, i
   const r = await k.llm.call({ role: 'main', request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, record: { tag: 'plugin:test' } });
   assert.equal(r.reply.native, undefined, "a plugin's call never gets one");
 });
+
+// Claude through OpenRouter (the design §9; tests 13 and 13b).
+
+const OR = { type: 'chat-completions', baseUrl: 'https://openrouter.ai/api/v1', tunables: { reasoningField: 'reasoning', requireTool: false, cacheMarkers: ['anthropic/'] } };
+const OR_SONNET = { providerId: 'anthropic/claude-sonnet-5.5', contextWindow: 1000000, input: ['text', 'image', 'pdf'], cacheTtls: ['5m', '1h'] };
+/** Kokoro's three steps, through OpenRouter: what the last chat messages bring. @param {any} body */
+function orSteps(body) {
+  const lastCall = body.messages.flatMap((/** @type {any} */ m) => m.tool_calls ?? []).at(-1)?.function?.name;
+  const lastUser = JSON.stringify(body.messages.at(-1).content);
+  if (/Thanks/.test(lastUser) && lastCall === 'sleep') return { calls: [{ name: 'speak', input: { text: 'Enjoy!' } }, { name: 'sleep', input: {} }] };
+  if (lastCall === 'read') return { calls: [{ name: 'speak', input: { text: 'Monterey.' } }, { name: 'sleep', input: {} }] };
+  if (lastCall === 'list') return { calls: [{ name: 'read', input: { path: '/trip/notes/hotel.md' } }] };
+  if (lastCall === 'speak' || lastCall === 'sleep') return { calls: [{ name: 'sleep', input: {} }] };
+  return { calls: [{ name: 'list', input: { path: '/trip/' } }] };
+}
+/** A chat body without its cache markers. @param {any} x */
+const orBare = (x) => JSON.parse(JSON.stringify(x, (k, v) => (k === 'cache_control' ? undefined : v)));
+
+test("13. a three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3 carry reasoning_details as they came, the kept now block as the tail was written; nothing refused", async (t) => {
+  useClock(t);
+  const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
+  const or = openRouterStandIn(orSteps);
+  const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
+  await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
+  k.agent.send('Where is our hotel?');
+  await k.agent.idle();
+  assert.deepEqual(or.refused, []);
+  assert.equal(or.bodies.length, 3);
+  for (let i = 1; i < 3; i++) {
+    const [a, b] = [orBare(or.bodies[i - 1]), orBare(or.bodies[i])];
+    assert.deepEqual(b.messages.slice(0, a.messages.length), a.messages, `request ${i + 1} begins with request ${i}`);
+  }
+  const details = (/** @type {any} */ b) => b.messages.filter((/** @type {any} */ m) => m.reasoning_details).map((/** @type {any} */ m) => m.reasoning_details);
+  assert.deepEqual(details(or.bodies[2]).length, 2);
+  assert.deepEqual(details(or.bodies[2])[0], [{ type: 'reasoning.text', text: 'Thinking it over.', format: 'anthropic-claude-v1', index: 0, signature: details(or.bodies[1])[0][0].signature }]);
+  assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'));
+});
+
+test("13b. cache markers through OpenRouter's Claude: the system, the end and cacheAt, with the hour's ttl; every message the same bytes from one request to the next; reads on steps 2 and 3 and the next turn's first; another Chat Completions model as before", async (t) => {
+  useClock(t);
+  const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
+  const or = openRouterStandIn(orSteps);
+  const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
+  await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
+  k.agent.send('Where is our hotel?');
+  await k.agent.idle();
+  const first = or.bodies.length;
+  k.agent.send('Thanks!');
+  await k.agent.idle();
+  const marks = (/** @type {any} */ b) => JSON.stringify(b).split('"cache_control":{"type":"ephemeral","ttl":"1h"}').length - 1;
+  assert.equal(marks(or.bodies[0]), 2, 'the system and the end');
+  assert.equal(marks(or.bodies[first]), 3, 'and where the last turn began');
+  assert.equal(or.bodies[0].messages[0].content[0].cache_control.ttl, '1h');
+  for (const b of or.bodies) for (const m of b.messages) if (m.content !== null) assert.ok(Array.isArray(m.content), 'every content an array of blocks');
+  assert.ok(or.usage.slice(1, first).every((u) => u.prompt_tokens_details.cached_tokens > 0), 'steps 2 and 3 read the cache');
+  assert.ok(or.usage[first].prompt_tokens_details.cached_tokens > 0, "the next turn's first request too");
+  const turn2 = (await requests(k)).at(-1);
+  assert.ok(turn2.data.usage.cacheRead > 0, 'counted as a cache read');
+  assert.deepEqual(or.refused, []);
+});
+
+test('13b. a Chat Completions model outside cacheMarkers sends what it always sent: string content and no marks', async (t) => {
+  useClock(t);
+  const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
+  const or = openRouterStandIn(orSteps);
+  const k = await agentKit([{ ability: { ...OR, tunables: { ...OR.tunables, cacheMarkers: [] } } }], { models: [{ ...OR_SONNET, providerId: 'openai/gpt-6' }], fetch: or.fetch });
+  await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
+  k.agent.send('Where is our hotel?');
+  await k.agent.idle();
+  assert.ok(or.bodies.length >= 2);
+  for (const b of or.bodies) {
+    assert.ok(!JSON.stringify(b).includes('cache_control'));
+    assert.equal(typeof b.messages[0].content, 'string');
+  }
+});
