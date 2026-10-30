@@ -30,7 +30,7 @@ release that touches the providers' plugins or the loop, with the user's OK each
 
 Of the conversation (steps 1 and 2 above), on each provider:
 
-0. **A native was sent on a step 2 or later.** A run in which Claude never thought passes nothing (and says "no reply thought before another step: inconclusive, rerun").
+0. **A native was sent on a step 2 or later, Kokoro's own among them.** Kokoro is the half whose requests Anthropic refused on the phone (2026-10-28), so Koe's thinking going back is not enough. A run in which Claude never thought passes nothing (and says "no reply thought before another step: inconclusive, rerun"); one in which only Koe's did says "Kokoro never thought before another step: inconclusive for Kokoro, rerun".
 1. Every step after a reply for which annai kept a native sends it back (a signed reply cut at `max_tokens` has none, correctly).
 2. No attempt was refused for its reasoning (outcome `reasoning`), and no request got a 400.
 3. Every call was answered by the role's first model: nothing fell back.
@@ -80,7 +80,7 @@ or reply bodies.
 - **1 or 2 (thinking not sent back, or refused):** the request changed before a reply's thinking (the design §5's check would say
   `changed` in the natives column), or the provider binds something annai doesn't keep. A refusal's words are in the Trace's attempt.
 - **3 (fell back):** read the attempts' outcomes in the table.
-- **0 (no native sent):** Claude did not think (adaptive thinking chose none), or every request after its first changed something before the thinking (the table's natives column says `changed`).
+- **0 (no native sent):** Claude did not think (adaptive thinking chose none), or every request after its first changed something before the thinking (the table's natives column says `changed`). "No Kokoro request … (Koe's did)" with the Kokoro note means Sonnet didn't think before another step: rerun. Without the note, Kokoro thought and nothing went back: a fault.
 - **4 and 5 (cache):** a step read less than the step before it had cached, or no more than it had read: the prefix annai sent changed, the provider's entry was not found within its lookback (20 blocks) of a mark, or only the system prompt is cached. When only these fail, the report names the likely cause.
 - **6 (control):** an Anthropic that answers a changed prefix without a refusal is not enforcing the binding for this account; the controls above should make it enforce. Read `input_transformations` in the report.
 - **4 through OpenRouter only:** OpenRouter may not pass a mark on a `tool` message's content on to Anthropic (the design §9's caveat).

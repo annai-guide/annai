@@ -399,7 +399,7 @@ export function checks(all) {
   const sentBy = (/** @type {string | null} */ half) => rows.some((r) => r.step >= 2 && (half === null || r.half === half) && (r.natives?.sent ?? 0) > 0);
   return [
     {
-      name: 'a native was sent on a step 2 or later, Kokoro\'s own among them: Claude\'s thinking went back, on the half the phone\'s 400s were on',
+      name: 'a native was sent on a step 2 or later, Kokoro\'s own among them: Claude\'s thinking went back, Kokoro\'s too (the half refused on the phone, 2026-10-28)',
       problems: [...(sentBy(null) ? [] : [`${provider}: no request on a step 2 or later sent a native`]), ...(sentBy(null) && !sentBy('Kokoro') ? [`${provider}: no Kokoro request on a step 2 or later sent a native (Koe's did)`] : [])],
     },
     { name: 'every step after a reply with thinking sends it back', problems: back },
