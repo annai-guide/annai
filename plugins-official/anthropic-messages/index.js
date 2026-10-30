@@ -1,13 +1,23 @@
 /**
  * The Anthropic Messages endpoint type (spec §9.1). Browsers may call Anthropic only with the
- * "anthropic-dangerous-direct-browser-access" header. Thinking comes back as signed blocks; its words are kept for
- * the trace (no signature, no redacted block, no empty block) and never sent back: a Claude 5.5 block is bound to the system prompt, the tools and every message before it, and
- * annai's requests change those by design (the now block moves on each call, Koe and Kokoro have their own system prompts,
- * tidy-up its own instruction), so a block sent back was refused (the iPhone trace, 2026-10-28). Without blocks, a request
- * is never refused for them; the model plans each step again from what it can see.
+ * "anthropic-dangerous-direct-browser-access" header. Thinking comes back as signed blocks; their words are kept for
+ * the trace (no signature, no redacted block, no empty block). A reply that finished, with thinking in it, is also given whole as it
+ * came (a native: its content array), which annai sends back within the turn in place of the reply's parts: Claude 5.5 binds each
+ * block to the system prompt, the tools and everything before it, its own reply's earlier blocks included, so only the reply exactly
+ * as returned can go back (the keep-reasoning design §4). annai keeps the rest of the turn's requests as they were sent; a refusal
+ * anyway is 'reasoning', and annai asks again without them.
  */
 const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
+/** The stops whose reply is whole and can go back as it came. */
+const WHOLE = new Set(['end_turn', 'stop_sequence', 'tool_use', 'pause_turn']);
+/** The deltas read here: any other means a block might not be rebuilt as it came. */
+const DELTAS = new Set(['text_delta', 'thinking_delta', 'signature_delta', 'input_json_delta', 'citations_delta']);
+/** Claude refusing thinking blocks sent back (the preserved-thinking docs, 2026-10-29). */
+const BOUND = /Invalid `?signature`? in `?thinking`? block|\bthinking`?\b[^.]*\bcannot be modified\b/i;
+/** Marks on blocks of a request being built, for the cache markers to find after the messages are joined and sorted. */
+const NOW = Symbol('now');
+const AT = Symbol('cacheAt');
 const TYPES = /** @type {Record<string, string>} */ ({
   authentication_error: 'auth', permission_error: 'auth', billing_error: 'credit', rate_limit_error: 'rate', overloaded_error: 'overloaded',
   request_too_large: 'context', not_found_error: 'not-found', api_error: 'server', timeout_error: 'server',
@@ -65,15 +75,19 @@ function headersFor(endpoint, key, t) {
 /** @param {any} c */
 function build({ endpoint, model, key, tunables: t, request }) {
   /** @type {Record<string, any>} */
-  const body = { model: model.providerId, max_tokens: request.maxOutput ?? model.maxOutput ?? t.defaultMaxTokens, messages: wire(request.messages, model.providerId), stream: true };
+  const body = { model: model.providerId, max_tokens: request.maxOutput ?? model.maxOutput ?? t.defaultMaxTokens, messages: wire(request.messages, model.providerId, request.cacheAt), stream: true };
   if (request.system) body.system = [{ type: 'text', text: request.system, ...(request.cacheTtl ? { cache_control: cacheControl(request.cacheTtl) } : {}) }];
   if (request.tools?.length) body.tools = request.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, input_schema: x.input }));
   if (request.toolChoice) body.tool_choice = { type: 'tool', name: request.toolChoice };
   const last = body.messages.at(-1);
   if (request.cacheTtl && last) {
-    const blocks = last.content;
-    blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: cacheControl(request.cacheTtl) };
+    mark(last.content, last.content.length - 1, request.cacheTtl);
+    // Where the previous turn began, as the request then marked it: the next turn's cache entry, within reach (the keep-reasoning design §7).
+    const at = body.messages.find((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b[AT]));
+    if (at) mark(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT] && !b[NOW]), request.cacheTtl);
   }
+  // The marks were for finding blocks: none is sent.
+  for (const m of body.messages) m.content = m.content.map((/** @type {any} */ b) => { const { [NOW]: _now, [AT]: _at, ...rest } = b; return rest; });
   // The now block comes after the marker, so the cached prefix of this request is a prefix of the next one (spec §6.3).
   // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail.
   if (request.tail) {
@@ -83,17 +97,33 @@ function build({ endpoint, model, key, tunables: t, request }) {
   return { url: join(endpoint.baseUrl, t.path), headers: headersFor(endpoint, key, t), body };
 }
 
+/** A cache marker on blocks[i], or on the nearest block before it that may carry one (never a thinking block). @param {any[]} blocks @param {number} i @param {string} ttl */
+function mark(blocks, i, ttl) {
+  let at = i;
+  while (at >= 0 && (blocks[at].type === 'thinking' || blocks[at].type === 'redacted_thinking')) at--;
+  if (at >= 0) blocks[at] = { ...blocks[at], cache_control: cacheControl(ttl) };
+}
+
 /**
  * annai's messages as Messages API messages: one message per turn (messages of the same role are
- * joined), tool results first in a user turn, and no thinking (see the top).
- * @param {any[]} messages @param {string} providerId
+ * joined), tool results first in a user turn, a native's content in place of the parts it covers, and no other thinking (see the top).
+ * @param {any[]} messages @param {string} providerId @param {number} [cacheAt] the message whose blocks are marked AT
  */
-function wire(messages, providerId) {
+function wire(messages, providerId, cacheAt) {
   /** @type {{ role: string, content: any[] }[]} */
   const out = [];
-  for (const m of messages) {
+  for (const [i, m] of messages.entries()) {
+    let covered = 0;
     const blocks = m.parts.flatMap((/** @type {any} */ p) => {
-      if (p.type === 'text') return [{ type: 'text', text: p.text }];
+      if (p.type === 'native') {
+        covered = p.covers;
+        return Array.isArray(p.content) ? p.content.map((/** @type {any} */ b) => ({ ...b })) : [];
+      }
+      if (covered > 0) {
+        covered--;
+        return [];
+      }
+      if (p.type === 'text') return [p.now ? { type: 'text', text: p.text, [NOW]: true } : { type: 'text', text: p.text }];
       if (p.type === 'image') return [p.fileId ? { type: 'image', source: { type: 'file', file_id: p.fileId } } : { type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
       if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
       if (p.type === 'provider') return p.model === providerId ? [p.block] : [];
@@ -103,6 +133,7 @@ function wire(messages, providerId) {
       return [];
     });
     if (!blocks.length) continue;
+    if (i === cacheAt) for (const b of blocks) b[AT] = true;
     const prev = out.at(-1);
     if (prev && prev.role === m.role) prev.content.push(...blocks);
     else out.push({ role: m.role, content: blocks });
@@ -111,13 +142,20 @@ function wire(messages, providerId) {
   return out;
 }
 
-/** The events of a streamed Messages API reply. @param {Response} res @param {any} sse @param {any} ProviderError */
+/**
+ * The events of a streamed Messages API reply; at its end, when it finished with thinking in it, the reply as it came (native).
+ * @param {Response} res @param {any} sse @param {any} ProviderError
+ */
 async function* read(res, sse, ProviderError) {
-  /** @type {Map<number, any>} */
+  /** @type {Map<number, any>} what each block holds so far, as the API sent it */
   const blocks = new Map();
+  /** @type {Map<number, { json: string }>} a tool block's arguments so far */
+  const args = new Map();
   /** @type {string | null} */
   let stop = null;
   let finished = false;
+  /** A delta this doesn't read: the reply can't be rebuilt as it came. */
+  let odd = false;
   /** @type {Set<string>} */
   const cited = new Set();
   /** A source, once. @param {any} c */
@@ -141,8 +179,9 @@ async function* read(res, sse, ProviderError) {
       const u = e.message?.usage;
       if (u) yield { type: 'usage', usage: usageOf(u) };
     } else if (type === 'content_block_start') {
-      const b = { ...e.content_block, json: '', thinking: e.content_block?.thinking ?? '' };
+      const b = structuredClone(e.content_block ?? {});
       blocks.set(e.index, b);
+      if (b.type === 'tool_use' || b.type === 'server_tool_use') args.set(e.index, { json: '' });
       if (b.type === 'text' && b.text) yield { type: 'text', text: b.text };
       if (typeof b.type === 'string' && b.type.endsWith('_tool_result')) {
         // A server tool's result arrives whole: kept to send back unchanged, and its sources reported (spec §9.5).
@@ -153,23 +192,31 @@ async function* read(res, sse, ProviderError) {
     } else if (type === 'content_block_delta') {
       const b = blocks.get(e.index) ?? {};
       const d = e.delta ?? {};
-      if (d.type === 'text_delta' && d.text) yield { type: 'text', text: d.text };
-      else if (d.type === 'thinking_delta') {
+      if (!DELTAS.has(d.type)) odd = true;
+      if (d.type === 'text_delta' && d.text) {
+        b.text = (b.text ?? '') + d.text;
+        yield { type: 'text', text: d.text };
+      } else if (d.type === 'thinking_delta') {
         b.thinking = (b.thinking ?? '') + d.thinking;
         if (d.thinking) yield { type: 'reasoning_delta', text: d.thinking };
-      }
-      else if (d.type === 'input_json_delta') {
-        b.json = (b.json ?? '') + d.partial_json;
-        if (b.type === 'tool_use') yield { type: 'tool_input', id: b.id, name: b.name, partial: b.json };
+      } else if (d.type === 'signature_delta') {
+        b.signature = (b.signature ?? '') + d.signature;
+      } else if (d.type === 'input_json_delta') {
+        const a = args.get(e.index) ?? { json: '' };
+        a.json += d.partial_json;
+        args.set(e.index, a);
+        if (b.type === 'tool_use') yield { type: 'tool_input', id: b.id, name: b.name, partial: a.json };
       } else if (d.type === 'citations_delta') {
+        b.citations = [...(Array.isArray(b.citations) ? b.citations : []), d.citation];
         yield* cite(d.citation);
       }
     } else if (type === 'content_block_stop') {
       const b = blocks.get(e.index);
+      if (b?.type === 'tool_use' || b?.type === 'server_tool_use') b.input = parseArgs(args.get(e.index)?.json ?? '');
       if (b?.type === 'thinking') {
         if (b.thinking) yield { type: 'reasoning', text: b.thinking };
-      } else if (b?.type === 'tool_use') yield { type: 'tool_call', id: b.id, name: b.name, input: parseArgs(b.json) };
-      else if (b?.type === 'server_tool_use') yield { type: 'provider', block: { type: 'server_tool_use', id: b.id, name: b.name, input: parseArgs(b.json) } };
+      } else if (b?.type === 'tool_use') yield { type: 'tool_call', id: b.id, name: b.name, input: b.input };
+      else if (b?.type === 'server_tool_use') yield { type: 'provider', block: { type: 'server_tool_use', id: b.id, name: b.name, input: b.input } };
     } else if (type === 'message_delta') {
       if (e.delta?.stop_reason) stop = e.delta.stop_reason;
       if (e.usage) yield { type: 'usage', usage: usageOf(e.usage) };
@@ -179,6 +226,9 @@ async function* read(res, sse, ProviderError) {
     }
   }
   if (!finished) throw new ProviderError('network', 'The reply stopped before it finished.');
+  const content = [...blocks].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
+  const parsed = content.every((b) => (b.type !== 'tool_use' && b.type !== 'server_tool_use') || isObject(b.input));
+  if (WHOLE.has(stop ?? 'end_turn') && !odd && parsed && content.some((b) => b.type === 'thinking' || b.type === 'redacted_thinking')) yield { type: 'native', content };
   yield { type: 'stop', reason: STOP[stop ?? 'end_turn'] ?? 'other' };
 }
 
@@ -223,6 +273,7 @@ function classify(_status, body) {
   if (TYPES[e.type]) return TYPES[e.type];
   if (e.type !== 'invalid_request_error') return null;
   const m = String(e.message ?? '');
+  if (BOUND.test(m)) return 'reasoning';
   if (/prompt is too long|too many tokens|context/i.test(m)) return 'context';
   if (/credit balance/i.test(m)) return 'credit';
   if (/image/i.test(m)) return 'image';
