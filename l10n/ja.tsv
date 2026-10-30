@@ -2411,21 +2411,23 @@ gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:246	plural; # = 0;
 khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
 1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:255	{0} = size(d.bytes)
 l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:255	{0} = size(d.bytes)
-15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:259	{0} = d.failed
-1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:260	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:260	
-rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:263	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:267	{0} = d.backup
-57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:292	
-1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:309	
+1n96vkk	ok	earlier thinking not sent: something before it changed	以前の思考は送っていません：その前の部分が変わりました	src/ui/screens/trace.js:257	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	以前の#ステップの思考を送り返しました	src/ui/screens/trace.js:257	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:261	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:261	{0} = d.failed
+1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:262	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:262	
+rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:264	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:265	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:268	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:269	{0} = d.backup
+57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:271	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:271	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:294	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:294	
+1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:311	
 1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:43	
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:53	
 qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:55	
