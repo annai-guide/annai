@@ -1,5 +1,5 @@
 {
-  "build": "6dc21aba1dab",
+  "build": "ac017f61a9cb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -115,7 +115,7 @@
     "/src/core/languages.js": "4ee14161af8b",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
-    "/src/core/now.js": "12a5c74e3f10",
+    "/src/core/now.js": "acba101bcf6b",
     "/src/core/names.js": "c14cc50f8d72",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "8d4217b30a8d",

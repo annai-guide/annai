@@ -38,3 +38,10 @@ test('the sun is worked out where the user is, else at the next stop with a plac
   assert.deepEqual(sunPlace(null, ROWS, at('11:00')), NEPENTHE);
   assert.equal(sunPlace(null, ROWS, at('23:00')), null);
 });
+
+test("an end with no offset and no zone of its own is read on the start's zone, as the Plan and the reminders read it (the second review)", () => {
+  // Starts 09:45 in Big Sur; its end "10:30", written bare: 10:30 there, so at 10:20 it isn't over (read as UTC, it ended at 02:30).
+  const rows = planRows([{ path: '/plan/x.json', item: { id: 'x', title: 'Walk', fixed: false, start: { at: iso('09:45'), tz: LA }, end: { at: iso('10:30').slice(0, 16) } } }], [], { fallbackTz: LA });
+  assert.deepEqual(ids(upcoming(rows, at('10:20'))), ['x']);
+  assert.deepEqual(ids(upcoming(rows, at('10:31'))), []);
+});
