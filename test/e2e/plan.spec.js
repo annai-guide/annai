@@ -198,7 +198,7 @@ test("Booking details from before: what it says, beside its original, marked who
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
-  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked single details. Tell her if anything is wrong.");
+  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.");
   await expect(page.locator('dl.facts')).toContainText('ABC123');
   // The booking's zone is named the way people say it, never by its id.
   await expect(page.locator('dl.facts')).toContainText('(PT)');

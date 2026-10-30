@@ -597,22 +597,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:244	
-157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:151	{0} = what
-1nq6h1n	ok	About {0} min by car.	開車約{0}分鐘。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	步行約{0}分鐘。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約{0}分鐘後出發：{1}。	src/core/live/plan-watches.js:152	{0} = num(LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:153	{0} = what
-3qig1w	ok	About {0} min away.	還有約{0}分鐘路程。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/core/live/plan-watches.js:154	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:155	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	{0}分鐘後：{1}。	src/core/live/plan-watches.js:156	{0} = num(COMING_UP_MIN); {1} = what
-112i693	ok	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:158	
-1hf686i	ok	Nothing more is on the plan.	行程中沒有更多安排了。	src/core/live/plan-watches.js:159	
-1jsyqjn	ok	Next on the plan: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:152	{0} = what
+1nq6h1n	ok	About {0} min by car.	開車約{0}分鐘。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	步行約{0}分鐘。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約{0}分鐘後出發：{1}。	src/core/live/plan-watches.js:153	{0} = num(LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:154	{0} = what
+3qig1w	ok	About {0} min away.	還有約{0}分鐘路程。	src/core/live/plan-watches.js:154	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	此刻的行程：{0}（{1}）。	src/core/live/plan-watches.js:155	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:156	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	{0}分鐘後：{1}。	src/core/live/plan-watches.js:157	{0} = num(COMING_UP_MIN); {1} = what
+112i693	ok	You've stopped somewhere that isn't on the plan.	你停在了行程之外的地方。	src/core/live/plan-watches.js:159	
+1hf686i	ok	Nothing more is on the plan.	行程中沒有更多安排了。	src/core/live/plan-watches.js:160	
+1jsyqjn	ok	Next on the plan: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:160	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	模擬已在執行。請先停止它。	src/core/live/sim-run.js:91	
 enf0f5	ok	A simulated trip	模擬的旅行	src/core/live/sim-run.js:238	Note: a new trip's default name, before "(simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	這個旅行已不在這台裝置上。	src/core/live/sim-run.js:278	
@@ -771,7 +771,7 @@ tqmba2	ok	an address your searches are sent to: {0}	你的搜尋會傳送到的�
 d57q3n	ok	Flight	航班	src/core/plan.js:33	
 jj8u9s	ok	Stay	住宿	src/core/plan.js:33	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	租車	src/core/plan.js:33	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	時區「{0}」不是 annai 認識的時區；依 {1} 顯示。	src/core/plan.js:77	{0} = String(own ?? ''); {1} = fallbackTz
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	時區「{0}」不是 annai 認識的時區；依 {1} 顯示。	src/core/plan.js:67	{0} = String(own ?? ''); {1} = fallbackTz
 hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此檔案不是 annai 能開啟的外掛程式套件：{0}	src/core/plugins.js:176	{0} = why
 hs0rw0	ok	is a name annai uses for one of its own parts, so a skill can't have it.	這是 annai 用於自身某部分的名稱，所以技能不能使用。	src/core/plugins.js:193	
 85vpp4	ok	has the same id as a plugin built into annai	與 annai 內建外掛程式的 ID 相同	src/core/plugins.js:194	
@@ -1041,110 +1041,110 @@ xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:87
 sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:90	
 xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:90	
 kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:91	
-la9701	ok	not backed up	未備份	src/ui/format.js:28	
-1h47npq	ok	backed up {0}	{0}已備份	src/ui/format.js:29	{0} = relTime(at, now); Note: {0} is relTime ("2小時前", "剛剛"), so it comes first.
-1sjuc50	ok	backed up {0}, changed since	{0}已備份，之後有更改	src/ui/format.js:29	{0} = relTime(at, now)
-meb4bg	ok	you	你	src/ui/format.js:33	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	ok	cost unknown	費用未知	src/ui/format.js:37	
-16name3	ok	free	免費	src/ui/format.js:38	
-1bm6q72	ok	key rejected	金鑰被拒絕	src/ui/format.js:43	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	ok	too many requests	請求過多	src/ui/format.js:43	
-4icrku	ok	answered	已回答	src/ui/format.js:43	
-jk3r0m	ok	overloaded	過載	src/ui/format.js:43	
-k1s3xh	ok	out of credit	餘額用完	src/ui/format.js:43	Note: Credit is a prepaid balance (餘額), as "This account is out of credit".
-1ci3mtm	ok	doesn't allow web apps	不允許網頁應用程式	src/ui/format.js:44	
-1lj1ww1	ok	photo upload expired	照片上傳已過期	src/ui/format.js:44	
-1x40ny1	ok	didn't take the photo	未接受照片	src/ui/format.js:44	
-f82spn	ok	too long for it	內容過長	src/ui/format.js:44	
-11n2a71	ok	couldn't connect	無法連線	src/ui/format.js:45	
-a3596h	ok	refused the request	拒絕了請求	src/ui/format.js:45	
-n3huvh	ok	unknown model or address	未知的模型或網址	src/ui/format.js:45	
-rhcw9u	ok	provider error	供應商出錯	src/ui/format.js:45	
-13effb	ok	connection dropped	連線中斷	src/ui/format.js:46	
-1quwfm7	ok	plugin failed	外掛程式出錯	src/ui/format.js:46	
-1s4r037	ok	too slow to start	啟動太慢	src/ui/format.js:46	
-hqyrx7	ok	removed	已移除	src/ui/format.js:46	
-urm4i6	ok	stopped	已停止	src/ui/format.js:46	
-184j4co	ok	resting after an error	出錯後暫停中	src/ui/format.js:47	
-1mrun4s	ok	redirected elsewhere	被重新導向到別處	src/ui/format.js:47	
-1q01jst	ok	doesn't take photos	不支援照片	src/ui/format.js:47	
-365ivi	ok	can't use tools	無法使用工具	src/ui/format.js:47	
-4k8rwn	ok	its ability is switched off	該功能已關閉	src/ui/format.js:47	
-l7u7vc	ok	its plugin is missing	缺少其外掛程式	src/ui/format.js:47	
-1y8iwje	ok	has no web tool of that kind	沒有該類網頁工具	src/ui/format.js:48	
-6gto9k	ok	couldn't hear the speech	未能聽清語音	src/ui/format.js:48	
-710q7y	ok	conversation too long for it	對話過長	src/ui/format.js:48	
-7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:48	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
-w70v2a	ok	doesn't take audio	不支援音訊	src/ui/format.js:48	
-1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:73	{0} = name; Note: Taiwan wording: 退房, as hotels say; a stay's last row on the Plan.
-1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:74	{0} = name; Note: Taiwan wording: 入住, as hotels say; a stay's first row on the Plan.
-ukzedx	ok	Other	其他	src/ui/format.js:78	
-1hlojji	ok	To	目的地	src/ui/format.js:82	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座位	src/ui/format.js:82	Note: Taiwan wording; a booking's detail.
-1yz1r2o	ok	Cabin	艙等	src/ui/format.js:82	context: booking; Note: Taiwan wording: 艙等, as airlines there say; a flight's cabin class.
-9ihsg5	ok	Airline	航空公司	src/ui/format.js:82	Note: Taiwan wording; a booking's detail.
-qoo2zd	ok	Flight	航班編號	src/ui/format.js:82	context: booking; Note: Taiwan wording; the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出發地	src/ui/format.js:82	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	航廈	src/ui/format.js:83	Note: Taiwan wording: 航廈 for an airport's terminal.
-15rtgdu	ok	Gate	登機門	src/ui/format.js:83	Note: Taiwan wording: 登機門 for an airport's gate.
-193ku12	ok	Bags	行李	src/ui/format.js:83	Note: Taiwan wording; a booking's detail: the bags included.
-1ipbaqc	ok	Room	房間	src/ui/format.js:83	context: booking; Note: Taiwan wording; a stay's room.
-1jn3vqu	ok	Nights	晚數	src/ui/format.js:83	Note: Taiwan wording; how many nights a stay is.
-ean645	ok	Travellers	乘客	src/ui/format.js:83	Note: Taiwan wording; the people a flight or train booking is for.
-vpb928	ok	Guests	入住人數	src/ui/format.js:83	Note: Taiwan wording; the people a stay is booked for.
-1v8ms9v	ok	Train	車次	src/ui/format.js:84	context: booking; Note: Taiwan wording; a booking's detail: the train's number.
-3uyuz4	ok	Drop-off	還車	src/ui/format.js:84	Note: Taiwan wording; where and when a rental car goes back.
-4f76ga	ok	Notes	備註	src/ui/format.js:84	Note: Taiwan wording; notes on a booking or a plan item.
-95yu2i	ok	Pick-up	取車	src/ui/format.js:84	Note: Taiwan wording; where and when a rental car is picked up.
-b2la2e	ok	Car	車廂	src/ui/format.js:84	context: train; Note: Taiwan wording; a train's car (coach), not a rental car.
-vzzxl8	ok	Party size	人數	src/ui/format.js:84	Note: Taiwan wording; how many people a restaurant booking is for.
-1jtckn3	ok	Route	航線	src/ui/format.js:118	context: flight; Note: Taiwan wording; a flight's from → to, as one line.
-13ne04w	ok	Departs	出發	src/ui/format.js:119	Note: Taiwan wording; a flight's departure, its time in that airport's zone.
-j6u2ti	ok	Starts	開始	src/ui/format.js:119	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	入住	src/ui/format.js:119	Note: Taiwan wording; a stay's check-in.
-1pcvk9l	ok	Ends	結束	src/ui/format.js:120	context: booking
-8md94n	ok	Arrives	抵達	src/ui/format.js:120	Note: Taiwan wording: 抵達; a flight's arrival.
-8nuh1e	ok	Check-out	退房	src/ui/format.js:120	Note: Taiwan wording; a stay's check-out.
-16ygujg	ok	Place	地點	src/ui/format.js:121	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:121	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	確認碼	src/ui/format.js:131	Note: A booking's confirmation code.
-t05i6w	ok	Cost	費用	src/ui/format.js:132	
-1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:165	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:165	
-fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:169	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:170	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:170	
-1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:171	
-sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:171	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:176	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:176	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:177	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:177	
-14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:178	
-12hcbva	ok	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:182	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:182	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:183	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:183	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:184	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:188	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:188	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:189	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:189	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:190	
-wn3ejs	ok	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:190	
-1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:205	
-1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:210	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:210	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:211	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:213	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:214	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:215	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:216	
-173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:217	{0} = at
-1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:217	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:229	
-hmr3pn	ok	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:229	
-8091b1	ok	no limit	無限制	src/ui/format.js:254	
+la9701	ok	not backed up	未備份	src/ui/format.js:29	
+1h47npq	ok	backed up {0}	{0}已備份	src/ui/format.js:30	{0} = relTime(at, now); Note: {0} is relTime ("2小時前", "剛剛"), so it comes first.
+1sjuc50	ok	backed up {0}, changed since	{0}已備份，之後有更改	src/ui/format.js:30	{0} = relTime(at, now)
+meb4bg	ok	you	你	src/ui/format.js:34	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	ok	cost unknown	費用未知	src/ui/format.js:38	
+16name3	ok	free	免費	src/ui/format.js:39	
+1bm6q72	ok	key rejected	金鑰被拒絕	src/ui/format.js:44	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	ok	too many requests	請求過多	src/ui/format.js:44	
+4icrku	ok	answered	已回答	src/ui/format.js:44	
+jk3r0m	ok	overloaded	過載	src/ui/format.js:44	
+k1s3xh	ok	out of credit	餘額用完	src/ui/format.js:44	Note: Credit is a prepaid balance (餘額), as "This account is out of credit".
+1ci3mtm	ok	doesn't allow web apps	不允許網頁應用程式	src/ui/format.js:45	
+1lj1ww1	ok	photo upload expired	照片上傳已過期	src/ui/format.js:45	
+1x40ny1	ok	didn't take the photo	未接受照片	src/ui/format.js:45	
+f82spn	ok	too long for it	內容過長	src/ui/format.js:45	
+11n2a71	ok	couldn't connect	無法連線	src/ui/format.js:46	
+a3596h	ok	refused the request	拒絕了請求	src/ui/format.js:46	
+n3huvh	ok	unknown model or address	未知的模型或網址	src/ui/format.js:46	
+rhcw9u	ok	provider error	供應商出錯	src/ui/format.js:46	
+13effb	ok	connection dropped	連線中斷	src/ui/format.js:47	
+1quwfm7	ok	plugin failed	外掛程式出錯	src/ui/format.js:47	
+1s4r037	ok	too slow to start	啟動太慢	src/ui/format.js:47	
+hqyrx7	ok	removed	已移除	src/ui/format.js:47	
+urm4i6	ok	stopped	已停止	src/ui/format.js:47	
+184j4co	ok	resting after an error	出錯後暫停中	src/ui/format.js:48	
+1mrun4s	ok	redirected elsewhere	被重新導向到別處	src/ui/format.js:48	
+1q01jst	ok	doesn't take photos	不支援照片	src/ui/format.js:48	
+365ivi	ok	can't use tools	無法使用工具	src/ui/format.js:48	
+4k8rwn	ok	its ability is switched off	該功能已關閉	src/ui/format.js:48	
+l7u7vc	ok	its plugin is missing	缺少其外掛程式	src/ui/format.js:48	
+1y8iwje	ok	has no web tool of that kind	沒有該類網頁工具	src/ui/format.js:49	
+6gto9k	ok	couldn't hear the speech	未能聽清語音	src/ui/format.js:49	
+710q7y	ok	conversation too long for it	對話過長	src/ui/format.js:49	
+7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:49	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
+w70v2a	ok	doesn't take audio	不支援音訊	src/ui/format.js:49	
+1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:79	{0} = name; Note: Taiwan wording: 退房, as hotels say; a stay's last row on the Plan.
+1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:80	{0} = name; Note: Taiwan wording: 入住, as hotels say; a stay's first row on the Plan.
+ukzedx	ok	Other	其他	src/ui/format.js:84	
+1hlojji	ok	To	目的地	src/ui/format.js:88	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座位	src/ui/format.js:88	Note: Taiwan wording; a booking's detail.
+1yz1r2o	ok	Cabin	艙等	src/ui/format.js:88	context: booking; Note: Taiwan wording: 艙等, as airlines there say; a flight's cabin class.
+9ihsg5	ok	Airline	航空公司	src/ui/format.js:88	Note: Taiwan wording; a booking's detail.
+qoo2zd	ok	Flight	航班編號	src/ui/format.js:88	context: booking; Note: Taiwan wording; the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出發地	src/ui/format.js:88	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	航廈	src/ui/format.js:89	Note: Taiwan wording: 航廈 for an airport's terminal.
+15rtgdu	ok	Gate	登機門	src/ui/format.js:89	Note: Taiwan wording: 登機門 for an airport's gate.
+193ku12	ok	Bags	行李	src/ui/format.js:89	Note: Taiwan wording; a booking's detail: the bags included.
+1ipbaqc	ok	Room	房間	src/ui/format.js:89	context: booking; Note: Taiwan wording; a stay's room.
+1jn3vqu	ok	Nights	晚數	src/ui/format.js:89	Note: Taiwan wording; how many nights a stay is.
+ean645	ok	Travellers	乘客	src/ui/format.js:89	Note: Taiwan wording; the people a flight or train booking is for.
+vpb928	ok	Guests	入住人數	src/ui/format.js:89	Note: Taiwan wording; the people a stay is booked for.
+1v8ms9v	ok	Train	車次	src/ui/format.js:90	context: booking; Note: Taiwan wording; a booking's detail: the train's number.
+3uyuz4	ok	Drop-off	還車	src/ui/format.js:90	Note: Taiwan wording; where and when a rental car goes back.
+4f76ga	ok	Notes	備註	src/ui/format.js:90	Note: Taiwan wording; notes on a booking or a plan item.
+95yu2i	ok	Pick-up	取車	src/ui/format.js:90	Note: Taiwan wording; where and when a rental car is picked up.
+b2la2e	ok	Car	車廂	src/ui/format.js:90	context: train; Note: Taiwan wording; a train's car (coach), not a rental car.
+vzzxl8	ok	Party size	人數	src/ui/format.js:90	Note: Taiwan wording; how many people a restaurant booking is for.
+1jtckn3	ok	Route	航線	src/ui/format.js:124	context: flight; Note: Taiwan wording; a flight's from → to, as one line.
+13ne04w	ok	Departs	出發	src/ui/format.js:125	Note: Taiwan wording; a flight's departure, its time in that airport's zone.
+j6u2ti	ok	Starts	開始	src/ui/format.js:125	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	入住	src/ui/format.js:125	Note: Taiwan wording; a stay's check-in.
+1pcvk9l	ok	Ends	結束	src/ui/format.js:126	context: booking
+8md94n	ok	Arrives	抵達	src/ui/format.js:126	Note: Taiwan wording: 抵達; a flight's arrival.
+8nuh1e	ok	Check-out	退房	src/ui/format.js:126	Note: Taiwan wording; a stay's check-out.
+16ygujg	ok	Place	地點	src/ui/format.js:127	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:127	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	確認碼	src/ui/format.js:138	Note: A booking's confirmation code.
+t05i6w	ok	Cost	費用	src/ui/format.js:139	
+1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:173	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:173	
+fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:177	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:178	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:178	
+1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:179	
+sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:179	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:184	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:184	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:185	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:185	
+14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:186	
+12hcbva	ok	An iPhone backed up to {0} {1}.	iPhone {1}備份到了{0}。	src/ui/format.js:190	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	iPad {1}備份到了{0}。	src/ui/format.js:190	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	一台電腦{1}備份到了{0}。	src/ui/format.js:191	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	一部 Android 手機{1}備份到了{0}。	src/ui/format.js:191	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	另一台裝置{1}備份到了{0}。	src/ui/format.js:192	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	這晚於這部手機上次的備份。	src/ui/format.js:196	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這部手機的備份覆蓋它。	src/ui/format.js:196	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	這晚於這台 iPad 上次的備份。	src/ui/format.js:197	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:197	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以將其作為副本匯入，把它的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:198	
+wn3ejs	ok	That was after this computer's last backup.	這晚於這台電腦上次的備份。	src/ui/format.js:198	
+1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:213	
+1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:218	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:218	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳{0}	src/ui/format.js:219	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:221	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:222	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:223	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:224	
+173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:225	{0} = at
+1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:225	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:237	
+hmr3pn	ok	The other backup stays in its history.	另一個備份會保留在其歷史中。	src/ui/format.js:237	
+8091b1	ok	no limit	無限制	src/ui/format.js:262	
 1y3qo2k#other	ok	# trips	# 個旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
 12lprg	ok	Imported {0} from {1}.	已從{1}匯入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已匯入{0}。	src/ui/import-state.js:48	{0} = what
@@ -1519,17 +1519,17 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 9patw8	ok	annai stops backing up here. The backups already there stay.	annai 會停止備份到這裡。已經在那裡的備份會保留。	src/ui/screens/backups.js:312	
 1hx8faa	ok	Tap again to remove it	再點一次以移除	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
-nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:26	
-19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:27	
-9v561o	ok	Check this: Shiori read it before annai marked single details. Tell her if anything is wrong.	請核對：這是 annai 逐項標記之前 Shiori 讀取的預訂。如有不對，請告訴她。	src/ui/screens/booking.js:41	Note: Taiwan wording; a banner on a booking from before; 請核對 as the Check this chip.
-bamrei	ok	Change it	修改	src/ui/screens/booking.js:49	
-iy42pb	ok	check	待核對	src/ui/screens/booking.js:55	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
-1s0er5c	ok	Shiori isn't sure of this	Shiori 對這一項不確定	src/ui/screens/booking.js:56	Note: Taiwan wording; read by screen readers for the check mark.
-8icj76	ok	Plan	行程	src/ui/screens/booking.js:65	
-d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:91	{0} = name
-yp5voz	ok	This booking doesn't say which file it came from.	這個預訂沒有說明來自哪個檔案。	src/ui/screens/booking.js:91	
-2egm5v	ok	The original	原件	src/ui/screens/booking.js:92	Note: Taiwan wording; as Open the original (開啟原件).
-98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:95	
+nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:27	
+19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:28	
+1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	請核對：這是 annai 逐項標記之前 Shiori 讀取的預訂。請告訴她是否正確，或哪裡不對。	src/ui/screens/booking.js:43	Note: Taiwan wording; a banner on a booking from before, cleared by telling her it's right; 請核對 as the Check this chip.
+bamrei	ok	Change it	修改	src/ui/screens/booking.js:52	
+iy42pb	ok	check	待核對	src/ui/screens/booking.js:75	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
+1s0er5c	ok	Shiori isn't sure of this	Shiori 對這一項不確定	src/ui/screens/booking.js:76	Note: Taiwan wording; read by screen readers for the check mark.
+8icj76	ok	Plan	行程	src/ui/screens/booking.js:85	
+d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:111	{0} = name
+yp5voz	ok	This booking doesn't say which file it came from.	這個預訂沒有說明來自哪個檔案。	src/ui/screens/booking.js:111	
+2egm5v	ok	The original	原件	src/ui/screens/booking.js:112	Note: Taiwan wording; as Open the original (開啟原件).
+98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:115	
 19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:13	
@@ -2264,45 +2264,45 @@ glbwh5	ok	This conversation so far: {0}	這次對話到目前為止：{0}	src/ui
 td8u17	ok	A photo you sent	你傳送的照片	src/ui/screens/talk.js:296	
 1242x07	ok	{0} · {1} didn't answer	{0} · {1} 未回應	src/ui/screens/talk.js:306	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the role's first model, which was asked and gave no answer. Both are model names as the user has them.
 141y2ts	ok	{0} · instead of {1}	{0} · 代替 {1} 回答	src/ui/screens/talk.js:306	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0}, the model that wrote it, answered in place of {1}, the first model of the role, which was not asked (a model with a warm cache went first). Both are model names as the user has them.
-9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:342	
-fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:398	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:398	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:423	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:424	
-1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:434	
-1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:434	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:449	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:504	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:522	Note: The Trips screen, quoted so it reads apart from a trip.
-159f82q	ok	Undone	已復原	src/ui/screens/talk.js:563	
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:579	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
-1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:580	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
-svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:581	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
-184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:582	{0} = home; Note: Taiwan wording: 已復原, 檔案.
-1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:582	Note: as the Undone row, a sentence.
-mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:582	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
-urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:583	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:595	Note: Taiwan wording: 復原 as Undo, 檔案.
-1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:636	
-bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:637	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:651	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:653	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:653	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:653	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:653	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:656	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:661	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:668	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:669	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:670	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:680	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:683	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:683	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:683	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:683	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:703	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:704	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:726	
+9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:344	
+fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:400	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:400	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:425	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:426	
+1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:436	
+1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:436	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:451	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:506	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:524	Note: The Trips screen, quoted so it reads apart from a trip.
+159f82q	ok	Undone	已復原	src/ui/screens/talk.js:565	
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:581	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:582	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
+svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:583	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:584	{0} = home; Note: Taiwan wording: 已復原, 檔案.
+1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:584	Note: as the Undone row, a sentence.
+mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:584	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
+urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:585	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:597	Note: Taiwan wording: 復原 as Undo, 檔案.
+1ehg9ru	ok	Tidy up	整理	src/ui/screens/talk.js:638	
+bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:639	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:653	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:655	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:655	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:655	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:655	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:658	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:663	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:670	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:671	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:672	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:682	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:685	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:685	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:685	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:685	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:705	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:706	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:728	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
