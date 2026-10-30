@@ -457,6 +457,9 @@ export function notes(all) {
     const natives = after.map((r) => r.natives);
     out.push(`Claude to Claude: ${stubbed.answeredBy ?? 'the next model'} answered the stubbed step; natives sent from there on: ${natives.map((x) => (x ? `${x.sent}${x.changed ? ' (changed)' : ''}` : '0')).join(', ')}${natives.some((x) => x?.changed) ? '; the turn\'s thinking stopped because something before it differed between the two models (their provider tools, say)' : ''}.`);
   }
+  // A signed reply annai kept nothing for (cut at max_tokens, or OpenRouter's [REDACTED] details) is right, but its thinking can't go back.
+  const unkept = all.filter((r) => r.signed && r.kept === false);
+  if (unkept.length) out.push(`${unkept.length} signed ${unkept.length === 1 ? 'reply' : 'replies'} kept no native, so their thinking could not go back: ${unkept.map(whereOf).join('; ')}.`);
   if (!main.length) out.push('The conversation produced no rows.');
   // Every need of a check below is a reply with thinking followed by another step: adaptive thinking may skip thinking on easy steps.
   if (!turnsOf(main).some((list) => list.some((r, i) => (r.kept ?? r.signed) && i < list.length - 1))) out.push('no reply thought before another step: inconclusive, rerun (it is not a fault of annai until thinking is seen and not sent back).');
