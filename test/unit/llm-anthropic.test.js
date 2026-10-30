@@ -58,7 +58,8 @@ test('build: annai’s request as a Messages API request, with browser access an
   assert.deepEqual(body.tools, [{ name: 'report_color', description: 'Report a color.', input_schema: { type: 'object' } }]);
   assert.deepEqual(body.messages, [
     { role: 'user', content: [{ type: 'text', text: 'What color?' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] },
-    // Thinking is never sent back, even to the model that signed it: Claude 5.5 binds it to the conversation (phone-fixes-1 item 1).
+    // Thinking parts are never sent back, even to the model that signed it: Claude 5.5 binds it to the conversation (phone-fixes-1 item 1);
+    // only a native, the reply as it came, goes back (llm-anthropic-native.test.js).
     { role: 'assistant', content: [
       { type: 'tool_use', id: 'toolu_1', name: 'report_color', input: { color: 'red' } },
     ] },
@@ -126,8 +127,8 @@ test('read: text with cache reads and writes of both lifetimes, and the stop rea
 
 test('read: thinking as words alone, redacted thinking left out, and a tool call streamed in pieces', async () => {
   const events = await read(await fixture('thinking-tools.sse'));
-  // Kept for the Trace as words only: nothing goes back to the model (phone-fixes-1), so a signature, redacted thinking or an empty
-  // block (display "omitted") isn't kept to be carried in steps and backups (its review).
+  // Kept for the Trace as words only (phone-fixes-1), so a signature, redacted thinking or an empty block (display "omitted") isn't
+  // carried in parts, steps and backups (its review); what goes back within a turn is the native, never stored (keep-reasoning).
   assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [{ type: 'reasoning', text: 'A red square. Call the tool.' }]);
   // Thinking is shown as it streams, so a long think never looks like a model that never started (spec §9.6).
   assert.equal(events.filter((e) => e.type === 'reasoning_delta').map((e) => e.text).join(''), 'A red square. Call the tool.');
