@@ -2,7 +2,7 @@ import { callOnce, enabledProviderTools, withoutNatives } from './call.js';
 import { t } from '../l10n.js';
 import { when, sentences } from '../intl.js';
 import { dayIn, timeIn, deviceZone } from '../time.js';
-import { ProviderError, portable, explain, explainPlain, saidWords } from './contract.js';
+import { ProviderError, portable, nativeExtra, explain, explainPlain, saidWords } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -288,10 +288,10 @@ export function estimateTokens(request, modelKey) {
   let chars = (request.system ?? '').length + JSON.stringify(request.tools ?? []).length;
   let images = 0;
   for (const m of modelKey ? portable(request.messages, modelKey) : request.messages) {
-    for (const p of m.parts) {
+    m.parts.forEach((p, i) => {
       if (p.type === 'image') images++;
-      else chars += JSON.stringify(p).length;
-    }
+      else chars += p.type === 'native' ? nativeExtra(m.parts, i) : JSON.stringify(p).length;
+    });
   }
   return Math.ceil(chars / 3.5) + images * 1600 + (request.maxOutput ?? 0);
 }

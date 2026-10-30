@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16076,
+      "size": 15843,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -21,7 +21,7 @@
       },
       "files": {
         "annai-plugin.json": "920196a704444f91487b0900834950477a90d191a3dbaf9eda26e0c23a534baa",
-        "index.js": "a3ab97b34df845e3dfe9291c2e130bfde1af9249433a105e394267fd1719e283"
+        "index.js": "33a95a1a1d5e8002ca37acbf106b77ea946bd9df3996d80edb64e773238cf03f"
       }
     },
     {
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 25787,
+      "size": 26430,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -44,7 +44,7 @@
       },
       "files": {
         "annai-plugin.json": "e9be2336cbc1b1aac0767df8a143faca0a643e241e2d0829f5a326f000035ae7",
-        "index.js": "7340464d4d8474bbf562991bf90f1a9f24055966743279bd91c799355b858971"
+        "index.js": "5aab8d99d6c64569a2cef9018a06386b923e8deb3d5a00bc063cc615ba5dce8f"
       }
     },
     {

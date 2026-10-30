@@ -55,9 +55,13 @@ export function withTail(request) {
   return { ...rest, messages };
 }
 
-/** The endpoint a native belongs to: the endpoint and its key, as kept turns tell them (kept.js keyPrint). @param {Endpoint} endpoint @param {string | null} key */
-export async function nativeKey(endpoint, key) {
-  return `${endpoint.id}|${await keyPrint(key, endpoint.baseUrl, endpoint.headers)}`;
+/**
+ * Who can read a native: the endpoint and its key, as kept turns tell them (kept.js keyPrint), and the scope its endpoint type gives the
+ * model that made it or that is sent it (EndpointType.nativeScope: one endpoint can serve models of other makers, as a router does).
+ * @param {Endpoint} endpoint @param {string | null} key @param {string} [scope]
+ */
+export async function nativeKey(endpoint, key, scope = '') {
+  return `${endpoint.id}|${await keyPrint(key, endpoint.baseUrl, endpoint.headers)}${scope ? `|${scope}` : ''}`;
 }
 
 /** @param {Message[]} messages */
@@ -257,12 +261,12 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   }
   // Natives first, before a kept turn is matched or anything uploaded: only this endpoint's go, so other models see what they always saw.
   const holds = holdsNatives(request.messages);
-  const here = keepNative || holds ? await nativeKey(endpoint, key) : '';
+  const tunables = { ...endpoint.tunables, ...model.tunables };
+  const here = keepNative || holds ? await nativeKey(endpoint, key, type.nativeScope?.({ model, tunables }) ?? '') : '';
   const mine = holds ? { ...request, messages: forEndpoint(request.messages, here) } : request;
   const base = type.tail ? mine : withTail(mine);
   // The cache lifetime this model has, as its warmth counts it (spec §6.4).
   const timed = base.cacheTtl ? { ...base, cacheTtl: ttlFor(model, base.cacheTtl) } : base;
-  const tunables = { ...endpoint.tunables, ...model.tunables };
   // Found before the photos are: one in what the kept turn already holds is neither sent nor uploaded.
   let keeping = keep && type.keeps && tunables.keep !== false && keep.secret && !keep.kept.isOff(endpoint.id) ? keep : null;
   const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl, endpoint.headers) : '';
@@ -427,8 +431,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       /* en */
       err = new ProviderError('timeout', `Its output stopped for ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`, { cause: e, said: { code: 'paused', seconds } });
     }
-    // A refusal of the reasoning when none was sent is a request it refused for something else.
-    if (err.kind === 'reasoning' && !natives?.sent) err.kind = 'bad-request';
+    // A bad request that sent natives may be the provider refusing them, whatever its words say: callRole asks the same model once more
+    // without them (the keep-reasoning design §8). One that sent none, or any other kind (a size error, say), is what it is.
+    if (err.kind === 'bad-request' && natives?.sent) err.kind = 'reasoning';
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
     // What the provider had reported using, and what that costs: a call stopped part-way is billed for it (the second review of
     // phone-fixes-1). Searches it made count all the same.

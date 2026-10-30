@@ -99,20 +99,20 @@ test("build with cacheMarkers: every content an array of blocks, marks on the sy
     { role: 'assistant', parts: [native, { type: 'reasoning', text: 'Look first.' }, { type: 'tool_call', id: 'toolu_1', name: 'list', input: {} }] },
     { role: 'user', parts: [{ type: 'tool_result', id: 'toolu_1', content: 'a.md' }] },
   ];
-  const s = spec({ request: { system: 'S', cacheTtl: '1h', cacheAt: 2, tail: '<now>2</now>', messages } }, { cacheMarkers: ['anthropic/'] });
+  const s = spec({ request: { system: 'S', cacheTtl: '1h', cacheAt: 0, tail: '<now>2</now>', messages } }, { cacheMarkers: ['anthropic/'] });
   const { body } = type.build(s);
   assert.deepEqual(body.messages, [
     { role: 'system', content: [{ type: 'text', text: 'S', cache_control: ttl }] },
-    { role: 'user', content: [{ type: 'text', text: 'Earlier' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Earlier', cache_control: ttl }] },
     { role: 'assistant', content: [{ type: 'text', text: 'Yes.' }] },
-    { role: 'user', content: [{ type: 'text', text: 'Hi', cache_control: ttl }, { type: 'text', text: '<now>1</now>' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Hi' }, { type: 'text', text: '<now>1</now>' }] },
     { role: 'assistant', content: null, tool_calls: [{ id: 'toolu_1', type: 'function', function: { name: 'list', arguments: '{}' } }], reasoning_details: details },
     { role: 'tool', tool_call_id: 'toolu_1', content: [{ type: 'text', text: 'a.md', cache_control: ttl }] },
     { role: 'user', content: [{ type: 'text', text: '<now>2</now>' }] },
   ]);
   // The earlier request marked its end where cacheAt's mark now is, and wrote its tail the same way.
-  const was = type.build(spec({ request: { system: 'S', cacheTtl: '1h', tail: '<now>1</now>', messages: messages.slice(0, 3).map((m) => ({ ...m, parts: m.parts.filter((/** @type {any} */ p) => !p.now) })) } }, { cacheMarkers: ['anthropic/'] })).body;
-  assert.deepEqual(was.messages[3], body.messages[3]);
+  const was = type.build(spec({ request: { system: 'S', cacheTtl: '1h', tail: '<now>0</now>', messages: messages.slice(0, 1) } }, { cacheMarkers: ['anthropic/'] })).body;
+  assert.deepEqual(was.messages[1].content.slice(0, -1), body.messages[1].content);
   // Five minutes: no ttl.
   assert.deepEqual(type.build(spec({ request: { ...s.request, cacheTtl: '5m' } }, { cacheMarkers: ['anthropic/'] })).body.messages[0].content[0].cache_control, { type: 'ephemeral' });
   // A model outside the list: strings and no marks, exactly as before.
@@ -121,11 +121,24 @@ test("build with cacheMarkers: every content an array of blocks, marks on the sy
   assert.equal(plain.messages[0].content, 'S');
 });
 
-test("classify: OpenRouter's error carrying Anthropic's words about the thinking sent back is 'reasoning'", () => {
+test("build with cacheMarkers sends a top-level session_id: a hash of the system text and the model, the same for a turn's steps, other for another model or system; none for a model outside the list", () => {
+  const body = (/** @type {any} */ request, /** @type {any} */ model = {}) => type.build(spec({ request, model: { ...spec().model, ...model } }, { cacheMarkers: ['anthropic/'] })).body;
+  const a = body({ system: 'S', messages: [{ role: 'user', parts: [{ type: 'text', text: 'One' }] }] });
+  const b = body({ system: 'S', tail: '<now>2</now>', messages: [{ role: 'user', parts: [{ type: 'text', text: 'One' }, { type: 'text', text: 'More' }] }] });
+  assert.match(a.session_id, /^[A-Za-z0-9_-]{1,256}$/);
+  assert.equal(a.session_id, b.session_id, 'not the messages');
+  assert.notEqual(a.session_id, body({ system: 'S2', messages: [] }).session_id);
+  assert.notEqual(a.session_id, body({ system: 'S', messages: [] }, { providerId: 'anthropic/claude-haiku-5.5' }).session_id);
+  assert.ok(!a.session_id.includes('S'), 'a hash, not the text');
+  const plain = type.build(spec({ request: { system: 'S', messages: [] }, model: { ...spec().model, providerId: 'openai/gpt-6' } }, { cacheMarkers: ['anthropic/'] })).body;
+  assert.ok(!('session_id' in plain));
+  assert.ok(!('session_id' in type.build(spec({ request: { system: 'S', messages: [] } })).body), 'off for any other server');
+});
+
+test("classify: OpenRouter's error carrying Anthropic's words about the thinking sent back is no kind of its own (callOnce reads it, whatever the words)", () => {
   const raw = JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'messages.1.content.0: Invalid `signature` in `thinking` block.' } });
-  assert.equal(type.classify(400, JSON.stringify({ error: { code: 400, message: 'Provider returned error', metadata: { raw, provider_name: 'Anthropic' } } })), 'reasoning');
-  assert.equal(type.classify(400, JSON.stringify({ error: { code: 400, message: 'messages.1.content.0: `thinking` or `redacted_thinking` blocks in the latest assistant message cannot be modified.' } })), 'reasoning');
-  assert.equal(type.classify(400, JSON.stringify({ error: { code: 400, message: 'Provider returned error', metadata: { raw: 'max_tokens: too big' } } })), null);
+  assert.equal(type.classify(400, JSON.stringify({ error: { code: 400, message: 'Provider returned error', metadata: { raw, provider_name: 'Anthropic' } } })), null);
+  assert.equal(type.classify(400, JSON.stringify({ error: { code: 400, message: 'messages.1.content.0: `thinking` or `redacted_thinking` blocks in the latest assistant message cannot be modified.' } })), null);
 });
 
 test("OpenRouter's description marks Claude's requests for the cache, and its Claude models may keep the cache an hour", async () => {
