@@ -58,7 +58,8 @@ test('build: annai’s request as a Messages API request, with browser access an
   assert.deepEqual(body.tools, [{ name: 'report_color', description: 'Report a color.', input_schema: { type: 'object' } }]);
   assert.deepEqual(body.messages, [
     { role: 'user', content: [{ type: 'text', text: 'What color?' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] },
-    // Thinking is never sent back, even to the model that signed it: Claude 5.5 binds it to the conversation (phone-fixes-1 item 1).
+    // Thinking parts are never sent back, even to the model that signed it: Claude 5.5 binds it to the conversation (phone-fixes-1 item 1);
+    // only a native, the reply as it came, goes back (llm-anthropic-native.test.js).
     { role: 'assistant', content: [
       { type: 'tool_use', id: 'toolu_1', name: 'report_color', input: { color: 'red' } },
     ] },
@@ -124,10 +125,23 @@ test('read: text with cache reads and writes of both lifetimes, and the stop rea
   ]);
 });
 
+test("read: the stream's last usage repeats the cache write as one total; after a split by lifetime only the total less the hour's writes is 5-minute (the real check, 2026-10-30)", async () => {
+  // As the API sends it now: message_delta repeats input, cache read and the write's total, without the split.
+  const repeated = (await fixture('text.sse')).replace('"usage":{"output_tokens":7}', '"usage":{"input_tokens":50,"cache_creation_input_tokens":2000,"cache_read_input_tokens":8000,"output_tokens":7}');
+  const usage = (await read(repeated)).filter((e) => e.type === 'usage').map((e) => e.usage);
+  assert.deepEqual(usage, [{ input: 50, cacheRead: 8000, cacheWrite: 1500, cacheWrite1h: 500, output: 1 }, { input: 50, cacheRead: 8000, cacheWrite: 1500, output: 7 }]);
+  // A split given as zeros at the start and the real total at the end still counts the writes.
+  const late = repeated.replace('"ephemeral_5m_input_tokens":1500,"ephemeral_1h_input_tokens":500', '"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0');
+  assert.deepEqual((await read(late)).filter((e) => e.type === 'usage').map((e) => [e.usage.cacheWrite, e.usage.cacheWrite1h]), [[0, 0], [2000, undefined]]);
+  // A server that gives only the total, never the split, still has its writes counted.
+  const total = repeated.replace(',"cache_creation":{"ephemeral_5m_input_tokens":1500,"ephemeral_1h_input_tokens":500}', '');
+  assert.deepEqual((await read(total)).filter((e) => e.type === 'usage').map((e) => e.usage.cacheWrite), [2000, 2000]);
+});
+
 test('read: thinking as words alone, redacted thinking left out, and a tool call streamed in pieces', async () => {
   const events = await read(await fixture('thinking-tools.sse'));
-  // Kept for the Trace as words only: nothing goes back to the model (phone-fixes-1), so a signature, redacted thinking or an empty
-  // block (display "omitted") isn't kept to be carried in steps and backups (its review).
+  // Kept for the Trace as words only (phone-fixes-1), so a signature, redacted thinking or an empty block (display "omitted") isn't
+  // carried in parts, steps and backups (its review); what goes back within a turn is the native, never stored (keep-reasoning).
   assert.deepEqual(events.filter((e) => e.type === 'reasoning'), [{ type: 'reasoning', text: 'A red square. Call the tool.' }]);
   // Thinking is shown as it streams, so a long think never looks like a model that never started (spec §9.6).
   assert.equal(events.filter((e) => e.type === 'reasoning_delta').map((e) => e.text).join(''), 'A red square. Call the tool.');

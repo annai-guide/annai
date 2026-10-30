@@ -251,7 +251,7 @@ export class Halves {
         voice: () => this.koeState === 'text',
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
-        sendable: (messages) => this.#koeSendable(messages),
+        sendRule: () => this.#koeRule(),
         mark: (type) => (type === 'msg.user' ? { split: true } : MARKED.has(type) ? { half: 'koe' } : {}),
         // After a restart Kokoro takes up what is owed, and tells Koe; Koe's open calls are answered quietly.
         restart: async () => {
@@ -910,11 +910,14 @@ export class Halves {
     return /* en */ `${block}\n${view}\nKokoro's notes carry id="${this.nonce}".`;
   }
 
-  /** A photo reaches a text Koe only when every chat model of its list takes photos (plan decision 22). @param {import('../llm/contract.js').Message[]} messages */
-  async #koeSendable(messages) {
+  /**
+   * A photo reaches a text Koe only when every chat model of its list takes photos (plan decision 22): read as its turn begins, and kept to
+   * its end (the keep-reasoning design §3).
+   */
+  async #koeRule() {
     const cfg = await this.llm.config();
-    if (chatCandidates(cfg, KOE_CLASSIC).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return messages;
-    return messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: /* en */ '[a photo; Kokoro sees it]' } : p)) }));
+    if (chatCandidates(cfg, KOE_CLASSIC).every((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('image'))) return (/** @type {import('../llm/contract.js').Message[]} */ m) => m;
+    return (/** @type {import('../llm/contract.js').Message[]} */ messages) => messages.map((m) => ({ role: m.role, parts: m.parts.map((p) => (p.type === 'image' ? { type: /** @type {const} */ ('text'), text: /* en */ '[a photo; Kokoro sees it]' } : p)) }));
   }
 
   /** The user is watching Koe's turn (or its live session) that is answering now. */

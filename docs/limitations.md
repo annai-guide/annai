@@ -59,12 +59,19 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** someone on an older iPhone reports it.
 - **Approved:** 2026-10-28, the user: "Accept".
 
-### Claude's reasoning isn't carried between tool steps within a turn
-- **Kind:** deferred.
-- **What the user sees:** nothing on screen. Within one turn, a Claude model (Opus, Sonnet, Haiku) plans each tool step from what it sees, without the reasoning it wrote at the step before. Anthropic's documentation calls passing that reasoning back "Required" within a tool turn, for reasoning quality, though the API accepts a request without it.
-- **Why:** annai changes a request between steps (each step's now block, and each half's and tidy-up's own instructions). Anthropic binds a thinking block to everything before it, so every block sent back was refused with a 400, which put Kokoro on weak fallback models. So annai stopped sending thinking back (anthropic-messages 0.4.1).
-- **Revisit when:** next, after the bookings plans. Make each turn's requests append-only (keep each step's now block, and freeze the instructions and tools within a turn), then send Claude's thinking back again.
-- **Approved:** 2026-10-28, the user: "Defer, do it next".
+### Claude stops getting its earlier thinking for the rest of a turn after a rare mid-turn change
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. A few rare things change part of a request after Claude has thought about it: a photo past the model's photo limit (the oldest becomes a stub), a refused photo replaced by a smaller copy, a heard line whose words are written down after it was sent, or Koe's window moving on in the middle of its turn. Claude would refuse its earlier thinking then, so annai sends none for the rest of that turn, and Claude plans each remaining step from what it can see, as it did before. The Trace counts it on the request.
+- **Why:** making each of these append-only too means more code in several places, for something that happens a few times a trip at most.
+- **Revisit when:** the Trace shows thinking stopped this way often.
+- **Approved:** 2026-10-29, the user: "Accept (Recommended)".
+
+### A very long turn stops carrying Claude's thinking after about 25 steps
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 32 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at the 1.3 KB a step the real check measured (2026-10-30), a 50-step turn would add about 1.6 MB. The limit keeps a turn's extra near 390 KB.
+- **Revisit when:** the Trace shows long turns stopping their thinking often, or long turns lose quality the user notices.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB: set to 32 KB on 2026-10-30, when the check measured about 1.3 KB a step instead of the 5 KB assumed.
 
 ### A repeated note can be said twice in live voice
 - **Kind:** known limitation.

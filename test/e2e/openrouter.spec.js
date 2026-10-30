@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone, pickProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
@@ -8,6 +9,8 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 // voice; its speech models go behind the phone's own dictation and the browser voice (the user, 2026-10-18:
 // "Add, behind phone"). OpenRouter is stood in for by a server on its own port; no request reaches the real one.
 
+/** The version the page names: the plugin's own, so a version bump doesn't break this test. */
+const ROUTER_VERSION = JSON.parse(readFileSync(new URL('../../plugins-official/provider-openrouter/annai-plugin.json', import.meta.url), 'utf8')).version;
 const clipPath = (/** @type {string} */ name) => fileURLToPath(new URL(`../fixtures/voice/${name}.wav`, import.meta.url));
 /** The stand-in voice's clip: a 0.3 s tone. */
 const wav = { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) };
@@ -239,7 +242,7 @@ test("OpenRouter's page has its plugin's sign-in in the key's place, the key fie
   await expect(conn.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
   await expect(conn.getByText('Sign in again for a new key, in place of the one saved.')).toBeVisible();
   await page.goto('/#/plugins/provider-openrouter');
-  await expect(page.getByText(/^A model provider · has code · version 2\.3\.2/)).toBeVisible();
+  await expect(page.getByText(new RegExp(`^A model provider · has code · version ${ROUTER_VERSION.replaceAll('.', '\\.')}`))).toBeVisible();
   if (browserName === 'webkit') return; // WebKit can't stand in for OpenRouter's sign-in; the unit tests cover the rest
   let authUrl = '';
   await page.route('https://openrouter.ai/auth**', (route) => {

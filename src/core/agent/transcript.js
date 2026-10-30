@@ -4,6 +4,7 @@ import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
 import { strayNote } from '../languages.js';
 import { handOverText } from '../handover.js';
+import { nativeExtra } from '../llm/contract.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -13,6 +14,7 @@ import { handOverText } from '../handover.js';
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('../types.js').Store} Store
  * @typedef {{ texts: Record<string, string>, images: Part[] }} Resolved
+ * @typedef {import('../llm/call.js').Native} Native
  * @typedef {'one' | 'kokoro' | 'koe'} HalfName  whose rules (the Koe and Kokoro design): Kokoro reads labelled blocks, Koe a window with Kokoro's notes
  */
 
@@ -55,6 +57,15 @@ export class Transcript {
   waiting = '';
   /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
   newestPhoto = false;
+  /**
+   * Where the latest turn began: the index of the last message before the first reply of its wake (the keep-reasoning design §7), -1 for
+   * none. Read at a turn's first step, it is where the previous turn began, which its requests mark for the cache (cacheAt).
+   */
+  turnStart = -1;
+  /** The wake of this half's last reply. @type {string | null} */
+  #lastWake = null;
+  /** What this half's next reply keeps for the rest of its turn: the now block its request ended with, and the reply as it came. @type {{ now: string, native: Native } | null} */
+  #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
@@ -103,6 +114,9 @@ export class Transcript {
       this.#last = [];
       this.#held = [];
       this.#since = [];
+      this.#carry = null;
+      this.turnStart = -1;
+      this.#lastWake = null;
       this.compaction = e.seq;
       this.from = e.seq;
       // Koe starts again with its window; Kokoro has the summary.
@@ -137,12 +151,24 @@ export class Transcript {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
-      // What the other half wrote while this reply was being made follows it, live and from the log alike.
-      const to = this.half !== 'one' && typeof d.context?.to === 'number' ? d.context.to : Infinity;
+      // What was written while this reply was being made (the other half's lines, or her own tools') follows it, live and from the log
+      // alike: the request had them nowhere, and a turn's requests only grow at the end (the keep-reasoning design §3).
+      const to = typeof d.context?.to === 'number' ? d.context.to : Infinity;
       const late = this.#since.filter((x) => x.seq > to);
       if (late.length) this.#unadd(late.flatMap((x) => x.parts));
       this.#since = [];
-      if (parts.length) this.#add('assistant', parts);
+      if (d.wake !== this.#lastWake) {
+        this.#lastWake = d.wake ?? null;
+        this.turnStart = this.messages.length - 1;
+      }
+      const keep = this.#carry;
+      this.#carry = null;
+      if (keep && parts.length) {
+        // The now block stays where it was sent, as it was sent (never escaped), and the reply as it came leads the reply's parts.
+        const last = this.messages.at(-1);
+        if (last?.role === 'user') this.messages[this.messages.length - 1] = { role: 'user', parts: [...last.parts, { type: 'text', text: keep.now, now: true }] };
+        this.#add('assistant', [{ type: 'native', ...keep.native }, ...parts]);
+      } else if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
       // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
@@ -318,14 +344,45 @@ export class Transcript {
     else this.messages.pop();
   }
 
-  /** An exchange starts with a user message that holds a line; results before the first line kept go with their calls. */
+  /** An exchange starts with a user message that holds a line (a kept now block is none); results before the first line kept go with their calls. */
   #window() {
-    const starts = this.messages.flatMap((m, i) => (m.role === 'user' && m.parts.some((p) => p.type === 'text') ? [i] : []));
+    const line = (/** @type {Part} */ p) => p.type === 'text' && !p.now;
+    const starts = this.messages.flatMap((m, i) => (m.role === 'user' && m.parts.some(line) ? [i] : []));
     if (starts.length < KOE_WINDOW + KOE_JUMP) return;
     const kept = this.messages.slice(starts[KOE_JUMP]);
     const parts = kept[0].parts;
-    kept[0] = { role: 'user', parts: parts.slice(parts.findIndex((p) => p.type === 'text')) };
+    kept[0] = { role: 'user', parts: parts.slice(parts.findIndex(line)) };
     this.messages = kept;
+    this.turnStart = Math.max(-1, this.turnStart - starts[KOE_JUMP]);
+  }
+
+  /**
+   * What this half's next own reply keeps for the rest of its turn (the keep-reasoning design §10): the now block its request ended with,
+   * placed at the end of the user message before the reply, and the reply as its provider returned it, first among its parts. null: nothing.
+   * @param {{ now: string, native: Native } | null} keep
+   */
+  carry(keep) {
+    this.#carry = keep;
+  }
+
+  /** The turn's kept now blocks and natives go: the turn ended, or it sends no more thinking (the design §5). */
+  dropKept() {
+    this.#carry = null;
+    const kept = (/** @type {Part} */ p) => p.type === 'native' || (p.type === 'text' && p.now);
+    if (!this.messages.some((m) => m.parts.some(kept))) return;
+    // Neither stands alone in a message (a now block ends a user message that holds lines or results; a native leads the reply's parts), so
+    // every message stays and no index moves.
+    this.messages = this.messages.map((m) => {
+      const parts = m.parts.filter((p) => !kept(p));
+      return parts.length === m.parts.length ? m : { role: m.role, parts };
+    });
+  }
+
+  /** How much the turn's kept now blocks and natives add to each request, in characters: a native only for what it adds beyond the parts it covers (nativeExtra). */
+  keptBytes() {
+    let n = 0;
+    for (const m of this.messages) m.parts.forEach((p, i) => { n += p.type === 'native' ? nativeExtra(m.parts, i) : p.type === 'text' && p.now ? p.text.length : 0; });
+    return n;
   }
 
   /** The heard segments here whose words aren't written down yet (spec §10.3). @returns {string[]} */
