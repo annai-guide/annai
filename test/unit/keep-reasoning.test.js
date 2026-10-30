@@ -466,3 +466,12 @@ test('13b. a Chat Completions model outside cacheMarkers sends what it always se
     assert.equal(typeof b.messages[0].content, 'string');
   }
 });
+
+test("the Trace's line for a request says how many earlier steps' thinking went back, or that none went as something before it changed", async () => {
+  const { traceSummary } = await import('../../src/ui/screens/trace.js');
+  const line = (/** @type {any} */ natives) => traceSummary({ type: 'net.request', data: { model: 'Claude Sonnet 5.5', outcome: 'ok', status: 200, ms: 900, bytes: 24000, natives } });
+  assert.equal(line({ sent: 2, changed: false }), 'Claude Sonnet 5.5 · ok (200) · 900 ms · 23 kB sent · thinking of 2 earlier steps sent back');
+  assert.equal(line({ sent: 1, changed: false }), 'Claude Sonnet 5.5 · ok (200) · 900 ms · 23 kB sent · thinking of 1 earlier step sent back');
+  assert.equal(line({ sent: 0, changed: true }), 'Claude Sonnet 5.5 · ok (200) · 900 ms · 23 kB sent · earlier thinking not sent: something before it changed');
+  assert.equal(line(undefined), 'Claude Sonnet 5.5 · ok (200) · 900 ms · 23 kB sent');
+});
