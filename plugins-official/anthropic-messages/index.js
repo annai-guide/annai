@@ -153,6 +153,8 @@ async function* read(res, sse, ProviderError) {
   let finished = false;
   /** A delta this doesn't read: the reply can't be rebuilt as it came. */
   let odd = false;
+  /** The cache write came split by lifetime: a later total only repeats it. */
+  let split = false;
   /** @type {Set<string>} */
   const cited = new Set();
   /** A source, once. @param {any} c */
@@ -174,7 +176,8 @@ async function* read(res, sse, ProviderError) {
       throw new ProviderError(TYPES[e.error?.type] ?? 'server', String(e.error?.message ?? 'The provider reported an error.'));
     } else if (type === 'message_start') {
       const u = e.message?.usage;
-      if (u) yield { type: 'usage', usage: usageOf(u) };
+      if (u?.cache_creation) split = true;
+      if (u) yield { type: 'usage', usage: usageOf(u, split) };
     } else if (type === 'content_block_start') {
       const b = structuredClone(e.content_block ?? {});
       blocks.set(e.index, b);
@@ -216,7 +219,8 @@ async function* read(res, sse, ProviderError) {
       else if (b?.type === 'server_tool_use') yield { type: 'provider', block: { type: 'server_tool_use', id: b.id, name: b.name, input: b.input } };
     } else if (type === 'message_delta') {
       if (e.delta?.stop_reason) stop = e.delta.stop_reason;
-      if (e.usage) yield { type: 'usage', usage: usageOf(e.usage) };
+      if (e.usage?.cache_creation) split = true;
+      if (e.usage) yield { type: 'usage', usage: usageOf(e.usage, split) };
     } else if (type === 'message_stop') {
       finished = true;
       break;
@@ -238,8 +242,12 @@ function parseArgs(json) {
   }
 }
 
-/** Anthropic usage, normalized; only the numbers this report gives. @param {any} u */
-function usageOf(u) {
+/**
+ * Anthropic usage, normalized; only the numbers this report gives. The API's last report repeats the cache write as one total, without
+ * the split by lifetime its first gave: once split, a total isn't taken for 5-minute writes (the real check, 2026-10-30).
+ * @param {any} u @param {boolean} [split] the stream already gave the write split
+ */
+function usageOf(u, split = false) {
   /** @type {Record<string, any>} */
   const out = {};
   if (u.server_tool_use && typeof u.server_tool_use === 'object') out.serverTools = { ...u.server_tool_use };
@@ -248,7 +256,7 @@ function usageOf(u) {
   if (u.cache_creation) {
     out.cacheWrite = u.cache_creation.ephemeral_5m_input_tokens ?? 0;
     out.cacheWrite1h = u.cache_creation.ephemeral_1h_input_tokens ?? 0;
-  } else if (typeof u.cache_creation_input_tokens === 'number') {
+  } else if (!split && typeof u.cache_creation_input_tokens === 'number') {
     out.cacheWrite = u.cache_creation_input_tokens;
   }
   if (typeof u.output_tokens === 'number') out.output = u.output_tokens;
