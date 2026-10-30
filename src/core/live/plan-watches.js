@@ -1,5 +1,5 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
-import { timeIn, validZone } from '../time.js';
+import { timeIn, validZone, instantAt } from '../time.js';
 import { bookingRef } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
@@ -53,9 +53,11 @@ const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
  * @returns {Watch[]}
  */
 export function planWatches(items, bookings, { fallbackTz }) {
+  const zone = (/** @type {any} */ it) => (validZone(it.start?.tz) ? it.start.tz : fallbackTz);
+  // Read as every screen reads a stored time (instantAt): a time with no offset is on its zone's clock.
   const timed = items
     .filter((x) => x.item && typeof x.item === 'object' && !Array.isArray(x.item) && x.item.kind !== 'all-day')
-    .map((x) => ({ ...x, at: Date.parse(x.item.start?.at ?? '') }))
+    .map((x) => ({ ...x, at: instantAt(x.item.start?.at, zone(x.item)) }))
     .filter((x) => Number.isFinite(x.at))
     .sort((a, b) => a.at - b.at);
   /** @type {Watch[]} */
@@ -64,12 +66,11 @@ export function planWatches(items, bookings, { fallbackTz }) {
   let prev = null;
   /** @type {Place[]} */
   const places = [];
-  const zone = (/** @type {any} */ it) => (validZone(it.start?.tz) ? it.start.tz : fallbackTz);
   for (const x of timed) {
     const it = x.item;
     const tz = zone(it);
     const title = String(it.title ?? slug(x.path));
-    const end = Date.parse(it.end?.at ?? '');
+    const end = instantAt(it.end?.at, validZone(it.end?.tz) ? it.end.tz : tz);
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const booking = bookings.get(bookingRef(it.booking) ?? '') ?? null;
     const flight = it.kind === 'flight' || booking?.kind === 'flight';

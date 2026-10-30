@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, pastWelcome, startTrip } from './helpers.js';
+import { openApp, pastWelcome, startTrip, allFiles } from './helpers.js';
 import { startForgejo } from '../fakes/forgejo.js';
 
 // A git backup opens from its manifest alone, and its files come on Import (spec §12.3, §12.4).
@@ -32,6 +32,7 @@ async function wipedPhone(page, fj) {
   });
   await openApp(page);
   await startTrip(page, 'Big Sur');
+  await allFiles(page);
   await page.getByLabel('File path').fill('/notes/bixby.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await page.getByLabel('Content').fill('Bixby Bridge, 1932');

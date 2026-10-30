@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed } from './helpers.js';
+import { readFile } from 'node:fs/promises';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -16,7 +17,9 @@ async function startTrip(page, title) {
 test('create a trip, edit a note, and restore an earlier version', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur · Thanksgiving');
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/trip\.json/ })).toBeVisible();
+  await allFiles(page);
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
@@ -34,6 +37,7 @@ test('create a trip, edit a note, and restore an earlier version', async ({ page
 test('records are checked against their format before saving', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
+  await allFiles(page);
   await page.getByLabel('File path').fill('/plan/dinner.json');
   await page.getByRole('button', { name: 'Create' }).click();
   await page.getByLabel('Content').fill('{ "id": "dinner", "title": "Nepenthe" }');
@@ -48,6 +52,7 @@ test('upload a photo and see it', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await allFiles(page);
   await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
   await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 });
@@ -75,6 +80,7 @@ test('a bad trip name gets a plain explanation', async ({ page }) => {
 test('a full device says what to do, and nothing is half-saved', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
+  await allFiles(page);
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
@@ -108,6 +114,7 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await expect(card).toContainText('backed up just now');
   await expect(card).not.toContainText('changed since');
   await card.click();
+  await allFiles(page);
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
@@ -153,6 +160,7 @@ test('remove a trip: asks once, and again only when it changed after its last Ba
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
   expect(await storedImages(page)).toBe(1);
 
@@ -521,4 +529,58 @@ test("the folded dates keep their disclosure marker, and their tap is a phone's 
   const summary = page.locator('details.dates summary');
   expect(await summary.evaluate((el) => getComputedStyle(el).display)).toBe('list-item');
   expect((await summary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+});
+
+test("a trip's Files: each file's short name, real name and what it became; opening one; asking about one; adding one by hand", async ({ page }) => {
+  await openApp(page);
+  const trip = await startNamed(page, 'Anchorage');
+  await putFile(page, trip, '/files/flight.pdf', await readFile('test/fixtures/bookings/flight.pdf'), 'application/pdf');
+  await putFile(page, trip, '/files/new.pdf', Buffer.from('%PDF-1.4 new'), 'application/pdf');
+  await putFile(page, trip, '/files/view.png', PNG, 'image/png');
+  await writeRecords(page, trip, { write: {
+    '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: [] },
+    '/names.json': { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' },
+  } });
+  await page.reload();
+  const files = page.getByRole('region', { name: 'Files' });
+  await expect(files.locator('.trip-file')).toHaveCount(2); // the trip photo is among its photos, not here
+  const flight = files.locator('.trip-file').first();
+  await expect(flight.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
+  await expect(flight.locator('.real')).toHaveText('flight.pdf');
+  await expect(files.locator('.trip-file').nth(1)).toContainText('new.pdf');
+  await expect(files.locator('.trip-file').nth(1).locator('.became')).toHaveText('Nothing yet');
+  // What it became links to the booking's details.
+  await flight.getByRole('link', { name: 'A flight: ANNAI AIR AN 123' }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  await page.goBack();
+  // A tap opens the file.
+  await files.getByRole('link', { name: /new\.pdf/ }).click();
+  await expect(page.getByRole('heading', { name: '/files/new.pdf' })).toBeVisible();
+  await page.goBack();
+  // Adding one by hand.
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'ferry.txt', mimeType: 'text/plain', buffer: Buffer.from('Ferry TESTQ1 at 09:00') });
+  await expect(files.locator('.trip-file', { hasText: 'ferry.txt' })).toBeVisible();
+  // Asking about one: the file is a chip by its short name.
+  await flight.getByRole('button', { name: 'Ask Shiori about this' }).click();
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR flight · Nov 20']);
+});
+
+test('All files is folded below Files, and still has notes, memory, the raw records and the box that adds a file by path', async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Anchorage');
+  const fold = page.locator('details.all-files');
+  await expect(fold).not.toHaveAttribute('open', '');
+  await expect(page.getByLabel('File path')).toBeHidden();
+  // Below Files.
+  expect(await fold.evaluate((el) => Boolean(/** @type {Node} */ (document.querySelector('.trip-files')).compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await allFiles(page);
+  await expect(page.getByRole('link', { name: /^\/trip\.json/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^\/memory\.md/ })).toBeVisible();
+  await page.getByLabel('File path').fill('/notes/day1.md');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
+  await page.getByRole('main').getByRole('link', { name: 'Back to trip' }).click();
+  // The fold stays open while annai runs.
+  await expect(page.getByRole('link', { name: /^\/notes\/day1\.md/ })).toBeVisible();
 });

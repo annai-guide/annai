@@ -1,10 +1,12 @@
-import { validZone } from '../core/time.js';
+import { validZone, dayIn, instantAt } from '../core/time.js';
+import { checkOf } from '../core/bookings.js';
+import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
 import { t, tc, lang as screensLang, sameLanguage } from '../core/l10n.js';
 import { h } from './dom.js';
-import { num, money, size, when, relTime, zone, parseNum, numField, sentences } from '../core/intl.js';
+import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list } from '../core/intl.js';
 
 export * from '../core/intl.js';
 
@@ -57,36 +59,105 @@ export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/fi
 /** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
 export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
-/** The Booking screen for a trip's booking (spec §16.2). @param {string} id @param {string} path "/bookings/…" */
-export const bookingHref = (id, path) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}`;
+/** A trip's booking's details (spec §16.2). @param {string} id @param {string} path "/bookings/…" @param {string} [from] the screen its crumb goes back to (Now), else the Plan */
+export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/** A plan item's details. @param {string} id @param {string} path "/plan/…" @param {string} [from] as bookingHref's */
+export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
+/**
+ * Where a link to a trip's file goes: a booking's or a plan item's details, never its raw form (the user, 2026-10-28: "it just shows me
+ * the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
+ */
+export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
+/**
+ * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
+ * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]
+ */
+export const detailsHref = (id, r, from) => (r.booking && r.bookingPath ? bookingHref(id, r.bookingPath, from) : itemHref(id, r.path, from));
+/** A Plan row's name: a stay's own row is its check-in, and its end its check-out (goal 5). @param {import('../core/plan.js').PlanRow} r */
+export function rowName(r) {
+  const name = String(r.item.title ?? r.path);
+  if (r.from === 'checkout') return t`Check out · ${name}`;
+  return r.from === 'booking' && r.booking?.kind === 'lodging' ? t`Check in · ${name}` : name;
+}
 
-const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
+/** A booking's kind in words (a plan item's known kinds too). */
+export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
+
+/** Words for the keys Shiori writes most in a booking's `fields`; any other key is shown as written. */
+export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
+  flight: tc('booking')`Flight`, airline: t`Airline`, from: tc('booking')`From`, to: tc('booking')`To`, seat: t`Seat`, class: tc('booking')`Cabin`,
+  travellers: t`Travellers`, bags: t`Bags`, terminal: t`Terminal`, gate: t`Gate`, room: tc('booking')`Room`, guests: t`Guests`, nights: t`Nights`,
+  pickup: t`Pick-up`, dropoff: t`Drop-off`, train: tc('booking')`Train`, car: tc('train')`Car`, party: t`Party size`, notes: t`Notes`,
+});
+
+/** Each kind's facts in the order a person checks them; then any other field, as written. */
+const ORDER = /** @type {Record<string, string[]>} */ ({
+  flight: ['route', 'start', 'end', 'flight', 'airline', 'seat', 'travellers', 'bags', 'confirmation', 'cost'],
+  lodging: ['place', 'start', 'end', 'nights', 'room', 'guests', 'confirmation', 'cost'],
+});
+const OTHER = ['start', 'end', 'place', 'confirmation', 'cost'];
+
+/** A field's value in words: a list joined, anything else as text. @param {unknown} v */
+const valueText = (v) => (Array.isArray(v) ? list(v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)))) : typeof v === 'string' ? v : JSON.stringify(v) ?? '');
 
 /**
- * What a booking says, as label and value lines for the Booking screen (spec §16.2), in the order
- * a person checks them. Times are shown in their own zone, named.
- * @param {Record<string, any>} b @returns {[string, string][]}
+ * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
+ * its kind: times in their own zone, named (else the trip's, when given), and `unsure` on each field Shiori isn't sure of (checkOf).
+ * @param {any} b @param {{ fallbackTz?: string }} [o]
+ * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean }[]}
  */
-export function bookingLines(b) {
+export function bookingFacts(b, o = {}) {
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return [];
+  const fields = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
+  const marked = new Set(checkOf(b).fields);
   /** @param {any} time */
   const at = (time) => {
-    const ms = Date.parse(time?.at ?? '');
-    if (!Number.isFinite(ms) || !validZone(time?.tz)) return null;
-    return t`${when(ms, time.tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, time.tz)})`;
+    const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
+    const ms = tz ? instantAt(time?.at, tz) : NaN;
+    if (!Number.isFinite(ms) || !tz) return null;
+    return t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`;
   };
-  /** @type {[string, string][]} */
-  const lines = [[t`Kind`, BOOKING_KINDS[b.kind] ?? String(b.kind ?? '')]];
-  const start = at(b.start);
-  if (start) lines.push([tc('booking')`Starts`, start]);
-  const end = at(b.end);
-  if (end) lines.push([tc('booking')`Ends`, end]);
-  if (b.place?.name) lines.push([t`Place`, b.place.address ? tc('booking')`${b.place.name}, ${b.place.address}` : String(b.place.name)]);
-  if (b.confirmation) lines.push([t`Confirmation`, String(b.confirmation)]);
-  if (b.cost && Number.isFinite(b.cost.amount)) lines.push([t`Cost`, money(b.cost.amount, b.cost.currency)]);
-  if (b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields)) {
-    for (const [k, v] of Object.entries(b.fields)) lines.push([k, typeof v === 'string' ? v : JSON.stringify(v)]);
+  const stay = b.kind === 'lodging';
+  const flight = b.kind === 'flight';
+  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean } | null>} */
+  const own = {
+    route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter((x) => typeof x === 'string' && x).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
+    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, value: at(b.start) }),
+    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, value: at(b.end) }),
+    place: () => ({ label: t`Place`, value: b.place?.name ? (b.place.address ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
+    nights: () => {
+      if (Object.hasOwn(fields, 'nights')) return null; // hers, among the fields
+      const tz = (/** @type {any} */ x) => (validZone(x?.tz) ? x.tz : null);
+      if (!tz(b.start) || !tz(b.end)) return null;
+      const from = instantAt(b.start.at, tz(b.start));
+      const to = instantAt(b.end.at, tz(b.end));
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return null;
+      const days = Math.round((Date.parse(`${dayIn(to, tz(b.end))}T00:00:00Z`) - Date.parse(`${dayIn(from, tz(b.start))}T00:00:00Z`)) / 86_400_000);
+      return days > 0 ? { label: t`Nights`, value: num(days) } : null;
+    },
+    confirmation: () => ({ label: t`Confirmation`, value: b.confirmation ? String(b.confirmation) : null }),
+    cost: () => ({ label: t`Cost`, value: b.cost && Number.isFinite(b.cost.amount) ? money(b.cost.amount, b.cost.currency) : null }),
+  };
+  /** @type {ReturnType<typeof bookingFacts>} */
+  const out = [];
+  // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen.
+  const shown = new Set(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []);
+  for (const key of ORDER[b.kind] ?? OTHER) {
+    if (Object.hasOwn(own, key)) {
+      const f = own[key]();
+      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key) });
+      if (key !== 'nights' || !Object.hasOwn(fields, 'nights')) continue;
+    }
+    if (!Object.hasOwn(fields, key)) continue;
+    shown.add(key);
+    out.push({ key, label: FIELD_WORDS[key], value: valueText(fields[key]), unsure: marked.has(key) });
   }
-  return lines;
+  for (const [key, v] of Object.entries(fields)) {
+    if (shown.has(key)) continue;
+    const words = Object.hasOwn(FIELD_WORDS, key) ? FIELD_WORDS[key] : null;
+    out.push({ key, label: words ?? key, value: valueText(v), ...(words ? {} : { lang: /** @type {const} */ ('en') }), unsure: marked.has(key) });
+  }
+  return out;
 }
 
 /** A day as YYYY-MM-DD in this device's own zone, not UTC's. @param {number} ms */

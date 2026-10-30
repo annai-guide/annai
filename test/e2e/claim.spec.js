@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, startTrip, allFiles } from './helpers.js';
 
 // A page loaded past the service worker that the worker doesn't take (spec §5.3). Playwright gives the page a user
 // activation (navigator.userActivation.hasBeenActive) when it traces, evaluates or checks a locator, which annai reads as
@@ -71,6 +71,7 @@ function countLoads(page) {
 
 /** hello's check runs: a /hello/*.json file without a greeting is refused. @param {import('@playwright/test').Page} page */
 async function helloRuns(page) {
+  await allFiles(page);
   await page.getByLabel('File path').fill('/hello/a.json');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('alert')).toContainText('greeting', { timeout: 15_000 });
@@ -155,6 +156,7 @@ test('annai never reloads itself over what the user has started: a page not take
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Page.reload', { ignoreCache: true });
   // Typing, within the few seconds annai waits to be taken.
+  await allFiles(page);
   await page.getByLabel('File path').click();
   await page.keyboard.type('/hello/a.json');
 

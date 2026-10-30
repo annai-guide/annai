@@ -4,7 +4,12 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, num, list, sentences, dateRange, fileHref, pathParts, authorName } from '../format.js';
+import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName } from '../format.js';
+import { fileRows } from '../../core/trip-files.js';
+import { readNames } from '../../core/names.js';
+import { filesToRead } from '../../core/handover.js';
+import { PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
+import { askAboutButton } from '../composer.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -50,9 +55,68 @@ export async function renderTrip(ctx, route) {
         : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
     extra,
+    await filesSection(ctx, id, files),
     await packPanel(ctx, id),
-    fileList(id, files),
-    newFile(ctx, id));
+    // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one (My call 5).
+    allFiles(id, fileList(id, files), newFile(ctx, id)));
+}
+
+/** The trips whose All files is open, kept while annai runs: adding a file redraws the screen, and the fold stays as it was. */
+const unfolded = new Set();
+/** @param {string} id @param {...HTMLElement} parts */
+function allFiles(id, ...parts) {
+  const fold = h('details', { class: 'all-files', open: unfolded.has(id) }, h('summary', { text: t`All files` }), ...parts);
+  fold.addEventListener('toggle', () => (fold.open ? unfolded.add(id) : unfolded.delete(id)));
+  return fold;
+}
+
+/** What a file became, in words: a booking by its kind. */
+const BECAME = /** @type {Record<string, (title: string) => string>} */ ({
+  flight: (x) => t`A flight: ${x}`, lodging: (x) => t`A stay: ${x}`, car: (x) => t`A car: ${x}`, rail: (x) => t`A train: ${x}`,
+  event: (x) => t`An event: ${x}`, restaurant: (x) => t`A restaurant: ${x}`, other: (x) => t`A booking: ${x}`,
+});
+
+/**
+ * The trip's Files (the bookings-and-trips design, goal 8): each file kept with it by Shiori's short name, its real name beneath, and what
+ * it became, a booking linking to its details; a tap opens the file, and each can be asked about. Photos are the trip's photos, not
+ * listed here (My call 4). At its foot, the user adds photos or files by hand. @param {any} ctx @param {string} id @param {any[]} files
+ */
+async function filesSection(ctx, id, files) {
+  /** @param {string} prefix @param {RegExp} shape */
+  const records = async (prefix, shape) => Promise.all(files.filter((f) => f.path.startsWith(prefix) && shape.test(f.path))
+    .map(async (f) => ({ path: f.path, value: await ctx.ws.readJSON(id, f.path).catch(() => null), source: f.source })));
+  const rows = fileRows({
+    files,
+    bookings: (await records('/bookings/', BOOKING_FILE)).map((x) => ({ path: x.path, booking: x.value })),
+    items: (await records('/plan/', PLAN_FILE)).map((x) => ({ path: x.path, item: x.value, source: x.source })),
+    names: await readNames(ctx.ws, id),
+    toRead: await filesToRead(ctx.store, id),
+  });
+  return h('section', { class: 'trip-files', 'aria-label': t`Files` },
+    h('h2', { class: 'section', text: t`Files` }),
+    rows.length ? h('ul', { class: 'file-list' }, ...rows.map((r) => h('li', { class: 'trip-file' },
+      h('a', { class: 'file-row', href: fileHref(id, r.path) },
+        h('span', { class: 'name', dir: 'auto', text: r.name }),
+        r.name !== r.real ? h('span', { class: 'sub real', dir: 'ltr', text: r.real }) : null),
+      h('span', { class: 'sub became' }, ...becameParts(id, r.became)),
+      askAboutButton(ctx, { scope: id, path: r.path, name: r.name })))) : h('p', { class: 'empty', text: t`No files yet.` }),
+    adders(ctx, id));
+}
+
+/** What a file became, as words and links. @param {string} id @param {import('../../core/trip-files.js').Became[]} became */
+function becameParts(id, became) {
+  /** @type {(HTMLElement | string)[]} */
+  const out = [];
+  let planned = false;
+  for (const b of became) {
+    if (b.kind === 'booking') out.push(h('a', { href: bookingHref(id, b.path), dir: 'auto' }, (BECAME[b.bookingKind] ?? BECAME.other)(b.title || b.path.split('/').pop() || '')));
+    else if (b.kind !== 'plan') out.push(b.kind === 'waiting' ? t`Waiting for Shiori to read it` : t`Nothing yet`);
+    else if (!planned) {
+      planned = true; // one line, however many events
+      out.push(t`Plan items from a calendar`);
+    }
+  }
+  return out.flatMap((x, i) => (i ? [' · ', x] : [x]));
 }
 
 /** @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */
@@ -154,25 +218,20 @@ function fileList(id, files) {
 function starter(path) {
   const base = path.split('/').pop()?.replace(/\.[^.]+$/, '') || 'item';
   if (path.startsWith('/plan/') && path.endsWith('.json')) return JSON.stringify({ id: base, title: base, fixed: false }, null, 2) + '\n';
-  if (path.startsWith('/bookings/') && path.endsWith('.json')) return JSON.stringify({ id: base, kind: 'other', status: 'unverified', source: '/files/' }, null, 2) + '\n';
+  if (path.startsWith('/bookings/') && path.endsWith('.json')) return JSON.stringify({ id: base, kind: 'other', status: 'unverified', source: '/files/', unsure: [] }, null, 2) + '\n';
   if (path.endsWith('.json')) return '{}\n';
   if (path.endsWith('.md')) return `# ${base}\n`;
   return '';
 }
 
-/** @param {any} ctx @param {string} id */
-function newFile(ctx, id) {
-  const path = h('input', { id: 'new-path', value: '/notes/', autocomplete: 'off', spellcheck: 'false' });
+/**
+ * Adds photos or files by hand, photos through ingest (spec §4.8), Shiori woken to read them (bringIn): the foot of Files.
+ * @param {any} ctx @param {string} id
+ */
+function adders(ctx, id) {
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
-  const show = (/** @type {any} */ e) => {
-    explainStorageFull(ctx, e);
-    // A schema's refusal is its English (decision 11), marked so.
-    const why = e instanceof ValidationError ? e.errors.join('; ') : '';
-    error.replaceChildren(...(why ? linkIn(t`That file doesn't match its format: ${why}`, h('span', { lang: 'en', text: why })) : [messageOf(e)]));
-    error.hidden = false;
-  };
   const status = h('p', { class: 'sub', role: 'status' });
-  /** Adds what was picked, photos through ingest (spec §4.8). @param {HTMLInputElement} input */
+  /** Adds what was picked. @param {HTMLInputElement} input */
   const adder = (input) => async () => {
     const files = [...(input.files ?? [])];
     input.value = '';
@@ -190,13 +249,33 @@ function newFile(ctx, id) {
         : paths.length === 1 ? t`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
     } catch (e) {
       status.textContent = '';
-      show(e);
+      explainStorageFull(ctx, e);
+      error.replaceChildren(messageOf(e));
+      error.hidden = false;
     }
   };
   const upload = h('input', { id: 'upload-file', type: 'file', multiple: true, class: 'visually-hidden' });
   upload.addEventListener('change', adder(upload));
   const camera = h('input', { id: 'take-photo', type: 'file', accept: 'image/*', capture: 'environment', class: 'visually-hidden' });
   camera.addEventListener('change', adder(camera));
+  return h('div', { class: 'adders' },
+    h('div', { class: 'acts' },
+      h('label', { class: 'btn', for: 'upload-file' }, t`Add photos or files`), upload,
+      h('label', { class: 'btn', for: 'take-photo' }, t`Take a photo`), camera),
+    status, error);
+}
+
+/** The box that adds a file by its path, with a starter for its format. @param {any} ctx @param {string} id */
+function newFile(ctx, id) {
+  const path = h('input', { id: 'new-path', value: '/notes/', autocomplete: 'off', spellcheck: 'false' });
+  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const show = (/** @type {any} */ e) => {
+    explainStorageFull(ctx, e);
+    // A schema's refusal is its English (decision 11), marked so.
+    const why = e instanceof ValidationError ? e.errors.join('; ') : '';
+    error.replaceChildren(...(why ? linkIn(t`That file doesn't match its format: ${why}`, h('span', { lang: 'en', text: why })) : [messageOf(e)]));
+    error.hidden = false;
+  };
   return h('form', {
     class: 'panel',
     onsubmit: async (/** @type {Event} */ e) => {
@@ -215,9 +294,5 @@ function newFile(ctx, id) {
   h('h2', { class: 'section', text: t`Add a file` }),
   field(t`File path`, path),
   error,
-  h('div', { class: 'acts' },
-    h('button', { class: 'btn pri', type: 'submit' }, t`Create`),
-    h('label', { class: 'btn', for: 'upload-file' }, t`Add photos or files`), upload,
-    h('label', { class: 'btn', for: 'take-photo' }, t`Take a photo`), camera),
-  status);
+  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Create`)));
 }

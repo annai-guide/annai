@@ -3,7 +3,7 @@
 // The booking files are synthetic (scripts/make-booking-fixtures.mjs).
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, savedBy, writeRecords } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const fixture = async (/** @type {string} */ name, /** @type {string} */ mimeType) => ({ name, mimeType, buffer: await readFile(new URL(`../fixtures/bookings/${name}`, import.meta.url)) });
@@ -13,7 +13,7 @@ const MESSAGES = '/b/v1/messages';
 /** A request as text, to find what annai chose (a stored file's path, a trip's id). @param {any} body */
 const asText = (body) => JSON.stringify(body ?? {});
 /** A booking she writes, from a file. @param {string} id @param {string} kind @param {string} source */
-const booking = (id, kind, source) => ({ id, kind, status: 'unverified', source, title: `${kind} ${id}` });
+const booking = (id, kind, source) => ({ id, kind, status: 'unverified', source, title: `${kind} ${id}`, unsure: [] });
 
 /** Shiori's main model on the stand-in (/b), and with reader, a utility model too (/u); no trip made. @param {import('@playwright/test').Page} page @param {string} origin @param {{ reader?: boolean }} [o] */
 async function setUp(page, origin, { reader = false } = {}) {
@@ -161,8 +161,8 @@ test('in a trip, a pasted confirmation email becomes a chip, then a text file in
     expect(asText(first.messages.at(-1))).toMatch(/The user handed you a file: \\"\/trip\/files\/pasted-[0-9-]+\.txt\\" \(text\/plain\)/);
     expect(asText(first.messages.at(-1))).not.toContain('Midnight Test Rentals'); // the email is a file she reads, not words in the message
     await page.goto(trip);
-    await expect(page.getByRole('link', { name: /\/files\/pasted-[0-9-]+\.txt/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /\/bookings\/car\.json/ })).toBeVisible();
+    // In the trip's Files, with what it became.
+    await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: /pasted-[0-9-]+\.txt/ })).toContainText('A car: car car');
   } finally {
     await llm.stop();
   }
@@ -252,4 +252,94 @@ test('a short paste stays words; a long one into an empty box becomes a chip, wh
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
   // Its lines are words with spaces between, never glued together (a one-line box drops line breaks).
   await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.trim().replace(/\s*\n\s*/g, ' '));
+});
+
+/** A flight booking in the open trip, with the seat she is unsure of; its details are open. @param {import('@playwright/test').Page} page */
+async function flightDetails(page) {
+  const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await writeRecords(page, trip, { write: { '/bookings/flight.json': { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: ['seat'], fields: { seat: '14C' }, start: { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' } } } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/flight.json')}`);
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  return trip;
+}
+
+test('Ask Shiori about this: the booking is a chip in the type box with Read it again under it; one tap sends it, and Shiori is asked about that booking', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [sse(anthropicToolReply([{ name: 'speak', input: { text: 'I read it again: seat 14C.' } }, { name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Anchorage');
+    await flightDetails(page);
+    await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR AN 123']);
+    await page.getByRole('button', { name: 'Read it again' }).click();
+    await expect(page.locator('.convo').getByText('I read it again: seat 14C.')).toBeVisible({ timeout: 60_000 });
+    // The chips cleared, and her request named that booking.
+    await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
+    const last = asText(llm.bodies(MESSAGES).at(-1).messages.at(-1));
+    expect(last).toContain('Read it again');
+    expect(last).toContain('The user is asking about the booking \\"/trip/bookings/flight.json\\"');
+    // The chip on the sent line opens the booking's details, never its raw JSON (the review of seeing-bookings, E1).
+    const chip = page.locator('.convo .chips.handed .attach-chip').first();
+    await expect(chip).toHaveAttribute('href', /\/booking\?path=/);
+    await chip.click();
+    await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+    await expect(page.locator('textarea')).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('with "the seat is 14D" typed under the chip, her patch fixes the seat', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/bookings/flight.json', changes: { fields: { seat: '14D' }, unsure: [] } } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'Seat 14D it is.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Anchorage');
+    const trip = await flightDetails(page);
+    await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
+    await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR AN 123']);
+    await page.getByLabel('Message to Shiori').fill('the seat is 14D');
+    // Typing hides Read it again: what is typed is sent, with the chip.
+    await expect(page.getByRole('button', { name: 'Read it again' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Seat 14D it is.')).toBeVisible({ timeout: 60_000 });
+    expect(asText(llm.bodies(MESSAGES)[0].messages.at(-1))).toContain('/trip/bookings/flight.json');
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/flight.json')}`);
+    await expect(page.locator('dl.facts')).toContainText('14D');
+    await expect(page.locator('dl.facts .chip.check')).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('once Shiori names a file, its chip, its Files row and its screen show the short name; its screen shows the real file name too', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' } } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'Named it.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Anchorage');
+    const trip = page.url();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('Named it.')).toBeVisible({ timeout: 60_000 });
+    // The chip on the user's line, drawn again: the short name, the real name as its title.
+    await page.goto(trip);
+    await page.goto('/#/talk');
+    const chip = page.locator('.convo .chips.handed .attach-chip');
+    await expect(chip.locator('.attach-name')).toHaveText(['ANNAI AIR flight · Nov 20']);
+    await expect(chip).toHaveAttribute('title', 'flight.pdf');
+    // Its Files row.
+    await page.goto(trip);
+    const row = page.getByRole('region', { name: 'Files' }).locator('.trip-file').first();
+    await expect(row.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
+    await expect(row.locator('.real')).toHaveText('flight.pdf');
+    // Its own screen: the short name, then the real file name and its path.
+    await row.getByRole('link').first().click();
+    await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
+    await expect(page.getByText('File name: flight.pdf')).toBeVisible();
+    await expect(page.getByText('/files/flight.pdf')).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
 });

@@ -177,6 +177,8 @@ This builds on phone-fixes-1 once it is merged (Back from the original, Claude r
 
 **Built: handing over** (the plan `docs/superpowers/plans/2026-10-28-handing-over.md`, 2026-10-28): goals 1 to 4 and 10's names as data, and My calls 2, 3, 4, 6, 7, 8 and 9. The + in the type box and pasted emails; the waiting space; Shiori's trip tools (start, open, list, move a file); a trip that needs only a name; the side task that reads a waiting file; Undo; Trips' Waiting with Shiori and files waiting to be read. The main spec says how (§4.3, §4.4, §4.5, §6.1, §7.2, §7.3, §16.2). Goals 5 to 9, the screens that show the bookings, are the seeing-bookings plan's; goals 11 and 12 were built by Reading files.
 
+**Built: seeing bookings** (the plan `docs/superpowers/plans/2026-10-28-seeing-bookings.md`, 2026-10-29): goals 5 to 9 and 10's display, and My calls 1, 4 and 5. A booking's uncertainty is per field (`unsure`), with no confirming step; every booking on its day on the Plan, with a line for each night of a stay and "Not on a day"; a tap opens details first (what Shiori read, the file's preview with Open the original, Ask Shiori about this with Read it again, Change it), for bookings and plan items; the trip's Files section with All files folded below; short names on chips, Files, Waiting with Shiori and a file's own screen. The main spec says how (§4.4, §7.3, §8, §15, §16.2).
+
 ## Out of scope here
 
 - The bug fixes from the same session (Claude's thinking blocks, model labels, the updates card, dragging on iPhone, Back navigation, the Language section). Those are batch phone-fixes-1.

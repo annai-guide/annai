@@ -97,3 +97,13 @@ test('another conversation opened while the files were kept: the message goes to
   assert.deepEqual([woken[0].kind, woken[0].scope, woken[0].text, woken[0].handed.map((/** @type {any} */ f) => f.path)], ['user', trip, '(files)', ['/trip/files/a.txt', '/trip/files/b.txt']]);
   assert.match(woken[0].handover, /^h-/);
 });
+
+test("a booking's chip is named by its title; its HandedFile is a reference", async () => {
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  assert.deepEqual(handedOf({ scope: 'trip-x', path: '/bookings/flight.json' }, { type: 'application/json', name: 'ANNAI AIR AN 123' }), { path: '/trip/bookings/flight.json', type: 'application/json', name: 'ANNAI AIR AN 123', new: false });
+  const { ctx, sent, trip, ws } = await phone();
+  await ws.write(trip, '/bookings/flight.json', { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: [] }, { author: 'user' });
+  await handOver(ctx, 'Read it again', [{ scope: trip, path: '/bookings/flight.json', name: 'ANNAI AIR AN 123' }]);
+  assert.deepEqual(sent[0].handed, [{ path: '/trip/bookings/flight.json', type: 'application/json', name: 'ANNAI AIR AN 123', new: false }]);
+  assert.equal(sent[0].text, 'Read it again');
+});

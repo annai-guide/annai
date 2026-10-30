@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, filterTrace, pastWelcome } from './helpers.js';
+import { openApp, filterTrace, pastWelcome, allFiles } from './helpers.js';
 import { startForgejo } from '../fakes/forgejo.js';
 
 const REPO = 'me/annai-backup';
@@ -39,6 +39,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await openApp(page);
     await page.getByLabel('Trip name').fill('Big Sur');
     await page.getByRole('button', { name: 'Start trip' }).click();
+    await allFiles(page);
     await page.getByLabel('File path').fill('/notes/bixby.md');
     await page.getByRole('button', { name: 'Create' }).click();
     await page.getByLabel('Content').fill('Bixby Bridge, 1932');
@@ -105,6 +106,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await expect(page.getByText("annai's next backup to that place builds on this one.")).toBeVisible();
     expect(sentFiles()).toBeGreaterThan(3);
     await page.getByRole('link', { name: 'Open Big Sur' }).click();
+    await allFiles(page);
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
     await page.getByRole('link', { name: 'Back to trip', exact: true }).click();

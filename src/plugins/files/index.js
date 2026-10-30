@@ -62,23 +62,10 @@ export function activate(annai) {
     return e;
   };
   /**
-   * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is
-   * stored and on the value as it will be read, so no wording of the text and no timing gets around it.
-   * note: what to tell her, once the write is done.
-   * @param {string} scope @param {string} path
+   * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is stored and on the value as
+   * it will be read, so no wording of the text and no timing gets around it. @param {string} scope @param {string} path
    */
-  const rule = (scope, path) => {
-    /** @type {{ note: string, guard?: (before: any, next: any) => any }} */
-    const r = { note: '' };
-    if (isBookingPath(scope, path)) {
-      r.guard = (before, next) => {
-        const { value, note } = shioriBooking(before, next);
-        r.note = note;
-        return value;
-      };
-    }
-    return r;
-  };
+  const guardOf = (scope, path) => (isBookingPath(scope, path) ? shioriBooking : undefined);
   /** @param {string} scope @param {string} prefix @param {string} shown the root as Shiori sees it */
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
   /** @param {string} path @param {any} call */
@@ -199,9 +186,8 @@ export function activate(annai) {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
-        const r = rule(scope, path);
-        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Wrote ${i.path} (${e.size} bytes).${r.note}`;
+        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        return `Wrote ${i.path} (${e.size} bytes).`;
       },
     },
     {
@@ -218,9 +204,8 @@ export function activate(annai) {
         const n = i.old ? now.split(i.old).length - 1 : 0;
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
-        const r = rule(scope, path);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Edited ${i.path}.${r.note}`;
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        return `Edited ${i.path}.`;
       }),
     },
     {
@@ -234,10 +219,9 @@ export function activate(annai) {
         // A merge patch that isn't an object would replace the whole file with it.
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
-        const r = rule(scope, path);
         // Her short names for files start with her first one (names.js): no write of an empty file first.
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: r.guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Patched ${i.path}.${r.note}`;
+        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        return `Patched ${i.path}.`;
       }),
     },
     {

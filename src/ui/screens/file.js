@@ -1,4 +1,5 @@
-import { h, crumb, t, asUser, field, twoStep, messageOf } from '../dom.js';
+import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
+import { readNames } from '../../core/names.js';
 import { isTextType } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -10,12 +11,15 @@ import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
 import { SYS_WAITING } from '../../core/scopes.js';
 import { dropWaiting } from '../../core/waiting.js';
+import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 
 /** @type {string | null} */
 let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
-const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, now: t`Now` });
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, item: t`Details`, now: t`Now` });
+/** The words of a screen a crumb goes back to (cameFrom's name). @param {string} name */
+export const backLabel = (name) => BACK[name] ?? t`Plan`;
 /**
  * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
  * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip (the review of phone-fixes-1).
@@ -44,14 +48,15 @@ export async function renderFile(ctx, route) {
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
-  const head = [h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`)), h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path))];
+  const crumbs = h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`));
+  const head = [crumbs, ...named(await readNames(ctx.ws, id), path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
   const { entry, bytes: content } = r;
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),
-    editor(ctx, id, entry, content),
+    await editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
       await ctx.ws.delete(id, path, { author: 'user' });
@@ -65,18 +70,31 @@ export async function renderFile(ctx, route) {
  * @param {any} ctx @param {string} path
  */
 async function waitingFile(ctx, path) {
-  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path })];
+  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), ...named(await readNames(ctx.ws, SYS_WAITING), path, h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path }))];
   const r = path.startsWith('/files/') ? await ctx.ws.read(SYS_WAITING, path) : undefined;
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file isn't waiting with Shiori any more.` }));
   const { entry, bytes } = r;
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), relTime(entry.modified)].join(' · ') }),
-    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : download(entry, bytes),
+    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes),
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
       const freed = await dropWaiting(ctx.ws, path);
       ctx.notices.toast(t`Deleted ${entry.path.split('/').pop() ?? ''}. ${size(freed)} freed.`);
       ctx.go('#/trips');
     })));
+}
+
+/**
+ * A file's heading: once Shiori has named it (goal 10), its short name, then its real file name and its path beneath; else as it was.
+ * @param {Record<string, string>} names @param {string} path @param {HTMLElement} plain the heading for a file she hasn't named
+ * @returns {HTMLElement[]}
+ */
+function named(names, path, plain) {
+  if (!Object.hasOwn(names, path)) return [plain];
+  const real = path.split('/').pop() ?? path;
+  return [h('h1', { class: 'title', dir: 'auto', text: names[path] }),
+    h('p', { class: 'sub' }, ...linkIn(t`File name: ${real}`, h('span', { class: 'mono', dir: 'ltr', text: real }))),
+    h('p', { class: 'sub mono', dir: 'ltr' }, ...pathParts(path))];
 }
 
 /** @param {any} ctx @param {string} id @param {any} entry @param {Uint8Array} content */
@@ -101,7 +119,23 @@ function editor(ctx, id, entry, content) {
     return h('div', { class: 'panel' }, field(t`Content`, area), errors, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: save }, t`Save`)));
   }
   if (entry.type.startsWith('image/')) return preview(ctx, id, entry, content);
+  if (entry.type === 'application/pdf') return pdfView(entry, content);
   return download(entry, content);
+}
+
+/**
+ * A PDF shown by the browser itself (Open the original: "shows the file itself"), where it has a viewer for one in a page (Chrome and
+ * Firefox say so; Safari's <img> drawing a PDF says it is Safari, which shows PDFs in frames); elsewhere its card, with Open (the
+ * browser's own handling of the file) and Download. @param {any} entry @param {Uint8Array} content
+ */
+async function pdfView(entry, content) {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  const url = (objectUrl = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (content)], { type: 'application/pdf' })));
+  const name = entry.path.split('/').pop() ?? entry.path;
+  const acts = h('div', { class: 'acts' }, h('a', { class: 'btn', href: url, target: '_blank', rel: 'noopener' }, t`Open`), download(entry, content));
+  // Open and Download stay under the frame too: a viewer that can't draw this one leaves a way to it.
+  if (navigator.pdfViewerEnabled || (await imgDrawsPdf())) return h('div', { class: 'original' }, h('iframe', { class: 'pdf-view', src: url, title: name }), acts);
+  return h('div', { class: 'original' }, fileCard({ name, type: entry.type, pages: pdfPages(content) }), acts);
 }
 
 /** A photo, a tap opening it full size. @param {any} ctx @param {string} id its trip, or the waiting space @param {any} entry @param {Uint8Array} content */
