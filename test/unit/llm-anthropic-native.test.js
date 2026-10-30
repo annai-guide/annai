@@ -120,11 +120,11 @@ test("build: a native's content in place of the parts it covers; two in one mess
   assert.equal(JSON.stringify(body).split('cache_control').length - 1, 2, 'the system and the end');
 });
 
-test("build: cacheAt marks that message's last block before any now block kept in it: three marks with the system and the end", () => {
+test("build: cacheAt marks that message's last block: three marks with the system and the end", () => {
   const s = spec({ request: { system: 'S', cacheTtl: '5m', cacheAt: 2, messages: [
     { role: 'user', parts: [{ type: 'text', text: 'Earlier' }] },
     { role: 'assistant', parts: [{ type: 'text', text: 'Yes.' }] },
-    { role: 'user', parts: [{ type: 'text', text: '[annai] a note' }, { type: 'tool_result', id: 't1', content: 'r' }, { type: 'text', text: '<now>1</now>', now: true }] },
+    { role: 'user', parts: [{ type: 'text', text: '[annai] a note' }, { type: 'tool_result', id: 't1', content: 'r' }] },
     { role: 'assistant', parts: [native([{ type: 'thinking', thinking: '', signature: 's' }], 1), { type: 'text', text: 'Ok.' }] },
     { role: 'user', parts: [{ type: 'text', text: 'Next' }] },
   ] } });
@@ -132,17 +132,17 @@ test("build: cacheAt marks that message's last block before any now block kept i
   assert.deepEqual(body.messages[2].content, [
     { type: 'tool_result', tool_use_id: 't1', content: 'r' },
     { type: 'text', text: '[annai] a note', cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: '<now>1</now>' },
   ]);
   assert.equal(JSON.stringify(body).split('cache_control').length - 1, 3);
   // As the earlier request marked it: its end, before its tail.
   const was = type.build(spec({ request: { system: 'S', cacheTtl: '5m', tail: '<now>1</now>', messages: s.request.messages.slice(0, 3).map((/** @type {any} */ m) => ({ ...m, parts: m.parts.filter((/** @type {any} */ p) => !p.now) })) } })).body;
-  assert.deepEqual(was.messages[2].content, body.messages[2].content);
+  assert.deepEqual(was.messages[2].content.slice(0, -1), body.messages[2].content);
 });
 
-test("classify: Claude refusing the thinking sent back is 'reasoning'", () => {
+test("classify: Claude refusing the thinking sent back is no kind of its own: callOnce reads a bad request that sent natives as that, whatever the words", () => {
   const body = (/** @type {string} */ msg) => JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: msg } });
-  assert.equal(type.classify(400, body('messages.3.content.0: Invalid `signature` in `thinking` block. The block is bound to a different conversation.')), 'reasoning');
-  assert.equal(type.classify(400, body('messages.1.content.0: `thinking` or `redacted_thinking` blocks in the latest assistant message cannot be modified. These blocks must remain as they were in the original response.')), 'reasoning');
+  assert.equal(type.classify(400, body('messages.3.content.0: Invalid `signature` in `thinking` block. The block is bound to a different conversation.')), 'bad-request');
+  assert.equal(type.classify(400, body('messages.1.content.0: `thinking` or `redacted_thinking` blocks in the latest assistant message cannot be modified. These blocks must remain as they were in the original response.')), 'bad-request');
   assert.equal(type.classify(400, body('max_tokens: must be positive')), 'bad-request');
+  assert.equal(type.classify(400, body('prompt is too long: 300000 tokens > 200000 maximum')), 'context', 'a size error goes its own way');
 });

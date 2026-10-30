@@ -360,3 +360,22 @@ test("the housekeeping estimate counts what the main models are sent: one photo 
   assert.equal(new Set(k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)).size, 1);
   assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction').length, 0, 'no tidy-up tried for copies it never sends');
 });
+
+test('requestBytes and estimateTokens count a native for what it adds beyond the parts it covers, not twice (the keep-reasoning review)', async () => {
+  const { requestBytes } = await import('../../src/core/agent/compaction.js');
+  const { estimateTokens } = await import('../../src/core/llm/fallback.js');
+  const page = 'P'.repeat(60_000);
+  const parts = [{ type: 'provider', block: { type: 'result', page }, model: 'm' }];
+  const user = { role: 'user', parts: [{ type: 'text', text: 'Hi' }] };
+  const bare = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts }] });
+  // The reply as the provider returned it holds the page again, and 20 KB of thinking.
+  const content = [{ type: 'thinking', thinking: '', signature: 'S'.repeat(20_000) }, { type: 'result', page }];
+  const kept = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts: [{ type: 'native', endpoint: 'e', content, covers: 1, prefix: 'p' }, ...parts] }] });
+  const extra = requestBytes(kept) - requestBytes(bare);
+  assert.ok(extra > 19_000 && extra < 21_000, `the native adds its signature, not the page again: ${extra}`);
+  const tokens = estimateTokens(kept) - estimateTokens(bare);
+  assert.ok(tokens > 5_000 && tokens < 6_500, `${tokens} tokens`);
+  // A reply with nothing to add counts as it did.
+  const same = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts: [{ type: 'native', endpoint: 'e', content: [{ type: 'result', page }], covers: 1, prefix: 'p' }, ...parts] }] });
+  assert.ok(requestBytes(same) - requestBytes(bare) < 200);
+});

@@ -5,7 +5,7 @@
  * came (a native: its content array), which annai sends back within the turn in place of the reply's parts: Claude 5.5 binds each
  * block to the system prompt, the tools and everything before it, its own reply's earlier blocks included, so only the reply exactly
  * as returned can go back (the keep-reasoning design §4). annai keeps the rest of the turn's requests as they were sent; a refusal
- * anyway is 'reasoning', and annai asks again without them.
+ * anyway is a bad request like another, and annai (callOnce) asks again without them, whatever the error's words (§8).
  */
 const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
@@ -13,10 +13,7 @@ const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequ
 const WHOLE = new Set(['end_turn', 'stop_sequence', 'tool_use', 'pause_turn']);
 /** The deltas read here: any other means a block might not be rebuilt as it came. */
 const DELTAS = new Set(['text_delta', 'thinking_delta', 'signature_delta', 'input_json_delta', 'citations_delta']);
-/** Claude refusing thinking blocks sent back (the preserved-thinking docs, 2026-10-29). */
-const BOUND = /Invalid `?signature`? in `?thinking`? block|\bthinking`?\b[^.]*\bcannot be modified\b/i;
-/** Marks on blocks of a request being built, for the cache markers to find after the messages are joined and sorted. */
-const NOW = Symbol('now');
+/** Marks the blocks of cacheAt's message, for its cache marker to find after the messages are joined and sorted. */
 const AT = Symbol('cacheAt');
 const TYPES = /** @type {Record<string, string>} */ ({
   authentication_error: 'auth', permission_error: 'auth', billing_error: 'credit', rate_limit_error: 'rate', overloaded_error: 'overloaded',
@@ -84,10 +81,10 @@ function build({ endpoint, model, key, tunables: t, request }) {
     mark(last.content, last.content.length - 1, request.cacheTtl);
     // Where the previous turn began, as the request then marked it: the next turn's cache entry, within reach (the keep-reasoning design §7).
     const at = body.messages.find((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b[AT]));
-    if (at) mark(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT] && !b[NOW]), request.cacheTtl);
+    if (at) mark(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT]), request.cacheTtl);
   }
   // The marks were for finding blocks: none is sent.
-  for (const m of body.messages) m.content = m.content.map((/** @type {any} */ b) => { const { [NOW]: _now, [AT]: _at, ...rest } = b; return rest; });
+  for (const m of body.messages) m.content = m.content.map((/** @type {any} */ b) => { const { [AT]: _at, ...rest } = b; return rest; });
   // The now block comes after the marker, so the cached prefix of this request is a prefix of the next one (spec §6.3).
   // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail.
   if (request.tail) {
@@ -123,7 +120,7 @@ function wire(messages, providerId, cacheAt) {
         covered--;
         return [];
       }
-      if (p.type === 'text') return [p.now ? { type: 'text', text: p.text, [NOW]: true } : { type: 'text', text: p.text }];
+      if (p.type === 'text') return [{ type: 'text', text: p.text }]; // a kept now block (now) is written as the tail was
       if (p.type === 'image') return [p.fileId ? { type: 'image', source: { type: 'file', file_id: p.fileId } } : { type: 'image', source: { type: 'base64', media_type: p.mediaType, data: p.data } }];
       if (p.type === 'document') return [{ type: 'document', source: { type: 'base64', media_type: p.mediaType, data: p.data }, ...(p.name ? { title: p.name } : {}) }];
       if (p.type === 'provider') return p.model === providerId ? [p.block] : [];
@@ -273,7 +270,6 @@ function classify(_status, body) {
   if (TYPES[e.type]) return TYPES[e.type];
   if (e.type !== 'invalid_request_error') return null;
   const m = String(e.message ?? '');
-  if (BOUND.test(m)) return 'reasoning';
   if (/prompt is too long|too many tokens|context/i.test(m)) return 'context';
   if (/credit balance/i.test(m)) return 'credit';
   if (/image/i.test(m)) return 'image';

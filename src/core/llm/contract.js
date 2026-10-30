@@ -74,7 +74,8 @@ import { list } from '../intl.js';
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten' | 'reasoning'} ErrorKind
  *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect;
  *   forgotten: the provider no longer has the kept turn a call continued (G2);
- *   reasoning: the provider refused the reasoning annai sent back (a native), so the same model is asked again without it (the keep-reasoning design §8)
+ *   reasoning: a bad request that sent natives, which may be the provider refusing them: callOnce makes it, never a plugin, and callRole asks the same
+ *   model again without them (the keep-reasoning design §8)
  */
 
 /** What a model and the log are told, by kind of error (spec §9.9): annai's English, whatever the screens' language. */
@@ -179,8 +180,8 @@ export function saidWords(s, kind, provider) {
   }
 }
 
-/** Every error kind, for checking one a plugin gives. */
-export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
+/** Every error kind a plugin may give; 'reasoning' is annai's own (callOnce makes it of a bad request that sent natives). */
+export const KINDS = new Set([...Object.keys(PLAIN).filter((k) => k !== 'reasoning'), 'redirect']);
 
 export class ProviderError extends Error {
   /**
@@ -379,6 +380,28 @@ export function portable(messages, modelKey) {
   }).filter((m) => m.parts.length);
 }
 
+/**
+ * What the native at parts[i] adds to a request beyond the parts it covers, in JSON characters: its size less theirs, at least 0 (the
+ * keep-reasoning design §6). A reply as its provider returned it holds the reply's parts again, so counting both would count them twice; what is
+ * left is the reasoning the parts don't hold. @param {Part[]} parts @param {number} i @returns {number}
+ */
+export function nativeExtra(parts, i) {
+  const p = /** @type {Extract<Part, { type: 'native' }>} */ (parts[i]);
+  let size = JSON.stringify(p.content).length;
+  for (const q of parts.slice(i + 1, i + 1 + p.covers)) size -= JSON.stringify(q).length;
+  return Math.max(0, size);
+}
+
+/**
+ * The characters a request's natives count twice when it is measured whole: each one's size less its extra (nativeExtra).
+ * @param {Message[]} messages
+ */
+export function nativeOverlap(messages) {
+  let n = 0;
+  for (const m of messages) m.parts.forEach((p, i) => { if (p.type === 'native') n += JSON.stringify(p.content).length - nativeExtra(m.parts, i); });
+  return n;
+}
+
 /** A tool-call id every provider accepts: letters, digits, "_" and "-", at most 64. @param {string} id */
 export function safeId(id) {
   return String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'call';
@@ -409,6 +432,9 @@ export function safeId(id) {
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
+ * @property {(c: { model: import('./config.js').Model, tunables: Record<string, any> }) => string} [nativeScope]  who of an endpoint's models can read
+ *   the natives one of them made (default: all of them): a string, equal for models that read each other's, which annai adds to the endpoint and key a
+ *   native is kept for, so a model outside the scope is sent exactly what it was before natives (the keep-reasoning review, F3)
  * @property {(body: string) => number | undefined} [retryAfter]  ms an error response's words ask to wait, when no header says
  * @property {(status: number, body: string, c: CallSpec) => string | null} [refusal]  an error response that is the model declining (a safety block):
  *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error. c: the call,
