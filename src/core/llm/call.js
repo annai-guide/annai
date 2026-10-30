@@ -5,7 +5,7 @@ import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { UPLOAD_TTL_S, MARGIN_MS } from './uploads.js';
-import { deleteTurn, lookTurn, keyPrint } from './kept.js';
+import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
@@ -20,6 +20,7 @@ import { anySignal } from '../signals.js';
  * @typedef {import('./contract.js').CallSpec} CallSpec
  * @typedef {import('./contract.js').Request} Request
  * @typedef {import('./contract.js').Part} Part
+ * @typedef {import('./contract.js').Message} Message
  * @typedef {import('./contract.js').Usage} Usage
  * @typedef {import('./contract.js').StreamEvent} StreamEvent
  * @typedef {import('./contract.js').StopReason} StopReason
@@ -27,8 +28,12 @@ import { anySignal } from '../signals.js';
  * @typedef {import('./config.js').Model} Model
  * @typedef {ReturnType<typeof import('./trace.js').modelTrace>} ModelTrace
  * @typedef {{ parts: Part[], text: string, usage: Usage, cost: number | undefined, stop: StopReason, model: string, logprobs?: { token: string, logprob: number }[],
- *   citations?: { url: string, title?: string }[], attribution?: Attribution }} Reply
+ *   citations?: { url: string, title?: string }[], attribution?: Attribution, native?: Native, natives?: 'changed' | 'refused' }} Reply
  *   attribution: what the provider asks shown of a grounded reply (G4), beside its parts: no model is sent it
+ *   native: the reply as the provider returned it, for its caller to send back within the turn (keepNative; the keep-reasoning design §4),
+ *   beside the parts and never stored; natives: the request's natives weren't sent, as something before one had changed ('changed'), or
+ *   the provider refused them and the same model answered without them ('refused', callRole): the turn sends no more (§5)
+ * @typedef {{ endpoint: string, content: any, covers: number, prefix: string }} Native
  * @typedef {{ source: string, text: string, links: { url: string, title?: string }[], html?: string }} Attribution
  * @typedef {(url: string, init: RequestInit) => Promise<Response>} Fetch
  */
@@ -48,6 +53,114 @@ export function withTail(request) {
   if (last?.role === 'user') messages[messages.length - 1] = { role: 'user', parts: [...last.parts, { type: 'text', text: tail }] };
   else messages.push({ role: 'user', parts: [{ type: 'text', text: tail }] });
   return { ...rest, messages };
+}
+
+/** The endpoint a native belongs to: the endpoint and its key, as kept turns tell them (kept.js keyPrint). @param {Endpoint} endpoint @param {string | null} key */
+export async function nativeKey(endpoint, key) {
+  return `${endpoint.id}|${await keyPrint(key, endpoint.baseUrl, endpoint.headers)}`;
+}
+
+/** @param {Message[]} messages */
+const holdsNatives = (messages) => messages.some((m) => m.parts.some((p) => p.type === 'native' || (p.type === 'text' && p.now)));
+
+/**
+ * The messages as an endpoint may get them (the keep-reasoning design §2, §4): no other endpoint's native, and a kept now block only where the
+ * reply right after it begins with one of this endpoint's. Messages stay where they are (portable drops the empty). @param {Message[]} messages @param {string} here
+ * @returns {Message[]}
+ */
+export function forEndpoint(messages, here) {
+  if (!holdsNatives(messages)) return messages;
+  return messages.map((m, i) => {
+    const next = messages[i + 1];
+    const first = next?.role === 'assistant' ? next.parts[0] : undefined;
+    const followed = first?.type === 'native' && first.endpoint === here;
+    const parts = m.parts.filter((p) => (p.type === 'native' ? p.endpoint === here : !(p.type === 'text' && p.now && !followed)));
+    return parts.length === m.parts.length ? m : { role: m.role, parts };
+  });
+}
+
+/** The messages without any native or kept now block. @param {Message[]} messages @returns {Message[]} */
+export function withoutNatives(messages) {
+  if (!holdsNatives(messages)) return messages;
+  return messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => p.type !== 'native' && !(p.type === 'text' && p.now)) }));
+}
+
+/** A part as the fingerprint of what came before a native counts it: what the provider is sent, photos by hash, no reasoning. @param {Part} p */
+function partPrint(p) {
+  switch (p.type) {
+    case 'text': return `t${p.text}`;
+    case 'image': return `i${p.hash ?? hash(String(p.data ?? ''))}`;
+    case 'document': return `d${p.mediaType}${p.hash ?? hash(String(p.data ?? ''))}`;
+    case 'audio': return `a${p.mediaType}${hash(String(p.data ?? ''))}`;
+    case 'speech': return `s${p.id}\u0001${p.text ?? ''}`;
+    case 'tool_call': return `c${p.id}\u0001${p.name}\u0001${JSON.stringify(p.input ?? null)}`;
+    case 'tool_result': return `r${p.id}\u0001${p.isError ? 1 : 0}${p.content}`;
+    case 'provider': return `p${JSON.stringify(p.block)}`;
+    case 'native': return `n${hash(JSON.stringify(p.content))}`;
+    default: return '';
+  }
+}
+
+/**
+ * Fingerprints of what a request sends before each place in it (the keep-reasoning design §5): the system text, the tools and the provider
+ * tools, then the messages, part by part. at(i, j) is everything before part j of message i; end() all of it, with the tail as the last
+ * text of the last message when that is the user's (where the plugin puts it). @param {Request} request @param {unknown[]} patches
+ */
+export function nativePrints(request, patches) {
+  const head = hash(JSON.stringify([request.system ?? '', request.tools ?? [], patches]));
+  /** The print after each message, and after each part of each message. @type {string[][]} */
+  const within = [];
+  /** @type {string[]} */
+  const after = [];
+  let run = head;
+  for (const m of request.messages) {
+    let cur = hash(`${run}\u0002${m.role}`);
+    const row = [cur];
+    for (const p of m.parts) {
+      const x = partPrint(p);
+      if (x) cur = hash(`${cur}\u0003${x}`);
+      row.push(cur);
+    }
+    within.push(row);
+    after.push(cur);
+    run = cur;
+  }
+  return {
+    /** @param {number} i @param {number} j */
+    at: (i, j) => (j === 0 ? (i === 0 ? head : after[i - 1]) : within[i][j]),
+    end: () => {
+      const last = request.messages.at(-1);
+      return request.tail && last?.role === 'user' ? hash(`${run}\u0003${partPrint({ type: 'text', text: request.tail })}`) : run;
+    },
+  };
+}
+
+/**
+ * The natives a request carries that still match what was sent before them, checked together: false when any no longer does (an earlier
+ * part changed), then none goes. @param {Request} request @param {unknown[]} patches @returns {{ count: number, ok: boolean }}
+ */
+function checkNatives(request, patches) {
+  let count = 0;
+  let ok = true;
+  /** @type {ReturnType<typeof nativePrints> | null} */
+  let prints = null;
+  request.messages.forEach((m, i) => m.parts.forEach((p, j) => {
+    if (p.type !== 'native') return;
+    count++;
+    prints ??= nativePrints(request, patches);
+    if (prints.at(i, j) !== p.prefix) ok = false;
+  }));
+  return { count, ok };
+}
+
+/**
+ * Where cacheAt's message is once portable has left out the messages a model can't read; undefined when it is one of them.
+ * @param {Message[]} messages before portable @param {number | undefined} at @param {string} modelKey
+ */
+function cacheAtAfter(messages, at, modelKey) {
+  if (at === undefined || at < 0 || at >= messages.length) return undefined;
+  if (!portable([messages[at]], modelKey).length) return undefined;
+  return messages.slice(0, at).filter((m) => portable([m], modelKey).length).length;
 }
 
 /**
@@ -128,20 +241,25 @@ async function billed(usage, tools, tally) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
- *   tally?: import('../workspace.js').Workspace }} c
+ *   tally?: import('../workspace.js').Workspace, keepNative?: boolean }} c
  *   firstOutputMs: how long to wait for the first output, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
  *   tally: where this device counts provider tools with a monthly allowance (billMonth)
+ *   keepNative: the reply as the provider returned it is wanted (Shiori's own turns: the keep-reasoning design §4)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
     if (/auth|key|token|secret|cookie|session|password/i.test(name)) trace?.secret(String(value).replace(/^(Bearer|Basic)\s+/i, ''));
   }
-  const base = type.tail ? request : withTail(request);
+  // Natives first, before a kept turn is matched or anything uploaded: only this endpoint's go, so other models see what they always saw.
+  const holds = holdsNatives(request.messages);
+  const here = keepNative || holds ? await nativeKey(endpoint, key) : '';
+  const mine = holds ? { ...request, messages: forEndpoint(request.messages, here) } : request;
+  const base = type.tail ? mine : withTail(mine);
   // The cache lifetime this model has, as its warmth counts it (spec §6.4).
   const timed = base.cacheTtl ? { ...base, cacheTtl: ttlFor(model, base.cacheTtl) } : base;
   const tunables = { ...endpoint.tunables, ...model.tunables };
@@ -164,8 +282,17 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     throw e;
   }
   const { request: sent, expires } = uploaded;
+  const { cacheAt: _, ...unmarked } = sent;
+  const cacheAt = cacheAtAfter(sent.messages, sent.cacheAt, model.providerId);
   /** @type {CallSpec} */
-  const spec = { endpoint, model, key, tunables, request: { ...sent, messages: portable(sent.messages, model.providerId) } };
+  const spec = { endpoint, model, key, tunables, request: { ...unmarked, messages: portable(sent.messages, model.providerId), ...(cacheAt !== undefined ? { cacheAt } : {}) } };
+  const patches = enabledProviderTools(model, request, endpoint).map((t) => t.patch);
+  // Each native must still follow what it was made after; when one doesn't, none goes this turn (the keep-reasoning design §5).
+  const own = holds ? checkNatives(spec.request, patches) : { count: 0, ok: true };
+  if (!own.ok) spec.request = { ...spec.request, messages: withoutNatives(spec.request.messages) };
+  const natives = own.count ? { sent: own.ok ? own.count : 0, changed: !own.ok } : null;
+  /** The reply as the provider returned it. @type {unknown} */
+  let native;
   if (keeping) {
     spec.keep = true;
     if (matched) spec.kept = matched;
@@ -223,6 +350,11 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       }
       return;
     }
+    if (ev.type === 'native') {
+      // Not output either: the reply as it came, for annai to send back. Nothing else is given it.
+      native = ev.content;
+      return;
+    }
     clearTimeout(t);
     t = setTimeout(late, firstOutputMs);
     if (firstMs === null && ev.type !== 'usage') firstMs = now() - started;
@@ -254,7 +386,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const audio = request.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'audio' ? [{ format: formatOf(p.mediaType) ?? p.mediaType, bytes: Math.floor((p.data.length * 3) / 4) - (p.data.match(/=*$/)?.[0].length ?? 0) }] : [])));
   const info = () => ({
     endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status, ms: now() - started, firstMs, usage, ...(audio.length ? { audio } : {}),
-    ...(spec.kept ? { kept: { from: spec.kept.from } } : {}), ...(bytes ? { bytes } : {}),
+    ...(spec.kept ? { kept: { from: spec.kept.from } } : {}), ...(bytes ? { bytes } : {}), ...(natives ? { natives } : {}),
   });
   try {
     if (type.run) {
@@ -265,7 +397,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       sameOrigin(endpoint, built.url); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
-      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, enabledProviderTools(model, request, endpoint).map((t) => t.patch)));
+      const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
@@ -295,6 +427,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       /* en */
       err = new ProviderError('timeout', `Its output stopped for ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`, { cause: e, said: { code: 'paused', seconds } });
     }
+    // A refusal of the reasoning when none was sent is a request it refused for something else.
+    if (err.kind === 'reasoning' && !natives?.sent) err.kind = 'bad-request';
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
     // What the provider had reported using, and what that costs: a call stopped part-way is billed for it (the second review of
     // phone-fixes-1). Searches it made count all the same.
@@ -344,7 +478,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
   const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools, started);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
-  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}), ...(attribution ? { attribution } : {}) };
+  const keptNative = keepNative && native !== undefined ? { native: { endpoint: here, content: native, covers: parts.length, prefix: nativePrints(spec.request, patches).end() } } : {};
+  return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}), ...(attribution ? { attribution } : {}), ...keptNative, ...(own.ok ? {} : { natives: /** @type {const} */ ('changed') }) };
 }
 
 /** A string's length in bytes as UTF-8, without copying it. @param {string} s */
