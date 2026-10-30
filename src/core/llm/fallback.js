@@ -1,8 +1,8 @@
-import { callOnce, enabledProviderTools } from './call.js';
+import { callOnce, enabledProviderTools, withoutNatives } from './call.js';
 import { t } from '../l10n.js';
 import { when, sentences } from '../intl.js';
 import { dayIn, timeIn, deviceZone } from '../time.js';
-import { ProviderError, portable, explain, explainPlain, saidWords } from './contract.js';
+import { ProviderError, portable, nativeExtra, explain, explainPlain, saidWords } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
 import { modelOf, endpointOf, providerOf, sendKey, abilityOf, CHAT_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_LEVELS } from './reasoning.js';
@@ -288,10 +288,10 @@ export function estimateTokens(request, modelKey) {
   let chars = (request.system ?? '').length + JSON.stringify(request.tools ?? []).length;
   let images = 0;
   for (const m of modelKey ? portable(request.messages, modelKey) : request.messages) {
-    for (const p of m.parts) {
+    m.parts.forEach((p, i) => {
       if (p.type === 'image') images++;
-      else chars += JSON.stringify(p).length;
-    }
+      else chars += p.type === 'native' ? nativeExtra(m.parts, i) : JSON.stringify(p).length;
+    });
   }
   return Math.ceil(chars / 3.5) + images * 1600 + (request.maxOutput ?? 0);
 }
@@ -410,6 +410,7 @@ function nextStep(err, retry) {
     case 'server':
       return retry < NETWORK_RETRIES.length ? { wait: NETWORK_RETRIES[retry] } : { bench: COOLDOWN_MS };
     case 'context':
+    case 'reasoning':
     case 'image':
     case 'upload':
     case 'bad-request':
@@ -425,8 +426,13 @@ function prefixed(reply, said) {
   const i = parts.findIndex((p) => p.type === 'text');
   if (i >= 0) parts[i] = { type: 'text', text: said + /** @type {any} */ (parts[i]).text };
   else parts.unshift({ type: 'text', text: said });
-  return { ...reply, parts, text: said + reply.text };
+  // What it is sent back as would not be what the provider wrote: no native (the keep-reasoning design §4).
+  const { native: _, ...rest } = reply;
+  return { ...rest, parts, text: said + reply.text };
 }
+
+/** A role's reasoning level: its own, else annai's default for it (spec §9.3). @param {ModelConfig} config @param {string} role */
+export const levelOf = (config, role) => config.roles?.[role]?.level ?? /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off';
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 /** The browser's word on the connection: false is reliable, true can be wrong (a network with no internet). */
@@ -451,7 +457,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
- *   askResting?: boolean }} c
+ *   askResting?: boolean, keepNative?: boolean }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
@@ -466,6 +472,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   read: after every model was tried, those passed over for a photo or PDF in the newest message are tried again, in order, each with what
  *   read makes of those files (§9.6; without it, as for plugins' calls, there is no second pass)
  *   readings: what the conversation has kept of its files, put in place of a file a model can't take wherever it is (§7.2)
+ *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are (round 6)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
@@ -473,7 +480,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  */
 export async function callRole(c) {
   const { role, config, types, bench, now = Date.now, sleep = defaultSleep, online = deviceOnline } = c;
-  const level = c.level ?? config.roles[role]?.level ?? /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off';
+  const level = c.level ?? levelOf(config, role);
   /** @type {Attempt[]} */
   const attempts = [];
   let request = c.request;
@@ -590,16 +597,19 @@ export async function callRole(c) {
     let plain = false;
     let whole = false;
     let again = false;
+    /** The provider refused the reasoning sent back: asked again without it (the keep-reasoning design §8). */
+    let unreasoned = false;
     /** This model's own request once a refused photo was repaired for it: never the next model's (round 10). @type {Request | null} */
     let repaired = null;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
       const asked = repaired ?? forModel(request);
-      let sendable = asked;
+      const unsent = unreasoned ? { ...asked, messages: withoutNatives(asked.messages) } : asked;
+      let sendable = unsent;
       if (c.speech) {
         try {
-          sendable = await c.speech(model, asked, plain, c.signal);
-          if (keeps) sendable = heardIds(asked, sendable);
+          sendable = await c.speech(model, unsent, plain, c.signal);
+          if (keeps) sendable = heardIds(unsent, sendable);
         } catch (e) {
           const said = /** @type {any} */ (e)?.said;
           attempts.push({ model: id, name: model.name, outcome: 'no-speech', ms: 0, error: String(/** @type {any} */ (e)?.message ?? e), ...(said ? { said } : {}) });
@@ -616,7 +626,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
@@ -626,7 +636,8 @@ export async function callRole(c) {
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
         if (restingAsked === id) bench.clear(id);
-        const full = said ? prefixed(reply, said) : reply;
+        const answered = unreasoned ? { ...reply, natives: /** @type {const} */ ('refused') } : reply;
+        const full = said ? prefixed(answered, said) : answered;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
         await record(model.name, full.text, reply.stop, reasoning, full.parts, reply.citations);
         return { reply: full, attempts, usage, cost, answeredBy: model.name, modelId: id, first, tried: byOf(model.name).tried };
@@ -650,6 +661,11 @@ export async function callRole(c) {
           said += err.partial;
           request = continueAfter(base, said);
           break;
+        }
+        if (err.kind === 'reasoning' && !unreasoned) {
+          // The provider refused the reasoning annai sent back: the same model, once more, without it; no rest, and no other model.
+          unreasoned = true;
+          continue;
         }
         if (err.again && !again) {
           // The server said it lacked the kept turn, and has it: a passing error. The same chained call, once more.

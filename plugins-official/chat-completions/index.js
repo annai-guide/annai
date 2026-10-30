@@ -3,7 +3,9 @@
  * chat completion out. Used by OpenAI, OpenRouter, Gemini's OpenAI-compatible endpoint, Groq,
  * DeepSeek, Mistral and local servers; their differences are tunables (spec §9.2). Audio a model takes goes as
  * input_audio (OpenRouter, Gemini, OpenAI's audio models). A server that never streams answers with one
- * whole JSON completion, which is read as the same events (item 24, 2026-10-18).
+ * whole JSON completion, which is read as the same events (item 24, 2026-10-18). Claude's reasoning_details (through OpenRouter)
+ * are kept as they came and given as a native, which annai sends back on the reply's message within the turn; the models
+ * cacheMarkers names get Anthropic's cache markers, every content an array of blocks (the keep-reasoning design §9).
  */
 const TUNABLES = Object.freeze({
   path: '/chat/completions',
@@ -18,7 +20,14 @@ const TUNABLES = Object.freeze({
   // refuses such a call, and its docs give a stand-in thought signature for it. Gemini's description sets it.
   standInCallExtra: null,
   audioIn: ['wav', 'mp3'], // what input_audio takes: OpenAI's and Gemini's take only these; OpenRouter's say more (spec §10.6)
+  // Model-id prefixes whose requests carry Anthropic's cache_control marks on content blocks, every content then an array of blocks:
+  // Claude through a server that passes them on (OpenRouter's description sets ["anthropic/"]). Off for any other.
+  cacheMarkers: [],
 });
+/** The reasoning_details a native is kept for: Claude's, as OpenRouter gives them. */
+const CLAUDE = 'anthropic-claude-v1';
+/** Marks the blocks of cacheAt's message, for its cache marker to find. */
+const AT = Symbol('cacheAt');
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });
 const AUDIO = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/flac': 'flac', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/webm': 'webm', 'audio/mp4': 'm4a' });
@@ -31,6 +40,8 @@ export function activate(annai) {
     name: 'Chat Completions',
     tunables: TUNABLES,
     tail: true,
+    /** Claude's reasoning_details are read by Claude: the models one cacheMarkers prefix names share them; any other model has its own. @param {{ model: any, tunables: any }} c */
+    nativeScope: ({ model, tunables }) => markedBy(model, tunables) ?? String(model.providerId),
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res @param {any} c */
@@ -52,16 +63,53 @@ function auth(endpoint, key) {
   return { ...(key ? { authorization: `Bearer ${key}` } : {}), ...(endpoint.headers ?? {}) };
 }
 
+/** FNV-1a, two seeds in one pass: 64 bits as hex (the plugin's own copy; plugins import nothing from annai). @param {string} s */
+function hash(s) {
+  let a = 0x811c9dc5;
+  let b = 0x2166136a;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x01000193) >>> 0;
+  }
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
+}
+
+/** The cacheMarkers prefix a model's id starts with, or undefined. @param {any} model @param {any} t */
+function markedBy(model, t) {
+  return Array.isArray(t.cacheMarkers) ? t.cacheMarkers.find((/** @type {unknown} */ x) => typeof x === 'string' && x && String(model.providerId).startsWith(x)) : undefined;
+}
+
 /** @param {any} c */
 function build({ endpoint, model, key, tunables: t, request }) {
+  const marks = markedBy(model, t) !== undefined;
   /** @type {any[]} */
   const messages = [];
-  if (request.system) messages.push({ role: t.systemRole, content: request.system });
+  if (request.system) messages.push({ role: t.systemRole, content: marks ? [{ type: 'text', text: request.system }] : request.system });
   // The current turn starts after the last user message that isn't only tool results.
   const turn = request.messages.findLastIndex((/** @type {any} */ m) => m.role === 'user' && m.parts.some((/** @type {any} */ p) => p.type !== 'tool_result'));
-  for (const [i, m] of request.messages.entries()) messages.push(...wire(m, t, i > turn));
+  for (const [i, m] of request.messages.entries()) {
+    const out = wire(m, t, i > turn, marks);
+    if (i === request.cacheAt) for (const x of out) if (Array.isArray(x.content)) for (const b of x.content) b[AT] = true;
+    messages.push(...out);
+  }
+  if (marks && request.cacheTtl) {
+    // Anthropic's marks, as Anthropic Messages places them: the system, the end before the tail, and where the previous turn began.
+    const mark = { type: 'ephemeral', ...(request.cacheTtl === '1h' ? { ttl: '1h' } : {}) };
+    const put = (/** @type {any[]} */ blocks, /** @type {number} */ i) => { if (i >= 0) blocks[i] = { ...blocks[i], cache_control: mark }; };
+    if (request.system) put(messages[0].content, 0);
+    const end = messages.at(-1);
+    if (end && Array.isArray(end.content) && end !== messages[0]) put(end.content, end.content.length - 1);
+    const at = messages.findLast((/** @type {any} */ x) => Array.isArray(x.content) && x.content.some((/** @type {any} */ b) => b[AT]));
+    if (at) put(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT]));
+  }
+  for (const x of messages) if (Array.isArray(x.content)) x.content = x.content.map((/** @type {any} */ b) => { const { [AT]: _at, ...rest } = b; return rest; });
   /** @type {Record<string, any>} */
   const body = { model: model.providerId, messages, stream: true };
+  // OpenRouter keeps a conversation on one upstream account by this key, so a turn's steps find their cache and Claude's thinking is not
+  // dropped by another account: a hash of the system text alone (it keeps stickiness per model itself, and a fallback between Claude models
+  // must stay on the key), stable while the cache could hit and nothing of the conversation.
+  if (marks) body.session_id = `annai-${hash(request.system ?? '')}`;
   if (t.usageInStream) body.stream_options = { include_usage: true };
   const max = request.maxOutput ?? model.maxOutput;
   if (max) body[t.maxTokensField] = max;
@@ -77,29 +125,34 @@ function build({ endpoint, model, key, tunables: t, request }) {
     body.logprobs = true;
     body.top_logprobs = request.logprobs;
   }
-  if (request.tail) addTail(messages, request.tail);
+  if (request.tail) addTail(messages, request.tail, marks);
   return { url: join(endpoint.baseUrl, t.path), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body };
 }
 
-/** The now block, last: on the final user message, or as its own after tool results (spec §6.3). @param {any[]} messages @param {string} tail */
-function addTail(messages, tail) {
+/**
+ * The now block, last: on the final user message, or as its own after tool results (spec §6.3); a block of its own where every content is
+ * an array (cacheMarkers). A kept now block is written the same way (now). @param {any[]} messages @param {string} tail @param {boolean} [blocks]
+ */
+function addTail(messages, tail, blocks = false) {
   const last = messages.at(-1);
-  if (last?.role !== 'user') messages.push({ role: 'user', content: tail });
+  if (last?.role !== 'user') messages.push({ role: 'user', content: blocks ? [{ type: 'text', text: tail }] : tail });
   else if (typeof last.content === 'string') last.content = `${last.content}\n\n${tail}`;
   else last.content.push({ type: 'text', text: tail });
 }
 
 /**
- * One of annai's messages as chat messages: tool results become "tool" messages ahead of the rest.
- * @param {any} m @param {any} t @param {boolean} [current] it is in the current turn
+ * One of annai's messages as chat messages: tool results become "tool" messages ahead of the rest. A native's reasoning_details go on its
+ * reply's message; a kept now block goes as addTail wrote it as the request's tail. blocks: every content an array of blocks (cacheMarkers).
+ * @param {any} m @param {any} t @param {boolean} [current] it is in the current turn @param {boolean} [blocks]
  */
-function wire(m, t, current = false) {
+function wire(m, t, current = false, blocks = false) {
   if (m.role === 'assistant') {
+    const native = m.parts.find((/** @type {any} */ p) => p.type === 'native');
     const text = m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).join('');
     const calls = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
     if (!text && !calls.length) return []; // only reasoning: an empty assistant message is refused by some servers
     /** @type {any} */
-    const out = { role: 'assistant', content: text || null };
+    const out = { role: 'assistant', content: text ? (blocks ? [{ type: 'text', text }] : text) : null };
     if (calls.length) {
       // The stand-in only for a reply another model wrote: one of the provider's own carries its signature on its first call.
       const stand = current && isObject(t.standInCallExtra) && !calls.some((/** @type {any} */ c) => isObject(c.extra));
@@ -108,12 +161,24 @@ function wire(m, t, current = false) {
         ...(isObject(c.extra) ? { extra_content: c.extra } : stand ? { extra_content: t.standInCallExtra } : {}),
       }));
     }
+    if (native && Array.isArray(native.content)) out.reasoning_details = native.content;
     return [out];
   }
-  const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: p.content }));
-  const rest = m.parts.filter((/** @type {any} */ p) => p.type === 'text' || p.type === 'image' || p.type === 'document' || p.type === 'audio');
-  if (!rest.length) return results;
-  const content = rest.every((/** @type {any} */ p) => p.type === 'text')
+  const results = m.parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => ({ role: 'tool', tool_call_id: p.id, content: blocks ? [{ type: 'text', text: p.content }] : p.content }));
+  const rest = m.parts.filter((/** @type {any} */ p) => (p.type === 'text' && !p.now) || p.type === 'image' || p.type === 'document' || p.type === 'audio');
+  const now = m.parts.find((/** @type {any} */ p) => p.type === 'text' && p.now);
+  /** @type {any[]} */
+  const out = [...results];
+  if (rest.length) out.push({ role: 'user', content: words(rest, t, blocks) });
+  if (now) {
+    addTail(out, now.text, blocks);
+  }
+  return out;
+}
+
+/** A user message's parts as its content: its words joined, or blocks. @param {any[]} rest @param {any} t @param {boolean} blocks */
+function words(rest, t, blocks) {
+  return !blocks && rest.every((/** @type {any} */ p) => p.type === 'text')
     ? rest.map((/** @type {any} */ p) => p.text).join('\n')
     : rest.map((/** @type {any} */ p) => {
       if (p.type === 'text') return { type: 'text', text: p.text };
@@ -121,7 +186,6 @@ function wire(m, t, current = false) {
       if (p.type === 'audio') return { type: 'input_audio', input_audio: { data: p.data, format: AUDIO[p.mediaType] ?? 'wav' } };
       return { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}`, ...(t.imageDetail ? { detail: t.imageDetail } : {}) } };
     });
-  return [...results, { role: 'user', content }];
 }
 
 /**
@@ -147,6 +211,8 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
   let finish = null;
   let done = false;
   let sentLogprobs = false;
+  /** Claude's reasoning_details, by index, joined as they come. @type {Map<number, Record<string, any>>} */
+  const details = new Map();
   const flush = () => {
     const r = reasoning;
     reasoning = '';
@@ -178,6 +244,7 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
       reasoning += r;
       yield { type: 'reasoning_delta', text: r };
     }
+    if (Array.isArray(d.reasoning_details)) for (const x of d.reasoning_details) gather(details, x);
     if (typeof d.content === 'string' && d.content) {
       yield* flush();
       yield { type: 'text', text: d.content };
@@ -207,7 +274,37 @@ async function* read(res, { tunables: t }, { sse, ProviderError, errorFromRespon
   for (const [i, c] of [...calls].sort((a, b) => a[0] - b[0])) {
     yield { type: 'tool_call', id: c.id || `call_${i}`, name: c.name, input: parseArgs(c.args), ...(c.extra ? { extra: c.extra } : {}) };
   }
+  const native = nativeOf([...details].sort((a, b) => a[0] - b[0]).map(([, x]) => x), finish ?? 'stop');
+  if (native) yield native;
   yield { type: 'stop', reason: STOP[finish ?? 'stop'] ?? 'other' };
+}
+
+/**
+ * One piece of reasoning_details joined into what its index holds: text, summary and data concatenated, the rest kept as it arrives
+ * (OpenRouter's "Preserving Reasoning": the whole sequence is the chunks concatenated in order). @param {Map<number, Record<string, any>>} into @param {any} x
+ */
+function gather(into, x) {
+  if (!isObject(x)) return;
+  const i = typeof x.index === 'number' ? x.index : 0;
+  const cur = into.get(i) ?? {};
+  for (const [k, v] of Object.entries(x)) {
+    if ((k === 'text' || k === 'summary' || k === 'data') && typeof v === 'string') cur[k] = (typeof cur[k] === 'string' ? cur[k] : '') + v;
+    else if (v !== undefined && v !== null) cur[k] = v;
+  }
+  into.set(i, cur);
+}
+
+/**
+ * The native of a finished reply (stop or tool_calls): Claude's reasoning_details, when every one is its format, one is signed or
+ * encrypted, and none was blanked in the stream ("[REDACTED]"). Other formats are left as they are: annai sends them nothing back.
+ * @param {Record<string, any>[]} list @param {string} finish
+ */
+function nativeOf(list, finish) {
+  if (!list.length || (finish !== 'stop' && finish !== 'tool_calls')) return null;
+  if (!list.every((x) => x.format === CLAUDE) || !list.some((x) => x.signature || x.data)) return null;
+  if (list.some((x) => ['text', 'summary', 'data'].some((k) => typeof x[k] === 'string' && x[k].includes('[REDACTED]')))) return null;
+  // Sent beside the reply's parts, not in place of any: it covers none, so all of its size counts.
+  return { type: 'native', content: list, covers: 0 };
 }
 
 /** An error the reply holds, as an HTTP error's would be: by its code, sharpened by classify. @param {any} error @param {any} helpers */
@@ -284,6 +381,8 @@ function* readWhole(j, t, helpers) {
     if (a?.type === 'url_citation' && c?.url) yield { type: 'citation', url: c.url, ...(c.title ? { title: c.title } : {}) };
   }
   if (isObject(j.usage)) yield { type: 'usage', usage: usageOf(j.usage) };
+  const native = nativeOf(Array.isArray(m.reasoning_details) ? m.reasoning_details.filter(isObject) : [], choice.finish_reason ?? 'stop');
+  if (native) yield native;
   yield { type: 'stop', reason: STOP[choice.finish_reason ?? 'stop'] ?? 'other' };
 }
 

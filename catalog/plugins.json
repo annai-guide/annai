@@ -4,7 +4,7 @@
     {
       "id": "anthropic-messages",
       "name": "Anthropic Messages",
-      "version": "0.4.3",
+      "version": "0.5.0",
       "description": "Talks to Anthropic's Messages API and to endpoints that speak it.",
       "category": "developer",
       "keywords": [],
@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 12569,
+      "size": 16652,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -20,14 +20,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "f3e9abf0e99d9806525249739e40c804545e23e5bd0706465d6ece8178fbcf0d",
-        "index.js": "ea2c6f9a9c88a842994ee286327e26df76b6953017c236be2ece7d14fe372702"
+        "annai-plugin.json": "920196a704444f91487b0900834950477a90d191a3dbaf9eda26e0c23a534baa",
+        "index.js": "aa05a331ebc4f0f075f7596a8ae56ae1f85f0d739ed0c2d23546d494e93a5750"
       }
     },
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.10.1",
+      "version": "0.11.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 19924,
+      "size": 26606,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,8 +43,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "c66ebb3b96d1bc32b5de5f856d771f16b1939adec570541030ae93eecb7e87ea",
-        "index.js": "935966cb851f3ee97ade9eee573c1ec0b87831f2e2eeac028b4e3ac0cd17892b"
+        "annai-plugin.json": "e9be2336cbc1b1aac0767df8a143faca0a643e241e2d0829f5a326f000035ae7",
+        "index.js": "931c3974fedb9d3f3f76b4ac0592071730fa6a7223a261d9f09a03325ae93ea5"
       }
     },
     {
@@ -507,7 +507,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.3.2",
+      "version": "2.4.0",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -519,7 +519,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 31473,
+      "size": 31782,
       "requires": [
         {
           "id": "chat-completions",
@@ -533,7 +533,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "ac2d2b4b8d058aec3cd5a99ba3ed1bd40c31c5a199ff2911e313d25d943a717e",
+        "annai-plugin.json": "4a71c4e275b2965a83d39f181ad4a7f3a308a357be82e31ead2df45600d20277",
         "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb"
       }
     },

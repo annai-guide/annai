@@ -253,7 +253,9 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const clips = d.format ? `${d.format}, ${size(d.bytes ?? 0)}` : d.audio?.length ? t`audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')}` : null;
     // How much it sent, and whether after a kept turn (G2).
     const sent = !d.format && d.bytes ? (d.kept ? t`${size(d.bytes)} sent, after a kept turn` : t`${size(d.bytes)} sent`) : null;
-    return line(d.model ?? '', `${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''}`, `${d.ms ?? '?'} ms`, clips, sent);
+    // Claude's earlier thinking sent back within a turn, counted (the keep-reasoning design §5): never the thinking itself.
+    const natives = d.natives ? (d.natives.changed ? t`earlier thinking not sent: something before it changed` : plural(d.natives.sent ?? 0, 'thinking of # earlier step sent back', 'thinking of # earlier steps sent back')) : null;
+    return line(d.model ?? '', `${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''}`, `${d.ms ?? '?'} ms`, clips, sent, natives);
   }
   if (e.type === 'pack.download') {
     return line(plural(d.files ?? 0, '# file', '# files'), size(d.bytes ?? 0), plural(d.guides ?? 0, '# guide', '# guides'), d.failed ? t`${d.failed} failed` : null,

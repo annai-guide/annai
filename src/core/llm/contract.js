@@ -6,7 +6,7 @@ import { list } from '../intl.js';
  * streamed reply is made of, normalized usage and normalized errors. Endpoint-type plugins
  * translate between this and one wire protocol; the core contains no protocol.
  *
- * @typedef {{ type: 'text', text: string, heard?: string }
+ * @typedef {{ type: 'text', text: string, heard?: string, now?: true }
  *   | { type: 'image', mediaType: string, data: string, hash?: string, path?: string, region?: number[], page?: number, fileId?: string, missing?: boolean }
  *   | { type: 'document', mediaType: string, data: string, hash?: string, name?: string, missing?: boolean }
  *   | { type: 'audio', mediaType: string, data: string, heard?: string }
@@ -14,20 +14,27 @@ import { list } from '../intl.js';
  *   | { type: 'provider', block: any, model: string }
  *   | { type: 'tool_call', id: string, name: string, input: any, extra?: any, model?: string }
  *   | { type: 'tool_result', id: string, content: string, isError?: boolean }
- *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }} Part
+ *   | { type: 'reasoning', text: string, signature?: string, redacted?: string, model?: string }
+ *   | { type: 'native', endpoint: string, content: any, covers: number, prefix: string }} Part
  *   image.data and document.data are base64 (a document is a PDF). An image's or a document's hash is its bytes' fingerprint, path and
  *   region where it came from (for stubs), page the PDF page it shows (a drawn page's picture), fileId a provider upload (spec §4.8); endpoint types use mediaType and data,
  *   or fileId when they upload. missing marks one whose bytes are gone: annai never sends it. provider is a provider's own block (a server
  *   tool's call or result), sent back unchanged, and only to the model that wrote it (spec §9.5). reasoning.model is the provider model id that wrote it: a signed block
  *   (signature or redacted) is only ever sent back to that model. audio.data is base64, sent only to a model that takes audio. speech is a heard
  *   segment (spec §10.3): annai resolves it for each model attempt into audio or words; text is its words once written down, clip a kept voice clip's hash.
- *   heard: the segment a text or audio part was resolved from (G2); sent as any text or audio.
+ *   heard: the segment a text or audio part was resolved from (G2); sent as any text or audio. now: an earlier step's now block, kept where it
+ *   was sent within a turn (the keep-reasoning design §2); a type that returns natives renders it exactly as it rendered the request's tail.
+ *   native: a reply as its provider returned it (Anthropic Messages' content array, Chat Completions' reasoning_details), first among the reply's parts,
+ *   standing for the covers parts after it; endpoint: the endpoint and key it came from (call.js nativeKey), the only one it is sent to;
+ *   prefix: a fingerprint of what was sent before it (call.js). Only the transcript puts one there, and only for a turn (the design §4).
  *   A tool_call's extra is what its provider wrote on it to have back (Gemini 3's thought signature), and model the provider model id
  *   that wrote it: it goes back only to that model.
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
- *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, newestDocument?: boolean, toolRequired?: boolean }} Request
+ *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, newestDocument?: boolean, toolRequired?: boolean, cacheAt?: number }} Request
+ *   cacheAt: the index of the message where the previous turn began: a type that places cache markers marks its last block too, before any
+ *   now block kept in it (the keep-reasoning design §7).
  *   tail: the now block, last, after any cache marker: in the final user message, or where the type puts it (OpenAI Responses: a developer message).
  *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token. toolRequired: the model must call
  *   one of the tools, any (Shiori's turns: she reaches the user only through tools), where its endpoint type can say so; toolChoice wins.
@@ -55,15 +62,21 @@ import { list } from '../intl.js';
  *   | { type: 'stop', reason: StopReason }
  *   | { type: 'restart', by?: { name: string, first: string | null, tried: boolean } }
  *   | { type: 'kept', id: string }
+ *   | { type: 'native', content: any, covers?: number }
  *   | { type: 'attribution', source: string, text: string, links: { url: string, title?: string }[], html?: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id (G2), for annai alone.
+ *   native: the whole reply as the provider returned it, once, at the end of a reply that finished, for annai to send back within the turn
+ *   (Reply.native); opaque to the core, which never shows or stores it. covers: how many of the reply's parts it stands in for when sent back (default
+ *   all of them, as Anthropic Messages sends it); 0 for a native sent beside the parts (Chat Completions' reasoning_details), so its whole size counts.
  *   attribution: a reply the provider's search grounded, to show the user as it came (G4), once, at its end.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
- *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten'} ErrorKind
+ *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten' | 'reasoning'} ErrorKind
  *   type-missing: the protocol plugin a model's ability needs isn't running, and a call never installs one; redirect: see noRedirect;
- *   forgotten: the provider no longer has the kept turn a call continued (G2)
+ *   forgotten: the provider no longer has the kept turn a call continued (G2);
+ *   reasoning: a bad request that sent natives, which may be the provider refusing them: callOnce makes it, never a plugin, and callRole asks the same
+ *   model again without them (the keep-reasoning design §8)
  */
 
 /** What a model and the log are told, by kind of error (spec §9.9): annai's English, whatever the screens' language. */
@@ -87,6 +100,7 @@ const PLAIN = Object.freeze({
   plugin: "The plugin for this model's protocol failed.",
   'type-missing': "This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.",
   forgotten: 'The provider no longer has the earlier turns; annai sends the conversation whole.',
+  reasoning: 'The provider refused the reasoning annai sent back.',
 });
 
 /**
@@ -113,6 +127,7 @@ function shown(kind, provider) {
     case 'plugin': return t`The plugin for this model's protocol failed.`;
     case 'type-missing': return t`This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.`;
     case 'forgotten': return t`The provider no longer has the earlier turns; annai sends the conversation whole.`;
+    case 'reasoning': return t`The provider refused the reasoning annai sent back.`;
     case 'redirect': return provider ? t`${provider} answered with a redirect, which annai doesn't follow with your key. Check its address.`
       : t`The provider answered with a redirect, which annai doesn't follow with your key. Check its address.`;
     default: return null;
@@ -166,8 +181,8 @@ export function saidWords(s, kind, provider) {
   }
 }
 
-/** Every error kind, for checking one a plugin gives. */
-export const KINDS = new Set([...Object.keys(PLAIN), 'redirect']);
+/** Every error kind a plugin may give; 'reasoning' is annai's own (callOnce makes it of a bad request that sent natives). */
+export const KINDS = new Set([...Object.keys(PLAIN).filter((k) => k !== 'reasoning'), 'redirect']);
 
 export class ProviderError extends Error {
   /**
@@ -333,6 +348,8 @@ function retryAfterOf(headers) {
 /**
  * The transcript as one model may see it (spec §9.6): reasoning signed by another model is
  * dropped, and so is what another model wrote on a tool call; tool-call ids are rewritten into a form every provider accepts.
+ * A native stays, and so do the parts it covers as they are (ids made safe): they are its endpoint's, where it goes to any model,
+ * and the count must stay true (callOnce takes out other endpoints' natives first).
  * @param {Message[]} messages @param {string} modelKey the provider model id the request goes to
  * @returns {Message[]}
  */
@@ -349,7 +366,41 @@ export function portable(messages, modelKey) {
     if (p.type === 'tool_result') return [{ ...p, id: safeId(p.id) }];
     return [p];
   };
-  return messages.map((m) => ({ role: m.role, parts: m.parts.flatMap(keep) })).filter((m) => m.parts.length);
+  return messages.map((m) => {
+    let covered = 0;
+    const parts = m.parts.flatMap((p) => {
+      if (p.type === 'native') {
+        covered = p.covers;
+        return [p];
+      }
+      if (covered <= 0) return keep(p);
+      covered--;
+      return p.type === 'reasoning' || p.type === 'provider' ? [p] : keep(p);
+    });
+    return { role: m.role, parts };
+  }).filter((m) => m.parts.length);
+}
+
+/**
+ * What the native at parts[i] adds to a request beyond the parts it covers, in JSON characters: its size less theirs, at least 0 (the
+ * keep-reasoning design §6). A reply as its provider returned it holds the reply's parts again, so counting both would count them twice; what is
+ * left is the reasoning the parts don't hold. @param {Part[]} parts @param {number} i @returns {number}
+ */
+export function nativeExtra(parts, i) {
+  const p = /** @type {Extract<Part, { type: 'native' }>} */ (parts[i]);
+  let size = JSON.stringify(p.content).length;
+  for (const q of parts.slice(i + 1, i + 1 + p.covers)) size -= JSON.stringify(q).length;
+  return Math.max(0, size);
+}
+
+/**
+ * The characters a request's natives count twice when it is measured whole: each one's size less its extra (nativeExtra).
+ * @param {Message[]} messages
+ */
+export function nativeOverlap(messages) {
+  let n = 0;
+  for (const m of messages) m.parts.forEach((p, i) => { if (p.type === 'native') n += JSON.stringify(p.content).length - nativeExtra(m.parts, i); });
+  return n;
 }
 
 /** A tool-call id every provider accepts: letters, digits, "_" and "-", at most 64. @param {string} id */
@@ -382,6 +433,9 @@ export function safeId(id) {
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
  * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
+ * @property {(c: { model: import('./config.js').Model, tunables: Record<string, any> }) => string} [nativeScope]  who of an endpoint's models can read
+ *   the natives one of them made (default: all of them): a string, equal for models that read each other's, which annai adds to the endpoint and key a
+ *   native is kept for, so a model outside the scope is sent exactly what it was before natives (the keep-reasoning review, F3)
  * @property {(body: string) => number | undefined} [retryAfter]  ms an error response's words ask to wait, when no header says
  * @property {(status: number, body: string, c: CallSpec) => string | null} [refusal]  an error response that is the model declining (a safety block):
  *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error. c: the call,
