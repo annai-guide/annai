@@ -1,5 +1,5 @@
 {
-  "build": "36caad4cf72c",
+  "build": "132d795fc2bb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -71,12 +71,12 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "11b2a766e9e2",
+    "/src/core/llm/call.js": "e9a0484fe305",
     "/src/core/llm/check.js": "aca61922774b",
     "/src/core/llm/config.js": "d32a97cf6da1",
-    "/src/core/llm/contract.js": "5b39e3ebc5d1",
+    "/src/core/llm/contract.js": "fb99112184ce",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "b45572b0adaa",
+    "/src/core/llm/fallback.js": "a99339e4ea76",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "3e88bd9e8ba3",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
@@ -86,12 +86,12 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "bcf351269b15",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "481487cb8e22",
+    "/src/core/llm/service.js": "148c911b08f8",
     "/src/core/llm/speech.js": "5d91010f311e",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "256c3fe59b0f",
     "/src/core/llm/uploads.js": "7c2609587e19",
-    "/src/core/llm/kept.js": "7becd6be398a",
+    "/src/core/llm/kept.js": "069ca9edcb98",
     "/src/core/live/activity.js": "d8245a391342",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
@@ -287,8 +287,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "a4ab08d80bd4",
-    "/l10n/zh-Hans.json": "b58d7fc85a09",
-    "/l10n/zh-Hant.json": "b2acf04cbd54"
+    "/l10n/ja.json": "ba33f60be761",
+    "/l10n/zh-Hans.json": "e62959204dea",
+    "/l10n/zh-Hant.json": "35cb103d06c1"
   }
 }

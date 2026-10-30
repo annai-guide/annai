@@ -639,49 +639,50 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:134
 1qjc2dh	ok	That provider has no ability called {0}.	這個供應商沒有名為 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	請填寫供應商的模型 ID。	src/core/llm/config.js:387	
 3i9i3z	ok	"{0}" is already used by another model	「{0}」已被另一個模型使用	src/core/llm/config.js:391	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:98	
-1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:99	Note: Credit is a prepaid balance (餘額), not a quota (額度).
-99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:100	
-1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:101	
-1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:102	
-ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:103	
-1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:104	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:105	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:106	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:107	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:108	
-11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:109	
-1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:110	
-vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:111	
-5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:112	
-1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:113	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:114	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:115	
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:116	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:117	
-17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:135	
-9kdcjv	ok	Chat	對話	src/core/llm/contract.js:135	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
-b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:135	
-izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:145	
-1l28lx6#other	ok	Its output stopped for # seconds.	輸出中斷了 # 秒。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
-13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:147	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:148	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:149	
-1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:150	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:152	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:154	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
-x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:155	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:156	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:158	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:159	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:160	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:164	{0} = name
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:110	
+1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:111	Note: Credit is a prepaid balance (餘額), not a quota (額度).
+99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:112	
+1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:113	
+1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:114	
+ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:115	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:116	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:117	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:118	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:119	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:120	
+11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:121	
+1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:122	
+vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:123	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:124	
+1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:125	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:126	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:127	
+1kl65kc	ok	The provider refused the reasoning annai sent back.	供應商拒絕了 annai 傳回的推理。	src/core/llm/contract.js:128	Note: reasoning is the model's thinking (推理, as the Reasoning levels setting names it); 傳回: annai sent it back to the model that wrote it.
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:129	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:130	
+17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:148	
+9kdcjv	ok	Chat	對話	src/core/llm/contract.js:148	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
+b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:148	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:148	
+izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:158	
+1l28lx6#other	ok	Its output stopped for # seconds.	輸出中斷了 # 秒。	src/core/llm/contract.js:159	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:160	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:161	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:162	
+1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:163	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:164	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:165	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:166	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:167	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
+x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:168	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:169	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:171	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:172	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:173	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:174	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:175	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:176	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:177	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	價格是一個物件，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 的階梯中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 計劃 read as a plan.
