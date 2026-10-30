@@ -1,5 +1,5 @@
 {
-  "build": "7469f9400fc1",
+  "build": "6dc21aba1dab",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -133,7 +133,7 @@
     "/src/core/photos.js": "04a6d604ae69",
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b71b076bdd08",
-    "/src/core/plan.js": "5aa37db15086",
+    "/src/core/plan.js": "407d51f8753e",
     "/src/core/plugins.js": "3f2b4ba052ec",
     "/src/core/push/mirror.js": "e8f1f106cd02",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
