@@ -121,14 +121,14 @@ test("build with cacheMarkers: every content an array of blocks, marks on the sy
   assert.equal(plain.messages[0].content, 'S');
 });
 
-test("build with cacheMarkers sends a top-level session_id: a hash of the system text and the model, the same for a turn's steps, other for another model or system; none for a model outside the list", () => {
+test("build with cacheMarkers sends a top-level session_id: a hash of the system text, the same for a turn's steps and for any cacheMarkers model, other for another system (Koe's and Kokoro's differ); none for a model outside the list", () => {
   const body = (/** @type {any} */ request, /** @type {any} */ model = {}) => type.build(spec({ request, model: { ...spec().model, ...model } }, { cacheMarkers: ['anthropic/'] })).body;
   const a = body({ system: 'S', messages: [{ role: 'user', parts: [{ type: 'text', text: 'One' }] }] });
   const b = body({ system: 'S', tail: '<now>2</now>', messages: [{ role: 'user', parts: [{ type: 'text', text: 'One' }, { type: 'text', text: 'More' }] }] });
   assert.match(a.session_id, /^[A-Za-z0-9_-]{1,256}$/);
   assert.equal(a.session_id, b.session_id, 'not the messages');
   assert.notEqual(a.session_id, body({ system: 'S2', messages: [] }).session_id);
-  assert.notEqual(a.session_id, body({ system: 'S', messages: [] }, { providerId: 'anthropic/claude-haiku-5.5' }).session_id);
+  assert.equal(a.session_id, body({ system: 'S', messages: [] }, { providerId: 'anthropic/claude-haiku-5.5' }).session_id, 'not the model: a fallback between Claude models stays on one upstream account (OpenRouter keeps stickiness per model)');
   assert.ok(!a.session_id.includes('S'), 'a hash, not the text');
   const plain = type.build(spec({ request: { system: 'S', messages: [] }, model: { ...spec().model, providerId: 'openai/gpt-6' } }, { cacheMarkers: ['anthropic/'] })).body;
   assert.ok(!('session_id' in plain));

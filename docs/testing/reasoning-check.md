@@ -12,7 +12,7 @@ release that touches the providers' plugins or the loop, with the user's OK each
 
 - **annai in Node:** annai's own Halves (Koe and Kokoro), the loop, `callRole` and the real endpoint types (anthropic-messages and
   chat-completions), in memory. The providers are set up from their descriptions in `plugins-official/` (provider-anthropic,
-  provider-openrouter), as an install makes them. Kokoro runs on Claude Sonnet 5.5 (main, level medium), Koe · Classic on Claude
+  provider-openrouter), as an install makes them. Kokoro runs on Claude Sonnet 5.5 (main, level high in this run, since adaptive thinking may skip thinking on easy steps at medium), Koe · Classic on Claude
   Haiku 5.5 (level low). Voice is off.
 - **The trip is synthetic:** a `trip.json` and two notes (a hotel and a dinner), no real data.
 - **The conversation, on each provider given:**
@@ -30,14 +30,14 @@ release that touches the providers' plugins or the loop, with the user's OK each
 
 Of the conversation (steps 1 and 2 above), on each provider:
 
-0. **A native was sent on a step 2 or later.** A run in which Claude never thought passes nothing.
-1. Every step after one whose reply had thinking sends it back.
+0. **A native was sent on a step 2 or later.** A run in which Claude never thought passes nothing (and says "no reply thought before another step: inconclusive, rerun").
+1. Every step after a reply for which annai kept a native sends it back (a signed reply cut at `max_tokens` has none, correctly).
 2. No attempt was refused for its reasoning (outcome `reasoning`), and no request got a 400.
 3. Every call was answered by the role's first model: nothing fell back.
 4. **The cache, with real limits:** within a turn, step k reads at least what step k-1 read plus wrote; each half's next turn's first
    request reads at least what the turn before it had read plus written at its first step (where it began, `cacheAt`). Any read above
    zero is not enough.
-5. **Anthropic only:** no `thinking_dropped` entry with the reason `prefix_binding_mismatch` in the replies' `input_transformations`.
+5. **Strict growth:** within a turn each step reads more than the one before it, and each half's next turn's first request reads more than the turn before did at its first step. A run that caches only the system prompt would otherwise pass 0 plus 0.
 
 Of the control and the Claude-to-Claude turn:
 
@@ -48,7 +48,7 @@ Of the control and the Claude-to-Claude turn:
    gets a 400. If the two models' provider tools differ and annai correctly stops the turn's thinking, the table says `changed` and the
    report says so; that is a note, not a failure.
 
-The report also notes, besides the checks: how many steps carried the binding controls and `input_transformations` (or that
+The report also notes, besides the checks: how many steps carried the binding controls and `input_transformations` (reported, not checked: with an error set on a mismatch a dropped block is a 400; or that
 `input_transformations` never appeared in a stream), the upstream provider of each OpenRouter turn (and when a turn's steps changed provider),
 and the natives sent after the Claude-to-Claude step.
 
@@ -81,7 +81,7 @@ or reply bodies.
   `changed` in the natives column), or the provider binds something annai doesn't keep. A refusal's words are in the Trace's attempt.
 - **3 (fell back):** read the attempts' outcomes in the table.
 - **0 (no native sent):** Claude did not think (adaptive thinking chose none), or every request after its first changed something before the thinking (the table's natives column says `changed`).
-- **4 (cache):** a step read less than the step before it had cached: the prefix annai sent changed, or the provider's cache entry was not found within its lookback (20 blocks) of a mark.
+- **4 and 5 (cache):** a step read less than the step before it had cached, or no more than it had read: the prefix annai sent changed, the provider's entry was not found within its lookback (20 blocks) of a mark, or only the system prompt is cached. When only these fail, the report names the likely cause.
 - **6 (control):** an Anthropic that answers a changed prefix without a refusal is not enforcing the binding for this account; the controls above should make it enforce. Read `input_transformations` in the report.
 - **4 through OpenRouter only:** OpenRouter may not pass a mark on a `tool` message's content on to Anthropic (the design §9's caveat).
   Then put the end mark on the request's own now block instead (chat-completions' `build`): inside a turn that still hits, because the

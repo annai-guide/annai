@@ -53,13 +53,14 @@ export const BINDING_BETA = 'thinking-binding-controls-2026-08-01';
  * One request, as the check records it: never its body, only its size and what it sent back. phase: which part of the run it belongs
  * to (the conversation, the negative control, the Claude-to-Claude turn). bound: the check asked for an error on a mismatch (Anthropic).
  * upstream: the provider OpenRouter named. transformations: what Anthropic's input_transformations listed, null when the reply had none.
- * altered: the control changed an earlier message in it. stubbed: it was answered with a stubbed 529.
+ * altered: the control changed an earlier message in it. stubbed: it was answered with a stubbed 529. A row's signed: the reply's stream
+ * said "signature" (reported only); kept: annai kept a native for the reply, which is what the next step must send back.
  * @typedef {'main' | 'control' | 'cross'} Phase
  * @typedef {{ provider: string, model: string, bytes: number, thinking: number, thinkingBytes: number, status: number, signed: boolean,
  *   phase: Phase, bound: boolean, upstream: string | null, transformations: string[] | null, altered: boolean, stubbed: boolean }} Sent
  * @typedef {{ provider: string, half: string, wake: string, step: number, model: string, answeredBy: string | null, first: string | null,
  *   outcomes: string[], bytes: number, thinkingBytes: number, natives: { sent: number, changed: boolean } | null, cacheRead: number,
- *   cacheWrite: number, cost: number | null, signed: boolean, statuses: number[], phase?: Phase, upstream?: string | null,
+ *   cacheWrite: number, cost: number | null, signed: boolean, kept?: boolean, statuses: number[], phase?: Phase, upstream?: string | null,
  *   transformations?: string[] | null, bound?: boolean, altered?: boolean, stubbed?: boolean, benched?: boolean }} Row
  */
 
@@ -162,7 +163,7 @@ async function within(p, ms, what) {
 
 /**
  * annai in Node: a memory store, the file tools, the two endpoint types, the providers as their descriptions give them, Halves with
- * Kokoro on main (and a second Claude after it) and Koe · Classic; voice off; the check's caps on.
+ * Kokoro on main (at level high in this run, as adaptive thinking may skip thinking on easy steps at medium; and a second Claude after it) and Koe · Classic; voice off; the check's caps on.
  * @param {{ provider: keyof typeof PROVIDERS, key: () => string, fetch: (url: string, init: RequestInit) => Promise<Response>, sleep?: (ms: number) => Promise<void> }} c
  */
 async function annai({ provider, key, fetch, sleep }) {
@@ -193,21 +194,34 @@ async function annai({ provider, key, fetch, sleep }) {
     return { id, provider: rec.id, ability: 'chat', template: { id: `${which.plugin}/chat/${providerId}`, version: desc.version, values: mergePatch(chat.modelDefaults ?? {}, m) }, user: {}, created: 0 };
   });
   await saveProvider(ws, /** @type {any} */ (rec), /** @type {any} */ (models));
-  await saveRoles(ws, { main: { models: ['m-kokoro', 'm-fallback'], level: 'medium' }, 'koe-classic': { models: ['m-koe'], level: 'low' }, 'koe-realtime': { models: [], level: 'off' }, utility: { models: ['m-kokoro'], level: 'low' }, decide: { models: [], level: 'off' } }, { koeMode: 'classic' });
+  await saveRoles(ws, { main: { models: ['m-kokoro', 'm-fallback'], level: 'high' }, 'koe-classic': { models: ['m-koe'], level: 'low' }, 'koe-realtime': { models: [], level: 'off' }, utility: { models: ['m-kokoro'], level: 'low' }, decide: { models: [], level: 'off' } }, { koeMode: 'classic' });
   const bench = new Bench();
+  /** @type {Map<string, boolean[]>} */
+  const kept = new Map();
   const none = async () => { throw new Error('Not in the reasoning check.'); };
   const llm = {
     bench,
     config: () => readConfig(ws),
     uploading: async () => false,
     /** @param {any} c */
-    call: async (c) => callRole({
-      role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, bench, signal: c.signal, onEvent: c.onEvent, prefer: c.prefer,
-      record: c.record, repairImages: c.repairImages, trace: (() => { const t = modelTrace(store, c.scope ?? trip); t.secret(key()); return t; })(), speech: c.speech,
-      firstOutputMs: c.firstOutputMs ?? 90_000, read: c.read, readings: c.readings, askResting: c.askResting, keepNative: c.keepNative, fetch, ...(sleep ? { sleep } : {}),
-      // The key goes only to the endpoint type, which puts it in its request's header.
-      keyFor: async () => key(),
-    }),
+    call: async (c) => {
+      // Whether annai kept a native for each reply of a turn, in the order the model.turn events come (every call records exactly one).
+      const note = (/** @type {boolean} */ native) => { if (c.record?.tag) kept.set(`${c.record.tag}|${c.record.wake}`, [...(kept.get(`${c.record.tag}|${c.record.wake}`) ?? []), native]); };
+      try {
+        const r = await callRole({
+          role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, bench, signal: c.signal, onEvent: c.onEvent, prefer: c.prefer,
+          record: c.record, repairImages: c.repairImages, trace: (() => { const t = modelTrace(store, c.scope ?? trip); t.secret(key()); return t; })(), speech: c.speech,
+          firstOutputMs: c.firstOutputMs ?? 90_000, read: c.read, readings: c.readings, askResting: c.askResting, keepNative: c.keepNative, fetch, ...(sleep ? { sleep } : {}),
+          // The key goes only to the endpoint type, which puts it in its request's header.
+          keyFor: async () => key(),
+        });
+        note(Boolean(r.reply.native));
+        return r;
+      } catch (e) {
+        note(false);
+        throw e;
+      }
+    },
     types: () => types,
     synthesize: none, transcribe: none, live: none,
     decide: none,
@@ -215,7 +229,7 @@ async function annai({ provider, key, fetch, sleep }) {
   const agent = new Halves({ store, ws, llm, registry, timeZone: () => 'UTC', secondMs: 1000 });
   agent.addLoopTools(selfTools(agent.kokoro));
   await agent.open(trip);
-  return { store, trip, agent, bench };
+  return { store, trip, agent, bench, kept };
 }
 
 /**
@@ -270,7 +284,7 @@ export async function runProvider({ provider, key, fetch: send, log, timeoutMs =
     if (res.ok) reading.push(res.clone().text().then((x) => { rec.signed = /"signature(_delta)?"|signature/.test(x); Object.assign(rec, scan(x)); }, () => {}));
     return res;
   };
-  const { store, trip, agent, bench } = await annai({ provider, key, fetch, sleep });
+  const { store, trip, agent, bench, kept } = await annai({ provider, key, fetch, sleep });
   /** @param {string} say @param {Phase} part */
   const turn = async (say, part) => {
     phase = part;
@@ -324,7 +338,7 @@ export async function runProvider({ provider, key, fetch: send, log, timeoutMs =
       outcomes: (e.data.attempts ?? []).map((/** @type {any} */ a) => String(a.outcome)), bytes: calls.reduce((x, c) => x + (c.s?.bytes ?? 0), 0),
       thinkingBytes: lastCall?.s?.thinkingBytes ?? 0, natives: lastCall?.e.data.natives ?? null, cacheRead: Number(u.cacheRead) || 0,
       cacheWrite: (Number(u.cacheWrite) || 0) + (Number(u.cacheWrite1h) || 0), cost: typeof e.data.cost === 'number' ? e.data.cost : null,
-      signed: Boolean(lastCall?.s?.signed), statuses: calls.map((c) => c.s?.status ?? 0), phase: lastCall?.s?.phase ?? 'main',
+      signed: Boolean(lastCall?.s?.signed), kept: kept.get(`${e.data.tag}|${e.data.wake}`)?.[step - 1] ?? false, statuses: calls.map((c) => c.s?.status ?? 0), phase: lastCall?.s?.phase ?? 'main',
       upstream: lastCall?.s?.upstream ?? null, transformations: calls.some((c) => c.s?.transformations) ? said : null,
       bound: calls.some((c) => c.s?.bound), altered: calls.some((c) => c.s?.altered), stubbed: calls.some((c) => c.s?.stubbed),
       ...(calls.some((c) => c.s?.altered) ? { benched } : {}),
@@ -355,14 +369,18 @@ export function checks(all) {
   const turns = turnsOf(rows);
   const back = [];
   const cache = [];
+  /** Where nothing past the system prompt was cached: a step reads no more than the one before it. */
+  const grow = [];
   for (const list of turns) {
     let signed = 0;
     for (const [i, r] of list.entries()) {
       if (r.step > 1 && signed > 0 && (r.natives?.sent ?? 0) < signed) back.push(`${whereOf(r)}: ${signed} earlier ${signed === 1 ? 'reply' : 'replies'} with thinking, ${r.natives?.sent ?? 0} sent back${r.natives?.changed ? ' (changed)' : ''}`);
-      if (r.signed) signed++;
+      // A reply counts when annai kept a native for it (a signed one cut at max_tokens, say, correctly has none); old summaries had only signed.
+      if (r.kept ?? r.signed) signed++;
       // Within a turn, a step reads at least what the step before it had read and written: that prefix is in its request, and was cached.
       const was = list[i - 1];
       if (was && r.cacheRead < was.cacheRead + was.cacheWrite) cache.push(`${whereOf(r)}: read ${r.cacheRead}, but step ${was.step} had read ${was.cacheRead} and written ${was.cacheWrite}`);
+      if (was && r.cacheRead <= was.cacheRead) grow.push(`${whereOf(r)}: read ${r.cacheRead}, not above step ${was.step}'s ${was.cacheRead}`);
     }
   }
   // The next turn's first request reads where the previous turn began, which that turn's first request had cached: each half's turns after its first.
@@ -371,17 +389,17 @@ export function checks(all) {
     for (const [i, list] of own.entries()) {
       const was = own[i - 1]?.[0];
       if (was && list[0].cacheRead < was.cacheRead + was.cacheWrite) cache.push(`${whereOf(list[0])}: the next turn's first request read ${list[0].cacheRead}, but the turn before had read ${was.cacheRead} and written ${was.cacheWrite} at its first step`);
+      if (was && list[0].cacheRead <= was.cacheRead) grow.push(`${whereOf(list[0])}: the next turn's first request read ${list[0].cacheRead}, not above the turn before's ${was.cacheRead} at its first step`);
     }
   }
   const sentAny = rows.some((r) => r.step >= 2 && (r.natives?.sent ?? 0) > 0);
-  const dropped = all.flatMap((r) => (r.transformations ?? []).filter((x) => x.includes('thinking_dropped') && x.includes('prefix_binding_mismatch')).map(() => `${whereOf(r)}: Anthropic dropped a thinking block for a prefix mismatch`));
   return [
     { name: 'a native was sent on a step 2 or later: Claude\'s thinking went back at least once', problems: sentAny ? [] : [`${provider}: no request on a step 2 or later sent a native`] },
     { name: 'every step after a reply with thinking sends it back', problems: back },
     { name: 'no attempt refused for its reasoning, and no 400', problems: rows.flatMap((r) => [...(r.outcomes.includes('reasoning') ? [`${whereOf(r)}: refused for its reasoning`] : []), ...(r.statuses.includes(400) ? [`${whereOf(r)}: a 400`] : [])]) },
     { name: "every call answered by the role's first model", problems: rows.filter((r) => r.outcomes.length !== 1 || r.outcomes[0] !== 'ok' || (r.first && r.answeredBy !== r.first)).map((r) => `${whereOf(r)}: ${r.outcomes.join(', ')}; answered by ${r.answeredBy}`) },
     { name: 'within a turn, and at each half\'s next turn, a request reads at least what the one before it read and wrote', problems: cache },
-    ...(provider === 'anthropic' ? [{ name: 'Anthropic dropped no thinking for a prefix mismatch (input_transformations)', problems: dropped }] : []),
+    { name: 'within a turn, and at each half\'s next turn, a request reads more than the one before it: something past the system prompt is cached', problems: grow },
     ...(provider === 'anthropic' ? [{ name: 'the negative control: a changed earlier message is refused, asked again once without thinking on the same model, and answered; nothing rests or falls back', problems: controlProblems(all) }] : []),
     { name: 'Claude to Claude: one step answered by the next Claude model after Sonnet failed, and the rest of the turn accepted', problems: crossProblems(all) },
   ];
@@ -440,6 +458,14 @@ export function notes(all) {
     out.push(`Claude to Claude: ${stubbed.answeredBy ?? 'the next model'} answered the stubbed step; natives sent from there on: ${natives.map((x) => (x ? `${x.sent}${x.changed ? ' (changed)' : ''}` : '0')).join(', ')}${natives.some((x) => x?.changed) ? '; the turn\'s thinking stopped because something before it differed between the two models (their provider tools, say)' : ''}.`);
   }
   if (!main.length) out.push('The conversation produced no rows.');
+  // Every need of a check below is a reply with thinking followed by another step: adaptive thinking may skip thinking on easy steps.
+  if (!turnsOf(main).some((list) => list.some((r, i) => (r.kept ?? r.signed) && i < list.length - 1))) out.push('no reply thought before another step: inconclusive, rerun (it is not a fault of annai until thinking is seen and not sent back).');
+  const failing = checks(all).filter((c) => c.problems.length);
+  if (failing.length && failing.every((c) => /reads (at least|more than)/.test(c.name))) {
+    out.push(provider === 'openrouter'
+      ? 'only the cache checks failed: the likely cause is that OpenRouter did not pass on the cache marks on the tool messages\' content, so only the system prompt was cached. The fix (docs/testing/reasoning-check.md): put the end mark on the request\'s own now block instead, in chat-completions\' build.'
+      : 'only the cache checks failed: the marks annai placed (the system, the end, cacheAt) were not the entries the next request read; compare the table\'s cache read and write columns.');
+  }
   return out;
 }
 

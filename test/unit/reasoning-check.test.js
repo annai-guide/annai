@@ -21,7 +21,13 @@ test('the reasoning check against the stand-ins: both providers pass every check
   const sleep = async () => {};
   const timers = () => process.getActiveResourcesInfo().filter((x) => x === 'Timeout').length;
   const before = timers();
-  const r = await runCheck({ providers: [{ provider: 'anthropic', key: () => key.key, fetch: s.fetch, sleep }, { provider: 'openrouter', key: () => key.key, fetch: s.fetch, sleep }], out, keys: [key], log: (x) => printed.push(x) });
+  /** @type {any[]} */
+  const bodies = [];
+  const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => { bodies.push(JSON.parse(String(init.body))); return s.fetch(url, init); };
+  const r = await runCheck({ providers: [{ provider: 'anthropic', key: () => key.key, fetch, sleep }, { provider: 'openrouter', key: () => key.key, fetch, sleep }], out, keys: [key], log: (x) => printed.push(x) });
+  // Kokoro's main role runs at high in this run (adaptive thinking may skip thinking on easy steps at medium).
+  const kokoroAsks = bodies.filter((b) => /sonnet/.test(b.model));
+  assert.ok(kokoroAsks.length && kokoroAsks.every((b) => (b.output_config?.effort ?? b.reasoning?.effort) === 'high'));
   assert.ok(timers() <= before, 'the 240 s timer of the run is cleared once the turn is answered');
   assert.equal(r.pass, true, r.text);
   // Each provider refused exactly one request: the negative control's, with an earlier message changed.
@@ -38,6 +44,8 @@ test('the reasoning check against the stand-ins: both providers pass every check
   // Kokoro's turn of four steps sends back one more each step.
   const kokoro = rows.filter((/** @type {any} */ x) => x.provider === 'anthropic' && x.half === 'Kokoro');
   assert.deepEqual(kokoro.slice(0, 4).map((/** @type {any} */ x) => x.natives?.sent ?? 0), [0, 1, 2, 3]);
+  // The run sees which replies kept a native, and the next step sends one more for each.
+  assert.deepEqual(kokoro.slice(0, 4).map((/** @type {any} */ x) => x.kept), [true, true, true, true]);
   assert.match(text, /Thinking kept per turn/);
   // The control and the Claude-to-Claude turn are in the table, apart from the conversation.
   assert.ok(rows.some((/** @type {any} */ x) => x.phase === 'control' && x.altered && x.outcomes.join() === 'reasoning,ok'));
@@ -46,6 +54,7 @@ test('the reasoning check against the stand-ins: both providers pass every check
   assert.ok(rows.filter((/** @type {any} */ x) => x.provider === 'openrouter').every((/** @type {any} */ x) => x.upstream === 'Anthropic'));
   assert.ok(rows.filter((/** @type {any} */ x) => x.provider === 'anthropic').every((/** @type {any} */ x) => Array.isArray(x.transformations)));
   assert.match(text, /Upstream provider per turn: .*Anthropic/);
+  assert.doesNotMatch(text, /inconclusive|only the cache checks failed/);
   assert.match(text, /input_transformations came with \d+ of \d+ steps, always empty/);
   assert.match(text, /block_binding .* was sent on (\d+) of \1 steps/);
   assert.equal((await reread(out)).pass, true, 'report reads it again');
@@ -57,8 +66,8 @@ const row = (over = {}) => ({ provider: 'anthropic', half: 'Kokoro', wake: 'w-1'
 function good(provider = 'anthropic') {
   const p = { provider };
   return [
-    row({ ...p, step: 1, cacheRead: 0, cacheWrite: 100 }),
-    row({ ...p, step: 2, natives: { sent: 1, changed: false }, cacheRead: 100, cacheWrite: 20 }),
+    row({ ...p, step: 1, cacheRead: 0, cacheWrite: 100, kept: true }),
+    row({ ...p, step: 2, natives: { sent: 1, changed: false }, cacheRead: 100, cacheWrite: 20, kept: true }),
     row({ ...p, step: 3, natives: { sent: 2, changed: false }, cacheRead: 120, cacheWrite: 20 }),
     row({ ...p, wake: 'w-2', step: 1, cacheRead: 100, cacheWrite: 30 }),
     row({ ...p, wake: 'w-3', step: 1, phase: 'control' }),
@@ -85,27 +94,55 @@ test('no natives, no pass: a run in which Claude never thought, or no thinking w
 });
 
 test('the cache checks hold a step to what the one before it read and wrote, and a half\'s next turn to its last turn\'s first step', () => {
+  const find = (/** @type {any[]} */ rows) => checks(rows).find((c) => /reads at least/.test(c.name))?.problems ?? [];
   const low = good().map((r) => (r.phase === 'main' && r.step === 3 && r.wake === 'w-1' ? { ...r, cacheRead: 119 } : r));
-  const found = problems(low);
-  const key = Object.keys(found).find((k) => /^within a turn/.test(k)) ?? '';
-  assert.equal(found[key].length, 1);
-  assert.match(found[key][0], /step 3: read 119, but step 2 had read 100 and written 20/);
+  assert.equal(find(low).length, 1);
+  assert.match(find(low)[0], /step 3: read 119, but step 2 had read 100 and written 20/);
   const next = good().map((r) => (r.wake === 'w-2' ? { ...r, cacheRead: 99 } : r));
-  assert.match(problems(next)[key][0], /next turn's first request read 99, but the turn before had read 0 and written 100/);
+  assert.match(find(next)[0], /next turn's first request read 99, but the turn before had read 0 and written 100/);
   // A read of any size above zero is no longer enough.
   const small = good().map((r) => (r.wake === 'w-1' && r.step === 2 ? { ...r, cacheRead: 5 } : r));
-  assert.ok(problems(small)[key].length >= 1);
+  assert.ok(find(small).length >= 1);
 });
 
-test("Anthropic's input_transformations: a thinking block dropped for a prefix mismatch fails; another reason, or an empty list, does not", () => {
-  const key = (/** @type {any[]} */ rows) => checks(rows).find((c) => /input_transformations/.test(c.name));
-  assert.deepEqual(key(good())?.problems, []);
+test("Anthropic's input_transformations are only reported: with an error set on a mismatch, a dropped block would be a 400 the check already fails on", () => {
   const dropped = good().map((r, i) => (i === 2 ? { ...r, transformations: ['thinking_dropped:prefix_binding_mismatch'] } : r));
-  assert.equal(key(dropped)?.problems.length, 1);
-  const other = good().map((r, i) => (i === 2 ? { ...r, transformations: ['thinking_dropped:model_cannot_read'] } : r));
-  assert.deepEqual(key(other)?.problems, []);
-  assert.equal(checks(good('openrouter')).some((c) => /input_transformations/.test(c.name)), false, 'not asked of OpenRouter');
+  assert.ok(checks(dropped).every((c) => !c.problems.length), 'no check reads them');
+  assert.equal(checks(good()).some((c) => /input_transformations/.test(c.name)), false);
+  assert.match(notes(dropped).join('\n'), /input_transformations came with 1 of \d+ steps: thinking_dropped:prefix_binding_mismatch/);
   assert.match(notes(good().map((r) => ({ ...r, transformations: null }))).join('\n'), /input_transformations never appeared in a stream/);
+});
+
+test('the cache checks need growth: a run that caches only the system prompt (the marks on tool messages ignored) fails, and the report names the likely cause', () => {
+  // Every request reads the system entry and writes nothing past it: 3000 is 3000 + 0, so the old inequality holds.
+  const only = good('openrouter').map((r) => (r.phase !== 'main' ? r : { ...r, cacheRead: r.step === 1 && r.wake === 'w-1' ? 0 : 3000, cacheWrite: r.step === 1 && r.wake === 'w-1' ? 3000 : 0 }));
+  const failing = checks(only).filter((c) => c.problems.length);
+  assert.equal(failing.length, 1);
+  assert.match(failing[0].name, /reads more than/);
+  assert.match(failing[0].problems.join('\n'), /step 3: read 3000, not above step 2's 3000/);
+  // The next turn's first read must be above the turn before's at its first step: here 3000 against 3000.
+  const again = only.map((r) => (r.phase === 'main' && r.wake === 'w-1' && r.step === 1 ? { ...r, cacheRead: 3000, cacheWrite: 0 } : r));
+  assert.match(checks(again).find((c) => /reads more than/.test(c.name))?.problems.join('\n') ?? '', /next turn's first request read 3000, not above the turn before's 3000/);
+  const said = notes(only).join('\n');
+  assert.match(said, /only the cache checks failed.*marks on the tool messages.*end mark on the request's own now block/);
+  // A provider that fails something else too gets no such line, nor does a good run.
+  assert.doesNotMatch(notes(only.map((r) => ({ ...r, outcomes: ['reasoning', 'ok'] }))).join('\n'), /only the cache checks failed/);
+  assert.doesNotMatch(notes(good('openrouter')).join('\n'), /only the cache checks failed/);
+});
+
+test("a reply that was signed but kept no native (cut at max_tokens, an unread delta, [REDACTED]) doesn't make the next step fail; check 1 counts kept replies", () => {
+  const cut = good().map((r) => (r.phase === 'main' && r.wake === 'w-1' ? { ...r, signed: true, kept: false, natives: null } : r));
+  const first = checks(cut).find((c) => /sends it back/.test(c.name));
+  assert.deepEqual(first?.problems, []);
+  // A reply that did keep one, and a next step that sent none, still fails.
+  const lost = good().map((r) => (r.phase === 'main' && r.wake === 'w-1' && r.step === 2 ? { ...r, natives: { sent: 0, changed: false } } : r));
+  assert.match(checks(lost).find((c) => /sends it back/.test(c.name))?.problems.join() ?? '', /1 earlier reply with thinking, 0 sent back/);
+});
+
+test('when no reply thought before another step, the report says the run is inconclusive and to rerun; a run that did has no such line', () => {
+  const none = good().map((r) => ({ ...r, kept: false, signed: false, natives: null }));
+  assert.match(notes(none).join('\n'), /no reply thought before another step: inconclusive, rerun/);
+  assert.doesNotMatch(notes(good()).join('\n'), /inconclusive/);
 });
 
 test('the negative control on Anthropic must be refused, asked again once on the same model, and answered, with nothing resting; on OpenRouter it is only reported', () => {
