@@ -12,7 +12,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 15843,
+      "size": 16338,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -21,7 +21,7 @@
       },
       "files": {
         "annai-plugin.json": "920196a704444f91487b0900834950477a90d191a3dbaf9eda26e0c23a534baa",
-        "index.js": "33a95a1a1d5e8002ca37acbf106b77ea946bd9df3996d80edb64e773238cf03f"
+        "index.js": "027134850a10e1f5493d884a8d90cff578c144e75bbf9596de0341eff41b6e9e"
       }
     },
     {
