@@ -1,286 +1,417 @@
 # keep-reasoning: Claude's thinking between tool steps, design
 
-Date: 2026-10-29. Status: proposed. One choice waits for the user: how far Claude's thinking is carried (§1, "The line"). The rest of this design holds for either answer, and the last section says what the other answer changes. Main at dd7465ce; line numbers are main's.
+Date: 2026-10-29. Status: revised after a spec check and the user's answers of 2026-10-29. Two questions remain open, both marked **Open** where they come up: the size limit for long turns (§6) and cache markers for Claude through OpenRouter (§9). Main at dd7465ce; line numbers are main's.
 
 ## Why
 
-Claude 5.5 (Opus, Sonnet, Haiku) thinks before each tool call. Since anthropic-messages 0.4.1, annai never sends that thinking back, so inside one turn Claude plans every step again from what it can see. Anthropic calls sending it back "Required" inside a tool loop (quotes in "What Anthropic's docs say").
+Claude 5.5 (Opus, Sonnet, Haiku) thinks before its tool calls. Since anthropic-messages 0.4.1, annai never sends that thinking back. So inside one turn, Claude plans every step again from what it can see, and Anthropic calls sending it back "Required" inside a tool loop. Claude through OpenRouter never had it sent back.
 
-It was switched off for a reason. annai changes each request between the steps of a turn: the now block moves, and tidy-up uses its own instructions. Claude 5.5 refuses a thinking block when anything before it has changed. On the user's phone (2026-10-28), every Anthropic request after the first in a turn got a 400 ("Invalid `signature` in `thinking` block … bound to a different conversation"). Kokoro then fell back to weaker models, and Koe repeated advice. Since 0.4.2 the plugin keeps only the thinking's words, and under Claude 5.5's default display those words are empty, so nothing of the reasoning is left.
+It was switched off for a reason. annai changes each request between the steps of a turn: the now block moves, and tidy-up uses its own instructions. Claude 5.5 refuses a thinking block when anything before it has changed. On the user's phone (2026-10-28), every Anthropic request after the first in a turn got a 400 ("Invalid `signature` in `thinking` block … bound to a different conversation"). Kokoro then fell back to weaker models, and Koe repeated advice. Those 400s ended with 0.4.1. This change must not bring them back.
 
 The user's words:
 - "Defer, do it next" (2026-10-28), on: "Make each turn's requests append-only (keep each step's now block, and freeze the instructions and tools within a turn), then send Claude's thinking back again."
-- Standing: annai saves data on the go. It takes every data-saving optimization, on by default.
+- Standing: save data on the go, by taking every data-saving optimization, on by default.
 - Standing: keep the released copy bug free.
+- 2026-10-29, on this design (wording as the coordinator relayed it):
+  1. Claude to Claude fallback: "Send it across Claude (Recommended)".
+  2. Mid-turn changes: "Wait for next turn (Recommended)".
+  3. Rare mid-turn edits: "Accept (Recommended)".
+  4. Claude through OpenRouter: "Include it (Recommended)".
+  5. A real check: "Key here, before release".
 
 ## Goals
 
-1. Within a turn, every request to a Claude model carries the thinking of that turn's earlier steps, exactly as Claude returned it. This holds for Kokoro, Koe, Shiori as one half, and tidy-up.
-2. In normal use, no request is refused because of its thinking.
-3. If a request is refused anyway, the same model answers without the thinking. annai never falls back to another model for this, and the Trace says what happened.
-4. A request carries no more than its turn needs. Nothing new goes into the log, the Trace or backups.
-5. Other providers (Gemini, OpenAI, Chat Completions, local servers) send exactly what they send today. They also gain the fixes that help every provider: instructions and tools frozen for the turn, and tidy-up's own instructions.
+1. Within a turn, every request to Claude carries the thinking of that turn's earlier steps, exactly as Claude returned it. That holds on Anthropic's API and through OpenRouter, for Kokoro, Koe, and Shiori as one half.
+2. No request is refused because of its thinking.
+3. If one is refused anyway, the same model answers without the thinking. annai never falls back for this, and the Trace says what happened.
+4. No thinking content is stored anywhere: not in the log, the Trace, backups or a plugin's result. The Trace gains only counts.
+5. Every other model sends exactly what it sends today. Every provider gains the fixes that help all of them: instructions, tools and level frozen for the turn, and tidy-up's own instructions.
 
 ## Non-goals
 
-- Carrying Claude's thinking from one turn to the next. That is the alternative in §1 and the last section.
-- Claude reached through OpenRouter or another Chat Completions server. That path returns the reasoning's words without signatures, so there is nothing to send back. It stays as it is.
-- Showing Claude's thinking. `display` stays at Claude 5.5's default, "omitted", so the Trace's reasoning words stay empty for those models, as they are today.
-- One Claude model reading another's thinking after a fallback, even where Anthropic allows it (Opus 5.5 can read Sonnet 5.5's). See §7.
-- Anthropic's betas: `drop_block`, turn-scoped system messages (`clear_at`), `tool_addition`, on-demand compaction. None is needed (§8, §2).
+- Carrying thinking from one turn to the next. The user's words are "within a turn".
+- Showing the thinking. Anthropic's `display` stays at its default, "omitted"; OpenRouter's stays at its default, "summarized" (§9).
+- Reasoning for other models through OpenRouter, such as GPT or Gemini (§9).
+- Anthropic's betas: `drop_block`, turn-scoped system messages (`clear_at`), `tool_addition`, on-demand compaction. None is needed.
 
 ## Anti-goals (a failure even if it works)
 
-- A refused request that sends Kokoro or Koe to a weaker model.
-- A thinking block sent to a model other than the one that wrote it.
-- Thinking in the log, the Trace, backups, or a plugin's `annai.llm` result.
+- A refusal that sends Kokoro or Koe to a weaker model.
+- A thinking block sent to an endpoint (address and key) other than the one that returned it.
+- Thinking in the log, the Trace, backups, or an `annai.llm` result.
 - A request in a turn that rewrites anything an earlier request of that turn sent.
-- Bigger requests for providers that gain nothing from them.
+- Bigger requests for models that gain nothing from them.
 
-## What Anthropic's docs say
+## What the docs say
 
-All fetched on 2026-10-29 from platform.claude.com (the `.md` form of each page).
+Fetched on 2026-10-29: Anthropic's from platform.claude.com, OpenRouter's from openrouter.ai, in the `.md` form of each page.
 
-**What must go back, and when.** "Thinking with tool use" (https://platform.claude.com/docs/en/build-with-claude/thinking#thinking-with-tool-use): "when you return tool results, you must pass the thinking blocks from the assistant message back to the API, complete and unmodified." "Preserving thinking blocks" (https://platform.claude.com/docs/en/build-with-claude/thinking#preserving-thinking-blocks): "**Required:** within a tool-use turn, pass thinking blocks back. **Recommended:** across turns, pass everything back. **Allowed:** outside tool use, omit prior turns' thinking." Also: "Within the latest assistant message, the sequence of consecutive `thinking` blocks must match what the model generated in the original request: you can't rearrange, edit, or partially drop them."
+**What must go back, and when.** "Thinking with tool use" (https://platform.claude.com/docs/en/build-with-claude/thinking#thinking-with-tool-use) says: "when you return tool results, you must pass the thinking blocks from the assistant message back to the API, complete and unmodified." "Preserving thinking blocks" (https://platform.claude.com/docs/en/build-with-claude/thinking#preserving-thinking-blocks) says: "**Required:** within a tool-use turn, pass thinking blocks back. **Recommended:** across turns, pass everything back. **Allowed:** outside tool use, omit prior turns' thinking." The same section: "Within the latest assistant message, the sequence of consecutive `thinking` blocks must match what the model generated in the original request: you can't rearrange, edit, or partially drop them."
 
-**Send the reply back as it came.** "Send assistant turns back exactly as returned" (https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#append-assistant-turns-exactly-as-returned): "Store the `content` array from each response and send it back unchanged as the assistant turn: every block type, in the order received, including `thinking` blocks whose `thinking` field is empty. A serializer that drops unknown block types, drops empty fields, or reorders blocks edits the prefix for every later turn." And: "On the models that run the prefix check, the `thinking` field is empty by default and the `signature` carries the reasoning … A block sent back with an empty `signature` fails." "Thinking encryption" (https://platform.claude.com/docs/en/build-with-claude/thinking#thinking-encryption): "Full thinking content is encrypted and returned in the `signature` field on each thinking block."
+**Send the reply back as it came.** "Send assistant turns back exactly as returned" (https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#append-assistant-turns-exactly-as-returned) says: "Store the `content` array from each response and send it back unchanged as the assistant turn: every block type, in the order received, including `thinking` blocks whose `thinking` field is empty. A serializer that drops unknown block types, drops empty fields, or reorders blocks edits the prefix for every later turn." It goes on: "the `thinking` field is empty by default and the `signature` carries the reasoning … A block sent back with an empty `signature` fails." "Thinking encryption" (#thinking-encryption on the thinking page) says: "Full thinking content is encrypted and returned in the `signature` field on each thinking block."
 
-**What "bound to a different conversation" checks.** "Keeping the prefix unchanged" (https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#prefix-check): "a thinking block stays valid only while everything you sent before it is unchanged on later requests. The checked prefix has three parts: The top-level `system` prompt; The set of `tools`; Every `message` before the block." The page's introduction: "If the prefix differs from what you sent when the block was produced, that block and every later thinking block fail the prefix check." On the chain between blocks: "each thinking block records which thinking block came before it, across turns. You can remove the oldest thinking blocks (from the start of the history), the newest (from the end), or all of them. What fails is a gap … Once you remove a block, leave it out. Putting it back invalidates the thinking blocks produced while it was gone."
+**What "bound to a different conversation" checks.** "Keeping the prefix unchanged" (https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#prefix-check) says: "a thinking block stays valid only while everything you sent before it is unchanged on later requests. The checked prefix has three parts: The top-level `system` prompt; The set of `tools`; Every `message` before the block." On the chain between blocks: "You can remove the oldest thinking blocks (from the start of the history), the newest (from the end), or all of them. What fails is a gap … Once you remove a block, leave it out. Putting it back invalidates the thinking blocks produced while it was gone."
 
-**Who gets a 400.** "When `prefix_mismatch_behavior` is unset" (https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#enforcement): for Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5, an account created on or after August 31, 2026 gets a "400 error". An older account gets "No error (failing blocks reach the model)". The user's phone got the 400, so their account is enforced. The error starts "messages.1.content.0: Invalid `signature` in `thinking` block. The block is bound to a different conversation. Remove the block, or set `thinking.block_binding.prefix_mismatch_behavior` to "drop_block"." (#prefix-mismatch-error).
+**Who gets a 400.** In "When `prefix_mismatch_behavior` is unset" (#enforcement), an account created on or after August 31, 2026 gets a "400 error" from Opus 5.5, Sonnet 5.5 and Haiku 5.5. An older account gets "No error (failing blocks reach the model)". The user's phone got the 400, so their account is enforced. The error starts: "Invalid `signature` in `thinking` block. The block is bound to a different conversation."
 
-**What may change without breaking them.** The same section: "Request parameters outside those three fields, such as `effort`, `max_tokens`, `output_config`, `tool_choice`, and `metadata`, aren't part of the prefix check, and neither are `cache_control` markers." "What counts as an edit" (#what-counts-as-an-edit) lists these as valid: "Append messages at the end"; "Remove `thinking` blocks from the start of the history, from the end, or all of them" ("the model loses that reasoning"); "Change `model`" ("Valid for blocks that the new model can read; the API drops the others without an error"); "Add, move, or remove `cache_control` markers". It lists these as invalid: "Change the top-level `system` string or blocks"; "Add, remove, rename, or edit a tool in `tools`"; "Add a text block to an earlier user turn, or remove one you added last time"; "Clear or shorten an earlier `tool_result`, re-encode an earlier image, or change an earlier `tool_use` input" ("Invalid for every later thinking block").
+**What may change without breaking them.** The same section: "Request parameters outside those three fields, such as `effort`, `max_tokens`, `output_config`, `tool_choice`, and `metadata`, aren't part of the prefix check, and neither are `cache_control` markers." The table in "What counts as an edit" (#what-counts-as-an-edit) has these rows:
+- Valid: "Append messages at the end".
+- Valid: "Remove `thinking` blocks from the start of the history, from the end, or all of them", marked "(the model loses that reasoning)".
+- Valid: "Change `model`", marked "Valid for blocks that the new model can read; the API drops the others without an error".
+- Invalid: "Change the top-level `system` string or blocks".
+- Invalid: "Add, remove, rename, or edit a tool in `tools`".
+- Invalid: "Add a text block to an earlier user turn, or remove one you added last time".
+- Invalid: "Clear or shorten an earlier `tool_result`, re-encode an earlier image, or change an earlier `tool_use` input".
 
-**Where changing context goes.** "Put changing context in the newest turn" (#changing-context): "When a value changes, say so in the newest turn: add a text block to the user message you are about to send … Once sent, that text block is part of the prefix for later thinking: leave it in place on later requests." This is what the user's "keep each step's now block" asks for.
+**Where changing context goes.** "Put changing context in the newest turn" (#changing-context) says: "When a value changes, say so in the newest turn: add a text block to the user message you are about to send … Once sent, that text block is part of the prefix for later thinking: leave it in place on later requests." The limitations of mid-conversation system messages (https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages#limitations) say: "**Not a place for untrusted content.** … Do not place text from outside the conversation, such as raw tool output, retrieved documents, or web content, directly in a system message; doing so gives that text operator-level authority."
 
-**Another model's turns.** From the page's FAQ: "My harness can route a turn to a non-Claude model. Do those turns invalidate Claude's earlier thinking? No, provided they're appended after the existing history and nothing earlier changes: an assistant message without thinking blocks is an appended message like any other." On switching between Claude models ("Switching models mid-conversation", #switching-models): "If the current model can't read a block, the API drops it from that request without an error." Also: "Claude Opus 5.5 reads thinking blocks from … and, on the Claude API …, from Claude Sonnet 5.5 and Claude Haiku 5.5". And: "Thinking blocks that Claude Sonnet 5.5 or Claude Haiku 5.5 produces work only in the account that produced them or in an account linked to it" (#account-bound-thinking).
+**Other models.** The page's FAQ (non-Claude turns): "No, provided they're appended after the existing history and nothing earlier changes: an assistant message without thinking blocks is an appended message like any other." On model switches (#switching-models): "If the current model can't read a block, the API drops it from that request without an error." On accounts (#account-bound-thinking): "Thinking blocks that Claude Sonnet 5.5 or Claude Haiku 5.5 produces work only in the account that produced them or in an account linked to it."
 
-**Thinking across a user turn.** "Thinking block preservation by model" (https://platform.claude.com/docs/en/build-with-claude/thinking#thinking-block-preservation-by-model): Opus 4.5 and later, Sonnet 4.6 and later, and Haiku 5.5 "Keep all prior turns". Also: "retained thinking blocks count as input like any other conversation history." "Thinking encryption": "It is only strictly necessary to send back thinking blocks when using tools with thinking. Otherwise you can omit thinking blocks from previous turns." On what dropping costs ("Output-token cost of `"drop_block"`", #drop-block-cost): "When Claude can't read reasoning from earlier turns, it re-creates that reasoning, so requests that drop thinking blocks generate more output tokens and can take longer to respond." The live page gives no figure. An older copy of Anthropic's guidance, bundled with Claude Code, gave +4.6% at low effort, +9.7% at medium and +10.3% at high, on a coding benchmark, when thinking is dropped on every turn. Treat those figures as indicative.
+**Thinking modes.** "Thinking with tool use" says: "The entire turn runs in a single thinking mode: you can't toggle thinking in the middle of a turn". So the reasoning level is frozen for the turn (§3). Sonnet 5.5's "off" level, `between_tools`, returns its progress notes as thinking blocks with words, so the Trace has words there. Under adaptive thinking the words are empty.
 
-**Prompt caching and thinking.** "Thinking and prompt caching" (https://platform.claude.com/docs/en/build-with-claude/thinking#thinking-and-prompt-caching): "A thinking block the API drops … changes the cached prefix from that block's position onward. Blocks passed back unchanged keep the cache intact." The same section: "Thinking blocks are cached with tool results … those cached thinking blocks count as input tokens". On effort: "Switching between `adaptive`, `enabled`, and `disabled`, changing `budget_tokens`, and changing the effort value all invalidate cache breakpoints". "Prompt caching", under "How automatic prefix checking works" (https://platform.claude.com/docs/en/build-with-claude/prompt-caching): "Cache writes occur only at your breakpoint." Also: "The lookback window is 20 blocks … a run of consecutive `tool_use` blocks counts as one position, and so does a run of consecutive `tool_result` blocks." Under "Pricing", for Opus 5.5 and Sonnet 5.5: cache hits are "0.05x the base input price", 1-hour writes are 2x and 5-minute writes 1.25x.
+**Thinking across turns.** "Thinking block preservation by model" (#thinking-block-preservation-by-model): Opus 4.5 and later, Sonnet 4.6 and later, and Haiku 5.5 "Keep all prior turns". The section adds: "retained thinking blocks count as input like any other conversation history". "Output-token cost of `"drop_block"`" (#drop-block-cost) says: "When Claude can't read reasoning from earlier turns, it re-creates that reasoning, so requests that drop thinking blocks generate more output tokens". The live page gives no figure. An older copy bundled with Claude Code gave +4.6% (low effort), +9.7% (medium) and +10.3% (high) for drops on every turn, on a coding benchmark. Those are used below as indicative only.
 
-**System messages instead of user text.** "Placement after tool results" (https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages#placement-after-tool-results): "On Claude Sonnet 5.5 and Claude Haiku 5.5 … they can treat a system message placed right after a tool result as untrusted text and ignore it." That is one reason the now block stays a text block in the user message (§2).
+**Prompt caching.** "Thinking and prompt caching" (#thinking-and-prompt-caching): "Blocks passed back unchanged keep the cache intact." It also says that changing "the effort value" invalidates cache breakpoints. "Prompt caching" (https://platform.claude.com/docs/en/build-with-claude/prompt-caching), under "How automatic prefix checking works", says: "Cache writes occur only at your breakpoint" and "The lookback window is 20 blocks". On Opus 5.5 and Sonnet 5.5, cache hits cost "0.05x the base input price". One-hour writes cost 2x and five-minute writes 1.25x.
+
+**OpenRouter.** "Preserving Reasoning" (https://openrouter.ai/docs/guides/best-practices/reasoning-tokens) lists `message.reasoning_details` as a way to pass reasoning back: "Pass the full reasoning_details block". It adds: "Use `reasoning_details` when working with models that return special reasoning types (such as encrypted or summarized)". And: "the entire sequence of consecutive reasoning blocks must match the outputs generated by the model during the original request; you cannot rearrange or modify the sequence of these blocks." On streaming: "`reasoning_details` appears in `choices[].delta.reasoning_details` for each chunk", "The complete reasoning sequence is built by concatenating all chunks in order", and "For encrypted reasoning, the content may appear as `[REDACTED]` in streaming responses". Each detail carries a `format`, `"anthropic-claude-v1"` for Claude, and a type: `reasoning.text` (with `signature`), `reasoning.encrypted` (with `data`) or `reasoning.summary`. Under "Summarized Thinking", OpenRouter "defaults to **summarized thinking**" for Claude. "Prompt Caching" (https://openrouter.ai/docs/guides/best-practices/prompt-caching), under "Anthropic Claude", gives two ways to enable caching: a top-level `cache_control`, or `cache_control` on content blocks. Under "Provider Sticky Routing": "After a request that uses prompt caching, OpenRouter remembers which provider served your request."
 
 ## What changes between the steps of a turn today
 
-From the code. Each row says what the design does with it.
+From the code. The last column is what this design does with each.
 
-| What | Where | Changes between steps | Design |
+| What | Where | Between steps today | Design |
 |---|---|---|---|
-| The now block (time, place, voice, Koe's state, reasons, the plan) | loop.js:1765, context.js:110; Koe's adds `<today>` and the nonce line, halves.js:905 | Every step. The tail goes after the cache marker (anthropic-messages index.js:72–82), and the next request leaves it out | **Kept where it was sent** for the model whose thinking follows it (§2). The new one still goes last |
-| System text: core, personality, Kokoro's part, the snapshot, `shows` | loop.js:1770; the snapshot is taken per wake (loop.js:1650) | `shows` and Kokoro's part are recomputed each step (`#toolsNow`, `#rules`). The snapshot changes only after a forced tidy-up mid-turn | **Frozen for the turn** |
-| Tools | `#toolsNow`, loop.js:1153: switches, "search via", registry tools (plugins, MCP, skills), `show`'s description (its card types are a getter), Kokoro's hidden `tell_koe` | Recomputed each step | **Frozen for the turn.** A call to a tool the user switched off since gets words back instead of running (§2) |
-| Provider tools (Anthropic web search and fetch) | `via.kinds/off` → `providerTools` | Recomputed each step | **Frozen for the turn** |
-| Lines that join mid-turn: wakes ("meanwhile"), Koe's notes, heard speech, `[annai]` blocks | transcript.js `#line`, `#held`, `#unadd` | Appended after the results, or after the reply that was being made | **Kept as is.** Already append-only, and the same from the log as live |
-| A refused photo's copy | transcript.js:170 (`photo.replace`) | Rewrites an earlier image | **Kept.** It is rare, and the check catches it (§4) |
-| A heard segment's words written down later | transcript.js:230 (`heard.text`) | Rewrites an earlier speech part | **Kept**; the check catches it |
-| Koe's window | transcript.js:322; it starts 6 exchanges later each time the window reaches 18 | Drops the leading messages | **Kept**; the check catches it. Koe's turns are short |
-| The photo limit (each model's newest `maxCount` pictures) | refusals.js:47, applied per model in fallback.js:544 | Past the limit, each new picture turns the oldest into a stub | **Kept**; the check catches it. The cache already misses there today (an approved limitation) |
-| Files as words for a model that can't take them (readings, notes) | fallback.js:537 | A reading kept mid-turn changes how an earlier file reads | **Kept as is.** Claude takes photos and PDFs, so this never touches Claude's requests |
-| Photo uploads (`fileId` instead of base64) | call.js `withUploads` | An upload that expires or fails switches the photo's form | **Kept.** The bytes stay the same. If Anthropic disagrees, §8 handles it |
-| Effort, `toolRequired`, `newestPhoto`, `maxOutput`, `cacheTtl` | request fields | Per step or per role | **Kept.** Anthropic doesn't check them, and effort is the same all through a role's turn |
-| The cache marker | index.js:72–76 | Moves to the newest message | **Kept**, plus one more marker where the last turn began (§5) |
-| Claude's thinking | index.js read/wire | Never sent since 0.4.1 | **Sent back within the turn, as returned** (§3) |
-| Tidy-up (warm housekeeping) | loop.js:1380 | Uses `systemText(snapshot)` without Kokoro's part, and the housekeeping instruction as its tail | **Uses the half's own system text.** Between turns it carries no thinking (§2) |
+| The now block | loop.js:1765, context.js:110; Koe's adds `<today>` and the nonce line (halves.js:905) | Changes every step; goes after the cache marker (anthropic-messages index.js:72–82); the next request leaves it out | Stays where it was sent (§2) |
+| System text (with `shows` and Kokoro's part) | loop.js:1770 | `shows` and Kokoro's part are recomputed every step | Frozen for the turn (§3) |
+| Tools | `#toolsNow`, loop.js:1153 | Recomputed every step | Frozen for the turn (§3) |
+| Provider tools | the same | Recomputed every step | Frozen for the turn (§3) |
+| Reasoning level | fallback.js:476 reads the role's level on each call | Changes if the user edits it mid-turn | Frozen for the turn (§3) |
+| Koe's photo rule | `#koeSendable`, halves.js:913, reads the Koe list on each call | Changes with the list | Frozen for the turn (§3) |
+| Lines that join mid-turn | transcript.js `#line`, `#held` | Appended | Kept as is |
+| Lines logged while a reply is being made | `#unadd` (transcript.js:141) moves them after the reply, for two halves only | With one half, they land before the reply, which is an edit | `#unadd` for one half too (§3) |
+| A refused photo's copy | `photo.replace`, transcript.js:170 | Rewrites an earlier image | Rare: §5 stops thinking for the turn |
+| Words for heard speech written later | `heard.text`, transcript.js:230 | Rewrites an earlier speech part | Rare: §5 |
+| Koe's window | transcript.js:322 | Drops leading messages when it reaches 18 exchanges | Rare: §5. The window must ignore kept now blocks (§10) |
+| The photo limit | refusals.js:47, fallback.js:544 | Past the limit, the oldest picture becomes a stub | Rare: §5 |
+| Files given as words to models that can't take them | fallback.js:537 | A reading kept mid-turn changes an earlier file's words | Kept: Claude takes photos and PDFs |
+| `fileId` instead of base64 | call.js `withUploads` | Switches if an upload expires | Kept: the bytes stay the same; §8 if the provider disagrees |
+| `toolRequired`, `newestPhoto`, `maxOutput`, `cacheTtl` | request fields | Per step | Kept: not part of the check |
+| Cache marker | index.js:72–76 | Moves to the end | Kept, plus one at `cacheAt` (§7) |
+| Claude's thinking | anthropic-messages since 0.4.1; chat-completions never | Not sent | Sent within the turn, as returned (§4) |
+| Tidy-up | loop.js:1380 | Leaves Kokoro's part out of the system text | Uses the half's own system text (§3) |
 
 ## The design
 
-### 1. The line: one turn
+### 1. The line: within a turn
 
-Claude's thinking and the kept now blocks last for **one turn of one half**, from the turn's first request to its last. When the turn ends, both leave the conversation. The next turn is built from the transcript as today: no earlier now blocks, no earlier thinking.
+Claude's thinking and the kept now blocks last for one turn of one half, from the turn's first request to its last. When the turn ends, both go. The next turn is built from the transcript as today. Koe and Kokoro each have their own turns and thinking, and neither ever sees the other's. A wake and the wakes that join it are one turn. Compaction or Start fresh during a turn rebuilds the transcript, and the turn's thinking goes with it.
 
-The boundaries the brief asks about:
-- **A wake** is a turn, together with the wakes that join it. The line is the same.
-- **Koe and Kokoro** each have their own turns, transcripts and thinking. Neither ever sees the other's.
-- **Warm tidy-up** runs between turns. It carries no thinking. A forced tidy-up inside a turn carries the turn's thinking, then the compaction ends it (§2).
-- **Compaction and Start fresh** rebuild the transcript. Any thinking the turn had goes with it.
-- **A fallback inside a turn** keeps the turn's line (§7).
-- **A retry after a repair**, a photo past the limit, a reading kept mid-turn, Koe's window moving: each edits something earlier, and the check in §4 drops the thinking from that point on.
+**What crossing a turn costs.** Today the next turn reads from the cache everything the last turn sent except its last now block. Now the last turn's now blocks and thinking leave the request. So the next turn shares the last turn's requests only up to where that turn began. The turn's tool calls and results are then written to the cache once more, at the write price instead of the read price. With an hour's cache, that is $4.00 instead of $0.10 per million tokens on Sonnet 5.5, and $8.00 instead of $0.20 on Opus 5.5.
 
-Why the turn, and not the time the cache stays warm. Anthropic requires thinking within a tool turn and only recommends it across turns. Carrying it across turns would put every step's thinking into every later request for as long as the cache stays warm. A drive with Kokoro waking every few minutes keeps an hour's cache warm all day, so requests would keep growing until housekeeping, against "save data on the go". Within a turn, the growth stops when the turn does. The cost is one re-write of a multi-step turn's tool steps into the cache at the next turn (§5). The last section describes the other choice. **This is the open question for the user.**
+A turn whose first reply ends it costs nothing extra. Most of Kokoro's and Koe's turns are like that. Big tool results are where it shows: a 20-page PDF read in a turn is about 30,000 tokens, so about $0.12 more on Sonnet 5.5 and $0.24 on Opus 5.5, once. Claude through OpenRouter has no prompt caching at all today (§9), so there is no re-write cost there unless §9's open question adds caching.
 
-### 2. A turn's requests only append
+### 2. The now block stays where it was sent
 
-**The now block stays where it was sent.** Step k's now block went as the request's tail: the last text of the last user message. From step k+1 on, it stays there in the conversation, as a text part with `now: true`, and the new now block goes last as before. Earlier copies are never rewritten. This is Anthropic's "Put changing context in the newest turn". The now block stays user text, not a mid-conversation system message: user text works on every model and every provider with no beta, and Sonnet and Haiku 5.5 may ignore a system message right after tool results. **My call.**
+Step k's now block went as the request's tail, the last text of the last user message. From step k+1 on, it stays there, as a text part with `now: true`, and the new now block goes last as before. Earlier copies are never rewritten. A paused continuation (a request that ends with Shiori's own message) has no tail, so it keeps no now block.
 
-**Only the model whose thinking follows gets an old now block.** A kept now block goes to a model only when the reply right after it carries that model's own reply-as-returned (§3). In practice: Claude, within the turn. Every other model gets the conversation exactly as today, so Gemini's and OpenAI's kept turns, OpenAI's automatic cache and local servers' prefix caches see no change.
+It stays user text, not a mid-conversation system message, for three reasons:
+- The now block holds text from outside annai's own instructions: place names from the map service, plan titles, plugins' wake reasons, and, in Koe's, booking text. Anthropic says not to put such text in a system message.
+- User text works on every model and provider. Mid-conversation system messages exist only on some Claude models; Sonnet 5 lacks them.
+- It is what annai sends today. **My call.**
 
-Why not keep now blocks for every provider? A model with no bound thinking gains little within a turn: the previous now block, plus the reply on servers that cache what they generated (llama.cpp). At the next turn, those blocks would leave, and the server would re-read the whole previous turn. Today it re-reads only the last reply. Keeping them for good, across turns, would help every provider's cache, but it would add 200 to 600 bytes to every later request for every step until housekeeping. **My call.** The rule is local and stable: whether a now block goes depends only on the reply right after it, so it never changes from one step to the next.
+A kept now block goes only where thinking follows it. It goes to a model only when the reply right after it carries a native of that model's endpoint (§4). That means Claude, within the turn. Every other model gets the conversation exactly as today, so Gemini's and OpenAI's kept turns and local servers' prefix caches see no change. Keeping now blocks for those models would gain little within a turn and would make the next turn re-read the whole last turn. **My call.**
 
-**Instructions, tools and provider tools are frozen for the turn.** The loop computes system text (with `shows` and Kokoro's part), tool definitions and provider tools once, at the turn's first step. Every step of the turn reuses them. A change made meanwhile applies from the next turn. That covers a tool switched on, a plugin or MCP server that connects, a card type, "search via", and the Koe list splitting Shiori or joining her. Today these apply from the next step. One exception: a call to a tool the user has switched off since the turn began is not run. Its result says, in English for the model, that the tool was switched off, so off means off at once. The live switches are read each step, which is cheap. A forced tidy-up inside a turn rebuilds the snapshot, so the turn's frozen system is computed again after it. That compaction drops the turn's thinking in any case.
+### 3. Frozen for the turn, and three fixes
 
-**Tidy-up uses the half's own instructions.** `#warmSummary` (loop.js:1380) builds the system text as a turn does: `(half.system?.(snapshot) ?? systemText(snapshot)) + shows`. Today it uses `systemText(snapshot)`, which, with two halves, lacks Kokoro's part. So every warm tidy-up of Kokoro misses the whole cache (numbers in §5). Inside a turn, it uses the turn's frozen system and tools.
+At the turn's first step, the loop fixes:
+- the system text (with `shows` and Kokoro's part),
+- the tool definitions,
+- the provider tools,
+- the reasoning level, passed as `level` on every call of the turn,
+- Koe's photo rule,
+- `cacheAt` (§7).
 
-**The core owns this; the plugin owns the reply's form.** annai's own edits are made in the core: the now block, the system text, the tools, the transcript, the photo limit and readings for each model. Only the core can stop making them, and only the core sees every provider's requests. The plugin owns what only it knows: the reply's wire form, how to send it back, how to read the refusal, and where cache markers go. **My call.**
+Every step uses these. A change made meanwhile applies from the next turn (the user's answer 2). That covers a tool switched on, a plugin or MCP server connecting, a card type, "search via", the Koe list (splitting Shiori into halves or joining them), and a role's level.
 
-### 3. Claude's reply, kept as it came: the provider contract
+Two things about switched-off tools:
+- A call to one of annai's own tools that the user switched off since the turn began is not run. Its result says, in English for the model, that the tool was switched off. The live switches are read each step. **My call.**
+- Provider tools (Anthropic's web search and fetch, OpenRouter's web search) run on the provider's side. annai can't refuse them, so a provider tool switched off during a turn keeps running until the turn ends.
 
-The contract (src/core/llm/contract.js) is an API, so these are additions only. Nothing that plugins rely on today changes meaning. I read LESSONS.md first. The relevant entries: "an error's optional parts go in one options object" (`ProviderError(kind, message, more)` already has one); "a plugin's `api` is the oldest host it needs" (anthropic-messages stays at `api: 1`, below); "keep derived content with its owner, named by what it was made from" (the `prefix` below).
+A forced tidy-up inside a turn uses the turn's frozen tools, provider tools and level, so its request reads the turn's cache. After the compaction, the turn's system text is rebuilt from the new snapshot, which it must be. Tools, provider tools and level stay frozen to the end of the turn.
 
-1. **A `native` part.** It holds the reply as its provider returned it, for the model that wrote it:
-   `{ type: 'native', model: string, content: any, covers: number, prefix: string }`.
-   - It comes first among its reply's parts. It stands in for the `covers` parts after it, which are annai's reading of the same reply: its text, tool calls, provider blocks and reasoning words.
-   - `content` belongs to the plugin and is opaque to the core. For Anthropic it is the response's `content` array: every block, in order, thinking blocks with their signatures (empty `thinking` included), text blocks with their citations, tool use, server tool use and results.
-   - `prefix` belongs to the core: a fingerprint of everything the request sent before this reply (§4).
-   - `portable()` gives a native only to its `model` and drops it for every other model, which gets the covered parts as today. That is the rule signed reasoning follows now.
-   - A plugin that renders messages, on meeting a native of its model, sends `content` and skips the next `covers` parts.
-   - Why: Anthropic binds each thinking block to everything before it, earlier blocks of its own reply included. annai's parts can't reproduce a reply exactly. The core joins text across blocks (call.js:229–232), and the plugin dropped citations and empty thinking blocks (0.4.2). A signed `reasoning` part per thinking block would therefore still send back a reply Claude never wrote. This is "fix at source": keep the provider's own form beside annai's reading of it.
-2. **A `native` stream event**, `{ type: 'native', content }`. A plugin yields it once, at the end of a reply that finished. `callOnce` turns it into the part, with `model`, `covers` (the reply's parts so far) and `prefix`, and puts it first. A reply that was cut off, stopped or failed has none. An older host ignores the event, because `take` in call.js skips unknown types. That is why anthropic-messages 0.5.0 can stay at `api: 1`: on an older annai it behaves as 0.4.3.
-3. **A `reasoning` error kind**: the provider refused the reasoning annai sent back. It gets English words for the model and the log ("The provider refused the reasoning annai sent back."), and the same in the screens' words. §8 says what annai does with it.
-4. **`now: true` on a text part**: an earlier step's now block, kept where it was sent. A type that returns natives must render it exactly as it rendered the request's `tail`. For Anthropic both are a text block at the end of the user message.
-5. **`cacheAt` on a request** (a message index): where this conversation's latest turn began. A type that places cache markers adds one there (§5).
+The three fixes:
+- **Tidy-up uses the half's own system text.** `#warmSummary` (loop.js:1380) builds it as a turn does: `(half.system?.(snapshot) ?? systemText(snapshot)) + shows`. Today, with two halves, every warm tidy-up of Kokoro misses the whole cache. Housekeeping is due at 70% of the window, about 700,000 tokens on a 1M-token Claude. Writing that again costs about $2.80 on Sonnet 5.5, against $0.07 to read it.
+- **Lines logged while a reply is being made follow that reply, with one half too.** transcript.js:141 limits this to two halves (`this.half !== 'one'`). With one half, a line logged during a call lands before the reply (chatter set aside, Undo of a hand-over). The request never had it, so it is an edit. The rule becomes the same for every half. The model then reads the lines in the order it met them. A conversation saved before this change puts such lines in their new place once, at the first reload, which costs one cache miss. **My call.**
+- **`nextStep` (fallback.js:403) never rests a model for `reasoning`.** It falls under the group that returns `{}`.
 
-The reply's parts in the log, the Trace and `annai.llm` results never include the native. It lives in memory for the turn (§6).
+The core owns all this, because annai's edits are made there and only the core sees every provider's requests. The plugins own the reply's wire form, how to send it back, how to read a refusal, and where cache markers go. **My call.**
 
-**anthropic-messages 0.5.0:**
-- **read** builds the content array as the stream arrives, as Anthropic's SDK does:
-  - each `content_block_start` gives the block;
-  - `thinking_delta`, `signature_delta`, `text_delta`, `citations_delta` and `input_json_delta` fill it;
-  - `content_block_stop` closes it;
-  - at `message_stop` it yields `native` with the blocks in index order.
-  A delta it doesn't know makes the reply go without a native, which is safe. It still yields `reasoning` with the words, when there are any, for the Trace.
-- **wire** sends a native of its model in place of the parts it covers. Everything else is as today: one message per role, tool results first in a user message.
-- **build** adds the `cacheAt` marker (§5).
-- **classify** reads a 400 `invalid_request_error` whose message says ``Invalid `signature` in `thinking` block`` or that thinking blocks "cannot be modified" as `reasoning`.
-- The rest of its comment at the top, and the spec's Anthropic Messages paragraph (§9.1), change to say this.
+### 4. Claude's reply, kept as it came: the provider contract
 
-Proposed LESSONS.md entry. I haven't added it: agent-rules changes only with the user's OK, so it is listed in Calls to confirm.
+The contract (src/core/llm/contract.js) is an API, and these are additions only. Of the LESSONS entries I read, three apply. "An error's optional parts go in one options object": `ProviderError` already has one. "A plugin's `api` is the oldest host it needs": the changed plugins stay at `api: 1`. "Keep derived content with its owner, named by what it was made from": the native's `prefix`.
+
+1. **A `native` stream event**, `{ type: 'native', content }`. A plugin yields it once, at the end of a reply that finished. `content` belongs to the plugin and is opaque to the core:
+   - Anthropic Messages: the response's `content` array.
+   - Chat Completions: the reply's `reasoning_details` (§9).
+2. **`Reply.native`**, beside `reply.parts` and never inside them: `{ endpoint, content, covers, prefix }`. `callOnce` makes it from the event, and only when its caller asks for one (`keepNative: true`). The loop asks on Shiori's own turns: Kokoro, Koe and one half. Utility calls, readers, quick decisions, tidy-up and plugins' `annai.llm` calls never get one, so nothing has to filter it out of them.
+   - `endpoint` is the endpoint id and key fingerprint, made the way kept turns make them (kept.js `keyPrint`).
+   - `covers` is the reply's part count.
+   - `prefix` is §5's fingerprint.
+3. **A `native` part in messages.** Only the transcript inserts it, first among its reply's parts (§10). On sending:
+   - A native goes to any model on its endpoint (the user's answer 1). The API drops what a model can't read.
+   - A different key is a different endpoint, so a native made with one Anthropic key never goes out with another. Sonnet and Haiku 5.5 blocks wouldn't work across accounts anyway.
+   - Two endpoint types serving the same model id never share natives. Anthropic Messages and OpenRouter's Chat Completions use different addresses and different native shapes.
+   - `portable()` leaves natives in. `callOnce`, which knows the endpoint, takes out the natives of other endpoints, and the now blocks that no longer have a native after them. It does this first, before a kept turn is matched (kept.js) and before anything is uploaded, so Gemini's and OpenAI's chains see what they see today.
+4. **Rendering.**
+   - Anthropic Messages sends a native's `content` in place of the `covers` parts after it.
+   - Chat Completions puts a native's `reasoning_details` on the assistant message of its reply and renders the parts as today.
+5. **A `reasoning` error kind:** the provider refused the reasoning annai sent back. English words for the model and the log: "The provider refused the reasoning annai sent back." The same in the screens' words.
+6. **`now: true` on a text part:** an earlier step's now block. A type that returns natives must render it exactly as it rendered the request's `tail`.
+7. **`cacheAt` on a request:** a message index (§7).
+
+Which finished replies keep a native:
+- Anthropic: a reply that stopped with `end_turn`, `stop_sequence`, `tool_use` or `pause_turn`, with every tool input parsed.
+- Chat Completions: `stop` or `tool_calls`.
+- None for `max_tokens` or `length`, a refusal or content filter, a reply cut off by the user or a note, an unparsable tool call, or a delta the plugin doesn't know.
+
+A reply continued after another model was cut off (`prefixed()`, fallback.js:423) always loses its native.
+
+Why a native rather than signed `reasoning` parts: Anthropic binds each block to everything before it, earlier blocks of its own reply included. annai's parts can't rebuild a reply exactly. The core joins text across blocks (call.js:229–232), and the plugin dropped citations and empty thinking blocks (0.4.2). OpenRouter needs a reply's whole `reasoning_details` back as they came.
+
+Proposed LESSONS.md entry (to be added when this ships):
 
 ```markdown
 ## 2026-10-29 annai: a provider's reply is kept as it came, beside annai's reading of it
-- Changed: annai's provider contract gained a `native` part: the reply as its provider returned it (Anthropic's content array), sent back in place of annai's parts to the model that wrote it. Before, a signed `reasoning` part per thinking block was meant to carry what the provider needed.
+- Changed: annai's provider contract gained a native reply: what the provider returned (Anthropic's content array, OpenRouter's reasoning_details), kept beside annai's parts and sent back to the endpoint that returned it. Before, a signed `reasoning` part per thinking block was meant to carry what the provider needed.
 - Why we had to change: Claude 5.5 binds each thinking block to everything sent before it, the earlier blocks of its own reply included. annai rebuilt replies from its own parts (text joined across blocks, citations and empty thinking blocks dropped), so a block sent back could not match what Claude wrote.
 - Original design was wrong because: it modelled a provider's reply as annai's parts and expected the provider to take those parts back, when the provider checks what it gets back against what it sent.
-- Lesson: when a provider checks what is sent back, keep its reply exactly as it came, beside annai's own reading of it, and send that copy back to the same model; annai's parts are for annai and for other models.
+- Lesson: when a provider checks what is sent back, keep its reply exactly as it came, beside annai's own reading of it, and send that copy back to the same endpoint; annai's parts are for annai and for other models.
 ```
 
-### 4. annai checks before sending
+### 5. annai checks before sending, and one flag stops the turn's thinking
 
-Some edits are hard to avoid inside a turn. They are listed as "the check catches it" in the table above. annai looks for them itself, so they never cost a 400 and a second upload.
+**The check.** When `callOnce` makes a native, it fingerprints what the request sent before the reply, as the plugin was given it:
+- the system text, tool definitions and provider tools;
+- every message after this model's own changes (portable, readings, photo limit, resolved speech, uploads), with the tail as the last text of the last user message;
+- images by hash;
+- each earlier native that was sent, by its content;
+- no reasoning parts.
 
-- **When a native is made**, `callOnce` fingerprints what the request sent before the reply, as the plugin was given it:
-  - system text, tool definitions, provider tools;
-  - every message after this model's own changes (portable, readings, photo limit, speech resolved, uploads), with the tail as the last text of the last user message;
-  - each image by its hash, not its data or `fileId`;
-  - each earlier native kept by its own content, and each one not sent by the parts it covers;
-  - no reasoning parts, since Anthropic leaves earlier thinking out of the prefix.
+That fingerprint is the native's `prefix`. It works like kept.js `prints()`, except that here `now` parts count.
 
-  That fingerprint is the native's `prefix`. It works the way kept.js `prints()` does, with one difference: here `now` parts count.
-- **Before each send**, `callOnce` walks the request the same way. At each native of this model whose `prefix` no longer matches, it drops that native and every later one. That is a cut from the end, which Anthropic allows. The plugin then gets their covered parts instead.
-- Once dropped, a native stays dropped, because its prefix stays changed. New natives are fingerprinted with the dropped ones absent, so they keep matching.
-- The `net.request` in the Trace records `natives: { sent, dropped }`. Something annai edits will then show up, and can be fixed at its cause.
+Before each send, `callOnce` walks the request the same way. If any native this request would carry no longer matches, it sends none. It reports `natives: 'changed'` in the reply, and the Trace's `net.request` records `natives: { sent, changed }`.
 
-**My call:** this check, in place of Anthropic's `drop_block` beta. It needs no beta header. It works with every thinking mode, including Sonnet 5.5's `between_tools` and Haiku 5.5's `disabled`, which take no `block_binding`. And it never uploads a request just to be told no. Its cost is one fingerprint pass per Claude request, the same work kept.js already does per kept-turn call.
+**Why keep the check:** to save data. Without it, an edit costs a refused request, and the refused upload is the whole conversation, often hundreds of KB on mobile, before the retry. It also saves the refusal's round trip. **My call.**
 
-### 5. The cache
+**The flag.** "No more thinking this turn" is one per-turn flag. The loop sets it on any of three things:
+- the check finding a change,
+- a refusal (§8),
+- the size limit (§6).
 
-**Within a turn.** Today, step k+1 already reads from Anthropic's cache everything step k sent except its now block, because the marker sits before the tail. So the append-only part gains little there. The previous now block stays in the request instead of being dropped: step k+1 sends it as new input, and the steps after read it from cache. It is 60 to 170 tokens: 190 to 215 characters in the test kit, without place or plan, and up to about 600 characters with them.
+Once it is set, the transcript drops the turn's natives and takes none from later replies of the turn. The now blocks go with the natives, because none has a native after it any more. Removing all thinking blocks is valid. The next request leaves the cache once, at the turn's first now block, and is stable after that. There are no partial drops.
 
-The thinking itself becomes input on the turn's later steps. It is written to the cache once, at 2x for an hour's cache (1.25x for five minutes), then read at 0.05x on Opus and Sonnet 5.5. In return Claude doesn't re-create its reasoning: by the figures above, about 5 to 10% fewer output tokens per step, at medium effort. In money, the two roughly cancel. What the change buys is the reasoning Anthropic calls required, and the end of the 400s and the fallbacks they caused.
+**Known limitation**, approved by the user's answer 3. It goes into docs/limitations.md when this ships:
 
-**Across turns.** Today the next turn reads from cache everything the last turn sent except its last now block. Under the one-turn line, the last turn's now blocks and thinking leave the request, so the next turn shares the last turn's requests only up to where that turn began. The turn's own tool calls and results are then written to the cache once more:
+```markdown
+### Claude stops getting its earlier thinking for the rest of a turn after a rare mid-turn change
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. A few rare things change part of a request after Claude has thought about it: a photo past the model's photo limit (the oldest becomes a stub), a refused photo replaced by a smaller copy, a heard line whose words are written down after it was sent, or Koe's window moving on in the middle of its turn. Claude would refuse its earlier thinking then, so annai sends none for the rest of that turn, and Claude plans each remaining step from what it can see, as it did before. The Trace counts it on the request.
+- **Why:** making each of these append-only too means more code in several places, for something that happens a few times a trip at most.
+- **Revisit when:** the Trace shows thinking stopped this way often.
+- **Approved:** 2026-10-29, the user: "Accept (Recommended)".
+```
 
-| Model | Hour's cache: write instead of read, per million tokens | 10,000 tokens of tool steps, once |
+### 6. Long turns
+
+Shiori as one half can keep a whole voice exchange in one turn with `ask` and `wait`. A watched turn has no step limit (budgets.js:99–100). Each step's request carries every earlier step's thinking, so the extra upload grows with the square of the step count.
+
+The size of a signature isn't documented; it holds the encrypted reasoning. Unmeasured, assume about 5 KB of native per step at medium effort, plus about 0.4 KB of now block.
+
+| Steps in the turn | Extra upload, whole turn | The last request carries |
 |---|---|---|
-| Sonnet 5.5 | $4.00 instead of $0.10 | about $0.04 |
-| Opus 5.5 | $8.00 instead of $0.20 | about $0.08 |
-| Haiku 5.5 | $0.20 instead of $0.01 | about $0.002 |
+| 5 | about 54 KB | about 22 KB |
+| 20 | about 1.0 MB | about 103 KB |
+| 50 | about 6.6 MB | about 265 KB |
 
-A turn whose first reply ends it costs nothing extra. Most of Kokoro's turns are like that: sleep, or `tell_koe` and sleep. So are Koe's short turns.
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept natives and now blocks pass 64 KB, about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. **Open:** the user's OK on the limit and its entry (in the report).
 
-**The marker where the last turn began.** Anthropic finds an earlier cache entry only within 20 blocks of a marker. Each step of a turn adds two to four blocks, so after a turn of more than about five steps, the next turn's only usable entry, at the start of that turn, would be out of reach. The next turn would then write the whole conversation to the cache again, at the write price, each time a long turn ends. So:
-- The transcript keeps `turnStart`: the index of the message the latest turn's first request ended with. On load it is derived from the log: the message before the first `model.turn` of the half's latest wake.
-- Each request carries `turnStart` as `cacheAt`.
-- anthropic-messages marks that message's last block, as the turn's first request sent it, before any now block kept after it.
+### 7. The marker where the previous turn began (`cacheAt`)
 
-The marks are then the system text, `cacheAt` and the newest message: three of Anthropic's four. **My call.**
+Anthropic finds an earlier cache entry only within 20 blocks of a marker, and each step adds two to four blocks. After a turn of more than about five steps, the next turn's only usable entry, the one where the last turn began, would be out of reach. Every long turn would then cost a write of the whole conversation. So:
 
-**Tidy-up with two halves.** Today it misses the whole cache (§2). Housekeeping is due at 70% of the context window: 700,000 tokens on a 1M Claude. Writing that again costs about $2.80 on Sonnet 5.5, against $0.07 to read it, and about $5.60 on Opus 5.5, against $0.14. With the half's own system text it is a read. "Summarize now" works the same way, at any size. This fix helps every provider: OpenAI sends `instructions` every time, too.
+- `Transcript.apply()` keeps `turnStart`: the index of the last message before the first `model.turn` of each new wake of the half. It is the same live and from the log.
+- At the turn's first step, before any reply of the turn, the loop reads `turnStart`, which is where the previous turn began. It sends it as `cacheAt` on every request of the turn.
+- anthropic-messages marks the last block of that message, as the earlier request sent it, before any kept now block. That makes three marks with the system and the newest message.
+- Tidy-up between turns sends the latest turn's start. A forced tidy-up in a turn sends the turn's `cacheAt`. Koe carries it too: same code, and harmless for its short turns.
+- Chat Completions uses `cacheAt` only if §9's open question adds cache markers.
 
-**Other providers.** Their requests don't change. They gain only the frozen system text and tools, which no longer restart the cache mid-turn when a plugin or setting changes, and the tidy-up fix.
-
-### 6. Storage, data and the Trace
-
-- **Nothing new is stored.** A native lives in memory for its turn. It is not in the `model.turn`'s stored parts (`trace.turn` leaves it out), not in the Trace, not in backups, and not in what `annai.llm` gives a plugin. The kept now blocks are in memory too.
-- **A reload during a turn ends that turn** (spec §6.7: calls without a result are answered, then a catch-up wake runs). The next turn starts without them in any case, so nothing needs to be kept on the device.
-- **What the Trace keeps:** the reasoning's words, as today (empty for Claude 5.5 under "omitted"). A refused attempt, with its words (§8). The `natives` counts on each `net.request`. Optionally, the step's now block: the builder may store it as a text of the `model.turn`, which helps when reading a trace, and costs a few hundred bytes per step.
-- **What goes over the network.** Step j of a turn carries the thinking of steps 1 to j-1 and their now blocks. The size of a thinking block's signature isn't documented; it holds the encrypted reasoning. Unmeasured, it is likely 1 to 8 KB per step at medium effort. At about 5 KB a step, a three-step turn's second and third requests carry roughly 5 and 10 KB more. Nothing carries over to the next turn.
-- **The transcript in memory.** Live, the loop gives the transcript the step's sent now block and the reply's native, with its own `model.turn`, as it applies it. The transcript places the now block at the end of the user message before the reply. It does this after taking out the lines that came while the reply was being made, as `#unadd` already does, so the order is the request's. It places the native first in the reply. When the turn ends (`#turn`'s `finally`), it drops both. After a refusal (§8), it drops the turn's natives. Koe's escaping of user parts (transcript.js `#unmarked`) must leave a kept now block exactly as it was sent: the tail was sent unescaped.
-
-### 7. Fallbacks, other models, and Koe
-
-- **A native stays with its model.** A native goes only to the model that wrote it: the same provider model id, as `portable()` checks for signed reasoning today. A non-Claude model that answers a step gets the turn as today, with no natives and no kept now blocks. Its reply is appended as ordinary parts. Anthropic says that doesn't invalidate Claude's earlier thinking. If the turn's next step goes back to the first Claude model, that model gets its own natives again, still valid.
-- **Another Claude model after a fallback** (Sonnet 5.5 to Opus 5.5, say) doesn't get the first one's thinking, even though Opus 5.5 can read Sonnet 5.5's. It plans that step afresh, as every fallback does today. **My call:** one rule for every provider, and fewer bytes. The API would read some of those blocks (Opus 5.5 reads Sonnet and Haiku 5.5's) and drop the rest. It is proposed as a known limitation.
-- **The same model on two accounts** (two Anthropic providers): Sonnet and Haiku 5.5 blocks from the other account are dropped by the API without an error. That wastes some bytes and is harmless. A turn rarely crosses accounts.
-- **Koe** follows the same rules. Its tail (now block, `<today>`, the nonce line) stays in place within its turn and leaves when the turn ends. Its turns are short, so the cost in §5 is small. The nonce staying in the turn's history is harmless: it changes only when annai restarts, and a restart ends the turn. Koe's window still moves at its 18-exchange mark, mid-turn too; the check in §4 then drops Koe's earlier thinking for the rest of that turn. **My call:** that is simpler than moving the window only between turns, which would need live and reloaded transcripts to agree on where it moved.
+**My call.**
 
 ### 8. When Claude refuses anyway
 
-A 400 can still come: from an edit annai doesn't fingerprint, from a plugin update that renders parts differently in the middle of a turn, or from something Anthropic checks that its docs don't mention. When it does:
+From an edit the check doesn't see, a plugin update mid-turn, or a rule the docs don't mention:
 
-1. The plugin classifies it as `reasoning`.
-2. `callRole` (fallback.js) asks the **same model** again, once, with every native of that model left out. The kept now blocks go with them, since none has a native after it any more. Removing every thinking block is valid. The model isn't benched, and no other model is tried for this.
-3. The Trace shows the refused attempt: outcome `reasoning`, Anthropic's words, then the retry's outcome. On screen, the attempt's line reads in plain words, something like "Claude refused its earlier reasoning; asked again without it".
-4. The loop sees the refused attempt in the result. It drops the turn's natives from the transcript, so the turn's later steps match the retried request. The retried reply's own native is kept: it was made without the dropped ones.
-5. If the retry is refused the same way, or the request carried no native at all, it is an ordinary `bad-request`, and the list goes on as today.
+1. The plugin classifies the 400 as `reasoning`. Anthropic Messages: "Invalid `signature` in `thinking` block" or thinking blocks that "cannot be modified". Chat Completions: the same words in OpenRouter's error message or its `metadata.raw`.
+2. `callRole` asks the same model again, once, without any native. It doesn't rest the model and tries no other.
+3. The Trace shows the refused attempt (outcome `reasoning`, the provider's words), then the retry's outcome.
+4. The loop sets the turn's flag (§5).
+5. A `reasoning` refusal of a request that carried no native is an ordinary bad request.
 
-**My call:** no `drop_block` retry and no beta header. Stripping is Anthropic's own documented recovery without the beta, and with §4 in place this path should almost never run.
+No `drop_block` beta and no beta header: stripping is Anthropic's documented recovery without the beta. **My call.**
+
+### 9. Claude through OpenRouter (the user's answer 4)
+
+**chat-completions reads** `choices[].delta.reasoning_details`. It joins pieces of the same `index`: text, summary and data are concatenated, and type, id, format and signature are kept as they arrive. At the end of a finished reply, it yields `native` with the details, when every one has `format: "anthropic-claude-v1"`, at least one has a `signature` or `data`, and none reads `[REDACTED]`. It still yields `reasoning` with the words, for the Trace. Those words aren't empty here, because OpenRouter summarizes Claude's thinking by default.
+
+**chat-completions writes** a native's details as `reasoning_details` on its reply's assistant message. A kept now block is rendered exactly as `addTail` rendered it:
+- its own user message after tool results;
+- a text block in array content;
+- or `"\n\n"` before it in string content, where `wire()` joins other texts with `"\n"`.
+
+**classify** reads the binding 400 as `reasoning`.
+
+Natives are kept only for Claude's format. GPT and Gemini through OpenRouter return details too, but they send exactly what they send today. **My call:** only what the user asked for and what is tested. Other formats can follow later.
+
+**What OpenRouter's shape loses.** Chat Completions keeps a reply's text apart from its reasoning. A Claude reply that puts text between two thinking blocks may not come back as Claude wrote it. Claude 5.5 mostly puts notes between tool calls in thinking blocks, so this should be rare. If it happens, §8 handles it, and the real check (§12) shows whether it does.
+
+**No caching today.** annai's chat-completions sends no `cache_control`, so Claude through OpenRouter pays full input price on every request. OpenRouter's sticky routing, which keeps a conversation on one provider, starts only after a cached request. So the steps of a turn can go to different Claude providers. Sonnet and Haiku 5.5 thinking is tied to the account that made it, so OpenRouter may then drop it silently. **Open:** add Anthropic-style cache markers for Claude on OpenRouter in this change (in the report).
+
+Versions: chat-completions and provider-openrouter get version bumps and stay at `api: 1`. Other Chat Completions servers send exactly what they send today.
+
+### 10. Storage, data and the transcript
+
+**Nothing about thinking is stored.**
+- `Reply.native` lives in memory for the turn. It is not in the `model.turn`'s parts, the Trace, backups, or an `annai.llm` result.
+- The kept now blocks are in memory too.
+- A reload during a turn ends that turn: calls without a result are answered, then a catch-up wake runs (spec §6.7). The next turn starts without them in any case.
+
+**The Trace** keeps the reasoning's words, as today:
+- empty for Claude 5.5 under adaptive thinking;
+- words for Sonnet 5.5 at `between_tools`;
+- summaries through OpenRouter.
+
+It also keeps a refused attempt, and `natives: { sent, changed }` on each `net.request`.
+
+**The transcript, live:**
+- The loop gives the transcript the step's sent now block and `reply.native` with its own `model.turn`, as it applies it.
+- The transcript puts the now block at the end of the user message before the reply, after `#unadd` has taken out the late lines, so the order is the request's. It puts the native first in the reply's parts.
+- When the turn ends, or the flag is set, it drops both.
+- Koe's escaping of user parts (`#unmarked`) leaves a kept now block exactly as it was sent.
+- Koe's `#window()` (transcript.js:322) ignores `now` parts. It counts exchanges by user messages holding a text part, so a kept now block would otherwise count as one.
+
+**Estimates.** `estimateTokens` and `requestBytes` count natives and now blocks, since they are in the request. For a model on another endpoint that is a small overcount.
+
+### 11. Money
+
+**Within a turn.** Today step k+1 already reads from the cache everything step k sent except its now block. So the append-only part changes little: the previous now block (60 to 170 tokens) stays in the request instead of going.
+
+The thinking becomes new input on the step after it is made. It is written to the cache there, at 2x input for an hour's cache (1.25x for five minutes), and read at 0.05x after that. Output costs 5x input on all three Claude 5.5 models. So writing one thinking token costs as much as 0.4 output tokens, or 0.25 with five minutes.
+
+Replaying pays only if it saves Claude at least that much re-thinking. Take a three-step turn, each step with 1,500 output tokens of which 1,000 are thinking. Replay writes 2,000 thinking tokens, worth 800 output tokens. By the indicative 10%, it saves about 300 output tokens on the two later steps. Net, about 500 output tokens' worth more: about $0.005 on Sonnet 5.5 for that turn.
+
+So replay costs a little more than it saves, unless thinking is a small share of the output. What it buys is the reasoning Anthropic calls required, without the 400s coming back.
+
+### 12. The real check before release (the user's answer 5)
+
+`scripts/reasoning-check.mjs`, in the manner of `scripts/realtime-check.mjs`:
+
+- **Usage:** `node scripts/reasoning-check.mjs run --anthropic-key /root/annai-test-keys/anthropic --openrouter-key /root/annai-test-keys/openrouter`. Either option may be left out; at least one is needed. `report <folder>` reads a run again with no network.
+- **Keys:** each key file is read only inside the run, through `scripts/realtime/keys.mjs`, as `Keys.fromPath(path, '1')`. The key sits in private fields. It goes only into the request header the endpoint type builds, and the trace's `secret()` blanks it. Everything printed or written goes through `scrub()` and `assertClean()`. The script writes nothing with the key and never prints or logs it.
+- **What it runs:** annai's own Agent and Halves in Node. The store is in memory. The endpoint types are the real ones (anthropic-messages, chat-completions), and the provider descriptions come from plugins-official. Kokoro runs on Sonnet 5.5, Koe · Classic on Haiku 5.5, and voice is off. The trip is synthetic: a `trip.json` and two notes, no real data.
+  1. A message that needs `list`, `read`, then `tell_koe`: a Kokoro turn of three steps or more.
+  2. Koe's turns around it.
+  3. The same through OpenRouter's Claude.
+- **What it shows:** for each request, the half, step, model, bytes sent, natives sent or changed, outcome, cache reads and writes, and cost.
+- **What it checks:**
+  1. Every step after one whose reply had a native sends it back.
+  2. No attempt was refused (outcome `reasoning`), and no 400 came.
+  3. Every call was answered by the role's first model (nothing fell back).
+  4. Anthropic's later steps read from the cache.
+- **Output:** exit 0 on pass, 1 on fail, 2 on error. A scrubbed summary goes to `.superpowers/evidence/reasoning-check/<time>/`, without request bodies.
+- **Cost:** a few cents. It runs before release, with the user's OK each time, since it spends money. docs/testing/reasoning-check.md describes it.
 
 ## What the user sees
 
-Nothing new on screen. Kokoro and Koe on Claude plan each step from what they reasoned at the step before. The fallbacks to weaker models that the 400s caused stop. The Trace shows any refused attempt, and on each request how many thinking blocks were sent or dropped. A tool switched off during Shiori's turn stops working at once. Other changes made during a turn (a tool switched on, a plugin added, "search via", the Koe list) apply from her next turn instead of her next step.
+- Nothing new on screen.
+- Claude, on Anthropic or through OpenRouter, plans each step of a turn from what it reasoned at the step before.
+- The 400s stay gone.
+- A tool switched off during Shiori's turn stops at once. Other changes made during a turn apply from her next turn, and provider tools keep running until it ends.
+- The Trace shows any refused attempt, and natives sent or changed on each request.
 
 ## Tests
 
-The stand-in `test/fakes/anthropic-binding.js` already refuses a thinking block whose system, tools or earlier messages changed, in Anthropic's words. It already silently drops another model's block. Extend it to match the docs:
-- Thinking blocks come back with **empty** `thinking`, the default "omitted" display, and a signature that also binds the previous block's signature, so a gap or a block put back is refused.
-- A changed thinking text is refused with "cannot be modified".
-- A reply can carry **two cited text blocks** before its second thinking block. Without a verbatim replay, that block's prefix fails.
-- A switch makes it refuse once, in Anthropic's words, whatever was sent. That tests the path in §8.
+**Stand-ins.**
+- `test/fakes/anthropic-binding.js` gains: empty `thinking` with signatures that also bind the previous block's (so a gap or a block put back is refused); "cannot be modified"; two cited text blocks before a second thinking block; a `pause_turn` reply with `server_tool_use` and `web_search_tool_result`; and a switch that refuses once.
+- New `test/fakes/openrouter-claude.js`: a Chat Completions stand-in that streams `reasoning_details` in OpenRouter's documented shape. Its signature binds the system message, the tools and the messages before the assistant message. It refuses a changed prefix with OpenRouter's error shape, carrying Anthropic's words.
 
-Through `agentKit` with `{ ability: anthropic }` scripts, as halves.test.js does at line 758:
+**Through `agentKit`**, as halves.test.js does at line 758:
+1. A three-step Kokoro turn on Claude: requests 2 and 3 carry the earlier content arrays exactly, and the now blocks in place. Nothing is refused. Nothing falls back.
+2. The same with Shiori as one half, including a line logged during a call: it goes after the reply, and nothing is refused.
+3. The next turn carries no thinking or now block from the turn before, and has `cache_control` at `cacheAt`. After a six-step turn, still.
+4. Koe on Claude, a turn with `wait`, then an answer, then `speak`: its second request carries its first step's thinking, and the tail is unescaped. Nothing is refused. Nothing falls back.
+5. Two halves on Claude, then Summarize now: tidy-up's `system` equals Kokoro's, byte for byte. Nothing is refused.
+6. A photo past the limit mid-turn (`maxCount: 1`): no thinking is sent from there to the turn's end. Nothing is refused, and the `net.request` says `changed`.
+7. The stand-in refuses once: the same model is asked again without thinking, and no other model is asked. The Trace has the refused attempt. The rest of the turn sends no thinking.
+8. A paused turn with server tools: the continuation ends with Shiori's message, has no tail, and carries the native. Both replies' content sits in one assistant message, and the next step goes through.
+9. A fallback mid-turn to a scripted model, then back to Claude: the scripted model's request has no natives and no kept now blocks. Claude's next request has its own natives. A second Claude model on the same endpoint gets them too.
+10. A tool switched off between steps: the tools are unchanged, the call returns the switched-off words, and the next turn leaves the tool out. A role's level changed between steps: the turn keeps its level.
+11. A reload mid-turn, after step 1's results: the catch-up turn's first request carries no natives or now blocks, and nothing is refused.
+12. A long turn past 64 KB of kept thinking: from there, no thinking, once.
+13. A three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3 carry `reasoning_details` exactly. The kept now block renders exactly as the tail did, in string and in array content.
+14. **Anti-goals:** after a Claude turn, no native, signature or `reasoning_details` is in:
+    - the `model.turn` event or its stored texts;
+    - `trace.turn` or `net.request`;
+    - a trip backup (export, then search the archive for the stand-in's signature marker);
+    - a plugin's `annai.llm` reply.
+15. Every request body the Gemini, OpenAI and other Chat Completions tests record today stays the same, kept turns included.
 
-1. A Kokoro turn of three steps on Claude: requests 2 and 3 carry the earlier steps' content arrays exactly, and the earlier now blocks in place. Nothing is refused. Nothing falls back.
-2. The next turn sends no thinking or now blocks from the turn before. Its body has a `cache_control` on the block where that turn began. After a six-step turn, that marker is still there.
-3. Two halves, both on Claude, then Summarize now: nothing is refused. Tidy-up's `system` equals Kokoro's turn's `system`, byte for byte.
-4. Koe on Claude, a turn with `wait`, then an answer, then `speak`: Koe's second request carries its first step's thinking. Its tail is unescaped.
-5. A photo past the limit mid-turn (`maxCount: 1`, a tool result with a picture): annai sends no thinking from before it. The stand-in refuses nothing. The `net.request` says `dropped`.
-6. The stand-in refuses once: the same model is asked again without thinking. No other model is asked. The Trace has the refused attempt. The next step carries the retried step's thinking and none from before.
-7. A fallback mid-turn to a scripted model, then back to Claude: the scripted model's request has no natives and no kept now blocks. Claude's next request has its own natives, and nothing is refused.
-8. A tool switched off between two steps: the second request's tools are unchanged. A call to that tool returns the switched-off words. The next turn's tools leave it out.
-9. A reply cut off part-way, by an immediate note: no native, and the next step goes through.
-10. Every request body that the Gemini, OpenAI and Chat Completions tests record today stays as it is. Those tests pass unchanged, kept-turn chaining included.
+**Unit tests:**
+- `callOnce`: natives taken out for other endpoints, the `now` rule, the check.
+- anthropic-messages `read` (content rebuilt with citations, empty thinking, a redacted block, an unknown delta, `max_tokens`) and `wire` (a native in place of its parts; two natives in one message; `cacheAt`).
+- chat-completions joining `reasoning_details`, and the `[REDACTED]` case.
+- `classify` in both plugins.
+- `nextStep` with `reasoning`.
+- Koe's window with `now` parts.
 
-Unit tests:
-- `portable()`'s now rule.
-- anthropic-messages `read` (content reconstruction, with citations, empty thinking, a redacted block, an unknown delta) and `wire` (a native replacing its covered parts, two natives in one assistant message for a paused turn, `cacheAt`).
-- `classify` of the 400s.
-- `callOnce`'s prefix check, including a native kept after an earlier one was dropped.
-
-The test kit needs no real model. Memory caps as usual on any run.
+No real model is needed. Use memory caps as usual on test runs.
 
 ## The spec, the limitations file and lessons
 
-- Spec §6.3, item 4: the now block "sent last, never cached" becomes: it is sent last, and within a turn each earlier step's stays where it was sent, for the model whose thinking follows it. Freezing the instructions and tools for the turn goes in §6.2 or §6.3. The tidy-up fix goes in §6.5.
-- Spec §9.1, Anthropic Messages: thinking is sent back within a turn, as Claude returned it; it is never stored; a refusal is retried once without it. §9.6, "The transcript stays portable": add natives next to "reasoning blocks signed for another model are dropped".
-- `docs/limitations.md`: the entry "Claude's reasoning isn't carried between tool steps within a turn" goes when this ships. Proposed new entries, each only with the user's OK, are in the report's questions.
-- LESSONS.md: the entry in §3, with the user's OK.
+- **Spec:** §6.3 item 4 ("sent last, never cached") becomes: sent last, and within a turn each earlier step's stays where it was sent, for an endpoint whose thinking follows it. §6.2 freezes the instructions, tools, provider tools and level for the turn. §6.5 says tidy-up uses the half's own instructions. §9.1 describes Anthropic Messages and Chat Completions as above. §9.6 says natives go only to their endpoint.
+- **docs/limitations.md:** the entry "Claude's reasoning isn't carried between tool steps within a turn" goes entirely, OpenRouter included. The entry in §5 comes in. §6's comes in too, if the user agrees.
+- **LESSONS.md:** the entry in §4.
 
 ## Left to the builder
 
-- Field and function names: `native`, `covers`, `prefix`, `now`, `cacheAt`, `turnStart`, and the transcript's methods for giving it a step's now block and native and dropping them.
-- Where the frozen system text and tools live in `#steps`, and how the live switches are read for the switched-off check.
-- The fingerprint's exact form. The rule is that it covers what the plugin is given, as listed in §4.
-- `prefixed()` in fallback.js (a cut-off reply continued by another model) keeps the native first and `covers` right, or drops the native.
-- Words for the `reasoning` kind and the refused attempt, in `l10n` (ja, zh-Hans, zh-Hant: `npm run strings`). New plugin version: catalog, `npm run stamp`, anthropic-messages 0.5.0 at `api: 1`.
-- Whether to store each step's now block with its `model.turn` for the Trace (§6).
+- Names: `keepNative`, `turnStart`, and the transcript's methods for giving it a now block and a native, and for dropping them.
+- Where the turn's frozen values live in `#steps`.
+- The fingerprint's exact form (§5 lists what it covers).
+- Words for the `reasoning` kind and the refused attempt in `l10n` (`npm run strings` for ja, zh-Hans, zh-Hant).
+- Plugin versions, the catalog, `npm run stamp`.
 
-## The other line: while the cache stays warm
+## Calls to confirm
 
-If the user prefers thinking to carry from turn to turn, here is what changes.
+The user's answers of 2026-10-29, as built:
+1. A native goes to any model on its endpoint (address and key fingerprint, as kept turns use). Other keys and other endpoint types never get it (§4).
+2. Instructions, tools, provider tools, level, Koe's photo rule and `cacheAt` are frozen for the turn. Changes apply from the next turn. Provider tools switched off keep running until the turn ends (§3).
+3. Rare mid-turn edits stop the turn's thinking: a known limitation, with its entry in §5.
+4. Claude through OpenRouter gets its `reasoning_details` back within a turn (§9).
+5. A real check script runs before release with the named key files (§12).
 
-- **A frame lasts while the cache stays warm.** A frame is a run of a half's turns sharing one prefix. Every `model.turn` records its frame's id. A turn continues the frame when it starts within its model's cache lifetime of the frame's last request, with the same system text, tools and provider tools. Otherwise it starts a new one. It also starts a new one after housekeeping, after Start fresh, and after a refusal. The decision is read from the log, so a reload in a warm stretch continues the frame.
-- **Storage.** Each step's now block and Claude's reply-as-returned are stored with the `model.turn`, so a reload sends them again. They go into backups that include history, which run on Wi-Fi. The transcript sends only the current frame's now blocks and natives. Koe still starts a new frame each turn, because its tail is over 2 KB.
-- **Gains:** caching across turns as today, so no re-write and no `cacheAt` marker. Claude keeps its earlier turns' reasoning: Anthropic's "Recommended".
-- **Costs:** every request carries all of the frame's thinking and now blocks. In continuous use (a drive, Koe chatting, Kokoro waking every few minutes), the cache never goes cold, so requests grow by every Claude step's thinking, perhaps 1 to 8 KB each, until housekeeping, which on a 1M-token model is far off. The reasoning is also stored on the device and in backups.
-- §2 to §8 stay as written, except that "the turn" becomes "the frame".
+My calls:
+6. The line is within a turn (§1). The now block stays user text (§2).
+7. Kept now blocks go only where a native of the same endpoint follows (§2).
+8. A tool of annai's own switched off mid-turn is refused in words (§3).
+9. A forced tidy-up keeps the turn's tools, provider tools and level, and rebuilds only the system text (§3).
+10. Tidy-up uses the half's own system text. `#unadd` applies to one half too. `nextStep` doesn't rest a model for `reasoning` (§3).
+11. The core and plugin split (§3).
+12. The contract additions (§4): the `native` event, `Reply.native` beside `parts` (made only for Shiori's own turns), the `native` part, the `reasoning` kind, `now` text parts, `cacheAt`. The LESSONS entry text.
+13. Which replies keep a native. A `prefixed()` reply never does (§4).
+14. The check before sending, kept to save data. One per-turn flag stops thinking on a change, a refusal or the size limit (§5).
+15. The 64 KB limit for a turn (§6), pending the user's OK.
+16. `cacheAt` is where the previous turn began, the same for every request of the turn. Tidy-up and Koe carry it too (§7).
+17. One retry without thinking on a refusal, no beta (§8).
+18. Natives are kept only for OpenRouter's `anthropic-claude-v1` format (§9).
+19. Nothing about thinking is stored. Estimates count natives (§10).
+20. Display stays at each provider's default.
+21. anthropic-messages 0.5.0, chat-completions and provider-openrouter get version bumps, all at `api: 1`.
