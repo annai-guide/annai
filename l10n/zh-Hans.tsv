@@ -2411,21 +2411,23 @@ gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:246	plural; # = 0; E
 khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
 1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:255	{0} = size(d.bytes)
 l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:255	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:259	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:260	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:260	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:263	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:267	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:292	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:309	
+1n96vkk	ok	earlier thinking not sent: something before it changed	未发送之前的思考：它之前的内容有变化	src/ui/screens/trace.js:257	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:257	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:261	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:261	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:262	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:262	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:264	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:265	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:268	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:269	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:271	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:271	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:294	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:294	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:311	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:43	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:53	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:55	
