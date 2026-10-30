@@ -755,7 +755,7 @@ test('Start fresh lets both halves go even when closing live at its end throws (
   assert.equal((await k.events(['out.speak'])).length, 2, 'the message after it is answered');
 });
 
-test("Claude's thinking is never sent back: Koe and Kokoro on Claude, and a tidy-up, against a stand-in that refuses a block bound to another conversation (phone-fixes-1 item 1)", async (t) => {
+test("Claude's thinking goes back within a turn and never across turns: Koe and Kokoro on Claude, and a tidy-up, against a stand-in that refuses a block bound to another conversation (phone-fixes-1 item 1; keep-reasoning)", async (t) => {
   useClock(t);
   let n = 0;
   /** A tool call. @param {string} name @param {any} input */
@@ -798,6 +798,10 @@ test("Claude's thinking is never sent back: Koe and Kokoro on Claude, and a tidy
   const models = new Set(claude.bodies.map((b) => b.model));
   assert.deepEqual([...models].sort(), ['claude-opus-5-5', 'claude-sonnet-5-5'], 'both halves and the tidy-up went to Claude');
   assert.ok(claude.bodies.length >= 6);
+  const thinking = (/** @type {any} */ b) => b.messages.flatMap((/** @type {any} */ m) => m.content).filter((/** @type {any} */ x) => x.type === 'thinking').length;
+  // Kokoro's chain of three requests in one wake sends its earlier thinking back; each turn's first request sends none.
+  assert.ok(claude.bodies.some((b) => b.model === 'claude-opus-5-5' && thinking(b) === 2), "Kokoro's third step carries its first two");
+  assert.ok(claude.bodies.every((b) => thinking(b) === 0 || b.messages.at(-1).content.some((/** @type {any} */ x) => x.type === 'tool_result') || b.messages.at(-1).role === 'assistant'), 'none at the start of a turn');
   assert.deepEqual(k.notices, []);
 });
 
