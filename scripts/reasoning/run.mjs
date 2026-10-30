@@ -18,6 +18,7 @@ import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.j
 import { updateAppSettings } from '../../src/core/settings.js';
 import { mergePatch } from '../../src/core/patch.js';
 import { Halves } from '../../src/core/agent/halves.js';
+import { KEPT_MAX } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { activate as anthropicMessages } from '../../plugins-official/anthropic-messages/index.js';
 import { activate as chatCompletions } from '../../plugins-official/chat-completions/index.js';
@@ -487,7 +488,7 @@ export function table(rows) {
   const steps = inPhase(rows, 'main').filter((r) => r.step > 1 && r.thinkingBytes > 0);
   const perStep = steps.length ? steps.reduce((n, r) => n + r.thinkingBytes / Math.max(1, r.natives?.sent ?? 1), 0) / steps.length : 0;
   return [fmt(head), ...lines.map(fmt), '', '* the request the control changed an earlier message in; ! the step made to fail with a 529', '', 'Thinking kept per turn (the last step\'s request):', ...[...kept].map(([k, v]) => `  ${k}: ${kb(v)}`),
-    `About ${kb(perStep)} of thinking per step sent back (the design assumed 5 KB; the limit is 64 KB).`].join('\n');
+    `About ${kb(perStep)} of thinking per step sent back (the design first assumed 5 KB; the limit is ${KEPT_MAX / 1024} KB).`].join('\n');
 }
 
 /** The report of a run's rows: the table, then each check, passed or not, then what was found besides. @param {Row[]} rows */

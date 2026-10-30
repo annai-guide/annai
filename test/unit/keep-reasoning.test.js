@@ -359,7 +359,7 @@ test(`12. a long turn past ${KEPT_MAX / 1024} KB of kept thinking: from there, n
   const claude = anthropicStandIn((body) => {
     const { results } = last(body);
     if (results.includes('speak') || results.includes('sleep')) return [use('sleep')];
-    return ++steps < 6 ? [{ type: 'thinking', pad: 25_000 }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
+    return ++steps < 6 ? [{ type: 'thinking', pad: Math.round(KEPT_MAX * 0.38) }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Look around, slowly.');
@@ -452,15 +452,15 @@ test("13. a three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3
   assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'));
 });
 
-test("13c. through OpenRouter a native covers no parts: a big tool input every step doesn't hide the thinking, which stops the turn's thinking past 64 KB", async (t) => {
+test(`13c. through OpenRouter a native covers no parts: a big tool input every step doesn't hide the thinking, which stops the turn's thinking past ${KEPT_MAX / 1024} KB`, async (t) => {
   useClock(t);
   const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
   let steps = 0;
   const or = openRouterStandIn((body) => {
     const lastCall = body.messages.flatMap((/** @type {any} */ m) => m.tool_calls ?? []).at(-1)?.function?.name;
     if (lastCall === 'speak' || lastCall === 'sleep') return { calls: [{ name: 'sleep', input: {} }] };
-    // Each step: 25 KB of signature, and a 20 KB tool input that the reply's parts carry as well.
-    return ++steps < 6 ? { pad: 25_000, calls: [{ name: 'list', input: { path: PLACES[steps], note: 'n'.repeat(20_000) } }] } : { calls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'sleep', input: {} }] };
+    // Each step: a signature of about 38% of the limit, and a 20 KB tool input that the reply's parts carry as well.
+    return ++steps < 6 ? { pad: Math.round(KEPT_MAX * 0.38), calls: [{ name: 'list', input: { path: PLACES[steps], note: 'n'.repeat(20_000) } }] } : { calls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'sleep', input: {} }] };
   });
   const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
   k.agent.send('Look around, slowly.');

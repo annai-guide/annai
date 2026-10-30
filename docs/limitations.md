@@ -66,12 +66,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the Trace shows thinking stopped this way often.
 - **Approved:** 2026-10-29, the user: "Accept (Recommended)".
 
-### A very long turn stops carrying Claude's thinking after about a dozen steps
+### A very long turn stops carrying Claude's thinking after about 25 steps
 - **Kind:** known limitation.
-- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 64 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
-- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: a 50-step turn would add about 6.6 MB. The limit keeps a turn's extra near 360 KB.
-- **Revisit when:** the real check shows signatures much smaller than the 5 KB a step assumed, or long turns lose quality the user notices.
-- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)".
+- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 32 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at the 1.3 KB a step the real check measured (2026-10-30), a 50-step turn would add about 1.6 MB. The limit keeps a turn's extra near 390 KB.
+- **Revisit when:** the Trace shows long turns stopping their thinking often, or long turns lose quality the user notices.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB: set to 32 KB on 2026-10-30, when the check measured about 1.3 KB a step instead of the 5 KB assumed.
 
 ### A repeated note can be said twice in live voice
 - **Kind:** known limitation.

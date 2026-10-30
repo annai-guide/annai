@@ -148,9 +148,10 @@ const AFTER_CUE = 2;
 export const FORCED_STEPS = 10;
 /**
  * How much of a turn's kept thinking and now blocks a request may carry, in characters: past it, the turn sends no more (the keep-reasoning
- * design §6; about a dozen steps at an assumed 5 KB a step), so a long turn's extra upload, which grows with the square of its steps, stays near 360 KB.
+ * design §6), so a long turn's extra upload, which grows with the square of its steps, stays near 360 KB. The real check (2026-10-30) measured
+ * about 1.3 KB a step, not the 5 KB first assumed: 32 KB is about 25 steps and keeps the extra near 390 KB, where 64 KB would let it reach 1.5 MB.
  */
-export const KEPT_MAX = 64 * 1024;
+export const KEPT_MAX = 32 * 1024;
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
