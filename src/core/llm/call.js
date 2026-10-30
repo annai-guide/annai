@@ -297,6 +297,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const natives = own.count ? { sent: own.ok ? own.count : 0, changed: !own.ok } : null;
   /** The reply as the provider returned it. @type {unknown} */
   let native;
+  /** How many of the reply's parts it stands in for, when the plugin says (default: all of them). @type {number | undefined} */
+  let nativeCovers;
   if (keeping) {
     spec.keep = true;
     if (matched) spec.kept = matched;
@@ -357,6 +359,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (ev.type === 'native') {
       // Not output either: the reply as it came, for annai to send back. Nothing else is given it.
       native = ev.content;
+      nativeCovers = ev.covers;
       return;
     }
     clearTimeout(t);
@@ -483,7 +486,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   // A free-tier key costs nothing; a tool's calls within its monthly allowance neither.
   const cost = endpoint.free ? 0 : costOf(await billed(usage, model.providerTools ?? [], tally), model.prices, model.providerTools, started);
   await trace?.request({ ...info(), outcome: 'ok', ...(cost !== undefined ? { cost } : {}) });
-  const keptNative = keepNative && native !== undefined ? { native: { endpoint: here, content: native, covers: parts.length, prefix: nativePrints(spec.request, patches).end() } } : {};
+  const keptNative = keepNative && native !== undefined ? { native: { endpoint: here, content: native, covers: nativeCovers ?? parts.length, prefix: nativePrints(spec.request, patches).end() } } : {};
   return { parts, text: textOf(parts), usage, cost, stop, model: model.id, citations, ...(logprobs ? { logprobs } : {}), ...(attribution ? { attribution } : {}), ...keptNative, ...(own.ok ? {} : { natives: /** @type {const} */ ('changed') }) };
 }
 

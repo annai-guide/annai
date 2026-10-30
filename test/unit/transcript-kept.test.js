@@ -115,4 +115,13 @@ test('keptBytes counts what a native adds beyond the parts it covers: a reply th
   turn(t2, [call('c1')]);
   assert.ok(t2.keptBytes() > 70_000);
 });
+
+test('a native that covers no parts (sent beside them) counts whole', () => {
+  const t = new Transcript();
+  add(t, 'msg.user', {}, { text: 'Hi' });
+  const text = 'T'.repeat(30_000);
+  t.carry({ now: '<now>1</now>', native: { endpoint: 'pv/chat|k', content: [{ type: 'thinking', signature: 'S'.repeat(10_000) }], covers: 0, prefix: 'p' } });
+  turn(t, [{ type: 'text', text }, call('c1')]);
+  assert.ok(t.keptBytes() > 10_000, `counted ${t.keptBytes()}`);
+});
 void none;

@@ -452,6 +452,24 @@ test("13. a three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3
   assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'));
 });
 
+test("13c. through OpenRouter a native covers no parts: a big tool input every step doesn't hide the thinking, which stops the turn's thinking past 64 KB", async (t) => {
+  useClock(t);
+  const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
+  let steps = 0;
+  const or = openRouterStandIn((body) => {
+    const lastCall = body.messages.flatMap((/** @type {any} */ m) => m.tool_calls ?? []).at(-1)?.function?.name;
+    if (lastCall === 'speak' || lastCall === 'sleep') return { calls: [{ name: 'sleep', input: {} }] };
+    // Each step: 25 KB of signature, and a 20 KB tool input that the reply's parts carry as well.
+    return ++steps < 6 ? { pad: 25_000, calls: [{ name: 'list', input: { path: PLACES[steps], note: 'n'.repeat(20_000) } }] } : { calls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'sleep', input: {} }] };
+  });
+  const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
+  k.agent.send('Look around, slowly.');
+  await k.agent.idle();
+  const kept = (/** @type {any} */ b) => b.messages.filter((/** @type {any} */ m) => m.reasoning_details).length;
+  assert.deepEqual(or.bodies.slice(0, 5).map(kept), [0, 1, 2, 0, 0]);
+  assert.deepEqual(or.refused, []);
+});
+
 test("13b. cache markers through OpenRouter's Claude: the system, the end and cacheAt, with the hour's ttl; every message the same bytes from one request to the next; reads on steps 2 and 3 and the next turn's first; another Chat Completions model as before", async (t) => {
   useClock(t);
   const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');

@@ -107,8 +107,9 @@ function build({ endpoint, model, key, tunables: t, request }) {
   /** @type {Record<string, any>} */
   const body = { model: model.providerId, messages, stream: true };
   // OpenRouter keeps a conversation on one upstream account by this key, so a turn's steps find their cache and Claude's thinking is not
-  // dropped by another account: a hash of the system text and the model, stable while the cache could hit and nothing of the conversation.
-  if (marks) body.session_id = `annai-${hash(`${model.providerId}\u0000${request.system ?? ''}`)}`;
+  // dropped by another account: a hash of the system text alone (it keeps stickiness per model itself, and a fallback between Claude models
+  // must stay on the key), stable while the cache could hit and nothing of the conversation.
+  if (marks) body.session_id = `annai-${hash(request.system ?? '')}`;
   if (t.usageInStream) body.stream_options = { include_usage: true };
   const max = request.maxOutput ?? model.maxOutput;
   if (max) body[t.maxTokensField] = max;
@@ -302,7 +303,8 @@ function nativeOf(list, finish) {
   if (!list.length || (finish !== 'stop' && finish !== 'tool_calls')) return null;
   if (!list.every((x) => x.format === CLAUDE) || !list.some((x) => x.signature || x.data)) return null;
   if (list.some((x) => ['text', 'summary', 'data'].some((k) => typeof x[k] === 'string' && x[k].includes('[REDACTED]')))) return null;
-  return { type: 'native', content: list };
+  // Sent beside the reply's parts, not in place of any: it covers none, so all of its size counts.
+  return { type: 'native', content: list, covers: 0 };
 }
 
 /** An error the reply holds, as an HTTP error's would be: by its code, sharpened by classify. @param {any} error @param {any} helpers */

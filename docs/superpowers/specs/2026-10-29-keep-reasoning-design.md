@@ -235,7 +235,7 @@ The size of a signature isn't documented; it holds the encrypted reasoning. Unme
 | 20 | about 1.0 MB | about 103 KB |
 | 50 | about 6.6 MB | about 265 KB |
 
-A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept now blocks and natives pass 64 KB (a native counted for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking; fix pass 1, F2), about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept now blocks and natives pass 64 KB (a native counted for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking; fix pass 1, F2; a Chat Completions native stands in for none of the parts, `covers: 0` on its event, so its whole size counts; fix pass 2, G4), about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
 
 **Known limitation**, approved by the user's answer 6. It goes into docs/limitations.md when this ships:
 
@@ -291,7 +291,7 @@ Natives are kept only for Claude's format. GPT and Gemini through OpenRouter ret
   - the system message, as an array of one text block;
   - the last block before the tail;
   - `cacheAt`'s message, its last block (§7).
-  - A top-level `session_id`, OpenRouter's sticky routing key (its prompt-caching guide: sticky sessions expire after 10 minutes of inactivity, and a `session_id` is used directly as the routing key): a hash of the model id and the system text, so it is the same for a turn's steps and as long as the cache could hit, personal to no one, and stored nowhere. Without it, a turn's steps could land on different upstream accounts after 10 minutes idle, and Claude's thinking is dropped silently across accounts (fix pass 1, F4).
+  - A top-level `session_id`, OpenRouter's sticky routing key (its prompt-caching guide: sticky sessions expire after 10 minutes of inactivity, and a `session_id` is used directly as the routing key): a hash of the system text alone (fix pass 2, G5: OpenRouter keeps stickiness per model, and a fallback between Claude models must keep the key), so it is the same for a turn's steps and as long as the cache could hit, personal to no one, and stored nowhere. Without it, a turn's steps could land on different upstream accounts after 10 minutes idle, and Claude's thinking is dropped silently across accounts (fix pass 1, F4).
 
   That makes three of four.
 - **Every content as an array.** For those models, every message's content goes as an array of blocks, the `tool` messages' too, even where there is no mark. So a mark never changes how a message is written from one request to the next. **My call.**
@@ -340,7 +340,7 @@ So replay costs a little more than it saves, unless thinking is a small share of
 
 - **Usage:** `node scripts/reasoning-check.mjs run --anthropic-key /root/annai-test-keys/anthropic --openrouter-key /root/annai-test-keys/openrouter`. Either option may be left out; at least one is needed. `report <folder>` reads a run again with no network.
 - **Keys:** each key file is read only inside the run, through `scripts/realtime/keys.mjs`, as `Keys.fromPath(path, '1')`. The key sits in private fields. It goes only into the request header the endpoint type builds, and the trace's `secret()` blanks it. Everything printed or written goes through `scrub()` and `assertClean()`. The script writes nothing with the key and never prints or logs it.
-- **What it runs:** annai's own Agent and Halves in Node. The store is in memory. The endpoint types are the real ones (anthropic-messages, chat-completions), and the provider descriptions come from plugins-official. Kokoro runs on Sonnet 5.5, Koe · Classic on Haiku 5.5, and voice is off. The trip is synthetic: a `trip.json` and two notes, no real data.
+- **What it runs:** annai's own Agent and Halves in Node. The store is in memory. The endpoint types are the real ones (anthropic-messages, chat-completions), and the provider descriptions come from plugins-official. Kokoro runs on Sonnet 5.5 (level high in this run), Koe · Classic on Haiku 5.5, and voice is off. The trip is synthetic: a `trip.json` and two notes, no real data.
   1. A message that needs `list`, `read`, then `tell_koe`: a Kokoro turn of three steps or more.
   2. Koe's turns around it.
   3. The same through OpenRouter's Claude, with cache markers (§9).
@@ -352,8 +352,8 @@ So replay costs a little more than it saves, unless thinking is a small share of
   1. Every step after one whose reply had a native sends it back.
   2. No attempt was refused (outcome `reasoning`), and no 400 came.
   3. Every call was answered by the role's first model (nothing fell back).
-  4. Within a turn, step k reads at least what step k-1 read and wrote; each half's next turn's first request reads at least what the turn before had read and written at its first step (at `cacheAt`). Any read above zero is not enough.
-  5. On Anthropic, the check's own requests carry the `thinking-binding-controls-2026-08-01` beta and `block_binding.prefix_mismatch_behavior: "error"` (never production's), so a broken binding fails on an account of any age; no `thinking_dropped` entry with the reason `prefix_binding_mismatch` may appear in the replies' `input_transformations`.
+  4. Within a turn, step k reads at least what step k-1 read and wrote; each half's next turn's first request reads at least what the turn before had read and written at its first step (at `cacheAt`). Any read above zero is not enough, and each step must read strictly more than the one before it (and each half's next turn more than the turn before did at its first step), or nothing past the system prompt is cached (fix pass 2, G1).
+  5. On Anthropic, the check's own requests carry the `thinking-binding-controls-2026-08-01` beta and `block_binding.prefix_mismatch_behavior: "error"` (never production's), so a broken binding is a 400 on an account of any age, which check 2 already fails. The replies' `input_transformations` are only reported (fix pass 2, G3: with an error set, a drop never appears there).
   6. The negative control on Anthropic is refused, asked again once without natives on the same model, and answered, with nothing resting or falling back. On OpenRouter it is reported.
   7. Claude to Claude: the stubbed step is answered by the next Claude model, and the rest of that turn is accepted with no `reasoning` outcome. Thinking stopped on purpose because the two models' provider tools differ is reported, not failed.
 - **Upstream provider** of every OpenRouter step is in the table and the summary, with a note when a turn's steps changed provider.
