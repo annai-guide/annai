@@ -134,6 +134,9 @@ test("a reply that was signed but kept no native (cut at max_tokens, an unread d
   const cut = good().map((r) => (r.phase === 'main' && r.wake === 'w-1' ? { ...r, signed: true, kept: false, natives: null } : r));
   const first = checks(cut).find((c) => /sends it back/.test(c.name));
   assert.deepEqual(first?.problems, []);
+  // It isn't a fault, but the report says which replies' thinking couldn't go back; a good run has no such line.
+  assert.match(notes(cut).join('\n'), /\d+ signed repl(y|ies) kept no native, so their thinking could not go back: anthropic Kokoro turn .* step 1/);
+  assert.doesNotMatch(notes(good()).join('\n'), /kept no native/);
   // A reply that did keep one, and a next step that sent none, still fails.
   const lost = good().map((r) => (r.phase === 'main' && r.wake === 'w-1' && r.step === 2 ? { ...r, natives: { sent: 0, changed: false } } : r));
   assert.match(checks(lost).find((c) => /sends it back/.test(c.name))?.problems.join() ?? '', /1 earlier reply with thinking, 0 sent back/);
