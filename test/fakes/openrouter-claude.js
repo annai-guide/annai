@@ -70,6 +70,7 @@ export function openRouterStandIn(reply) {
     const signature = [body.model, prefixOf(body, body.messages.length), sha(words)].join(SEP);
     const F = 'anthropic-claude-v1';
     /** @type {any[]} */
+    // OpenRouter names the provider that served the request on every chunk.
     const chunks = [
       { choices: [{ delta: { reasoning: 'Thinking ', reasoning_details: [{ type: 'reasoning.text', text: 'Thinking ', format: F, index: 0 }] } }] },
       { choices: [{ delta: { reasoning: 'it over.', reasoning_details: [{ type: 'reasoning.text', text: 'it over.', format: F, index: 0 }] } }] },
@@ -80,7 +81,7 @@ export function openRouterStandIn(reply) {
     const u = cached(body);
     usage.push(u);
     chunks.push({ choices: [{ delta: {}, finish_reason: r.calls?.length ? 'tool_calls' : 'stop' }], usage: u });
-    return new Response(`${chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('')}data: [DONE]\n\n`, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    return new Response(`${chunks.map((c) => `data: ${JSON.stringify({ provider: 'Anthropic', ...c })}\n\n`).join('')}data: [DONE]\n\n`, { status: 200, headers: { 'content-type': 'text/event-stream' } });
   };
   return { fetch, bodies, refused, usage };
 }

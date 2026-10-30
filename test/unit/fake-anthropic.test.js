@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anthropicStandIn } from '../fakes/anthropic-binding.js';
+import { anthropicStandIn, BINDING_BETA } from '../fakes/anthropic-binding.js';
 
 // The stand-in checks thinking blocks as the preserved-thinking docs say Claude 5.5 does (fetched 2026-10-29).
 
@@ -73,4 +73,16 @@ test('a cache entry written at a mark is read by a later mark within 20 blocks o
   assert.ok(near.cache_read_input_tokens > 0, 'within reach');
   const far = await send([...base, ...Array.from({ length: 30 }, (_, i) => text(`far ${i}`)), text('end', true)]);
   assert.equal(far.cache_read_input_tokens, 0, 'out of reach of the only mark');
+});
+
+test('the binding controls: block_binding needs the beta header, and the header makes each reply carry input_transformations', async () => {
+  const claude = anthropicStandIn(() => [{ type: 'text', text: 'ok' }]);
+  const ask = (/** @type {any} */ thinking, /** @type {Record<string, string>} */ headers) => claude.fetch('https://api.anthropic.com/v1/messages', { headers, body: JSON.stringify({ model: 'claude-sonnet-5-5', thinking, messages: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }] }) });
+  const binding = { type: 'adaptive', block_binding: { prefix_mismatch_behavior: 'error' } };
+  assert.equal((await ask(binding, {})).status, 400, 'the field without the header');
+  assert.match(claude.refused.at(-1), /block_binding: Extra inputs are not permitted/);
+  const res = await ask(binding, { 'anthropic-beta': `other-beta,${BINDING_BETA}` });
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /"input_transformations":\[\]/);
+  assert.doesNotMatch(await (await ask(undefined, {})).text(), /input_transformations/);
 });
