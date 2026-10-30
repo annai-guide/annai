@@ -34,7 +34,9 @@ if (command === 'report') {
       const s = standIns();
       const k = new Keys([{ line: null, key: 'sk-stand-in-not-a-key' }]);
       keys.push(k);
-      providers.push({ provider: 'anthropic', key: () => k.key, fetch: s.fetch }, { provider: 'openrouter', key: () => k.key, fetch: s.fetch });
+      // No waiting for the stubbed 529's retries: nothing there is busy.
+      const sleep = async () => {};
+      providers.push({ provider: 'anthropic', key: () => k.key, fetch: s.fetch, sleep }, { provider: 'openrouter', key: () => k.key, fetch: s.fetch, sleep });
     } else {
       for (const [provider, flag] of /** @type {const} */ ([['anthropic', 'anthropic-key'], ['openrouter', 'openrouter-key']])) {
         if (typeof opts[flag] !== 'string') continue;
