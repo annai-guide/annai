@@ -1521,7 +1521,7 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 78xlh8	ok	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:313	
 nq6gpo	ok	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:27	
 19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は予定に一覧があります。	src/ui/screens/booking.js:28	
-1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	要確認：annai が項目ごとに確認を付ける前に Shiori が読んだ予約です。合っているか、違うところがあるかを Shiori に伝えてください。	src/ui/screens/booking.js:43	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
+1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	要確認：annai が項目ごとに確認を付ける前に Shiori が読んだ予約です。合っていればその旨を、違っていれば何が違うかを Shiori に伝えてください。	src/ui/screens/booking.js:43	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
 bamrei	ok	Change it	変更する	src/ui/screens/booking.js:52	
 iy42pb	ok	check	要確認	src/ui/screens/booking.js:75	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
 1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:76	Note: read by screen readers for the check mark beside a detail.
