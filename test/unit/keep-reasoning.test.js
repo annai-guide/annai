@@ -257,8 +257,8 @@ test('9. a fallback mid-turn to another model and back: the other model gets no 
   const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
     if (claude.bodies.length === 1 && !claude.refused.length) {
       claude.bodies.push(JSON.parse(String(init.body)));
-      claude.refused.push('overloaded once');
-      return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Something else was wrong.' } }), { status: 400 });
+      claude.refused.push('too long once');
+      return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'prompt is too long: 999999 tokens > 200000 maximum' } }), { status: 400 });
     }
     return claude.fetch(url, init);
   };
@@ -273,7 +273,7 @@ test('9. a fallback mid-turn to another model and back: the other model gets no 
   const back = claude.bodies[2];
   assert.equal(thoughts(back).length, 1, "Claude's own reply as it came");
   assert.equal(nows(back).length, 1, 'the now block before it, not the one before the other model');
-  assert.deepEqual(claude.refused, ['overloaded once']);
+  assert.deepEqual(claude.refused, ['too long once']);
 });
 
 test("10. a tool switched off between steps: the tools stay, its call is refused in words, the next turn leaves it out; a role's level changed keeps the turn's", async (t) => {
@@ -355,12 +355,11 @@ test('11. a reload mid-turn, after step 1\'s results: the catch-up turn sends no
 
 test(`12. a long turn past ${KEPT_MAX / 1024} KB of kept thinking: from there, no thinking, once`, async (t) => {
   useClock(t);
-  const big = 'x'.repeat(25_000);
   let steps = 0;
   const claude = anthropicStandIn((body) => {
     const { results } = last(body);
     if (results.includes('speak') || results.includes('sleep')) return [use('sleep')];
-    return ++steps < 6 ? [{ type: 'thinking', thinking: big }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
+    return ++steps < 6 ? [{ type: 'thinking', pad: 25_000 }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Look around, slowly.');
@@ -369,6 +368,30 @@ test(`12. a long turn past ${KEPT_MAX / 1024} KB of kept thinking: from there, n
   // Each step's two blocks (its own and the big one) until the kept part passes the limit after the third step; none after.
   assert.deepEqual(counts.slice(0, 5), [0, 2, 4, 0, 0]);
   assert.deepEqual(claude.refused, []);
+});
+
+test('12b. a big server-tool result with small thinking is not thinking: the turn keeps sending its thinking (the limit counts what a native adds beyond the parts it covers)', async (t) => {
+  useClock(t);
+  // About 70 KB of search results, as a web_search_tool_result carries them (encrypted page content).
+  const results = Array.from({ length: 7 }, (_, i) => ({ type: 'web_search_result', url: `https://example.com/${i}`, title: `Result ${i}`, encrypted_content: 'E'.repeat(10_000), page_age: null }));
+  let step = 0;
+  const claude = anthropicStandIn(() => {
+    step++;
+    if (step === 1) return [
+      { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'museum hours' } },
+      { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: results },
+      use('list', { path: '/trip/' }),
+    ];
+    if (step === 2) return [use('list', { path: '/trip/notes/' })];
+    if (step === 3) return [use('speak', { text: 'Open 9 to 5.' }), use('sleep')];
+    return [use('sleep')];
+  });
+  const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
+  k.agent.send('When does the museum open?');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.ok(JSON.stringify(claude.bodies[1]).length > 70_000, 'the result is in the request');
+  assert.deepEqual(claude.bodies.slice(0, 3).map((b) => thoughts(b).length), [0, 1, 2]);
 });
 
 test("14. no native, signature or reasoning_details is stored: not in the log, its texts, the Trace, a backup, or an annai.llm reply", async (t) => {
@@ -447,6 +470,11 @@ test("13b. cache markers through OpenRouter's Claude: the system, the end and ca
   for (const b of or.bodies) for (const m of b.messages) if (m.content !== null) assert.ok(Array.isArray(m.content), 'every content an array of blocks');
   assert.ok(or.usage.slice(1, first).every((u) => u.prompt_tokens_details.cached_tokens > 0), 'steps 2 and 3 read the cache');
   assert.ok(or.usage[first].prompt_tokens_details.cached_tokens > 0, "the next turn's first request too");
+  // OpenRouter's sticky routing key (its prompt-caching guide): the same on every step of a turn, a short non-personal hash.
+  const sessions = or.bodies.map((b) => b.session_id);
+  assert.match(sessions[0], /^[A-Za-z0-9_-]{1,256}$/);
+  assert.ok(sessions.slice(0, first).every((x) => x === sessions[0]), 'one for the whole turn');
+  assert.ok(!JSON.stringify(sessions).includes('Monterey') && !JSON.stringify(sessions).includes(k.trip), 'nothing of the conversation in it');
   const turn2 = (await requests(k)).at(-1);
   assert.ok(turn2.data.usage.cacheRead > 0, 'counted as a cache read');
   assert.deepEqual(or.refused, []);
@@ -464,6 +492,7 @@ test('13b. a Chat Completions model outside cacheMarkers sends what it always se
   for (const b of or.bodies) {
     assert.ok(!JSON.stringify(b).includes('cache_control'));
     assert.equal(typeof b.messages[0].content, 'string');
+    assert.ok(!('session_id' in b), 'no session_id for a model outside cacheMarkers');
   }
 });
 

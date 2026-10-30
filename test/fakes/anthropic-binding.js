@@ -12,8 +12,13 @@ import { createHash } from 'node:crypto';
  * { content, stop } to choose the stop reason (pause_turn). Cache reads are counted as Anthropic counts them: an entry is written at each
  * marked block, and a later mark finds the longest entry within 20 blocks before it.
  * @param {(body: any) => any[] | { content: any[], stop: string }} reply
+ * The binding controls of the docs (thinking-binding-controls-2026-08-01): with the beta header in a request, each reply carries a top-level
+ * input_transformations (empty here: a block that fails is always refused); thinking.block_binding without the header is its own 400.
+ * A thinking block given as { type: 'thinking', pad: n } has a signature n characters longer (the signature carries the encrypted reasoning).
  * @param {{ empty?: boolean }} [o] empty: thinking comes back with no words (display "omitted"), the signature carrying it
  */
+export const BINDING_BETA = 'thinking-binding-controls-2026-08-01';
+
 export function anthropicStandIn(reply, { empty = false } = {}) {
   /** @type {any[]} every request body, in order */
   const bodies = [];
@@ -81,10 +86,17 @@ export function anthropicStandIn(reply, { empty = false } = {}) {
     const cacheWrite = last > read ? upTo(last) - cacheRead : 0;
     return { input_tokens: total - cacheRead - cacheWrite, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite };
   };
-  /** @param {string} url @param {RequestInit} init */
-  const fetch = async (url, init) => {
+  /** @param {string} _url @param {RequestInit} init */
+  const fetch = async (_url, init) => {
     const body = JSON.parse(String(init.body));
     bodies.push(body);
+    const beta = Object.entries(/** @type {Record<string, string>} */ (init.headers ?? {})).filter(([k]) => k.toLowerCase() === 'anthropic-beta').flatMap(([, v]) => String(v).split(',').map((x) => x.trim()));
+    const controls = beta.includes(BINDING_BETA);
+    if (body.thinking?.block_binding && !controls) {
+      const no = 'thinking.block_binding: Extra inputs are not permitted';
+      refused.push(no);
+      return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: no } }), { status: 400, headers: { 'content-type': 'application/json' } });
+    }
     const sent = body.messages.some((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b.type === 'thinking' && String(b.signature).startsWith(`${body.model}${SEP}`)));
     /** @type {string | null} */
     let no = null;
@@ -114,12 +126,12 @@ export function anthropicStandIn(reply, { empty = false } = {}) {
       const i = msgs.length - 1;
       const j = msgs[i].content.length;
       const text = b.thinking ?? words;
-      content.push({ type: 'thinking', thinking: text, signature: sign(body.model, prefixOf(at, i, j), before(at, i, j), text) });
+      content.push({ type: 'thinking', thinking: text, signature: sign(body.model, prefixOf(at, i, j), before(at, i, j), text) + (b.pad ? SEP + 'p'.repeat(b.pad) : '') });
     }
     const u = cached(body);
     usage.push(u);
     const ev = (/** @type {any} */ d) => `event: ${d.type}\ndata: ${JSON.stringify(d)}\n\n`;
-    let out = ev({ type: 'message_start', message: { usage: { ...u, output_tokens: 1 } } });
+    let out = ev({ type: 'message_start', message: { usage: { ...u, output_tokens: 1 }, ...(controls ? { input_transformations: [] } : {}) } });
     for (const [index, b] of content.entries()) {
       if (b.type === 'tool_use' || b.type === 'server_tool_use') {
         out += ev({ type: 'content_block_start', index, content_block: { type: b.type, id: b.id, name: b.name, input: {} } });

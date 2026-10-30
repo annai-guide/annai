@@ -26,10 +26,7 @@ const TUNABLES = Object.freeze({
 });
 /** The reasoning_details a native is kept for: Claude's, as OpenRouter gives them. */
 const CLAUDE = 'anthropic-claude-v1';
-/** Claude refusing thinking sent back, in its error's words (the preserved-thinking docs, 2026-10-29). */
-const BOUND = /Invalid `?signature`? in `?thinking`? block|\bthinking`?\b[^.]*\bcannot be modified\b/i;
-/** Marks on blocks of a request being built, for its cache markers to find. */
-const NOW = Symbol('now');
+/** Marks the blocks of cacheAt's message, for its cache marker to find. */
 const AT = Symbol('cacheAt');
 const STOP = /** @type {Record<string, string>} */ ({ stop: 'end', tool_calls: 'tool', function_call: 'tool', length: 'length', content_filter: 'refusal' });
 const CODES = /** @type {Record<string, string>} */ ({ context_length_exceeded: 'context', insufficient_quota: 'credit', invalid_api_key: 'auth', model_not_found: 'not-found' });
@@ -43,6 +40,8 @@ export function activate(annai) {
     name: 'Chat Completions',
     tunables: TUNABLES,
     tail: true,
+    /** Claude's reasoning_details are read by Claude: the models one cacheMarkers prefix names share them; any other model has its own. @param {{ model: any, tunables: any }} c */
+    nativeScope: ({ model, tunables }) => markedBy(model, tunables) ?? String(model.providerId),
     /** @param {any} c */
     build: (c) => build(c),
     /** @param {Response} res @param {any} c */
@@ -64,9 +63,26 @@ function auth(endpoint, key) {
   return { ...(key ? { authorization: `Bearer ${key}` } : {}), ...(endpoint.headers ?? {}) };
 }
 
+/** FNV-1a, two seeds in one pass: 64 bits as hex (the plugin's own copy; plugins import nothing from annai). @param {string} s */
+function hash(s) {
+  let a = 0x811c9dc5;
+  let b = 0x2166136a;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x01000193) >>> 0;
+  }
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
+}
+
+/** The cacheMarkers prefix a model's id starts with, or undefined. @param {any} model @param {any} t */
+function markedBy(model, t) {
+  return Array.isArray(t.cacheMarkers) ? t.cacheMarkers.find((/** @type {unknown} */ x) => typeof x === 'string' && x && String(model.providerId).startsWith(x)) : undefined;
+}
+
 /** @param {any} c */
 function build({ endpoint, model, key, tunables: t, request }) {
-  const marks = Array.isArray(t.cacheMarkers) && t.cacheMarkers.some((/** @type {unknown} */ x) => typeof x === 'string' && x && String(model.providerId).startsWith(x));
+  const marks = markedBy(model, t) !== undefined;
   /** @type {any[]} */
   const messages = [];
   if (request.system) messages.push({ role: t.systemRole, content: marks ? [{ type: 'text', text: request.system }] : request.system });
@@ -84,12 +100,15 @@ function build({ endpoint, model, key, tunables: t, request }) {
     if (request.system) put(messages[0].content, 0);
     const end = messages.at(-1);
     if (end && Array.isArray(end.content) && end !== messages[0]) put(end.content, end.content.length - 1);
-    const at = messages.findLast((/** @type {any} */ x) => Array.isArray(x.content) && x.content.some((/** @type {any} */ b) => b[AT] && !b[NOW]));
-    if (at) put(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT] && !b[NOW]));
+    const at = messages.findLast((/** @type {any} */ x) => Array.isArray(x.content) && x.content.some((/** @type {any} */ b) => b[AT]));
+    if (at) put(at.content, at.content.findLastIndex((/** @type {any} */ b) => b[AT]));
   }
-  for (const x of messages) if (Array.isArray(x.content)) x.content = x.content.map((/** @type {any} */ b) => { const { [NOW]: _now, [AT]: _at, ...rest } = b; return rest; });
+  for (const x of messages) if (Array.isArray(x.content)) x.content = x.content.map((/** @type {any} */ b) => { const { [AT]: _at, ...rest } = b; return rest; });
   /** @type {Record<string, any>} */
   const body = { model: model.providerId, messages, stream: true };
+  // OpenRouter keeps a conversation on one upstream account by this key, so a turn's steps find their cache and Claude's thinking is not
+  // dropped by another account: a hash of the system text and the model, stable while the cache could hit and nothing of the conversation.
+  if (marks) body.session_id = `annai-${hash(`${model.providerId}\u0000${request.system ?? ''}`)}`;
   if (t.usageInStream) body.stream_options = { include_usage: true };
   const max = request.maxOutput ?? model.maxOutput;
   if (max) body[t.maxTokensField] = max;
@@ -152,8 +171,6 @@ function wire(m, t, current = false, blocks = false) {
   if (rest.length) out.push({ role: 'user', content: words(rest, t, blocks) });
   if (now) {
     addTail(out, now.text, blocks);
-    const last = out.at(-1);
-    if (Array.isArray(last.content)) last.content[last.content.length - 1][NOW] = true;
   }
   return out;
 }
@@ -402,8 +419,6 @@ function classify(status, body) {
     // Google's RESOURCE_EXHAUSTED on a 429 (its free tier's limits among them) says "quota", and is too many requests;
     // on a 402 (prepaid credit used up) it is an account out of credit, as the status says.
     if (status === 429 && e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
-    // Claude refusing the thinking sent back, through OpenRouter: its words in the message, or in the provider's own (metadata.raw).
-    if (BOUND.test(String(e?.message ?? '')) || BOUND.test(String(e?.metadata?.raw ?? ''))) return 'reasoning';
     return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
   } catch {
     return null;

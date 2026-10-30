@@ -26,18 +26,18 @@ const nativeType = (seen, events) => /** @type {any} */ ({
   type: 'test', name: 'Test', pluginId: 'test-plugin', tail: true,
   build: (/** @type {any} */ c) => { seen.push(structuredClone(c.request)); return { url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: {} }; },
   read: async function* (/** @type {any} */ _res, /** @type {any} */ c) { for (const e of events(c)) yield e; },
-  classify: (/** @type {number} */ _s, /** @type {string} */ body) => (/signature/.test(body) ? 'reasoning' : null),
+  classify: (/** @type {number} */ _s, /** @type {string} */ body) => (/too long/.test(body) ? 'context' : null),
 });
 const ok = async () => new Response('streamed');
 /** callOnce with test requests written loosely. @param {any} c */
 const once = (c) => callOnce(c);
 const answer = (/** @type {string} */ text, content = [{ type: 'thinking', signature: `sig:${text}` }]) => () => [{ type: 'text', text }, { type: 'native', content }, { type: 'stop', reason: 'end' }];
 
-test("the 'reasoning' kind has words for a model and for the screens, and is a kind a plugin may give", () => {
+test("the 'reasoning' kind has words for a model and for the screens, and is annai's own: a plugin cannot give it", () => {
   const e = new ProviderError('reasoning', 'messages.1.content.0: Invalid `signature` in `thinking` block.');
   assert.equal(explainPlain(e), 'The provider refused the reasoning annai sent back.');
   assert.equal(explain(e), 'The provider refused the reasoning annai sent back.');
-  assert.ok(KINDS.has('reasoning'));
+  assert.ok(!KINDS.has('reasoning'));
 });
 
 test('portable() keeps a native and the parts it covers as they are, and drops what it drops elsewhere', () => {
@@ -147,13 +147,19 @@ test('photos count by their hash, so an upload in place of the bytes changes not
   assert.equal((await once({ type, endpoint: endpoint(), model: model(), key: null, request: next({ ...photo, hash: 'h2', data: 'BBBB' }), fetch: ok })).natives, 'changed');
 });
 
-test("a refusal of the reasoning from a request that carried none is an ordinary bad request", async () => {
+test("a 400 on a request that sent natives is 'reasoning' whatever it says; on one that sent none, or that kept its natives back, an ordinary bad request; a size error is its own", async () => {
   const type = nativeType([], () => []);
-  const refuse = async () => new Response(JSON.stringify({ error: { message: 'Invalid `signature` in `thinking` block' } }), { status: 400 });
-  await assert.rejects(once({ type, endpoint: endpoint(), model: model(), key: null, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, fetch: refuse }),
-    (e) => e instanceof ProviderError && e.kind === 'bad-request');
+  const refuse = (/** @type {string} */ message) => async () => new Response(JSON.stringify({ error: { message } }), { status: 400 });
+  const plain = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] };
+  await assert.rejects(once({ type, endpoint: endpoint(), model: model(), key: null, request: plain, fetch: refuse('Invalid `signature` in `thinking` block') }),
+    (e) => e instanceof ProviderError && e.kind === 'bad-request', 'no native sent: the same words are a bad request');
   const { native } = await firstStep({ key: null });
-  await assert.rejects(once({ type, endpoint: endpoint(), model: model(), key: null, request: second(native), fetch: refuse }), (e) => e instanceof ProviderError && e.kind === 'reasoning');
+  const sentOne = once({ type, endpoint: endpoint(), model: model(), key: null, request: second(native), fetch: refuse('max_tokens: must be positive') });
+  await assert.rejects(sentOne, (e) => e instanceof ProviderError && e.kind === 'reasoning', 'a native sent: words that say nothing about it');
+  await assert.rejects(once({ type, endpoint: endpoint(), model: model(), key: null, request: second(native, 'Hello again'), fetch: refuse('max_tokens: must be positive') }),
+    (e) => e instanceof ProviderError && e.kind === 'bad-request', 'the check kept the natives back: none was sent');
+  await assert.rejects(once({ type, endpoint: endpoint(), model: model(), key: null, request: second(native), fetch: refuse('prompt is too long: 300000 tokens') }),
+    (e) => e instanceof ProviderError && e.kind === 'context', 'a size error goes its own way');
 });
 
 test("cacheAt names the same message after messages another model can't read are left out", async () => {
@@ -207,7 +213,7 @@ test("callRole: the provider refuses the reasoning sent back: the same model aga
   const fetch = async (/** @type {string} */ _u, /** @type {any} */ _init) => {
     if (JSON.stringify(seen.at(-1)).includes('"native"')) {
       refused++;
-      return new Response(JSON.stringify({ error: { message: 'messages.1.content.0: Invalid `signature` in `thinking` block.' } }), { status: 400 });
+      return new Response(JSON.stringify({ error: { message: 'Something nobody planned for.' } }), { status: 400 });
     }
     return new Response('streamed');
   };
@@ -220,8 +226,39 @@ test("callRole: the provider refuses the reasoning sent back: the same model aga
   assert.equal(refused, 1);
   assert.equal(r.modelId, 'm-a', 'the same model answered');
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['reasoning', 'ok']);
-  assert.match(String(r.attempts[0].error), /signature/);
+  assert.match(String(r.attempts[0].error), /Something nobody planned for/);
   assert.equal(r.reply.natives, 'refused');
   assert.equal(bench.until('m-a'), 0, 'not rested');
   assert.ok(!JSON.stringify(seen.at(-1)).includes('"native"'), 'asked again without it');
+});
+
+test("callRole: a second 400 goes the normal bad-request way: the next model is asked, and a 400 on a request with no natives is as it always was", async () => {
+  const type = nativeType([], () => [{ type: 'text', text: 'Fine.' }, { type: 'native', content: [{ type: 'thinking', signature: 's' }] }, { type: 'stop', reason: 'end' }]);
+  const config = /** @type {any} */ ({
+    providers: {
+      a: { id: 'a', plugin: 'p', template: null, user: { name: 'A', baseUrl: 'https://llm.test', abilities: { chat: { kind: 'chat', type: 'test' } } }, created: 0 },
+      b: { id: 'b', plugin: 'p', template: null, user: { name: 'B', abilities: { chat: { kind: 'chat', type: 'scripted', tunables: { script: [{ text: 'From B.' }, { text: 'From B.' }] } } } }, created: 0 },
+    },
+    models: {
+      'm-a': { id: 'm-a', provider: 'a', ability: 'chat', template: null, user: { providerId: 'claude-x', input: ['text'] }, created: 0 },
+      'm-b': { id: 'm-b', provider: 'b', ability: 'chat', template: null, user: { providerId: 'other', input: ['text'] }, created: 0 },
+    },
+    roles: { main: { models: ['m-a', 'm-b'] } },
+  });
+  let asked = 0;
+  const fetch = async () => { asked++; return new Response(JSON.stringify({ error: { message: 'Not for you.' } }), { status: 400 }); };
+  const here = await nativeKey(endpoint({ id: 'a/chat' }), null);
+  const first = await once({ type, endpoint: endpoint({ id: 'a/chat' }), model: model({ providerId: 'claude-x' }), key: null, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }] }, fetch: ok, keepNative: true });
+  const native = { type: 'native', endpoint: here, content: [{ type: 'thinking', signature: 'old' }], covers: 1, prefix: /** @type {any} */ (first.native).prefix };
+  const messages = [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }] }, { role: 'assistant', parts: [native, { type: 'text', text: 'Hm.' }] }, { role: 'user', parts: [{ type: 'text', text: 'And?' }] }];
+  const types = new Map([['test', type], ['scripted', scriptedType()]]);
+  const bench = new Bench();
+  const r = await callRole(/** @type {any} */ ({ role: 'main', request: { messages }, config, types, keyFor: async () => null, bench, fetch, trace: modelTrace(createMemoryStore(), SYS), sleep: async () => {}, keepNative: true }));
+  assert.equal(asked, 2, 'once with natives, once without: never a third');
+  assert.deepEqual(r.attempts.map((a) => [a.model, a.outcome]), [['m-a', 'reasoning'], ['m-a', 'bad-request'], ['m-b', 'ok']]);
+  // No natives in the request: the first 400 is a bad request, and the model is not asked again.
+  asked = 0;
+  const plain = await callRole(/** @type {any} */ ({ role: 'main', request: { messages: messages.slice(0, 1) }, config, types, keyFor: async () => null, bench: new Bench(), fetch, trace: modelTrace(createMemoryStore(), SYS), sleep: async () => {} }));
+  assert.equal(asked, 1);
+  assert.deepEqual(plain.attempts.map((a) => [a.model, a.outcome]), [['m-a', 'bad-request'], ['m-b', 'ok']]);
 });

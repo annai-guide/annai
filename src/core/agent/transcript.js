@@ -4,6 +4,7 @@ import { toBase64 } from '../bytes.js';
 import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
 import { strayNote } from '../languages.js';
 import { handOverText } from '../handover.js';
+import { nativeExtra } from '../llm/contract.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -369,20 +370,18 @@ export class Transcript {
     this.#carry = null;
     const kept = (/** @type {Part} */ p) => p.type === 'native' || (p.type === 'text' && p.now);
     if (!this.messages.some((m) => m.parts.some(kept))) return;
-    /** @type {Message[]} */
-    const out = [];
-    for (const [i, m] of this.messages.entries()) {
+    // Neither stands alone in a message (a now block ends a user message that holds lines or results; a native leads the reply's parts), so
+    // every message stays and no index moves.
+    this.messages = this.messages.map((m) => {
       const parts = m.parts.filter((p) => !kept(p));
-      if (parts.length) out.push(parts.length === m.parts.length ? m : { role: m.role, parts });
-      else if (i <= this.turnStart) this.turnStart--;
-    }
-    this.messages = out;
+      return parts.length === m.parts.length ? m : { role: m.role, parts };
+    });
   }
 
-  /** How much the turn's kept now blocks and natives add to each request, in characters. */
+  /** How much the turn's kept now blocks and natives add to each request, in characters: a native only for what it adds beyond the parts it covers (nativeExtra). */
   keptBytes() {
     let n = 0;
-    for (const m of this.messages) for (const p of m.parts) n += p.type === 'native' ? JSON.stringify(p.content).length : p.type === 'text' && p.now ? p.text.length : 0;
+    for (const m of this.messages) m.parts.forEach((p, i) => { n += p.type === 'native' ? nativeExtra(m.parts, i) : p.type === 'text' && p.now ? p.text.length : 0; });
     return n;
   }
 

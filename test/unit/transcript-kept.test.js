@@ -98,4 +98,21 @@ test("Koe: a kept now block is not escaped, and the window counts no now block a
   assert.equal(t.turnStart, t.messages.length - 2);
   assert.ok(before > t.turnStart);
 });
+
+test('keptBytes counts what a native adds beyond the parts it covers: a reply that is mostly its own parts adds little, a long signature adds its length', () => {
+  const t = new Transcript();
+  add(t, 'msg.user', {}, { text: 'Hi' });
+  const body = 'B'.repeat(70_000);
+  // The reply as the provider returned it holds the same 70 KB the parts carry (a fetched page's result), and a short signature.
+  const echoed = { endpoint: 'pv/chat|k', content: [{ type: 'thinking', thinking: '', signature: 's' }, { type: 'result', body }], covers: 1, prefix: 'p' };
+  t.carry({ now: '<now>1</now>', native: echoed });
+  turn(t, [{ type: 'provider', block: { type: 'result', body }, model: 'm' }]);
+  assert.ok(t.keptBytes() < 1000, `counted ${t.keptBytes()}`);
+  // Thinking that is itself long counts in full.
+  const t2 = new Transcript();
+  add(t2, 'msg.user', {}, { text: 'Hi' });
+  t2.carry({ now: '<now>1</now>', native: { endpoint: 'pv/chat|k', content: [{ type: 'thinking', thinking: '', signature: 'S'.repeat(70_000) }], covers: 1, prefix: 'p' } });
+  turn(t2, [call('c1')]);
+  assert.ok(t2.keptBytes() > 70_000);
+});
 void none;
