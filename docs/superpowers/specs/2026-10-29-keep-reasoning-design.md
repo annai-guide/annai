@@ -1,6 +1,6 @@
 # keep-reasoning: Claude's thinking between tool steps, design
 
-Date: 2026-10-29. Status: revised after a spec check and the user's answers of 2026-10-29. Two questions remain open, both marked **Open** where they come up: the size limit for long turns (§6) and cache markers for Claude through OpenRouter (§9). Main at dd7465ce; line numbers are main's.
+Date: 2026-10-29. Status: revised after a spec check and the user's answers of 2026-10-29. No question is open. Main at dd7465ce; line numbers are main's.
 
 ## Why
 
@@ -18,6 +18,8 @@ The user's words:
   3. Rare mid-turn edits: "Accept (Recommended)".
   4. Claude through OpenRouter: "Include it (Recommended)".
   5. A real check: "Key here, before release".
+  6. Long turns: "Stop past 64 KB (Recommended)".
+  7. Cache markers for Claude through OpenRouter: "Add them now (Recommended)".
 
 ## Goals
 
@@ -108,7 +110,7 @@ Claude's thinking and the kept now blocks last for one turn of one half, from th
 
 **What crossing a turn costs.** Today the next turn reads from the cache everything the last turn sent except its last now block. Now the last turn's now blocks and thinking leave the request. So the next turn shares the last turn's requests only up to where that turn began. The turn's tool calls and results are then written to the cache once more, at the write price instead of the read price. With an hour's cache, that is $4.00 instead of $0.10 per million tokens on Sonnet 5.5, and $8.00 instead of $0.20 on Opus 5.5.
 
-A turn whose first reply ends it costs nothing extra. Most of Kokoro's and Koe's turns are like that. Big tool results are where it shows: a 20-page PDF read in a turn is about 30,000 tokens, so about $0.12 more on Sonnet 5.5 and $0.24 on Opus 5.5, once. Claude through OpenRouter has no prompt caching at all today (§9), so there is no re-write cost there unless §9's open question adds caching.
+A turn whose first reply ends it costs nothing extra. Most of Kokoro's and Koe's turns are like that. Big tool results are where it shows: a 20-page PDF read in a turn is about 30,000 tokens, so about $0.12 more on Sonnet 5.5 and $0.24 on Opus 5.5, once. Claude through OpenRouter has no prompt caching today; with §9's markers it caches the same way, so the same note applies there.
 
 ### 2. The now block stays where it was sent
 
@@ -167,7 +169,7 @@ The contract (src/core/llm/contract.js) is an API, and these are additions only.
    - Chat Completions puts a native's `reasoning_details` on the assistant message of its reply and renders the parts as today.
 5. **A `reasoning` error kind:** the provider refused the reasoning annai sent back. English words for the model and the log: "The provider refused the reasoning annai sent back." The same in the screens' words.
 6. **`now: true` on a text part:** an earlier step's now block. A type that returns natives must render it exactly as it rendered the request's `tail`.
-7. **`cacheAt` on a request:** a message index (§7).
+7. **`cacheAt` on a request:** a message index (§7). A type that places cache markers adds one there: Anthropic Messages always, and Chat Completions for the models named by its new `cacheMarkers` tunable (§9). Both already take `cacheTtl`.
 
 Which finished replies keep a native:
 - Anthropic: a reply that stopped with `end_turn`, `stop_sequence`, `tool_use` or `pause_turn`, with every tool input parsed.
@@ -233,7 +235,18 @@ The size of a signature isn't documented; it holds the encrypted reasoning. Unme
 | 20 | about 1.0 MB | about 103 KB |
 | 50 | about 6.6 MB | about 265 KB |
 
-A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept natives and now blocks pass 64 KB, about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. **Open:** the user's OK on the limit and its entry (in the report).
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept natives and now blocks pass 64 KB, about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
+
+**Known limitation**, approved by the user's answer 6. It goes into docs/limitations.md when this ships:
+
+```markdown
+### A very long turn stops carrying Claude's thinking after about a dozen steps
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 64 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: a 50-step turn would add about 6.6 MB. The limit keeps a turn's extra near 360 KB.
+- **Revisit when:** the real check shows signatures much smaller than the 5 KB a step assumed, or long turns lose quality the user notices.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)".
+```
 
 ### 7. The marker where the previous turn began (`cacheAt`)
 
@@ -243,7 +256,7 @@ Anthropic finds an earlier cache entry only within 20 blocks of a marker, and ea
 - At the turn's first step, before any reply of the turn, the loop reads `turnStart`, which is where the previous turn began. It sends it as `cacheAt` on every request of the turn.
 - anthropic-messages marks the last block of that message, as the earlier request sent it, before any kept now block. That makes three marks with the system and the newest message.
 - Tidy-up between turns sends the latest turn's start. A forced tidy-up in a turn sends the turn's `cacheAt`. Koe carries it too: same code, and harmless for its short turns.
-- Chat Completions uses `cacheAt` only if §9's open question adds cache markers.
+- Chat Completions marks it the same way for the models its `cacheMarkers` names (§9).
 
 **My call.**
 
@@ -263,10 +276,7 @@ No `drop_block` beta and no beta header: stripping is Anthropic's documented rec
 
 **chat-completions reads** `choices[].delta.reasoning_details`. It joins pieces of the same `index`: text, summary and data are concatenated, and type, id, format and signature are kept as they arrive. At the end of a finished reply, it yields `native` with the details, when every one has `format: "anthropic-claude-v1"`, at least one has a `signature` or `data`, and none reads `[REDACTED]`. It still yields `reasoning` with the words, for the Trace. Those words aren't empty here, because OpenRouter summarizes Claude's thinking by default.
 
-**chat-completions writes** a native's details as `reasoning_details` on its reply's assistant message. A kept now block is rendered exactly as `addTail` rendered it:
-- its own user message after tool results;
-- a text block in array content;
-- or `"\n\n"` before it in string content, where `wire()` joins other texts with `"\n"`.
+**chat-completions writes** a native's details as `reasoning_details` on its reply's assistant message. A kept now block is rendered exactly as `addTail` rendered it: its own user message after tool results, or a text block of its own (for the models `cacheMarkers` names, below, every content is an array of blocks). Where a server takes string content, `"\n\n"` goes before it, as `addTail` writes, where `wire()` joins other texts with `"\n"`.
 
 **classify** reads the binding 400 as `reasoning`.
 
@@ -274,7 +284,19 @@ Natives are kept only for Claude's format. GPT and Gemini through OpenRouter ret
 
 **What OpenRouter's shape loses.** Chat Completions keeps a reply's text apart from its reasoning. A Claude reply that puts text between two thinking blocks may not come back as Claude wrote it. Claude 5.5 mostly puts notes between tool calls in thinking blocks, so this should be rare. If it happens, §8 handles it, and the real check (§12) shows whether it does.
 
-**No caching today.** annai's chat-completions sends no `cache_control`, so Claude through OpenRouter pays full input price on every request. OpenRouter's sticky routing, which keeps a conversation on one provider, starts only after a cached request. So the steps of a turn can go to different Claude providers. Sonnet and Haiku 5.5 thinking is tied to the account that made it, so OpenRouter may then drop it silently. **Open:** add Anthropic-style cache markers for Claude on OpenRouter in this change (in the report).
+**Cache markers (the user's answer 7).** Today annai's chat-completions sends no `cache_control`, so Claude through OpenRouter pays full input price on every request: about $0.20 a request on Sonnet 5.5 for a 100,000-token conversation, where a cache read would cost about $0.01. And OpenRouter's sticky routing, which keeps a conversation on one provider, starts only after a cached request. Without it, the steps of a turn can go to different Claude providers. Sonnet and Haiku 5.5 thinking is tied to the account that made it, so OpenRouter may then drop it silently. So:
+
+- **The models.** A new Chat Completions tunable, `cacheMarkers`, lists model-id prefixes. Off by default. provider-openrouter sets `["anthropic/"]` on its chat ability, so every Claude model through OpenRouter gets markers, including one added from the list or by id. **My call:** data in the description, not OpenRouter's name in the plugin.
+- **The marks**, as anthropic-messages places them, with `cacheTtl`'s lifetime (`{ "type": "ephemeral" }`, plus `"ttl": "1h"` for the hour). This is OpenRouter's "Explicit cache breakpoints" form:
+  - the system message, as an array of one text block;
+  - the last block before the tail;
+  - `cacheAt`'s message, its last block before any kept now block (§7).
+
+  That makes three of four.
+- **Every content as an array.** For those models, every message's content goes as an array of blocks, the `tool` messages' too, even where there is no mark. So a mark never changes how a message is written from one request to the next. **My call.**
+- **Caveat.** OpenRouter documents per-block `cache_control` on message content. It doesn't say that a mark on a `tool` message's content reaches Anthropic. The real check (§12) shows it: later steps must read from the cache. If they don't, the builder puts the end mark on the request's own now block instead. Inside a turn that still hits, because the now block is kept. A turn's first request ends with the wake's user text, so `cacheAt`'s mark always sits on a user text block.
+- **Usage.** It needs no change: `usageOf` already reads `prompt_tokens_details.cached_tokens` and `cache_write_tokens`.
+- **Other servers.** No other Chat Completions server gets marks or array content; they send exactly what they send today.
 
 Versions: chat-completions and provider-openrouter get version bumps and stay at `api: 1`. Other Chat Completions servers send exactly what they send today.
 
@@ -320,13 +342,14 @@ So replay costs a little more than it saves, unless thinking is a small share of
 - **What it runs:** annai's own Agent and Halves in Node. The store is in memory. The endpoint types are the real ones (anthropic-messages, chat-completions), and the provider descriptions come from plugins-official. Kokoro runs on Sonnet 5.5, Koe · Classic on Haiku 5.5, and voice is off. The trip is synthetic: a `trip.json` and two notes, no real data.
   1. A message that needs `list`, `read`, then `tell_koe`: a Kokoro turn of three steps or more.
   2. Koe's turns around it.
-  3. The same through OpenRouter's Claude.
+  3. The same through OpenRouter's Claude, with cache markers (§9).
+  4. It also reports each turn's natives in KB, so §6's 64 KB can be set again from measured signature sizes.
 - **What it shows:** for each request, the half, step, model, bytes sent, natives sent or changed, outcome, cache reads and writes, and cost.
 - **What it checks:**
   1. Every step after one whose reply had a native sends it back.
   2. No attempt was refused (outcome `reasoning`), and no 400 came.
   3. Every call was answered by the role's first model (nothing fell back).
-  4. Anthropic's later steps read from the cache.
+  4. From the second step of a turn on, every request reads from the cache, on Anthropic and through OpenRouter alike. So does the next turn's first request, at `cacheAt`.
 - **Output:** exit 0 on pass, 1 on fail, 2 on error. A scrubbed summary goes to `.superpowers/evidence/reasoning-check/<time>/`, without request bodies.
 - **Cost:** a few cents. It runs before release, with the user's OK each time, since it spends money. docs/testing/reasoning-check.md describes it.
 
@@ -342,7 +365,7 @@ So replay costs a little more than it saves, unless thinking is a small share of
 
 **Stand-ins.**
 - `test/fakes/anthropic-binding.js` gains: empty `thinking` with signatures that also bind the previous block's (so a gap or a block put back is refused); "cannot be modified"; two cited text blocks before a second thinking block; a `pause_turn` reply with `server_tool_use` and `web_search_tool_result`; and a switch that refuses once.
-- New `test/fakes/openrouter-claude.js`: a Chat Completions stand-in that streams `reasoning_details` in OpenRouter's documented shape. Its signature binds the system message, the tools and the messages before the assistant message. It refuses a changed prefix with OpenRouter's error shape, carrying Anthropic's words.
+- New `test/fakes/openrouter-claude.js`: a Chat Completions stand-in that streams `reasoning_details` in OpenRouter's documented shape. Its signature binds the system message, the tools and the messages before the assistant message. It refuses a changed prefix with OpenRouter's error shape, carrying Anthropic's words. It reports cache reads (`prompt_tokens_details.cached_tokens`) the way Anthropic counts them: entries written at the marked blocks, found within 20 blocks of a later mark. The Anthropic stand-in reports `cache_read_input_tokens` by the same rule.
 
 **Through `agentKit`**, as halves.test.js does at line 758:
 1. A three-step Kokoro turn on Claude: requests 2 and 3 carry the earlier content arrays exactly, and the now blocks in place. Nothing is refused. Nothing falls back.
@@ -357,7 +380,12 @@ So replay costs a little more than it saves, unless thinking is a small share of
 10. A tool switched off between steps: the tools are unchanged, the call returns the switched-off words, and the next turn leaves the tool out. A role's level changed between steps: the turn keeps its level.
 11. A reload mid-turn, after step 1's results: the catch-up turn's first request carries no natives or now blocks, and nothing is refused.
 12. A long turn past 64 KB of kept thinking: from there, no thinking, once.
-13. A three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3 carry `reasoning_details` exactly. The kept now block renders exactly as the tail did, in string and in array content.
+13. A three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3 carry `reasoning_details` exactly. The kept now block renders exactly as the tail did.
+13b. Cache markers through OpenRouter's Claude:
+    - The system, the end and `cacheAt` are marked, with the hour's `ttl`.
+    - Every message keeps the same bytes from one request to the next.
+    - The stand-in reports cache reads on steps 2 and 3, and on the next turn's first request.
+    - A model outside `cacheMarkers` (a scripted Chat Completions server) gets no marks and string content, as today.
 14. **Anti-goals:** after a Claude turn, no native, signature or `reasoning_details` is in:
     - the `model.turn` event or its stored texts;
     - `trace.turn` or `net.request`;
@@ -377,8 +405,8 @@ No real model is needed. Use memory caps as usual on test runs.
 
 ## The spec, the limitations file and lessons
 
-- **Spec:** §6.3 item 4 ("sent last, never cached") becomes: sent last, and within a turn each earlier step's stays where it was sent, for an endpoint whose thinking follows it. §6.2 freezes the instructions, tools, provider tools and level for the turn. §6.5 says tidy-up uses the half's own instructions. §9.1 describes Anthropic Messages and Chat Completions as above. §9.6 says natives go only to their endpoint.
-- **docs/limitations.md:** the entry "Claude's reasoning isn't carried between tool steps within a turn" goes entirely, OpenRouter included. The entry in §5 comes in. §6's comes in too, if the user agrees.
+- **Spec:** §6.3 item 4 ("sent last, never cached") becomes: sent last, and within a turn each earlier step's stays where it was sent, for an endpoint whose thinking follows it. §6.2 freezes the instructions, tools, provider tools and level for the turn. §6.5 says tidy-up uses the half's own instructions. §9.1 describes Anthropic Messages and Chat Completions as above, Chat Completions' `cacheMarkers` included. §9.6 says natives go only to their endpoint.
+- **docs/limitations.md:** the entry "Claude's reasoning isn't carried between tool steps within a turn" goes entirely, OpenRouter included. The entries in §5 and §6 come in.
 - **LESSONS.md:** the entry in §4.
 
 ## Left to the builder
@@ -396,22 +424,24 @@ The user's answers of 2026-10-29, as built:
 2. Instructions, tools, provider tools, level, Koe's photo rule and `cacheAt` are frozen for the turn. Changes apply from the next turn. Provider tools switched off keep running until the turn ends (§3).
 3. Rare mid-turn edits stop the turn's thinking: a known limitation, with its entry in §5.
 4. Claude through OpenRouter gets its `reasoning_details` back within a turn (§9).
-5. A real check script runs before release with the named key files (§12).
+5. A real check script runs before release with the named key files (§12). It shows natives, refusals, fallbacks, bytes, and cache reads on both providers.
+6. Long turns stop carrying thinking past 64 KB: a known limitation, with its entry in §6. The figure is set again from the real check's measurements.
+7. Claude through OpenRouter gets Anthropic-style cache markers (§9).
 
 My calls:
-6. The line is within a turn (§1). The now block stays user text (§2).
-7. Kept now blocks go only where a native of the same endpoint follows (§2).
-8. A tool of annai's own switched off mid-turn is refused in words (§3).
-9. A forced tidy-up keeps the turn's tools, provider tools and level, and rebuilds only the system text (§3).
-10. Tidy-up uses the half's own system text. `#unadd` applies to one half too. `nextStep` doesn't rest a model for `reasoning` (§3).
-11. The core and plugin split (§3).
-12. The contract additions (§4): the `native` event, `Reply.native` beside `parts` (made only for Shiori's own turns), the `native` part, the `reasoning` kind, `now` text parts, `cacheAt`. The LESSONS entry text.
-13. Which replies keep a native. A `prefixed()` reply never does (§4).
-14. The check before sending, kept to save data. One per-turn flag stops thinking on a change, a refusal or the size limit (§5).
-15. The 64 KB limit for a turn (§6), pending the user's OK.
-16. `cacheAt` is where the previous turn began, the same for every request of the turn. Tidy-up and Koe carry it too (§7).
-17. One retry without thinking on a refusal, no beta (§8).
-18. Natives are kept only for OpenRouter's `anthropic-claude-v1` format (§9).
-19. Nothing about thinking is stored. Estimates count natives (§10).
-20. Display stays at each provider's default.
-21. anthropic-messages 0.5.0, chat-completions and provider-openrouter get version bumps, all at `api: 1`.
+8. The line is within a turn (§1). The now block stays user text (§2).
+9. Kept now blocks go only where a native of the same endpoint follows (§2).
+10. A tool of annai's own switched off mid-turn is refused in words (§3).
+11. A forced tidy-up keeps the turn's tools, provider tools and level, and rebuilds only the system text (§3).
+12. Tidy-up uses the half's own system text. `#unadd` applies to one half too. `nextStep` doesn't rest a model for `reasoning` (§3).
+13. The core and plugin split (§3).
+14. The contract additions (§4): the `native` event, `Reply.native` beside `parts` (made only for Shiori's own turns), the `native` part, the `reasoning` kind, `now` text parts, `cacheAt`. The LESSONS entry text.
+15. Which replies keep a native. A `prefixed()` reply never does (§4).
+16. The check before sending, kept to save data. One per-turn flag stops thinking on a change, a refusal or the size limit (§5).
+17. `cacheAt` is where the previous turn began, the same for every request of the turn. Tidy-up and Koe carry it too (§7).
+18. One retry without thinking on a refusal, no beta (§8).
+19. Natives are kept only for OpenRouter's `anthropic-claude-v1` format (§9).
+20. `cacheMarkers` is a Chat Completions tunable of model-id prefixes, set to `["anthropic/"]` by provider-openrouter. Those models get every content as an array of blocks (§9).
+21. Nothing about thinking is stored. Estimates count natives (§10).
+22. Display stays at each provider's default.
+23. anthropic-messages 0.5.0, chat-completions and provider-openrouter get version bumps, all at `api: 1`.
