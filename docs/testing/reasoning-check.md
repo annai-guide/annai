@@ -52,7 +52,7 @@ The report also notes, besides the checks: how many steps carried the binding co
 `input_transformations` never appeared in a stream), the upstream provider of each OpenRouter turn (and when a turn's steps changed provider),
 and the natives sent after the Claude-to-Claude step.
 
-It also reports each turn's thinking kept, in KB, and about how much one step's thinking weighs, so the 64 KB limit
+It also reports each turn's thinking kept, in KB, and about how much one step's thinking weighs, so the limit
 (`KEPT_MAX` in `src/core/agent/loop.js`, the design §6) can be set again from measured signatures.
 
 ## Running it

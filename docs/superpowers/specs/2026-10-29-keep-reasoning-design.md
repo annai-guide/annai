@@ -235,17 +235,17 @@ The size of a signature isn't documented; it holds the encrypted reasoning. Unme
 | 20 | about 1.0 MB | about 103 KB |
 | 50 | about 6.6 MB | about 265 KB |
 
-A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept now blocks and natives pass 64 KB (a native counted for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking; fix pass 1, F2; a Chat Completions native stands in for none of the parts, `covers: 0` on its event, so its whole size counts; fix pass 2, G4), about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept now blocks and natives pass 64 KB (32 KB since the real check, 2026-10-30, measured about 1.3 KB a step; a native counted for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking; fix pass 1, F2; a Chat Completions native stands in for none of the parts, `covers: 0` on its event, so its whole size counts; fix pass 2, G4), about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
 
 **Known limitation**, approved by the user's answer 6. It goes into docs/limitations.md when this ships:
 
 ```markdown
-### A very long turn stops carrying Claude's thinking after about a dozen steps
+### A very long turn stops carrying Claude's thinking after about 25 steps
 - **Kind:** known limitation.
-- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 64 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
-- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: a 50-step turn would add about 6.6 MB. The limit keeps a turn's extra near 360 KB.
-- **Revisit when:** the real check shows signatures much smaller than the 5 KB a step assumed, or long turns lose quality the user notices.
-- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)".
+- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 32 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at the 1.3 KB a step the real check measured (2026-10-30), a 50-step turn would add about 1.6 MB. The limit keeps a turn's extra near 390 KB.
+- **Revisit when:** the Trace shows long turns stopping their thinking often, or long turns lose quality the user notices.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB: set to 32 KB on 2026-10-30, when the check measured about 1.3 KB a step instead of the 5 KB assumed.
 ```
 
 ### 7. The marker where the previous turn began (`cacheAt`)
@@ -433,7 +433,7 @@ The user's answers of 2026-10-29, as built:
 3. Rare mid-turn edits stop the turn's thinking: a known limitation, with its entry in §5.
 4. Claude through OpenRouter gets its `reasoning_details` back within a turn (§9).
 5. A real check script runs before release with the named key files (§12). It shows natives, refusals, fallbacks, bytes, and cache reads on both providers.
-6. Long turns stop carrying thinking past 64 KB: a known limitation, with its entry in §6. The figure is set again from the real check's measurements.
+6. Long turns stop carrying thinking past 64 KB: a known limitation, with its entry in §6. The figure is set again from the real check's measurements (2026-10-30: about 1.3 KB a step, so 32 KB, about 25 steps, keeps the extra near 390 KB).
 7. Claude through OpenRouter gets Anthropic-style cache markers (§9).
 
 My calls:
