@@ -286,3 +286,17 @@ test('a restored plan item with no offset gives the same instant everywhere a st
   assert.match(text, /DTSTART:20261122T033000Z\r\nDTEND:20261122T050000Z/);
   assert.match(text, /DTSTART;VALUE=DATE:20261122/);
 });
+
+test("a plan item written in another zone than its booking still stands for it on the booking's day: a red-eye isn't shown twice (the second review, X1)", () => {
+  const redeye = { path: '/bookings/f.json', booking: { id: 'f', kind: 'flight', status: 'unverified', source: '/files/f.pdf', unsure: [], title: 'Red-eye',
+    start: { at: '2026-11-20T23:30:00-08:00', tz: LA }, end: { at: '2026-11-21T07:30:00-05:00', tz: NY } } };
+  for (const tz of [NY, 'UTC']) {
+    const at = tz === NY ? '2026-11-21T02:30:00-05:00' : '2026-11-21T07:30:00Z';
+    const item = { path: '/plan/f.json', item: { id: 'f', title: 'Red-eye', fixed: true, start: { at, tz }, booking: '/bookings/f.json' } };
+    assert.deepEqual(planRows([item], [redeye], { fallbackTz: LA }).map((r) => r.from), ['item'], tz);
+  }
+  // A stay's check-out item written in UTC, already the next day there: still the check-out's day in Anchorage.
+  const out = { path: '/plan/out.json', item: { id: 'out', title: 'Check out', fixed: true, start: { at: '2026-11-27T03:00:00Z', tz: 'UTC' }, booking: '/bookings/stay.json' } };
+  const late = { path: '/bookings/stay.json', booking: { ...stay.booking, end: { at: '2026-11-26T18:00:00-09:00', tz: AK } } };
+  assert.equal(planRows([out], [late], { fallbackTz: 'UTC' }).some((r) => r.from === 'checkout'), false);
+});
