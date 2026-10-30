@@ -33,7 +33,7 @@ const HOUR = 3_600_000;
 export const PENDING_MS = 15 * 60_000;
 
 /** FNV-1a, two seeds in one pass: 64 bits as hex. @param {string} s */
-function hash(s) {
+export function hash(s) {
   let a = 0x811c9dc5;
   let b = 0x2166136a;
   for (let i = 0; i < s.length; i++) {
