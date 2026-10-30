@@ -118,11 +118,11 @@ test('the cache checks need growth: a run that caches only the system prompt (th
   const only = good('openrouter').map((r) => (r.phase !== 'main' ? r : { ...r, cacheRead: r.step === 1 && r.wake === 'w-1' ? 0 : 3000, cacheWrite: r.step === 1 && r.wake === 'w-1' ? 3000 : 0 }));
   const failing = checks(only).filter((c) => c.problems.length);
   assert.equal(failing.length, 1);
-  assert.match(failing[0].name, /reads more than/);
-  assert.match(failing[0].problems.join('\n'), /step 3: read 3000, not above step 2's 3000/);
-  // The next turn's first read must be above the turn before's at its first step: here 3000 against 3000.
-  const again = only.map((r) => (r.phase === 'main' && r.wake === 'w-1' && r.step === 1 ? { ...r, cacheRead: 3000, cacheWrite: 0 } : r));
-  assert.match(checks(again).find((c) => /reads more than/.test(c.name))?.problems.join('\n') ?? '', /next turn's first request read 3000, not above the turn before's 3000/);
+  assert.match(failing[0].name, /writes its new part/);
+  assert.match(failing[0].problems.join('\n'), /step 2: wrote nothing new to the cache \(read 3000\)/);
+  // A step 1 already cached whole (a rerun within the hour, 2026-10-30) writes nothing, and step 2 reads no more than it did: no fault.
+  const warm = good('openrouter').map((r) => (r.phase === 'main' && r.wake === 'w-1' && r.step === 1 ? { ...r, cacheRead: r.cacheRead + r.cacheWrite, cacheWrite: 0 } : r));
+  assert.ok(checks(warm).every((c) => !c.problems.length), JSON.stringify(checks(warm).filter((c) => c.problems.length)));
   const said = notes(only).join('\n');
   assert.match(said, /only the cache checks failed.*marks on the tool messages.*end mark on the request's own now block/);
   // A provider that fails something else too gets no such line, nor does a good run.

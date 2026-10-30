@@ -36,12 +36,13 @@ const TRIP = { title: 'Coast test trip', start: '2026-11-02', end: '2026-11-05' 
 const NOTES = { '/notes/hotel.md': 'Hotel: the Seaview Inn, 12 Harbor Road, Example Bay. Check-in from 15:00.', '/notes/dinner.md': 'Dinner on the 3rd: the Lantern, 19:30, table for two.' };
 /** What the user says, in turn. */
 export const SAYS = Object.freeze([
-  'Please look through my trip notes, read the hotel one, and tell me where we stay and when we can check in.',
-  'Thanks! And where is dinner on the 3rd?',
+  // Each asks for a little working out, so adaptive thinking thinks (the real check of 2026-10-30 had runs where it never did).
+  'Please look through my trip notes, read the hotel one, and tell me where we stay and when we can check in. We land at 11:40 and the drive takes 2 hours 50 minutes: how long would we wait for check-in?',
+  'Thanks! And where is dinner on the 3rd? If we check in as soon as we can that day, how long do we have between check-in and dinner?',
 ]);
 /** The negative control's turn, then the Claude-to-Claude turn: each needs a turn of three steps or more. */
-export const CONTROL_SAY = 'Thanks again! Could you read the hotel note once more and tell me the street it is on?';
-export const CROSS_SAY = 'Thanks! One last look at the hotel note, please: what time is check-in?';
+export const CONTROL_SAY = 'Thanks again! Could you read the hotel note once more and tell me the street it is on? And if the Lantern is 1.8 km from the hotel and we walk at 4.5 km/h, when should we leave for dinner?';
+export const CROSS_SAY = 'Thanks! One last look at the hotel note, please: what time is check-in? Our bags arrive 95 minutes after it opens: at what time is that?';
 /**
  * The check's own caps, so a model that loops cannot run up a bill: steps in one wake, and dollars in one day (the run's expected cost
  * is a few tenths of a dollar).
@@ -370,7 +371,7 @@ export function checks(all) {
   const turns = turnsOf(rows);
   const back = [];
   const cache = [];
-  /** Where nothing past the system prompt was cached: a step reads no more than the one before it. */
+  /** Where nothing past the system prompt was cached: a step after the first writes nothing new (its new part is never cached). */
   const grow = [];
   for (const list of turns) {
     let signed = 0;
@@ -381,7 +382,9 @@ export function checks(all) {
       // Within a turn, a step reads at least what the step before it had read and written: that prefix is in its request, and was cached.
       const was = list[i - 1];
       if (was && r.cacheRead < was.cacheRead + was.cacheWrite) cache.push(`${whereOf(r)}: read ${r.cacheRead}, but step ${was.step} had read ${was.cacheRead} and written ${was.cacheWrite}`);
-      if (was && r.cacheRead <= was.cacheRead) grow.push(`${whereOf(r)}: read ${r.cacheRead}, not above step ${was.step}'s ${was.cacheRead}`);
+      // The step before's reply and results are new in this request, so they are written: a step 1 already cached whole may write
+      // nothing, and the step after it then reads no more than it did (the real check, 2026-10-30), but a step 2 or later always writes.
+      if (was && r.cacheWrite <= 0) grow.push(`${whereOf(r)}: wrote nothing new to the cache (read ${r.cacheRead})`);
     }
   }
   // The next turn's first request reads where the previous turn began, which that turn's first request had cached: each half's turns after its first.
@@ -390,7 +393,6 @@ export function checks(all) {
     for (const [i, list] of own.entries()) {
       const was = own[i - 1]?.[0];
       if (was && list[0].cacheRead < was.cacheRead + was.cacheWrite) cache.push(`${whereOf(list[0])}: the next turn's first request read ${list[0].cacheRead}, but the turn before had read ${was.cacheRead} and written ${was.cacheWrite} at its first step`);
-      if (was && list[0].cacheRead <= was.cacheRead) grow.push(`${whereOf(list[0])}: the next turn's first request read ${list[0].cacheRead}, not above the turn before's ${was.cacheRead} at its first step`);
     }
   }
   const sentAny = rows.some((r) => r.step >= 2 && (r.natives?.sent ?? 0) > 0);
@@ -400,7 +402,7 @@ export function checks(all) {
     { name: 'no attempt refused for its reasoning, and no 400', problems: rows.flatMap((r) => [...(r.outcomes.includes('reasoning') ? [`${whereOf(r)}: refused for its reasoning`] : []), ...(r.statuses.includes(400) ? [`${whereOf(r)}: a 400`] : [])]) },
     { name: "every call answered by the role's first model", problems: rows.filter((r) => r.outcomes.length !== 1 || r.outcomes[0] !== 'ok' || (r.first && r.answeredBy !== r.first)).map((r) => `${whereOf(r)}: ${r.outcomes.join(', ')}; answered by ${r.answeredBy}`) },
     { name: 'within a turn, and at each half\'s next turn, a request reads at least what the one before it read and wrote', problems: cache },
-    { name: 'within a turn, and at each half\'s next turn, a request reads more than the one before it: something past the system prompt is cached', problems: grow },
+    { name: 'from a turn\'s second step on, a request writes its new part to the cache: something past the system prompt is cached', problems: grow },
     ...(provider === 'anthropic' ? [{ name: 'the negative control: a changed earlier message is refused, asked again once without thinking on the same model, and answered; nothing rests or falls back', problems: controlProblems(all) }] : []),
     { name: 'Claude to Claude: one step answered by the next Claude model after Sonnet failed, and the rest of the turn accepted', problems: crossProblems(all) },
   ];
@@ -465,7 +467,7 @@ export function notes(all) {
   // Every need of a check below is a reply with thinking followed by another step: adaptive thinking may skip thinking on easy steps.
   if (!turnsOf(main).some((list) => list.some((r, i) => (r.kept ?? r.signed) && i < list.length - 1))) out.push('no reply thought before another step: inconclusive, rerun (it is not a fault of annai until thinking is seen and not sent back).');
   const failing = checks(all).filter((c) => c.problems.length);
-  if (failing.length && failing.every((c) => /reads (at least|more than)/.test(c.name))) {
+  if (failing.length && failing.every((c) => /reads at least|writes its new part/.test(c.name))) {
     out.push(provider === 'openrouter'
       ? 'only the cache checks failed: the likely cause is that OpenRouter did not pass on the cache marks on the tool messages\' content, so only the system prompt was cached. The fix (docs/testing/reasoning-check.md): put the end mark on the request\'s own now block instead, in chat-completions\' build.'
       : 'only the cache checks failed: the marks annai placed (the system, the end, cacheAt) were not the entries the next request read; compare the table\'s cache read and write columns.');

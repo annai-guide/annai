@@ -37,7 +37,7 @@ Of the conversation (steps 1 and 2 above), on each provider:
 4. **The cache, with real limits:** within a turn, step k reads at least what step k-1 read plus wrote; each half's next turn's first
    request reads at least what the turn before it had read plus written at its first step (where it began, `cacheAt`). Any read above
    zero is not enough.
-5. **Strict growth:** within a turn each step reads more than the one before it, and each half's next turn's first request reads more than the turn before did at its first step. A run that caches only the system prompt would otherwise pass 0 plus 0.
+5. **Growth:** from a turn's second step on, every request writes its new part (the step before's reply and results) to the cache. A run that caches only the system prompt would otherwise pass 0 plus 0. (Reads alone can't show it: a step 1 already cached whole, as on a rerun within the hour, writes nothing, and the step after it reads no more than it did.)
 
 Of the control and the Claude-to-Claude turn:
 
