@@ -62,13 +62,14 @@ import { list } from '../intl.js';
  *   | { type: 'stop', reason: StopReason }
  *   | { type: 'restart', by?: { name: string, first: string | null, tried: boolean } }
  *   | { type: 'kept', id: string }
- *   | { type: 'native', content: any }
+ *   | { type: 'native', content: any, covers?: number }
  *   | { type: 'attribution', source: string, text: string, links: { url: string, title?: string }[], html?: string }} StreamEvent
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it). kept: the provider keeps this turn under id (G2), for annai alone.
  *   native: the whole reply as the provider returned it, once, at the end of a reply that finished, for annai to send back within the turn
- *   (Reply.native); opaque to the core, which never shows or stores it.
+ *   (Reply.native); opaque to the core, which never shows or stores it. covers: how many of the reply's parts it stands in for when sent back (default
+ *   all of them, as Anthropic Messages sends it); 0 for a native sent beside the parts (Chat Completions' reasoning_details), so its whole size counts.
  *   attribution: a reply the provider's search grounded, to show the user as it came (G4), once, at its end.
  * @typedef {'auth' | 'credit' | 'rate' | 'overloaded' | 'context' | 'image' | 'upload' | 'blocked' | 'unreachable'
  *   | 'bad-request' | 'not-found' | 'server' | 'network' | 'timeout' | 'cancelled' | 'plugin' | 'type-missing' | 'redirect' | 'forgotten' | 'reasoning'} ErrorKind

@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
  * on (reasoning_details and cache markers left out). A request whose signed details no longer match is refused as OpenRouter passes on
  * Anthropic's 400, its words in metadata.raw. Cache reads are counted as Anthropic counts them (an entry at each marked block, found
  * within 20 blocks of a later mark), as prompt_tokens_details.cached_tokens. reply(body) gives each reply: its text and tool calls.
- * @param {(body: any) => { text?: string, calls?: { name: string, input: any }[] }} reply
+ * @param {(body: any) => { text?: string, calls?: { name: string, input: any }[], pad?: number }} reply
  */
 export function openRouterStandIn(reply) {
   /** @type {any[]} */
@@ -67,7 +67,8 @@ export function openRouterStandIn(reply) {
     }
     const r = reply(body);
     const words = 'Thinking it over.';
-    const signature = [body.model, prefixOf(body, body.messages.length), sha(words)].join(SEP);
+    // r.pad: a signature that many characters longer (it carries the encrypted reasoning).
+    const signature = [body.model, prefixOf(body, body.messages.length), sha(words)].join(SEP) + (r.pad ? SEP + 'p'.repeat(r.pad) : '');
     const F = 'anthropic-claude-v1';
     /** @type {any[]} */
     // OpenRouter names the provider that served the request on every chunk.

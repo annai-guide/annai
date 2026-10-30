@@ -1,5 +1,5 @@
 {
-  "build": "2aad042ad23e",
+  "build": "d903d13cc07d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -71,10 +71,10 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "adc5c7b5122d",
+    "/src/core/llm/call.js": "75ae23c5e40a",
     "/src/core/llm/check.js": "aca61922774b",
     "/src/core/llm/config.js": "d32a97cf6da1",
-    "/src/core/llm/contract.js": "294134f756a2",
+    "/src/core/llm/contract.js": "8494cb049a80",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "0cf5a4ed153d",
     "/src/core/llm/move-over.js": "8f75b9e642f8",
