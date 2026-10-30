@@ -1,5 +1,6 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { languageOf, listedFor, named } from '../languages.js';
+import { nativeOverlap } from '../llm/contract.js';
 
 export { languageOf };
 
@@ -20,11 +21,12 @@ export function promptTokens(u) {
   return (u?.input ?? 0) + (u?.cacheRead ?? 0) + (u?.cacheWrite ?? 0) + (u?.cacheWrite1h ?? 0);
 }
 
-/** A request's size as sent; photos count at their base64 size. @param {any} request */
+/** A request's size as sent; photos count at their base64 size, a native only for what it adds beyond the parts it covers (nativeOverlap). @param {any} request */
 export function requestBytes(request, { uploaded = false } = {}) {
-  if (!uploaded) return JSON.stringify(request).length;
+  const twice = nativeOverlap(request.messages ?? []);
+  if (!uploaded) return JSON.stringify(request).length - twice;
   // Photos uploaded to the provider count only as their id (spec §6.5).
-  return JSON.stringify(request, (_k, v) => (v && typeof v === 'object' && v.type === 'image' && typeof v.data === 'string' ? { ...v, data: 'file_0123456789abcdefghijklmn' } : v)).length;
+  return JSON.stringify(request, (_k, v) => (v && typeof v === 'object' && v.type === 'image' && typeof v.data === 'string' ? { ...v, data: 'file_0123456789abcdefghijklmn' } : v)).length - twice;
 }
 
 /**

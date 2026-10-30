@@ -142,8 +142,8 @@ provider-openrouter:@name	ok	OpenRouter	OpenRouter	plugins-official/provider-ope
 provider-openrouter:@description	ok	One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.	一個金鑰即可使用許多模型（其中有免費的），還有語音轉文字和聲音。請「使用 OpenRouter 登入」，或填寫金鑰。	plugins-official/provider-openrouter/annai-plugin.json:7	
 provider-openrouter:@featured	ok	Sign in with OpenRouter is the quickest way, and it starts you on free models.	「使用 OpenRouter 登入」是最快的方式，並且會先讓你用免費模型。	plugins-official/provider-openrouter/annai-plugin.json:8	
 provider-openrouter:@provider.note	ok	One key for many providers. Free models allow 50 requests a day (1,000 a day after $10 of credits). Its transcription and voices use the same key: none of the transcription models is free, and Fish Audio's free voice uses one of the free requests a day for each sentence it says. The others need credits you buy at OpenRouter.	一個金鑰即可使用許多供應商。免費模型每天允許 50 次請求（儲值 $10 餘額後每天 1,000 次）。它的語音轉文字和聲音使用同一個金鑰：語音轉文字模型都不免費；Fish Audio 的免費聲音每說一句就用掉一次每日免費請求。其餘的都需要你在 OpenRouter 儲值的餘額。	plugins-official/provider-openrouter/annai-plugin.json:28	Note: Credits are a prepaid balance (餘額), as the zh review settled; "The others" are every speech model but Fish Audio's free voice, so 其餘的, not only the voices.
-provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你說的話轉成文字，供不接受音訊的模型使用。價格是 OpenRouter 上的最低價；它可能會把請求傳給收費更高的供應商。	plugins-official/provider-openrouter/annai-plugin.json:340	
-provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori 的聲音。每個模型都有自己的聲音，會在模型的「聲音」中給出建議（「取得模型清單」會帶來 OpenRouter 列出的聲音）。這裡設定的聲音和風格是 Fish Audio 聲音庫中的 Women KatKat（友善、清晰、年輕明亮）以及年輕、歡快活潑又平靜溫柔的風格：每個 Fish Audio 模型，無論是下面列出的還是依 ID 新增的，都以它們開始（不傳送聲音時，Fish Audio 會為每句話換一個說話者）。從清單新增的模型以 OpenRouter 為它列出的第一個溫暖的聲音開始。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 接受風格；其他模型會儲存風格但不會傳送。OpenRouter 只傳送 MP3 或 PCM。	plugins-official/provider-openrouter/annai-plugin.json:383	Note: "the model's Voice" is the model page's Voice field, 聲音 (b1qn4p), not the Settings → Voice screen.
+provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你說的話轉成文字，供不接受音訊的模型使用。價格是 OpenRouter 上的最低價；它可能會把請求傳給收費更高的供應商。	plugins-official/provider-openrouter/annai-plugin.json:355	
+provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori 的聲音。每個模型都有自己的聲音，會在模型的「聲音」中給出建議（「取得模型清單」會帶來 OpenRouter 列出的聲音）。這裡設定的聲音和風格是 Fish Audio 聲音庫中的 Women KatKat（友善、清晰、年輕明亮）以及年輕、歡快活潑又平靜溫柔的風格：每個 Fish Audio 模型，無論是下面列出的還是依 ID 新增的，都以它們開始（不傳送聲音時，Fish Audio 會為每句話換一個說話者）。從清單新增的模型以 OpenRouter 為它列出的第一個溫暖的聲音開始。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 接受風格；其他模型會儲存風格但不會傳送。OpenRouter 只傳送 MP3 或 PCM。	plugins-official/provider-openrouter/annai-plugin.json:398	Note: "the model's Voice" is the model page's Voice field, 聲音 (b1qn4p), not the Settings → Voice screen.
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	請點一下「使用 OpenRouter 登入」重新開始。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	請貼上 OpenRouter 顯示的代碼，然後點一下「連線」。	plugins-official/provider-openrouter/index.js:89	Note: the sign-in code is 代碼; 程式碼 (the converter's) is program code.
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	annai 沒有在等待這個代碼的登入：它已被使用過，或是在另一個瀏覽器中開始的。	plugins-official/provider-openrouter/index.js:91	Note: the sign-in code is 代碼; 程式碼 (the converter's) is program code.
@@ -462,53 +462,53 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:540	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
 bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:662	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:662	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:118	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:118	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:118	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:118	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:118	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:118	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:119	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:119	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:558	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:558	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:877	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1106	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1106	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1139	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1139	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1273	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1475	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1475	
-nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1579	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1579	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1579	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1634	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:1925	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:1925	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:1962	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:1966	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2030	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2058	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2117	
-vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2576	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2719	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2719	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2720	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2720	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2858	
-8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:2993	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3167	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3168	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3169	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3170	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3171	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3172	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3179	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3189	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3190	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3191	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3192	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:124	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:124	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:124	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:124	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:124	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:124	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:125	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:125	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:570	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:570	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:889	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1118	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1118	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1151	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1151	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1309	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1519	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1519	
+nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1623	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1623	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1623	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1680	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:1994	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:1994	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2031	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2035	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2099	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2127	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2186	
+vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2652	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2795	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2795	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2796	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2796	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2934	
+8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3069	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3243	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3244	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3245	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3246	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3247	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3248	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3255	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3265	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3266	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3267	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3268	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -639,49 +639,50 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:134
 1qjc2dh	ok	That provider has no ability called {0}.	這個供應商沒有名為 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	請填寫供應商的模型 ID。	src/core/llm/config.js:387	
 3i9i3z	ok	"{0}" is already used by another model	「{0}」已被另一個模型使用	src/core/llm/config.js:391	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:98	
-1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:99	Note: Credit is a prepaid balance (餘額), not a quota (額度).
-99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:100	
-1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:101	
-1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:102	
-ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:103	
-1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:104	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:105	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:106	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:107	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:108	
-11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:109	
-1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:110	
-vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:111	
-5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:112	
-1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:113	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:114	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:115	
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:116	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:117	
-17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:135	
-9kdcjv	ok	Chat	對話	src/core/llm/contract.js:135	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
-b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:135	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:135	
-izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:145	
-1l28lx6#other	ok	Its output stopped for # seconds.	輸出中斷了 # 秒。	src/core/llm/contract.js:146	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
-13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:147	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:148	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:149	
-1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:150	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:151	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:152	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:153	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:154	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
-x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:155	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:156	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:158	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:159	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:160	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:161	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:162	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:163	{0} = name; {1} = ability; {2} = s.want
-1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:164	{0} = name
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	金鑰被拒絕了。請在設定 → 模型中檢查。	src/core/llm/contract.js:112	
+1do8abu	ok	This account is out of credit.	這個帳戶的餘額已用完。	src/core/llm/contract.js:113	Note: Credit is a prepaid balance (餘額), not a quota (額度).
+99g6ol	ok	The provider says too many requests for now.	供應商表示目前請求太多。	src/core/llm/contract.js:114	
+1f1gofm	ok	The provider is overloaded right now.	供應商目前負載過高。	src/core/llm/contract.js:115	
+1m90sjx	ok	The conversation is too long for this model.	對話對這個模型來說太長了。	src/core/llm/contract.js:116	
+ofpdqd	ok	This model didn't accept the photo.	這個模型不接受這張照片。	src/core/llm/contract.js:117	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上傳的照片已過期。	src/core/llm/contract.js:118	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	這個網址不允許像 annai 這樣的網頁應用程式呼叫。	src/core/llm/contract.js:119	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	annai 無法連到這個網址。它可能已停止執行，或不允許網頁應用程式存取。	src/core/llm/contract.js:120	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	供應商不接受這個請求。請在它的供應商頁面上檢查可調參數。	src/core/llm/contract.js:121	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	供應商不認識這個模型或網址。請檢查模型 ID 和基礎網址。	src/core/llm/contract.js:122	
+11ib30k	ok	The provider had a problem on its side.	供應商那邊出了問題。	src/core/llm/contract.js:123	
+1sdnnoc	ok	The connection dropped.	連線中斷了。	src/core/llm/contract.js:124	
+vfwfwf	ok	The model took too long to start answering.	模型開始回答花的時間太長了。	src/core/llm/contract.js:125	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:126	
+1jk8mhk	ok	The plugin for this model's protocol failed.	這個模型的協定外掛程式出錯了。	src/core/llm/contract.js:127	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	這個模型的協定外掛程式沒有執行。請在設定 → 模型中開啟它的供應商來安裝。	src/core/llm/contract.js:128	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	供應商已不再保留之前的幾輪；annai 會傳送整個對話。	src/core/llm/contract.js:129	
+1kl65kc	ok	The provider refused the reasoning annai sent back.	供應商拒絕了 annai 傳回的推理。	src/core/llm/contract.js:130	Note: reasoning is the model's thinking (推理, as the Reasoning levels setting names it); 傳回: annai sent it back to the model that wrote it.
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:131	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商以重新導向作答，而 annai 不會帶著你的金鑰跟隨重新導向。請檢查它的網址。	src/core/llm/contract.js:132	
+17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:150	
+9kdcjv	ok	Chat	對話	src/core/llm/contract.js:150	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
+b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:150	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:150	
+izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:160	
+1l28lx6#other	ok	Its output stopped for # seconds.	輸出中斷了 # 秒。	src/core/llm/contract.js:161	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+13fumpt	ok	The voice stopped arriving for longer than its wait.	聲音中斷的時間超過了等待時限。	src/core/llm/contract.js:162	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annai 需要重新載入：它在沒有離線服務的情況下開啟，所以外掛程式無法啟動。	src/core/llm/contract.js:163	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	伺服器上已沒有 annai 幾分鐘前儲存的對話，這個帳戶大概不儲存資料（Zero Data Retention）：在 annai 下次啟動之前，它不會在那裡儲存任何內容，並會傳送完整對話。	src/core/llm/contract.js:164	
+1e0qpon	ok	That model no longer exists.	這個模型已不存在。	src/core/llm/contract.js:165	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要它的外掛程式，但外掛程式沒有執行。請在設定 → 模型中開啟 {2} 來安裝。	src/core/llm/contract.js:166	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是語音轉文字模型。	src/core/llm/contract.js:167	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是聲音。	src/core/llm/contract.js:168	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是即時語音模型。	src/core/llm/contract.js:169	{0} = name; Note: Live voice is 即時語音 (the glossary's mode), not the thing "voice" (聲音).
+x31pwm	ok	That provider or ability no longer exists.	這個供應商或功能已不存在。	src/core/llm/contract.js:170	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供應商已不存在，或它的外掛程式沒有執行。	src/core/llm/contract.js:171	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允許像 annai 這樣的網頁應用程式呼叫它（沒有 CORS 標頭），所以 annai 無法在瀏覽器中列出或使用它的模型。如果供應商有別的網址，請試試那個，或請供應商允許瀏覽器存取。	src/core/llm/contract.js:173	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	annai 無法連到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:174	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:175	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不接受這部手機能產生的任何音訊格式（{1}）。	src/core/llm/contract.js:176	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生了送往 {2} 的請求，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:177	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往一個無效的網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = s.want
+1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有能為 {0} 聽寫的項目。	src/core/llm/contract.js:179	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	價格是一個物件，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 的階梯中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 不是價格：它應是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 計劃 read as a plan.
@@ -2410,21 +2411,23 @@ gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:246	plural; # = 0; E
 khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
 1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:255	{0} = size(d.bytes)
 l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:255	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:259	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:259	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:260	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:260	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:262	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:263	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:265	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:266	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:267	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:269	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:269	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:292	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:292	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:309	
+1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:257	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:257	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:261	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:261	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:262	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:262	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:264	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:265	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:268	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:269	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:271	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:271	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:294	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:294	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:311	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:43	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:53	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:55	
