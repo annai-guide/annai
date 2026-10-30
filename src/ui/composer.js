@@ -1,16 +1,18 @@
-import { h, t, tc, plural, messageOf } from './dom.js';
+import { h, t, tc, plural, messageOf, asUser } from './dom.js';
 import { num } from '../core/intl.js';
 import { keepFiles } from './bring-in.js';
 import { SYS_WAITING, ME, newId } from '../core/scopes.js';
 import { FILES_ONLY } from '../core/handover.js';
-import { updateAppSettings } from '../core/settings.js';
+import { updateAppSettings, readAppSettings } from '../core/settings.js';
+import { speaksScreens } from './format.js';
 
 /**
  * The type box's attachments (the bookings-and-trips design, goal 1): a + picks photos or files, and a pasted confirmation email
  * becomes a file, each a chip above the box; sending hands them to Shiori with the words, if any (a hand-over, handover.js). Ask
  * Shiori about this puts a file kept already in the box the same way.
- * @typedef {{ file: Blob & { name?: string }, pasted?: string } | { scope: string, path: string }} Attachment  a file handed now (pasted: the
- *   text a paste became), or one kept already
+ * @typedef {{ file: Blob & { name?: string }, pasted?: string } | { scope: string, path: string, name?: string }} Attachment  a file handed now
+ *   (pasted: the text a paste became), or one kept already (name: what its chip and Shiori call it, a booking's title or a file's short
+ *   name; else its own name)
  * @typedef {import('../core/handover.js').HandedFile} HandedFile
  */
 
@@ -40,7 +42,7 @@ export const shownPath = (scope, path) => `${scope === SYS_WAITING ? '/waiting' 
 export const handedOf = (ref, o) => ({ path: shownPath(ref.scope, ref.path), type: o.type, name: o.name, new: false });
 
 /** An attachment's own name, for its chip. @param {Attachment} a */
-const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.path.split('/').pop() ?? a.path);
+const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.name || (a.path.split('/').pop() ?? a.path));
 
 /**
  * Hands Shiori what is in the box: the new files are kept first (in the open trip's Files, or waiting with Shiori when none is open), one
@@ -75,7 +77,7 @@ export async function handOver(ctx, text, items, o = {}) {
   for (const a of items) {
     if ('file' in a || a.scope !== scope) continue;
     const entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(a.scope, a.path));
-    handed.push(handedOf(a, { type: entry?.type ?? 'application/octet-stream', name: a.path.split('/').pop() ?? a.path }));
+    handed.push(handedOf(a, { type: entry?.type ?? 'application/octet-stream', name: nameOf(a) }));
   }
   if (!text.trim() && !handed.length) return;
   const handover = handed.length ? { handed, handover: newId('h') } : {};
@@ -90,10 +92,10 @@ export async function handOver(ctx, text, items, o = {}) {
 }
 
 /**
- * The box's chips and its +. A chip shows the file's own name and a real Remove button; suggestions (Read it again) are kept with the
- * chips for whoever draws them.
- * @param {any} ctx @param {{ onChange?: () => void, onPutBack?: (text: string) => void }} [o] onChange: the chips changed; onPutBack: a pasted
- *   text's chip was turned back into words, for the box
+ * The box's chips and its +. A chip shows the file's name and a real Remove button; under the chips, each suggestion (Read it again) is a
+ * button that sends its words with them at once; typing hides them (what is typed is sent instead).
+ * @param {any} ctx @param {{ onChange?: () => void, onPutBack?: (text: string) => void, onSuggest?: (text: string) => void }} [o] onChange: the
+ *   chips changed; onPutBack: a pasted text's chip was turned back into words, for the box; onSuggest: a suggestion was tapped
  */
 export function createComposer(ctx, o = {}) {
   /** @type {Attachment[]} */
@@ -103,7 +105,9 @@ export function createComposer(ctx, o = {}) {
   let keeping = false;
   const status = h('p', { class: 'keeping', role: 'status' });
   const chips = h('span', { class: 'chip-list' });
-  const el = h('div', { class: 'chips', hidden: true }, chips, status);
+  const offers = h('span', { class: 'suggestions' });
+  const el = h('div', { class: 'chips', hidden: true }, chips, offers, status);
+  let typed = false;
   /** @param {number} i */
   const drop = (i) => {
     list = list.filter((_, j) => j !== i);
@@ -113,6 +117,7 @@ export function createComposer(ctx, o = {}) {
   };
   const draw = () => {
     el.hidden = !list.length;
+    offers.replaceChildren(...(typed || keeping ? [] : suggestions).map((words) => h('button', { class: 'btn suggestion', type: 'button', onclick: () => o.onSuggest?.(words) }, words)));
     chips.replaceChildren(...list.map((a, i) => {
       const name = nameOf(a);
       const pasted = 'file' in a && typeof a.pasted === 'string' ? a.pasted : null;
@@ -153,9 +158,16 @@ export function createComposer(ctx, o = {}) {
     el, plus, attach,
     items: () => [...list],
     suggestions: () => [...suggestions],
+    /** Words in the box hide the suggestions, and none show them again. @param {boolean} words */
+    typing(words) {
+      if (typed === words) return;
+      typed = words;
+      draw();
+    },
     clear() {
       list = [];
       suggestions = [];
+      typed = false;
       status.textContent = '';
       draw();
     },
@@ -187,7 +199,7 @@ export const canAsk = (ctx) => typeof ctx.dock?.attach === 'function';
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
  * that trip first; a file waiting with Shiori is asked about with no trip open, where she sees it.
- * @param {any} ctx @param {{ scope: string, path: string }} ref @param {{ suggestions?: string[] }} [o]
+ * @param {any} ctx @param {{ scope: string, path: string, name?: string }} ref name: what its chip calls it @param {{ suggestions?: string[] }} [o]
  */
 export async function askAbout(ctx, ref, o = {}) {
   const want = ref.scope === SYS_WAITING ? null : ref.scope;
@@ -198,4 +210,18 @@ export async function askAbout(ctx, ref, o = {}) {
   ctx.dock.attach([ref], o);
   ctx.dock.openTyping();
   ctx.go('#/talk');
+}
+
+/**
+ * Ask Shiori about this (goal 7), on a booking's or a plan item's details and on a file in a trip's Files: the thing as a chip in the
+ * box, with Read it again under it, in the user's words (the language they speak, as other words sent for them). Null where annai's
+ * own dock isn't there to ask in. @param {any} ctx @param {{ scope: string, path: string, name?: string }} ref
+ * @returns {HTMLElement | null}
+ */
+export function askAboutButton(ctx, ref) {
+  if (!canAsk(ctx)) return null;
+  return h('button', {
+    class: 'btn', type: 'button',
+    onclick: async () => askAbout(ctx, ref, { suggestions: [asUser(speaksScreens(await readAppSettings(ctx.ws)))`Read it again`] }),
+  }, t`Ask Shiori about this`);
 }

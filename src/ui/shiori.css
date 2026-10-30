@@ -119,7 +119,9 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 .attach:focus-within .attach-plus { outline: 2px solid var(--ai); outline-offset: 2px; }
 .chips, .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips { margin-block-end: 6px; }
-.chips[hidden], .keeping:empty { display: none; }
+.chips[hidden], .keeping:empty, .suggestions:empty { display: none; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.btn.suggestion { min-height: 36px; padding-block: 4px; font-size: 14px; }
 .chip-list, .keeping { flex-basis: 100%; min-width: 0; margin: 0; }
 .keeping { color: var(--ink-2); font-size: 13px; }
 .attach-back { flex: none; min-height: 32px; border: 0; border-radius: 16px; background: none; color: var(--ai); font: inherit; font-size: 13px; cursor: pointer; padding-inline: 6px; }

@@ -1,4 +1,5 @@
 import { meters, travelMinutes, modeFor } from './live/geo.js';
+import { instantAt, validZone } from './time.js';
 
 /**
  * What the Now and Driving screens show (spec §16.2), from the Plan screen's rows: what is next,
@@ -13,7 +14,9 @@ const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng 
 /** When an item is over: its end, or half an hour after its start. @param {PlanRow} r */
 function over(r) {
   const start = /** @type {number} */ (r.at);
-  const end = Date.parse(r.item.end?.at ?? '');
+  // An end with no zone of its own is on the start's clock, as the Plan and the reminders read it.
+  const zone = [r.item.end?.tz, r.item.start?.tz].find(validZone) ?? 'UTC';
+  const end = instantAt(r.item.end?.at, zone);
   return Number.isFinite(end) && end > start ? end : start + 30 * MIN;
 }
 

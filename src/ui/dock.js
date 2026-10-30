@@ -68,6 +68,11 @@ export function createDock(ctx) {
       input.focus();
       ctx.agent.typing?.(true);
     },
+    // Read it again: its words go at once, with the chips (goal 7).
+    onSuggest: (/** @type {string} */ words) => {
+      input.value = words;
+      sheet.requestSubmit();
+    },
   });
   input.addEventListener('paste', (/** @type {ClipboardEvent} */ e) => { composer.paste(e, !input.value.trim()); });
   /** The files being kept: the box stays, saying how far it is, until they are all in (the user, 2026-10-29: "Show progress"). */
@@ -122,7 +127,10 @@ export function createDock(ctx) {
     ctx.agent.typing?.(false);
   };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
-  input.addEventListener('input', () => ctx.agent.typing?.(Boolean(input.value.trim())));
+  input.addEventListener('input', () => {
+    ctx.agent.typing?.(Boolean(input.value.trim()));
+    composer.typing(Boolean(input.value.trim()));
+  });
   sheet.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     if (e.key !== 'Escape') return;
     closeTyping();

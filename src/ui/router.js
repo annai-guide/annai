@@ -1,5 +1,5 @@
 /**
- * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/waiting/file?path=…" (a file waiting with Shiori) (&from= the Plan, booking or Now screen its crumb goes back to), "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…", "#/settings",
+ * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/waiting/file?path=…" (a file waiting with Shiori) (&from= the Plan, booking or Now screen its crumb goes back to), "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…" and "#/trip/<id>/item?path=…" (a booking's and a plan item's details; &from= Now), "#/settings",
  * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
  * "#/trip/<id>/ext/<plugin>/<tab>",
  * "#/welcome" (and "#/welcome/2" to 6), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental", "#/updates",
@@ -26,7 +26,7 @@ function parse(hash) {
   const query = q < 0 ? '' : h.slice(q + 1);
   const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   if (!parts.length) parts.push('trips');
-  const SUB = { file: 'file', plan: 'plan', booking: 'booking', recap: 'recap', replay: 'replay', ext: 'trip-ext' };
+  const SUB = { file: 'file', plan: 'plan', booking: 'booking', item: 'item', recap: 'recap', replay: 'replay', ext: 'trip-ext' };
   const name = parts[0] === 'trip' && Object.hasOwn(SUB, parts[2] ?? '') ? SUB[/** @type {keyof typeof SUB} */ (parts[2])]
     : parts[0] === 'waiting' && parts[1] === 'file' ? 'waiting-file' : parts[0];
   return { name, parts, params: Object.fromEntries(new URLSearchParams(query)) };

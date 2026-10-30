@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, modelSetUp, filterTrace } from './helpers.js';
+import { startModelServer, anthropicToolReply, modelSetUp, filterTrace, allFiles } from './helpers.js';
 import { startMcpServer } from '../fakes/mcp.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
@@ -137,6 +137,8 @@ test("an MCP tool's image is kept in the trip's files, and Shiori shows it by th
     await expect(page.locator('.convo .card img')).toBeVisible();
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('kept as /trip/files/trail_map.png');
     await page.goto(trip);
+    // A photo nothing came from is among the trip's photos: in All files, not Files.
+    await allFiles(page);
     await expect(page.getByRole('link', { name: /\/files\/trail_map\.png/ })).toBeVisible();
   } finally {
     await llm.stop();

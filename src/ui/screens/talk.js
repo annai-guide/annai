@@ -10,9 +10,10 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, fileHref, waitingHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref } from '../format.js';
 import { ask } from '../ask.js';
 import { ME, SYS_WAITING } from '../../core/scopes.js';
+import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
@@ -310,12 +311,21 @@ export async function renderTalk(ctx) {
   const handedChips = async (d) => {
     if (!Array.isArray(d.handed) || !d.handed.length) return null;
     const chips = [];
+    // Shiori's short names where each file is now, read once a draw (goal 10); a file moved on keeps its own name.
+    /** @type {Map<string, Record<string, string>>} */
+    const names = new Map();
     for (const f of d.handed) {
       const m = /^\/(trip|waiting)(\/.+)$/.exec(String(f?.path ?? ''));
       const where = !m ? null : m[1] === 'waiting' ? SYS_WAITING : agent.trip;
       const there = where ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ tx) => tx.getFile(where, m?.[2])) : null;
-      const name = h('span', { class: 'attach-name', dir: 'auto', text: String(f?.name || f?.path || '') });
-      chips.push(there && m ? h('a', { class: 'attach-chip', href: where === SYS_WAITING ? waitingHref(m[2]) : fileHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
+      const own = String(f?.name || f?.path || '');
+      if (there && where && !names.has(where)) names.set(where, await readNames(ctx.ws, where));
+      // Hers, else the name it was handed under (a photo kept as .webp still says .png).
+      const theirs = there && where && m ? names.get(where) ?? {} : {};
+      const shown = m && Object.hasOwn(theirs, m[2]) ? theirs[m[2]] : own;
+      const name = h('span', { class: 'attach-name', dir: 'auto', text: shown });
+      const title = shown !== own ? own : undefined;
+      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };

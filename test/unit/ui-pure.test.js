@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingLines, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { planRows } from '../../src/core/plan.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -214,21 +215,69 @@ test('parseHash: the plan and booking screens', () => {
   assert.equal(parseHash('#/trip/t-1/toString').name, 'trip');
 });
 
-test('bookingLines: what a booking says, with times in their own zone', () => {
-  const lines = bookingLines({
-    id: 'f', kind: 'flight', status: 'unverified', source: '/files/f.pkpass',
-    start: { at: '2026-11-25T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-25T16:30:00-05:00', tz: 'America/New_York' },
-    place: { name: 'SFO', address: 'San Francisco, CA' }, confirmation: 'ABC123', cost: { amount: 412.5, currency: 'USD' }, fields: { seat: '21C', bags: 1 },
-  });
-  assert.deepEqual(lines.map(([k]) => k), ['Kind', 'Starts', 'Ends', 'Place', 'Confirmation', 'Cost', 'seat', 'bags']);
-  assert.match(lines[1][1], /^Wed, Nov 25, 8:00\sAM \(PT\)$/);
-  assert.match(lines[2][1], /^Wed, Nov 25, 4:30\sPM \(ET\)$/);
-  assert.equal(lines[3][1], 'SFO, San Francisco, CA');
-  assert.equal(lines[5][1], '$412.50');
-  assert.deepEqual(lines.slice(6), [['seat', '21C'], ['bags', '1']]);
-  // Only what is required; a zone annai doesn't know leaves the time out rather than breaking.
-  assert.deepEqual(bookingLines({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }), [['Kind', 'Other']]);
-  assert.deepEqual(bookingLines({ kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object' }), [['Kind', 'Car']]);
+const flightBooking = {
+  id: 'f', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', confirmation: 'TESTQ1', unsure: ['seat'],
+  start: { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-20T14:05:00-09:00', tz: 'America/Anchorage' },
+  fields: { seat: '14C', airline: 'ANNAI AIR', to: 'Anchorage (ANC)', from: 'Seattle (SEA)', flight: 'AN 123', travellers: ['Sam', 'Alex'] },
+};
+
+test("bookingFacts: a flight reads from → to, departs and arrives in each airport's zone, then seat; unsure fields marked", () => {
+  const f = bookingFacts(flightBooking);
+  assert.deepEqual(f.map((x) => x.key), ['route', 'start', 'end', 'flight', 'airline', 'seat', 'travellers', 'confirmation']);
+  assert.deepEqual(f.map((x) => x.label), ['Route', 'Departs', 'Arrives', 'Flight', 'Airline', 'Seat', 'Travellers', 'Confirmation']);
+  assert.equal(f[0].value, 'Seattle (SEA) → Anchorage (ANC)');
+  assert.match(f[1].value, /^Fri, Nov 20, 11:20\sAM \(PT\)$/);
+  assert.match(f[2].value, /^Fri, Nov 20, 2:05\sPM \(AKT\)$/);
+  assert.equal(f.find((x) => x.key === 'seat')?.unsure, true);
+  assert.deepEqual(f.filter((x) => x.unsure).map((x) => x.key), ['seat']);
+  assert.equal(f.find((x) => x.key === 'travellers')?.value, 'Sam and Alex');
+  // Unsure of where it goes: the route is marked.
+  assert.equal(bookingFacts({ ...flightBooking, unsure: ['to'] })[0].unsure, true);
+});
+
+test('bookingFacts: a flight whose from and to are not words keeps them as fields, never loses them (the review of seeing-bookings, R3)', () => {
+  const f = bookingFacts({ kind: 'flight', unsure: [], fields: { from: { code: 'SEA', city: 'Seattle' }, to: { code: 'ANC', city: 'Anchorage' }, seat: '14D' } });
+  assert.deepEqual(f.map((x) => x.key), ['seat', 'from', 'to']);
+  assert.match(f[1].value, /SEA.*Seattle/);
+  // One in words goes in the route; the other stays a field.
+  assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', '{"code":"ANC"}']]);
+});
+
+test("bookingFacts: a time with no offset (an imported or restored record) reads on its zone's clock, as the Plan does (the review of seeing-bookings, R7)", () => {
+  const NY = 'America/New_York';
+  const stay = { kind: 'lodging', unsure: [], start: { at: '2026-10-31T15:00', tz: NY }, end: { at: '2026-11-03T11:00', tz: NY } };
+  const f = Object.fromEntries(bookingFacts(stay).map((x) => [x.key, x.value]));
+  assert.match(f.start, /^Sat, Oct 31, 3:00\sPM \(ET\)$/);
+  assert.match(f.end, /^Tue, Nov 3, 11:00\sAM \(ET\)$/);
+  assert.equal(f.nights, '3');
+  const [r] = planRows([], [{ path: '/bookings/s.json', booking: stay }], { fallbackTz: 'UTC' });
+  assert.equal(r.time, '15:00');
+});
+
+test('bookingFacts: a stay counts its nights; an unknown field is shown as written, its label marked English', () => {
+  const stay = {
+    id: 's', kind: 'lodging', status: 'unverified', source: '/files/hotel.png', title: 'Hotel Aurora Test', unsure: [],
+    place: { name: 'Hotel Aurora Test', address: '1 Test Way, Testville' }, start: { at: '2026-11-20T15:00:00-09:00', tz: 'America/Anchorage' },
+    end: { at: '2026-11-27T11:00:00-09:00', tz: 'America/Anchorage' }, cost: { amount: 1234.5, currency: 'USD' }, fields: { breakfast: 'included', room: 'King, tower', guests: 2 },
+  };
+  const f = bookingFacts(stay);
+  assert.deepEqual(f.map((x) => [x.key, x.label]), [['place', 'Place'], ['start', 'Check-in'], ['end', 'Check-out'], ['nights', 'Nights'], ['room', 'Room'], ['guests', 'Guests'], ['cost', 'Cost'], ['breakfast', 'breakfast']]);
+  assert.equal(f[0].value, 'Hotel Aurora Test, 1 Test Way, Testville');
+  assert.equal(f[3].value, '7');
+  assert.equal(f[6].value, '$1,234.50');
+  assert.deepEqual([f[7].lang, f[0].lang], ['en', undefined]);
+  // Her own count of nights wins over the dates'.
+  assert.equal(bookingFacts({ ...stay, fields: { nights: 6 } }).find((x) => x.key === 'nights')?.value, '6');
+});
+
+test("bookingFacts: other kinds, odd shapes, and a zone annai doesn't know", () => {
+  assert.deepEqual(bookingFacts({ id: 'x', kind: 'other', status: 'unverified', source: '/files/x' }), []);
+  const car = { kind: 'car', start: { at: '2026-11-25T08:00:00-08:00', tz: 'Nowhere' }, fields: 'not an object', unsure: 'start' };
+  assert.deepEqual(bookingFacts(car), []);
+  // With the trip's zone to fall back on, the time shows in it.
+  assert.match(bookingFacts(car, { fallbackTz: 'America/Los_Angeles' })[0].value, /8:00\sAM \(PT\)/);
+  assert.deepEqual(bookingFacts({ kind: 'event', confirmation: 'TESTQ1', fields: { notes: 'Gate opens at 9', extra: { a: 1 } } }).map((x) => [x.key, x.value]), [['confirmation', 'TESTQ1'], ['notes', 'Gate opens at 9'], ['extra', '{"a":1}']]);
+  for (const odd of [null, 'text', [], { fields: [1, 2] }]) assert.doesNotThrow(() => bookingFacts(odd));
 });
 
 test('a backup place in a few words, and the newer backup at it (spec §12.4)', () => {

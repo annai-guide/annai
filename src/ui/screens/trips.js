@@ -1,5 +1,6 @@
 import { h, field, t, plural, twoStep, messageOf } from '../dom.js';
 import { listTrips, createTrip, backupState, SYS_WAITING } from '../../core/scopes.js';
+import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
 import { askAbout, canAsk } from '../composer.js';
@@ -26,7 +27,7 @@ export async function renderTrips(ctx) {
     h('h1', { class: 'title', text: t`Trips` }),
     noTrip(ctx),
     active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: t`No trips yet. Start one below, or open a trip someone sent you.` }),
-    waiting.length ? waitingList(ctx, waiting) : null,
+    waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
     openFileButton(ctx),
     h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
@@ -69,19 +70,20 @@ function noTrip(ctx) {
 
 /**
  * What the user handed Shiori while no trip was open, waiting for her to file it (My call 3 of the bookings-and-trips design): each
- * file by its own name, to open, ask her about, or delete (its space comes back).
- * @param {any} ctx @param {any[]} files
+ * file by Shiori's short name (its own name until she gives one, which shows as its title), to open, ask her about, or delete (its space
+ * comes back). @param {any} ctx @param {any[]} files @param {Record<string, string>} names the waiting space's
  */
-function waitingList(ctx, files) {
+function waitingList(ctx, files, names) {
   return h('section', { class: 'panel waiting', 'aria-labelledby': 'waiting-title' },
     h('h2', { id: 'waiting-title', class: 'section', text: t`Waiting with Shiori` }),
     h('ul', { class: 'file-list' }, ...files.map((f) => {
-      const name = f.path.split('/').pop() ?? f.path;
+      const real = f.path.split('/').pop() ?? f.path;
+      const name = shortName(names, f.path);
       return h('li', { class: 'waiting-file' },
-        h('span', { class: 'path', dir: 'auto', text: name }),
+        h('span', { class: 'path', dir: 'auto', title: name !== real ? real : undefined, text: name }),
         h('span', { class: 'acts' },
           h('a', { class: 'btn', href: waitingHref(f.path) }, t`Open`),
-          canAsk(ctx) ? h('button', { class: 'btn', type: 'button', onclick: () => askAbout(ctx, { scope: SYS_WAITING, path: f.path }) }, t`Ask Shiori about this`) : null,
+          canAsk(ctx) ? h('button', { class: 'btn', type: 'button', onclick: () => askAbout(ctx, { scope: SYS_WAITING, path: f.path, name }) }, t`Ask Shiori about this`) : null,
           twoStep(t`Delete`, t`Tap again to delete`, async () => {
             const freed = await dropWaiting(ctx.ws, f.path);
             ctx.notices.toast(t`Deleted ${name}. ${size(freed)} freed.`);
