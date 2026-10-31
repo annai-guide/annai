@@ -66,12 +66,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the Trace shows thinking stopped this way often.
 - **Approved:** 2026-10-29, the user: "Accept (Recommended)".
 
-### A very long turn stops carrying Claude's thinking after about 25 steps
+### A very long turn stops carrying Claude's thinking once it has sent about 360 KB of it
 - **Kind:** known limitation.
-- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 32 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
-- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at the 1.3 KB a step the real check measured (2026-10-30), a 50-step turn would add about 1.6 MB. The limit keeps a turn's extra near 390 KB.
+- **What the user sees:** nothing on screen. Once a turn's requests have carried 360 KB of Claude's earlier thinking in all (as in a long voice exchange with Shiori as one half), annai stops sending it for the rest of that turn, and Claude plans each remaining step from what it can see, as before. That is about 24 steps of light thinking (1.3 KB a step) or 12 of heavy (5 KB).
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at 1.3 KB a step (measured in the real check, 2026-10-30), a 50-step turn would add about 1.6 MB. Counting what the turn has sent, not what one request carries, keeps the extra near 360 KB whatever size the steps are.
 - **Revisit when:** the Trace shows long turns stopping their thinking often, or long turns lose quality the user notices.
-- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB: set to 32 KB on 2026-10-30, when the check measured about 1.3 KB a step instead of the 5 KB assumed.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB. 2026-10-30, the user: "Limit the upload (Recommended)": the limit counts the turn's extra upload itself, 360 KB, whatever size Claude's steps are.
 
 ### A repeated note can be said twice in live voice
 - **Kind:** known limitation.
