@@ -20,6 +20,7 @@ The user's words:
   5. A real check: "Key here, before release".
   6. Long turns: "Stop past 64 KB (Recommended)".
   7. Cache markers for Claude through OpenRouter: "Add them now (Recommended)".
+- 2026-10-30, on how a long turn decides when to stop: "Limit the upload (Recommended)" (thinking goes back until the turn has sent about 360 KB of it in all, whatever size Claude's steps are: about 12 heavy steps or 24 light ones). It replaces answer 6's per-request figure.
 
 ## Goals
 
@@ -235,17 +236,17 @@ The size of a signature isn't documented; it holds the encrypted reasoning. Unme
 | 20 | about 1.0 MB | about 103 KB |
 | 50 | about 6.6 MB | about 265 KB |
 
-A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Once a turn's kept now blocks and natives pass 64 KB (32 KB since the real check, 2026-10-30, measured about 1.3 KB a step; a native counted for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking; fix pass 1, F2; a Chat Completions native stands in for none of the parts, `covers: 0` on its event, so its whole size counts; fix pass 2, G4), about a dozen steps, the turn sends no more thinking. That caps a turn's extra upload near 360 KB. After it, Claude plans each step as it does today. The 64 KB figure is set again after the real check (§12) measures signature sizes.
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Each step, after its reply is applied, the turn adds what its kept now blocks and natives weigh (what the next request carries) to a running total; once the total passes 360 KB, the turn sends no more thinking. That caps a turn's extra upload at 360 KB whatever size the steps are: about 24 steps of 1.3 KB (the size the real check, 2026-10-30, measured) or 12 of 5 KB. A native counts for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking (fix pass 1, F2). A Chat Completions native stands in for none of the parts (`covers: 0` on its event), so its whole size counts (fix pass 2, G4). A step is counted once: retries and fallbacks inside it are not. After the stop, Claude plans each step as it does today. The first approved rule, a cap on one request (64 KB, then 32 KB), bounded the total only when every step thought the same amount: 32 KB stopped 25 light steps after about 390 KB but 7 heavy ones after 105 KB, and 64 KB let light steps reach 1.5 MB.
 
-**Known limitation**, approved by the user's answer 6. It goes into docs/limitations.md when this ships:
+**Known limitation**, approved by the user's answer 6 and the 2026-10-30 answer. It goes into docs/limitations.md when this ships:
 
 ```markdown
-### A very long turn stops carrying Claude's thinking after about 25 steps
+### A very long turn stops carrying Claude's thinking once it has sent about 360 KB of it
 - **Kind:** known limitation.
-- **What the user sees:** nothing on screen. Once a turn's kept thinking passes 32 KB (as in a long voice exchange with Shiori as one half), annai stops sending Claude's earlier thinking for the rest of that turn, and Claude plans each remaining step from what it can see, as before.
-- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at the 1.3 KB a step the real check measured (2026-10-30), a 50-step turn would add about 1.6 MB. The limit keeps a turn's extra near 390 KB.
+- **What the user sees:** nothing on screen. Once a turn's requests have carried 360 KB of Claude's earlier thinking in all (as in a long voice exchange with Shiori as one half), annai stops sending it for the rest of that turn, and Claude plans each remaining step from what it can see, as before. That is about 24 steps of light thinking (1.3 KB a step) or 12 of heavy (5 KB).
+- **Why:** each step's request carries all the turn's earlier thinking, so the upload grows with the square of the steps: at 1.3 KB a step (measured in the real check, 2026-10-30), a 50-step turn would add about 1.6 MB. Counting what the turn has sent, not what one request carries, keeps the extra near 360 KB whatever size the steps are.
 - **Revisit when:** the Trace shows long turns stopping their thinking often, or long turns lose quality the user notices.
-- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB: set to 32 KB on 2026-10-30, when the check measured about 1.3 KB a step instead of the 5 KB assumed.
+- **Approved:** 2026-10-29, the user: "Stop past 64 KB (Recommended)". The question said the figure would be set again from the real check's measurements, to keep a turn's extra upload near 360 KB. 2026-10-30, the user: "Limit the upload (Recommended)": the limit counts the turn's extra upload itself, 360 KB, whatever size Claude's steps are.
 ```
 
 ### 7. The marker where the previous turn began (`cacheAt`)
@@ -345,7 +346,7 @@ So replay costs a little more than it saves, unless thinking is a small share of
   2. Koe's turns around it.
   3. The same through OpenRouter's Claude, with cache markers (§9).
   4. A negative control: one request with an earlier message changed under the thinking sent with it, and a turn in which Sonnet fails at one step with a stubbed 529 so the next Claude model answers it (the user's answer 1). *(Fix pass 1, F1.)*
-  5. It also reports each turn's natives in KB, so §6's 64 KB can be set again from measured signature sizes.
+  5. It also reports each turn's natives in KB, so §6's 360 KB can be set again from measured signature sizes.
 - **What it shows:** for each request, the half, step, model, bytes sent, natives sent or changed, outcome, cache reads and writes, and cost.
 - **What it checks:**
   0. At least one native was sent on a step 2 or later. A run in which Claude never thought is no pass.
@@ -387,7 +388,7 @@ So replay costs a little more than it saves, unless thinking is a small share of
 9. A fallback mid-turn to a scripted model, then back to Claude: the scripted model's request has no natives and no kept now blocks. Claude's next request has its own natives. A second Claude model on the same endpoint gets them too.
 10. A tool switched off between steps: the tools are unchanged, the call returns the switched-off words, and the next turn leaves the tool out. A role's level changed between steps: the turn keeps its level.
 11. A reload mid-turn, after step 1's results: the catch-up turn's first request carries no natives or now blocks, and nothing is refused.
-12. A long turn past 64 KB of kept thinking: from there, no thinking, once.
+12. A long turn that has sent 360 KB of kept thinking in all (steps of 20 KB, so a request carries more than 32 KB): from there, no thinking, once.
 13. A three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3 carry `reasoning_details` exactly. The kept now block renders exactly as the tail did.
 13b. Cache markers through OpenRouter's Claude:
     - The system, the end and `cacheAt` are marked, with the hour's `ttl`.
@@ -433,7 +434,7 @@ The user's answers of 2026-10-29, as built:
 3. Rare mid-turn edits stop the turn's thinking: a known limitation, with its entry in §5.
 4. Claude through OpenRouter gets its `reasoning_details` back within a turn (§9).
 5. A real check script runs before release with the named key files (§12). It shows natives, refusals, fallbacks, bytes, and cache reads on both providers.
-6. Long turns stop carrying thinking past 64 KB: a known limitation, with its entry in §6. The figure is set again from the real check's measurements (2026-10-30: about 1.3 KB a step, so 32 KB, about 25 steps, keeps the extra near 390 KB).
+6. Long turns stop carrying thinking once the turn has sent 360 KB of it in all: a known limitation, with its entry in §6 (the user's answer 6 and the 2026-10-30 answer: the first set a per-request figure, the 2026-10-30 one counts the upload itself).
 7. Claude through OpenRouter gets Anthropic-style cache markers (§9).
 
 My calls:

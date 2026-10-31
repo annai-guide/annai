@@ -147,11 +147,10 @@ const AFTER_CUE = 2;
 /** How many calls of a turn may be forced while she hasn't reached the user: ten without a word to them is far past any real plan's lookups before its first word. */
 export const FORCED_STEPS = 10;
 /**
- * How much of a turn's kept thinking and now blocks a request may carry, in characters: past it, the turn sends no more (the keep-reasoning
- * design §6), so a long turn's extra upload, which grows with the square of its steps, stays near 360 KB. The real check (2026-10-30) measured
- * about 1.3 KB a step, not the 5 KB first assumed: 32 KB is about 25 steps and keeps the extra near 390 KB, where 64 KB would let it reach 1.5 MB.
+ * The most kept thinking and now blocks a turn's requests may carry in all, in characters (the keep-reasoning design §6): past it, the turn
+ * sends no more. A long turn's extra upload grows with the square of its steps; this bounds it whatever size they are (the real check, 2026-10-30: about 1.3 KB a step).
  */
-export const KEPT_MAX = 32 * 1024;
+export const KEPT_SENT_MAX = 360 * 1024;
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (emulator pass, spec §7.1). */
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -1788,6 +1787,8 @@ export class Agent {
     let frozen = null;
     /** Claude's thinking still goes back this turn: one flag stops it, for a change, a refusal or the size (§5, §6). */
     let thinking = true;
+    /** What the turn's requests have carried of it so far, in characters. */
+    let keptSent = 0;
     const stopThinking = () => {
       thinking = false;
       this.transcript.dropKept();
@@ -1954,11 +1955,11 @@ export class Agent {
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
       if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
-      // reply keeps the now block its request ended with and the reply as it came, until the turn ends or they pass KEPT_MAX.
+      // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();
       const keep = thinking && result.reply.native ? { now: tail, native: result.reply.native } : null;
       await this.#applyTurn(result.reply.parts, wakeId, keep);
-      if (thinking && this.transcript.keptBytes() > KEPT_MAX) stopThinking();
+      if (thinking && (keptSent += this.transcript.keptBytes()) > KEPT_SENT_MAX) stopThinking();
       await this.#grounded(result.reply.attribution, wakeId);
       const calls = result.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
       this.#half.replied?.(calls.map((/** @type {any} */ c) => c.name));
