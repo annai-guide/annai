@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { anthropicStandIn } from '../fakes/anthropic-binding.js';
-import { Agent, KEPT_MAX } from '../../src/core/agent/loop.js';
+import { Agent, KEPT_SENT_MAX } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { setToolSwitch } from '../../src/core/agent/tools.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -353,27 +353,28 @@ test('11. a reload mid-turn, after step 1\'s results: the catch-up turn sends no
   assert.deepEqual(claude.refused, []);
 });
 
-test(`12. a long turn past ${KEPT_MAX / 1024} KB of kept thinking: from there, no thinking, once`, async (t) => {
+test(`12. a long turn that has sent ${KEPT_SENT_MAX / 1024} KB of kept thinking in all: from there, no thinking, once (a request may carry more than 32 KB)`, async (t) => {
   useClock(t);
   let steps = 0;
   const claude = anthropicStandIn((body) => {
     const { results } = last(body);
     if (results.includes('speak') || results.includes('sleep')) return [use('sleep')];
-    return ++steps < 6 ? [{ type: 'thinking', pad: Math.round(KEPT_MAX * 0.38) }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
+    // Each step adds a 20 KB signature: requests carry 20, 40, 60, 80 and 100 KB, 300 KB in all; the sixth step's 120 KB passes 360 KB.
+    return ++steps < 8 ? [{ type: 'thinking', pad: 20 * 1024 }, use('list', { path: PLACES[steps] })] : [use('speak', { text: 'Done.' }), use('sleep')];
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Look around, slowly.');
   await k.agent.idle();
   const counts = claude.bodies.map((b) => thoughts(b).length);
-  // Each step's two blocks (its own and the big one) until the kept part passes the limit after the third step; none after.
-  assert.deepEqual(counts.slice(0, 5), [0, 2, 4, 0, 0]);
+  // Each step's two blocks (its own and the big one) until the total passes the limit after the sixth step; none after.
+  assert.deepEqual(counts.slice(0, 8), [0, 2, 4, 6, 8, 10, 0, 0]);
   assert.deepEqual(claude.refused, []);
 });
 
 test('12b. a big server-tool result with small thinking is not thinking: the turn keeps sending its thinking (the limit counts what a native adds beyond the parts it covers)', async (t) => {
   useClock(t);
-  // About 70 KB of search results, as a web_search_tool_result carries them (encrypted page content).
-  const results = Array.from({ length: 7 }, (_, i) => ({ type: 'web_search_result', url: `https://example.com/${i}`, title: `Result ${i}`, encrypted_content: 'E'.repeat(10_000), page_age: null }));
+  // More search results than the turn's whole limit, as a web_search_tool_result carries them (encrypted page content): counted as thinking, they would stop it after step 1.
+  const results = Array.from({ length: Math.ceil(KEPT_SENT_MAX / 10_000) + 1 }, (_, i) => ({ type: 'web_search_result', url: `https://example.com/${i}`, title: `Result ${i}`, encrypted_content: 'E'.repeat(10_000), page_age: null }));
   let step = 0;
   const claude = anthropicStandIn(() => {
     step++;
@@ -390,7 +391,7 @@ test('12b. a big server-tool result with small thinking is not thinking: the tur
   k.agent.send('When does the museum open?');
   await k.agent.idle();
   assert.deepEqual(claude.refused, []);
-  assert.ok(JSON.stringify(claude.bodies[1]).length > 70_000, 'the result is in the request');
+  assert.ok(JSON.stringify(claude.bodies[1]).length > KEPT_SENT_MAX, 'the result is in the request');
   assert.deepEqual(claude.bodies.slice(0, 3).map((b) => thoughts(b).length), [0, 1, 2]);
 });
 
@@ -452,21 +453,21 @@ test("13. a three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3
   assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'));
 });
 
-test(`13c. through OpenRouter a native covers no parts: a big tool input every step doesn't hide the thinking, which stops the turn's thinking past ${KEPT_MAX / 1024} KB`, async (t) => {
+test(`13c. through OpenRouter a native covers no parts: a big tool input every step doesn't hide the thinking, which stops the turn's thinking once it has sent ${KEPT_SENT_MAX / 1024} KB in all`, async (t) => {
   useClock(t);
   const { openRouterStandIn } = await import('../fakes/openrouter-claude.js');
   let steps = 0;
   const or = openRouterStandIn((body) => {
     const lastCall = body.messages.flatMap((/** @type {any} */ m) => m.tool_calls ?? []).at(-1)?.function?.name;
     if (lastCall === 'speak' || lastCall === 'sleep') return { calls: [{ name: 'sleep', input: {} }] };
-    // Each step: a signature of about 38% of the limit, and a 20 KB tool input that the reply's parts carry as well.
-    return ++steps < 6 ? { pad: Math.round(KEPT_MAX * 0.38), calls: [{ name: 'list', input: { path: PLACES[steps], note: 'n'.repeat(20_000) } }] } : { calls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'sleep', input: {} }] };
+    // Each step: a 20 KB signature (300 KB sent in all after five steps, 420 KB after six), and a 20 KB tool input that the reply's parts carry as well.
+    return ++steps < 8 ? { pad: 20 * 1024, calls: [{ name: 'list', input: { path: PLACES[steps], note: 'n'.repeat(20_000) } }] } : { calls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'sleep', input: {} }] };
   });
   const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
   k.agent.send('Look around, slowly.');
   await k.agent.idle();
   const kept = (/** @type {any} */ b) => b.messages.filter((/** @type {any} */ m) => m.reasoning_details).length;
-  assert.deepEqual(or.bodies.slice(0, 5).map(kept), [0, 1, 2, 0, 0]);
+  assert.deepEqual(or.bodies.slice(0, 8).map(kept), [0, 1, 2, 3, 4, 5, 0, 0]);
   assert.deepEqual(or.refused, []);
 });
 

@@ -18,7 +18,7 @@ import { readConfig, saveProvider, saveRoles } from '../../src/core/llm/config.j
 import { updateAppSettings } from '../../src/core/settings.js';
 import { mergePatch } from '../../src/core/patch.js';
 import { Halves } from '../../src/core/agent/halves.js';
-import { KEPT_MAX } from '../../src/core/agent/loop.js';
+import { KEPT_SENT_MAX } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { activate as anthropicMessages } from '../../plugins-official/anthropic-messages/index.js';
 import { activate as chatCompletions } from '../../plugins-official/chat-completions/index.js';
@@ -492,11 +492,17 @@ export function table(rows) {
   const fmt = (/** @type {string[]} */ l) => l.map((x, i) => x.padEnd(width[i])).join('  ').trimEnd();
   /** @type {Map<string, number>} */
   const kept = new Map();
-  for (const r of inPhase(rows, 'main')) kept.set(`${r.provider} ${r.half} turn ${r.wake.slice(-4)}`, Math.max(kept.get(`${r.provider} ${r.half} turn ${r.wake.slice(-4)}`) ?? 0, r.thinkingBytes));
+  /** @type {Map<string, number>} */
+  const sent = new Map();
+  for (const r of inPhase(rows, 'main')) {
+    const key = `${r.provider} ${r.half} turn ${r.wake.slice(-4)}`;
+    kept.set(key, Math.max(kept.get(key) ?? 0, r.thinkingBytes));
+    sent.set(key, (sent.get(key) ?? 0) + r.thinkingBytes);
+  }
   const steps = inPhase(rows, 'main').filter((r) => r.step > 1 && r.thinkingBytes > 0);
   const perStep = steps.length ? steps.reduce((n, r) => n + r.thinkingBytes / Math.max(1, r.natives?.sent ?? 1), 0) / steps.length : 0;
-  return [fmt(head), ...lines.map(fmt), '', '* the request the control changed an earlier message in; ! the step made to fail with a 529', '', 'Thinking kept per turn (the last step\'s request):', ...[...kept].map(([k, v]) => `  ${k}: ${kb(v)}`),
-    `About ${kb(perStep)} of thinking per step sent back (the design first assumed 5 KB; the limit is ${KEPT_MAX / 1024} KB).`].join('\n');
+  return [fmt(head), ...lines.map(fmt), '', '* the request the control changed an earlier message in; ! the step made to fail with a 529', '', 'Thinking kept per turn (the last step\'s request):', ...[...kept].map(([k, v]) => `  ${k}: ${kb(v)} (${kb(sent.get(k) ?? 0)} sent in all)`),
+    `About ${kb(perStep)} of thinking per step sent back (the design first assumed 5 KB; a turn's limit is ${KEPT_SENT_MAX / 1024} KB sent in all).`].join('\n');
 }
 
 /** The report of a run's rows: the table, then each check, passed or not, then what was found besides. @param {Row[]} rows */
