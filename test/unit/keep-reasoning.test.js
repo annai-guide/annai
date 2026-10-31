@@ -373,8 +373,8 @@ test(`12. a long turn that has sent ${KEPT_SENT_MAX / 1024} KB of kept thinking 
 
 test('12b. a big server-tool result with small thinking is not thinking: the turn keeps sending its thinking (the limit counts what a native adds beyond the parts it covers)', async (t) => {
   useClock(t);
-  // About 70 KB of search results, as a web_search_tool_result carries them (encrypted page content).
-  const results = Array.from({ length: 7 }, (_, i) => ({ type: 'web_search_result', url: `https://example.com/${i}`, title: `Result ${i}`, encrypted_content: 'E'.repeat(10_000), page_age: null }));
+  // More search results than the turn's whole limit, as a web_search_tool_result carries them (encrypted page content): counted as thinking, they would stop it after step 1.
+  const results = Array.from({ length: Math.ceil(KEPT_SENT_MAX / 10_000) + 1 }, (_, i) => ({ type: 'web_search_result', url: `https://example.com/${i}`, title: `Result ${i}`, encrypted_content: 'E'.repeat(10_000), page_age: null }));
   let step = 0;
   const claude = anthropicStandIn(() => {
     step++;
@@ -391,7 +391,7 @@ test('12b. a big server-tool result with small thinking is not thinking: the tur
   k.agent.send('When does the museum open?');
   await k.agent.idle();
   assert.deepEqual(claude.refused, []);
-  assert.ok(JSON.stringify(claude.bodies[1]).length > 70_000, 'the result is in the request');
+  assert.ok(JSON.stringify(claude.bodies[1]).length > KEPT_SENT_MAX, 'the result is in the request');
   assert.deepEqual(claude.bodies.slice(0, 3).map((b) => thoughts(b).length), [0, 1, 2]);
 });
 
