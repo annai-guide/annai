@@ -236,7 +236,7 @@ The size of a signature isn't documented; it holds the encrypted reasoning. Unme
 | 20 | about 1.0 MB | about 103 KB |
 | 50 | about 6.6 MB | about 265 KB |
 
-A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Each step, after its reply is applied, the turn adds what its kept now blocks and natives weigh (what the next request carries) to a running total; once the total passes 360 KB, the turn sends no more thinking. That caps a turn's extra upload at 360 KB whatever size the steps are: about 24 steps of 1.3 KB (the size the real check, 2026-10-30, measured) or 12 of 5 KB. A native counts for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking (fix pass 1, F2). A Chat Completions native stands in for none of the parts (`covers: 0` on its event), so its whole size counts (fix pass 2, G4). A step is counted once: retries and fallbacks inside it are not. After the stop, Claude plans each step as it does today. The first approved rule, a cap on one request (64 KB, then 32 KB), bounded the total only when every step thought the same amount: 32 KB stopped 25 light steps after about 390 KB but 7 heavy ones after 105 KB, and 64 KB let light steps reach 1.5 MB.
+A limit is needed. The simplest one that keeps Anthropic's rules (no gaps) is the §5 flag. Each step, after its reply is applied, the turn adds what its kept now blocks and natives weigh (what the next request carries) to a running total; once the total passes 360 KB, the turn sends no more thinking. That keeps a turn's extra upload near 360 KB whatever size the steps are: about 24 steps of 1.3 KB (the size the real check, 2026-10-30, measured) or 12 of 5 KB. A native counts for what it adds beyond the parts it stands for: its size less theirs, at least 0, so a long tool input or a server tool's result inside it doesn't count as thinking (fix pass 1, F2). A Chat Completions native stands in for none of the parts (`covers: 0` on its event), so its whole size counts (fix pass 2, G4). A step is counted once: retries and fallbacks inside it are not. After the stop, Claude plans each step as it does today. The first approved rule, a cap on one request (64 KB, then 32 KB), bounded the total only when every step thought the same amount: 32 KB stopped 25 light steps after about 390 KB but 7 heavy ones after 105 KB, and 64 KB let light steps reach 1.5 MB.
 
 **Known limitation**, approved by the user's answer 6 and the 2026-10-30 answer. It goes into docs/limitations.md when this ships:
 
@@ -346,7 +346,7 @@ So replay costs a little more than it saves, unless thinking is a small share of
   2. Koe's turns around it.
   3. The same through OpenRouter's Claude, with cache markers (§9).
   4. A negative control: one request with an earlier message changed under the thinking sent with it, and a turn in which Sonnet fails at one step with a stubbed 529 so the next Claude model answers it (the user's answer 1). *(Fix pass 1, F1.)*
-  5. It also reports each turn's natives in KB, so §6's 360 KB can be set again from measured signature sizes.
+  5. It also reports each turn's natives in KB, to show how many steps §6's 360 KB lasts; changing it is the user's call.
 - **What it shows:** for each request, the half, step, model, bytes sent, natives sent or changed, outcome, cache reads and writes, and cost.
 - **What it checks:**
   0. At least one native was sent on a step 2 or later. A run in which Claude never thought is no pass.
