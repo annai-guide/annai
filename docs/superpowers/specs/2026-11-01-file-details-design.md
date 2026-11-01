@@ -56,7 +56,7 @@ What they saw:
      - **Change:** what Shiori read, in the raw form, as "Change it" today.
        - With one booking, it sits at the foot with the other buttons.
        - With several, each block has its own.
-       - A file that became no booking has none, except a text file, whose Change is its editor.
+       - A file that became no booking has none. A text file's editor is reached by Open (the plan's review, 2026-11-01).
      - **Open in Maps:** per booking, when it has a place.
      - **Delete,** last (goal 4).
 3. **Back goes where the screen was opened from:**
@@ -109,7 +109,7 @@ What they saw:
 
 ## My calls (for the user to check)
 
-1. **The list order:** rows by their first booking's day, then by name. A file with no day goes after those with one. Today the order is by name only.
+1. **The list order:** rows by the first day of what the file became (bookings and plan items alike), then by name. A file with no day goes after those with one. Today the order is by name only.
 2. **The real file name** shows on the details screen ("From …"), not under the row's name in the list. The list stays at two lines a row.
 3. **Change sits at the foot with one booking, and in each block with several.** A file with two bookings has two records to change.
 4. **The All files fold keeps the old file screen** for the raw view. So "Change" for a record and "All files" still reach the editor and history.
