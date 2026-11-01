@@ -110,7 +110,16 @@ export async function renderBooking(ctx, route) {
       })));
   // A tap on one of several bookings lands on its block; the shell's own scrollTo has run before this frame.
   const target = many && d.focus ? screen.querySelector(`#block-${blocks.findIndex((b) => b.path === d.focus)}`) : null;
-  if (target instanceof HTMLElement) requestAnimationFrame(() => { if (target.isConnected) { target.scrollIntoView({ block: 'start' }); target.focus({ preventScroll: true }); } });
+  if (target instanceof HTMLElement) {
+    requestAnimationFrame(() => {
+      if (!target.isConnected) return;
+      target.scrollIntoView({ block: 'start' });
+      // The top bar sticks over the first of the screen: its block starts under it.
+      const bar = document.querySelector('header.topbar');
+      if (bar) scrollBy(0, -(bar.getBoundingClientRect().height + 8));
+      target.focus({ preventScroll: true });
+    });
+  }
   return screen;
 }
 
