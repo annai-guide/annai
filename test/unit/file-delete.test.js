@@ -214,6 +214,22 @@ test("Restore with another file at the deleted file's path brings back nothing o
   assert.equal(await ws.readText(trip, '/files/hotel.pdf'), '%PDF-1.4 Another hotel');
 });
 
+test("A second tab's Restore of a file that has already come back says it's back and opens it, not 'delete it first'", async () => {
+  const { ws, trip, details } = await hotel();
+  const file = /** @type {any} */ (await ws.read(trip, '/files/hotel.pdf')).entry;
+  await record(ws.store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: file.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: file.hash, type: 'application/pdf' }] });
+  await deleteGroup(ctxOf(ws), trip, await details());
+  /** @type {string[]} */
+  const went = [];
+  const ctx = { ...ctxOf(ws), go: (/** @type {string} */ h) => went.push(h), render: async () => {} };
+  await restoreDeleted(ctx, trip, '/files/hotel.pdf');
+  await restoreDeleted(ctx, trip, '/files/hotel.pdf'); // the other tab, still showing Restore
+  assert.match(ctx.toasts[0], /^Restored hotel\.pdf/);
+  assert.equal(ctx.toasts[1], 'hotel.pdf is already back.');
+  assert.equal(went.length, 2);
+  assert.equal(went[1], went[0]);
+});
+
 test("Delete in Files: when the other deleted copy's history names the content, the toast doesn't blame the conversation", async () => {
   const ws = new Workspace(createMemoryStore());
   await ensureBaseScopes(ws);
