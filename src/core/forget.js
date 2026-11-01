@@ -3,6 +3,9 @@
  * its history (§4.2), so its content stays named and stored; what annai removes for good (a plugin's
  * package, its settings, what it kept in the log) goes with the history and log entries that name
  * it, and the content nothing else names any more is freed at once.
+ * A forget that removes anything leaves one `forget` entry, numbered after every entry the scope had: the last number never falls, so
+ * the next entry never takes a removed one's number, and a backup made before the forget reads the scope as changed (scopes.js
+ * backupState, backup-auto.js changedSince). Only the newest such entry is kept, so a file kept without history doesn't grow the log.
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').EventRecord} EventRecord
  * @typedef {{ files?: (path: string) => boolean, history?: (path: string) => boolean, events?: (e: EventRecord) => boolean }} Match
@@ -19,6 +22,7 @@ const HISTORY = ['file.write', 'file.delete'];
  */
 export function forget(store, scope, match) {
   return store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', async (t) => {
+    const top = await t.lastSeq(scope);
     /** @type {Set<string>} */
     const named = new Set();
     let files = 0;
@@ -50,6 +54,11 @@ export function forget(store, scope, match) {
       if (!b) continue;
       await t.deleteBlob(h);
       bytes += Number(b.size) || 0;
+    }
+    if (files || doomed.size) {
+      for (const e of await t.listEvents(scope, { types: ['forget'] })) if (!doomed.has(e.seq)) await t.deleteEvent(scope, e.seq);
+      const now = Date.now();
+      await t.putEvent({ scope, seq: top + 1, ts: now, at: now, type: 'forget', actor: 'system', data: { files, events: doomed.size, bytes } });
     }
     return { files, events: doomed.size, bytes };
   });
