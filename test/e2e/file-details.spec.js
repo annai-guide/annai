@@ -52,6 +52,9 @@ test('a link to the second flight opens the file at its block, focused and in vi
   const h = page.getByRole('heading', { name: 'ANNAI AIR AN 124' });
   await expect(h).toBeFocused();
   await expect(h).toBeInViewport();
+  // In view means below the top bar, not behind it.
+  const [bar, top] = await Promise.all([page.locator('header.topbar').boundingBox(), h.boundingBox()]);
+  expect(top?.y ?? 0).toBeGreaterThanOrEqual((bar?.y ?? 0) + (bar?.height ?? 0));
 });
 
 test('one booking reads as the booking details did: the stay, its photo as the preview, Change it and Open in Maps at the foot; Open shows the photo', async ({ page }) => {
