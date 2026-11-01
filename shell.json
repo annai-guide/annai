@@ -1,5 +1,5 @@
 {
-  "build": "db29c58fd210",
+  "build": "00e910c947f2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -66,7 +66,7 @@
     "/src/core/crc32.js": "0bfef7a8eb00",
     "/src/core/errors.js": "803212c6404d",
     "/src/core/events.js": "96ea2d451049",
-    "/src/core/forget.js": "a6be11a4286d",
+    "/src/core/forget.js": "cf4db6fbde25",
     "/src/core/handover.js": "c05fd5e9abf6",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
@@ -180,7 +180,7 @@
     "/src/core/types.js": "16693e8fad29",
     "/src/core/ui-slots.js": "355a32f019cb",
     "/src/core/web-search.js": "e8aa53bacd20",
-    "/src/core/workspace.js": "1b772a34e32f",
+    "/src/core/workspace.js": "743b5be979e7",
     "/src/core/zip.js": "0aa5b019d889",
     "/src/plugins/core-schemas/index.js": "c6f3e7e74494",
     "/src/plugins/core-schemas/schemas.js": "bf902b82c400",
