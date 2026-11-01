@@ -191,8 +191,35 @@ test('Delete removes the file, its bookings and their plan items, says what went
   await openApp(page);
   const trip = await fileTrip(page);
   await openRow(page, 'ANNAI AIR itinerary');
+  const before = await page.evaluate(async (trip) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const out = { hash: (await ws.list(trip, '/')).find((/** @type {any} */ f) => f.path === '/files/itinerary.pdf').hash, history: (await ws.history(trip, '/files/itinerary.pdf')).length };
+    store.close();
+    return out;
+  }, trip);
+  expect(before.history).toBeGreaterThan(0);
   await deleteIt(page);
-  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item$/)).toBeVisible();
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item\. .+ freed\.$/)).toBeVisible();
+  // Freed at once: no history for the file's path, and its content gone, as nothing else names it.
+  const after = await page.evaluate(async ({ trip, hash }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const out = {
+      history: (await ws.history(trip, '/files/itinerary.pdf')).length,
+      blob: Boolean(await store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(hash))),
+      names: JSON.stringify(await ws.readJSON(trip, '/names.json').catch(() => null)),
+    };
+    store.close();
+    return out;
+  }, { trip, hash: before.hash });
+  expect(after).toEqual({ history: 0, blob: false, names: expect.not.stringContaining('itinerary') });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['Hotel Aurora Test', 'walks.ics', 'new.pdf']);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
@@ -228,7 +255,7 @@ test('a booking with no file: Delete removes it and its plan item', async ({ pag
   const trip = await fileTrip(page);
   await openAt(page, trip, '/bookings/said.json');
   await deleteIt(page);
-  await expect(page.getByText(/^Deleted Testville Grill and 1 plan item$/)).toBeVisible();
+  await expect(page.getByText(/^Deleted Testville Grill and 1 plan item\. .+ freed\.$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/plan/grill.json')}`);
   await expect(page.getByRole('heading', { name: "This isn't on the plan" })).toBeVisible();
@@ -241,7 +268,7 @@ test('the raw file screen says what else its Delete removes, and removes it', as
   await page.locator('details.all-files a[href*="file?path=%2Ffiles%2Fitinerary.pdf"]').click();
   await expect(page.getByText('Deleting this file also deletes 2 bookings and 1 plan item.')).toBeVisible();
   await deleteIt(page, 'Delete file');
-  await expect(page.getByText(/^Deleted ANNAI AIR itinerary/)).toBeVisible();
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary.* freed\.$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();

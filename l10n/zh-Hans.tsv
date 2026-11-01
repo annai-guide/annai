@@ -1042,9 +1042,9 @@ xyot5w	ok	Export everything	导出全部	src/ui/export-panel.js:87
 sxjkia	ok	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:90	
 xyveyo	ok	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:90	
 kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:91	
-128pon4#other	draft	# plan items	#个行程项目	src/ui/file-delete.js:12	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
-141racs#other	draft	# bookings	#项预订	src/ui/file-delete.js:12	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
-x8r2sg	draft	Deleted {0}	已删除{0}	src/ui/file-delete.js:44	{0} = list([name, ...countParts(file.length ? bookings.length : 0, items.length)]); Note: toast after Delete on a file's or booking's details screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
+128pon4#other	draft	# plan items	#个行程项目	src/ui/file-delete.js:14	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
+141racs#other	draft	# bookings	#项预订	src/ui/file-delete.js:14	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
+3ul42n	ok	Deleted {0}. {1} freed.	已删除{0}，释放了{1}。	src/ui/file-delete.js:54	{0} = list([name, ...countParts(file.length ? bookings.length : 0, items.length)]); {1} = size(freed); Note: as Removed {0}. {1} freed. (已移除{0}，释放了{1}。), with 删除 for a file; {0} is a file name.
 la9701	ok	not backed up	未备份	src/ui/format.js:29	
 1h47npq	ok	backed up {0}	{0}已备份	src/ui/format.js:30	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
 1sjuc50	ok	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:30	{0} = relTime(at, now)
@@ -1599,7 +1599,6 @@ krcze5	ok	This file was deleted. You can bring back a version below.	此文件�
 drvc96	draft	Deleting this file also deletes {0}.	删除此文件也会删除{0}。	src/ui/screens/file.js:66	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 plan item").
 1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:67	
 1lwovru	ok	This file isn't waiting with Shiori any more.	这个文件已不在 Shiori 的暂存中。	src/ui/screens/file.js:86	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
-3ul42n	ok	Deleted {0}. {1} freed.	已删除{0}，释放了{1}。	src/ui/screens/file.js:93	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: as Removed {0}. {1} freed. (已移除{0}，释放了{1}。), with 删除 for a file; {0} is a file name.
 18t12gi	ok	File name: {0}	文件名：{0}	src/ui/screens/file.js:107	{0} = real; Note: under a file's short name on its own screen; {0} is the file's real name.
 1hnv6ua	ok	Content	内容	src/ui/screens/file.js:130	
 lewgh4	ok	Save	保存	src/ui/screens/file.js:130	
