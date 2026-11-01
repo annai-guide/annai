@@ -246,18 +246,18 @@ test("a flight's details: what Shiori read, its PDF's preview or card, Open the 
   const original = page.getByRole('region', { name: 'The original' });
   const draws = await page.evaluate(async () => { const load = (/** @type {string} */ u) => import(u); return (await load('/src/ui/preview.js')).imgDrawsPdf(); });
   if (draws) await expect(original.locator('img.file-preview')).toBeVisible();
-  else await expect(original.locator('.file-card')).toHaveText('flight.pdf2 pages');
+  else await expect(original.locator('.file-card')).toHaveText('ANNAI AIR AN 1232 pages'); // named as the file is: by its one booking's title
   await expect(original).toContainText('From flight.pdf');
-  await page.getByRole('link', { name: 'Open the original' }).click();
+  await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page.getByRole('heading', { name: '/files/flight.pdf' })).toBeVisible();
-  await page.getByRole('main').getByRole('link', { name: 'Booking' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask Shiori about this' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
   // Change it is the raw form, and comes back here.
   await page.getByRole('link', { name: 'Change it' }).click();
   await expect(page.locator('#file-content')).toHaveValue(/"ANNAI AIR AN 123"/);
-  await page.getByRole('main').getByRole('link', { name: 'Booking' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   // Its crumb goes back to the Plan.
   await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
@@ -440,7 +440,7 @@ test("a plan item's notes on the booking it stands for show on the booking's det
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Fly to Anchorage/ }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-  const notes = page.getByRole('region', { name: 'Notes' });
+  const notes = page.getByRole('region', { name: 'On the plan' });
   await expect(notes).toContainText('Terminal S, arrive 2 h early.');
   await expect(notes).toContainText('One checked bag each.');
   // In reading order: after what she read, before the file.

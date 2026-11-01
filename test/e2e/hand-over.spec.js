@@ -333,8 +333,11 @@ test('once Shiori names a file, its chip, its Files row and its screen show the 
     await page.goto(trip);
     const row = page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file').first();
     await expect(row.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
-    // Its own screen: the short name, then the real file name and its path.
+    // Its details: the short name, then the real file name beneath the preview; Open leads to the raw screen, with its path.
     await row.getByRole('link').first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'The original' })).toContainText('From flight.pdf');
+    await page.getByRole('link', { name: 'Open', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
     await expect(page.getByText('File name: flight.pdf')).toBeVisible();
     await expect(page.getByText('/files/flight.pdf')).toBeVisible();

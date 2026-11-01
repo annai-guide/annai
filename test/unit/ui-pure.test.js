@@ -20,6 +20,7 @@ import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { roadText } from '../../src/ui/screens/drive.js';
+import { cameFrom } from '../../src/ui/screens/file.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -883,4 +884,13 @@ test('fileLine: one booking, several of a kind with their days, mixed kinds, a c
   assert.equal(fileLine([{ kind: 'plan', path: '/plan/a.json', title: 'A', at: null, day: null }, { kind: 'plan', path: '/plan/b.json', title: 'B', at: null, day: null }]), 'Plan items from a calendar');
   assert.equal(fileLine([{ kind: 'waiting' }]), 'Waiting for Shiori to read it');
   assert.equal(fileLine([{ kind: 'nothing' }]), 'Nothing yet');
+});
+
+test('cameFrom: the trip, the Conversation, the Plan, Now, an item, and an old booking crumb', () => {
+  assert.deepEqual(cameFrom('#/trip/t-1', 't-1', 't-1'), { hash: '#/trip/t-1', name: 'trip' });
+  assert.equal(cameFrom('#/trip/t-2', 't-1', 't-1'), null); // another trip's screen
+  assert.deepEqual(cameFrom('#/talk', 't-1', 't-1'), { hash: '#/talk', name: 'talk' });
+  assert.equal(cameFrom('#/talk', 't-1', 't-2'), null); // the Conversation is another trip's now
+  assert.deepEqual(cameFrom('#/trip/t-1/booking?path=%2Fbookings%2Fa.json', 't-1', null)?.name, 'booking');
+  assert.equal(cameFrom('#/settings', 't-1', 't-1'), null);
 });

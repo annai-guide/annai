@@ -982,16 +982,16 @@ rs50uy	ok	Opening the backup…	正在開啟備份…	src/ui/auto-backup.js:125
 io1qx	ok	Open the booking	開啟預訂	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的類型（{0}）來自一個未開啟的外掛程式。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:65	
-36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:66	
-17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:70	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:127	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:128	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
-1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:139	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
-1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:178	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
-13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/composer.js:208	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
-1npepge	ok	Read it again	請再讀一遍	src/ui/composer.js:225	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
-158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:226	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
+rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:66	
+36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:67	
+17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:71	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:128	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:129	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
+1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:140	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
+1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:179	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
+13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/composer.js:211	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
+1npepge	ok	Read it again	請再讀一遍	src/ui/composer.js:228	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
+158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:229	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，用於 Shiori 的 nearby 工具和離線資料包，透過 Overpass（overpass-api.de，繁忙時用 private.coffee 的伺服器）查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或說出某個位置的地名，用於 Shiori 的 geocode 和 reverse 工具；作為免費搜尋的最後手段，也會查詢地點的官網。annai 依其使用政策，每秒最多詢問一次。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地點的文章，以及離線資料包中的摘要。Shiori 讀到的每篇文章都附有網址。免費搜尋始終開啟的最後手段會用搜尋的詞向它查詢。	src/ui/credits.js:33	
@@ -1530,17 +1530,23 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 9patw8	ok	annai stops backing up here. The backups already there stay.	annai 會停止備份到這裡。已經在那裡的備份會保留。	src/ui/screens/backups.js:312	
 1hx8faa	ok	Tap again to remove it	再點一次以移除	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
-nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:28	
-19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:29	
-1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	請核對：這是 annai 逐項標記之前 Shiori 讀取的預訂。請告訴她是否正確，或哪裡不對。	src/ui/screens/booking.js:44	Note: Taiwan wording; a banner on a booking from before, cleared by telling her it's right; 請核對 as the Check this chip.
-bamrei	ok	Change it	修改	src/ui/screens/booking.js:53	
-iy42pb	ok	check	待核對	src/ui/screens/booking.js:76	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
-1s0er5c	ok	Shiori isn't sure of this	Shiori 對這一項不確定	src/ui/screens/booking.js:77	Note: Taiwan wording; read by screen readers for the check mark.
-8icj76	ok	Plan	行程	src/ui/screens/booking.js:86	
-d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:111	{0} = name
-yp5voz	ok	This booking doesn't say which file it came from.	這個預訂沒有說明來自哪個檔案。	src/ui/screens/booking.js:111	
-2egm5v	ok	The original	原件	src/ui/screens/booking.js:112	Note: Taiwan wording; as Open the original (開啟原件).
-98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:115	
+10rafvo	ok	This trip isn't on this device	此裝置上沒有這個旅行	src/ui/screens/booking.js:26	
+1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/booking.js:26	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+7862xj	ok	It may have been deleted or renamed.	它可能已被刪除或重新命名。	src/ui/screens/booking.js:34	Note: Taiwan wording: 重新命名.
+vocksz	draft	This file isn't in the trip	這個旅行中沒有此檔案	src/ui/screens/booking.js:34	Note: the heading of the details screen for a file that is not in the trip (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
+19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	它可能已被刪除或重新命名。行程中列出了現有的預訂。	src/ui/screens/booking.js:35	
+nq6gpo	ok	This booking isn't in the trip	這個旅行中沒有此預訂	src/ui/screens/booking.js:35	
+69ckwu	draft	On the plan	已在行程中	src/ui/screens/booking.js:52	Note: the heading of the plan items that stand for a booking, on the details screen of a file or booking (Plan: 予定/行程).
+oozr11	ok	Plan item	行程項目	src/ui/screens/booking.js:55	Note: Taiwan wording; Plan is 行程.
+1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	請核對：這是 annai 逐項標記之前 Shiori 讀取的預訂。請告訴她是否正確，或哪裡不對。	src/ui/screens/booking.js:73	Note: Taiwan wording; a banner on a booking from before, cleared by telling her it's right; 請核對 as the Check this chip.
+bamrei	ok	Change it	修改	src/ui/screens/booking.js:80	
+2egm5v	ok	The original	原件	src/ui/screens/booking.js:95	Note: Taiwan wording; as Open the original (開啟原件).
+d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:98	{0} = shortName(all.names, lonely)
+t8quxl	ok	Download	下載	src/ui/screens/booking.js:101	
+iy42pb	ok	check	待核對	src/ui/screens/booking.js:117	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
+1s0er5c	ok	Shiori isn't sure of this	Shiori 對這一項不確定	src/ui/screens/booking.js:118	Note: Taiwan wording; read by screen readers for the check mark.
+8icj76	ok	Plan	行程	src/ui/screens/booking.js:130	
+98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:162	
 19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:13	
@@ -1582,10 +1588,9 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	此頁
 ata72m	ok	Trace	記錄	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	無法繪製此頁面；外掛程式的錯誤在{0}中。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:56	
-43f6md	ok	Details	詳細資料	src/ui/screens/file.js:20	Note: Taiwan wording: 詳細資料, as apps there name a details page; the crumb back to a plan item's details.
-10rafvo	ok	This trip isn't on this device	此裝置上沒有這個旅行	src/ui/screens/file.js:49	
-1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/file.js:49	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:51	
+17o4v1i	ok	Conversation	對話	src/ui/screens/file.js:20	
+1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:20	
+43f6md	ok	Details	詳細資料	src/ui/screens/file.js:20	Note: Taiwan wording: 詳細資料, as apps there name a details page; the crumb back to a plan item's details; also the crumb back to a file's or booking's details screen, from the raw file screen.
 krcze5	ok	This file was deleted. You can bring back a version below.	此檔案已刪除。你可以在下方還原某個版本。	src/ui/screens/file.js:55	
 1jlj988	ok	Delete file	刪除檔案	src/ui/screens/file.js:61	
 1ygxf36	ok	Tap again to delete	再點一次以刪除	src/ui/screens/file.js:61	
@@ -1597,7 +1602,6 @@ lewgh4	ok	Save	儲存	src/ui/screens/file.js:119
 1m183es	ok	Open the photo full size	放大檢視照片	src/ui/screens/file.js:148	
 wbyn1d	ok	Look at this part of {0}.	請看{0}的這一部分。	src/ui/screens/file.js:153	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
 129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	此瀏覽器無法顯示這張照片。它在 Safari 中可以顯示，用「分享」方式匯出時會盡可能轉換格式。	src/ui/screens/file.js:160	Note: A Share export is the export panel's "Share" choice (分享), the same word as the platform's Share button.
-t8quxl	ok	Download	下載	src/ui/screens/file.js:170	
 4g2gbm	ok	Taken {0}	拍攝於{0}	src/ui/screens/file.js:179	{0} = takenText(m.taken)
 z4tcw5	ok	Stored as taken	按原樣儲存	src/ui/screens/file.js:180	
 1v3hapr	ok	Where it was taken	拍攝地點	src/ui/screens/file.js:183	
@@ -1666,8 +1670,6 @@ sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest;
 3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:354	
 12cufy9	ok	This isn't on the plan	這不在行程中	src/ui/screens/item.js:24	Note: Taiwan wording; Plan is 行程.
 1yfxfa6	ok	Go to the plan	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
-7862xj	ok	It may have been deleted or renamed.	它可能已被刪除或重新命名。	src/ui/screens/item.js:25	Note: Taiwan wording: 重新命名.
-oozr11	ok	Plan item	行程項目	src/ui/screens/item.js:36	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.
 dqozwm	ok	All day	全天	src/ui/screens/item.js:41	
 13ktogn	ok	Booked: {0}	預訂：{0}	src/ui/screens/item.js:50	{0} = String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`); Note: Taiwan wording; a link to the booking a plan item stands for.
@@ -2216,7 +2218,6 @@ zby7kj	ok	60 times: an hour takes a minute	60 倍：一小時只需一分鐘	src
 194x2x3	ok	How far it has got	進度	src/ui/screens/simulate.js:83	
 j88ayy	ok	Resume	繼續	src/ui/screens/simulate.js:86	
 dy7n3b	ok	Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.	可以在「此刻」「駕駛中」和「對話」中觀看；Shiori 會像開著 GPS 時一樣喚醒。開啟另一個旅行會停止它。	src/ui/screens/simulate.js:88	Note: The screens' names, quoted.
-17o4v1i	ok	Conversation	對話	src/ui/screens/simulate.js:89	
 1ifawmf	ok	The trip	這個旅行	src/ui/screens/simulate.js:89	
 1djwe5m	ok	The simulation stopped: {0}	模擬已停止：{0}	src/ui/screens/simulate.js:98	{0} = s.error
 1pc6r71	ok	You stopped the simulation.	你停止了模擬。	src/ui/screens/simulate.js:98	

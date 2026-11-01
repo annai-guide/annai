@@ -83,7 +83,7 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
   await expect(tab()).toHaveText('Plan');
-  await page.getByRole('link', { name: 'Open the original' }).click();
+  await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: /avis\.txt/ })).toBeVisible();
   await expect(tab()).toHaveText('Plan');
   await page.getByRole('main').locator('.crumbs a').click();
@@ -94,8 +94,10 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await expect(tab()).toHaveText('Plan');
   // From the trip's own files, back is the trip, as before.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
-  await page.getByRole('link', { name: /avis\.txt/ }).first().click();
+  await page.getByRole('region', { name: 'Files', exact: true }).getByRole('link', { name: /Avis TESTCAR1/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
   await expect(tab()).toHaveText('Trips');
+  await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Alaska'); // the crumb names the trip
   await page.getByRole('main').locator('.crumbs a').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
 });
