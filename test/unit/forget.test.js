@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, SYS, SYS_PLUGINS } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, backupState, SYS, SYS_PLUGINS } from '../../src/core/scopes.js';
 import { forget } from '../../src/core/forget.js';
 import { record } from '../../src/core/agent/log.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -59,7 +59,7 @@ test('forget: log entries that match go, with the content only they named', asyn
   await record(store, SYS, { type: 'plugin.error', actor: 'plugin:tides', data: { message: 'boom' } });
   const r = await forget(store, SYS, { events: (e) => e.actor === 'plugin:tides' && Boolean(e.refs?.length) });
   assert.deepEqual(r, { files: 0, events: 1, bytes: 3000 });
-  assert.deepEqual((await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS))).map((e) => e.type), ['plugin.error']);
+  assert.deepEqual((await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS))).map((e) => e.type), ['plugin.error', 'forget']);
 });
 
 test('forget: nothing that matches changes nothing', async () => {
@@ -85,4 +85,27 @@ test("forget reads only the content it frees, never a list of every blob there i
   assert.deepEqual(r, { files: 0, events: 2, bytes: 'v1 code'.length });
   assert.equal(listed, 0);
   assert.equal(await stored(store, 'v1 code'), false);
+});
+
+test("forget: a scope's last entry number never falls, so a backup made before the forget reads changed after it", async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Testville' });
+  await ws.write(trip, '/files/a.pdf', 'pdf bytes', { author: 'user' });
+  const last = () => store.tx(['events'], 'readonly', (t) => t.lastSeq(trip));
+  const held = await last();
+  await store.tx(['scopes'], 'readwrite', async (t) => t.putScope({ .../** @type {any} */ (await t.getScope(trip)), backup: { at: 1, seq: held } }));
+  await ws.delete(trip, '/files/a.pdf', { author: 'user' });
+  const top = await last();
+  await forget(store, trip, { history: (p) => p === '/files/a.pdf' });
+  assert.ok((await last()) > top, 'the forget is the newest entry, numbered after every entry it removed');
+  assert.equal((await backupState(store, trip)).changed, true);
+  const [e] = await store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { reverse: true, limit: 1 }));
+  assert.equal(e.type, 'forget');
+  assert.deepEqual(e.refs ?? [], []);
+  // A second forget keeps one such entry, not one per call: callers that keep a file without history (the push mirror) don't grow the log.
+  await ws.write(trip, '/notes/n.md', 'x', { author: 'user' });
+  await forget(store, trip, { history: (p) => p === '/notes/n.md' });
+  const forgets = await store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: ['forget'] }));
+  assert.equal(forgets.length, 1);
+  assert.ok(forgets[0].seq > e.seq);
 });
