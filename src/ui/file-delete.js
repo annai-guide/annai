@@ -98,7 +98,7 @@ export async function restoreDeleted(ctx, id, path) {
       ctx.go(bookingHref(id, path, `#/trip/${encodeURIComponent(id)}`));
       return;
     }
-    ctx.notices.toast(t`A file named ${name} is there now: rename or delete it first.`);
+    ctx.notices.toast(t`A file named ${name} is there now, so this one can't come back.`);
     return;
   }
   /** @param {string[]} paths */

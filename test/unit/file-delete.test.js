@@ -209,7 +209,7 @@ test("Restore with another file at the deleted file's path brings back nothing o
   assert.deepEqual(await restoreGroup(ws, trip, '/files/hotel.pdf'), { restored: [], taken: ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json'] });
   const ctx = { ...ctxOf(ws), go: () => assert.fail('stays where it is'), render: async () => {} };
   await restoreDeleted(ctx, trip, '/files/hotel.pdf');
-  assert.deepEqual(ctx.toasts, ['A file named hotel.pdf is there now: rename or delete it first.']);
+  assert.deepEqual(ctx.toasts, ["A file named hotel.pdf is there now, so this one can't come back."]);
   assert.deepEqual((await ws.list(trip, '/bookings/')).concat(await ws.list(trip, '/plan/')), []);
   assert.equal(await ws.readText(trip, '/files/hotel.pdf'), '%PDF-1.4 Another hotel');
 });
