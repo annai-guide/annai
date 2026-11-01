@@ -157,3 +157,22 @@ test('Restore of a file deleted before Delete marked its group brings back the f
   assert.deepEqual(await restoreGroup(ws, trip, '/files/old.pdf'), { restored: ['/files/old.pdf'], taken: [] });
   assert.equal((await ws.list(trip, '/files/'))[0]?.type, 'application/pdf');
 });
+
+test("Delete frees only the bookings' and plan items' current life: a kept group's earlier history under the same paths stays, and its Restore brings them back", async () => {
+  const { ws, trip, details } = await hotel();
+  const file = /** @type {any} */ (await ws.read(trip, '/files/hotel.pdf')).entry;
+  await record(ws.store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: file.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: file.hash, type: 'application/pdf' }] });
+  await deleteGroup(ctxOf(ws), trip, await details());
+  // Shiori reads a note and writes the same two paths again (bookings are named by short name, calendar items by UID).
+  await ws.write(trip, '/files/note.pdf', '%PDF-1.4 A different note', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/bookings/stay.json', { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/note.pdf', title: 'Note stay' }, { author: 'shiori' });
+  await ws.write(trip, '/plan/check-in.json', { id: 'check-in', title: 'Check in at the note', fixed: true, booking: '/trip/bookings/stay.json' }, { author: 'shiori' });
+  const ctx = ctxOf(ws);
+  await deleteGroup(ctx, trip, /** @type {any} */ (fileDetails(await readTripFiles(ws, ws.store, trip), '/files/note.pdf')));
+  assert.match(ctx.toasts[0], /bytes freed\.$/);
+  assert.deepEqual(await ws.history(trip, '/files/note.pdf'), []);
+  const r = await restoreGroup(ws, trip, '/files/hotel.pdf');
+  assert.deepEqual(r, { restored: ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json'], taken: [] });
+  assert.equal((await ws.readJSON(trip, '/bookings/stay.json')).title, 'Hotel Aurora Test');
+  assert.equal((await ws.readJSON(trip, '/plan/check-in.json')).title, 'Check in');
+});
