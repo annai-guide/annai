@@ -69,6 +69,11 @@ test('six photos at most go with it, spread over the trip', async () => {
   assert.deepEqual(recapPhotos(j).map((p) => p.path), ['/files/2026-11-27-1000.jpg', '/files/2026-11-27-1010.jpg', '/files/2026-11-27-1030.jpg', '/files/2026-11-27-1040.jpg', '/files/2026-11-27-1060.jpg', '/files/2026-11-27-1070.jpg']);
 });
 
+test('the recap prompt tells the model never to write coordinates, and what to call a stop it has no name for', () => {
+  assert.match(RECAP_SYSTEM, /never write coordinates/i);
+  assert.match(RECAP_SYSTEM, /call it a stop/i);
+});
+
 test('the utility model writes /trip/recap.md, with request copies of the photos; the log names what was sent (spec §13, §4.8, §4.9)', async () => {
   const k = await aTrip();
   const r = await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec() });

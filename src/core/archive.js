@@ -167,7 +167,7 @@ const EVENT_SCHEMA = {
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
  *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions. Unless places is true, nothing says where
  *   anything was: no photo's place, no History (Shiori's lookups copy the live position into it) whatever include.history says,
- *   no /watches/, and a recap without coordinate pairs.
+ *   no /watches/, and every .md and .txt file (notes, memory, the recap) without coordinate pairs; JSON is never touched.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
@@ -213,7 +213,10 @@ export async function exportArchive(store, opts) {
       /** @type {Uint8Array} */
       let bytes = await readBlob(store, f.hash, f.path);
       let hash = f.hash;
-      if (noPlaces && f.path === RECAP_FILE) hash = await sha256Hex(bytes = utf8(text(bytes).replace(POINT, '')));
+      if (noPlaces && TEXT_FILE.test(f.path)) {
+        const clean = withoutPoints(bytes);
+        if (clean !== bytes) hash = await sha256Hex(bytes = clean);
+      }
       // An image is known by its bytes, not by the type it was saved under.
       const sniffed = sniffImageType(bytes);
       if (!include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
@@ -303,11 +306,32 @@ function withoutPhotoMeta(e, include) {
   return { ...e, data };
 }
 
-/** A coordinate pair in a recap ("unnamed, near 47.612, -122.335"), with its "near", brackets and comma. Three decimals, so prices stay. */
-const PAIR = String.raw`(?<![\d.])-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}`;
-const POINT = new RegExp(String.raw`(?:\s*,)?\s*\bnear\s+(?:\(\s*${PAIR}\s*\)|${PAIR})|\s*\(\s*${PAIR}\s*\)|\s*${PAIR}`, 'gi');
-/** after/recap.js's RECAP_FILE (importing it would bring in the model code). */
-const RECAP_FILE = '/recap.md';
+// A position quoted in a trip's text (the recap, notes, memory), as a Share without places removes it. Matched: a pair of numbers with
+// three decimals or more ("47.612, -122.335", also "(…)", with ° and N/S/E/W: "47.612° N, 122.335° W", "47.612N 122.335W"); a labelled pair
+// ("lat 47.612, lng -122.335", "latitude: …, longitude: …", any decimals); and after "near", a pair with two decimals ("near 47.61, -122.33").
+// Not matched: a bare pair with two decimals (prices, "12.50, 14.00"), two numbers with only a space between and no hemisphere,
+// degrees-minutes-seconds, a hemisphere written before its number, and the place's name.
+const HEM = String.raw`(?:\s*°)?`;
+/** @param {number} d the fewest decimals */
+const num = (d) => String.raw`-?\d{1,3}\.\d{${d},}(?!\.?\d)`;
+/** @param {number} d */
+const commaPair = (d) => String.raw`(?<![\d.]|\d,)${num(d)}${HEM}\s*,\s*${num(d)}${HEM}`;
+/** @param {number} d */
+const hemispherePair = (d) => String.raw`(?<![\d.]|\d,)${num(d)}\s*°?\s*[NS]\b\s*,?\s*${num(d)}\s*°?\s*[EW]\b`;
+const ANY = String.raw`-?\d{1,3}(?:\.\d+)?${HEM}`;
+const LABELLED = String.raw`\blat(?:itude)?\b\s*[:=]?\s*${ANY}\s*[,;]?\s*(?:and\s+)?\b(?:lng|lon|long|longitude)\b\s*[:=]?\s*${ANY}`;
+const PLAIN = `(?:${LABELLED}|${commaPair(3)}|${hemispherePair(3)})`;
+const NEARBY = `(?:${commaPair(2)}|${hemispherePair(2)})`;
+const POINT = new RegExp(String.raw`(?:\s*,)?\s*\bnear\s+(?:\(\s*${NEARBY}\s*\)|${NEARBY})|\s*\(\s*${PLAIN}\s*\)|\s*${PLAIN}`, 'gi');
+/** Trip text a Share without places removes positions from: notes, memory, the recap, whoever wrote them. Never JSON: the plan's and bookings' places stay. */
+const TEXT_FILE = /\.(?:md|txt)$/i;
+
+/** @param {Uint8Array} bytes @returns {Uint8Array} the same bytes when there is no position in them */
+function withoutPoints(bytes) {
+  const was = text(bytes);
+  const now = was.replace(POINT, '');
+  return now === was ? bytes : utf8(now);
+}
 
 /**
  * The photo type of some bytes: what they are when they say (a GIF is no photo, as at ingest),

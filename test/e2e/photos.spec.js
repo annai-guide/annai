@@ -192,8 +192,12 @@ test('a Share without places greys out History, with the reason; places on enabl
   await expect(history).toBeDisabled();
   await expect(history).not.toBeChecked();
   await expect(why).toBeVisible();
+  const reason = await why.getAttribute('id');
+  expect(reason).toBeTruthy();
+  await expect(history).toHaveAttribute('aria-describedby', /** @type {string} */ (reason));
   await places.check();
   await expect(history).toBeEnabled();
+  await expect(history).not.toHaveAttribute('aria-describedby');
   await expect(why).toBeHidden();
   await places.uncheck();
   await page.getByLabel('Backup: everything').check();
