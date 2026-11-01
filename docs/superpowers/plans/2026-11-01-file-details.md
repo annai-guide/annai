@@ -73,7 +73,7 @@ These inputs are the most likely to bite. Each has its test in the task named.
 
 1. **A file with two bookings** (outbound and return flights): one row, "2 flights · Nov 20, Nov 27"; one screen with two blocks in time order, each with its own heading, Change it and Open in Maps; a Plan tap on the second lands on its block, focused. Tasks 1, 2, 3, 4.
 2. **A booking with no file** (`source` names no file under `/files/`, or one that's gone): its block alone, with no preview, Open or Download, and still Ask, Change it and Delete. A `/files/` source that's gone still says "The original, X, isn't in the trip." Tasks 1, 3, 5.
-3. **A calendar (.ics) file:** its row says "Plan items from a calendar". Its screen lists those items with their days, each opening its plan item, and has Change it (it is a text file). Delete removes the file and those items. It sorts after the dated files. Tasks 1, 2, 3, 5.
+3. **A calendar (.ics) file:** its row says "Plan items from a calendar". Its screen lists those items with their days, each opening its plan item, and has no Change it: Open leads to its editor (the coordinator's ruling, 2026-11-01). Delete removes the file and those items. It sorts by its first item's day. Tasks 1, 2, 3, 5.
 4. **A file still waiting to be read:** its row says "Waiting for Shiori to read it", and so does its screen under the heading. It has Open, Download, Ask and Delete, and no Change it (a PDF). Tasks 1, 2, 3.
 5. **A photo that became a booking:** it is in Files (a plain photo isn't), its screen shows the photo as the preview, and Open shows the photo full size. A plain photo opened by its address (a Conversation chip) gets the screen too. Tasks 1, 2, 3.
 6. **Old links:** `#/trip/<id>/booking?path=/bookings/…` from Shiori's cards, the Conversation's chips, the Plan and Now, and old `from=#/trip/<id>/booking?…` crumbs. Each opens the screen at that booking's block. Tasks 3, 4.
@@ -137,7 +137,7 @@ export function deletionOf(d)                            // { file: string | nul
 - **`fileRows`:** list only files matching `/^\/files\/[^/]+$/`, with today's photo rule (`isPhotoType` with nothing from it → left out).
   - `became`: the bookings whose `inTrip(source)` is the file, in time order (null `at` last, then by path); then the plan items made from it (file-entry `source`), in time order. Otherwise waiting / photo / nothing, as today.
   - `name`: Shiori's short name when `names` has one; else the booking's title when the file became exactly one booking with a non-blank title; else `real`.
-  - Order: by the earliest booking `day` (rows with no booking day after all those with one); then `sortWords(name)`; then `sortWords(real)`. Only bookings' days count (spec, My call 1).
+  - Order: by the earliest day of what the file became, its bookings' and its plan items' alike (rows with no day after all those with one); then `sortWords(name)`; then `sortWords(real)`. The coordinator's ruling (2026-11-01): a calendar file sorts by its first item's day.
 - **`fileDetails(t, path)`:** `path` may start with `/trip`; strip it (`inTrip`).
   - **A file** (`/^\/files\/[^/]+$/` and in `t.files`): `file` = its row, built by the same private `rowOf()` that `fileRows` uses but **without** the photo filter. A plain photo opened by its address gets a row.
     - `blocks`: its bookings (object values only), in the same order as `became`. Each block's `items` = the plan items with `bookingRef(item.booking) === block.path`, in time order. That is every one of them, with or without notes.
@@ -161,9 +161,9 @@ const two = { files, names: {}, toRead: ['/files/new.pdf'], fallbackTz: AK,
     { path: '/plan/grill.json', item: { title: 'Dinner at the grill', booking: '/bookings/said.json' } },
     { path: '/plan/ics-a-1.json', item: { title: 'Aurora walk', start: { at: '2026-11-22T22:00:00-09:00', tz: AK } }, source: '/files/trip.ics' }] };
 
-test('fileRows: a file with two flights is one row, its bookings in time order with their days; rows by first booking day, then name; no day last', () => {
+test('fileRows: a file with two flights is one row, its bookings in time order with their days; rows by the first day of what they became (a calendar by its items), then name; no day last', () => {
   const rows = fileRows(two);
-  assert.deepEqual(rows.map((r) => r.real), ['flight.pdf', 'hotel.png', 'new.pdf', 'pasted-2026-10-28-0310.txt', 'trip.ics']);
+  assert.deepEqual(rows.map((r) => r.real), ['flight.pdf', 'hotel.png', 'trip.ics', 'new.pdf', 'pasted-2026-10-28-0310.txt']);
   assert.equal(rows[0].name, 'flight.pdf'); // two bookings: neither title names the file
   assert.deepEqual(rows[0].became.map((b) => b.kind === 'booking' && [b.path, b.day]), [['/bookings/out.json', '2026-11-20'], ['/bookings/back.json', '2026-11-27']]);
   assert.equal(rows[1].name, 'Hotel Aurora Test');
@@ -345,8 +345,7 @@ test('Files: one row per file, by its first booking day then name, each one link
   3. `askAboutButton(ctx, refs)`. The refs are the file (`name: file.name`) when present, then each block's booking (`name`: title, else kind word).
   4. "Change it":
      - one block → `fileHref(id, b.path, here)`;
-     - no block and `isTextType(file.type)` → `fileHref(id, file.path, here)`;
-     - otherwise none.
+     - otherwise none. A text file with no booking gets none: Open already leads to its editor (the coordinator's ruling, 2026-11-01).
   5. One block with a place: Open in Maps.
   6. (Task 5 adds Delete last.)
 - **Focus (spec goal 6):** when `d.focus` names a block and there are several, `requestAnimationFrame(() => { if (h2.isConnected) { h2.scrollIntoView({ block: 'start' }); h2.focus({ preventScroll: true }); } })` after building. The shell's own `scrollTo` runs before that frame.
@@ -403,7 +402,7 @@ test('a booking with no file: its block alone, no preview, Open or Download; its
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(1);
 });
 
-test('a calendar file lists its plan items with their days, each opening its item and coming back; Change it is its editor', async ({ page }) => {
+test('a calendar file lists its plan items with their days, each opening its item and coming back; no Change it, and Open is its editor', async ({ page }) => {
   // Trip → walks.ics row.
   const made = page.getByRole('region', { name: 'Plan items from a calendar' });
   await expect(made.getByRole('link')).toHaveText(['Aurora walk · Sun, Nov 22']);
@@ -411,7 +410,8 @@ test('a calendar file lists its plan items with their days, each opening its ite
   await expect(page.getByRole('heading', { name: 'Aurora walk' })).toBeVisible();
   await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('walks.ics');
-  await page.getByRole('link', { name: 'Change it' }).click();
+  await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page.locator('#file-content')).toHaveValue(/BEGIN:VCALENDAR/);
 });
 
@@ -683,6 +683,7 @@ test('the raw file screen says what else its Delete removes, and removes it', as
 6. **Back after Delete** goes to the trip only when the screen it would go back to was a screen of something deleted (a plan item's details, this file's screens). The Plan, Now, the Conversation and the trip are returned to as they are.
 7. **A plain photo** opened by its address (a Conversation chip) gets the details screen, though Files doesn't list it.
 8. **A booking whose `/files/` source is gone** keeps today's line "The original, X, isn't in the trip." A booking whose source isn't under `/files/` shows nothing about a file. The line "This booking doesn't say which file it came from." is gone.
-9. **The list order** counts bookings' days only (spec My call 1), so a calendar file sorts with the undated files.
+9. **The list order** counts the days of everything a file became, bookings and plan items alike, so a calendar file sorts by its first item's day (the coordinator's ruling, 2026-11-01).
+12. **A text file with no booking has no Change it.** Open already leads to its editor (the coordinator's ruling, 2026-11-01).
 10. **The mixed-kinds second line** reads "1 flight · 1 stay".
 11. **The size raise** (Task 6), in KiB.
