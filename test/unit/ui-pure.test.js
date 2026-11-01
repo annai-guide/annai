@@ -894,6 +894,14 @@ test('cameFrom: the trip, the Conversation, the Plan, Now, an item, and an old b
   assert.equal(cameFrom('#/talk', 't-1', 't-2'), null); // the Conversation is another trip's now
   assert.deepEqual(cameFrom('#/trip/t-1/booking?path=%2Fbookings%2Fa.json', 't-1', null)?.name, 'booking');
   assert.equal(cameFrom('#/settings', 't-1', 't-1'), null);
+  // The Plan, Now and an item are crumbs too; the Plan and Now by their plain addresses mean the open trip's.
+  assert.deepEqual(cameFrom('#/trip/t-1/plan', 't-1', 't-1'), { hash: '#/trip/t-1/plan', name: 'plan' });
+  assert.deepEqual(cameFrom('#/plan', 't-1', 't-1'), { hash: '#/plan', name: 'plan' });
+  assert.deepEqual(cameFrom('#/plan', 't-1', 't-2'), { hash: '#/trip/t-1/plan', name: 'plan' }); // another trip is open now: this one's own Plan
+  assert.deepEqual(cameFrom('#/now', 't-1', 't-1'), { hash: '#/now', name: 'now' });
+  assert.equal(cameFrom('#/now', 't-1', 't-2'), null);
+  assert.deepEqual(cameFrom('#/trip/t-1/item?path=%2Fplan%2Fa.json', 't-1', null), { hash: '#/trip/t-1/item?path=%2Fplan%2Fa.json', name: 'item' });
+  assert.deepEqual(cameFrom('#/trip/t-1/recap', 't-1', null), { hash: '#/trip/t-1/recap', name: 'recap' });
 });
 
 test('recordHref: a file the user gave and a booking open the details screen; a plan item its own; anything else the raw file', () => {
