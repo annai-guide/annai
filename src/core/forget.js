@@ -8,19 +8,41 @@
  * backupState, backup-auto.js changedSince). Only the newest such entry is kept, so a file kept without history doesn't grow the log.
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').EventRecord} EventRecord
- * @typedef {{ files?: (path: string) => boolean, history?: (path: string) => boolean, events?: (e: EventRecord) => boolean }} Match
- *   files: current files to delete; history: file.write and file.delete entries (by data.path) to delete; events: any other entries
+ * @typedef {{ files?: (path: string) => boolean, history?: (path: string) => boolean, events?: (e: EventRecord) => boolean,
+ *   mustFree?: (path: string) => boolean }} Match
+ *   files: current files to delete; history: file.write and file.delete entries (by data.path) to delete; events: any other entries;
+ *   mustFree: paths whose every version (as the history entries deleted name them) must be freed, or nothing is forgotten at all
+ *   (Delete in Files: a file the conversation still names is kept whole, history and all)
+ * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'elsewhere' }} Forgot
+ *   kept: null when it forgot; else why nothing was: a mustFree version is still named in this scope's log ('here'), or by a file or
+ *   another scope ('elsewhere')
  */
 
 const HISTORY = ['file.write', 'file.delete'];
+
+/** Thrown inside the transaction to roll it back when a mustFree version is still named. */
+class Kept {
+  /** @param {'here' | 'elsewhere'} where */
+  constructor(where) { this.where = where; }
+}
 
 /**
  * In one transaction: deletes the scope's matching files, history entries and log entries, then
  * every content they named that no file and no log entry names any more.
  * @param {Store} store @param {string} scope @param {Match} match
- * @returns {Promise<{ files: number, events: number, bytes: number }>}
+ * @returns {Promise<Forgot>}
  */
-export function forget(store, scope, match) {
+export async function forget(store, scope, match) {
+  try {
+    return await forgetIn(store, scope, match);
+  } catch (e) {
+    if (e instanceof Kept) return { files: 0, events: 0, bytes: 0, kept: e.where };
+    throw e;
+  }
+}
+
+/** @param {Store} store @param {string} scope @param {Match} match @returns {Promise<Forgot>} */
+function forgetIn(store, scope, match) {
   return store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', async (t) => {
     const top = await t.lastSeq(scope);
     /** @type {Set<string>} */
@@ -46,6 +68,15 @@ export function forget(store, scope, match) {
       await t.deleteEvent(scope, e.seq);
       for (const h of [e.data?.old, e.data?.new, ...(e.refs ?? [])]) if (typeof h === 'string') named.add(h);
     }
+    if (match.mustFree) {
+      for (const e of doomed.values()) {
+        if (typeof e.data?.path !== 'string' || !match.mustFree(e.data.path)) continue;
+        for (const h of [e.data.old, e.data.new]) {
+          if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
+          throw new Kept((await t.blobInUse(h, { exceptScope: scope })) ? 'elsewhere' : 'here'); // rolls the transaction back
+        }
+      }
+    }
     let bytes = 0;
     // Each content freed is read for its size alone: never a list of every blob, which a push sync would pay each time.
     for (const h of named) {
@@ -60,6 +91,6 @@ export function forget(store, scope, match) {
       const now = Date.now();
       await t.putEvent({ scope, seq: top + 1, ts: now, at: now, type: 'forget', actor: 'system', data: { files, events: doomed.size, bytes } });
     }
-    return { files, events: doomed.size, bytes };
+    return { files, events: doomed.size, bytes, kept: null };
   });
 }
