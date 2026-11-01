@@ -1,5 +1,5 @@
 {
-  "build": "59ccf4d9fb8b",
+  "build": "42f8ecd06a10",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -208,7 +208,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/file-delete.js": "6a33af0255ff",
+    "/src/ui/file-delete.js": "f28f1f1010bf",
     "/src/ui/format.js": "6dd7252ce335",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
@@ -241,11 +241,11 @@
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "190ae121753e",
     "/src/ui/screens/backups.js": "cb4c5d840205",
-    "/src/ui/screens/booking.js": "5524b746a2da",
+    "/src/ui/screens/booking.js": "1343a72a72b6",
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "03c80bf16505",
     "/src/ui/screens/ext.js": "b2e02413774e",
-    "/src/ui/screens/file.js": "c9fb0e691afa",
+    "/src/ui/screens/file.js": "f5e678fb95ab",
     "/src/ui/screens/import.js": "fd44391c00ce",
     "/src/ui/screens/item.js": "bc47eb80f938",
     "/src/ui/screens/mcp.js": "8594db2419e8",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "661c91d568cb",
-    "/l10n/zh-Hans.json": "2d6546e58b6e",
-    "/l10n/zh-Hant.json": "d8785b79b787"
+    "/l10n/ja.json": "1f81bf311224",
+    "/l10n/zh-Hans.json": "1ce326950698",
+    "/l10n/zh-Hant.json": "6be10c197093"
   }
 }
