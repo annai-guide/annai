@@ -8,6 +8,7 @@ import { record } from '../../src/core/agent/log.js';
 import { resolveEvent } from '../../src/core/agent/transcript.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { noteQueries } from './store-spy.js';
 
 async function setup() {
   const store = createMemoryStore();
@@ -174,6 +175,21 @@ test("Delete: a PDF the conversation names (a tool result's document) is kept, a
   const r = await forget(g.store, g.trip, { history: (p) => g.paths.includes(p), mustFree: (p) => p === '/files/h.pdf' });
   assert.deepEqual(r, { files: 0, events: 0, bytes: 0, kept: 'here' });
   assert.deepEqual(await snapshot(g.store), before);
+});
+
+test("Delete: a kept Delete never walks the trip's whole log (no untyped listEvents), whether the conversation or another deleted copy keeps it", async () => {
+  const g = await group();
+  await record(g.store, g.trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: g.h2, mediaType: 'application/pdf' } }, blobs: [{ hash: g.h2, type: 'application/pdf' }] });
+  const queries = noteQueries(g.store);
+  assert.equal((await g.del()).kept, 'here');
+  assert.ok(queries.length > 0 && queries.every((q) => Array.isArray(q.types)), JSON.stringify(queries));
+  // Another deleted copy of the same bytes names it through file history: 'history', and still no untyped read.
+  const h = await group();
+  await h.ws.write(h.trip, '/files/copy.pdf', PDF2, { author: 'user', type: 'application/pdf' });
+  await h.ws.delete(h.trip, '/files/copy.pdf', { author: 'user' });
+  const more = noteQueries(h.store);
+  assert.equal((await h.del()).kept, 'history');
+  assert.ok(more.length > 0 && more.every((q) => Array.isArray(q.types)), JSON.stringify(more));
 });
 
 test("Delete: a photo the user sent in the conversation keeps the file; so does an old version it names, as it's all or nothing", async () => {

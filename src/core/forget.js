@@ -59,10 +59,10 @@ function forgetIn(store, scope, match) {
     }
     /** @type {Map<number, EventRecord>} */
     const doomed = new Map();
+    // The file history, read through the type index: a log can hold a point a second of live mode, and is never walked whole to tell why a version is kept.
+    const history = match.history || match.mustFree ? await t.listEvents(scope, { types: HISTORY }) : [];
     if (match.history) {
-      for (const e of await t.listEvents(scope, { types: HISTORY })) {
-        if (typeof e.data?.path === 'string' && match.history(e.data.path, e)) doomed.set(e.seq, e);
-      }
+      for (const e of history) if (typeof e.data?.path === 'string' && match.history(e.data.path, e)) doomed.set(e.seq, e);
     }
     if (match.events) for (const e of await t.listEvents(scope)) if (match.events(e)) doomed.set(e.seq, e);
     for (const e of doomed.values()) {
@@ -75,9 +75,9 @@ function forgetIn(store, scope, match) {
         for (const h of [e.data.old, e.data.new]) {
           if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
           if (await t.blobInUse(h, { exceptScope: scope })) throw new Kept('elsewhere'); // rolls the transaction back
-          const names = (/** @type {EventRecord} */ x) => [x.data?.old, x.data?.new, ...(x.refs ?? [])].includes(h);
-          const log = (await t.listEvents(scope)).filter((x) => !doomed.has(x.seq) && names(x));
-          throw new Kept(log.some((x) => !HISTORY.includes(x.type)) ? 'here' : 'history');
+          // Some other file history entry names it: 'history' (also when the conversation does too: still used elsewhere in this trip); else the conversation.
+          const other = history.some((x) => !doomed.has(x.seq) && [x.data?.old, x.data?.new].includes(h));
+          throw new Kept(other ? 'history' : 'here');
         }
       }
     }
