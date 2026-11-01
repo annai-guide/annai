@@ -41,7 +41,7 @@ export async function deleteGroup(ctx, id, d) {
   const [file, bookings, items] = [want.file, want.bookings, want.items].map((x) => [x].flat().filter((p) => p && there.has(p)));
   const paths = /** @type {string[]} */ ([...file, ...bookings, ...items]);
   try {
-    await ctx.ws.writeMany(id, paths.map((path) => ({ path, content: null })), { author: 'user', ...(file.length ? { with: file[0] } : {}) });
+    await ctx.ws.writeMany(id, paths.map((path) => ({ path, content: null })), { author: 'user', ...(file.length ? { with: file[0], ...(d.file && d.file.name !== d.file.real ? { name: d.file.name } : {}) } : {}) });
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.toast(messageOf(e));
     return null;
@@ -81,11 +81,10 @@ function nameOf(d) {
 
 /**
  * Restore on a deleted file's screen (Task 7): the file and what its Delete took with it (restoreGroup), a toast of what came back and
- * of what couldn't, as something new is at its path; then the file's details screen, or `done` (the raw screen of a file the user didn't
- * give, drawn again). Shiori's short name for it doesn't come back. @param {any} ctx @param {string} id @param {string} path
- * @param {null | (() => unknown)} done
+ * of what couldn't, as something new is at its path; then the file's details screen. Shiori's short name for it doesn't come back.
+ * @param {any} ctx @param {string} id @param {string} path
  */
-export async function restoreDeleted(ctx, id, path, done) {
+export async function restoreDeleted(ctx, id, path) {
   /** @type {{ restored: string[], taken: string[] }} */
   let r;
   try {
@@ -104,6 +103,5 @@ export async function restoreDeleted(ctx, id, path, done) {
   const what = list([path.split('/').pop() ?? path, ...parts(r.restored.filter((p) => p !== path))]);
   const left = parts(r.taken);
   ctx.notices.toast(left.length ? t`Restored ${what}. ${list(left)} didn't come back, as something new is there now.` : t`Restored ${what}`);
-  if (done) await done();
-  else ctx.go(bookingHref(id, path, `#/trip/${encodeURIComponent(id)}`));
+  ctx.go(bookingHref(id, path, `#/trip/${encodeURIComponent(id)}`));
 }

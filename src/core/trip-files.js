@@ -1,7 +1,7 @@
 import { shortName, readNames } from './names.js';
 import { isPhotoType } from './photos.js';
 import { sortWords } from './intl.js';
-import { bookingRef, BOOKING_FILE, PLAN_FILE } from './plan.js';
+import { bookingRef, record, BOOKING_FILE, PLAN_FILE } from './plan.js';
 import { filesToRead } from './handover.js';
 import { validZone, deviceZone, dayIn, instantAt } from './time.js';
 import { inTrip, isGivenFile } from './paths.js';
@@ -21,9 +21,6 @@ import { NotFoundError } from './workspace.js';
  * @typedef {{ path: string, booking: Record<string, any>, at: number | null, day: string | null, items: Planned[] }} Block
  * @typedef {{ file: FileRow | null, blocks: Block[], made: Planned[], focus: string | null }} Details
  */
-
-/** An object, or null. @param {unknown} v @returns {Record<string, any> | null} */
-const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? /** @type {Record<string, any>} */ (v) : null);
 
 /**
  * The zone for a time whose own zone annai doesn't know: the trip's first, else this phone's.
@@ -174,7 +171,7 @@ export function deletionOf(d) {
 }
 
 /**
- * @typedef {{ path: string, real: string, ts: number, actor: string, old: string }} DeletedFile  a file the user gave that was deleted and
+ * @typedef {{ path: string, real: string, name: string, ts: number, actor: string, old: string }} DeletedFile  name: the short name it had (kept on its delete), else real; a file the user gave that was deleted and
  *   kept (Delete in Files frees what nothing else names, so a freed one has no entries left): its newest delete, by whom and when, and
  *   the content it had
  */
@@ -195,11 +192,21 @@ export function deletedFiles(deletes, files) {
   return [...newest.values()]
     .filter((e) => !there.has(e.data.path) && !e.data.moved && typeof e.data.old === 'string')
     .sort((a, b) => b.seq - a.seq)
-    .map((e) => ({ path: e.data.path, real: e.data.path.split('/').pop(), ts: e.ts, actor: e.actor, old: e.data.old }));
+    .map((e) => ({ path: e.data.path, real: e.data.path.split('/').pop(), name: typeof e.data.name === 'string' && e.data.name ? e.data.name : e.data.path.split('/').pop(), ts: e.ts, actor: e.actor, old: e.data.old }));
 }
 
 /** A trip's file.delete entries, oldest first. @param {import('./types.js').Store} store @param {string} id */
 export const deletesOf = (store, id) => store.tx(['events'], 'readonly', (t) => t.listEvents(id, { types: ['file.delete'] }));
+
+/**
+ * What a file's newest Delete took: its entry first, then each entry of the paths that went with it (the deletes marked with the file,
+ * at the same moment). Null when the path was never deleted. @param {import('./types.js').EventRecord[]} deletes a trip's file.delete entries
+ * @param {string} path @returns {import('./types.js').EventRecord[] | null}
+ */
+export function deletedGroup(deletes, path) {
+  const last = deletes.filter((e) => e.data?.path === path).at(-1);
+  return last ? [last, ...deletes.filter((e) => e !== last && e.data?.with === path && e.ts === last.ts && typeof e.data.path === 'string')] : null;
+}
 
 /**
  * Restore on a deleted file's screen: the file at its last version, then each path its Delete took with it (the deletes marked with
@@ -212,14 +219,13 @@ export const deletesOf = (store, id) => store.tx(['events'], 'readonly', (t) => 
  */
 export async function restoreGroup(ws, id, path) {
   const deletes = await deletesOf(ws.store, id);
-  const last = deletes.filter((e) => e.data?.path === path).at(-1);
-  if (!last || typeof last.data.old !== 'string') /* en */ throw new NotFoundError(`a deleted ${path}`);
+  const group = deletedGroup(deletes, path);
+  if (!group || typeof group[0].data.old !== 'string') /* en */ throw new NotFoundError(`a deleted ${path}`);
   const there = new Set((await ws.list(id, '/')).map((f) => f.path));
   /** @type {string[]} */
   const restored = [];
   /** @type {string[]} */
   const taken = [];
-  const group = [last, ...deletes.filter((e) => e !== last && e.data?.with === path && e.ts === last.ts && typeof e.data.path === 'string')];
   if (there.has(path)) return { restored, taken: group.map((e) => e.data.path) };
   for (const e of group) {
     if (there.has(e.data.path)) {

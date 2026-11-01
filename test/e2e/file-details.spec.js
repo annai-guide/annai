@@ -40,11 +40,13 @@ test('a file with two flights: one screen, two blocks in time order, each with i
   await expect(page.getByRole('region', { name: 'On the plan', exact: true })).toHaveCount(0);
   await expect(second.getByRole('region', { name: 'On the plan' })).toContainText('Terminal S.');
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(2);
-  await expect(page.getByRole('region', { name: 'The original' })).toContainText('From itinerary.pdf');
+  // With several bookings the file's region is named by its visible heading, not "The original" (which a booking's block could be).
+  await expect(page.getByRole('region', { name: 'The file', exact: true })).toContainText('From itinerary.pdf');
+  await expect(page.getByRole('region', { name: 'The original' })).toHaveCount(0);
   // The screenshot review: what the file is, under its name; the file's own part headed; a card opens the file, as Open does; a zone
   // note kept on one line.
   await expect(page.locator('.details > .title + .sub')).toHaveText('2 flights · Nov 20, Nov 27');
-  await expect(page.getByRole('region', { name: 'The original' }).getByRole('heading', { level: 2 })).toHaveText('The file');
+  await expect(page.getByRole('region', { name: 'The file', exact: true }).getByRole('heading', { level: 2 })).toHaveText('The file');
   await expect(page.locator('.original .file-card').and(page.locator(':not(a) > .file-card'))).toHaveCount(0);
   await expect(page.locator('dl.facts .zone-note').first()).toHaveText(/^\(.+\)$/);
   const downloading = page.waitForEvent('download');
@@ -348,10 +350,24 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     const deleted = files.locator('details.deleted-files');
     await expect(deleted.locator('summary')).toHaveText('Deleted (1)');
     await deleted.locator('summary').click();
-    await expect(deleted.locator('.trip-file .name')).toHaveText(['booking.pdf']);
+    // Under the name it had in Files (Shiori's short name goes with the file, so the Delete kept it), muted, its chevron hidden from readers.
+    await expect(deleted.locator('.trip-file .name')).toHaveText(['Hotel Aurora Test']);
     await expect(deleted.locator('.trip-file .became')).toHaveText(/^Deleted by you /);
+    await expect(deleted.locator('.file-row .go')).toHaveAttribute('aria-hidden', 'true');
+    await expect(deleted.getByRole('link')).toHaveAccessibleName(/^Hotel Aurora Test Deleted by you [^›]*$/);
     await deleted.getByRole('link').click();
     await expect(page.locator('.original, .pdf-view, .file-card').first()).toBeVisible();
+    // Opened from the trip: the crumb names the trip; its name, then the file's own, and no path line again; Restore sits straight under
+    // the line saying what it brings back, above the preview; and the one version it brings back has no second button or "Current".
+    await expect(page.locator('.crumbs a')).toContainText('Testville');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hotel Aurora Test');
+    await expect(page.getByText('File name: booking.pdf')).toBeVisible();
+    await expect(page.locator('p.sub.mono')).toHaveCount(0);
+    await expect(page.getByText(/^This file was deleted\. Restore brings it back with 1 booking,? and 1 plan item that Shiori read from it\.$/)).toBeVisible();
+    const [restoreAt, previewAt] = await Promise.all([page.getByRole('button', { name: 'Restore', exact: true }), page.locator('.original, .pdf-view, .file-card').first()].map(async (l) => (await l.boundingBox())?.y ?? NaN));
+    expect(restoreAt).toBeLessThan(previewAt);
+    await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(0);
+    await expect(page.getByText('Current', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Restore', exact: true }).click();
     await expect(page.getByText(/^Restored booking\.pdf, 1 booking,? and 1 plan item$/)).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hotel Aurora Test');
@@ -361,6 +377,15 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
   } finally {
     await llm.stop();
   }
+});
+
+test("Delete on a booking's raw screen goes to the trip, not back to the booking's details that it just deleted", async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await openAt(page, trip, '/bookings/said.json', `#/trip/${encodeURIComponent(trip)}`);
+  await page.getByRole('link', { name: 'Change it' }).click();
+  await deleteIt(page, 'Delete file');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
 });
 
 test('a file Shiori never read: Delete leaves nothing under Deleted', async ({ page }) => {

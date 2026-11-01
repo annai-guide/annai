@@ -93,12 +93,14 @@ async function filesSection(ctx, id) {
     rows.length ? h('ul', { class: 'file-list' }, ...rows.map((r) => h('li', { class: 'trip-file' },
       h('a', { class: 'file-row', href: bookingHref(id, r.path, from) },
         h('span', { class: 'name', dir: 'auto', text: r.name }),
-        h('span', { class: 'sub became', text: fileLine(r.became) }))))) : h('p', { class: 'empty', text: t`No files yet.` }),
+        h('span', { class: 'sub became', text: fileLine(r.became) }),
+        h('span', { class: 'go', 'aria-hidden': 'true', text: '›' }))))) : h('p', { class: 'empty', text: t`No files yet.` }),
     adders(ctx, id),
     gone.length ? fold('deleted-files', t`Deleted (${num(gone.length)})`, deletedOpen, id, [h('ul', { class: 'file-list' }, ...gone.map((g) => h('li', { class: 'trip-file' },
       h('a', { class: 'file-row', href: fileHref(id, g.path, from) },
-        h('span', { class: 'name', dir: 'auto', text: g.real }),
-        h('span', { class: 'sub became', text: versionText({ type: 'file.delete', actor: g.actor, ts: g.ts }) })))))]) : null);
+        h('span', { class: 'name', dir: 'auto', text: g.name }),
+        h('span', { class: 'sub became', text: versionText({ type: 'file.delete', actor: g.actor, ts: g.ts }) }),
+        h('span', { class: 'go', 'aria-hidden': 'true', text: '›' })))))]) : null);
 }
 
 /** @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */

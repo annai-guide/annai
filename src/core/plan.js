@@ -40,7 +40,7 @@ export function bookingRef(ref) {
 }
 
 /** An object, or null. @param {unknown} v @returns {Record<string, any> | null} */
-const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? /** @type {Record<string, any>} */ (v) : null);
+export const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? /** @type {Record<string, any>} */ (v) : null);
 
 /**
  * One row's times and where it stands: the start in its own zone (else the fallback's, with a note), the end in its own.
