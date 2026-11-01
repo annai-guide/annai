@@ -1049,11 +1049,11 @@ jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, 
 qq4n52	draft	Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.	已刪除{0}。這趟旅行的其他地方仍在使用相同的內容，因此移到「已刪除」裡，可以從那裡還原。	src/ui/file-delete.js:55	{0} = what
 1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	已刪除{0}。另一趟旅行或另一個檔案有相同的內容，因此移到「已刪除」裡，可以從那裡還原。	src/ui/file-delete.js:56	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
 3ul42n	ok	Deleted {0}. {1} freed.	已刪除{0}，釋放了{1}。	src/ui/file-delete.js:57	{0} = what; {1} = size(r.bytes); Note: Taiwan wording: 刪除 for a file, as Removed {0}. {1} freed. (已移除{0}，釋放了{1}。).
-1q136y3	ok	That version isn't stored on this device.	此裝置上沒有儲存該版本。	src/ui/file-delete.js:97	
-agc3d8	draft	{0} is already back.	{0}已經還原了。	src/ui/file-delete.js:106	{0} = name
-nup6hq	draft	A file named {0} is there now: rename or delete it first.	已有名為{0}的檔案，請先將它重新命名或刪除。	src/ui/file-delete.js:110	{0} = name
-6e9z7l	draft	Restored {0}	已還原{0}	src/ui/file-delete.js:117	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 plan item").
-7stptx	draft	Restored {0}. {1} didn't come back, as something new is there now.	已還原{0}。{1}無法還原，因為原位置已有新的內容。	src/ui/file-delete.js:117	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 plan item").
+1q136y3	ok	That version isn't stored on this device.	此裝置上沒有儲存該版本。	src/ui/file-delete.js:91	
+agc3d8	draft	{0} is already back.	{0}已經還原了。	src/ui/file-delete.js:97	{0} = name
+8xofiv	draft	A file named {0} is there now, so this one can't come back.	已有名為{0}的檔案，所以這個檔案無法還原。	src/ui/file-delete.js:101	{0} = name
+6e9z7l	draft	Restored {0}	已還原{0}	src/ui/file-delete.js:108	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 plan item").
+7stptx	draft	Restored {0}. {1} didn't come back, as something new is there now.	已還原{0}。{1}無法還原，因為原位置已有新的內容。	src/ui/file-delete.js:108	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 plan item").
 la9701	ok	not backed up	未備份	src/ui/format.js:30	
 1h47npq	ok	backed up {0}	{0}已備份	src/ui/format.js:31	{0} = relTime(at, now); Note: {0} is relTime ("2小時前", "剛剛"), so it comes first.
 1sjuc50	ok	backed up {0}, changed since	{0}已備份，之後有更改	src/ui/format.js:31	{0} = relTime(at, now)
