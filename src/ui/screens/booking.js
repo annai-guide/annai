@@ -1,8 +1,8 @@
 import { h, crumb, t, tc, twoStep } from '../dom.js';
 import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, itemHref, day, fileLine } from '../format.js';
 import { checkOf } from '../../core/bookings.js';
-import { normPath } from '../../core/paths.js';
-import { tripZoneOf, readTripFiles, fileDetails } from '../../core/trip-files.js';
+import { normPath, inTrip, isGivenFile } from '../../core/paths.js';
+import { readTripFiles, fileDetails } from '../../core/trip-files.js';
 import { readNames, shortName } from '../../core/names.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
@@ -49,9 +49,12 @@ export async function renderBooking(ctx, route) {
   const kindDay = (b) => [kindOf(b), b.day ? day(b.day, true) : null].filter(Boolean).join(' · ');
   const heading = file?.name ?? (titleOf(blocks[0]) || kindOf(blocks[0])); // no file means the one booking it is
 
-  /** @param {import('../../core/trip-files.js').Planned[]} items @param {string} level h2 or h3 @param {string} [label] */
-  const planList = (items, level, label) => h('section', { class: 'block-items', 'aria-label': label ?? t`On the plan` },
-    h(level, { class: 'section', text: label ?? t`On the plan` }),
+  /**
+   * @param {import('../../core/trip-files.js').Planned[]} items @param {string} level h2 or h3 @param {string} heading
+   * @param {string} [label] the region's name, when heading alone would name two regions alike (each block's, by its block)
+   */
+  const planList = (items, level, heading, label) => h('section', { class: 'block-items', 'aria-label': label ?? heading },
+    h(level, { class: 'section', text: heading }),
     h('ul', { class: 'plan-items' }, ...items.map((i) => h('li', {},
       h('a', { href: itemHref(id, i.path, here), dir: 'auto', text: [typeof i.item.title === 'string' && i.item.title.trim() ? i.item.title : t`Plan item`, i.day ? day(i.day, true) : null].filter(Boolean).join(' · ') }),
       typeof i.item.notes === 'string' && i.item.notes.trim() ? h('p', { class: 'sub notes', dir: 'auto', text: i.item.notes }) : null))));
@@ -69,13 +72,13 @@ export async function renderBooking(ctx, route) {
     }
     return h('section', { class: 'booking-block', 'aria-labelledby': many ? `block-${i}` : null },
       top,
-      h('p', { class: 'sub', text: kindDay(b) }),
+      many && !title ? null : h('p', { class: 'sub', text: kindDay(b) }), // an untitled block's heading says it already
       // A booking from before single details were marked: the whole of it, until she is told it's right.
       marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.` }) : null,
       facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
         h('dt', { lang: f.lang, text: f.label }),
         h('dd', {}, h('span', { dir: 'auto', text: f.value }), f.unsure ? [' ', checkMark()] : null)])) : null,
-      b.items.length ? planList(b.items, many ? 'h3' : 'h2') : null,
+      b.items.length ? planList(b.items, many ? 'h3' : 'h2', t`On the plan`, many ? t`On the plan: ${title || kindDay(b)}` : undefined) : null,
       many ? h('div', { class: 'acts' },
         b.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(b.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
         h('a', { class: 'btn', href: fileHref(id, b.path, here) }, t`Change it`)) : null);
@@ -83,7 +86,9 @@ export async function renderBooking(ctx, route) {
 
   // The file, as stored: its preview, and the words the original is named by.
   const bytes = file ? await ctx.ws.read(id, file.path).catch(() => undefined) : undefined;
+  // A booking with no file of its own: the file it names, when there is one (a note, say), or in words when one it gave is gone.
   const lonely = !file && lone ? inTrip(lone.booking.source) : '';
+  const elsewhere = lonely && (isGivenFile(lonely) || all.files.some((f) => f.path === lonely)) ? await original(ctx, id, lonely, here) : null;
   const refs = [
     ...(file ? [{ scope: id, path: file.path, name: file.name }] : []),
     ...blocks.map((b) => ({ scope: id, path: b.path, name: titleOf(b) || kindOf(b) })),
@@ -96,7 +101,7 @@ export async function renderBooking(ctx, route) {
     file ? h('section', { class: 'original', 'aria-label': t`The original` },
       await filePreview(ctx, id, file.path, { name: file.name }),
       h('p', { class: 'sub', dir: 'auto', text: t`From ${file.real}` })) : null,
-    /^\/files\/[^/]+$/.test(lonely) ? h('p', { class: 'sub warn', text: t`The original, ${shortName(all.names, lonely)}, isn't in the trip.` }) : null,
+    elsewhere,
     h('div', { class: 'acts' },
       file ? h('a', { class: 'btn', href: fileHref(id, file.path, here) }, t`Open`) : null,
       file && bytes ? h('button', { class: 'btn', type: 'button', onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (bytes.bytes)], { type: bytes.entry.type }), file.real) }, t`Download`) : null,
@@ -123,9 +128,6 @@ export async function renderBooking(ctx, route) {
   return screen;
 }
 
-/** "/trip/files/x" and "/files/x" both name the trip's /files/x. @param {unknown} p */
-const inTrip = (p) => (typeof p === 'string' ? p.replace(/^\/trip(?=\/)/, '') : '');
-
 /** A detail Shiori isn't sure of: a light mark, with words for screen readers. */
 export function checkMark() {
   return h('span', { class: 'chip check mark-check' },
@@ -147,11 +149,6 @@ export function backCrumb(ctx, id, from, o = {}) {
   return h('p', { class: 'crumbs' }, link);
 }
 
-/** The zone for a time whose own zone annai doesn't know: the trip's first, else this phone's. @param {any} ctx @param {string} id */
-export function tripZone(ctx, id) {
-  return tripZoneOf(ctx.ws, id);
-}
-
 /**
  * The file something came from, for a plan item's details: its preview (or card) by its short name, and Open the original, which leads to
  * the file's details screen (its raw screen for a file outside /files/) and comes back here; in words when it isn't there. Nothing when
@@ -170,7 +167,7 @@ export async function original(ctx, id, source, here) {
     entry = null; // not a path
   }
   if (!entry) return h('p', { class: 'sub warn', text: t`The original, ${name}, isn't in the trip.` });
-  const there = /^\/files\/[^/]+$/.test(entry.path);
+  const there = isGivenFile(entry.path);
   return h('section', { class: 'original', 'aria-label': t`The original` },
     await filePreview(ctx, id, entry.path, { name }),
     h('p', { class: 'sub', dir: 'auto', text: t`From ${name}` }),

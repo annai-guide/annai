@@ -4,6 +4,7 @@ import { sortWords } from './intl.js';
 import { bookingRef, BOOKING_FILE, PLAN_FILE } from './plan.js';
 import { filesToRead } from './handover.js';
 import { validZone, deviceZone, dayIn, instantAt } from './time.js';
+import { inTrip, isGivenFile } from './paths.js';
 
 /**
  * A trip's Files (the file-details design): each file the user gave, what Shiori read from it, and the plan items that stand for those,
@@ -19,11 +20,6 @@ import { validZone, deviceZone, dayIn, instantAt } from './time.js';
  * @typedef {{ path: string, booking: Record<string, any>, at: number | null, day: string | null, items: Planned[] }} Block
  * @typedef {{ file: FileRow | null, blocks: Block[], made: Planned[], focus: string | null }} Details
  */
-
-const FILE = /^\/files\/[^/]+$/;
-
-/** "/trip/files/x" and "/files/x" both name the trip's /files/x. @param {unknown} p */
-const inTrip = (p) => (typeof p === 'string' ? p.replace(/^\/trip(?=\/)/, '') : '');
 
 /** An object, or null. @param {unknown} v @returns {Record<string, any> | null} */
 const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? /** @type {Record<string, any>} */ (v) : null);
@@ -56,12 +52,18 @@ export async function readTripFiles(ws, store, id) {
   };
 }
 
-/** The moment of a stored `start`: its own zone, else the fallback's; a date alone is that day. @param {unknown} start @param {string} fallbackTz @returns {When} */
+/**
+ * The moment of a stored `start`: its own zone, else the fallback's; a date alone is that day, sorted from its midnight in that zone
+ * (west of UTC, UTC's midnight would put it before the evening of the day before). @param {unknown} start @param {string} fallbackTz @returns {When}
+ */
 function whenOf(start, fallbackTz) {
   const s = record(start);
   const at = s?.at;
-  if (typeof at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(at)) return { at: Date.parse(`${at}T00:00:00Z`), day: at };
   const tz = validZone(s?.tz) ? s?.tz : fallbackTz;
+  if (typeof at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(at)) {
+    const ms = instantAt(`${at}T00:00`, tz);
+    return { at: Number.isFinite(ms) ? ms : null, day: at };
+  }
   const ms = instantAt(at, tz);
   return Number.isFinite(ms) ? { at: ms, day: dayIn(ms, tz) } : { at: null, day: null };
 }
@@ -124,7 +126,7 @@ const firstDay = (r) => r.became.reduce((/** @type {string | null} */ d, b) => (
 export function fileRows(t) {
   const out = [];
   for (const file of t.files) {
-    if (!FILE.test(file.path)) continue;
+    if (!isGivenFile(file.path)) continue;
     const row = rowOf(t, file);
     if (row.became[0].kind !== 'photo') out.push(row); // a trip photo is among the trip's photos, not its Files
   }
@@ -141,7 +143,7 @@ export function fileRows(t) {
  */
 export function fileDetails(t, path) {
   const p = inTrip(path);
-  if (FILE.test(p)) {
+  if (isGivenFile(p)) {
     const file = t.files.find((f) => f.path === p);
     if (!file) return null;
     const blocks = blocksOf(t, p);
@@ -153,7 +155,7 @@ export function fileDetails(t, path) {
   const booking = record(t.bookings.find((b) => b.path === p)?.booking);
   if (!booking) return null;
   const source = inTrip(booking.source);
-  const own = FILE.test(source) && t.files.some((f) => f.path === source) ? fileDetails(t, source) : null;
+  const own = isGivenFile(source) && t.files.some((f) => f.path === source) ? fileDetails(t, source) : null;
   if (own) return { ...own, focus: p };
   return { file: null, blocks: [{ path: p, booking, ...whenOf(booking.start, t.fallbackTz), items: itemsOf(t, p) }], made: [], focus: null };
 }

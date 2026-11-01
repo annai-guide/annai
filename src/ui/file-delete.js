@@ -3,6 +3,7 @@ import { list, BOOKING_KINDS } from './format.js';
 import { parseHash } from './router.js';
 import { explainStorageFull } from './storage-full.js';
 import { deletionOf } from '../core/trip-files.js';
+import { inTrip } from '../core/paths.js';
 
 /**
  * "2 bookings", "1 plan item": the parts saying what else a Delete removes along with a file; none when nothing.
@@ -18,8 +19,7 @@ export function countParts(bookings, items) {
  * @param {string} back @param {string[]} gone @param {string} id
  */
 export function afterDelete(back, gone, id) {
-  const path = parseHash(back).params.path;
-  const shown = typeof path === 'string' ? path.replace(/^\/trip(?=\/)/, '') : '';
+  const shown = inTrip(parseHash(back).params.path);
   return shown && gone.includes(shown) ? `#/trip/${encodeURIComponent(id)}` : back;
 }
 
