@@ -1042,17 +1042,17 @@ xyot5w	ok	Export everything	导出全部	src/ui/export-panel.js:87
 sxjkia	ok	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:90	
 xyveyo	ok	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:90	
 kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:91	
-128pon4#other	draft	# plan items	#个行程项目	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
-141racs#other	draft	# bookings	#项预订	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
+128pon4#other	draft	# plan items	# 个行程项目	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
+141racs#other	draft	# bookings	# 项预订	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	已删除{0}	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
-jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	已删除{0}。对话中仍有它，所以它在“已删除”下，你可以在那里恢复。	src/ui/file-delete.js:54	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
-qq4n52	draft	Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.	已删除{0}。相同的内容在这次旅行的其他地方仍在使用，所以它在“已删除”下，你可以在那里恢复。	src/ui/file-delete.js:55	{0} = what
-1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	已删除{0}。另一个旅行或文件有相同的内容，所以它在“已删除”下，你可以在那里恢复。	src/ui/file-delete.js:56	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
+jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	已删除{0}。对话中仍提到它，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:54	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
+qq4n52	draft	Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.	已删除{0}。这次旅行的其他地方仍在使用相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:55	{0} = what
+1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	已删除{0}。另一次旅行或另一个文件有相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:56	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
 3ul42n	ok	Deleted {0}. {1} freed.	已删除{0}，释放了{1}。	src/ui/file-delete.js:57	{0} = what; {1} = size(r.bytes); Note: as Removed {0}. {1} freed. (已移除{0}，释放了{1}。), with 删除 for a file; {0} is a file name.
 1q136y3	ok	That version isn't stored on this device.	此设备上没有存储该版本。	src/ui/file-delete.js:93	
-nup6hq	draft	A file named {0} is there now: rename or delete it first.	现在已有名为{0}的文件：请先重命名或删除它。	src/ui/file-delete.js:98	{0} = name
+nup6hq	draft	A file named {0} is there now: rename or delete it first.	已有名为{0}的文件，请先将它重命名或删除。	src/ui/file-delete.js:98	{0} = name
 6e9z7l	draft	Restored {0}	已恢复{0}	src/ui/file-delete.js:105	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 plan item").
-7stptx	draft	Restored {0}. {1} didn't come back, as something new is there now.	已恢复{0}。{1}没有恢复，因为那里现在有新的内容。	src/ui/file-delete.js:105	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 plan item").
+7stptx	draft	Restored {0}. {1} didn't come back, as something new is there now.	已恢复{0}。{1}未能恢复，因为原位置已有新的内容。	src/ui/file-delete.js:105	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 plan item").
 la9701	ok	not backed up	未备份	src/ui/format.js:30	
 1h47npq	ok	backed up {0}	{0}已备份	src/ui/format.js:31	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
 1sjuc50	ok	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:31	{0} = relTime(at, now)
@@ -1091,12 +1091,12 @@ w70v2a	ok	doesn't take audio	不支持音频	src/ui/format.js:50
 1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:83	{0} = name; Note: a stay's last row on the Plan; {0} is the hotel's name as written.
 1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:84	{0} = name; Note: a stay's first row on the Plan; 入住 as hotels say.
 ukzedx	ok	Other	其他	src/ui/format.js:88	
-1q4rwjo#other	draft	# stays	#处住宿	src/ui/format.js:92	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
-1saywzu#other	draft	# flights	#个航班	src/ui/format.js:92	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
-1usugy8#other	draft	# cars	#项租车	src/ui/format.js:92	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
-132sfp8#other	draft	# events	#个活动	src/ui/format.js:93	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
-7f6248#other	draft	# restaurants	#家餐厅	src/ui/format.js:93	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
-qicqbg#other	draft	# trains	#趟火车	src/ui/format.js:93	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
+1q4rwjo#other	draft	# stays	# 处住宿	src/ui/format.js:92	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
+1saywzu#other	draft	# flights	# 个航班	src/ui/format.js:92	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
+1usugy8#other	draft	# cars	# 辆租车	src/ui/format.js:92	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
+132sfp8#other	draft	# events	# 个活动	src/ui/format.js:93	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
+7f6248#other	draft	# restaurants	# 家餐厅	src/ui/format.js:93	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
+qicqbg#other	draft	# trains	# 趟火车	src/ui/format.js:93	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
 1wjykgt	ok	Plan items from a calendar	来自日历的行程项目	src/ui/format.js:119	Note: what a calendar file (.ics) became; Plan is 行程.
 1gfvwcc	ok	Nothing yet	暂无	src/ui/format.js:120	Note: what a file became on the trip's Files: nothing so far.
 jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/format.js:120	Note: a file on the trip's Files that Shiori hasn't read yet.
@@ -1548,12 +1548,12 @@ vocksz	draft	This file isn't in the trip	这个旅行中没有此文件	src/ui/s
 nq6gpo	ok	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:36	
 oozr11	ok	Plan item	行程项目	src/ui/screens/booking.js:59	Note: a plan item's heading when it has no title.
 1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	请核对：这是 annai 按项目标记之前 Shiori 读取的预订。请告诉她是否正确，或哪里不对。	src/ui/screens/booking.js:77	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 请核对 as the Check this chip.
-69ckwu	draft	On the plan	已在行程中	src/ui/screens/booking.js:81	Note: the heading of the plan items that stand for a booking, on the details screen of a file or booking (Plan: 予定/行程).
-jdcc5q	draft	On the plan: {0}	已在行程中：{0}	src/ui/screens/booking.js:81	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
+69ckwu	draft	On the plan	行程中的项目	src/ui/screens/booking.js:81	Note: the heading of the plan items that stand for a booking, on the details screen of a file or booking (Plan: 予定/行程).
+jdcc5q	draft	On the plan: {0}	行程中的项目：{0}	src/ui/screens/booking.js:81	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
 bamrei	ok	Change it	修改	src/ui/screens/booking.js:84	
 2egm5v	ok	The original	原件	src/ui/screens/booking.js:102	Note: the section with the file a booking came from; as Open the original.
 14bya76	draft	The file	原文件	src/ui/screens/booking.js:104	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
-1rplq4f	draft	From {0}	原文件：{0}	src/ui/screens/booking.js:106	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
+1rplq4f	draft	From {0}	文件名：{0}	src/ui/screens/booking.js:106	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
 t8quxl	ok	Download	下载	src/ui/screens/booking.js:110	
 1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/booking.js:115	
 oay2cq	ok	Delete	删除	src/ui/screens/booking.js:115	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
@@ -1611,8 +1611,8 @@ drvc96	draft	Deleting this file also deletes {0}.	删除此文件也会删除{0}
 1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:70	
 mnzt43	draft	This file was deleted for good.	此文件已永久删除。	src/ui/screens/file.js:93	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
 krcze5	ok	This file was deleted. You can bring back a version below.	此文件已删除。你可以在下方恢复某个版本。	src/ui/screens/file.js:101	
-d9bfze	draft	This file was deleted. Restore brings it back with {0} that Shiori read from it.	此文件已删除。“恢复”会连同 Shiori 从中读取的{0}一起恢复它。	src/ui/screens/file.js:107	{0} = list(parts)
-rcgidi	draft	This file was deleted. Restore brings it back.	此文件已删除。“恢复”会把它恢复回来。	src/ui/screens/file.js:107	
+d9bfze	draft	This file was deleted. Restore brings it back with {0} that Shiori read from it.	此文件已删除。点“恢复”可将它连同 Shiori 从中读取的{0}一起恢复。	src/ui/screens/file.js:107	{0} = list(parts)
+rcgidi	draft	This file was deleted. Restore brings it back.	此文件已删除。点“恢复”即可将它恢复。	src/ui/screens/file.js:107	
 1lwovru	ok	This file isn't waiting with Shiori any more.	这个文件已不在 Shiori 的暂存中。	src/ui/screens/file.js:138	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
 18t12gi	ok	File name: {0}	文件名：{0}	src/ui/screens/file.js:160	{0} = real; Note: under a file's short name on its own screen; {0} is the file's real name.
 1hnv6ua	ok	Content	内容	src/ui/screens/file.js:183	
