@@ -1,5 +1,5 @@
 {
-  "build": "0b88ed292a38",
+  "build": "0239feaabd5e",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -196,7 +196,7 @@
     "/src/plugins/voice-browser/index.js": "4b8e07716086",
     "/src/plugins/web/free.js": "be161cb903a1",
     "/src/plugins/web/index.js": "b0f3b38401b5",
-    "/src/ui/base.css": "98eaac32c5b1",
+    "/src/ui/base.css": "cd4cffc12306",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "f6e1585069d9",
     "/src/ui/credits.js": "6a90a3274f4d",
@@ -209,7 +209,7 @@
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
     "/src/ui/file-delete.js": "f77f5c6d7b80",
-    "/src/ui/format.js": "25beda3d6664",
+    "/src/ui/format.js": "4dde184e010f",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
@@ -241,7 +241,7 @@
     "/src/ui/screens/about.js": "e9280ce2cb0b",
     "/src/ui/screens/add.js": "190ae121753e",
     "/src/ui/screens/backups.js": "cb4c5d840205",
-    "/src/ui/screens/booking.js": "3f0c296929d4",
+    "/src/ui/screens/booking.js": "d32c4a0ea474",
     "/src/ui/screens/drive.js": "28b44632c2d7",
     "/src/ui/screens/experimental.js": "03c80bf16505",
     "/src/ui/screens/ext.js": "b2e02413774e",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "1ad9de08733a",
-    "/l10n/zh-Hans.json": "eed4876c2bfa",
-    "/l10n/zh-Hant.json": "9d3b9a50cb05"
+    "/l10n/ja.json": "a3d70475a068",
+    "/l10n/zh-Hans.json": "4a1dae43e553",
+    "/l10n/zh-Hant.json": "94e8c058c6c7"
   }
 }

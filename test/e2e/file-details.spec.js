@@ -41,6 +41,12 @@ test('a file with two flights: one screen, two blocks in time order, each with i
   await expect(second.getByRole('region', { name: 'On the plan' })).toContainText('Terminal S.');
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(2);
   await expect(page.getByRole('region', { name: 'The original' })).toContainText('From itinerary.pdf');
+  // The screenshot review: what the file is, under its name; the file's own part headed; a card opens the file, as Open does; a zone
+  // note kept on one line.
+  await expect(page.locator('.details > .title + .sub')).toHaveText('2 flights · Nov 20, Nov 27');
+  await expect(page.getByRole('region', { name: 'The original' }).getByRole('heading', { level: 2 })).toHaveText('The file');
+  await expect(page.locator('.original .file-card').and(page.locator(':not(a) > .file-card'))).toHaveCount(0);
+  await expect(page.locator('dl.facts .zone-note').first()).toHaveText(/^\(.+\)$/);
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download' }).click();
   expect((await downloading).suggestedFilename()).toBe('itinerary.pdf');

@@ -991,7 +991,7 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:179	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
 13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/composer.js:211	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
 1npepge	ok	Read it again	もう一度読んでください	src/ui/composer.js:228	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
-158qnm7	ok	Ask Shiori about this	このことを Shiori に聞く	src/ui/composer.js:229	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
+158qnm7	draft	Ask Shiori about this	これについて Shiori に聞く	src/ui/composer.js:229	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や予定に沿った場所。Shiori の nearby ツールとオフラインパックで使い、Overpass（overpass-api.de、混雑時は private.coffee のサーバー）で探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探し、地点から場所の名前を調べます。Shiori の geocode と reverse ツールで使い、無料検索の最後の手段として場所の公式サイトも探します。annai は利用規約に従い、問い合わせを1秒に1回までにしています。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shiori が読む記事にはアドレスが付きます。常に有効な無料検索の最後の手段として、検索した言葉を問い合わせます。	src/ui/credits.js:33	
@@ -1117,53 +1117,53 @@ vpb928	ok	Guests	宿泊者	src/ui/format.js:127	Note: the people a stay is booke
 95yu2i	ok	Pick-up	受け取り	src/ui/format.js:128	Note: where and when a rental car is picked up.
 b2la2e	ok	Car	号車	src/ui/format.js:128	context: train; Note: a train's car (coach) number, not a rental car.
 vzzxl8	ok	Party size	人数	src/ui/format.js:128	Note: how many people a restaurant booking is for.
-1jtckn3	ok	Route	区間	src/ui/format.js:162	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出発	src/ui/format.js:163	Note: a flight's departure, its day and time in that airport's zone beside it.
-j6u2ti	ok	Starts	開始	src/ui/format.js:163	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:163	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	終了	src/ui/format.js:164	context: booking
-8md94n	ok	Arrives	到着	src/ui/format.js:164	Note: a flight's arrival, its day and time in that airport's zone beside it.
-8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:164	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	場所	src/ui/format.js:165	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:165	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	予約番号	src/ui/format.js:176	Note: A booking's confirmation code.
-t05i6w	ok	Cost	料金	src/ui/format.js:177	
-1vdspge	ok	Getting files: {0} of {1}	ファイルを取得しています：{0}/{1}	src/ui/format.js:211	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	バックアップを取得しています…	src/ui/format.js:211	
-fuj1qb	ok	Getting the backup ready…	バックアップを準備しています…	src/ui/format.js:215	
-1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較しています（{0}/{1}）…	src/ui/format.js:216	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	ファイルを比較しています…	src/ui/format.js:216	
-1jbhw8o	ok	Uploading…	アップロードしています…	src/ui/format.js:217	
-sg0mn0	ok	Uploading {0} of {1}…	アップロードしています（{0}/{1}）…	src/ui/format.js:217	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：iPad からの新しいバックアップがあります	src/ui/format.js:222	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：iPhone からの新しいバックアップがあります	src/ui/format.js:222	
-1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：パソコンからの新しいバックアップがあります	src/ui/format.js:223	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：Android スマートフォンからの新しいバックアップがあります	src/ui/format.js:223	
-14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:224	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、iPhone が {0} にバックアップしました。	src/ui/format.js:228	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、iPad が {0} にバックアップしました。	src/ui/format.js:228	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、パソコンが {0} にバックアップしました。	src/ui/format.js:229	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、Android スマートフォンが {0} にバックアップしました。	src/ui/format.js:229	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が {0} にバックアップしました。	src/ui/format.js:230	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後です。	src/ui/format.js:234	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに入れるか、この端末の内容でバックアップを上書きしてください。	src/ui/format.js:234	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
-1ce0smb	ok	That was after this iPad's last backup.	この iPad の前回のバックアップより後です。	src/ui/format.js:235	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに入れるか、この iPad の内容でバックアップを上書きしてください。	src/ui/format.js:235	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに入れるか、このパソコンの内容でバックアップを上書きしてください。	src/ui/format.js:236	
-wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後です。	src/ui/format.js:236	
-1n6qjpw	ok	Working…	処理しています…	src/ui/format.js:251	
-1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:256	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:256	
-10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:257	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:259	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:260	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」を押してください	src/ui/format.js:261	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:262	
-173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:263	{0} = at
-1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:263	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	どちらの端末も相手を上書きしないよう、そこへの自動バックアップは一時停止しています。	src/ui/format.js:275	
-hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:275	
-8091b1	ok	no limit	上限なし	src/ui/format.js:300	
+1jtckn3	ok	Route	区間	src/ui/format.js:163	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出発	src/ui/format.js:164	Note: a flight's departure, its day and time in that airport's zone beside it.
+j6u2ti	ok	Starts	開始	src/ui/format.js:164	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:164	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	終了	src/ui/format.js:165	context: booking
+8md94n	ok	Arrives	到着	src/ui/format.js:165	Note: a flight's arrival, its day and time in that airport's zone beside it.
+8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:165	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	場所	src/ui/format.js:166	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:166	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	予約番号	src/ui/format.js:177	Note: A booking's confirmation code.
+t05i6w	ok	Cost	料金	src/ui/format.js:178	
+1vdspge	ok	Getting files: {0} of {1}	ファイルを取得しています：{0}/{1}	src/ui/format.js:212	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	バックアップを取得しています…	src/ui/format.js:212	
+fuj1qb	ok	Getting the backup ready…	バックアップを準備しています…	src/ui/format.js:216	
+1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較しています（{0}/{1}）…	src/ui/format.js:217	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	ファイルを比較しています…	src/ui/format.js:217	
+1jbhw8o	ok	Uploading…	アップロードしています…	src/ui/format.js:218	
+sg0mn0	ok	Uploading {0} of {1}…	アップロードしています（{0}/{1}）…	src/ui/format.js:218	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：iPad からの新しいバックアップがあります	src/ui/format.js:223	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：iPhone からの新しいバックアップがあります	src/ui/format.js:223	
+1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：パソコンからの新しいバックアップがあります	src/ui/format.js:224	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：Android スマートフォンからの新しいバックアップがあります	src/ui/format.js:224	
+14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:225	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、iPhone が {0} にバックアップしました。	src/ui/format.js:229	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、iPad が {0} にバックアップしました。	src/ui/format.js:229	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、パソコンが {0} にバックアップしました。	src/ui/format.js:230	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、Android スマートフォンが {0} にバックアップしました。	src/ui/format.js:230	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が {0} にバックアップしました。	src/ui/format.js:231	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後です。	src/ui/format.js:235	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに入れるか、この端末の内容でバックアップを上書きしてください。	src/ui/format.js:235	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
+1ce0smb	ok	That was after this iPad's last backup.	この iPad の前回のバックアップより後です。	src/ui/format.js:236	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに入れるか、この iPad の内容でバックアップを上書きしてください。	src/ui/format.js:236	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに入れるか、このパソコンの内容でバックアップを上書きしてください。	src/ui/format.js:237	
+wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後です。	src/ui/format.js:237	
+1n6qjpw	ok	Working…	処理しています…	src/ui/format.js:252	
+1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:257	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:257	
+10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:258	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:260	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:261	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」を押してください	src/ui/format.js:262	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:263	
+173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:264	{0} = at
+1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:264	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	どちらの端末も相手を上書きしないよう、そこへの自動バックアップは一時停止しています。	src/ui/format.js:276	
+hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:276	
+8091b1	ok	no limit	上限なし	src/ui/format.js:301	
 1y3qo2k#other	ok	# trips	#件の旅	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
 12lprg	ok	Imported {0} from {1}.	{1}から{0}を読み込みました。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	{0}を読み込みました。	src/ui/import-state.js:48	{0} = what
@@ -1549,15 +1549,17 @@ oozr11	ok	Plan item	予定の項目	src/ui/screens/booking.js:59	Note: a plan it
 69ckwu	draft	On the plan	予定に入っている項目	src/ui/screens/booking.js:81	Note: the heading of the plan items that stand for a booking, on the details screen of a file or booking (Plan: 予定/行程).
 jdcc5q	draft	On the plan: {0}	予定に入っている項目: {0}	src/ui/screens/booking.js:81	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
 bamrei	ok	Change it	変更する	src/ui/screens/booking.js:84	
-2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:101	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
-t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:107	
-1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/booking.js:112	
-oay2cq	ok	Delete	削除	src/ui/screens/booking.js:112	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	要確認	src/ui/screens/booking.js:134	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
-1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:135	Note: read by screen readers for the check mark beside a detail.
-8icj76	ok	Plan	予定	src/ui/screens/booking.js:147	
-d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:169	{0} = name
-98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:174	
+2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:102	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
+14bya76	draft	The file	元のファイル	src/ui/screens/booking.js:104	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
+1rplq4f	draft	From {0}	元のファイル: {0}	src/ui/screens/booking.js:106	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
+t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:110	
+1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/booking.js:115	
+oay2cq	ok	Delete	削除	src/ui/screens/booking.js:115	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
+iy42pb	ok	check	要確認	src/ui/screens/booking.js:154	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
+1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:155	Note: read by screen readers for the check mark beside a detail.
+8icj76	ok	Plan	予定	src/ui/screens/booking.js:167	
+d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:189	{0} = name
+98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:194	
 19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:13	
