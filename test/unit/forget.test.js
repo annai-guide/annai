@@ -63,9 +63,14 @@ test('forget: log entries that match go, with the content only they named', asyn
   assert.deepEqual((await store.tx(['events'], 'readonly', (t) => t.listEvents(SYS))).map((e) => e.type), ['plugin.error', 'forget']);
 });
 
-test('forget: nothing that matches changes nothing', async () => {
-  const { store } = await setup();
+test('forget: nothing that matches changes nothing, and leaves no forget entry', async () => {
+  const { store, ws } = await setup();
+  await ws.write(SYS_PLUGINS, '/other/index.js', 'other code', { author: 'system' });
+  const log = () => store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS_PLUGINS));
+  const before = await log();
   assert.deepEqual(await forget(store, SYS_PLUGINS, { files: inTides, history: inTides }), { files: 0, events: 0, bytes: 0, kept: null });
+  assert.deepEqual(await log(), before);
+  assert.ok(!before.some((/** @type {any} */ e) => e.type === 'forget'));
 });
 
 test("forget reads only the content it frees, never a list of every blob there is: a push sync's forget stays quick beside thousands of photos", async () => {
@@ -144,6 +149,8 @@ const has = (/** @type {any} */ store, /** @type {string} */ hash) => store.tx([
 
 test('Delete: a file nothing else names is freed with its whole group, each content counted once', async () => {
   const g = await group();
+  // The first version is named by three entries now (its two writes and the second's `old`), and still counts once.
+  await g.ws.write(g.trip, '/files/h.pdf', PDF1, { author: 'user', type: 'application/pdf' });
   const r = await g.del();
   assert.equal(r.kept, null);
   assert.equal(r.bytes, PDF1.length + PDF2.length + g.booking.size + g.item.size);
