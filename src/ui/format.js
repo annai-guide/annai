@@ -141,8 +141,9 @@ const valueText = (v) => (Array.isArray(v) ? list(v.map((x) => (typeof x === 'st
 /**
  * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
  * its kind: times in their own zone, named (else the trip's, when given), and `unsure` on each field Shiori isn't sure of (checkOf).
+ * zone: a time's zone words, within value, which a screen keeps on one line.
  * @param {any} b @param {{ fallbackTz?: string }} [o]
- * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean }[]}
+ * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean, zone?: string }[]}
  */
 export function bookingFacts(b, o = {}) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return [];
@@ -153,15 +154,15 @@ export function bookingFacts(b, o = {}) {
     const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
     const ms = tz ? instantAt(time?.at, tz) : NaN;
     if (!Number.isFinite(ms) || !tz) return null;
-    return t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`;
+    return { value: t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`, zone: zone(ms, tz) };
   };
   const stay = b.kind === 'lodging';
   const flight = b.kind === 'flight';
-  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean } | null>} */
+  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
   const own = {
     route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter((x) => typeof x === 'string' && x).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
-    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, value: at(b.start) }),
-    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, value: at(b.end) }),
+    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
+    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
     place: () => ({ label: t`Place`, value: b.place?.name ? (b.place.address ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
     nights: () => {
       if (Object.hasOwn(fields, 'nights')) return null; // hers, among the fields
@@ -183,7 +184,7 @@ export function bookingFacts(b, o = {}) {
   for (const key of ORDER[b.kind] ?? OTHER) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
-      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key) });
+      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
       if (key !== 'nights' || !Object.hasOwn(fields, 'nights')) continue;
     }
     if (!Object.hasOwn(fields, key)) continue;

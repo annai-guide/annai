@@ -267,7 +267,17 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .details .facts { margin-block: 12px; }
 .details .notes { white-space: pre-wrap; overflow-wrap: anywhere; }
 .item-notes .notes { margin: 4px 0; }
-.booking-block + .booking-block { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.booking-block + .booking-block, .booking-block ~ .original { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+/* A block's plan items are a level down from its heading. */
+.booking-block h3.section { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+/* What a file or its one booking is sits tight under the heading, as a block's line does under its own. */
+.details > .title + .sub, .details > .title + .booking-block > .sub:first-child { margin-top: -12px; }
+/* Delete stands apart, on its own line. */
+.details .acts > .two-step { flex-basis: 100%; }
+/* A time's zone note goes to the next line whole rather than break inside a word (the fact's anywhere-wrap); only at a space, or
+   beside a CJK character, when it can't fit on a line of its own (Los Angeles, at 320 px): nowrap would push the screen wider. */
+.zone-note { display: inline-block; max-width: 100%; overflow-wrap: normal; }
+.file-card-link { color: inherit; text-decoration: none; border-radius: var(--radius); }
 .block-items { margin-block: 12px; }
 .plan-items { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; gap: 8px; }
 .plan-items .notes { margin: 2px 0 0; }
@@ -357,11 +367,15 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .credit-name { font-size: 16px; font-weight: 700; }
 pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-mono); font-size: 12px; line-height: 1.5; margin: 0; padding: 12px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); }
 
-/* A trip's Files (seeing bookings): each file, what it became, and Ask Shiori about this; All files folded below. */
+/* A trip's Files (the file-details design): one row per file, by its name and what it became, a chevron saying a tap opens it; the
+   add buttons below the list, then Deleted; All files folded below the screen. */
 .trip-file { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
-.trip-file .file-row { min-height: 44px; justify-content: center; overflow-wrap: anywhere; }
-.trip-file .real { font-family: var(--f-mono); font-size: 12px; }
+.trip-file .file-row { position: relative; min-height: 44px; justify-content: center; padding-inline-end: 32px; overflow-wrap: anywhere; }
+.trip-file .file-row::after { content: '›'; content: '›' / ''; position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); font-size: 22px; line-height: 1; }
+.trip-file .name { font-weight: 600; }
 .trip-file .became { overflow-wrap: anywhere; }
-.trip-file .btn { align-self: flex-start; }
-.all-files { margin-top: 16px; }
-.all-files > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.trip-files > .adders { margin-top: 12px; }
+/* Its disclosure marker kept (no flex), 44 px by padding, as Start a trip's dates. */
+.all-files, .deleted-files { margin-top: 16px; }
+.all-files > summary, .deleted-files > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.deleted-files > .file-list { margin-top: 4px; }

@@ -77,7 +77,7 @@ export async function renderBooking(ctx, route) {
       marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.` }) : null,
       facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
         h('dt', { lang: f.lang, text: f.label }),
-        h('dd', {}, h('span', { dir: 'auto', text: f.value }), f.unsure ? [' ', checkMark()] : null)])) : null,
+        h('dd', {}, h('span', { dir: 'auto' }, ...zoned(f.value, f.zone)), f.unsure ? [' ', checkMark()] : null)])) : null,
       b.items.length ? planList(b.items, many ? 'h3' : 'h2', t`On the plan`, many ? t`On the plan: ${title || kindDay(b)}` : undefined) : null,
       many ? h('div', { class: 'acts' },
         b.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(b.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
@@ -95,12 +95,15 @@ export async function renderBooking(ctx, route) {
   ];
   const screen = h('div', { class: 'screen details' }, crumbs,
     h('h1', { class: 'title', dir: 'auto' }, heading, lone && !file ? (unsureTitle(lone) && titleOf(lone) ? [' ', checkMark()] : null) : lone && file && heading === titleOf(lone) && unsureTitle(lone) ? [' ', checkMark()] : null),
-    !blocks.length && !made.length && file && fileLine(file.became) ? h('p', { class: 'sub', text: fileLine(file.became) }) : null,
+    // What the file is, under its name: when it became nothing yet, or several bookings (one booking's block says it already).
+    (!blocks.length && !made.length) || many ? (file && fileLine(file.became) ? h('p', { class: 'sub', text: fileLine(file.became) }) : null) : null,
     ...blockViews,
     made.length ? planList(made, 'h2', t`Plan items from a calendar`) : null,
     file ? h('section', { class: 'original', 'aria-label': t`The original` },
-      await filePreview(ctx, id, file.path, { name: file.name }),
-      h('p', { class: 'sub', dir: 'auto', text: t`From ${file.real}` })) : null,
+      // With several bookings above, the file's own part is headed, so it doesn't read as the last booking's.
+      many ? h('h2', { class: 'section', text: t`The file` }) : null,
+      opens(await filePreview(ctx, id, file.path, { name: file.name }), fileHref(id, file.path, here)),
+      h('p', { class: 'sub', dir: 'auto', text: tc('a file')`From ${file.real}` })) : null,
     elsewhere,
     h('div', { class: 'acts' },
       file ? h('a', { class: 'btn', href: fileHref(id, file.path, here) }, t`Open`) : null,
@@ -126,6 +129,23 @@ export async function renderBooking(ctx, route) {
     });
   }
   return screen;
+}
+
+/**
+ * A fact's words with its zone note ("(Anchorage time)", brackets and all) kept whole on one line. @param {string} value
+ * @param {string} [zone] the zone's words, within value @returns {(string | HTMLElement)[]}
+ */
+function zoned(value, zone) {
+  const i = zone ? value.lastIndexOf(zone) : -1;
+  if (!zone || i < 0) return [value];
+  const from = /[(（]/.test(value[i - 1] ?? '') ? i - 1 : i;
+  const to = /[)）]/.test(value[i + zone.length] ?? '') ? i + zone.length + 1 : i + zone.length;
+  return [value.slice(0, from), h('span', { class: 'zone-note', text: value.slice(from, to) }), value.slice(to)];
+}
+
+/** A file card stands for the file: a tap opens it, as Open does; a picture is left as it is. @param {HTMLElement | null} preview @param {string} href */
+function opens(preview, href) {
+  return preview?.classList.contains('file-card') ? h('a', { class: 'file-card-link', href }, preview) : preview;
 }
 
 /** A detail Shiori isn't sure of: a light mark, with words for screen readers. */
@@ -170,6 +190,6 @@ export async function original(ctx, id, source, here) {
   const there = isGivenFile(entry.path);
   return h('section', { class: 'original', 'aria-label': t`The original` },
     await filePreview(ctx, id, entry.path, { name }),
-    h('p', { class: 'sub', dir: 'auto', text: t`From ${name}` }),
+    h('p', { class: 'sub', dir: 'auto', text: tc('a file')`From ${name}` }),
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: there ? bookingHref(id, entry.path, here) : fileHref(id, entry.path, here) }, t`Open the original`)));
 }
