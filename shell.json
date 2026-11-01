@@ -1,5 +1,5 @@
 {
-  "build": "2e9823390d3b",
+  "build": "1c106c88537d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -66,7 +66,7 @@
     "/src/core/crc32.js": "0bfef7a8eb00",
     "/src/core/errors.js": "803212c6404d",
     "/src/core/events.js": "96ea2d451049",
-    "/src/core/forget.js": "53ff3368089f",
+    "/src/core/forget.js": "a3a1c0503ef7",
     "/src/core/handover.js": "c05fd5e9abf6",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "e762a5d6c235",
@@ -208,7 +208,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/file-delete.js": "2522799f8cc5",
+    "/src/ui/file-delete.js": "b2b25a0dc9ac",
     "/src/ui/format.js": "4dde184e010f",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "b12b5cf3441f",
-    "/l10n/zh-Hans.json": "373dfd6352e2",
-    "/l10n/zh-Hant.json": "416d2db462d3"
+    "/l10n/ja.json": "227d7cb727bf",
+    "/l10n/zh-Hans.json": "04c370f2edce",
+    "/l10n/zh-Hant.json": "f9c423838601"
   }
 }

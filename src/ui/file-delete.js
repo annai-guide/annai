@@ -2,7 +2,7 @@ import { t, plural, messageOf } from './dom.js';
 import { list, size, BOOKING_KINDS, bookingHref } from './format.js';
 import { parseHash } from './router.js';
 import { explainStorageFull } from './storage-full.js';
-import { deletionOf, deletesOf, restoreGroup } from '../core/trip-files.js';
+import { deletionOf, deletesOf, deletedGroup, restoreGroup } from '../core/trip-files.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { forget } from '../core/forget.js';
 import { inTrip, isGivenFile } from '../core/paths.js';
@@ -99,6 +99,14 @@ export async function restoreDeleted(ctx, id, path) {
   }
   if (r.taken.includes(path)) {
     const name = path.split('/').pop() ?? path;
+    // A stale screen (a second tab) of a file that has already come back: it's this very file, so open it, rather than say to delete it.
+    const back = (await ctx.ws.read(id, path))?.entry?.hash;
+    const mine = deletedGroup(await deletesOf(ctx.store, id), path)?.[0].data.old;
+    if (back && back === mine) {
+      ctx.notices.toast(t`${name} is already back.`);
+      ctx.go(bookingHref(id, path, `#/trip/${encodeURIComponent(id)}`));
+      return;
+    }
     ctx.notices.toast(t`A file named ${name} is there now: rename or delete it first.`);
     return;
   }
