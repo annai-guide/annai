@@ -9,7 +9,7 @@ import { platform } from '../platform.js';
 import { askAboutButton } from '../composer.js';
 import { filePreview } from '../preview.js';
 import { saveFile } from '../save.js';
-import { deleteDetails, afterDelete } from '../file-delete.js';
+import { deleteGroup, afterDelete } from '../file-delete.js';
 import { cameFrom, backLabel } from './file.js';
 
 /**
@@ -105,7 +105,7 @@ export async function renderBooking(ctx, route) {
       lone?.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(lone.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
       // The file and what Shiori read from it go together (the user, 2026-11-01); the Plan no longer shows them.
       twoStep(t`Delete`, t`Tap again to delete`, async () => {
-        const gone = await deleteDetails(ctx, id, d, heading);
+        const gone = await deleteGroup(ctx, id, d);
         if (gone) ctx.go(afterDelete(cameFrom(route.params.from, id, ctx.agent?.trip ?? null)?.hash ?? `#/trip/${encodeURIComponent(id)}`, gone, id));
       })));
   // A tap on one of several bookings lands on its block; the shell's own scrollTo has run before this frame.

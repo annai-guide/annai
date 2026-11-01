@@ -7,7 +7,7 @@ import { explainStorageFull } from '../storage-full.js';
 import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
 import { readTripFiles, fileDetails, deletionOf } from '../../core/trip-files.js';
-import { deleteDetails, afterDelete, countParts } from '../file-delete.js';
+import { deleteGroup, afterDelete, countParts } from '../file-delete.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
@@ -70,7 +70,7 @@ export async function renderFile(ctx, route) {
         ctx.go(back);
         return;
       }
-      const gone = await deleteDetails(ctx, id, d, d.file?.name ?? path);
+      const gone = await deleteGroup(ctx, id, d);
       if (gone) ctx.go(afterDelete(back, gone, id));
     })));
 }
