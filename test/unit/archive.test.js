@@ -15,6 +15,8 @@ import { readFile } from 'node:fs/promises';
 import { readPhotoMeta, sniffImageType } from '../../src/core/photo-meta.js';
 import { PiecesOnly } from './pieces.js';
 import { logEvent } from '../../src/core/events.js';
+import { modelTrace } from '../../src/core/llm/trace.js';
+import { record, INLINE_MAX } from '../../src/core/agent/log.js';
 
 const FAST = 100_000;
 const bytesOf = async (/** @type {Blob} */ b) => new Uint8Array(await b.arrayBuffer());
@@ -837,29 +839,33 @@ test("an everything backup carries the waiting space; restoring it adds the wait
   assert.equal(one.manifest.files.some((f) => f.name.startsWith('system/')), false);
 });
 
-test("a deleted photo's kept details say where it was taken only when the archive may: not in a Share without locations, not with Photos unticked", async () => {
+test("a deleted photo's kept details say where it was taken only when the archive may: not in a Share without locations (which has no History), not with Photos unticked", async () => {
   const { a, trip } = await photoTrip();
   await a.ws.delete(trip, '/files/kept.jpg', { author: 'user' });
   /** @param {any} opts @returns {Promise<any>} the file.delete entry of kept.jpg */
   const deleted = async (opts) => {
     const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], app: '0.1.0', ...opts });
+    if (!manifest.scopes[0].events) return undefined;
     const lines = text((await readZip(await bytesOf(blob))).get(/** @type {string} */ (manifest.scopes[0].events))).trim().split('\n').map((l) => JSON.parse(l));
     return lines.find((e) => e.type === 'file.delete' && e.data.path === '/files/kept.jpg');
   };
   const history = { ...PRESETS.share, history: true };
   assert.deepEqual((await deleted({ include: history, share: { places: true, convert: shareConvert } })).data.meta.place, nepenthe);
   assert.deepEqual((await deleted({ include: PRESETS.backup })).data.meta.place, nepenthe);
-  const noPlaces = await deleted({ include: history, share: { places: false, convert: shareConvert } });
-  assert.equal(noPlaces.data.meta.place, undefined);
-  assert.equal(noPlaces.data.meta.width, 64);
+  assert.equal(await deleted({ include: history, share: { places: false, convert: shareConvert } }), undefined); // no History to carry it
   assert.equal((await deleted({ include: { ...PRESETS.backup, photos: false } })).data.meta, undefined);
 });
 
-/** A trip whose log holds what live mode and the user wrote, with synthetic positions: 10.1234 and 22.2222 are sensed, 40.4040 is the plan's. */
+/**
+ * A trip whose log and files hold what live mode, Shiori and the user wrote, with synthetic positions: 10.1234, 20.5678, 10.2345,
+ * 22.2222, 33.3333 and 11.1111 are sensed (47.612, -122.335 too, in the recap), 40.4040 is the plan's.
+ */
 async function drivenTrip() {
   const a = await device();
   const trip = await createTrip(a.ws, { title: 'Road trip' });
   await a.ws.write(trip, '/plan/museum.json', { id: 'museum', title: 'Museum', fixed: false, place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } }, { author: 'user' });
+  await a.ws.write(trip, '/watches/w9.json', { id: 'w9', owner: 'shiori', when: { type: 'enter', lat: 10.1234, lng: 20.5678, radius: 200 }, fallback: 'say so' }, { author: 'shiori' });
+  await a.ws.write(trip, '/recap.md', 'Friday began at Bixby Bridge.\n\n- unnamed, near 47.612, -122.335\n- the hotel (47.61234, -122.33456) and a pier at -33.857,151.215.\n- dinner was 12.50, 14.00 euros\n- Example Museum\n', { author: 'shiori' });
   const log = (/** @type {string} */ type, /** @type {string} */ actor, /** @type {any} */ data) => logEvent(a.store, trip, { type, actor, data });
   await log('msg.user', 'user', { text: 'we are driving to the museum' });
   await log('location', 'system', { lat: 10.1234, lng: 20.5678, accuracy: 8, speed: 20, source: 'gps' });
@@ -870,43 +876,80 @@ async function drivenTrip() {
   await log('trigger.fired', 'system', { watch: 'w2', type: 'enter', owner: 'shiori', text: 'you entered the harbour', place: { name: 'Harbour', lat: 41.414, lng: 51.515 } });
   await log('wake', 'system', { id: 'k1', reasons: [{ kind: 'trigger', text: "Off plan: the user has been stopped for 20 min at a place that isn't on the plan (11.1111, 22.2222); next on the plan: \"Museum\". The replanning skill says what to do." }] });
   await log('out.show', 'shiori', { text: 'Want to visit the Example Museum?', place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } });
+  // Shiori's own lookups at the live point: the model turn keeps its parts as a blob, the call names the point, the result is a stored text.
+  /** @type {any} */
+  const nearby = { type: 'tool_call', id: 'c1', name: 'nearby', input: { lat: 10.1234, lng: 20.5678, query: 'cafe' } };
+  await modelTrace(a.store, trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, wake: 'k1' }, '', '', [nearby]);
+  await record(a.store, trip, { type: 'tool.call', actor: 'shiori', data: { id: 'c1', name: nearby.name, input: nearby.input, wake: 'k1' } });
+  await record(a.store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'nearby', ok: true, ms: 5, wake: 'k1' }, texts: [['content', `Cafe Example, 40 m from 10.1234, 20.5678. ${'x'.repeat(INLINE_MAX)}`]] });
   return { a, trip };
 }
 
-/** @param {any} a @param {string} trip @param {any} share @returns {Promise<{ lines: any[], raw: string, entries: Map<string, Uint8Array>, manifest: any, blob: Blob }>} */
-async function sharedLog(a, trip, share) {
-  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.share, history: true }, app: '0.1.0', share });
+/** What the sensed points look like in a file. */
+const SENSED = ['10.1234', '20.5678', '10.2345', '20.6789', '22.2222', '33.3333', '11.1111', 'Cafe Example', '47.612', '-122.335', '47.61234', '-122.33456', '151.215'];
+
+/** @param {any} a @param {string} trip @param {any} share @param {any} [include] @returns {Promise<{ lines: any[], entries: Map<string, Uint8Array>, manifest: any, blob: Blob }>} */
+async function shared(a, trip, share, include = { ...PRESETS.share, history: true }) {
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include, app: '0.1.0', share });
   const entries = await readZip(await bytesOf(blob));
-  const raw = text(/** @type {Uint8Array} */ (entries.get(manifest.scopes[0].events))).trim();
-  return { lines: raw.split('\n').map((l) => JSON.parse(l)), raw, entries, manifest, blob };
+  const log = manifest.scopes[0].events;
+  const lines = log ? text(/** @type {Uint8Array} */ (entries.get(log))).trim().split('\n').map((l) => JSON.parse(l)) : [];
+  return { lines, entries, manifest, blob };
 }
 
-test('a Share without places carries no position annai sensed: no location entries, no arrivals, no coordinates in a wake', async () => {
+test('a Share without places carries no History, whatever the History box says, and no watches: no sensed point is in any entry or blob of it', async () => {
   const { a, trip } = await drivenTrip();
-  const { lines, raw, entries, manifest, blob } = await sharedLog(a, trip, { places: false });
-  assert.equal(lines.some((e) => e.type === 'location'), false);
-  assert.equal(lines.some((e) => e.type === 'trigger.fired' && (e.data.type === 'arrived' || e.data.event === 'linger' || e.data.event === 'arrived')), false);
-  for (const sensed of ['10.1234', '10.2345', '20.5678', '22.2222', '33.3333', '11.1111', 'Cafe Example']) assert.equal(raw.includes(sensed), false, `${sensed} is in the log`);
-  // What was written, not sensed, stays: the words, the watch's own place, the card's place, the plan's place file.
-  const wake = lines.find((e) => e.type === 'wake');
-  assert.match(wake.data.reasons[0].text, /^Off plan: the user has been stopped for 20 min at a place that isn't on the plan; next on the plan: "Museum"\./);
-  assert.ok(lines.some((e) => e.type === 'msg.user' && e.data.text === 'we are driving to the museum'));
-  assert.equal(lines.find((e) => e.type === 'trigger.fired' && e.data.type === 'enter').data.place.lat, 41.414);
-  assert.equal(lines.find((e) => e.type === 'out.show').data.place.lat, 40.404);
+  const { lines, entries, manifest, blob } = await shared(a, trip, { places: false });
+  assert.equal(manifest.scopes[0].events, undefined);
+  assert.equal(manifest.include.history, false);
+  assert.deepEqual(lines, []);
+  assert.equal([...entries.keys()].some((n) => n.endsWith('events.jsonl') || n.startsWith('blobs/')), false);
+  assert.equal(manifest.files.some((/** @type {any} */ f) => f.path.startsWith('/watches/')), false);
+  assert.equal([...entries.keys()].some((n) => n.includes('/watches/')), false);
+  for (const [name, bytes] of entries) for (const point of SENSED) assert.equal(text(bytes).includes(point), false, `${point} is in ${name}`);
+  // What the plan says stays, and the Share still opens.
   const plan = manifest.files.find((/** @type {any} */ f) => f.path === '/plan/museum.json');
   assert.equal(JSON.parse(text(/** @type {Uint8Array} */ (entries.get(plan.name)))).place.lat, 40.404);
-  // The log is still a log: entries keep their own numbers, and it opens again.
   const b = await device();
   assert.equal((await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips.length, 1);
 });
 
-test('a Share with places, and a backup, carry the log whole', async () => {
+test("a Share without places keeps the recap without its coordinate pairs, and the user's own recap is unchanged", async () => {
   const { a, trip } = await drivenTrip();
-  const shared = await sharedLog(a, trip, { places: true });
-  assert.equal(shared.lines.filter((e) => e.type === 'location').length, 2);
-  assert.equal(shared.lines.filter((e) => e.type === 'trigger.fired').length, 4);
-  assert.match(shared.lines.find((e) => e.type === 'wake').data.reasons[0].text, /\(11\.1111, 22\.2222\)/);
+  const own = await a.ws.readText(trip, '/recap.md');
+  const { entries, manifest, blob } = await shared(a, trip, { places: false });
+  const f = manifest.files.find((/** @type {any} */ x) => x.path === '/recap.md');
+  const body = text(/** @type {Uint8Array} */ (entries.get(f.name)));
+  assert.equal(body, 'Friday began at Bixby Bridge.\n\n- unnamed\n- the hotel and a pier at.\n- dinner was 12.50, 14.00 euros\n- Example Museum\n');
+  assert.equal(f.hash, await sha256Hex(utf8(body)));
+  assert.equal(f.size, utf8(body).byteLength);
+  assert.equal(await a.ws.readText(trip, '/recap.md'), own);
+  assert.match(own, /near 47\.612, -122\.335/);
+  const b = await device();
+  const imported = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
+  assert.equal(await b.ws.readText(imported.trips[0], '/recap.md'), body);
+});
+
+test('a Share with places, and a backup, carry the log, the watches and the recap whole', async () => {
+  const { a, trip } = await drivenTrip();
+  const withPlaces = await shared(a, trip, { places: true });
+  const { lines, entries, manifest } = withPlaces;
+  assert.equal(lines.filter((e) => e.type === 'location').length, 2);
+  assert.equal(lines.filter((e) => e.type === 'trigger.fired').length, 4);
+  assert.match(lines.find((e) => e.type === 'wake').data.reasons[0].text, /\(11\.1111, 22\.2222\)/);
+  assert.ok(lines.some((e) => e.type === 'model.turn' && e.refs?.length));
+  assert.ok(lines.some((e) => e.type === 'tool.call' && e.data.input.lat === 10.1234));
+  const blobs = [...entries].filter(([n]) => n.startsWith('blobs/')).map(([, bytes]) => text(bytes));
+  assert.ok(blobs.some((b) => b.includes('"lat":10.1234')), 'the model turn parts are carried');
+  assert.ok(blobs.some((b) => b.includes('Cafe Example, 40 m from 10.1234')), 'the tool result is carried');
+  const watch = manifest.files.find((/** @type {any} */ f) => f.path === '/watches/w9.json');
+  assert.equal(JSON.parse(text(/** @type {Uint8Array} */ (entries.get(watch.name)))).when.lat, 10.1234);
+  const recap = manifest.files.find((/** @type {any} */ f) => f.path === '/recap.md');
+  assert.equal(text(/** @type {Uint8Array} */ (entries.get(recap.name))), await a.ws.readText(trip, '/recap.md'));
+  // A Share with places and no History ticked has none, as before.
+  assert.equal((await shared(a, trip, { places: true }, PRESETS.share)).manifest.scopes[0].events, undefined);
   const backup = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   const kept = text(/** @type {Uint8Array} */ ((await readZip(await bytesOf(backup.blob))).get(/** @type {string} */ (backup.manifest.scopes[0].events))));
   assert.equal(kept.trim().split('\n').filter((l) => JSON.parse(l).type === 'location').length, 2);
+  assert.ok(backup.manifest.files.some((f) => f.path === '/watches/w9.json'));
 });

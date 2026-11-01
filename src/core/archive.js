@@ -9,9 +9,9 @@ import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf, isName } from './events.js';
 import { dayIn, deviceZone } from './time.js';
-import { isArrival } from './after/stamps.js';
 import { t, plural } from './l10n.js';
 import { list } from './intl.js';
+import { WATCH_DIR } from './live/watches.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -165,15 +165,17 @@ const EVENT_SCHEMA = {
  * @param {Store} store
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
- *   share: this is a Share (§12.2). Photos go only as encoded copies, older versions of photos are
- *   left out, and unless places is true, nothing says where anything was: no photo's place, and no position annai's sensors recorded
- *   (location entries, arrivals, a wake's coordinates). What the user and Shiori wrote, and the plan's places, stay.
+ *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions. Unless places is true, nothing says where
+ *   anything was: no photo's place, no History (Shiori's lookups copy the live position into it) whatever include.history says,
+ *   no /watches/, and a recap without coordinate pairs.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
  */
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
+  const noPlaces = Boolean(opts.share && !opts.share.places);
+  const include = noPlaces ? { ...opts.include, history: false } : opts.include;
   if (opts.secrets && (opts.kind !== 'everything' || !opts.passphrase)) {
     throw new ArchiveError(/* en */ `API keys can only be included in an encrypted backup of everything.`, { said: { code: 'keys-plain' } });
   }
@@ -181,12 +183,12 @@ export async function exportArchive(store, opts) {
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
     // This device's own scope never travels (spec §12.4); the system log goes only with history.
-    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
+    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || include.history));
   if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { said: { code: 'nothing' } });
 
   /** @type {Manifest} */
   const manifest = {
-    format: ARCHIVE_FORMAT, app: opts.app, kind: opts.kind, created: now, include: { ...opts.include },
+    format: ARCHIVE_FORMAT, app: opts.app, kind: opts.kind, created: now, include: { ...include },
     encrypted: Boolean(opts.passphrase), scopes: [], files: [], blobs: [], extras: [],
   };
   const zip = new ZipWriter();
@@ -199,20 +201,24 @@ export async function exportArchive(store, opts) {
     const dir = dirFor(scope.id);
     const { files, events } = await store.tx(['files', 'events'], 'readonly', async (t) => ({
       files: await t.listFiles(scope.id, '/'),
-      events: opts.include.history ? (await t.listEvents(scope.id)).flatMap((e) => withoutPlaces(e, opts) ?? []) : [],
+      events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
     }));
     const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
     /** @type {ManifestScope} */
     const ms = { dir, record };
     for (const f of files) {
-      if (!opts.include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
+      if (!include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
+      if (noPlaces && f.path.startsWith(WATCH_DIR)) continue;
       const name = dir + f.path;
-      const bytes = await readBlob(store, f.hash, f.path);
+      /** @type {Uint8Array} */
+      let bytes = await readBlob(store, f.hash, f.path);
+      let hash = f.hash;
+      if (noPlaces && f.path === RECAP_FILE) hash = await sha256Hex(bytes = utf8(text(bytes).replace(POINT, '')));
       // An image is known by its bytes, not by the type it was saved under.
       const sniffed = sniffImageType(bytes);
-      if (!opts.include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
+      if (!include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
       /** @type {{ bytes: Uint8Array, type: string, hash: string, meta?: PhotoMeta }} */
-      let out = { bytes, type: f.type, hash: f.hash, meta: f.meta };
+      let out = { bytes, type: f.type, hash, meta: f.meta };
       const image = opts.share ? photoTypeOf(sniffed, f.type) : null;
       if (opts.share && image) {
         const shared = await sharePhoto({ ...f, type: image }, out.bytes, opts.share);
@@ -220,7 +226,7 @@ export async function exportArchive(store, opts) {
           skipped.push(f.path);
           continue;
         }
-        out = { ...shared, hash: shared.bytes === out.bytes ? f.hash : await sha256Hex(shared.bytes) };
+        out = { ...shared, hash: shared.bytes === out.bytes ? hash : await sha256Hex(shared.bytes) };
       } else if (opts.share && !opts.share.places && (sniffMediaType(bytes) !== null || /^(image|video)\//.test(f.type))) {
         // Other images (GIF, TIFF and raw photos, SVG…) and videos can hold a location too: cleaned without re-encoding, or left out.
         const stripped = stripMetadata(bytes, sniffed ?? f.type);
@@ -257,7 +263,7 @@ export async function exportArchive(store, opts) {
     if (!(rec?.data instanceof ArrayBuffer)) continue;
     // A Share leaves out older versions of images and videos; Photos unticked, older photos too.
     if (opts.share && (sniffMediaType(new Uint8Array(rec.data)) !== null || /^(image|video)\//.test(rec.type))) continue;
-    if (!opts.include.photos && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/'))) continue;
+    if (!include.photos && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/'))) continue;
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
@@ -290,34 +296,18 @@ export async function exportArchive(store, opts) {
   return { blob, manifest, skipped, seqs, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
 }
 
-/**
- * A log entry as an archive carries it, or null when left out. A file.delete keeps the file's `meta` so a Restore brings it back, and that
- * says where a photo was taken: a Share without places drops the place from it, and Photos unticked drops the whole of it. A Share without
- * places also drops location entries and arrivals (the position is the whole entry), and the "(lat, lng)" plan-watches.js writes into a wake.
- * @param {import('./types.js').EventRecord} e @param {{ include: Include, share?: { places: boolean } }} opts
- * @returns {import('./types.js').EventRecord | null}
- */
-function withoutPlaces(e, opts) {
-  if (opts.share && !opts.share.places) {
-    if (e.type === 'location' || (e.type === 'trigger.fired' && isArrival(e.data))) return null;
-    if (e.type === 'wake' && Array.isArray(e.data?.reasons)) {
-      const reasons = e.data.reasons.map((/** @type {any} */ r) => (typeof r?.text === 'string' ? { ...r, text: r.text.replace(SENSED_POINT, '') } : r));
-      return { ...e, data: { ...e.data, reasons } };
-    }
-  }
-  const meta = e.type === 'file.delete' ? e.data?.meta : undefined;
-  if (!meta || typeof meta !== 'object') return e;
+/** A log entry as an archive carries it: a file.delete keeps its `meta` (so a Restore brings the file back) unless Photos is unticked. @param {EventRecord} e @param {Include} include @returns {EventRecord} */
+function withoutPhotoMeta(e, include) {
+  if (include.photos || e.type !== 'file.delete') return e;
   const { meta: _, ...data } = e.data;
-  if (!opts.include.photos) return { ...e, data };
-  if (opts.share && !opts.share.places) {
-    const { place: __, ...rest } = meta;
-    return { ...e, data: { ...data, meta: rest } };
-  }
-  return e;
+  return { ...e, data };
 }
 
-/** A bracketed point in a wake's words (plan-watches.js's linger), with the space before it. */
-const SENSED_POINT = /\s*\(\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+\s*\)/g;
+/** A coordinate pair in a recap ("unnamed, near 47.612, -122.335"), with its "near", brackets and comma. Three decimals, so prices stay. */
+const PAIR = String.raw`(?<![\d.])-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}`;
+const POINT = new RegExp(String.raw`(?:\s*,)?\s*\bnear\s+(?:\(\s*${PAIR}\s*\)|${PAIR})|\s*\(\s*${PAIR}\s*\)|\s*${PAIR}`, 'gi');
+/** after/recap.js's RECAP_FILE (importing it would bring in the model code). */
+const RECAP_FILE = '/recap.md';
 
 /**
  * The photo type of some bytes: what they are when they say (a GIF is no photo, as at ingest),

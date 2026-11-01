@@ -1019,7 +1019,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **Photos:**
   - A Backup contains each photo as it is stored, so it has the originals when Keep originals is on (§4.8).
   - A Share contains only encoded photos. A kept original, and a photo in a format some browsers can't show, goes through the ingest encoding first.
-  - "Include where photos were taken" is a tickbox, on by default: a trip's plan names its hotels anyway.
+  - "Include where photos were taken and where you went" is a tickbox, on by default: a trip's plan names its hotels anyway. With it off, a Share carries no location at all: no photo's place, and no History (Shiori's lookups copy the live position into it, so the History box is greyed out with a line saying why, and the export leaves it out whatever it is asked). Shiori's watches (`/watches/`) are left out, and the recap goes without its coordinate pairs ("unnamed, near 47.612, -122.335" becomes "unnamed"); the plan's places stay.
   - With Photos unticked, no photo goes: neither the trips' photo files nor any photo their history names (older versions, the copies Shiori was sent).
 - **Keys** are included only in an encrypted Backup, and only when explicitly chosen.
 - **Encryption (optional):** the whole zip is encrypted with a passphrase, using PBKDF2-SHA-256 to derive the key and AES-GCM to encrypt. It is sealed in 1 MiB chunks, each bound to its position and to whether it is the last, so neither side holds the whole file in memory and a dropped, moved or cut-off chunk is refused.

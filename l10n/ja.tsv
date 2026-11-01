@@ -1023,25 +1023,26 @@ oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers ab
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	API キーを含める（パスフレーズが必要）	src/ui/export-panel.js:24	
 lq7cxe	draft	Include where photos were taken and where you went	写真の撮影場所と訪れた場所を含める	src/ui/export-panel.js:25	English was: Include where photos were taken
-1ahfa0	ok	Share: plan, bookings, files and notes	共有：予定、予約、ファイル、メモ	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
-40d3tk	ok	What to include	含めるもの	src/ui/export-panel.js:29	
-e1v954	ok	Backup: everything	バックアップ：すべて	src/ui/export-panel.js:29	
-1pgegxa	ok	Shared.	共有しました。	src/ui/export-panel.js:49	
-li1zvd	ok	Saved to your downloads.	ダウンロードに保存しました。	src/ui/export-panel.js:49	
-1rtc92m	ok	Save file	ファイルを保存	src/ui/export-panel.js:58	
-e8bmvg	ok	The passphrases don't match.	パスフレーズが一致しません。	src/ui/export-panel.js:62	
-10xxtpg	ok	API keys can only be exported with a passphrase.	API キーはパスフレーズ付きでしかエクスポートできません。	src/ui/export-panel.js:63	
-1vdabwr	ok	Building…	作成しています…	src/ui/export-panel.js:66	
-ix6wsj	ok	Building and encrypting. This takes a few seconds…	作成して暗号化しています。数秒かかります…	src/ui/export-panel.js:66	
-9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	このブラウザでは撮影場所を消せないため、次は含めませんでした：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	ok	Ready: {0} ({1}). Tap Save file.	準備ができました：{0}（{1}）。「ファイルを保存」をタップしてください。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	ok	Build file	ファイルを作成	src/ui/export-panel.js:85	
-1sh99lf	ok	Export	エクスポート	src/ui/export-panel.js:86	
-laav31	ok	Export {0}	{0}をエクスポート	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	ok	Export everything	すべてをエクスポート	src/ui/export-panel.js:87	
-sxjkia	ok	Repeat passphrase	パスフレーズをもう一度	src/ui/export-panel.js:90	
-xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-panel.js:90	
-kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを付けると、ファイルは暗号化されます。付けないと、ファイルを持っている人なら誰でも読めます。	src/ui/export-panel.js:91	
+18keknu	draft	History holds where you were, so it needs places.	履歴にはあなたがいた場所が含まれるため、場所を含める設定が必要です。	src/ui/export-panel.js:29	
+1ahfa0	ok	Share: plan, bookings, files and notes	共有：予定、予約、ファイル、メモ	src/ui/export-panel.js:38	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
+40d3tk	ok	What to include	含めるもの	src/ui/export-panel.js:38	
+e1v954	ok	Backup: everything	バックアップ：すべて	src/ui/export-panel.js:38	
+1pgegxa	ok	Shared.	共有しました。	src/ui/export-panel.js:59	
+li1zvd	ok	Saved to your downloads.	ダウンロードに保存しました。	src/ui/export-panel.js:59	
+1rtc92m	ok	Save file	ファイルを保存	src/ui/export-panel.js:68	
+e8bmvg	ok	The passphrases don't match.	パスフレーズが一致しません。	src/ui/export-panel.js:72	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API キーはパスフレーズ付きでしかエクスポートできません。	src/ui/export-panel.js:73	
+1vdabwr	ok	Building…	作成しています…	src/ui/export-panel.js:76	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	作成して暗号化しています。数秒かかります…	src/ui/export-panel.js:76	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	このブラウザでは撮影場所を消せないため、次は含めませんでした：{0}。	src/ui/export-panel.js:85	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	準備ができました：{0}（{1}）。「ファイルを保存」をタップしてください。	src/ui/export-panel.js:86	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	ファイルを作成	src/ui/export-panel.js:95	
+1sh99lf	ok	Export	エクスポート	src/ui/export-panel.js:96	
+laav31	ok	Export {0}	{0}をエクスポート	src/ui/export-panel.js:97	{0} = what.title
+xyot5w	ok	Export everything	すべてをエクスポート	src/ui/export-panel.js:97	
+sxjkia	ok	Repeat passphrase	パスフレーズをもう一度	src/ui/export-panel.js:100	
+xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-panel.js:100	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを付けると、ファイルは暗号化されます。付けないと、ファイルを持っている人なら誰でも読めます。	src/ui/export-panel.js:101	
 128pon4#other	draft	# plan items	予定の項目#件	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
 141racs#other	draft	# bookings	予約#件	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
