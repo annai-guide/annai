@@ -1,5 +1,5 @@
 {
-  "build": "00e910c947f2",
+  "build": "42899ef66d4a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -208,7 +208,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
-    "/src/ui/file-delete.js": "1f96c7fd780d",
+    "/src/ui/file-delete.js": "1a797e2f71b1",
     "/src/ui/format.js": "25beda3d6664",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "958e2b74230a",
-    "/l10n/zh-Hans.json": "4aa680ac17b4",
-    "/l10n/zh-Hant.json": "5a40495174eb"
+    "/l10n/ja.json": "4ca184051de5",
+    "/l10n/zh-Hans.json": "fed84f7efb22",
+    "/l10n/zh-Hant.json": "a8dd017c0ad6"
   }
 }

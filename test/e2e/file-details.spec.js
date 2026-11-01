@@ -218,7 +218,8 @@ test('Delete removes the file, its bookings and their plan items, says what went
   const trip = await fileTrip(page);
   await openRow(page, 'ANNAI AIR itinerary');
   await deleteIt(page);
-  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item$/)).toBeVisible();
+  // Nothing else names it (Shiori never read it in the conversation), so it is freed, and the toast says how much.
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['Hotel Aurora Test', 'walks.ics', 'new.pdf']);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
@@ -241,6 +242,10 @@ test('Delete removes the file, its bookings and their plan items, says what went
   // A Back onto the deleted file's screen says it isn't there.
   await openAt(page, trip, '/files/itinerary.pdf');
   await expect(page.getByRole('heading', { name: "This file isn't in the trip" })).toBeVisible();
+  // Its raw screen offers no version to bring back: there is none.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/itinerary.pdf')}`);
+  await expect(page.getByText('This file was deleted for good.')).toBeVisible();
+  await expect(page.getByText(/bring back a version/)).toHaveCount(0);
 });
 
 test('Delete from a screen opened from the Plan goes back to the Plan; from an item that went, to the trip', async ({ page }) => {
@@ -289,4 +294,13 @@ test('the raw file screen says what else its Delete removes, and removes it', as
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('#file-content')).toBeVisible();
   await expect(page.getByText(/also deletes/)).toHaveCount(0);
+});
+
+test('a file Shiori never read: Delete frees it and says how much', async ({ page }) => {
+  await openApp(page);
+  await fileTrip(page);
+  await openRow(page, 'new.pdf');
+  await deleteIt(page);
+  await expect(page.getByText(/^Deleted new\.pdf\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['ANNAI AIR itinerary', 'Hotel Aurora Test', 'walks.ics']);
 });

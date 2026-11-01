@@ -1042,9 +1042,12 @@ xyot5w	ok	Export everything	すべてをエクスポート	src/ui/export-panel.j
 sxjkia	ok	Repeat passphrase	パスフレーズをもう一度	src/ui/export-panel.js:90	
 xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-panel.js:90	
 kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを付けると、ファイルは暗号化されます。付けないと、ファイルを持っている人なら誰でも読めます。	src/ui/export-panel.js:91	
-128pon4#other	draft	# plan items	予定の項目#件	src/ui/file-delete.js:13	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
-141racs#other	draft	# bookings	予約#件	src/ui/file-delete.js:13	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
-x8r2sg	draft	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:44	{0} = list([nameOf(d), ...countParts(file.length ? bookings.length : 0, items.length)]); Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
+128pon4#other	draft	# plan items	予定の項目#件	src/ui/file-delete.js:14	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
+141racs#other	draft	# bookings	予約#件	src/ui/file-delete.js:14	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
+x8r2sg	draft	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:52	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
+jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	{0}を削除しました。会話にまだ残っているので、「削除済み」から元に戻せます。	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
+1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	{0}を削除しました。別の旅かファイルに同じ内容があるので、「削除済み」から元に戻せます。	src/ui/file-delete.js:54	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
+3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/file-delete.js:55	{0} = what; {1} = size(r.bytes); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
 la9701	ok	not backed up	未バックアップ	src/ui/format.js:30	
 1h47npq	ok	backed up {0}	バックアップ：{0}	src/ui/format.js:31	{0} = relTime(at, now); Note: Label and value: relTime's たった今 or 昨日 can't take に, so "{0}にバックアップ" would break.
 1sjuc50	ok	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:31	{0} = relTime(at, now); Note: As "backed up {0}".
@@ -1601,7 +1604,6 @@ krcze5	ok	This file was deleted. You can bring back a version below.	このフ�
 drvc96	draft	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:70	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 plan item").
 1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:71	
 1lwovru	ok	This file isn't waiting with Shiori any more.	このファイルはもう Shiori が預かっていません。	src/ui/screens/file.js:90	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
-3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/screens/file.js:97	{0} = entry.path.split('/').pop() ?? ''; {1} = size(freed); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
 18t12gi	ok	File name: {0}	ファイル名：{0}	src/ui/screens/file.js:111	{0} = real; Note: under a file's short name on its own screen; {0} is the file's real name.
 1hnv6ua	ok	Content	内容	src/ui/screens/file.js:134	
 lewgh4	ok	Save	保存	src/ui/screens/file.js:134	
