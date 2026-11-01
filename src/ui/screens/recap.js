@@ -74,7 +74,7 @@ export async function renderRecap(ctx, route) {
       : h('p', { class: 'empty', text: t`No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.` }),
     got ? h('p', { class: 'sub', text: got.entry.author === 'user' ? t`Written ${relTime(got.entry.modified)}, then edited by you.` : t`Written ${relTime(got.entry.modified)}.` }) : null,
     h('div', { class: 'acts' }, tell, write,
-      recap ? h('a', { class: 'btn', href: fileHref(id, RECAP_FILE) }, t`Edit`) : null,
+      recap ? h('a', { class: 'btn', href: fileHref(id, RECAP_FILE, `${trip}/recap`) }, t`Edit`) : null,
       h('a', { class: 'btn', href: `${trip}/replay` }, t`Replay`)),
     status,
     model

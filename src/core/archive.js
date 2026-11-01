@@ -2,7 +2,7 @@ import { ZipWriter, ZipReader } from './zip.js';
 import { encrypt, decrypt, isEncrypted } from './archive-crypto.js';
 import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
-import { isCompressedType, normPath, freeName } from './paths.js';
+import { isCompressedType, normPath, freeName, isGivenFile } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
@@ -569,7 +569,7 @@ export async function importArchive(store, opened, choices = {}) {
     } else {
       continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
-    const files = manifest.files.filter((f) => f.scope === rec.id && (mode !== 'add' || /^\/files\/[^/]+$/.test(f.path)));
+    const files = manifest.files.filter((f) => f.scope === rec.id && (mode !== 'add' || isGivenFile(f.path)));
     const events = s.events && mode !== 'add' ? await logOf(opened, s.events) : [];
     plan.push({ rec, target, mode, files, events });
     // Imported plugins arrive switched off: running their code must be an explicit choice
