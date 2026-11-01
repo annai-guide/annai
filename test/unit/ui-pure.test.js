@@ -3,7 +3,7 @@ import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../..
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -871,4 +871,16 @@ test('Undo tapped while Shiori works stops her turn and waits for it to settle b
   assert.deepEqual(did, ['stop', 'idle']);
   await settled(agent);
   assert.deepEqual(did, ['stop', 'idle']);
+});
+
+test('fileLine: one booking, several of a kind with their days, mixed kinds, a calendar, waiting', () => {
+  const b = (/** @type {string} */ k, /** @type {string | null} */ day) => ({ kind: /** @type {const} */ ('booking'), bookingKind: k, path: `/bookings/${k}${day}.json`, title: '', at: null, day });
+  assert.equal(fileLine([b('lodging', '2026-11-20')]), 'Stay · Nov 20');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('flight', '2026-11-27')]), '2 flights · Nov 20, Nov 27');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('flight', '2026-11-20')]), '2 flights · Nov 20');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('lodging', '2026-11-20')]), '1 flight · 1 stay');
+  assert.equal(fileLine([b('other', null)]), 'Booking');
+  assert.equal(fileLine([{ kind: 'plan', path: '/plan/a.json', title: 'A', at: null, day: null }, { kind: 'plan', path: '/plan/b.json', title: 'B', at: null, day: null }]), 'Plan items from a calendar');
+  assert.equal(fileLine([{ kind: 'waiting' }]), 'Waiting for Shiori to read it');
+  assert.equal(fileLine([{ kind: 'nothing' }]), 'Nothing yet');
 });

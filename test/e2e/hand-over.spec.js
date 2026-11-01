@@ -162,7 +162,7 @@ test('in a trip, a pasted confirmation email becomes a chip, then a text file in
     expect(asText(first.messages.at(-1))).not.toContain('Midnight Test Rentals'); // the email is a file she reads, not words in the message
     await page.goto(trip);
     // In the trip's Files, with what it became.
-    await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: /pasted-[0-9-]+\.txt/ })).toContainText('A car: car car');
+    await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file', { hasText: 'car car' }).locator('.became')).toHaveText('Car');
   } finally {
     await llm.stop();
   }
@@ -331,9 +331,8 @@ test('once Shiori names a file, its chip, its Files row and its screen show the 
     await expect(chip).toHaveAttribute('title', 'flight.pdf');
     // Its Files row.
     await page.goto(trip);
-    const row = page.getByRole('region', { name: 'Files' }).locator('.trip-file').first();
+    const row = page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file').first();
     await expect(row.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
-    await expect(row.locator('.real')).toHaveText('flight.pdf');
     // Its own screen: the short name, then the real file name and its path.
     await row.getByRole('link').first().click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();

@@ -425,7 +425,7 @@ test('a trip from before: unverified and confirmed bookings without unsure, plan
   await expect(page.locator('.mark-check')).toHaveCount(0);
   // Files: the hotel's PDF became the stay.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
-  await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: 'hotel.pdf' })).toContainText('A stay: Hoboken Inn');
+  await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file', { hasText: 'Hoboken Inn' }).locator('.became')).toHaveText('Stay');
 });
 
 test("a plan item's notes on the booking it stands for show on the booking's details, which a tap on that item opens", async ({ page }) => {
