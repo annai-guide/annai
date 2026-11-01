@@ -3,7 +3,7 @@ import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../..
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -893,4 +893,12 @@ test('cameFrom: the trip, the Conversation, the Plan, Now, an item, and an old b
   assert.equal(cameFrom('#/talk', 't-1', 't-2'), null); // the Conversation is another trip's now
   assert.deepEqual(cameFrom('#/trip/t-1/booking?path=%2Fbookings%2Fa.json', 't-1', null)?.name, 'booking');
   assert.equal(cameFrom('#/settings', 't-1', 't-1'), null);
+});
+
+test('recordHref: a file the user gave and a booking open the details screen; a plan item its own; anything else the raw file', () => {
+  assert.equal(recordHref('t-1', '/files/a.pdf', '#/talk'), '#/trip/t-1/booking?path=%2Ffiles%2Fa.pdf&from=%23%2Ftalk');
+  assert.match(recordHref('t-1', '/bookings/a.json'), /\/booking\?path=%2Fbookings%2Fa\.json$/);
+  assert.match(recordHref('t-1', '/plan/a.json'), /\/item\?path=/);
+  assert.match(recordHref('t-1', '/files/scans/a.pdf'), /\/file\?path=/);
+  assert.match(recordHref('t-1', '/notes/a.md'), /\/file\?path=/);
 });

@@ -79,7 +79,7 @@ export function renderCard(card, { ctx, onChoice, say = () => ({}), ours = false
   const links = (Array.isArray(card.links) ? card.links : []).map((/** @type {any} */ l) => ({ label: String(l?.label ?? l?.url ?? ''), url: httpUrl(String(l?.url ?? '')) })).filter((/** @type {any} */ l) => l.url);
   if (links.length) parts.push(h('div', { class: 'acts' }, ...links.map((/** @type {any} */ l) => h('a', { ...say(l.label), class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))));
   const booking = card.booking ? tripPath(card.booking) : null;
-  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path) }, t`Open the booking`));
+  if (booking?.root === 'trip' && ctx.agent?.trip) parts.push(h('a', { class: 'btn', href: bookingHref(ctx.agent.trip, booking.path, location.hash) }, t`Open the booking`));
   const image = card.image ? tripPath(card.image) : null;
   if (image) {
     const img = h('img', { class: 'card-image', alt: card.title ? String(card.title) : t`A photo Shiori showed` });

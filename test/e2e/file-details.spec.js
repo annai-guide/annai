@@ -112,3 +112,71 @@ test("a link to a file that isn't there says so", async ({ page }) => {
   await openAt(page, trip, '/files/nope.pdf');
   await expect(page.getByRole('heading', { name: "This file isn't in the trip" })).toBeVisible();
 });
+
+/** The crumb of the open screen. @param {import('@playwright/test').Page} page */
+const crumbOf = (page) => page.getByRole('main').locator('.crumbs a');
+
+test('Back from the trip: the crumb names the trip', async ({ page }) => {
+  await openApp(page);
+  await fileTrip(page);
+  await openRow(page, 'Hotel Aurora Test');
+  await expect(crumbOf(page)).toContainText('Anchorage');
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+});
+
+test('Back from the Plan: a tap on the return flight lands on its block, and the crumb goes back to the Plan', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Fly home/ }).first().click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 124' })).toBeFocused();
+  await expect(crumbOf(page)).toContainText('Plan');
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Plan');
+});
+
+test('Back from Now and from the Conversation', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await openAt(page, trip, '/bookings/stay.json', '#/now');
+  await expect(crumbOf(page)).toContainText('Now');
+  await crumbOf(page).click();
+  await expect(page).toHaveURL(/#\/now$/);
+  await openAt(page, trip, '/bookings/stay.json', '#/talk');
+  await expect(crumbOf(page)).toContainText('Conversation');
+  await crumbOf(page).click();
+  await expect(page).toHaveURL(/#\/talk$/);
+});
+
+test("Back from a plan item's details, both ways; Open and Change it come back here", async ({ page }) => {
+  await openApp(page);
+  await fileTrip(page);
+  await openRow(page, 'ANNAI AIR itinerary');
+  await page.getByRole('region', { name: 'ANNAI AIR AN 124' }).getByRole('link', { name: /^Fly home/ }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fly home');
+  await page.getByRole('main').getByRole('link', { name: /^Booked: ANNAI AIR AN 124/ }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 124' })).toBeFocused();
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fly home');
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('ANNAI AIR itinerary');
+  await page.getByRole('link', { name: 'Open', exact: true }).click();
+  await expect(crumbOf(page)).toContainText('Details');
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('ANNAI AIR itinerary');
+  await page.getByRole('link', { name: 'Change it' }).first().click();
+  await expect(page.locator('#file-content')).toHaveValue(/"ANNAI AIR AN 123"/);
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('ANNAI AIR itinerary');
+});
+
+test('an old booking link with no from goes back to the trip', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await openAt(page, trip, '/bookings/back.json');
+  await expect(crumbOf(page)).toContainText('Anchorage');
+  await crumbOf(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+});
