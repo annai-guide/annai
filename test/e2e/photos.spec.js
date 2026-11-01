@@ -176,6 +176,32 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   expect(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(shot.name))).place).toBeUndefined();
 });
 
+test('a Share without places greys out History, with the reason; places on enables it again', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  const history = page.getByLabel('History (every version and the log)');
+  const places = page.getByLabel('Include where photos were taken and where you went');
+  const why = page.getByText('History holds where you were, so it needs places.');
+  await expect(history).toBeChecked(); // a Backup keeps everything
+  await expect(why).toBeHidden();
+  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await expect(history).toBeEnabled();
+  await history.check();
+  await places.uncheck();
+  await expect(history).toBeDisabled();
+  await expect(history).not.toBeChecked();
+  await expect(why).toBeVisible();
+  await places.check();
+  await expect(history).toBeEnabled();
+  await expect(why).toBeHidden();
+  await places.uncheck();
+  await page.getByLabel('Backup: everything').check();
+  await expect(history).toBeEnabled();
+  await expect(history).toBeChecked();
+  await expect(why).toBeHidden();
+});
+
 test('photos shared from another app go to the trip you choose', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);

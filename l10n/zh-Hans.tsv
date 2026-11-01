@@ -1023,25 +1023,26 @@ oopaku	ok	Memory	记忆	src/ui/export-panel.js:22	Note: What Shiori remembers ab
 1l4mw9c	ok	Photos	照片	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	包含 API 密钥（需要密码短语）	src/ui/export-panel.js:24	
 lq7cxe	draft	Include where photos were taken and where you went	包含照片的拍摄地点和你去过的地方	src/ui/export-panel.js:25	English was: Include where photos were taken
-1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、预订、文件和笔记	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
-40d3tk	ok	What to include	包含的内容	src/ui/export-panel.js:29	
-e1v954	ok	Backup: everything	备份：全部	src/ui/export-panel.js:29	
-1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:49	
-li1zvd	ok	Saved to your downloads.	已保存到下载文件夹。	src/ui/export-panel.js:49	
-1rtc92m	ok	Save file	保存文件	src/ui/export-panel.js:58	
-e8bmvg	ok	The passphrases don't match.	密码短语不一致。	src/ui/export-panel.js:62	
-10xxtpg	ok	API keys can only be exported with a passphrase.	API 密钥只能在设置密码短语时导出。	src/ui/export-panel.js:63	
-1vdabwr	ok	Building…	正在生成…	src/ui/export-panel.js:66	
-ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在生成并加密。这需要几秒钟…	src/ui/export-panel.js:66	
-9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下内容未包含，因为此浏览器无法去掉拍摄地点：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已准备好：{0}（{1}）。请轻点“保存文件”。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	ok	Build file	生成文件	src/ui/export-panel.js:85	
-1sh99lf	ok	Export	导出	src/ui/export-panel.js:86	
-laav31	ok	Export {0}	导出{0}	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	ok	Export everything	导出全部	src/ui/export-panel.js:87	
-sxjkia	ok	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:90	
-xyveyo	ok	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:90	
-kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:91	
+18keknu	draft	History holds where you were, so it needs places.	历史包含你去过的位置，所以需要包含地点。	src/ui/export-panel.js:29	
+1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、预订、文件和笔记	src/ui/export-panel.js:38	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
+40d3tk	ok	What to include	包含的内容	src/ui/export-panel.js:38	
+e1v954	ok	Backup: everything	备份：全部	src/ui/export-panel.js:38	
+1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:59	
+li1zvd	ok	Saved to your downloads.	已保存到下载文件夹。	src/ui/export-panel.js:59	
+1rtc92m	ok	Save file	保存文件	src/ui/export-panel.js:68	
+e8bmvg	ok	The passphrases don't match.	密码短语不一致。	src/ui/export-panel.js:72	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API 密钥只能在设置密码短语时导出。	src/ui/export-panel.js:73	
+1vdabwr	ok	Building…	正在生成…	src/ui/export-panel.js:76	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在生成并加密。这需要几秒钟…	src/ui/export-panel.js:76	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下内容未包含，因为此浏览器无法去掉拍摄地点：{0}。	src/ui/export-panel.js:85	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已准备好：{0}（{1}）。请轻点“保存文件”。	src/ui/export-panel.js:86	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	生成文件	src/ui/export-panel.js:95	
+1sh99lf	ok	Export	导出	src/ui/export-panel.js:96	
+laav31	ok	Export {0}	导出{0}	src/ui/export-panel.js:97	{0} = what.title
+xyot5w	ok	Export everything	导出全部	src/ui/export-panel.js:97	
+sxjkia	ok	Repeat passphrase	再次输入密码短语	src/ui/export-panel.js:100	
+xyveyo	ok	Passphrase (optional)	密码短语（可选）	src/ui/export-panel.js:100	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	设置密码短语后，文件会被加密。不设置的话，拿到文件的人都能读取。	src/ui/export-panel.js:101	
 128pon4#other	draft	# plan items	# 个行程项目	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
 141racs#other	draft	# bookings	# 项预订	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	已删除{0}	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").

@@ -1023,25 +1023,26 @@ oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers ab
 1l4mw9c	ok	Photos	照片	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	包含 API 金鑰（需要密碼片語）	src/ui/export-panel.js:24	
 lq7cxe	draft	Include where photos were taken and where you went	包含照片的拍攝地點和你去過的地方	src/ui/export-panel.js:25	English was: Include where photos were taken
-1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:29	Note: 分享 here (sending a trip to someone), as Taiwan's iPhone names its Share button too.
-40d3tk	ok	What to include	包含的內容	src/ui/export-panel.js:29	
-e1v954	ok	Backup: everything	備份：全部	src/ui/export-panel.js:29	
-1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:49	
-li1zvd	ok	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:49	
-1rtc92m	ok	Save file	儲存檔案	src/ui/export-panel.js:58	
-e8bmvg	ok	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:62	
-10xxtpg	ok	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:63	
-1vdabwr	ok	Building…	正在產生…	src/ui/export-panel.js:66	
-ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:66	
-9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	ok	Build file	產生檔案	src/ui/export-panel.js:85	
-1sh99lf	ok	Export	匯出	src/ui/export-panel.js:86	
-laav31	ok	Export {0}	匯出{0}	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:87	
-sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:90	
-xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:90	
-kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:91	
+18keknu	draft	History holds where you were, so it needs places.	歷史包含你去過的位置，所以需要包含地點。	src/ui/export-panel.js:29	
+1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:38	Note: 分享 here (sending a trip to someone), as Taiwan's iPhone names its Share button too.
+40d3tk	ok	What to include	包含的內容	src/ui/export-panel.js:38	
+e1v954	ok	Backup: everything	備份：全部	src/ui/export-panel.js:38	
+1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:59	
+li1zvd	ok	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:59	
+1rtc92m	ok	Save file	儲存檔案	src/ui/export-panel.js:68	
+e8bmvg	ok	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:72	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:73	
+1vdabwr	ok	Building…	正在產生…	src/ui/export-panel.js:76	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:76	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:85	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:86	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	產生檔案	src/ui/export-panel.js:95	
+1sh99lf	ok	Export	匯出	src/ui/export-panel.js:96	
+laav31	ok	Export {0}	匯出{0}	src/ui/export-panel.js:97	{0} = what.title
+xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:97	
+sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:100	
+xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:100	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:101	
 128pon4#other	draft	# plan items	# 個行程項目	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
 141racs#other	draft	# bookings	# 項預訂	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	已刪除{0}	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").

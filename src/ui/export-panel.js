@@ -25,6 +25,15 @@ export function exportPanel(ctx, what) {
   const places = checkbox(t`Include where photos were taken and where you went`, true);
   places.el.hidden = true; // a Share option (§12.2)
   let mode = 'backup';
+  // A Share without places carries no History (archive.js), so the box is greyed out.
+  const whyNoHistory = h('p', { class: 'sub', hidden: true, text: t`History holds where you were, so it needs places.` });
+  const syncHistory = () => {
+    const off = mode === 'share' && !places.input.checked;
+    if (off) history.input.checked = false;
+    history.input.disabled = off;
+    whyNoHistory.hidden = !off;
+  };
+  places.input.addEventListener('change', syncHistory);
   const preset = isTrip
     ? radios(t`What to include`, [['backup', t`Backup: everything`], ['share', t`Share: plan, bookings, files and notes`]], 'backup', (v) => {
       mode = v;
@@ -33,6 +42,7 @@ export function exportPanel(ctx, what) {
       memory.input.checked = p.memory;
       photos.input.checked = p.photos;
       places.el.hidden = v !== 'share';
+      syncHistory();
     })
     : null;
   const pass1 = h('input', { id: `export-pass-${k}`, type: 'password', autocomplete: 'new-password' });
@@ -86,7 +96,7 @@ export function exportPanel(ctx, what) {
   return h('section', { class: 'panel', 'aria-label': t`Export` },
     h('h2', { class: 'section', text: isTrip ? t`Export ${what.title}` : t`Export everything` }),
     preset,
-    h('div', { class: 'checks' }, history.el, memory.el, photos.el, places.el, keys?.el ?? null),
+    h('div', { class: 'checks' }, history.el, whyNoHistory, memory.el, photos.el, places.el, keys?.el ?? null),
     h('div', { class: 'row' }, field(t`Passphrase (optional)`, pass1), field(t`Repeat passphrase`, pass2)),
     h('p', { class: 'sub', text: t`With a passphrase, the file is encrypted. Without it, anyone with the file can read it.` }),
     h('div', { class: 'acts' }, build, saveBtn),
