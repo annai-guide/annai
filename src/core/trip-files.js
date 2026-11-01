@@ -5,6 +5,7 @@ import { bookingRef, BOOKING_FILE, PLAN_FILE } from './plan.js';
 import { filesToRead } from './handover.js';
 import { validZone, deviceZone, dayIn, instantAt } from './time.js';
 import { inTrip, isGivenFile } from './paths.js';
+import { NotFoundError } from './workspace.js';
 
 /**
  * A trip's Files (the file-details design): each file the user gave, what Shiori read from it, and the plan items that stand for those,
@@ -170,4 +171,60 @@ export function deletionOf(d) {
     bookings: d.blocks.map((b) => b.path),
     items: [...new Set([...d.blocks.flatMap((b) => b.items.map((i) => i.path)), ...d.made.map((i) => i.path)])],
   };
+}
+
+/**
+ * @typedef {{ path: string, real: string, ts: number, actor: string, old: string }} DeletedFile  a file the user gave that was deleted and
+ *   kept (Delete in Files frees what nothing else names, so a freed one has no entries left): its newest delete, by whom and when, and
+ *   the content it had
+ */
+
+/**
+ * Deleted, at the foot of Files: the newest delete of each file the user gave, newest first, leaving out a path with a file now and a
+ * file moved away (a move is a delete here and a write there). @param {import('./types.js').EventRecord[]} deletes the trip's file.delete
+ * entries @param {{ path: string }[]} files the trip's files now @returns {DeletedFile[]}
+ */
+export function deletedFiles(deletes, files) {
+  const there = new Set(files.map((f) => f.path));
+  /** @type {Map<string, import('./types.js').EventRecord>} */
+  const newest = new Map();
+  for (const e of deletes) {
+    const p = e.data?.path;
+    if (typeof p === 'string' && isGivenFile(p) && (newest.get(p)?.seq ?? -Infinity) < e.seq) newest.set(p, e);
+  }
+  return [...newest.values()]
+    .filter((e) => !there.has(e.data.path) && !e.data.moved && typeof e.data.old === 'string')
+    .sort((a, b) => b.seq - a.seq)
+    .map((e) => ({ path: e.data.path, real: e.data.path.split('/').pop(), ts: e.ts, actor: e.actor, old: e.data.old }));
+}
+
+/** A trip's file.delete entries, oldest first. @param {import('./types.js').Store} store @param {string} id */
+export const deletesOf = (store, id) => store.tx(['events'], 'readonly', (t) => t.listEvents(id, { types: ['file.delete'] }));
+
+/**
+ * Restore on a deleted file's screen: the file at its last version, then each path its Delete took with it (the deletes marked with
+ * the file, at the same moment), each only where nothing is now, through the workspace so its listeners hear of each. A file deleted
+ * before Delete marked its group comes back alone. Throws NotFoundError when the path has no delete to undo.
+ * @param {import('./workspace.js').Workspace} ws @param {string} id @param {string} path
+ * @returns {Promise<{ restored: string[], taken: string[] }>} taken: what couldn't come back, as something is at its path now
+ */
+export async function restoreGroup(ws, id, path) {
+  const deletes = await deletesOf(ws.store, id);
+  const last = deletes.filter((e) => e.data?.path === path).at(-1);
+  if (!last || typeof last.data.old !== 'string') /* en */ throw new NotFoundError(`a deleted ${path}`);
+  const there = new Set((await ws.list(id, '/')).map((f) => f.path));
+  /** @type {string[]} */
+  const restored = [];
+  /** @type {string[]} */
+  const taken = [];
+  const group = [last, ...deletes.filter((e) => e !== last && e.data?.with === path && e.ts === last.ts && typeof e.data.path === 'string')];
+  for (const e of group) {
+    if (there.has(e.data.path)) {
+      taken.push(e.data.path);
+      continue;
+    }
+    await ws.restore(id, e.data.path, e.data.old, { author: 'user' });
+    restored.push(e.data.path);
+  }
+  return { restored, taken };
 }

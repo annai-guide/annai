@@ -1,13 +1,14 @@
 import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
 import { readNames } from '../../core/names.js';
-import { isTextType, isGivenFile } from '../../core/paths.js';
+import { isTextType, isGivenFile, typeForPath } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
-import { readTripFiles, fileDetails, deletionOf } from '../../core/trip-files.js';
-import { deleteGroup, afterDelete, countParts } from '../file-delete.js';
+import { readTripFiles, fileDetails, deletionOf, deletesOf } from '../../core/trip-files.js';
+import { deleteGroup, afterDelete, countParts, restoreDeleted } from '../file-delete.js';
+import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
@@ -57,7 +58,8 @@ export async function renderFile(ctx, route) {
   if (!r) {
     // Freed at its Delete: no version is left to bring back (Delete in Files, when nothing else named it).
     if (!history.length) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted for good.` }));
-    return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
+    return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }),
+      ...await lastVersion(ctx, id, path, history), historyView(ctx, id, path, history, null));
   }
   const { entry, bytes: content } = r;
   // A file the user gave: its Delete removes what Shiori read from it too, and says so (the file-details design, My call 6).
@@ -77,6 +79,25 @@ export async function renderFile(ctx, route) {
       const gone = await deleteGroup(ctx, id, d);
       if (gone) ctx.go(afterDelete(back, gone, id));
     })));
+}
+
+/**
+ * A deleted file's last version, shown as a waiting file's is (a photo, a PDF, or Download), and Restore, which brings it back with what
+ * its Delete took (Task 7). Nothing when its last change wasn't a delete of content still here (a move away, or an import that didn't
+ * carry it). @param {any} ctx @param {string} id @param {string} path @param {import('../../core/workspace.js').HistoryEntry[]} history
+ * @returns {Promise<HTMLElement[]>}
+ */
+async function lastVersion(ctx, id, path, history) {
+  const e = (await deletesOf(ctx.store, id)).filter((x) => x.data?.path === path).at(-1);
+  if (!e || e.seq !== history.at(-1)?.seq || e.data.moved) return [];
+  const bytes = await blobBytes(ctx.store, id, e.data.old, { named: e });
+  if (!bytes) return [];
+  const [saved] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { types: ['file.write'], reverse: true }))
+    .then((/** @type {any[]} */ all) => all.filter((x) => x.data?.path === path && x.data?.new === e.data.old));
+  const entry = { path, type: typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(path), size: bytes.byteLength, meta: e.data.meta };
+  // No "show Shiori this part" on a photo that isn't in the trip now (its viewer's offer names its path).
+  const shown = entry.type.startsWith('image/') ? preview({ ...ctx, agent: null }, id, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes);
+  return [shown, h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restoreDeleted(ctx, id, path, isGivenFile(path) ? null : ctx.render) }, t`Restore`))];
 }
 
 /**
@@ -229,8 +250,8 @@ function changedText(entry) {
   return entry.author === 'user' ? t`changed by you ${ago}` : t`changed by ${authorName(entry.author)} ${ago}`;
 }
 
-/** A version in a file's history: saved or deleted, by whom, when. @param {any} v */
-function versionText(v) {
+/** A version in a file's history: saved or deleted, by whom, when. @param {{ type: string, actor: string, ts: number }} v */
+export function versionText(v) {
   const [mine, who, ago] = [v.actor === 'user', authorName(v.actor), relTime(v.ts)];
   if (v.type === 'file.delete') return mine ? t`Deleted by you ${ago}` : t`Deleted by ${who} ${ago}`;
   return mine ? t`Saved by you ${ago}` : t`Saved by ${who} ${ago}`;

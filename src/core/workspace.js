@@ -220,16 +220,19 @@ export class Workspace {
         return {
           blob: own ? await t.getBlob(hash) : undefined,
           held: !own && (await t.hasBlob(hash)),
-          events: await t.listEvents(scope, { types: ['file.write'], reverse: true }),
+          events: await t.listEvents(scope, { types: ['file.write', 'file.delete'], reverse: true }),
           current: await t.getFile(scope, p),
         };
       });
       if (held) await refused(this.store, scope, hash, 'restore');
       if (!blob) /* en */ throw new NotFoundError(`that version of ${p}`);
-      const saved = events.find((e) => e.data?.path === p && e.data?.new === hash);
+      const saved = events.find((e) => e.type === 'file.write' && e.data?.path === p && e.data?.new === hash);
       const type = typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(p);
-      // A photo's metadata describes the photo, not one version of its bytes: keep it.
-      return this.#commit(scope, p, { hash, type, size: blob.size }, { ...opts, meta: opts.meta ?? current?.meta });
+      // A photo's metadata describes the photo, not one version of its bytes: keep it. A deleted file gets back what its delete kept.
+      const gone = current ? null : events.find((e) => e.type === 'file.delete' && e.data?.path === p)?.data;
+      const source = opts.source ?? current?.source ?? (typeof gone?.source === 'string' ? gone.source : undefined);
+      const meta = opts.meta ?? current?.meta ?? (gone?.meta && typeof gone.meta === 'object' ? gone.meta : undefined);
+      return this.#commit(scope, p, { hash, type, size: blob.size }, { ...opts, ...(source ? { source } : {}), ...(meta ? { meta } : {}) });
     });
   }
 
@@ -386,7 +389,9 @@ async function removeFile(t, scope, path, opts, now) {
   const old = await t.getFile(scope, path);
   if (!old) throw new NotFoundError(path);
   await t.deleteFile(scope, path);
-  await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: opts.author, data: { path, old: old.hash, ...handoverOf(opts) } });
+  // What the entry said besides its bytes (a calendar's plan item's source, a photo's metadata) is kept, so a Restore brings it back.
+  const kept = { ...(old.source ? { source: old.source } : {}), ...(old.meta ? { meta: old.meta } : {}) };
+  await t.appendEvent(scope, { ts: now, type: 'file.delete', actor: opts.author, data: { path, old: old.hash, ...kept, ...handoverOf(opts) } });
 }
 
 /** A log entry's hand-over, only when the change was made for one. @param {WriteOptions} opts */

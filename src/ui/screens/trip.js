@@ -5,7 +5,8 @@ import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine } from '../format.js';
-import { fileRows, readTripFiles } from '../../core/trip-files.js';
+import { fileRows, readTripFiles, deletedFiles, deletesOf } from '../../core/trip-files.js';
+import { versionText } from './file.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -61,9 +62,19 @@ export async function renderTrip(ctx, route) {
 const unfolded = new Set();
 /** @param {string} id @param {...HTMLElement} parts */
 function allFiles(id, ...parts) {
-  const fold = h('details', { class: 'all-files', open: unfolded.has(id) }, h('summary', { text: t`All files` }), ...parts);
-  fold.addEventListener('toggle', () => (fold.open ? unfolded.add(id) : unfolded.delete(id)));
-  return fold;
+  return fold('all-files', t`All files`, unfolded, id, parts);
+}
+
+/** The trips whose Deleted is open, kept so: Back from a deleted file finds it as it was. */
+const deletedOpen = new Set();
+/**
+ * A fold of the trip screen that stays open or shut while annai runs. @param {string} cls @param {string} label @param {Set<string>} open
+ * @param {string} id @param {HTMLElement[]} parts
+ */
+function fold(cls, label, open, id, parts) {
+  const el = h('details', { class: cls, open: open.has(id) }, h('summary', { text: label }), ...parts);
+  el.addEventListener('toggle', () => (el.open ? open.add(id) : open.delete(id)));
+  return el;
 }
 
 /**
@@ -72,15 +83,22 @@ function allFiles(id, ...parts) {
  * hand. @param {any} ctx @param {string} id
  */
 async function filesSection(ctx, id) {
-  const rows = fileRows(await readTripFiles(ctx.ws, ctx.store, id));
+  const all = await readTripFiles(ctx.ws, ctx.store, id);
+  const rows = fileRows(all);
   const from = `#/trip/${encodeURIComponent(id)}`;
+  // Files deleted and kept, as the conversation still names them (Task 7): each opens its deleted-file screen, with Restore.
+  const gone = deletedFiles(await deletesOf(ctx.store, id), all.files);
   return h('section', { class: 'trip-files', 'aria-label': t`Files` },
     h('h2', { class: 'section', text: t`Files` }),
     rows.length ? h('ul', { class: 'file-list' }, ...rows.map((r) => h('li', { class: 'trip-file' },
       h('a', { class: 'file-row', href: bookingHref(id, r.path, from) },
         h('span', { class: 'name', dir: 'auto', text: r.name }),
         h('span', { class: 'sub became', text: fileLine(r.became) }))))) : h('p', { class: 'empty', text: t`No files yet.` }),
-    adders(ctx, id));
+    adders(ctx, id),
+    gone.length ? fold('deleted-files', t`Deleted (${num(gone.length)})`, deletedOpen, id, [h('ul', { class: 'file-list' }, ...gone.map((g) => h('li', { class: 'trip-file' },
+      h('a', { class: 'file-row', href: fileHref(id, g.path, from) },
+        h('span', { class: 'name', dir: 'auto', text: g.real }),
+        h('span', { class: 'sub became', text: versionText({ type: 'file.delete', actor: g.actor, ts: g.ts }) })))))]) : null);
 }
 
 /** @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */

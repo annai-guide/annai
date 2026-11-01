@@ -2,7 +2,9 @@ import { t, plural, messageOf } from './dom.js';
 import { list, size, BOOKING_KINDS } from './format.js';
 import { parseHash } from './router.js';
 import { explainStorageFull } from './storage-full.js';
-import { deletionOf } from '../core/trip-files.js';
+import { deletionOf, restoreGroup } from '../core/trip-files.js';
+import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
+import { bookingHref } from './format.js';
 import { forget } from '../core/forget.js';
 import { inTrip } from '../core/paths.js';
 
@@ -60,4 +62,28 @@ export async function deleteGroup(ctx, id, d) {
 function nameOf(d) {
   const b = d.blocks[0]?.booking;
   return d.file?.name ?? (typeof b?.title === 'string' && b.title.trim() ? b.title : BOOKING_KINDS[b?.kind] ?? t`Booking`);
+}
+
+/**
+ * Restore on a deleted file's screen (Task 7): the file and what its Delete took with it (restoreGroup), a toast of what came back and
+ * of what couldn't, as something new is at its path; then the file's details screen, or `done` (the raw screen of a file the user didn't
+ * give, drawn again). Shiori's short name for it doesn't come back. @param {any} ctx @param {string} id @param {string} path
+ * @param {null | (() => unknown)} done
+ */
+export async function restoreDeleted(ctx, id, path, done) {
+  /** @type {{ restored: string[], taken: string[] }} */
+  let r;
+  try {
+    r = await restoreGroup(ctx.ws, id, path);
+  } catch (e) {
+    if (!explainStorageFull(ctx, e)) ctx.notices.toast(t`That version isn't stored on this device.`);
+    return;
+  }
+  /** @param {string[]} paths */
+  const parts = (paths) => countParts(paths.filter((p) => BOOKING_FILE.test(p)).length, paths.filter((p) => PLAN_FILE.test(p)).length);
+  const what = list([path.split('/').pop() ?? path, ...parts(r.restored.filter((p) => p !== path))]);
+  const left = parts(r.taken);
+  ctx.notices.toast(left.length ? t`Restored ${what}. ${list(left)} didn't come back, as something new is there now.` : t`Restored ${what}`);
+  if (done) await done();
+  else ctx.go(bookingHref(id, path, `#/trip/${encodeURIComponent(id)}`));
 }

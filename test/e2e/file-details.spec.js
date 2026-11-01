@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { openApp, allFiles, writeRecords } from './helpers.js';
+import { readFile } from 'node:fs/promises';
+import { openApp, allFiles, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -303,4 +304,64 @@ test('a file Shiori never read: Delete frees it and says how much', async ({ pag
   await deleteIt(page);
   await expect(page.getByText(/^Deleted new\.pdf\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['ANNAI AIR itinerary', 'Hotel Aurora Test', 'walks.ics']);
+});
+
+const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
+
+test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and Restore brings back the file, its booking and its plan item', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'read', input: { path: '/trip/files/booking.pdf' } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'A stay at Hotel Aurora Test.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Testville');
+    const home = page.url();
+    const trip = decodeURIComponent(home.split('#/trip/')[1].split(/[/?]/)[0]);
+    // The stand-in reads PDFs, so the conversation keeps the PDF itself.
+    await page.goto('/#/models');
+    await page.getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('link', { name: /^b-model/ }).click();
+    await page.getByLabel('Takes PDFs').check();
+    await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');
+    await page.goto(home);
+    await page.getByLabel('Add photos or files').setInputFiles({ name: 'booking.pdf', mimeType: 'application/pdf', buffer: await readFile(new URL('../fixtures/pdf/booking.pdf', import.meta.url)) });
+    await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('"type":"document"');
+    await page.getByRole('link', { name: 'Conversation' }).click();
+    await expect(page.getByText('A stay at Hotel Aurora Test.')).toBeVisible({ timeout: 30_000 });
+    await writeRecords(page, trip, { write: {
+      '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/booking.pdf', title: 'Hotel Aurora Test', unsure: [] },
+      '/plan/check-in.json': { id: 'check-in', title: 'Check in', fixed: true, start: { at: '2026-11-20T15:00:00-09:00', tz: 'America/Anchorage' }, booking: '/bookings/stay.json' },
+    } });
+    await page.goto(home);
+    await openRow(page, 'Hotel Aurora Test');
+    await deleteIt(page);
+    await expect(page.getByText(/^Deleted Hotel Aurora Test, 1 booking,? and 1 plan item\. The conversation still has it, so it's under Deleted, where you can restore it\.$/)).toBeVisible();
+    const files = page.getByRole('region', { name: 'Files', exact: true });
+    await expect(files.locator(':scope > .file-list > .trip-file')).toHaveCount(0); // its rows; Deleted's are its own
+    const deleted = files.locator('details.deleted-files');
+    await expect(deleted.locator('summary')).toHaveText('Deleted (1)');
+    await deleted.locator('summary').click();
+    await expect(deleted.locator('.trip-file .name')).toHaveText(['booking.pdf']);
+    await expect(deleted.locator('.trip-file .became')).toHaveText(/^Deleted by you /);
+    await deleted.getByRole('link').click();
+    await expect(page.locator('.original, .pdf-view, .file-card').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Restore', exact: true }).click();
+    await expect(page.getByText(/^Restored booking\.pdf, 1 booking,? and 1 plan item$/)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hotel Aurora Test');
+    await expect(page.getByRole('region', { name: 'On the plan' })).toContainText('Check in');
+    await page.goto(home);
+    await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('details.deleted-files')).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('a file Shiori never read: Delete leaves nothing under Deleted', async ({ page }) => {
+  await openApp(page);
+  await fileTrip(page);
+  await openRow(page, 'walks.ics');
+  await deleteIt(page);
+  await expect(page.getByText(/freed\.$/)).toBeVisible();
+  await expect(page.locator('details.deleted-files')).toHaveCount(0);
 });
