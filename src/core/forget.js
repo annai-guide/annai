@@ -59,7 +59,6 @@ function forgetIn(store, scope, match) {
     }
     /** @type {Map<number, EventRecord>} */
     const doomed = new Map();
-    // The file history, read through the type index: a log can hold a point a second of live mode, and is never walked whole to tell why a version is kept.
     const history = match.history || match.mustFree ? await t.listEvents(scope, { types: HISTORY }) : [];
     if (match.history) {
       for (const e of history) if (typeof e.data?.path === 'string' && match.history(e.data.path, e)) doomed.set(e.seq, e);
@@ -75,7 +74,7 @@ function forgetIn(store, scope, match) {
         for (const h of [e.data.old, e.data.new]) {
           if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
           if (await t.blobInUse(h, { exceptScope: scope })) throw new Kept('elsewhere'); // rolls the transaction back
-          // Some other file history entry names it: 'history' (also when the conversation does too: still used elsewhere in this trip); else the conversation.
+          // Other file history names it: 'history' (even if the conversation does too); else 'here'.
           const other = history.some((x) => !doomed.has(x.seq) && [x.data?.old, x.data?.new].includes(h));
           throw new Kept(other ? 'history' : 'here');
         }
