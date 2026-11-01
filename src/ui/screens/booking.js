@@ -99,9 +99,9 @@ export async function renderBooking(ctx, route) {
     (!blocks.length && !made.length) || many ? (file && fileLine(file.became) ? h('p', { class: 'sub', text: fileLine(file.became) }) : null) : null,
     ...blockViews,
     made.length ? planList(made, 'h2', t`Plan items from a calendar`) : null,
-    file ? h('section', { class: 'original', 'aria-label': t`The original` },
-      // With several bookings above, the file's own part is headed, so it doesn't read as the last booking's.
-      many ? h('h2', { class: 'section', text: t`The file` }) : null,
+    file ? h('section', { class: 'original', 'aria-label': many ? null : t`The original`, 'aria-labelledby': many ? 'the-file' : null },
+      // With several bookings above, the file's own part is headed, so it doesn't read as the last booking's; the heading names the region.
+      many ? h('h2', { class: 'section', id: 'the-file', text: t`The file` }) : null,
       opens(await filePreview(ctx, id, file.path, { name: file.name }), fileHref(id, file.path, here)),
       h('p', { class: 'sub', dir: 'auto', text: tc('a file')`From ${file.real}` })) : null,
     elsewhere,

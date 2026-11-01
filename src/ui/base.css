@@ -267,7 +267,9 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .details .facts { margin-block: 12px; }
 .details .notes { white-space: pre-wrap; overflow-wrap: anywhere; }
 .item-notes .notes { margin: 4px 0; }
-.booking-block + .booking-block, .booking-block ~ .original { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.booking-block + .booking-block { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+/* The file's part sits as far under the divider as above it: the screen's gap and the facts' margin already stand above. */
+.booking-block ~ .original { margin-top: 0; padding-top: 28px; border-top: 1px solid var(--line); }
 /* A block's plan items are a level down from its heading. */
 .booking-block h3.section { font-size: 14px; font-weight: 600; color: var(--ink-2); }
 /* What a file or its one booking is sits tight under the heading, as a block's line does under its own. */
@@ -371,7 +373,7 @@ pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: 
    add buttons below the list, then Deleted; All files folded below the screen. */
 .trip-file { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
 .trip-file .file-row { position: relative; min-height: 44px; justify-content: center; padding-inline-end: 32px; overflow-wrap: anywhere; }
-.trip-file .file-row::after { content: '›'; content: '›' / ''; position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); font-size: 22px; line-height: 1; }
+.trip-file .file-row .go { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); font-size: 22px; line-height: 1; }
 .trip-file .name { font-weight: 600; }
 .trip-file .became { overflow-wrap: anywhere; }
 .trip-files > .adders { margin-top: 12px; }
@@ -379,3 +381,8 @@ pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: 
 .all-files, .deleted-files { margin-top: 16px; }
 .all-files > summary, .deleted-files > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
 .deleted-files > .file-list { margin-top: 4px; }
+/* Deleted rows are quieter than the files there are. */
+.deleted-files .file-row { background: transparent; }
+.deleted-files .name { color: var(--ink-2); }
+.all-files > summary::marker, .deleted-files > summary::marker { color: var(--ink-2); }
+.all-files > summary::-webkit-details-marker, .deleted-files > summary::-webkit-details-marker { color: var(--ink-2); } /* apart: a browser that knows one drops a rule naming both */

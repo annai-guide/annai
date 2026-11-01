@@ -12,12 +12,12 @@ export { StorageFullError } from './errors.js';
  * @typedef {import('./types.js').Tx} Tx
  * @typedef {import('./types.js').FileEntry} FileEntry
  * @typedef {{ author: string, type?: string, source?: string, meta?: import('./types.js').PhotoMeta, guard?: (before: any, next: any) => any, handover?: string,
- *   moved?: { to?: string, from?: string, path: string, source?: string }, undo?: string, with?: string }} WriteOptions
+ *   moved?: { to?: string, from?: string, path: string, source?: string }, undo?: string, with?: string, name?: string }} WriteOptions
  *   handover: the hand-over a write of Shiori's was made for (the user's message with files), kept on its log entry so Undo can find it;
  *   moved: this write or delete is one end of a move (waiting.js moveFile): where the file went (to, path) or came from (from, path), and
  *   the source it had before when the move changed it, kept on its log entry so Undo puts it back where it was; undo: the hand-over an Undo
  *   made this write or delete for, so no Undo takes it for anyone's work; with: the file the user gave that this change went with, on
- *   each entry of one operation over several files (Delete in Files: the file, its bookings and plan items), so Restore brings them all back
+ *   each entry of one operation over several files (Delete in Files: the file, its bookings and plan items), so Restore brings them all back; name: what the user knew the file by (its short name), on its delete, as the name goes with the file
  *   guard: for a JSON file, called inside the path's lock with what is stored (undefined if nothing, or not JSON) and the
  *   value about to be stored, read as the format check reads it; what it returns is stored, and what it throws stops the write
  * @typedef {{ op: 'write'|'delete', scope: string, path: string, entry?: FileEntry }} Change
@@ -396,5 +396,5 @@ async function removeFile(t, scope, path, opts, now) {
 
 /** A log entry's hand-over, only when the change was made for one. @param {WriteOptions} opts */
 const handoverOf = (opts) => ({
-  ...(opts.handover ? { handover: opts.handover } : {}), ...(opts.moved ? { moved: opts.moved } : {}), ...(opts.undo ? { undo: opts.undo } : {}), ...(opts.with ? { with: opts.with } : {}),
+  ...(opts.handover ? { handover: opts.handover } : {}), ...(opts.moved ? { moved: opts.moved } : {}), ...(opts.undo ? { undo: opts.undo } : {}), ...(opts.with ? { with: opts.with } : {}), ...(opts.name ? { name: opts.name } : {}),
 });

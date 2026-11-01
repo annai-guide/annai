@@ -85,7 +85,7 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await expect(page.locator('dl.facts dd').first()).toHaveText('Seattle (SEA) → Anchorage (ANC)');
     await expect(page.locator('dl.facts').first()).toContainText('(PT)');
     await expect(page.locator('dl.facts').first()).toContainText('(AKT)');
-    const original = page.getByRole('region', { name: 'The original' });
+    const original = page.getByRole('region', { name: 'The file', exact: true }); // two flights above it: the region is named by its heading
     const draws = await page.evaluate(async () => { const load = (/** @type {string} */ u) => import(u); return (await load('/src/ui/preview.js')).imgDrawsPdf(); });
     if (draws) await expect(original.locator('img.file-preview')).toBeVisible();
     else await expect(original.locator('.file-card')).toContainText('2 pages');
