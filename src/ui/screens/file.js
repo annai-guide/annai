@@ -1,11 +1,15 @@
 import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
 import { readNames } from '../../core/names.js';
-import { isTextType } from '../../core/paths.js';
+import { isTextType, isGivenFile, typeForPath } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { readAppSettings } from '../../core/settings.js';
-import { relTime, size, num, takenText, pathParts, authorName, speaksScreens } from '../format.js';
+import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
+import { readTripFiles, fileDetails, deletionOf, deletesOf, deletedGroup } from '../../core/trip-files.js';
+import { BOOKING_FILE, PLAN_FILE } from '../../core/plan.js';
+import { deleteGroup, afterDelete, countParts, restoreDeleted } from '../file-delete.js';
+import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
@@ -17,7 +21,7 @@ import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
-const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Booking`, item: t`Details`, now: t`Now` });
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`Details`, item: t`Details`, now: t`Now`, trip: t`Back to trip`, talk: t`Conversation`, recap: t`Recap` });
 /** The words of a screen a crumb goes back to (cameFrom's name). @param {string} name */
 export const backLabel = (name) => BACK[name] ?? t`Plan`;
 /**
@@ -48,20 +52,79 @@ export async function renderFile(ctx, route) {
   if (!scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
-  const crumbs = h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`));
-  const head = [crumbs, ...named(await readNames(ctx.ws, id), path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
+  const names = await readNames(ctx.ws, id);
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
-  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
+  if (!r) return deletedScreen(ctx, id, path, history, names, { back, from, trip: scope.title });
+  const crumbs = h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`));
+  const head = [crumbs, ...named(names, path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
   const { entry, bytes: content } = r;
+  // A file the user gave: its Delete removes what Shiori read from it too, and says so (the file-details design, My call 6).
+  const d = isGivenFile(path) ? fileDetails(await readTripFiles(ctx.ws, ctx.store, id), path) : null;
+  const also = d ? countParts(d.blocks.length, deletionOf(d).items.length) : [];
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),
     await editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
+    also.length ? h('p', { class: 'sub', text: t`Deleting this file also deletes ${list(also)}.` }) : null,
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
-      await ctx.ws.delete(id, path, { author: 'user' });
-      ctx.go(back);
+      if (!d) {
+        await ctx.ws.delete(id, path, { author: 'user' });
+        ctx.go(afterDelete(back, [path], id));
+        return;
+      }
+      const gone = await deleteGroup(ctx, id, d);
+      if (gone) ctx.go(afterDelete(back, gone, id));
     })));
+}
+
+/**
+ * A deleted file's screen (Task 7): what Restore brings back, Restore itself, the file's last version, as a waiting file's is shown (a
+ * photo, a PDF, or Download), and its history, whose own Restore buttons bring back one version. Restore is first, under the line
+ * that says what it does: a deleted file's screen has little else. The crumb names the trip, as a details screen's does, and the
+ * heading is the name the file had when deleted (the Delete's entry keeps it, as the short name goes with the file).
+ * @param {any} ctx @param {string} id @param {string} path @param {import('../../core/workspace.js').HistoryEntry[]} history
+ * @param {Record<string, string>} names @param {{ back: string, from: { name: string } | null, trip: string }} o
+ */
+async function deletedScreen(ctx, id, path, history, names, o) {
+  const crumbs = h('p', { class: 'crumbs' }, crumb(o.back, o.from && o.from.name !== 'trip' ? BACK[o.from.name] : h('span', { dir: 'auto', text: o.trip })));
+  const plain = h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path));
+  // Freed at its Delete: no version is left to bring back (Delete in Files, when nothing else named it).
+  if (!history.length) return h('div', { class: 'screen' }, crumbs, ...named(names, path, plain), h('p', { class: 'empty', text: t`This file was deleted for good.` }));
+  const deletes = await deletesOf(ctx.store, id);
+  const last = deletes.filter((x) => x.data?.path === path).at(-1);
+  const real = path.split('/').pop() ?? path;
+  const was = typeof last?.data.name === 'string' && last.data.name !== real ? { ...names, [path]: last.data.name } : names;
+  const head = [crumbs, ...named(was, path, plain, false)];
+  const version = isGivenFile(path) ? await lastVersion(ctx, id, path, last, history) : null;
+  if (!version || !last) {
+    return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }),
+      historyView(ctx, id, path, history, null));
+  }
+  const group = (deletedGroup(deletes, path) ?? []).slice(1).map((x) => x.data.path);
+  const parts = countParts(group.filter((p) => BOOKING_FILE.test(p)).length, group.filter((p) => PLAN_FILE.test(p)).length);
+  return h('div', { class: 'screen' }, ...head,
+    h('p', { class: 'empty', text: parts.length ? t`This file was deleted. Restore brings it back with ${list(parts)} that Shiori read from it.` : t`This file was deleted. Restore brings it back.` }),
+    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restoreDeleted(ctx, id, path) }, t`Restore`)),
+    version,
+    historyView(ctx, id, path, history, null, last.data.old));
+}
+
+/**
+ * A deleted file's last version, shown as a waiting file's is. Null when its last change wasn't a delete of content still here (a move
+ * away, or an import that didn't carry it). @param {any} ctx @param {string} id @param {string} path
+ * @param {import('../../core/types.js').EventRecord | undefined} e its newest delete @param {import('../../core/workspace.js').HistoryEntry[]} history
+ * @returns {Promise<HTMLElement | null>}
+ */
+async function lastVersion(ctx, id, path, e, history) {
+  if (!e || e.seq !== history.at(-1)?.seq || e.data.moved) return null;
+  const bytes = await blobBytes(ctx.store, id, e.data.old, { named: e });
+  if (!bytes) return null;
+  const [saved] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { types: ['file.write'], reverse: true }))
+    .then((/** @type {any[]} */ all) => all.filter((x) => x.data?.path === path && x.data?.new === e.data.old));
+  const entry = { path, type: typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(path), size: bytes.byteLength, meta: e.data.meta };
+  // No "show Shiori this part" on a photo that isn't in the trip now (its viewer's offer names its path).
+  return entry.type.startsWith('image/') ? preview({ ...ctx, agent: null }, id, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes);
 }
 
 /**
@@ -87,14 +150,15 @@ async function waitingFile(ctx, path) {
 /**
  * A file's heading: once Shiori has named it (goal 10), its short name, then its real file name and its path beneath; else as it was.
  * @param {Record<string, string>} names @param {string} path @param {HTMLElement} plain the heading for a file she hasn't named
+ * @param {boolean} [showPath] the path beneath too (not on a deleted file's screen, where it is the file name again)
  * @returns {HTMLElement[]}
  */
-function named(names, path, plain) {
+function named(names, path, plain, showPath = true) {
   if (!Object.hasOwn(names, path)) return [plain];
   const real = path.split('/').pop() ?? path;
   return [h('h1', { class: 'title', dir: 'auto', text: names[path] }),
     h('p', { class: 'sub' }, ...linkIn(t`File name: ${real}`, h('span', { class: 'mono', dir: 'ltr', text: real }))),
-    h('p', { class: 'sub mono', dir: 'ltr' }, ...pathParts(path))];
+    ...(showPath ? [h('p', { class: 'sub mono', dir: 'ltr' }, ...pathParts(path))] : [])];
 }
 
 /** @param {any} ctx @param {string} id @param {any} entry @param {Uint8Array} content */
@@ -185,8 +249,11 @@ function photoFacts(entry) {
   return h('figcaption', { class: 'sub' }, facts, facts && map ? ' · ' : null, map);
 }
 
-/** @param {any} ctx @param {string} id @param {string} path @param {any[]} history @param {string | null} current */
-function historyView(ctx, id, path, history, current) {
+/**
+ * @param {any} ctx @param {string} id @param {string} path @param {any[]} history @param {string | null} current
+ * @param {string} [brought] the version the screen's own Restore brings back, which has no button of its own beside it
+ */
+function historyView(ctx, id, path, history, current, brought) {
   if (!history.length) return h('p', { class: 'sub', text: t`No earlier versions.` });
   return h('section', { class: 'panel', 'aria-label': t`History` },
     h('h2', { class: 'section', text: t`History` }),
@@ -194,7 +261,7 @@ function historyView(ctx, id, path, history, current) {
       h('span', { text: versionText(v) }),
       // A version an import didn't carry has no content here (spec §12.3), and one may be gone: said, never thrown.
       v.type === 'file.write' && !v.new ? h('span', { class: 'sub', text: t`Not kept in this copy` })
-        : v.type === 'file.write' && v.new !== current
+        : v.type === 'file.write' && v.new !== current && v.new !== brought
           ? h('button', { class: 'btn', type: 'button', onclick: async () => {
             try {
               await ctx.ws.restore(id, path, v.new, { author: 'user' });
@@ -205,7 +272,7 @@ function historyView(ctx, id, path, history, current) {
             await ctx.render();
             ctx.notices.toast(t`Version restored`);
           } }, t`Restore this version`)
-          : v.new === current ? h('span', { class: 'sub', text: t`Current` }) : null))));
+          : v.type === 'file.write' && current && v.new === current ? h('span', { class: 'sub', text: t`Current` }) : null))));
 }
 
 /** Who changed a file, and when: "you" has its own message, as the words around it change with it. @param {any} entry */
@@ -214,8 +281,8 @@ function changedText(entry) {
   return entry.author === 'user' ? t`changed by you ${ago}` : t`changed by ${authorName(entry.author)} ${ago}`;
 }
 
-/** A version in a file's history: saved or deleted, by whom, when. @param {any} v */
-function versionText(v) {
+/** A version in a file's history: saved or deleted, by whom, when. @param {{ type: string, actor: string, ts: number }} v */
+export function versionText(v) {
   const [mine, who, ago] = [v.actor === 'user', authorName(v.actor), relTime(v.ts)];
   if (v.type === 'file.delete') return mine ? t`Deleted by you ${ago}` : t`Deleted by ${who} ${ago}`;
   return mine ? t`Saved by you ${ago}` : t`Saved by ${who} ${ago}`;

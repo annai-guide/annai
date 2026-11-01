@@ -6,7 +6,8 @@ import { zone } from '../../core/intl.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
 import { askAboutButton } from '../composer.js';
-import { backCrumb, tripZone, original } from './booking.js';
+import { backCrumb, original } from './booking.js';
+import { tripZoneOf } from '../../core/trip-files.js';
 
 /**
  * A plan item's details (the bookings-and-trips design, goal 6: "what it is, when, where, notes, and the file it came from, if any"):
@@ -25,7 +26,7 @@ export async function renderItem(ctx, route) {
       h('p', { class: 'sub' }, t`It may have been deleted or renamed.`, ' ', h('a', { href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Go to the plan`)));
   }
   const here = itemHref(id, path, route.params.from);
-  const tz = await tripZone(ctx, id);
+  const tz = await tripZoneOf(ctx.ws, id);
   const ref = bookingRef(item.booking);
   const booking = ref ? await ctx.ws.readJSON(id, ref).catch(() => undefined) : undefined;
   const has = booking && typeof booking === 'object' && !Array.isArray(booking);
@@ -47,8 +48,8 @@ export async function renderItem(ctx, route) {
     kind ? h('p', { class: 'sub' }, Object.hasOwn(BOOKING_KINDS, kind) ? BOOKING_KINDS[kind] : h('span', { lang: 'en', text: kind })) : null,
     facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { dir: 'auto', text: v })])) : null,
     typeof item.notes === 'string' && item.notes.trim() ? h('section', { 'aria-label': t`Notes` }, h('h2', { class: 'section', text: t`Notes` }), h('p', { class: 'notes', dir: 'auto', text: item.notes })) : null,
-    has ? h('p', {}, h('a', { href: bookingHref(id, /** @type {string} */ (ref)) }, t`Booked: ${String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`)}`)) : null,
-    await original(ctx, id, source, here, { none: true }),
+    has ? h('p', {}, h('a', { href: bookingHref(id, /** @type {string} */ (ref), here) }, t`Booked: ${String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`)}`)) : null,
+    await original(ctx, id, source, here),
     h('div', { class: 'acts' },
       item.place?.name ? h('a', { class: 'btn', href: mapsUrl(item.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
       askAboutButton(ctx, { scope: id, path, name: title }),

@@ -1,12 +1,13 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
 import { checkOf } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
+import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
-import { t, tc, lang as screensLang, sameLanguage } from '../core/l10n.js';
+import { t, tc, plural, lang as screensLang, sameLanguage } from '../core/l10n.js';
 import { h } from './dom.js';
-import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list } from '../core/intl.js';
+import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list, day } from '../core/intl.js';
 
 export * from '../core/intl.js';
 
@@ -59,15 +60,18 @@ export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/fi
 /** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
 export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
-/** A trip's booking's details (spec §16.2). @param {string} id @param {string} path "/bookings/…" @param {string} [from] the screen its crumb goes back to (Now), else the Plan */
+/**
+ * A trip file's or booking's details; `from` is the screen its crumb goes back to (the trip, the Plan, Now, the Conversation, a plan
+ * item's details), else the trip. @param {string} id @param {string} path "/files/…" or "/bookings/…" @param {string} [from]
+ */
 export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /** A plan item's details. @param {string} id @param {string} path "/plan/…" @param {string} [from] as bookingHref's */
 export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /**
- * Where a link to a trip's file goes: a booking's or a plan item's details, never its raw form (the user, 2026-10-28: "it just shows me
- * the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
+ * Where a link to a trip's file goes: a file the user gave (/files/x) or a booking opens the details screen, a plan item its details, never
+ * the raw form (the user, 2026-10-28: "it just shows me the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
  */
-export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
+export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGivenFile(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
 /**
  * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
  * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]
@@ -82,6 +86,40 @@ export function rowName(r) {
 
 /** A booking's kind in words (a plan item's known kinds too). */
 export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
+
+/** How many of a kind of booking, by its kind. */
+const COUNTS = /** @type {Record<string, (n: number) => string>} */ ({
+  flight: (n) => plural(n, '# flight', '# flights'), lodging: (n) => plural(n, '# stay', '# stays'), car: (n) => plural(n, '# car', '# cars'),
+  rail: (n) => plural(n, '# train', '# trains'), event: (n) => plural(n, '# event', '# events'), restaurant: (n) => plural(n, '# restaurant', '# restaurants'),
+  other: (n) => plural(n, '# booking', '# bookings'),
+});
+
+/**
+ * A Files row's second line, from what the file became: one booking by its kind and day ("Stay · Nov 20"), several of one kind by their
+ * count and days ("2 flights · Nov 20, Nov 27"), of different kinds by their counts ("1 flight · 1 stay"), plan items from a calendar, or
+ * that it waits for Shiori, or holds nothing yet. @param {import('../core/trip-files.js').Became[]} became
+ */
+export function fileLine(became) {
+  const books = became.filter((b) => b.kind === 'booking');
+  /** @type {string[]} */
+  const parts = [];
+  if (books.length === 1) {
+    const b = books[0];
+    parts.push([b.bookingKind !== 'other' && BOOKING_KINDS[b.bookingKind] ? BOOKING_KINDS[b.bookingKind] : t`Booking`, b.day ? day(b.day) : null].filter(Boolean).join(' · '));
+  } else if (books.length) {
+    /** @type {Map<string, number>} */
+    const kinds = new Map();
+    for (const b of books) {
+      const k = b.bookingKind in COUNTS ? b.bookingKind : 'other';
+      kinds.set(k, (kinds.get(k) ?? 0) + 1);
+    }
+    const days = [...new Set(books.map((b) => b.day).filter((d) => typeof d === 'string'))].sort();
+    parts.push([...kinds].map(([k, n]) => COUNTS[k](n)).join(' · ') + (kinds.size === 1 && days.length ? ` · ${list(days.map((d) => day(d)), 'plain')}` : ''));
+  }
+  if (became.some((b) => b.kind === 'plan')) parts.push(t`Plan items from a calendar`);
+  if (!parts.length) parts.push(became[0]?.kind === 'waiting' ? t`Waiting for Shiori to read it` : became[0]?.kind === 'nothing' ? t`Nothing yet` : '');
+  return parts.join(' · ');
+}
 
 /** Words for the keys Shiori writes most in a booking's `fields`; any other key is shown as written. */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
@@ -103,8 +141,9 @@ const valueText = (v) => (Array.isArray(v) ? list(v.map((x) => (typeof x === 'st
 /**
  * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
  * its kind: times in their own zone, named (else the trip's, when given), and `unsure` on each field Shiori isn't sure of (checkOf).
+ * zone: a time's zone words, within value, which a screen keeps on one line.
  * @param {any} b @param {{ fallbackTz?: string }} [o]
- * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean }[]}
+ * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean, zone?: string }[]}
  */
 export function bookingFacts(b, o = {}) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return [];
@@ -115,15 +154,15 @@ export function bookingFacts(b, o = {}) {
     const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
     const ms = tz ? instantAt(time?.at, tz) : NaN;
     if (!Number.isFinite(ms) || !tz) return null;
-    return t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`;
+    return { value: t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`, zone: zone(ms, tz) };
   };
   const stay = b.kind === 'lodging';
   const flight = b.kind === 'flight';
-  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean } | null>} */
+  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
   const own = {
     route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter((x) => typeof x === 'string' && x).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
-    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, value: at(b.start) }),
-    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, value: at(b.end) }),
+    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
+    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
     place: () => ({ label: t`Place`, value: b.place?.name ? (b.place.address ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
     nights: () => {
       if (Object.hasOwn(fields, 'nights')) return null; // hers, among the fields
@@ -145,7 +184,7 @@ export function bookingFacts(b, o = {}) {
   for (const key of ORDER[b.kind] ?? OTHER) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
-      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key) });
+      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
       if (key !== 'nights' || !Object.hasOwn(fields, 'nights')) continue;
     }
     if (!Object.hasOwn(fields, key)) continue;

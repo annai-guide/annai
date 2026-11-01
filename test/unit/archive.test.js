@@ -835,3 +835,21 @@ test("an everything backup carries the waiting space; restoring it adds the wait
   const one = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
   assert.equal(one.manifest.files.some((f) => f.name.startsWith('system/')), false);
 });
+
+test("a deleted photo's kept details say where it was taken only when the archive may: not in a Share without locations, not with Photos unticked", async () => {
+  const { a, trip } = await photoTrip();
+  await a.ws.delete(trip, '/files/kept.jpg', { author: 'user' });
+  /** @param {any} opts @returns {Promise<any>} the file.delete entry of kept.jpg */
+  const deleted = async (opts) => {
+    const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], app: '0.1.0', ...opts });
+    const lines = text((await readZip(await bytesOf(blob))).get(/** @type {string} */ (manifest.scopes[0].events))).trim().split('\n').map((l) => JSON.parse(l));
+    return lines.find((e) => e.type === 'file.delete' && e.data.path === '/files/kept.jpg');
+  };
+  const history = { ...PRESETS.share, history: true };
+  assert.deepEqual((await deleted({ include: history, share: { places: true, convert: shareConvert } })).data.meta.place, nepenthe);
+  assert.deepEqual((await deleted({ include: PRESETS.backup })).data.meta.place, nepenthe);
+  const noPlaces = await deleted({ include: history, share: { places: false, convert: shareConvert } });
+  assert.equal(noPlaces.data.meta.place, undefined);
+  assert.equal(noPlaces.data.meta.width, 64);
+  assert.equal((await deleted({ include: { ...PRESETS.backup, photos: false } })).data.meta, undefined);
+});
