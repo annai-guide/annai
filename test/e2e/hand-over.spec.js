@@ -100,7 +100,9 @@ test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she
     await expect(lines.nth(1)).toHaveText(new RegExp(RECAP));
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0); // nothing asked where a file goes
     await lines.nth(0).getByRole('link', { name: 'flight.pdf' }).click();
-    await expect(page.getByRole('heading', { name: '/files/flight.pdf' })).toBeVisible();
+    // The chip for a file the user gave opens its details, whose crumb goes back to the Conversation.
+    await expect(page.getByRole('region', { name: 'The original' })).toContainText('From flight.pdf');
+    await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
     await page.goto('/#/trips');
     await expect(page.locator('.trip-card', { hasText: TITLE })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toHaveCount(0);
@@ -281,6 +283,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     // The chip on the sent line opens the booking's details, never its raw JSON (the review of seeing-bookings, E1).
     const chip = page.locator('.convo .chips.handed .attach-chip').first();
     await expect(chip).toHaveAttribute('href', /\/booking\?path=/);
+    await expect(chip).toHaveAttribute('href', /from=%23%2Ftalk/);
     await chip.click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
     await expect(page.locator('textarea')).toHaveCount(0);

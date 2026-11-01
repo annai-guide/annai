@@ -47,7 +47,7 @@ export async function renderItem(ctx, route) {
     kind ? h('p', { class: 'sub' }, Object.hasOwn(BOOKING_KINDS, kind) ? BOOKING_KINDS[kind] : h('span', { lang: 'en', text: kind })) : null,
     facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { dir: 'auto', text: v })])) : null,
     typeof item.notes === 'string' && item.notes.trim() ? h('section', { 'aria-label': t`Notes` }, h('h2', { class: 'section', text: t`Notes` }), h('p', { class: 'notes', dir: 'auto', text: item.notes })) : null,
-    has ? h('p', {}, h('a', { href: bookingHref(id, /** @type {string} */ (ref)) }, t`Booked: ${String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`)}`)) : null,
+    has ? h('p', {}, h('a', { href: bookingHref(id, /** @type {string} */ (ref), here) }, t`Booked: ${String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`)}`)) : null,
     await original(ctx, id, source, here),
     h('div', { class: 'acts' },
       item.place?.name ? h('a', { class: 'btn', href: mapsUrl(item.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,

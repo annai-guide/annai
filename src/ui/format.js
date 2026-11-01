@@ -59,15 +59,18 @@ export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/fi
 /** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
 export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
-/** A trip's booking's details (spec §16.2). @param {string} id @param {string} path "/bookings/…" @param {string} [from] the screen its crumb goes back to (Now), else the Plan */
+/**
+ * A trip file's or booking's details; `from` is the screen its crumb goes back to (the trip, the Plan, Now, the Conversation, a plan
+ * item's details), else the trip. @param {string} id @param {string} path "/files/…" or "/bookings/…" @param {string} [from]
+ */
 export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /** A plan item's details. @param {string} id @param {string} path "/plan/…" @param {string} [from] as bookingHref's */
 export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /**
- * Where a link to a trip's file goes: a booking's or a plan item's details, never its raw form (the user, 2026-10-28: "it just shows me
- * the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
+ * Where a link to a trip's file goes: a file the user gave (/files/x) or a booking opens the details screen, a plan item its details, never
+ * the raw form (the user, 2026-10-28: "it just shows me the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
  */
-export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
+export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || /^\/files\/[^/]+$/.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
 /**
  * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
  * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]

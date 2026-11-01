@@ -375,8 +375,9 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     await expect(page.locator('.mark-check')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
 
-    // The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
-    await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
+    // Its crumb goes back to the Conversation it was opened from. The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
+    await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
     await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
