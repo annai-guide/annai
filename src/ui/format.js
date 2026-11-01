@@ -1,6 +1,7 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
 import { checkOf } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
+import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
@@ -70,7 +71,7 @@ export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/it
  * Where a link to a trip's file goes: a file the user gave (/files/x) or a booking opens the details screen, a plan item its details, never
  * the raw form (the user, 2026-10-28: "it just shows me the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
  */
-export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || /^\/files\/[^/]+$/.test(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
+export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGivenFile(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
 /**
  * What a tap on a Plan row opens (the bookings-and-trips design, goal 6): its booking's details when it is or stands for one, else the
  * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]

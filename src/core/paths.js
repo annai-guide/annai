@@ -117,3 +117,9 @@ export function freeName(path, taken) {
     if (!taken.has(p)) return p;
   }
 }
+
+/** "/trip/files/x" and "/files/x" both name a trip's /files/x (Shiori writes the first); anything not a string is ''. @param {unknown} p */
+export const inTrip = (p) => (typeof p === 'string' ? p.replace(/^\/trip(?=\/)/, '') : '');
+
+/** Whether a trip path (as inTrip gives it) is a file the user gave: one directly under /files/. @param {string} p */
+export const isGivenFile = (p) => /^\/files\/[^/]+$/.test(p);

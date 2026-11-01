@@ -1,6 +1,6 @@
 import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
 import { readNames } from '../../core/names.js';
-import { isTextType } from '../../core/paths.js';
+import { isTextType, isGivenFile } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -54,10 +54,14 @@ export async function renderFile(ctx, route) {
   const head = [crumbs, ...named(await readNames(ctx.ws, id), path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
-  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
+  if (!r) {
+    // Freed at its Delete: no version is left to bring back (Delete in Files, when nothing else named it).
+    if (!history.length) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted for good.` }));
+    return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
+  }
   const { entry, bytes: content } = r;
   // A file the user gave: its Delete removes what Shiori read from it too, and says so (the file-details design, My call 6).
-  const d = /^\/files\/[^/]+$/.test(path) ? fileDetails(await readTripFiles(ctx.ws, ctx.store, id), path) : null;
+  const d = isGivenFile(path) ? fileDetails(await readTripFiles(ctx.ws, ctx.store, id), path) : null;
   const also = d ? countParts(d.blocks.length, deletionOf(d).items.length) : [];
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),

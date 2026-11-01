@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, allFiles } from './helpers.js';
+import { openApp, allFiles, writeRecords } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -34,7 +34,9 @@ test('a file with two flights: one screen, two blocks in time order, each with i
   await expect(page.locator('.booking-block h2')).toHaveText(['ANNAI AIR AN 123', 'ANNAI AIR AN 124']);
   const second = page.getByRole('region', { name: 'ANNAI AIR AN 124' });
   await expect(second.locator('dl.facts .mark-check')).toHaveCount(1); // the seat
-  await expect(second.getByRole('region', { name: 'On the plan' })).toContainText('Fly home');
+  // Each block's plan items are named by their block (A6), so two regions never share a name.
+  await expect(page.getByRole('region', { name: 'On the plan: ANNAI AIR AN 124', exact: true })).toContainText('Fly home');
+  await expect(page.getByRole('region', { name: 'On the plan', exact: true })).toHaveCount(0);
   await expect(second.getByRole('region', { name: 'On the plan' })).toContainText('Terminal S.');
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(2);
   await expect(page.getByRole('region', { name: 'The original' })).toContainText('From itinerary.pdf');
@@ -107,6 +109,27 @@ test('a file waiting to be read says so, with Open, Download and Ask, and no Cha
   await expect(page.getByRole('button', { name: 'Download' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask Shiori about this' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(0);
+});
+
+test('an untitled booking among several says its kind and day once, as its heading', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await writeRecords(page, trip, { patch: { '/bookings/back.json': { title: null } } });
+  await openAt(page, trip, '/files/itinerary.pdf');
+  await expect(page.locator('.booking-block h2')).toHaveText(['ANNAI AIR AN 123', 'Flight · Fri, Nov 27']);
+  await expect(page.locator('.booking-block').nth(1).locator('> .sub')).toHaveCount(0);
+  await expect(page.locator('.booking-block').first().locator('> .sub')).toHaveText('Flight · Fri, Nov 20');
+});
+
+test('a booking whose source is a file outside /files/ shows that file, and Open the original leads to it', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await writeRecords(page, trip, { write: { '/notes/grill.md': 'Testville Grill, table for two.' }, patch: { '/bookings/said.json': { source: '/trip/notes/grill.md' } } });
+  await openAt(page, trip, '/bookings/said.json');
+  const original = page.getByRole('region', { name: 'The original' });
+  await expect(original).toContainText('From grill.md');
+  await original.getByRole('link', { name: 'Open the original' }).click();
+  await expect(page.locator('#file-content')).toHaveValue('Testville Grill, table for two.');
 });
 
 test("a link to a file that isn't there says so", async ({ page }) => {

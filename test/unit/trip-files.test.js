@@ -88,3 +88,10 @@ test('a date-only start is that day, whatever the zone', () => {
   const t = { ...two, fallbackTz: 'America/Los_Angeles', bookings: [], items: [{ path: '/plan/x.json', item: { title: 'Day trip', start: { at: '2026-11-23' } }, source: '/files/trip.ics' }] };
   assert.deepEqual(fileDetails(t, '/files/trip.ics')?.made.map((p) => p.day), ['2026-11-23']);
 });
+
+test("an all-day item sorts by its own day in the trip's zone: west of UTC it comes after the evening before", () => {
+  const t = { ...two, bookings: [], items: [
+    { path: '/plan/a-day.json', item: { title: 'Day trip', start: { at: '2026-11-23' } }, source: '/files/trip.ics' },
+    { path: '/plan/b-eve.json', item: { title: 'Late dinner', start: { at: '2026-11-22T20:00:00-09:00', tz: AK } }, source: '/files/trip.ics' }] };
+  assert.deepEqual(fileDetails(t, '/files/trip.ics')?.made.map((p) => p.path), ['/plan/b-eve.json', '/plan/a-day.json']);
+});
