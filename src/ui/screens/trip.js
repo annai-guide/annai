@@ -4,9 +4,8 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName } from '../format.js';
+import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine } from '../format.js';
 import { fileRows, readTripFiles } from '../../core/trip-files.js';
-import { askAboutButton } from '../composer.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
@@ -52,7 +51,7 @@ export async function renderTrip(ctx, route) {
         : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
     extra,
-    await filesSection(ctx, id, files),
+    await filesSection(ctx, id),
     await packPanel(ctx, id),
     // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one (My call 5).
     allFiles(id, fileList(id, files), newFile(ctx, id)));
@@ -67,44 +66,21 @@ function allFiles(id, ...parts) {
   return fold;
 }
 
-/** What a file became, in words: a booking by its kind. */
-const BECAME = /** @type {Record<string, (title: string) => string>} */ ({
-  flight: (x) => t`A flight: ${x}`, lodging: (x) => t`A stay: ${x}`, car: (x) => t`A car: ${x}`, rail: (x) => t`A train: ${x}`,
-  event: (x) => t`An event: ${x}`, restaurant: (x) => t`A restaurant: ${x}`, other: (x) => t`A booking: ${x}`,
-});
-
 /**
- * The trip's Files (the bookings-and-trips design, goal 8): each file kept with it by Shiori's short name, its real name beneath, and what
- * it became, a booking linking to its details; a tap opens the file, and each can be asked about. Photos are the trip's photos, not
- * listed here (My call 4). At its foot, the user adds photos or files by hand. @param {any} ctx @param {string} id @param {any[]} files
+ * The trip's Files (the file-details design, goal 1): one row per file the user gave, by Shiori's short name with what it is beneath;
+ * the whole row opens the file's details. Photos are the trip's photos, not listed here. At its foot, the user adds photos or files by
+ * hand. @param {any} ctx @param {string} id
  */
-async function filesSection(ctx, id, files) {
+async function filesSection(ctx, id) {
   const rows = fileRows(await readTripFiles(ctx.ws, ctx.store, id));
+  const from = `#/trip/${encodeURIComponent(id)}`;
   return h('section', { class: 'trip-files', 'aria-label': t`Files` },
     h('h2', { class: 'section', text: t`Files` }),
     rows.length ? h('ul', { class: 'file-list' }, ...rows.map((r) => h('li', { class: 'trip-file' },
-      h('a', { class: 'file-row', href: fileHref(id, r.path) },
+      h('a', { class: 'file-row', href: bookingHref(id, r.path, from) },
         h('span', { class: 'name', dir: 'auto', text: r.name }),
-        r.name !== r.real ? h('span', { class: 'sub real', dir: 'ltr', text: r.real }) : null),
-      h('span', { class: 'sub became' }, ...becameParts(id, r.became)),
-      askAboutButton(ctx, { scope: id, path: r.path, name: r.name })))) : h('p', { class: 'empty', text: t`No files yet.` }),
+        h('span', { class: 'sub became', text: fileLine(r.became) }))))) : h('p', { class: 'empty', text: t`No files yet.` }),
     adders(ctx, id));
-}
-
-/** What a file became, as words and links. @param {string} id @param {import('../../core/trip-files.js').Became[]} became */
-function becameParts(id, became) {
-  /** @type {(HTMLElement | string)[]} */
-  const out = [];
-  let planned = false;
-  for (const b of became) {
-    if (b.kind === 'booking') out.push(h('a', { href: bookingHref(id, b.path), dir: 'auto' }, (BECAME[b.bookingKind] ?? BECAME.other)(b.title || b.path.split('/').pop() || '')));
-    else if (b.kind !== 'plan') out.push(b.kind === 'waiting' ? t`Waiting for Shiori to read it` : t`Nothing yet`);
-    else if (!planned) {
-      planned = true; // one line, however many events
-      out.push(t`Plan items from a calendar`);
-    }
-  }
-  return out.flatMap((x, i) => (i ? [' · ', x] : [x]));
 }
 
 /** @param {any} ctx @param {string} id @param {any} scope @param {HTMLElement} slot @returns {HTMLElement[]} */
@@ -194,7 +170,7 @@ function fileList(id, files) {
     if (!groups.has(folder)) groups.set(folder, []);
     groups.get(folder)?.push(f);
   }
-  return h('section', { class: 'files', 'aria-label': t`Files` },
+  return h('section', { class: 'files', 'aria-label': t`All files` },
     ...[...groups].map(([folder, list]) => h('div', {},
       h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : t`Trip` }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },

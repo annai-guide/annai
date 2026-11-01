@@ -4,9 +4,9 @@ import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
 import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
-import { t, tc, lang as screensLang, sameLanguage } from '../core/l10n.js';
+import { t, tc, plural, lang as screensLang, sameLanguage } from '../core/l10n.js';
 import { h } from './dom.js';
-import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list } from '../core/intl.js';
+import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list, day } from '../core/intl.js';
 
 export * from '../core/intl.js';
 
@@ -82,6 +82,40 @@ export function rowName(r) {
 
 /** A booking's kind in words (a plan item's known kinds too). */
 export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
+
+/** How many of a kind of booking, by its kind. */
+const COUNTS = /** @type {Record<string, (n: number) => string>} */ ({
+  flight: (n) => plural(n, '# flight', '# flights'), lodging: (n) => plural(n, '# stay', '# stays'), car: (n) => plural(n, '# car', '# cars'),
+  rail: (n) => plural(n, '# train', '# trains'), event: (n) => plural(n, '# event', '# events'), restaurant: (n) => plural(n, '# restaurant', '# restaurants'),
+  other: (n) => plural(n, '# booking', '# bookings'),
+});
+
+/**
+ * A Files row's second line, from what the file became: one booking by its kind and day ("Stay · Nov 20"), several of one kind by their
+ * count and days ("2 flights · Nov 20, Nov 27"), of different kinds by their counts ("1 flight · 1 stay"), plan items from a calendar, or
+ * that it waits for Shiori, or holds nothing yet. @param {import('../core/trip-files.js').Became[]} became
+ */
+export function fileLine(became) {
+  const books = became.filter((b) => b.kind === 'booking');
+  /** @type {string[]} */
+  const parts = [];
+  if (books.length === 1) {
+    const b = books[0];
+    parts.push([b.bookingKind !== 'other' && BOOKING_KINDS[b.bookingKind] ? BOOKING_KINDS[b.bookingKind] : t`Booking`, b.day ? day(b.day) : null].filter(Boolean).join(' · '));
+  } else if (books.length) {
+    /** @type {Map<string, number>} */
+    const kinds = new Map();
+    for (const b of books) {
+      const k = b.bookingKind in COUNTS ? b.bookingKind : 'other';
+      kinds.set(k, (kinds.get(k) ?? 0) + 1);
+    }
+    const days = [...new Set(books.map((b) => b.day).filter((d) => typeof d === 'string'))].sort();
+    parts.push([...kinds].map(([k, n]) => COUNTS[k](n)).join(' · ') + (kinds.size === 1 && days.length ? ` · ${list(days.map((d) => day(d)), 'plain')}` : ''));
+  }
+  if (became.some((b) => b.kind === 'plan')) parts.push(t`Plan items from a calendar`);
+  if (!parts.length) parts.push(became[0]?.kind === 'waiting' ? t`Waiting for Shiori to read it` : became[0]?.kind === 'nothing' ? t`Nothing yet` : '');
+  return parts.join(' · ');
+}
 
 /** Words for the keys Shiori writes most in a booking's `fields`; any other key is shown as written. */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
