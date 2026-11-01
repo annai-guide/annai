@@ -5,7 +5,9 @@ import { text } from '../../core/bytes.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { readAppSettings } from '../../core/settings.js';
-import { relTime, size, num, takenText, pathParts, authorName, speaksScreens } from '../format.js';
+import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
+import { readTripFiles, fileDetails, deletionOf } from '../../core/trip-files.js';
+import { deleteDetails, afterDelete, countParts } from '../file-delete.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
@@ -54,13 +56,22 @@ export async function renderFile(ctx, route) {
   const history = await ctx.ws.history(id, path);
   if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }), historyView(ctx, id, path, history, null));
   const { entry, bytes: content } = r;
+  // A file the user gave: its Delete removes what Shiori read from it too, and says so (the file-details design, My call 6).
+  const d = /^\/files\/[^/]+$/.test(path) ? fileDetails(await readTripFiles(ctx.ws, ctx.store, id), path) : null;
+  const also = d ? countParts(d.blocks.length, deletionOf(d).items.length) : [];
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'sub', text: [entry.type, size(entry.size), changedText(entry)].join(' · ') }),
     await editor(ctx, id, entry, content),
     historyView(ctx, id, path, history, entry.hash),
+    also.length ? h('p', { class: 'sub', text: t`Deleting this file also deletes ${list(also)}.` }) : null,
     h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
-      await ctx.ws.delete(id, path, { author: 'user' });
-      ctx.go(back);
+      if (!d) {
+        await ctx.ws.delete(id, path, { author: 'user' });
+        ctx.go(back);
+        return;
+      }
+      const gone = await deleteDetails(ctx, id, d, d.file?.name ?? path);
+      if (gone) ctx.go(afterDelete(back, gone, id));
     })));
 }
 
