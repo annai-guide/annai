@@ -21,6 +21,11 @@ The user's words:
   6. Long turns: "Stop past 64 KB (Recommended)".
   7. Cache markers for Claude through OpenRouter: "Add them now (Recommended)".
 - 2026-10-30, on how a long turn decides when to stop: "Limit the upload (Recommended)" (thinking goes back until the turn has sent about 360 KB of it in all, whatever size Claude's steps are: about 12 heavy steps or 24 light ones). It replaces answer 6's per-request figure.
+- 2026-11-01, the coordinator's calls as built, all confirmed:
+  1. Servers that use Anthropic's format (MiniMax, llama.cpp) get their own thinking back within a turn: "Keep it (Recommended)".
+  2. Claude through OpenRouter sends a `session_id` (a hash of the instructions): "Keep it (Recommended)".
+  3. Any 400 on a request that carried thinking is retried once without it, whatever the error says: "Any 400 (Recommended)".
+  4. The 360 KB is counted once per step, and steps a non-Claude fallback answers count too: "As built (Recommended)".
 
 ## Goals
 
