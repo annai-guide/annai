@@ -13,6 +13,7 @@ import { speaksScreens } from './format.js';
  * @typedef {{ file: Blob & { name?: string }, pasted?: string } | { scope: string, path: string, name?: string }} Attachment  a file handed now
  *   (pasted: the text a paste became), or one kept already (name: what its chip and Shiori call it, a booking's title or a file's short
  *   name; else its own name)
+ * @typedef {{ scope: string, path: string, name?: string }} Ref  a file or record to ask about; name: what its chip calls it
  * @typedef {import('../core/handover.js').HandedFile} HandedFile
  */
 
@@ -199,15 +200,17 @@ export const canAsk = (ctx) => typeof ctx.dock?.attach === 'function';
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
  * that trip first; a file waiting with Shiori is asked about with no trip open, where she sees it.
- * @param {any} ctx @param {{ scope: string, path: string, name?: string }} ref name: what its chip calls it @param {{ suggestions?: string[] }} [o]
+ * @param {any} ctx @param {Ref | Ref[]} refs name: what its chip calls it; several make several chips, in the first one's conversation
+ * @param {{ suggestions?: string[] }} [o]
  */
-export async function askAbout(ctx, ref, o = {}) {
-  const want = ref.scope === SYS_WAITING ? null : ref.scope;
+export async function askAbout(ctx, refs, o = {}) {
+  const list = Array.isArray(refs) ? refs : [refs];
+  const want = list[0].scope === SYS_WAITING ? null : list[0].scope;
   if (ctx.agent.target !== want) {
     await updateAppSettings(ctx.ws, { activeTrip: want });
     await ctx.agent.open(want).catch((/** @type {unknown} */ e) => ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) }));
   }
-  ctx.dock.attach([ref], o);
+  ctx.dock.attach(list, o);
   ctx.dock.openTyping();
   ctx.go('#/talk');
 }
@@ -215,7 +218,7 @@ export async function askAbout(ctx, ref, o = {}) {
 /**
  * Ask Shiori about this (goal 7), on a booking's or a plan item's details and on a file in a trip's Files: the thing as a chip in the
  * box, with Read it again under it, in the user's words (the language they speak, as other words sent for them). Null where annai's
- * own dock isn't there to ask in. @param {any} ctx @param {{ scope: string, path: string, name?: string }} ref
+ * own dock isn't there to ask in. @param {any} ctx @param {Ref | Ref[]} ref one thing, or several (a file and its bookings)
  * @returns {HTMLElement | null}
  */
 export function askAboutButton(ctx, ref) {

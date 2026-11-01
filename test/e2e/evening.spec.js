@@ -81,16 +81,17 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
     await day.getByRole('link', { name: /ANNAI AIR AN 123/ }).first().click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+    // The itinerary became two flights, so the file's screen has a block for each; the first is this one.
     await expect(page.locator('dl.facts dd').first()).toHaveText('Seattle (SEA) → Anchorage (ANC)');
-    await expect(page.locator('dl.facts')).toContainText('(PT)');
-    await expect(page.locator('dl.facts')).toContainText('(AKT)');
+    await expect(page.locator('dl.facts').first()).toContainText('(PT)');
+    await expect(page.locator('dl.facts').first()).toContainText('(AKT)');
     const original = page.getByRole('region', { name: 'The original' });
     const draws = await page.evaluate(async () => { const load = (/** @type {string} */ u) => import(u); return (await load('/src/ui/preview.js')).imgDrawsPdf(); });
     if (draws) await expect(original.locator('img.file-preview')).toBeVisible();
     else await expect(original.locator('.file-card')).toContainText('2 pages');
-    await expect(original).toContainText('From ANNAI AIR flight · Nov 20');
-    // 5. Open the original shows the file, and Back returns to the details.
-    await page.getByRole('link', { name: 'Open the original' }).click();
+    await expect(original).toContainText('From flight.pdf');
+    // 5. Open shows the file, and Back returns to the details.
+    await page.getByRole('link', { name: 'Open', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
     await expect(page.getByText('File name: flight.pdf')).toBeVisible();
     await page.goBack();
@@ -99,13 +100,13 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     // 7. Ask Shiori about this, with "the seat is 14D": she fixes the seat, and nothing is left to check on it.
     await expect(page.locator('dl.facts .mark-check')).toHaveCount(1);
     await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
-    await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR AN 123']);
+    await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR flight · Nov 20', 'ANNAI AIR AN 123', 'ANNAI AIR AN 124']);
     await page.getByLabel('Message to Shiori').fill('the seat is 14D');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.convo').getByText('Seat 14D it is.')).toBeVisible({ timeout: 60_000 });
     await page.goBack();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-    await expect(page.locator('dl.facts')).toContainText('14D');
+    await expect(page.locator('dl.facts').first()).toContainText('14D');
     await expect(page.locator('dl.facts .mark-check')).toHaveCount(0);
   } finally {
     await llm.stop();

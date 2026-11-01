@@ -982,16 +982,16 @@ rs50uy	ok	Opening the backup…	バックアップを開いています…	src/u
 io1qx	ok	Open the booking	予約を開く	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori が見せた写真	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	このカードの種類（{0}）は、オンになっていないプラグインのものです。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/composer.js:65	
-36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/composer.js:66	
-17olkn2#other	ok	# files weren't kept	ファイル#件を保存できませんでした	src/ui/composer.js:70	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when the device ran out of room part-way through handing files over; the body says why; 件 counts files.
-1mv1z9a	ok	Put back as text	テキストに戻す	src/ui/composer.js:127	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	{0}を外す	src/ui/composer.js:128	context: a file in the message; {0} = name; Note: a chip's button in the type box: takes the file out of the message, never deletes it, so 外す, not 削除.
-1il2ncj	ok	Give Shiori photos or files	Shiori に写真やファイルを渡す	src/ui/composer.js:139	Note: the + in the type box: 渡す (hand over), as the user hands a booking to a travel agent.
-1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:178	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
-13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/composer.js:208	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
-1npepge	ok	Read it again	もう一度読んでください	src/ui/composer.js:225	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
-158qnm7	ok	Ask Shiori about this	このことを Shiori に聞く	src/ui/composer.js:226	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
+rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/composer.js:66	
+36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/composer.js:67	
+17olkn2#other	ok	# files weren't kept	ファイル#件を保存できませんでした	src/ui/composer.js:71	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when the device ran out of room part-way through handing files over; the body says why; 件 counts files.
+1mv1z9a	ok	Put back as text	テキストに戻す	src/ui/composer.js:128	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	{0}を外す	src/ui/composer.js:129	context: a file in the message; {0} = name; Note: a chip's button in the type box: takes the file out of the message, never deletes it, so 外す, not 削除.
+1il2ncj	ok	Give Shiori photos or files	Shiori に写真やファイルを渡す	src/ui/composer.js:140	Note: the + in the type box: 渡す (hand over), as the user hands a booking to a travel agent.
+1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:179	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
+13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/composer.js:211	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
+1npepge	ok	Read it again	もう一度読んでください	src/ui/composer.js:228	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
+158qnm7	ok	Ask Shiori about this	このことを Shiori に聞く	src/ui/composer.js:229	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 1qozjyj	ok	Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や予定に沿った場所。Shiori の nearby ツールとオフラインパックで使い、Overpass（overpass-api.de、混雑時は private.coffee のサーバー）で探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探し、地点から場所の名前を調べます。Shiori の geocode と reverse ツールで使い、無料検索の最後の手段として場所の公式サイトも探します。annai は利用規約に従い、問い合わせを1秒に1回までにしています。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shiori が読む記事にはアドレスが付きます。常に有効な無料検索の最後の手段として、検索した言葉を問い合わせます。	src/ui/credits.js:33	
@@ -1530,17 +1530,23 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 9patw8	ok	annai stops backing up here. The backups already there stay.	annai はここへのバックアップをやめます。すでにあるバックアップは残ります。	src/ui/screens/backups.js:312	
 1hx8faa	ok	Tap again to remove it	もう一度タップすると削除します	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:313	
-nq6gpo	ok	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:28	
-19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は予定に一覧があります。	src/ui/screens/booking.js:29	
-1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	要確認：annai が項目ごとに確認を付ける前に Shiori が読んだ予約です。合っていればその旨を、違っていれば何が違うかを Shiori に伝えてください。	src/ui/screens/booking.js:44	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
-bamrei	ok	Change it	変更する	src/ui/screens/booking.js:53	
-iy42pb	ok	check	要確認	src/ui/screens/booking.js:76	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
-1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:77	Note: read by screen readers for the check mark beside a detail.
-8icj76	ok	Plan	予定	src/ui/screens/booking.js:86	
-d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:111	{0} = name
-yp5voz	ok	This booking doesn't say which file it came from.	この予約には、どのファイルから読み取ったかが書かれていません。	src/ui/screens/booking.js:111	
-2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:112	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
-98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:115	
+10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/booking.js:26	
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/booking.js:26	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+7862xj	ok	It may have been deleted or renamed.	削除されたか、名前が変わった可能性があります。	src/ui/screens/booking.js:34	Note: after This isn't on the plan.
+vocksz	draft	This file isn't in the trip	このファイルは旅にありません	src/ui/screens/booking.js:34	Note: the heading of the details screen for a file that is not in the trip (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
+19h3yfj	ok	It may have been deleted or renamed. The plan lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は予定に一覧があります。	src/ui/screens/booking.js:35	
+nq6gpo	ok	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:35	
+69ckwu	draft	On the plan	予定に入っている項目	src/ui/screens/booking.js:52	Note: the heading of the plan items that stand for a booking, on the details screen of a file or booking (Plan: 予定/行程).
+oozr11	ok	Plan item	予定の項目	src/ui/screens/booking.js:55	Note: a plan item's heading when it has no title.
+1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	要確認：annai が項目ごとに確認を付ける前に Shiori が読んだ予約です。合っていればその旨を、違っていれば何が違うかを Shiori に伝えてください。	src/ui/screens/booking.js:73	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
+bamrei	ok	Change it	変更する	src/ui/screens/booking.js:80	
+2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:95	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
+d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:98	{0} = shortName(all.names, lonely)
+t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:101	
+iy42pb	ok	check	要確認	src/ui/screens/booking.js:117	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
+1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:118	Note: read by screen readers for the check mark beside a detail.
+8icj76	ok	Plan	予定	src/ui/screens/booking.js:130	
+98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:162	
 19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:12	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:12	
 1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:13	
@@ -1582,10 +1588,9 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	この
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}にあります。	src/ui/screens/ext.js:37	{0} = trace
 xb1ny3	ok	Trips	旅	src/ui/screens/ext.js:56	
-43f6md	ok	Details	詳細	src/ui/screens/file.js:20	Note: the crumb back to a plan item's details screen, from the file it came from.
-10rafvo	ok	This trip isn't on this device	この旅はこの端末にありません	src/ui/screens/file.js:49	
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/file.js:49	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:51	
+17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:20	
+1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:20	
+43f6md	ok	Details	詳細	src/ui/screens/file.js:20	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen.
 krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下から以前のバージョンを戻せます。	src/ui/screens/file.js:55	
 1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:61	
 1ygxf36	ok	Tap again to delete	もう一度タップすると削除します	src/ui/screens/file.js:61	
@@ -1597,7 +1602,6 @@ lewgh4	ok	Save	保存	src/ui/screens/file.js:119
 1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:148	
 wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:153	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
 129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safari では表示でき、「共有」でエクスポートすると、できる場合は変換されます。	src/ui/screens/file.js:160	
-t8quxl	ok	Download	ダウンロード	src/ui/screens/file.js:170	
 4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:179	{0} = takenText(m.taken)
 z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:180	
 1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:183	
@@ -1666,8 +1670,6 @@ sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest;
 3wbwnq	ok	Open it	開く	src/ui/screens/import.js:354	
 12cufy9	ok	This isn't on the plan	予定にありません	src/ui/screens/item.js:24	Note: a heading where a link names no plan item.
 1yfxfa6	ok	Go to the plan	予定へ	src/ui/screens/item.js:25	Note: a link to the trip's Plan (予定).
-7862xj	ok	It may have been deleted or renamed.	削除されたか、名前が変わった可能性があります。	src/ui/screens/item.js:25	Note: after This isn't on the plan.
-oozr11	ok	Plan item	予定の項目	src/ui/screens/item.js:36	Note: a plan item's heading when it has no title.
 1wp3w0c	ok	All day, {0}	終日（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
 dqozwm	ok	All day	終日	src/ui/screens/item.js:41	
 13ktogn	ok	Booked: {0}	予約：{0}	src/ui/screens/item.js:50	{0} = String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`); Note: a link from a plan item to the booking it stands for; {0} its title.
@@ -2216,7 +2218,6 @@ zby7kj	ok	60 times: an hour takes a minute	60倍：1時間が1分	src/ui/screens
 194x2x3	ok	How far it has got	進み具合	src/ui/screens/simulate.js:83	
 j88ayy	ok	Resume	再開	src/ui/screens/simulate.js:86	
 dy7n3b	ok	Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.	「いま」「運転中」「会話」で様子を見られます。Shiori は GPS がオンのときと同じように起動します。ほかの旅を開くと止まります。	src/ui/screens/simulate.js:88	Note: the screens' names quoted, so いま reads as the screen.
-17o4v1i	ok	Conversation	会話	src/ui/screens/simulate.js:89	
 1ifawmf	ok	The trip	その旅	src/ui/screens/simulate.js:89	
 1djwe5m	ok	The simulation stopped: {0}	シミュレーションが止まりました：{0}	src/ui/screens/simulate.js:98	{0} = s.error
 1pc6r71	ok	You stopped the simulation.	シミュレーションを止めました。	src/ui/screens/simulate.js:98	

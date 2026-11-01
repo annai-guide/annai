@@ -1,74 +1,115 @@
 import { h, crumb, t, tc } from '../dom.js';
-import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, day } from '../format.js';
-import { isBookingPath, checkOf } from '../../core/bookings.js';
-import { PLAN_FILE, bookingRef } from '../../core/plan.js';
+import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, itemHref, day, fileLine } from '../format.js';
+import { checkOf } from '../../core/bookings.js';
 import { normPath } from '../../core/paths.js';
-import { validZone, dayIn, instantAt } from '../../core/time.js';
-import { tripZoneOf } from '../../core/trip-files.js';
+import { tripZoneOf, readTripFiles, fileDetails } from '../../core/trip-files.js';
 import { readNames, shortName } from '../../core/names.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
 import { askAboutButton } from '../composer.js';
 import { filePreview } from '../preview.js';
+import { saveFile } from '../save.js';
 import { cameFrom, backLabel } from './file.js';
 
 /**
- * A booking's details (spec §16.2; the bookings-and-trips design, goal 6 and screen 3): what Shiori read, a light "check" on just the
- * fields she is unsure of (My call 1: there is no confirming step), the file it came from with Open the original, then what can be done:
- * Open in Maps, Ask Shiori about this, Change it (the raw form). A tap on the Plan opens this first.
- * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
+ * The details screen (the file-details design): a file the user gave and every booking Shiori read from it, or a booking with no file.
+ * `path` is a file under /files/ or a booking under /bookings/, and a booking whose file is there opens its file's screen at its block.
+ * Each booking is a block (what she read, the "check" marks on details she is unsure of, the plan items that stand for it); then the
+ * preview of the file and the buttons: Open, Download, Ask Shiori about this, Change it (the raw form), Open in Maps. Where it was opened
+ * from is the crumb. @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderBooking(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  const crumbs = backCrumb(ctx, id, route.params.from);
-  const booking = isBookingPath(id, path) ? await ctx.ws.readJSON(id, path).catch(() => undefined) : undefined;
-  if (!booking || typeof booking !== 'object' || Array.isArray(booking)) {
+  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id));
+  if (!scope || scope.kind !== 'trip') {
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
+  }
+  const crumbs = backCrumb(ctx, id, route.params.from, { trip: scope.title });
+  const all = await readTripFiles(ctx.ws, ctx.store, id);
+  const d = fileDetails(all, path);
+  if (!d) {
     return h('div', { class: 'screen' }, crumbs,
-      h('h1', { class: 'title', text: t`This booking isn't in the trip` }),
-      h('p', { class: 'sub', text: t`It may have been deleted or renamed. The plan lists the bookings there are.` }));
+      path.startsWith('/files/') || path.startsWith('/trip/files/')
+        ? [h('h1', { class: 'title', text: t`This file isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed.` })]
+        : [h('h1', { class: 'title', text: t`This booking isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed. The plan lists the bookings there are.` })]);
   }
   const here = bookingHref(id, path, route.params.from);
-  const tz = await tripZone(ctx, id);
-  const marks = checkOf(booking);
-  const kind = BOOKING_KINDS[booking.kind] ?? t`Booking`;
-  const title = typeof booking.title === 'string' && booking.title.trim() ? booking.title : kind;
-  const startTz = validZone(booking.start?.tz) ? booking.start.tz : tz;
-  const start = instantAt(booking.start?.at, startTz);
-  const on = Number.isFinite(start) ? dayIn(start, startTz) : null;
-  const facts = bookingFacts(booking, { fallbackTz: tz });
-  return h('div', { class: 'screen details' }, crumbs,
-    h('h1', { class: 'title', dir: 'auto' }, title, marks.fields.includes('title') ? [' ', checkMark()] : null),
-    h('p', { class: 'sub', text: [kind, on ? day(on, true) : null].filter(Boolean).join(' · ') }),
-    // A booking from before single details were marked: the whole of it, until she is told it's right.
-    marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.` }) : null,
-    facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
-      h('dt', { lang: f.lang, text: f.label }),
-      h('dd', {}, h('span', { dir: 'auto', text: f.value }), f.unsure ? [' ', checkMark()] : null)])) : null,
-    await itemNotes(ctx, id, path),
-    await original(ctx, id, booking.source, here),
+  const { file, blocks, made } = d;
+  const many = blocks.length > 1;
+  const lone = blocks.length === 1 ? blocks[0] : null;
+  /** @param {import('../../core/trip-files.js').Block} b */
+  const kindOf = (b) => BOOKING_KINDS[b.booking.kind] ?? t`Booking`;
+  /** @param {import('../../core/trip-files.js').Block} b */
+  const titleOf = (b) => (typeof b.booking.title === 'string' && b.booking.title.trim() ? b.booking.title : '');
+  /** @param {import('../../core/trip-files.js').Block} b */
+  const unsureTitle = (b) => checkOf(b.booking).fields.includes('title');
+  /** @param {import('../../core/trip-files.js').Block} b */
+  const kindDay = (b) => [kindOf(b), b.day ? day(b.day, true) : null].filter(Boolean).join(' · ');
+  const heading = file?.name ?? (titleOf(blocks[0]) || kindOf(blocks[0])); // no file means the one booking it is
+
+  /** @param {import('../../core/trip-files.js').Planned[]} items @param {string} level h2 or h3 @param {string} [label] */
+  const planList = (items, level, label) => h('section', { class: 'block-items', 'aria-label': label ?? t`On the plan` },
+    h(level, { class: 'section', text: label ?? t`On the plan` }),
+    h('ul', { class: 'plan-items' }, ...items.map((i) => h('li', {},
+      h('a', { href: itemHref(id, i.path, here), dir: 'auto', text: [typeof i.item.title === 'string' && i.item.title.trim() ? i.item.title : t`Plan item`, i.day ? day(i.day, true) : null].filter(Boolean).join(' · ') }),
+      typeof i.item.notes === 'string' && i.item.notes.trim() ? h('p', { class: 'sub notes', dir: 'auto', text: i.item.notes }) : null))));
+
+  const blockViews = blocks.map((b, i) => {
+    const facts = bookingFacts(b.booking, { fallbackTz: all.fallbackTz });
+    const marks = checkOf(b.booking);
+    const title = titleOf(b);
+    /** @type {HTMLElement | null} */
+    let top = null;
+    if (many) {
+      top = h('h2', { class: 'section', id: `block-${i}`, tabindex: '-1', dir: 'auto' }, title || kindDay(b), unsureTitle(b) && title ? [' ', checkMark()] : null);
+    } else if (title && title !== heading) {
+      top = h('h2', { class: 'section', dir: 'auto' }, title, unsureTitle(b) ? [' ', checkMark()] : null);
+    }
+    return h('section', { class: 'booking-block', 'aria-labelledby': many ? `block-${i}` : null },
+      top,
+      h('p', { class: 'sub', text: kindDay(b) }),
+      // A booking from before single details were marked: the whole of it, until she is told it's right.
+      marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.` }) : null,
+      facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
+        h('dt', { lang: f.lang, text: f.label }),
+        h('dd', {}, h('span', { dir: 'auto', text: f.value }), f.unsure ? [' ', checkMark()] : null)])) : null,
+      b.items.length ? planList(b.items, many ? 'h3' : 'h2') : null,
+      many ? h('div', { class: 'acts' },
+        b.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(b.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
+        h('a', { class: 'btn', href: fileHref(id, b.path, here) }, t`Change it`)) : null);
+  });
+
+  // The file, as stored: its preview, and the words the original is named by.
+  const bytes = file ? await ctx.ws.read(id, file.path).catch(() => undefined) : undefined;
+  const lonely = !file && lone ? inTrip(lone.booking.source) : '';
+  const refs = [
+    ...(file ? [{ scope: id, path: file.path, name: file.name }] : []),
+    ...blocks.map((b) => ({ scope: id, path: b.path, name: titleOf(b) || kindOf(b) })),
+  ];
+  const screen = h('div', { class: 'screen details' }, crumbs,
+    h('h1', { class: 'title', dir: 'auto' }, heading, lone && !file ? (unsureTitle(lone) && titleOf(lone) ? [' ', checkMark()] : null) : lone && file && heading === titleOf(lone) && unsureTitle(lone) ? [' ', checkMark()] : null),
+    !blocks.length && !made.length && file && fileLine(file.became) ? h('p', { class: 'sub', text: fileLine(file.became) }) : null,
+    ...blockViews,
+    made.length ? planList(made, 'h2', t`Plan items from a calendar`) : null,
+    file ? h('section', { class: 'original', 'aria-label': t`The original` },
+      await filePreview(ctx, id, file.path, { name: file.name }),
+      h('p', { class: 'sub', dir: 'auto', text: t`From ${file.real}` })) : null,
+    /^\/files\/[^/]+$/.test(lonely) ? h('p', { class: 'sub warn', text: t`The original, ${shortName(all.names, lonely)}, isn't in the trip.` }) : null,
     h('div', { class: 'acts' },
-      booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
-      askAboutButton(ctx, { scope: id, path, name: title }),
-      h('a', { class: 'btn', href: fileHref(id, path, here) }, t`Change it`)));
+      file ? h('a', { class: 'btn', href: fileHref(id, file.path, here) }, t`Open`) : null,
+      file && bytes ? h('button', { class: 'btn', type: 'button', onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (bytes.bytes)], { type: bytes.entry.type }), file.real) }, t`Download`) : null,
+      askAboutButton(ctx, refs),
+      lone ? h('a', { class: 'btn', href: fileHref(id, lone.path, here) }, t`Change it`) : null,
+      lone?.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(lone.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null));
+  // A tap on one of several bookings lands on its block; the shell's own scrollTo has run before this frame.
+  const target = many && d.focus ? screen.querySelector(`#block-${blocks.findIndex((b) => b.path === d.focus)}`) : null;
+  if (target instanceof HTMLElement) requestAnimationFrame(() => { if (target.isConnected) { target.scrollIntoView({ block: 'start' }); target.focus({ preventScroll: true }); } });
+  return screen;
 }
 
-/**
- * The notes of the plan items that stand for this booking ("Terminal S, arrive 2 h early"): a tap on such an item opens these details,
- * so its notes are read here, each under its item's title when there are several. @param {any} ctx @param {string} id @param {string} path
- */
-async function itemNotes(ctx, id, path) {
-  /** @type {{ title: string, notes: string }[]} */
-  const found = [];
-  for (const f of await ctx.ws.list(id, '/plan/')) {
-    if (!PLAN_FILE.test(f.path)) continue;
-    const item = await ctx.ws.readJSON(id, f.path).catch(() => null);
-    if (item && bookingRef(item.booking) === path && typeof item.notes === 'string' && item.notes.trim()) found.push({ title: String(item.title ?? ''), notes: item.notes });
-  }
-  if (!found.length) return null;
-  return h('section', { class: 'item-notes', 'aria-label': t`Notes` }, h('h2', { class: 'section', text: t`Notes` }),
-    ...found.map((n) => h('p', { class: 'sub notes', dir: 'auto' }, found.length > 1 && n.title ? [h('strong', { dir: 'auto', text: n.title }), ' '] : null, n.notes)));
-}
+/** "/trip/files/x" and "/files/x" both name the trip's /files/x. @param {unknown} p */
+const inTrip = (p) => (typeof p === 'string' ? p.replace(/^\/trip(?=\/)/, '') : '');
 
 /** A detail Shiori isn't sure of: a light mark, with words for screen readers. */
 export function checkMark() {
@@ -78,12 +119,17 @@ export function checkMark() {
 }
 
 /**
- * The crumb of a details screen: back to where it was opened from (Now), else the trip's Plan.
- * @param {any} ctx @param {string} id @param {string | undefined} from
+ * The crumb of a details screen: back to where it was opened from (the trip, the Plan, Now, the Conversation, a plan item), else the
+ * trip when `o.trip` (its title) is given, else the trip's Plan.
+ * @param {any} ctx @param {string} id @param {string | undefined} from @param {{ trip?: string }} [o]
  */
-export function backCrumb(ctx, id, from) {
+export function backCrumb(ctx, id, from, o = {}) {
   const back = cameFrom(from, id, ctx.agent?.trip ?? null);
-  return h('p', { class: 'crumbs' }, back ? crumb(back.hash, backLabel(back.name)) : crumb(`#/trip/${encodeURIComponent(id)}/plan`, t`Plan`));
+  const trip = `#/trip/${encodeURIComponent(id)}`;
+  const link = o.trip === undefined
+    ? (back ? crumb(back.hash, backLabel(back.name)) : crumb(`${trip}/plan`, t`Plan`))
+    : back && back.name !== 'trip' ? crumb(back.hash, backLabel(back.name)) : crumb(trip, h('span', { dir: 'auto', text: o.trip }));
+  return h('p', { class: 'crumbs' }, link);
 }
 
 /** The zone for a time whose own zone annai doesn't know: the trip's first, else this phone's. @param {any} ctx @param {string} id */
@@ -92,25 +138,26 @@ export function tripZone(ctx, id) {
 }
 
 /**
- * The file something came from: its preview (or card) by its short name, and Open the original, whose screen comes back here; in words
- * when it isn't there, or none is named. @param {any} ctx @param {string} id @param {unknown} source @param {string} here
- * @param {{ none?: boolean }} [o] none: say nothing when no file is named (a plan item needn't come from one)
+ * The file something came from, for a plan item's details: its preview (or card) by its short name, and Open the original, which leads to
+ * the file's details screen (its raw screen for a file outside /files/) and comes back here; in words when it isn't there. Nothing when
+ * no file is named. @param {any} ctx @param {string} id @param {unknown} source @param {string} here
  */
-export async function original(ctx, id, source, here, o = {}) {
-  const path = typeof source === 'string' ? source.replace(/^\/trip(?=\/)/, '') : '';
-  if (!path && o.none) return null;
-  const names = path ? await readNames(ctx.ws, id) : {};
-  const name = path ? shortName(names, path) : '';
+export async function original(ctx, id, source, here) {
+  const path = inTrip(source);
+  if (!path) return null;
+  const names = await readNames(ctx.ws, id);
+  const name = shortName(names, path);
   /** @type {any} */
   let entry = null;
   try {
-    entry = path ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ t) => t.getFile(id, normPath(path))) : null;
+    entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ t) => t.getFile(id, normPath(path)));
   } catch {
     entry = null; // not a path
   }
-  if (!entry) return h('p', { class: 'sub warn', text: path ? t`The original, ${name}, isn't in the trip.` : t`This booking doesn't say which file it came from.` });
+  if (!entry) return h('p', { class: 'sub warn', text: t`The original, ${name}, isn't in the trip.` });
+  const there = /^\/files\/[^/]+$/.test(entry.path);
   return h('section', { class: 'original', 'aria-label': t`The original` },
     await filePreview(ctx, id, entry.path, { name }),
     h('p', { class: 'sub', dir: 'auto', text: t`From ${name}` }),
-    h('div', { class: 'acts' }, h('a', { class: 'btn', href: fileHref(id, entry.path, here) }, t`Open the original`)));
+    h('div', { class: 'acts' }, h('a', { class: 'btn', href: there ? bookingHref(id, entry.path, here) : fileHref(id, entry.path, here) }, t`Open the original`)));
 }

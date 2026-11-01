@@ -19,14 +19,14 @@ async function putFile(page, trip, path, bytes, type) {
 
 const flight = { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: [], start: { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' } };
 
-test('Open the original shows a PDF in the browser where it can, else a card with Open and Download; Back returns to the details', async ({ page }) => {
+test('Open shows a PDF in the browser where it can, else a card with Open and Download; Back returns to the details', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Anchorage');
   await putFile(page, trip, '/files/flight.pdf', await readFile('test/fixtures/bookings/flight.pdf'), 'application/pdf');
   await writeRecords(page, trip, { write: { '/bookings/flight.json': flight } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/flight.json')}`);
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open the original' }).click();
+  await page.getByRole('link', { name: 'Open', exact: true }).click();
   const shows = await page.evaluate(async () => {
     const load = (/** @type {string} */ url) => import(url);
     const { imgDrawsPdf } = await load('/src/ui/preview.js');
@@ -48,7 +48,7 @@ test('Open the original shows a PDF in the browser where it can, else a card wit
     expect((await downloading).suggestedFilename()).toBe('flight.pdf');
   }
   // Its crumb goes back to the booking it was opened from, and the top bar stays on Plan.
-  await page.getByRole('main').getByRole('link', { name: 'Booking' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
 });
 
