@@ -1,5 +1,5 @@
 {
-  "build": "96a219454c63",
+  "build": "7d82a2a82517",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -56,7 +56,7 @@
     "/src/core/agent/warmth.js": "ea988f822316",
     "/src/core/address.js": "e821e53d2023",
     "/src/core/answer.js": "3f8b2b51d66d",
-    "/src/core/archive.js": "72e5d842de86",
+    "/src/core/archive.js": "f905bffd6603",
     "/src/core/backup.js": "d75cdfd9c6d5",
     "/src/core/backup-auto.js": "3f13bd8df6d5",
     "/src/core/backup-targets.js": "cd4f1e8f9035",

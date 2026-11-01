@@ -7,11 +7,13 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, ME, SYS_SETTINGS, SYS_WAITING, recordBackup, backupState, removeTrip } from '../../src/core/scopes.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { exportArchive, peekArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
+import { exportArchive, withoutPoints, peekArchive, describeArchive, importArchive, archiveName, isFullBackup, PRESETS, ArchiveError, NeedsPassphraseError, MANIFEST_NAME } from '../../src/core/archive.js';
 import { PassphraseError, decrypt } from '../../src/core/archive-crypto.js';
 import { ZipWriter, readZip } from '../../src/core/zip.js';
 import { utf8, text } from '../../src/core/bytes.js';
 import { readFile } from 'node:fs/promises';
+import { mapsUrl } from '../../src/ui/cards.js';
+import { expandLink } from '../../src/core/links.js';
 import { readPhotoMeta, sniffImageType } from '../../src/core/photo-meta.js';
 import { PiecesOnly } from './pieces.js';
 import { logEvent } from '../../src/core/events.js';
@@ -890,6 +892,10 @@ async function drivenTrip() {
   await a.ws.write(trip, '/notes/parked.txt', 'Parked at 36.37150, -121.90170, level 2.\n', { author: 'user' });
   await a.ws.write(trip, '/notes/prices.md', 'Tickets 12.50, 14.00 and 47.61, -122.33 are not places; 1,234.567, 2.345 and 1.234, 6.789.1 neither.\n', { author: 'user' });
   await a.ws.write(trip, '/memory.md', 'Likes the lookout at 47.612°, -122.335°.\n', { author: 'shiori' });
+  await a.ws.write(trip, '/notes/links.md', ANNAI_FORMS.join('\n') + '\n', { author: 'shiori' });
+  await a.ws.write(trip, '/data/stops.csv', 'name,lat,lng\nLookout,36.37150,-121.90170\n', { author: 'user' });
+  await a.ws.write(trip, '/data/page.html', '<p>Parked at 36.37150, -121.90170</p>\n', { author: 'user' });
+  await a.ws.write(trip, '/data/stay.ics', 'BEGIN:VEVENT\nGEO:36.37150;-121.90170\nEND:VEVENT\n', { author: 'shiori' });
   const log = (/** @type {string} */ type, /** @type {string} */ actor, /** @type {any} */ data) => logEvent(a.store, trip, { type, actor, data });
   await log('msg.user', 'user', { text: 'we are driving to the museum' });
   await log('location', 'system', { lat: 10.1234, lng: 20.5678, accuracy: 8, speed: 20, source: 'gps' });
@@ -909,6 +915,23 @@ async function drivenTrip() {
   return { a, trip };
 }
 
+/** The point of the links below: a plan place and the live fix, both synthetic. */
+const SPOT = { name: 'Lookout', lat: 36.3715, lng: -121.9017 };
+const LINK_CATALOG = JSON.parse(await readFile(new URL('../../catalog/links.json', import.meta.url), 'utf8'));
+
+/**
+ * Every link and line annai itself writes a position in, built the way the app builds them (mapsUrl in src/ui/cards.js, expandLink in
+ * src/core/links.js with the catalog's own formats), plus the two that are written inline: the Files screen's OpenStreetMap link
+ * (src/ui/screens/file.js) and the now block's position (src/core/live/live.js nowInfo).
+ */
+const ANNAI_FORMS = [
+  mapsUrl(SPOT, 'android'),
+  mapsUrl(SPOT, 'ios'),
+  ...LINK_CATALOG.maps.map((/** @type {any} */ m) => expandLink(m.directions, { destination: `${SPOT.lat},${SPOT.lng}`, origin: `${SPOT.lat + 0.01},${SPOT.lng + 0.01}`, mode: m.modes.drive })),
+  `https://www.openstreetmap.org/?mlat=${SPOT.lat}&mlon=${SPOT.lng}#map=16/${SPOT.lat}/${SPOT.lng}`,
+  `near ${SPOT.name} (30 m) · ${SPOT.lat.toFixed(5)}, ${SPOT.lng.toFixed(5)} (±8 m, 3 min ago)`,
+];
+
 /** What the sensed points look like in a file. */
 const SENSED = ['10.1234', '20.5678', '10.2345', '20.6789', '22.2222', '33.3333', '11.1111', 'Cafe Example', '47.612', '-122.335', '47.61234', '-122.33456', '151.215', '36.3715', '-121.9017', '47.610', '-122.300', '122.335'];
 
@@ -917,8 +940,8 @@ const SENSED = ['10.1234', '20.5678', '10.2345', '20.6789', '22.2222', '33.3333'
  * side (not a thousands separator or a version number), or a latitude/longitude label, or two numbers after "near". Whatever the Share's scrub misses, this finds.
  */
 const LOOKS_LIKE_A_POSITION = [
-  /(?<![\d.]|\d,)-?\d{1,3}\.\d{3,}(?!\.?\d)\s*°?\s*[NSEW]?\s*[,;\s]\s*-?\d{1,3}\.\d{3,}(?!\.?\d)/i,
-  /\b(?:lat|lng|lon|long|latitude|longitude)\b\s*[:=]?\s*-?\d/i,
+  /(?<![\d.]|\d,)-?\d{1,3}\.\d{3,}(?!\.?\d)\s*°?\s*[NSEW]?(?:\s*[,;/]\s*|\s+|%2C)-?\d{1,3}\.\d{3,}(?!\.?\d)/i,
+  /\bm?(?:lat|lng|lon|long|latitude|longitude)\b\s*[:=]?\s*-?\d/i,
   /\bnear\s+\(?\s*-?\d{1,3}\.\d{2,}\s*°?\s*[NSEW]?\s*,\s*-?\d{1,3}\.\d{2,}/i,
 ];
 
@@ -947,13 +970,17 @@ test('a Share without places carries no History, whatever the History box says, 
   assert.equal([...entries.keys()].some((n) => n.endsWith('events.jsonl') || n.startsWith('blobs/')), false);
   assert.equal(manifest.files.some((/** @type {any} */ f) => f.path.startsWith('/watches/')), false);
   assert.equal([...entries.keys()].some((n) => n.includes('/watches/')), false);
-  for (const [name, bytes] of entries) for (const point of SENSED) assert.equal(text(bytes).includes(point), false, `${point} is in ${name}`);
-  // Coordinate pairs in general, in every entry and blob; the plan's own place and note, in the plan's JSON, are kept by design.
+  // The plan's own place and note, in the plan's JSON, and a calendar's GEO (an event's place) are kept by design.
   const plan = manifest.files.find((/** @type {any} */ f) => f.path === '/plan/museum.json');
+  const calendar = manifest.files.find((/** @type {any} */ f) => f.path === '/data/stay.ics');
+  const kept = new Set([plan.name, calendar.name]);
+  for (const [name, bytes] of entries) if (!kept.has(name)) for (const point of SENSED) assert.equal(text(bytes).includes(point), false, `${point} is in ${name}`);
+  // Coordinate pairs in general, in every entry and blob.
   for (const [name, bytes] of entries) {
-    if (name === plan.name) continue;
+    if (kept.has(name)) continue;
     for (const re of LOOKS_LIKE_A_POSITION) assert.doesNotMatch(text(bytes), re, `a position is in ${name}`);
   }
+  assert.equal(text(/** @type {Uint8Array} */ (entries.get(calendar.name))), 'BEGIN:VEVENT\nGEO:36.37150;-121.90170\nEND:VEVENT\n');
   assert.equal(JSON.parse(text(/** @type {Uint8Array} */ (entries.get(plan.name)))).place.lat, 40.404);
   const b = await device();
   assert.equal((await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips.length, 1);
@@ -988,13 +1015,15 @@ test("a Share without places keeps the recap without its coordinate pairs, in ev
   assert.equal(await b.ws.readText(imported.trips[0], '/recap.md'), body);
 });
 
-test("a Share without places scrubs every .md and .txt trip file, whoever wrote it, and never a JSON file; the user's own files are unchanged", async () => {
+test("a Share without places scrubs every .md, .txt, .csv and .html trip file, whoever wrote it, and never a JSON or .ics file; the user's own files are unchanged", async () => {
   const { a, trip } = await drivenTrip();
   const s = await shared(a, trip, { places: false });
   for (const [path, want] of [
     ['/notes/lookout.md', 'Lookout at dusk.\n'],
     ['/notes/parked.txt', 'Parked at, level 2.\n'],
     ['/memory.md', 'Likes the lookout at.\n'],
+    ['/data/stops.csv', 'name,lat,lng\nLookout,\n'],
+    ['/data/page.html', '<p>Parked at</p>\n'],
     ['/notes/prices.md', 'Tickets 12.50, 14.00 and 47.61, -122.33 are not places; 1,234.567, 2.345 and 1.234, 6.789.1 neither.\n'], // nothing to remove: bytes as they were
   ]) {
     const { f, body } = copyOf(s, path);
@@ -1007,6 +1036,10 @@ test("a Share without places scrubs every .md and .txt trip file, whoever wrote 
   assert.equal(plan.body, await a.ws.readText(trip, '/plan/museum.json'));
   assert.equal(JSON.parse(plan.body).notes, PLAN_NOTE);
   assert.equal(plan.f.hash, (await a.store.tx(['files'], 'readonly', (t) => t.listFiles(trip, '/plan/')))[0].hash);
+  // A calendar's GEO is an event's place, kept like the plan's.
+  const ics = copyOf(s, '/data/stay.ics');
+  assert.equal(ics.body, await a.ws.readText(trip, '/data/stay.ics'));
+  assert.equal(ics.f.hash, (await a.store.tx(['files'], 'readonly', (t) => t.listFiles(trip, '/data/'))).find((x) => x.path === '/data/stay.ics')?.hash);
   // The user's own copies.
   assert.equal(await a.ws.readText(trip, '/notes/lookout.md'), 'Lookout near 47.61234, -122.33456 at dusk.\n');
   assert.equal(await a.ws.readText(trip, '/notes/parked.txt'), 'Parked at 36.37150, -121.90170, level 2.\n');
@@ -1016,7 +1049,158 @@ test("a Share without places scrubs every .md and .txt trip file, whoever wrote 
   assert.equal(copyOf(on, '/notes/lookout.md').body, 'Lookout near 47.61234, -122.33456 at dusk.\n');
   assert.equal(copyOf(on, '/notes/parked.txt').body, 'Parked at 36.37150, -121.90170, level 2.\n');
   assert.equal(copyOf(on, '/memory.md').body, 'Likes the lookout at 47.612°, -122.335°.\n');
+  for (const path of ['/data/stops.csv', '/data/page.html', '/data/stay.ics', '/notes/links.md']) assert.equal(copyOf(on, path).body, await a.ws.readText(trip, path), path);
   assert.equal(copyOf(on, '/recap.md').body, await a.ws.readText(trip, '/recap.md'));
+});
+
+/** @param {string} s */
+const scrub = (s) => text(withoutPoints(utf8(s)));
+
+test('the scrub removes every form annai writes a position in, and the forms people label', () => {
+  const [google, apple, ...rest] = ANNAI_FORMS;
+  assert.equal(scrub(google), 'https://www.google.com/maps/search/?api=1&query=');
+  assert.equal(scrub(apple), 'https://maps.apple.com/?q=Lookout&ll=');
+  assert.equal(scrub(rest[0]), 'https://maps.apple.com/?daddr=&dirflg=d&saddr=');
+  assert.equal(scrub(rest[1]), 'https://www.google.com/maps/dir/?api=1&destination=&travelmode=driving&origin=');
+  assert.equal(scrub(rest[2]), 'https://www.openstreetmap.org/?#map=16/');
+  assert.equal(scrub(rest[3]), 'near Lookout (30 m) · (±8 m, 3 min ago)');
+  for (const [from, want] of [
+    ['at 36.3715%2C-121.9017 now', 'at now'], // an encoded comma
+    ['at 36.3715%2c-121.9017 now', 'at now'],
+    ['at 47.612;-122.335 now', 'at now'],
+    ['at 47.612; -122.335 now', 'at now'],
+    ['at 47.612/-122.335 now', 'at now'],
+    ['at 47.612 / -122.335 now', 'at now'],
+    ['?mlat=47.612&mlon=-122.335#x', '?#x'], // OpenStreetMap's own labels
+    ['?mlat=47&mlon=-122', '?'],
+    ['mlat: 47.612, mlon: -122.335', ''],
+    ['a (lat 47.612, lng -122.335) b', 'a b'],
+    ['Lat 47.612 and Lon -122.335.', '.'],
+    ['lat 47.612; lng -122.335', ''],
+    ['lat=47.612&lng=-122.335&z=9', '&z=9'],
+    ['at 47.612, -122.335 and 47.613, -122.336 too', 'at and too'],
+    ['at 47.612° N, 122.335° W now', 'at now'],
+    ['at 47.612N 122.335W now', 'at now'],
+    ['at 47.612N122.335W now', 'at now'],
+    ['at 47.61234°, -122.33456° now', 'at now'],
+    ['stop, near 47.61, -122.33.', 'stop.'],
+    ['stop near (47.61, -122.33) now', 'stop now'],
+    ['stop near 47.61° N, 122.33° W now', 'stop now'],
+    ['near 12.50, 14.00 euros', ' euros'], // not a position, removed all the same (a known limitation)
+    ['a list 1.250, 3.500', 'a list'], // a European list, the same
+  ]) assert.equal(scrub(from), want, from);
+});
+
+test('the scrub leaves forms it does not catch as they were (a known limitation pins each)', () => {
+  for (const kept of [
+    '47°36′43″N 122°20′6″W', // degrees, minutes, seconds
+    '47°36′43.2″ N, 122°20′6.1″ W',
+    'N 47.612, W 122.335', // a hemisphere before the number
+    'N47.612 W122.335',
+    '47.612 -122.335', // only a space between
+    '47.612  122.335',
+    '47.61, -122.33', // a bare pair with two decimals
+    '{"lat":36.3715,"lng":-121.9017}', // a label in quotes, in a note or a page
+    'data-lat="47.612" data-lng="-122.335"',
+    '47.612 North, 122.335 West', // a word, not a hemisphere letter
+    '47.612 N, 122.335 East',
+    '47.61/-122.33',
+    'dinner was 12.50, 14.00 euros',
+    '47.6, -122.3',
+    'lat 47.612',
+    'longitude -122.335',
+    '(47612, -122335)',
+    '1,234.567, 2.345',
+  ]) assert.equal(scrub(kept), kept, kept);
+});
+
+test('the scrub keeps a line break, and takes only the spaces before a position on its own line', () => {
+  assert.equal(scrub('## Stop\n47.612, -122.335 was quiet'), '## Stop\n was quiet');
+  assert.equal(scrub('## Stop\r\n47.612, -122.335 was quiet'), '## Stop\r\n was quiet');
+  assert.equal(scrub('one\n\n  47.612, -122.335\ntwo'), 'one\n\n\ntwo');
+  assert.equal(scrub('one \n(47.612, -122.335)\ntwo'), 'one \n\ntwo');
+  assert.equal(scrub('one near 47.61, -122.33 two'), 'one  two');
+  assert.equal(scrub('a\t 47.612, -122.335\tb'), 'a\tb');
+  assert.equal(scrub('lat 47.612,\nlng -122.335'), 'lat 47.612,\nlng -122.335'); // a pair split over two lines is two lines
+  assert.equal(scrub('47.612,\n-122.335'), '47.612,\n-122.335');
+});
+
+test('the scrub runs in linear time on padded text', () => {
+  const spaces = ' '.repeat(400_000);
+  for (const [name, input] of [
+    ['spaces', spaces],
+    ['after a number', `12.345${spaces}`],
+    ['after a label', `lat${spaces}`],
+    ['after near', `near${spaces}`],
+    ['after a comma', `,${spaces}`],
+    ['after a number and a comma', `12.345,${spaces}`],
+    ['between numbers', `12.345${spaces}12.345`],
+    ['between a number and a hemisphere', `12.345${spaces}N`],
+    ['tabs and spaces', '12.345 \t'.repeat(50_000)],
+    ['many labels', 'lat '.repeat(100_000)],
+    ['many numbers', '12.345 '.repeat(60_000)],
+    ['many pairs', '12.345, '.repeat(60_000)],
+    ['one long number', `1.${'1'.repeat(400_000)}`],
+    ['line breaks', `lat${'\n '.repeat(100_000)}`],
+  ]) {
+    const bytes = utf8(input);
+    const t0 = performance.now();
+    withoutPoints(bytes);
+    const ms = performance.now() - t0;
+    assert.ok(ms < 100, `${name}: ${Math.round(ms)} ms`);
+  }
+});
+
+const latin1 = (/** @type {string} */ s) => Uint8Array.from(s, (c) => c.charCodeAt(0));
+const SHIFT_JIS_WORD = [0x93, 0xfa, 0x96, 0x7b, 0x8c, 0xea]; // 日本語
+
+test('the scrub keeps every other byte of a file that is not UTF-8, and a BOM', () => {
+  // Latin-1: é is one byte (0xE9), ° is 0xB0, a no-break space is 0xA0.
+  const l1 = latin1('caf\xe9 \xa0 47.612\xb0, -122.335\xb0 \xe9t\xe9\n');
+  assert.deepEqual(withoutPoints(l1), latin1('caf\xe9 \xa0 \xe9t\xe9\n')); // a byte 0xA0 is no space here: it could be half of a letter
+  // Shift-JIS: the word's bytes are not UTF-8.
+  const sjis = Uint8Array.from([...SHIFT_JIS_WORD, 0x20, ...latin1('47.61234, -122.33456'), 0x20, ...SHIFT_JIS_WORD, 0x0a]);
+  assert.deepEqual(withoutPoints(sjis), Uint8Array.from([...SHIFT_JIS_WORD, 0x20, ...SHIFT_JIS_WORD, 0x0a]));
+  // A trail byte of 0xA0 or 0x20-like value in front of a position is not taken as a space.
+  const gbk = Uint8Array.from([0xb0, 0xa0, ...latin1('47.61234, -122.33456'), 0x0a]);
+  assert.deepEqual(withoutPoints(gbk), Uint8Array.from([0xb0, 0xa0, 0x0a]));
+  // Nothing to remove: the same bytes, not a copy re-encoded.
+  for (const bytes of [latin1('caf\xe9 12.50, 14.00\n'), Uint8Array.from([...SHIFT_JIS_WORD, 0x0a]), utf8('plain\n'), new Uint8Array(0)]) assert.equal(withoutPoints(bytes), bytes);
+  // A BOM stays, with the text after it scrubbed.
+  const bom = Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('Stop 47.61234, -122.33456 ok\n')]);
+  assert.deepEqual(withoutPoints(bom), Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('Stop ok\n')]));
+  const bomOnly = Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('Stop\n')]);
+  assert.equal(withoutPoints(bomOnly), bomOnly);
+  // UTF-8 with the multibyte text around the position.
+  assert.equal(text(withoutPoints(utf8('東京 47.61234, -122.33456 カフェ\n'))), '東京 カフェ\n');
+  // UTF-16 is not read: left as it was.
+  const utf16 = Uint8Array.from([0xff, 0xfe, ...[...'47.61234, -122.33456'].flatMap((c) => [c.charCodeAt(0), 0])]);
+  assert.equal(withoutPoints(utf16), utf16);
+});
+
+test('a Share without places keeps every other byte of a Shift-JIS, a Latin-1 and a BOM file', async () => {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'Road trip' });
+  const sjis = Uint8Array.from([...SHIFT_JIS_WORD, 0x20, ...latin1('47.61234, -122.33456'), 0x20, ...SHIFT_JIS_WORD, 0x0a]);
+  const l1 = latin1('caf\xe9 at 47.61234, -122.33456 \xe9t\xe9\n');
+  const bom = Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('Stop 47.61234, -122.33456 ok\n')]);
+  const plainSjis = Uint8Array.from([...SHIFT_JIS_WORD, 0x0a]);
+  /** @type {[string, Uint8Array][]} */
+  const files = [['/notes/sjis.txt', sjis], ['/notes/latin1.txt', l1], ['/notes/bom.md', bom], ['/notes/plain-sjis.txt', plainSjis]];
+  for (const [path, bytes] of files) await a.ws.write(trip, path, bytes, { author: 'user' });
+  const s = await shared(a, trip, { places: false }, PRESETS.share);
+  const body = (/** @type {string} */ path) => s.entries.get(copyOf(s, path).f.name);
+  assert.deepEqual(body('/notes/sjis.txt'), Uint8Array.from([...SHIFT_JIS_WORD, 0x20, ...SHIFT_JIS_WORD, 0x0a]));
+  assert.deepEqual(body('/notes/latin1.txt'), latin1('caf\xe9 at \xe9t\xe9\n'));
+  assert.deepEqual(body('/notes/bom.md'), Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('Stop ok\n')]));
+  assert.deepEqual(body('/notes/plain-sjis.txt'), plainSjis);
+  for (const path of ['/notes/sjis.txt', '/notes/latin1.txt', '/notes/bom.md', '/notes/plain-sjis.txt']) {
+    const { f } = copyOf(s, path);
+    const got = /** @type {Uint8Array} */ (body(path));
+    assert.equal(f.hash, await sha256Hex(got), `${path} hash`);
+    assert.equal(f.size, got.byteLength, `${path} size`);
+  }
+  assert.equal(copyOf(s, '/notes/plain-sjis.txt').f.hash, (await a.store.tx(['files'], 'readonly', (t) => t.listFiles(trip, '/notes/'))).find((x) => x.path === '/notes/plain-sjis.txt')?.hash);
 });
 
 test('a Share with places, and a backup, carry the log, the watches and the recap whole', async () => {

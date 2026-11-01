@@ -107,3 +107,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** Delete frees a file only when nothing else names its content, and another deleted copy's history names it. Freeing every copy at once needs Delete to look past other deleted files' history, for a case that needs the same file twice in one trip.
 - **Revisit when:** the user meets it, or Deleted gains a "Delete for good".
 - **Approved:** 2026-11-01, the user: "Leave it (Recommended)".
+
+### A Share without places can still name a place written in an unusual way
+- **Kind:** known limitation.
+- **What the user sees:** a Share with "Include where photos were taken and where you went" off carries nothing annai sensed (no GPS points, arrivals, conversation, watch files or photo places), and removes positions from the trip's text files (notes, memory, the recap; .md, .txt, .csv, .html) in every form annai itself writes (its position note and its maps links) and in labelled, "near" and degree forms. A position written by hand in a rarer form can stay: degrees-minutes-seconds, a hemisphere before the number ("N 47.6, W 122.3"), two numbers with only a space between, a bare pair with two decimals, a pair split over two lines, a label inside quotes (`"lat": 47.6`, `data-lat="47.6"`), a position inside a JSON or calendar file Shiori wrote, or any text file saved as UTF-16. It also removes some number pairs that aren't positions, such as "near 12.50, 14.00 euros" or a European list "1.250, 3.500".
+- **Why:** free text has endless ways to write a position; a scrubber that caught all of them would also remove ordinary numbers.
+- **Revisit when:** Shiori's place tools take "here" instead of numbers, so she never sees exact coordinates (fixing it at the source), or the user meets a form that slipped through.
+- **Approved:** 2026-11-01, the user: "Common forms + limitation (Recommended)".

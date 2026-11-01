@@ -167,7 +167,7 @@ const EVENT_SCHEMA = {
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
  *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions. Unless places is true, nothing says where
  *   anything was: no photo's place, no History (Shiori's lookups copy the live position into it) whatever include.history says,
- *   no /watches/, and every .md and .txt file (notes, memory, the recap) without coordinate pairs; JSON is never touched.
+ *   no /watches/, and every .md, .txt, .csv and .html file (notes, memory, the recap) without positions; JSON and .ics are never touched.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
@@ -306,31 +306,65 @@ function withoutPhotoMeta(e, include) {
   return { ...e, data };
 }
 
-// A position quoted in a trip's text (the recap, notes, memory), as a Share without places removes it. Matched: a pair of numbers with
-// three decimals or more ("47.612, -122.335", also "(…)", with ° and N/S/E/W: "47.612° N, 122.335° W", "47.612N 122.335W"); a labelled pair
-// ("lat 47.612, lng -122.335", "latitude: …, longitude: …", any decimals); and after "near", a pair with two decimals ("near 47.61, -122.33").
+// A position quoted in a trip's text (the recap, notes, memory, a CSV or HTML file), as a Share without places removes it.
+// Matched, in every form annai itself writes and the forms people use:
+//  - a pair of numbers with three decimals or more, split by a comma, a semicolon, a slash or an encoded comma (%2C): "47.612, -122.335",
+//    "47.612;-122.335", "47.612/-122.335", "36.3715%2C-121.9017" (a maps link), also in brackets, with ° and N/S/E/W:
+//    "47.612° N, 122.335° W", "47.612N 122.335W";
+//  - a labelled pair, any decimals: "lat 47.612, lng -122.335", "latitude: …, longitude: …", OpenStreetMap's "mlat=…&mlon=…";
+//  - after "near", a pair with two decimals: "near 47.61, -122.33".
 // Not matched: a bare pair with two decimals (prices, "12.50, 14.00"), two numbers with only a space between and no hemisphere,
-// degrees-minutes-seconds, a hemisphere written before its number, and the place's name.
-const HEM = String.raw`(?:\s*°)?`;
-/** @param {number} d the fewest decimals */
-const num = (d) => String.raw`-?\d{1,3}\.\d{${d},}(?!\.?\d)`;
-/** @param {number} d */
-const commaPair = (d) => String.raw`(?<![\d.]|\d,)${num(d)}${HEM}\s*,\s*${num(d)}${HEM}`;
-/** @param {number} d */
-const hemispherePair = (d) => String.raw`(?<![\d.]|\d,)${num(d)}\s*°?\s*[NS]\b\s*,?\s*${num(d)}\s*°?\s*[EW]\b`;
-const ANY = String.raw`-?\d{1,3}(?:\.\d+)?${HEM}`;
-const LABELLED = String.raw`\blat(?:itude)?\b\s*[:=]?\s*${ANY}\s*[,;]?\s*(?:and\s+)?\b(?:lng|lon|long|longitude)\b\s*[:=]?\s*${ANY}`;
-const PLAIN = `(?:${LABELLED}|${commaPair(3)}|${hemispherePair(3)})`;
-const NEARBY = `(?:${commaPair(2)}|${hemispherePair(2)})`;
-const POINT = new RegExp(String.raw`(?:\s*,)?\s*\bnear\s+(?:\(\s*${NEARBY}\s*\)|${NEARBY})|\s*\(\s*${PLAIN}\s*\)|\s*${PLAIN}`, 'gi');
-/** Trip text a Share without places removes positions from: notes, memory, the recap, whoever wrote them. Never JSON: the plan's and bookings' places stay. */
-const TEXT_FILE = /\.(?:md|txt)$/i;
+// degrees-minutes-seconds, a hemisphere written before its number, a pair split over two lines.
+// Some number pairs that aren't positions go too ("near 12.50, 14.00", a list "1.250, 3.500"): the price of catching the rest.
+//
+// Run time: a match can only start where no horizontal space comes before it and takes the spaces in front of it itself, and the
+// optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:
+// a position on its own line leaves the line break.
 
-/** @param {Uint8Array} bytes @returns {Uint8Array} the same bytes when there is no position in them */
-function withoutPoints(bytes) {
-  const was = text(bytes);
-  const now = was.replace(POINT, '');
-  return now === was ? bytes : utf8(now);
+/** @param {string} h one horizontal space, as a character class @returns {RegExp} */
+function pointPattern(h) {
+  const H = `${h}*`;
+  /** @param {number} d the fewest decimals */
+  const num = (d) => String.raw`-?\d{1,3}\.\d{${d},}(?!\.?\d)`;
+  const deg = `(?:${H}°)?`;
+  const before = String.raw`(?<![\d.]|\d,)`;
+  /** @param {number} d @param {string} sep */
+  const pair = (d, sep) => `${before}${num(d)}${deg}${H}(?:${sep})${H}${num(d)}${deg}`;
+  /** @param {number} d */
+  const hemispheres = (d) => `${before}${num(d)}${H}(?:°${H})?[NS]${H}(?:,${H})?${num(d)}${H}(?:°${H})?[EW]\\b`;
+  const any = String.raw`-?\d{1,3}(?:\.\d+)?${deg}`;
+  const labelled = String.raw`\bm?lat(?:itude)?\b${H}(?:[:=]${H})?${any}${H}(?:[,;&]${H})?(?:and${h}+)?\bm?(?:lng|lon|long|longitude)\b${H}(?:[:=]${H})?${any}`;
+  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C')}|${hemispheres(3)})`;
+  const nearby = `(?:${pair(2, ',')}|${hemispheres(2)})`;
+  return new RegExp(`(?<!${h})(?:(?:${H},)?${H}\\bnear${h}+(?:\\(${H}${nearby}${H}\\)|${nearby})|${H}\\(${H}${plain}${H}\\)|${H}${plain})`, 'gi');
+}
+/** Text read as UTF-8: any horizontal space, a no-break space too. */
+const POINT = pointPattern(String.raw`[^\S\r\n  ]`);
+/** Text read byte for byte (an old Latin-1 or Shift-JIS file): only a space or a tab, since 0xA0 can be half of a letter. */
+const POINT_BYTES = pointPattern('[ \\t]');
+/** Trip text a Share without places removes positions from: notes, memory, the recap, CSV and HTML files, whoever wrote them. Never JSON or .ics: the plan's, bookings' and a calendar event's places stay. */
+const TEXT_FILE = /\.(?:md|txt|csv|html)$/i;
+const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }); // ignoreBOM: a BOM stays in the text, so it is written back
+
+/**
+ * The text of a file with its positions removed, byte for byte otherwise: UTF-8 when it is, else every byte as one character (digits and
+ * separators are single ASCII bytes in every text encoding annai meets), written back the same way. A UTF-16 file is not read.
+ * @param {Uint8Array} bytes @returns {Uint8Array} the same bytes when there is no position in them
+ */
+export function withoutPoints(bytes) {
+  /** @type {string} */
+  let was;
+  let utf = true;
+  try {
+    was = UTF8_STRICT.decode(bytes);
+  } catch {
+    utf = false;
+    was = '';
+    for (let i = 0; i < bytes.length; i += 8192) was += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  const now = was.replace(utf ? POINT : POINT_BYTES, '');
+  if (now === was) return bytes;
+  return utf ? utf8(now) : Uint8Array.from(now, (c) => c.charCodeAt(0));
 }
 
 /**
