@@ -4,7 +4,8 @@ import { planRows, planDays, legKm, shioriUndos, PLAN_FILE, BOOKING_FILE } from 
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
-import { validZone, deviceZone, dayIn } from '../../core/time.js';
+import { deviceZone, dayIn } from '../../core/time.js';
+import { tripZoneOf } from '../../core/trip-files.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { ask } from '../ask.js';
@@ -22,8 +23,10 @@ export async function renderPlan(ctx, route) {
   if (!id || !scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Plan` }), h('p', { class: 'empty' }, t`Open a trip to see its plan.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
   }
+  // Where a row's details come back to: this Plan, by the address it was opened at.
+  const here = route.parts[0] === 'trip' ? `#/trip/${encodeURIComponent(id)}/plan` : '#/plan';
   const trip = (await ctx.ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
-  const fallbackTz = [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
+  const fallbackTz = await tripZoneOf(ctx.ws, id);
   const plan = await records(ctx, id, '/plan/', PLAN_FILE);
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });
@@ -42,7 +45,7 @@ export async function renderPlan(ctx, route) {
   function show(tab) {
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === tab)));
     panel.setAttribute('aria-label', tab.label);
-    panel.replaceChildren(tab.rows.length ? timetable(ctx, id, tab.rows, links, undo) : h('p', { class: 'empty', text: t`Nothing planned this day.` }));
+    panel.replaceChildren(tab.rows.length ? timetable(ctx, id, tab.rows, links, undo, here) : h('p', { class: 'empty', text: t`Nothing planned this day.` }));
   }
   if (first) show(first);
 
@@ -64,7 +67,7 @@ export async function renderPlan(ctx, route) {
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
     notOnDay.length ? h('section', { class: 'not-on-day', 'aria-label': t`Not on a day` },
       h('h2', { class: 'section', text: t`Not on a day` }),
-      h('ol', { class: 'timetable' }, ...notOnDay.map((r) => row(ctx, id, r, undo)))) : null,
+      h('ol', { class: 'timetable' }, ...notOnDay.map((r) => row(ctx, id, r, undo, here)))) : null,
     tabs.length && rows.length ? [h('div', { class: 'tabs', role: 'tablist', 'aria-label': t`Days` }, ...buttons), panel] : null,
     rows.length ? null : h('p', { class: 'empty', text: t`No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.` }),
     broken ? h('p', { class: 'sub warn', text: broken === 1 ? t`${unread} couldn't be read. Open the trip's files to fix it.` : t`${unread} couldn't be read. Open the trip's files to fix them.` }) : null,
@@ -93,21 +96,21 @@ async function records(ctx, id, prefix, shape) {
   return { list, broken };
 }
 
-/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {Map<string, { restore: string } | { remove: true }>} undo */
-function timetable(ctx, id, rows, links, undo) {
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow[]} rows @param {any} links @param {Map<string, { restore: string } | { remove: true }>} undo @param {string} here */
+function timetable(ctx, id, rows, links, undo, here) {
   /** @type {HTMLElement[]} */
   const out = [];
   rows.forEach((r, i) => {
     // A night is a quiet line: no legs to or from it.
     const km = i && r.from !== 'night' && rows[i - 1].from !== 'night' ? legKm(rows[i - 1], r) : null;
     if (km !== null) out.push(leg(rows[i - 1], r, km, links));
-    out.push(row(ctx, id, r, undo));
+    out.push(row(ctx, id, r, undo, here));
   });
   return h('ol', { class: 'timetable' }, ...out);
 }
 
-/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, { restore: string } | { remove: true }>} undo */
-function row(ctx, id, r, undo) {
+/** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, { restore: string } | { remove: true }>} undo @param {string} here */
+function row(ctx, id, r, undo, here) {
   const it = r.item;
   // "Staying at Hotel Aurora Test · night 2 of 7": a quiet line, not a link (mockup 2b).
   if (r.night) return h('li', { class: 'plan-row night' }, h('span', { class: 'stay', text: t`Staying at ${String(it.title ?? '')} · night ${num(r.night.n)} of ${num(r.night.of)}` }));
@@ -118,14 +121,14 @@ function row(ctx, id, r, undo) {
   return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),
     h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
-    h('a', { class: 'what', href: detailsHref(id, r) },
+    h('a', { class: 'what', href: detailsHref(id, r, here) },
       h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
       h('span', { class: 'name', dir: 'auto', text: rowName(r) }),
       it.place?.name ? h('span', { class: 'sub', dir: 'auto', text: String(it.place.name) }) : null),
     r.check || r.checkFields.length || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
-      r.check ? h('a', { class: 'chip check', href: detailsHref(id, r) }, t`Check this`) : null,
+      r.check ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, t`Check this`) : null,
       // Just the fields Shiori is unsure of (My call 1): the details mark which.
-      r.checkFields.length ? h('a', { class: 'chip check', href: detailsHref(id, r) }, plural(r.checkFields.length, 'Check # detail', 'Check # details')) : null,
+      r.checkFields.length ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, plural(r.checkFields.length, 'Check # detail', 'Check # details')) : null,
       r.missing ? h('span', { class: 'chip warn', text: t`Booking missing` }) : null,
       undoChip(ctx, id, r, undo.get(r.path))) : null,
     r.note ? h('span', { class: 'note sub warn', text: r.note }) : null));

@@ -325,7 +325,7 @@ export async function renderTalk(ctx) {
       const shown = m && Object.hasOwn(theirs, m[2]) ? theirs[m[2]] : own;
       const name = h('span', { class: 'attach-name', dir: 'auto', text: shown });
       const title = shown !== own ? own : undefined;
-      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2]) }, name) : h('span', { class: 'attach-chip gone' }, name));
+      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2], '#/talk') }, name) : h('span', { class: 'attach-chip gone' }, name));
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };

@@ -3,7 +3,7 @@ import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../..
 import assert from 'node:assert/strict';
 import { parseHash } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -20,6 +20,8 @@ import { restoreFrom } from '../../src/ui/auto-backup.js';
 import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { roadText } from '../../src/ui/screens/drive.js';
+import { cameFrom } from '../../src/ui/screens/file.js';
+import { afterDelete, countParts } from '../../src/ui/file-delete.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -871,4 +873,58 @@ test('Undo tapped while Shiori works stops her turn and waits for it to settle b
   assert.deepEqual(did, ['stop', 'idle']);
   await settled(agent);
   assert.deepEqual(did, ['stop', 'idle']);
+});
+
+test('fileLine: one booking, several of a kind with their days, mixed kinds, a calendar, waiting', () => {
+  const b = (/** @type {string} */ k, /** @type {string | null} */ day) => ({ kind: /** @type {const} */ ('booking'), bookingKind: k, path: `/bookings/${k}${day}.json`, title: '', at: null, day });
+  assert.equal(fileLine([b('lodging', '2026-11-20')]), 'Stay · Nov 20');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('flight', '2026-11-27')]), '2 flights · Nov 20, Nov 27');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('flight', '2026-11-20')]), '2 flights · Nov 20');
+  assert.equal(fileLine([b('flight', '2026-11-20'), b('lodging', '2026-11-20')]), '1 flight · 1 stay');
+  assert.equal(fileLine([b('other', null)]), 'Booking');
+  assert.equal(fileLine([{ kind: 'plan', path: '/plan/a.json', title: 'A', at: null, day: null }, { kind: 'plan', path: '/plan/b.json', title: 'B', at: null, day: null }]), 'Plan items from a calendar');
+  assert.equal(fileLine([{ kind: 'waiting' }]), 'Waiting for Shiori to read it');
+  assert.equal(fileLine([{ kind: 'nothing' }]), 'Nothing yet');
+});
+
+test('cameFrom: the trip, the Conversation, the Plan, Now, an item, and an old booking crumb', () => {
+  assert.deepEqual(cameFrom('#/trip/t-1', 't-1', 't-1'), { hash: '#/trip/t-1', name: 'trip' });
+  assert.equal(cameFrom('#/trip/t-2', 't-1', 't-1'), null); // another trip's screen
+  assert.deepEqual(cameFrom('#/talk', 't-1', 't-1'), { hash: '#/talk', name: 'talk' });
+  assert.equal(cameFrom('#/talk', 't-1', 't-2'), null); // the Conversation is another trip's now
+  assert.deepEqual(cameFrom('#/trip/t-1/booking?path=%2Fbookings%2Fa.json', 't-1', null)?.name, 'booking');
+  assert.equal(cameFrom('#/settings', 't-1', 't-1'), null);
+  // The Plan, Now and an item are crumbs too; the Plan and Now by their plain addresses mean the open trip's.
+  assert.deepEqual(cameFrom('#/trip/t-1/plan', 't-1', 't-1'), { hash: '#/trip/t-1/plan', name: 'plan' });
+  assert.deepEqual(cameFrom('#/plan', 't-1', 't-1'), { hash: '#/plan', name: 'plan' });
+  assert.deepEqual(cameFrom('#/plan', 't-1', 't-2'), { hash: '#/trip/t-1/plan', name: 'plan' }); // another trip is open now: this one's own Plan
+  assert.deepEqual(cameFrom('#/now', 't-1', 't-1'), { hash: '#/now', name: 'now' });
+  assert.equal(cameFrom('#/now', 't-1', 't-2'), null);
+  assert.deepEqual(cameFrom('#/trip/t-1/item?path=%2Fplan%2Fa.json', 't-1', null), { hash: '#/trip/t-1/item?path=%2Fplan%2Fa.json', name: 'item' });
+  assert.deepEqual(cameFrom('#/trip/t-1/recap', 't-1', null), { hash: '#/trip/t-1/recap', name: 'recap' });
+});
+
+test('recordHref: a file the user gave and a booking open the details screen; a plan item its own; anything else the raw file', () => {
+  assert.equal(recordHref('t-1', '/files/a.pdf', '#/talk'), '#/trip/t-1/booking?path=%2Ffiles%2Fa.pdf&from=%23%2Ftalk');
+  assert.match(recordHref('t-1', '/bookings/a.json'), /\/booking\?path=%2Fbookings%2Fa\.json$/);
+  assert.match(recordHref('t-1', '/plan/a.json'), /\/item\?path=/);
+  assert.match(recordHref('t-1', '/files/scans/a.pdf'), /\/file\?path=/);
+  assert.match(recordHref('t-1', '/notes/a.md'), /\/file\?path=/);
+});
+
+test('afterDelete: back where it came from, unless that screen was of something deleted', () => {
+  const gone = ['/files/a.pdf', '/bookings/a.json', '/plan/a.json'];
+  assert.equal(afterDelete('#/trip/t-1/plan', gone, 't-1'), '#/trip/t-1/plan');
+  assert.equal(afterDelete('#/now', gone, 't-1'), '#/now');
+  assert.equal(afterDelete('#/talk', gone, 't-1'), '#/talk');
+  assert.equal(afterDelete('#/trip/t-1', gone, 't-1'), '#/trip/t-1');
+  assert.equal(afterDelete('#/trip/t-1/item?path=%2Fplan%2Fa.json', gone, 't-1'), '#/trip/t-1');
+  assert.equal(afterDelete('#/trip/t-1/item?path=%2Fplan%2Fb.json', gone, 't-1'), '#/trip/t-1/item?path=%2Fplan%2Fb.json');
+  assert.equal(afterDelete('#/trip/t-1/booking?path=%2Ftrip%2Ffiles%2Fa.pdf', gone, 't-1'), '#/trip/t-1');
+});
+
+test('countParts: what else goes, in words', () => {
+  assert.deepEqual(countParts(2, 1), ['2 bookings', '1 plan item']);
+  assert.deepEqual(countParts(0, 3), ['3 plan items']);
+  assert.deepEqual(countParts(0, 0), []);
 });

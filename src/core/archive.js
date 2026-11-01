@@ -2,7 +2,7 @@ import { ZipWriter, ZipReader } from './zip.js';
 import { encrypt, decrypt, isEncrypted } from './archive-crypto.js';
 import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
-import { isCompressedType, normPath, freeName } from './paths.js';
+import { isCompressedType, normPath, freeName, isGivenFile } from './paths.js';
 import { validate } from './schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret } from './scopes.js';
 import { isPhotoType } from './photos.js';
@@ -197,7 +197,7 @@ export async function exportArchive(store, opts) {
     const dir = dirFor(scope.id);
     const { files, events } = await store.tx(['files', 'events'], 'readonly', async (t) => ({
       files: await t.listFiles(scope.id, '/'),
-      events: opts.include.history ? await t.listEvents(scope.id) : [],
+      events: opts.include.history ? (await t.listEvents(scope.id)).map((e) => withoutPlaces(e, opts)) : [],
     }));
     const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
     /** @type {ManifestScope} */
@@ -286,6 +286,24 @@ export async function exportArchive(store, opts) {
   if (opts.passphrase) blob = await encrypt(blob, opts.passphrase, opts.iterations);
   const title = opts.kind === 'trip' ? scopes[0].title : '';
   return { blob, manifest, skipped, seqs, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
+}
+
+/**
+ * A log entry as an archive carries it. A file.delete keeps the file's `meta` so a Restore brings it back, and that says where a photo
+ * was taken: a Share without locations drops the place from it, and Photos unticked drops the whole of it.
+ * @param {import('./types.js').EventRecord} e @param {{ include: Include, share?: { places: boolean } }} opts
+ * @returns {import('./types.js').EventRecord}
+ */
+function withoutPlaces(e, opts) {
+  const meta = e.type === 'file.delete' ? e.data?.meta : undefined;
+  if (!meta || typeof meta !== 'object') return e;
+  const { meta: _, ...data } = e.data;
+  if (!opts.include.photos) return { ...e, data };
+  if (opts.share && !opts.share.places) {
+    const { place: __, ...rest } = meta;
+    return { ...e, data: { ...data, meta: rest } };
+  }
+  return e;
 }
 
 /**
@@ -551,7 +569,7 @@ export async function importArchive(store, opened, choices = {}) {
     } else {
       continue; // kept, or the system log or this device's own scope, which belong to the device they came from
     }
-    const files = manifest.files.filter((f) => f.scope === rec.id && (mode !== 'add' || /^\/files\/[^/]+$/.test(f.path)));
+    const files = manifest.files.filter((f) => f.scope === rec.id && (mode !== 'add' || isGivenFile(f.path)));
     const events = s.events && mode !== 'add' ? await logOf(opened, s.events) : [];
     plan.push({ rec, target, mode, files, events });
     // Imported plugins arrive switched off: running their code must be an explicit choice

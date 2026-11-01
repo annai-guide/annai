@@ -531,7 +531,7 @@ test("the folded dates keep their disclosure marker, and their tap is a phone's 
   expect((await summary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
 });
 
-test("a trip's Files: each file's short name, real name and what it became; opening one; asking about one; adding one by hand", async ({ page }) => {
+test("a trip's Files: each file's short name and what it is; opening one; adding one by hand", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Anchorage');
   await putFile(page, trip, '/files/flight.pdf', await readFile('test/fixtures/bookings/flight.pdf'), 'application/pdf');
@@ -542,28 +542,18 @@ test("a trip's Files: each file's short name, real name and what it became; open
     '/names.json': { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' },
   } });
   await page.reload();
-  const files = page.getByRole('region', { name: 'Files' });
+  const files = page.getByRole('region', { name: 'Files', exact: true });
   await expect(files.locator('.trip-file')).toHaveCount(2); // the trip photo is among its photos, not here
   const flight = files.locator('.trip-file').first();
   await expect(flight.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
-  await expect(flight.locator('.real')).toHaveText('flight.pdf');
+  await expect(flight.locator('.became')).toHaveText('Flight');
   await expect(files.locator('.trip-file').nth(1)).toContainText('new.pdf');
   await expect(files.locator('.trip-file').nth(1).locator('.became')).toHaveText('Nothing yet');
-  // What it became links to the booking's details.
-  await flight.getByRole('link', { name: 'A flight: ANNAI AIR AN 123' }).click();
-  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-  await page.goBack();
-  // A tap opens the file.
-  await files.getByRole('link', { name: /new\.pdf/ }).click();
-  await expect(page.getByRole('heading', { name: '/files/new.pdf' })).toBeVisible();
-  await page.goBack();
+  // One tap target: the row's single link opens the file's details.
+  await expect(flight.getByRole('link')).toHaveAttribute('href', /\/booking\?path=/);
   // Adding one by hand.
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'ferry.txt', mimeType: 'text/plain', buffer: Buffer.from('Ferry TESTQ1 at 09:00') });
   await expect(files.locator('.trip-file', { hasText: 'ferry.txt' })).toBeVisible();
-  // Asking about one: the file is a chip by its short name.
-  await flight.getByRole('button', { name: 'Ask Shiori about this' }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR flight · Nov 20']);
 });
 
 test('All files is folded below Files, and still has notes, memory, the raw records and the box that adds a file by path', async ({ page }) => {

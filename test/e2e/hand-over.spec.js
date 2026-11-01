@@ -100,7 +100,9 @@ test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she
     await expect(lines.nth(1)).toHaveText(new RegExp(RECAP));
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0); // nothing asked where a file goes
     await lines.nth(0).getByRole('link', { name: 'flight.pdf' }).click();
-    await expect(page.getByRole('heading', { name: '/files/flight.pdf' })).toBeVisible();
+    // The chip for a file the user gave opens its details, whose crumb goes back to the Conversation.
+    await expect(page.getByRole('region', { name: 'The original' })).toContainText('From flight.pdf');
+    await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
     await page.goto('/#/trips');
     await expect(page.locator('.trip-card', { hasText: TITLE })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toHaveCount(0);
@@ -162,7 +164,7 @@ test('in a trip, a pasted confirmation email becomes a chip, then a text file in
     expect(asText(first.messages.at(-1))).not.toContain('Midnight Test Rentals'); // the email is a file she reads, not words in the message
     await page.goto(trip);
     // In the trip's Files, with what it became.
-    await expect(page.getByRole('region', { name: 'Files' }).locator('.trip-file', { hasText: /pasted-[0-9-]+\.txt/ })).toContainText('A car: car car');
+    await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file', { hasText: 'car car' }).locator('.became')).toHaveText('Car');
   } finally {
     await llm.stop();
   }
@@ -281,6 +283,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     // The chip on the sent line opens the booking's details, never its raw JSON (the review of seeing-bookings, E1).
     const chip = page.locator('.convo .chips.handed .attach-chip').first();
     await expect(chip).toHaveAttribute('href', /\/booking\?path=/);
+    await expect(chip).toHaveAttribute('href', /from=%23%2Ftalk/);
     await chip.click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
     await expect(page.locator('textarea')).toHaveCount(0);
@@ -331,11 +334,13 @@ test('once Shiori names a file, its chip, its Files row and its screen show the 
     await expect(chip).toHaveAttribute('title', 'flight.pdf');
     // Its Files row.
     await page.goto(trip);
-    const row = page.getByRole('region', { name: 'Files' }).locator('.trip-file').first();
+    const row = page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file').first();
     await expect(row.locator('.name')).toHaveText('ANNAI AIR flight · Nov 20');
-    await expect(row.locator('.real')).toHaveText('flight.pdf');
-    // Its own screen: the short name, then the real file name and its path.
+    // Its details: the short name, then the real file name beneath the preview; Open leads to the raw screen, with its path.
     await row.getByRole('link').first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'The original' })).toContainText('From flight.pdf');
+    await page.getByRole('link', { name: 'Open', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR flight · Nov 20' })).toBeVisible();
     await expect(page.getByText('File name: flight.pdf')).toBeVisible();
     await expect(page.getByText('/files/flight.pdf')).toBeVisible();

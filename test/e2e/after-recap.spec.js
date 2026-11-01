@@ -52,6 +52,7 @@ test('the recap: written by the utility model from the trip in words, shown safe
     await expect(page.getByRole('button', { name: 'Write it again' })).toBeVisible();
     await page.getByRole('link', { name: 'Edit' }).click();
     await expect(page.getByRole('heading', { name: '/recap.md' })).toBeVisible();
+    await expect(page.locator('.crumbs a')).toContainText('Recap'); // Back goes to where Edit was tapped, by its name
     expect(errors).toEqual([]);
   } finally {
     await llm.stop();

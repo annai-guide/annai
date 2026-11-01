@@ -251,3 +251,15 @@ test('a write, patch, delete or writeMany given a hand-over records it on its lo
   assert.deepEqual(ev.map((e) => e.data.handover ?? null), ['h-1', 'h-1', 'h-1', 'h-2', 'h-2', null]);
   assert.equal('handover' in ev.at(-1).data, false);
 });
+
+test("a delete keeps what the entry said besides its bytes (a photo's metadata, a calendar item's source), and a restore brings it back", async () => {
+  const { ws } = await setup();
+  const meta = { width: 4, height: 3, taken: '2026-11-21T10:00:00-09:00' };
+  await ws.write('trip-1', '/files/aurora.jpg', new Uint8Array([1, 2, 3]), { author: 'user', type: 'image/jpeg', meta });
+  await ws.write('trip-1', '/plan/walk.json', { id: 'walk', title: 'Aurora walk', fixed: true }, { author: 'system', source: '/trip/files/walks.ics' });
+  const photo = /** @type {any} */ (await ws.read('trip-1', '/files/aurora.jpg')).entry;
+  const item = /** @type {any} */ (await ws.read('trip-1', '/plan/walk.json')).entry;
+  await ws.writeMany('trip-1', [{ path: '/files/aurora.jpg', content: null }, { path: '/plan/walk.json', content: null }], { author: 'user' });
+  assert.deepEqual((await ws.restore('trip-1', '/files/aurora.jpg', photo.hash, { author: 'user' })).meta, meta);
+  assert.equal((await ws.restore('trip-1', '/plan/walk.json', item.hash, { author: 'user' })).source, '/trip/files/walks.ics');
+});
