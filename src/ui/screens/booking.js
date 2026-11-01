@@ -3,7 +3,8 @@ import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, day } from '../form
 import { isBookingPath, checkOf } from '../../core/bookings.js';
 import { PLAN_FILE, bookingRef } from '../../core/plan.js';
 import { normPath } from '../../core/paths.js';
-import { validZone, deviceZone, dayIn, instantAt } from '../../core/time.js';
+import { validZone, dayIn, instantAt } from '../../core/time.js';
+import { tripZoneOf } from '../../core/trip-files.js';
 import { readNames, shortName } from '../../core/names.js';
 import { mapsUrl } from '../cards.js';
 import { platform } from '../platform.js';
@@ -86,9 +87,8 @@ export function backCrumb(ctx, id, from) {
 }
 
 /** The zone for a time whose own zone annai doesn't know: the trip's first, else this phone's. @param {any} ctx @param {string} id */
-export async function tripZone(ctx, id) {
-  const trip = (await ctx.ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
-  return [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
+export function tripZone(ctx, id) {
+  return tripZoneOf(ctx.ws, id);
 }
 
 /**

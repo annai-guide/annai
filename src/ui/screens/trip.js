@@ -5,10 +5,7 @@ import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName } from '../format.js';
-import { fileRows } from '../../core/trip-files.js';
-import { readNames } from '../../core/names.js';
-import { filesToRead } from '../../core/handover.js';
-import { PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
+import { fileRows, readTripFiles } from '../../core/trip-files.js';
 import { askAboutButton } from '../composer.js';
 import { exportPanel } from '../export-panel.js';
 import { bringIn } from '../bring-in.js';
@@ -82,16 +79,7 @@ const BECAME = /** @type {Record<string, (title: string) => string>} */ ({
  * listed here (My call 4). At its foot, the user adds photos or files by hand. @param {any} ctx @param {string} id @param {any[]} files
  */
 async function filesSection(ctx, id, files) {
-  /** @param {string} prefix @param {RegExp} shape */
-  const records = async (prefix, shape) => Promise.all(files.filter((f) => f.path.startsWith(prefix) && shape.test(f.path))
-    .map(async (f) => ({ path: f.path, value: await ctx.ws.readJSON(id, f.path).catch(() => null), source: f.source })));
-  const rows = fileRows({
-    files,
-    bookings: (await records('/bookings/', BOOKING_FILE)).map((x) => ({ path: x.path, booking: x.value })),
-    items: (await records('/plan/', PLAN_FILE)).map((x) => ({ path: x.path, item: x.value, source: x.source })),
-    names: await readNames(ctx.ws, id),
-    toRead: await filesToRead(ctx.store, id),
-  });
+  const rows = fileRows(await readTripFiles(ctx.ws, ctx.store, id));
   return h('section', { class: 'trip-files', 'aria-label': t`Files` },
     h('h2', { class: 'section', text: t`Files` }),
     rows.length ? h('ul', { class: 'file-list' }, ...rows.map((r) => h('li', { class: 'trip-file' },
