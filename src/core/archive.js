@@ -9,6 +9,7 @@ import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf, isName } from './events.js';
 import { dayIn, deviceZone } from './time.js';
+import { isArrival } from './after/stamps.js';
 import { t, plural } from './l10n.js';
 import { list } from './intl.js';
 
@@ -165,7 +166,8 @@ const EVENT_SCHEMA = {
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
  *   share: this is a Share (§12.2). Photos go only as encoded copies, older versions of photos are
- *   left out, and unless places is true, nothing says where a photo was taken.
+ *   left out, and unless places is true, nothing says where anything was: no photo's place, and no position annai's sensors recorded
+ *   (location entries, arrivals, a wake's coordinates). What the user and Shiori wrote, and the plan's places, stay.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
@@ -197,7 +199,7 @@ export async function exportArchive(store, opts) {
     const dir = dirFor(scope.id);
     const { files, events } = await store.tx(['files', 'events'], 'readonly', async (t) => ({
       files: await t.listFiles(scope.id, '/'),
-      events: opts.include.history ? (await t.listEvents(scope.id)).map((e) => withoutPlaces(e, opts)) : [],
+      events: opts.include.history ? (await t.listEvents(scope.id)).flatMap((e) => withoutPlaces(e, opts) ?? []) : [],
     }));
     const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
     /** @type {ManifestScope} */
@@ -289,12 +291,20 @@ export async function exportArchive(store, opts) {
 }
 
 /**
- * A log entry as an archive carries it. A file.delete keeps the file's `meta` so a Restore brings it back, and that says where a photo
- * was taken: a Share without locations drops the place from it, and Photos unticked drops the whole of it.
+ * A log entry as an archive carries it, or null when left out. A file.delete keeps the file's `meta` so a Restore brings it back, and that
+ * says where a photo was taken: a Share without places drops the place from it, and Photos unticked drops the whole of it. A Share without
+ * places also drops location entries and arrivals (the position is the whole entry), and the "(lat, lng)" plan-watches.js writes into a wake.
  * @param {import('./types.js').EventRecord} e @param {{ include: Include, share?: { places: boolean } }} opts
- * @returns {import('./types.js').EventRecord}
+ * @returns {import('./types.js').EventRecord | null}
  */
 function withoutPlaces(e, opts) {
+  if (opts.share && !opts.share.places) {
+    if (e.type === 'location' || (e.type === 'trigger.fired' && isArrival(e.data))) return null;
+    if (e.type === 'wake' && Array.isArray(e.data?.reasons)) {
+      const reasons = e.data.reasons.map((/** @type {any} */ r) => (typeof r?.text === 'string' ? { ...r, text: r.text.replace(SENSED_POINT, '') } : r));
+      return { ...e, data: { ...e.data, reasons } };
+    }
+  }
   const meta = e.type === 'file.delete' ? e.data?.meta : undefined;
   if (!meta || typeof meta !== 'object') return e;
   const { meta: _, ...data } = e.data;
@@ -305,6 +315,9 @@ function withoutPlaces(e, opts) {
   }
   return e;
 }
+
+/** A bracketed point in a wake's words (plan-watches.js's linger), with the space before it. */
+const SENSED_POINT = /\s*\(\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+\s*\)/g;
 
 /**
  * The photo type of some bytes: what they are when they say (a GIF is no photo, as at ingest),

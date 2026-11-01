@@ -14,6 +14,7 @@ import { utf8, text } from '../../src/core/bytes.js';
 import { readFile } from 'node:fs/promises';
 import { readPhotoMeta, sniffImageType } from '../../src/core/photo-meta.js';
 import { PiecesOnly } from './pieces.js';
+import { logEvent } from '../../src/core/events.js';
 
 const FAST = 100_000;
 const bytesOf = async (/** @type {Blob} */ b) => new Uint8Array(await b.arrayBuffer());
@@ -852,4 +853,60 @@ test("a deleted photo's kept details say where it was taken only when the archiv
   assert.equal(noPlaces.data.meta.place, undefined);
   assert.equal(noPlaces.data.meta.width, 64);
   assert.equal((await deleted({ include: { ...PRESETS.backup, photos: false } })).data.meta, undefined);
+});
+
+/** A trip whose log holds what live mode and the user wrote, with synthetic positions: 10.1234 and 22.2222 are sensed, 40.4040 is the plan's. */
+async function drivenTrip() {
+  const a = await device();
+  const trip = await createTrip(a.ws, { title: 'Road trip' });
+  await a.ws.write(trip, '/plan/museum.json', { id: 'museum', title: 'Museum', fixed: false, place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } }, { author: 'user' });
+  const log = (/** @type {string} */ type, /** @type {string} */ actor, /** @type {any} */ data) => logEvent(a.store, trip, { type, actor, data });
+  await log('msg.user', 'user', { text: 'we are driving to the museum' });
+  await log('location', 'system', { lat: 10.1234, lng: 20.5678, accuracy: 8, speed: 20, source: 'gps' });
+  await log('location', 'system', { lat: 10.2345, lng: 20.6789, accuracy: 9 });
+  await log('trigger.fired', 'system', { watch: 'w1', type: 'arrived', owner: 'shiori', text: "you've stopped for 6 min somewhere new", place: { lat: 22.2222, lng: 33.3333, name: 'Cafe Example' } });
+  await log('trigger.fired', 'system', { watch: 'plan:*:linger', type: 'plan', event: 'linger', owner: 'system', text: 'Off plan: stopped at (11.1111, 22.2222)', place: { lat: 11.1111, lng: 22.2222 } });
+  await log('trigger.fired', 'system', { watch: 'plan:museum:arrived', type: 'plan', event: 'arrived', owner: 'system', text: 'Example Museum', place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } });
+  await log('trigger.fired', 'system', { watch: 'w2', type: 'enter', owner: 'shiori', text: 'you entered the harbour', place: { name: 'Harbour', lat: 41.414, lng: 51.515 } });
+  await log('wake', 'system', { id: 'k1', reasons: [{ kind: 'trigger', text: "Off plan: the user has been stopped for 20 min at a place that isn't on the plan (11.1111, 22.2222); next on the plan: \"Museum\". The replanning skill says what to do." }] });
+  await log('out.show', 'shiori', { text: 'Want to visit the Example Museum?', place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } });
+  return { a, trip };
+}
+
+/** @param {any} a @param {string} trip @param {any} share @returns {Promise<{ lines: any[], raw: string, entries: Map<string, Uint8Array>, manifest: any, blob: Blob }>} */
+async function sharedLog(a, trip, share) {
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: { ...PRESETS.share, history: true }, app: '0.1.0', share });
+  const entries = await readZip(await bytesOf(blob));
+  const raw = text(/** @type {Uint8Array} */ (entries.get(manifest.scopes[0].events))).trim();
+  return { lines: raw.split('\n').map((l) => JSON.parse(l)), raw, entries, manifest, blob };
+}
+
+test('a Share without places carries no position annai sensed: no location entries, no arrivals, no coordinates in a wake', async () => {
+  const { a, trip } = await drivenTrip();
+  const { lines, raw, entries, manifest, blob } = await sharedLog(a, trip, { places: false });
+  assert.equal(lines.some((e) => e.type === 'location'), false);
+  assert.equal(lines.some((e) => e.type === 'trigger.fired' && (e.data.type === 'arrived' || e.data.event === 'linger' || e.data.event === 'arrived')), false);
+  for (const sensed of ['10.1234', '10.2345', '20.5678', '22.2222', '33.3333', '11.1111', 'Cafe Example']) assert.equal(raw.includes(sensed), false, `${sensed} is in the log`);
+  // What was written, not sensed, stays: the words, the watch's own place, the card's place, the plan's place file.
+  const wake = lines.find((e) => e.type === 'wake');
+  assert.match(wake.data.reasons[0].text, /^Off plan: the user has been stopped for 20 min at a place that isn't on the plan; next on the plan: "Museum"\./);
+  assert.ok(lines.some((e) => e.type === 'msg.user' && e.data.text === 'we are driving to the museum'));
+  assert.equal(lines.find((e) => e.type === 'trigger.fired' && e.data.type === 'enter').data.place.lat, 41.414);
+  assert.equal(lines.find((e) => e.type === 'out.show').data.place.lat, 40.404);
+  const plan = manifest.files.find((/** @type {any} */ f) => f.path === '/plan/museum.json');
+  assert.equal(JSON.parse(text(/** @type {Uint8Array} */ (entries.get(plan.name)))).place.lat, 40.404);
+  // The log is still a log: entries keep their own numbers, and it opens again.
+  const b = await device();
+  assert.equal((await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips.length, 1);
+});
+
+test('a Share with places, and a backup, carry the log whole', async () => {
+  const { a, trip } = await drivenTrip();
+  const shared = await sharedLog(a, trip, { places: true });
+  assert.equal(shared.lines.filter((e) => e.type === 'location').length, 2);
+  assert.equal(shared.lines.filter((e) => e.type === 'trigger.fired').length, 4);
+  assert.match(shared.lines.find((e) => e.type === 'wake').data.reasons[0].text, /\(11\.1111, 22\.2222\)/);
+  const backup = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const kept = text(/** @type {Uint8Array} */ ((await readZip(await bytesOf(backup.blob))).get(/** @type {string} */ (backup.manifest.scopes[0].events))));
+  assert.equal(kept.trim().split('\n').filter((l) => JSON.parse(l).type === 'location').length, 2);
 });

@@ -100,3 +100,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** these browsers' PDF viewer is PDF.js running as a small page with inline script and style. A PDF shown from an object URL takes annai's security policy, which refuses inline script, so the viewer never starts. Serving the PDF from annai's offline worker under a looser policy would fix it, at the cost of one more moving part for very few users.
 - **Revisit when:** an iPhone or Mac shows the frame blank too, or someone on GNOME Web asks.
 - **Approved:** 2026-10-29, the user: "Known limitation (Recommended)".
+
+### Identical deleted copies in one trip aren't freed
+- **Kind:** known limitation.
+- **What the user sees:** when the same file was added to a trip twice and both copies are deleted, neither is freed: each keeps the other's content named. Both stay under Deleted in Files, restorable, until the trip is removed, which frees them.
+- **Why:** Delete frees a file only when nothing else names its content, and another deleted copy's history names it. Freeing every copy at once needs Delete to look past other deleted files' history, for a case that needs the same file twice in one trip.
+- **Revisit when:** the user meets it, or Deleted gains a "Delete for good".
+- **Approved:** 2026-11-01, the user: "Leave it (Recommended)".
