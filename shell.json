@@ -1,5 +1,5 @@
 {
-  "build": "61440f03814a",
+  "build": "f21145cd427c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -207,7 +207,7 @@
     "/src/ui/ask.js": "c4ab8fb83d2f",
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
-    "/src/ui/export-panel.js": "c81cc915598f",
+    "/src/ui/export-panel.js": "2edcdce21cc0",
     "/src/ui/file-delete.js": "08801034389e",
     "/src/ui/format.js": "4dde184e010f",
     "/src/ui/grounding.html": "5dab86abb302",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "1e574af62c25",
-    "/l10n/zh-Hans.json": "eaab4af233b5",
-    "/l10n/zh-Hant.json": "306bc7be8956"
+    "/l10n/ja.json": "cd1b4485fbe4",
+    "/l10n/zh-Hans.json": "a061f085d9d8",
+    "/l10n/zh-Hant.json": "916652f7bcf6"
   }
 }

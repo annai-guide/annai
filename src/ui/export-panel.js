@@ -22,7 +22,7 @@ export function exportPanel(ctx, what) {
   const memory = checkbox(t`Memory`, true);
   const photos = checkbox(t`Photos`, true);
   const keys = isTrip ? null : checkbox(t`Include API keys (needs a passphrase)`, false);
-  const places = checkbox(t`Include where photos were taken`, true);
+  const places = checkbox(t`Include where photos were taken and where you went`, true);
   places.el.hidden = true; // a Share option (§12.2)
   let mode = 'backup';
   const preset = isTrip

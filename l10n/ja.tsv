@@ -523,26 +523,26 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai は {0} につ�
 1bw0b6k	ok	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
-4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:64	{0} = s.why; Note: {0} is a developer's detail, in English.
-gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:65	{0} = s.path
-13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:66	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:66	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:86	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:389	
-q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:393	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:396	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:421	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:423	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:430	
-lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:436	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:452	
-1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:464	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:469	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:495	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:499	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:583	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:687	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:688	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:65	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:66	{0} = s.path
+13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:67	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:67	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:87	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:402	
+q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:406	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:409	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:434	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:436	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:443	
+lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:449	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:465	
+1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:477	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:482	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:508	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:512	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:596	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:700	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:701	
 e0756x	ok	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:45	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:47	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:48	{0} = name
@@ -1022,7 +1022,7 @@ fj0t7x	ok	History (every version and the log)	履歴（すべての版とログ�
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's: 記憶, as the recap's list says it; メモリー reads as the device's memory.
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	API キーを含める（パスフレーズが必要）	src/ui/export-panel.js:24	
-1k1mi4l	ok	Include where photos were taken	写真の撮影場所を含める	src/ui/export-panel.js:25	
+lq7cxe	draft	Include where photos were taken and where you went	写真の撮影場所と訪れた場所を含める	src/ui/export-panel.js:25	English was: Include where photos were taken
 1ahfa0	ok	Share: plan, bookings, files and notes	共有：予定、予約、ファイル、メモ	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
 40d3tk	ok	What to include	含めるもの	src/ui/export-panel.js:29	
 e1v954	ok	Backup: everything	バックアップ：すべて	src/ui/export-panel.js:29	

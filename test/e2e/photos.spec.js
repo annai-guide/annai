@@ -163,7 +163,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
   await page.getByRole('button', { name: 'Export trip' }).click();
-  const places = page.getByLabel('Include where photos were taken');
+  const places = page.getByLabel('Include where photos were taken and where you went');
   await expect(places).toBeHidden(); // a Backup keeps everything
   await page.getByLabel('Share: plan, bookings, files and notes').check();
   await expect(places).toBeChecked();
