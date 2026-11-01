@@ -8,9 +8,9 @@
  * backupState, backup-auto.js changedSince). Only the newest such entry is kept, so a file kept without history doesn't grow the log.
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').EventRecord} EventRecord
- * @typedef {{ files?: (path: string) => boolean, history?: (path: string) => boolean, events?: (e: EventRecord) => boolean,
+ * @typedef {{ files?: (path: string) => boolean, history?: (path: string, e: EventRecord) => boolean, events?: (e: EventRecord) => boolean,
  *   mustFree?: (path: string) => boolean }} Match
- *   files: current files to delete; history: file.write and file.delete entries (by data.path) to delete; events: any other entries;
+ *   files: current files to delete; history: file.write and file.delete entries (by data.path, and the entry itself) to delete; events: any other entries;
  *   mustFree: paths whose every version (as the history entries deleted name them) must be freed, or nothing is forgotten at all
  *   (Delete in Files: a file the conversation still names is kept whole, history and all)
  * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'elsewhere' }} Forgot
@@ -60,7 +60,7 @@ function forgetIn(store, scope, match) {
     const doomed = new Map();
     if (match.history) {
       for (const e of await t.listEvents(scope, { types: HISTORY })) {
-        if (typeof e.data?.path === 'string' && match.history(e.data.path)) doomed.set(e.seq, e);
+        if (typeof e.data?.path === 'string' && match.history(e.data.path, e)) doomed.set(e.seq, e);
       }
     }
     if (match.events) for (const e of await t.listEvents(scope)) if (match.events(e)) doomed.set(e.seq, e);

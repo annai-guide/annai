@@ -1,12 +1,11 @@
 import { t, plural, messageOf } from './dom.js';
-import { list, size, BOOKING_KINDS } from './format.js';
+import { list, size, BOOKING_KINDS, bookingHref } from './format.js';
 import { parseHash } from './router.js';
 import { explainStorageFull } from './storage-full.js';
-import { deletionOf, restoreGroup } from '../core/trip-files.js';
+import { deletionOf, deletesOf, restoreGroup } from '../core/trip-files.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
-import { bookingHref } from './format.js';
 import { forget } from '../core/forget.js';
-import { inTrip } from '../core/paths.js';
+import { inTrip, isGivenFile } from '../core/paths.js';
 
 /**
  * "2 bookings", "1 plan item": the parts saying what else a Delete removes along with a file; none when nothing.
@@ -50,12 +49,27 @@ export async function deleteGroup(ctx, id, d) {
   const what = list([nameOf(d), ...countParts(file.length ? bookings.length : 0, items.length)]);
   // A booking with no file keeps its history (its JSON is tiny), and isn't listed under Deleted. If the page goes before the forget, the
   // file is simply kept, listed and restorable.
-  const r = file.length ? await forget(ctx.store, id, { history: (p) => paths.includes(p), mustFree: (p) => p === file[0] }).catch(() => null) : null;
+  const r = file.length ? await forget(ctx.store, id, { history: await ownLife(ctx.store, id, paths), mustFree: (p) => p === file[0] }).catch(() => null) : null;
   ctx.notices.toast(!r ? t`Deleted ${what}`
     : r.kept === 'here' ? t`Deleted ${what}. The conversation still has it, so it's under Deleted, where you can restore it.`
       : r.kept === 'elsewhere' ? t`Deleted ${what}. Another trip or file has the same content, so it's under Deleted, where you can restore it.`
         : t`Deleted ${what}. ${size(r.bytes)} freed.`);
   return paths;
+}
+
+/**
+ * Which history entries this Delete dooms: for the file, all of them (mustFree guards it); for each booking or plan item, only its
+ * current life, as those paths are reused by design (bookings are named by short name, calendar items by UID): the entries after its
+ * newest earlier delete, which a kept group's Restore still needs, and this Delete's own.
+ * @param {any} store @param {string} id @param {string[]} paths what this Delete took, the file first
+ * @returns {Promise<(path: string, e: import('../core/types.js').EventRecord) => boolean>}
+ */
+async function ownLife(store, id, paths) {
+  /** @type {Map<string, number[]>} */
+  const seqs = new Map();
+  for (const e of await deletesOf(store, id)) if (paths.includes(e.data?.path)) seqs.set(e.data.path, [...(seqs.get(e.data.path) ?? []), e.seq]);
+  const earlier = (/** @type {string} */ p) => (seqs.get(p) ?? []).at(-2) ?? -Infinity; // the newest delete is this one
+  return (p, e) => paths.includes(p) && (isGivenFile(p) || e.seq > earlier(p));
 }
 
 /** What the toast calls it: the file's name, else the lone booking's title, else its kind. @param {import('../core/trip-files.js').Details} d */
