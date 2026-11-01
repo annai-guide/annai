@@ -21,6 +21,7 @@ import { packWords, downloadedWhen } from '../../src/ui/offline-pack.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { roadText } from '../../src/ui/screens/drive.js';
 import { cameFrom } from '../../src/ui/screens/file.js';
+import { afterDelete, countParts } from '../../src/ui/file-delete.js';
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });
@@ -901,4 +902,21 @@ test('recordHref: a file the user gave and a booking open the details screen; a 
   assert.match(recordHref('t-1', '/plan/a.json'), /\/item\?path=/);
   assert.match(recordHref('t-1', '/files/scans/a.pdf'), /\/file\?path=/);
   assert.match(recordHref('t-1', '/notes/a.md'), /\/file\?path=/);
+});
+
+test('afterDelete: back where it came from, unless that screen was of something deleted', () => {
+  const gone = ['/files/a.pdf', '/bookings/a.json', '/plan/a.json'];
+  assert.equal(afterDelete('#/trip/t-1/plan', gone, 't-1'), '#/trip/t-1/plan');
+  assert.equal(afterDelete('#/now', gone, 't-1'), '#/now');
+  assert.equal(afterDelete('#/talk', gone, 't-1'), '#/talk');
+  assert.equal(afterDelete('#/trip/t-1', gone, 't-1'), '#/trip/t-1');
+  assert.equal(afterDelete('#/trip/t-1/item?path=%2Fplan%2Fa.json', gone, 't-1'), '#/trip/t-1');
+  assert.equal(afterDelete('#/trip/t-1/item?path=%2Fplan%2Fb.json', gone, 't-1'), '#/trip/t-1/item?path=%2Fplan%2Fb.json');
+  assert.equal(afterDelete('#/trip/t-1/booking?path=%2Ftrip%2Ffiles%2Fa.pdf', gone, 't-1'), '#/trip/t-1');
+});
+
+test('countParts: what else goes, in words', () => {
+  assert.deepEqual(countParts(2, 1), ['2 bookings', '1 plan item']);
+  assert.deepEqual(countParts(0, 3), ['3 plan items']);
+  assert.deepEqual(countParts(0, 0), []);
 });

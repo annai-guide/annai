@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, allFiles } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -179,4 +179,78 @@ test('an old booking link with no from goes back to the trip', async ({ page }) 
   await expect(crumbOf(page)).toContainText('Anchorage');
   await crumbOf(page).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+});
+
+/** Deletes with the two taps. @param {import('@playwright/test').Page} page @param {string} [label] */
+async function deleteIt(page, label = 'Delete') {
+  await page.getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('button', { name: 'Tap again to delete' }).click();
+}
+
+test('Delete removes the file, its bookings and their plan items, says what went, and goes back to the trip', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await openRow(page, 'ANNAI AIR itinerary');
+  await deleteIt(page);
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item$/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+  await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['Hotel Aurora Test', 'walks.ics', 'new.pdf']);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Check out · Hotel Aurora Test');
+  await expect(page.getByRole('tabpanel')).not.toContainText('ANNAI AIR AN 124');
+  await expect(page.getByRole('tabpanel')).not.toContainText('Fly home');
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await expect(page.getByRole('tabpanel')).not.toContainText('ANNAI AIR AN 123');
+  // A Back onto the deleted file's screen says it isn't there.
+  await openAt(page, trip, '/files/itinerary.pdf');
+  await expect(page.getByRole('heading', { name: "This file isn't in the trip" })).toBeVisible();
+});
+
+test('Delete from a screen opened from the Plan goes back to the Plan; from an item that went, to the trip', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Check in · Hotel Aurora Test/ }).click();
+  await deleteIt(page);
+  await expect(page).toHaveURL(/\/plan$/);
+  await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();
+  await page.getByRole('link', { name: 'Open the original' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('walks.ics');
+  await deleteIt(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+});
+
+test('a booking with no file: Delete removes it and its plan item', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await openAt(page, trip, '/bookings/said.json');
+  await deleteIt(page);
+  await expect(page.getByText(/^Deleted Testville Grill and 1 plan item$/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/plan/grill.json')}`);
+  await expect(page.getByRole('heading', { name: "This isn't on the plan" })).toBeVisible();
+});
+
+test('the raw file screen says what else its Delete removes, and removes it', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await allFiles(page);
+  await page.locator('details.all-files a[href*="file?path=%2Ffiles%2Fitinerary.pdf"]').click();
+  await expect(page.getByText('Deleting this file also deletes 2 bookings and 1 plan item.')).toBeVisible();
+  await deleteIt(page, 'Delete file');
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await expect(page.getByRole('tabpanel')).not.toContainText('ANNAI AIR AN 123');
+  // Any other file's screen says nothing of the kind.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
+  await allFiles(page);
+  await page.getByLabel('File path').fill('/notes/day1.md');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.locator('#file-content')).toBeVisible();
+  await expect(page.getByText(/also deletes/)).toHaveCount(0);
 });

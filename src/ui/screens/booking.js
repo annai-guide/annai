@@ -1,4 +1,4 @@
-import { h, crumb, t, tc } from '../dom.js';
+import { h, crumb, t, tc, twoStep } from '../dom.js';
 import { bookingFacts, BOOKING_KINDS, fileHref, bookingHref, itemHref, day, fileLine } from '../format.js';
 import { checkOf } from '../../core/bookings.js';
 import { normPath } from '../../core/paths.js';
@@ -9,6 +9,7 @@ import { platform } from '../platform.js';
 import { askAboutButton } from '../composer.js';
 import { filePreview } from '../preview.js';
 import { saveFile } from '../save.js';
+import { deleteDetails, afterDelete } from '../file-delete.js';
 import { cameFrom, backLabel } from './file.js';
 
 /**
@@ -101,7 +102,12 @@ export async function renderBooking(ctx, route) {
       file && bytes ? h('button', { class: 'btn', type: 'button', onclick: () => saveFile(new Blob([/** @type {BlobPart} */ (bytes.bytes)], { type: bytes.entry.type }), file.real) }, t`Download`) : null,
       askAboutButton(ctx, refs),
       lone ? h('a', { class: 'btn', href: fileHref(id, lone.path, here) }, t`Change it`) : null,
-      lone?.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(lone.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null));
+      lone?.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(lone.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
+      // The file and what Shiori read from it go together (the user, 2026-11-01); the Plan no longer shows them.
+      twoStep(t`Delete`, t`Tap again to delete`, async () => {
+        const gone = await deleteDetails(ctx, id, d, heading);
+        if (gone) ctx.go(afterDelete(cameFrom(route.params.from, id, ctx.agent?.trip ?? null)?.hash ?? `#/trip/${encodeURIComponent(id)}`, gone, id));
+      })));
   // A tap on one of several bookings lands on its block; the shell's own scrollTo has run before this frame.
   const target = many && d.focus ? screen.querySelector(`#block-${blocks.findIndex((b) => b.path === d.focus)}`) : null;
   if (target instanceof HTMLElement) requestAnimationFrame(() => { if (target.isConnected) { target.scrollIntoView({ block: 'start' }); target.focus({ preventScroll: true }); } });
