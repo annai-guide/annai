@@ -4,7 +4,8 @@ import { planRows, planDays, legKm, shioriUndos, PLAN_FILE, BOOKING_FILE } from 
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
-import { validZone, deviceZone, dayIn } from '../../core/time.js';
+import { deviceZone, dayIn } from '../../core/time.js';
+import { tripZoneOf } from '../../core/trip-files.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { ask } from '../ask.js';
@@ -25,7 +26,7 @@ export async function renderPlan(ctx, route) {
   // Where a row's details come back to: this Plan, by the address it was opened at.
   const here = route.parts[0] === 'trip' ? `#/trip/${encodeURIComponent(id)}/plan` : '#/plan';
   const trip = (await ctx.ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
-  const fallbackTz = [trip.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
+  const fallbackTz = await tripZoneOf(ctx.ws, id);
   const plan = await records(ctx, id, '/plan/', PLAN_FILE);
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });

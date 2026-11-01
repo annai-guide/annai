@@ -5,6 +5,8 @@
  * @typedef {import('./workspace.js').Workspace} Workspace
  */
 
+import { isGivenFile } from './paths.js';
+
 export const NAMES_FILE = '/names.json';
 /** The longest short name, in characters. */
 export const NAME_MAX = 80;
@@ -41,7 +43,7 @@ export function shortName(names, path) {
  */
 export function syncNames(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
-    if (op !== 'delete' || !/^\/files\/[^/]+$/.test(path) || (!scope.startsWith('trip-') && scope !== 'sys:waiting')) return;
+    if (op !== 'delete' || !isGivenFile(path) || (!scope.startsWith('trip-') && scope !== 'sys:waiting')) return;
     // annai's own write, keeping names in step: never the user's work, nor hers (Undo reads authors).
     if (Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: null }, { author: 'system' });
   });
