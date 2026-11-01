@@ -61,15 +61,19 @@ export async function deleteGroup(ctx, id, d) {
 /**
  * Which history entries this Delete dooms: for the file, all of them (mustFree guards it); for each booking or plan item, only its
  * current life, as those paths are reused by design (bookings are named by short name, calendar items by UID): the entries after its
- * newest earlier delete, which a kept group's Restore still needs, and this Delete's own.
+ * newest earlier delete that went with another file or none, which a kept group's Restore still needs, and this Delete's own. An
+ * earlier delete that went with this same file is no boundary: it's part of the file's history, which this Delete dooms whole (or,
+ * when the file is kept, rolls back whole).
  * @param {any} store @param {string} id @param {string[]} paths what this Delete took, the file first
  * @returns {Promise<(path: string, e: import('../core/types.js').EventRecord) => boolean>}
  */
 async function ownLife(store, id, paths) {
   /** @type {Map<string, number[]>} */
   const seqs = new Map();
-  for (const e of await deletesOf(store, id)) if (paths.includes(e.data?.path)) seqs.set(e.data.path, [...(seqs.get(e.data.path) ?? []), e.seq]);
-  const earlier = (/** @type {string} */ p) => (seqs.get(p) ?? []).at(-2) ?? -Infinity; // the newest delete is this one
+  for (const e of await deletesOf(store, id)) {
+    if (paths.includes(e.data?.path) && e.data.with !== paths[0]) seqs.set(e.data.path, [...(seqs.get(e.data.path) ?? []), e.seq]);
+  }
+  const earlier = (/** @type {string} */ p) => (seqs.get(p) ?? []).at(-1) ?? -Infinity;
   return (p, e) => paths.includes(p) && (isGivenFile(p) || e.seq > earlier(p));
 }
 
