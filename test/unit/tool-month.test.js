@@ -78,7 +78,9 @@ test("the count is this phone's, in /llm/tool-calls.json in This device: no back
 });
 
 test("a call's searches are priced past this phone's monthly allowance: free within it, $0.014 each after", async () => {
-  const { month, ws } = await kit();
+  const { month, ws, clock } = await kit();
+  // The call counts in the real month (real money, also in a simulation), so the 4,999 before it are billed in this one.
+  clock.t = Date.now();
   await month.bill(SEARCH.id, 4999, 5000);
   const s = searching(3);
   const reply = await callOnce({ type: s.type, endpoint: endpoint(), model: model(), key: null, request, fetch: /** @type {any} */ (s.fetch), tally: ws });
