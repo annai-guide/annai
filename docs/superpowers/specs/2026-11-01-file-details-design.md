@@ -130,6 +130,31 @@ What they saw:
      - All files lists recently deleted files. Restoring one brings back the file alone, and Shiori reads it again.
    - **Recommendation:** the first. Tell the user the claim was wrong.
    - **Answered 2026-11-01** (the user was told the claim was wrong): "No way back (Recommended)". Delete asks once, as today, and that is final on screen.
+   - **This now holds only for a file Delete frees.** A file it keeps is listed under Deleted, with Restore (the next section).
+
+## Delete frees, or keeps under Deleted (2026-11-01, after Tasks 1–6)
+
+The user's words, verbatim:
+- Asked "Deleting a file doesn't free its space today (only removing the whole trip does). What should Delete in Files do?": "Free it at once (Recommended)". The option read: "The file, its bookings, plan items and old versions go, and the toast says how much was freed. Matches 'No way back'; reuses code annai already has."
+- Then: "if we are not freeing bytes anyway, I would prefer we can see / recover them. because this is extra feature that come free."
+  - The coordinator's reading, told to the user: Delete frees the space when it can. When the trip's Conversation still names the bytes, the deleted file is listed as deleted, with Open and Restore. Nothing extra is kept for recovery.
+
+What it does:
+- **Delete** still deletes the file, its bookings and their plan items in one `ws.writeMany`, so the workspace's listeners hear of each (Shiori's short name goes, live mode drops the reminders, the offline pack and the push mirror follow). Each `file.delete` carries `data.with`: the file it went with.
+- **Then it frees the group** (`forget`, with the file's path as `mustFree`): its history and every content nothing else names. **Freeable** means no version that the file's own history names is named by anything else: no current file in any scope, and no log entry outside the group's own history. Only the file's versions decide; the bookings' JSON and derived content (copies, crops, page pictures) never block it, and derived content the conversation names stays.
+  - Freed: "Deleted Hotel stay, 1 booking, and 2 plan items. 2.4 MB freed."
+  - Kept, as the conversation names it: "… The conversation still has it, so it's under Deleted, where you can restore it." Kept as another trip or file has the same bytes: "… Another trip or file has the same content, so …". Kept means nothing is forgotten at all, history included.
+  - A booking with no file is deleted with its history kept, as before, and isn't listed (the list is for files the user gave).
+  - If the page goes between the two steps, the file is simply kept, listed and restorable.
+- **Deleted (n)** folds at the foot of the trip's Files, only when there are any: the newest delete of each `/files/` path with no file there now, moves left out. Each row is the real file name and "Deleted by you 3 hours ago" (or by Shiori, whose own deletes keep history and so show here), and opens the deleted file's screen.
+- **The deleted file's screen** (the raw screen) shows its last version as a waiting file's screen does (a photo, a PDF, or Download) and **Restore**, above its history with "Restore this version".
+- **Restore** brings back the file at its last version, then each delete marked `with` the file at the same moment, each only where nothing is at its path now, and opens the file's details. The toast names what came back and what couldn't ("Restored booking.pdf, 1 booking, and 1 plan item"). Shiori's short name doesn't come back. A file deleted before this change comes back alone. A delete now keeps the file entry's `source` and photo metadata on its log entry, and a restore of a deleted path gives them back, so a calendar's plan items stay its own.
+- A file freed at its Delete has no history left: its raw screen says "This file was deleted for good."
+- **Every forget leaves a `forget` entry** numbered after every entry it removed, so a trip's last entry number never falls and a backup made before the Delete reads the trip as changed (main spec §4.9).
+
+Left out (the coordinator's call, listed for the user):
+- **"Delete for good" on a deleted file.** Delete already frees whenever it can, and Remove trip frees the rest.
+- **Freeing content that the log names.** That would mean rewriting conversation entries and re-reading the agent's in-memory transcript.
 
 ## Left to the builder
 
