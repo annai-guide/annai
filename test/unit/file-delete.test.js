@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, removeTrip, ME } from '../../src/core/scopes.js';
 import { syncNames, readNames } from '../../src/core/names.js';
 import { record } from '../../src/core/agent/log.js';
 import { readTripFiles, fileDetails, deletedFiles, restoreGroup } from '../../src/core/trip-files.js';
@@ -178,6 +178,26 @@ test("Delete frees only the bookings' and plan items' current life: a kept group
   assert.deepEqual(r, { restored: ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json'], taken: [] });
   assert.equal((await ws.readJSON(trip, '/bookings/stay.json')).title, 'Hotel Aurora Test');
   assert.equal((await ws.readJSON(trip, '/plan/check-in.json')).title, 'Check in');
+});
+
+test("Delete frees the earlier life of a booking or plan path that went with the same file: it's doomed with the file's history", async () => {
+  const { ws, trip, details } = await hotel();
+  const other = await createTrip(ws, { title: 'Elsewhere' });
+  await ws.write(other, '/files/copy.pdf', '%PDF-1.4 Hotel Aurora Test', { author: 'user', type: 'application/pdf' });
+  const first = /** @type {any} */ (await ws.read(trip, '/bookings/stay.json')).entry;
+  const ctx = ctxOf(ws);
+  await deleteGroup(ctx, trip, await details());
+  assert.match(ctx.toasts[0], /Another trip or file has the same content/);
+  await removeTrip(ws.store, other);
+  // The same file name comes again with other bytes, and the same booking and plan paths.
+  await ws.write(trip, '/files/hotel.pdf', '%PDF-1.4 Hotel Borealis Test', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/bookings/stay.json', { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/hotel.pdf', title: 'Hotel Borealis Test' }, { author: 'shiori' });
+  await ws.write(trip, '/plan/check-in.json', { id: 'check-in', title: 'Check in at Borealis', fixed: true, booking: '/trip/bookings/stay.json' }, { author: 'shiori' });
+  await deleteGroup(ctx, trip, await details());
+  assert.match(ctx.toasts[1], /bytes freed\.$/);
+  for (const p of ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json']) assert.deepEqual(await ws.history(trip, p), [], p);
+  assert.equal(await ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(first.hash)), false, "the first life's booking JSON is freed too");
+  await assert.rejects(() => restoreGroup(ws, trip, '/files/hotel.pdf'), { name: 'NotFoundError' });
 });
 
 test("Restore with another file at the deleted file's path brings back nothing of the group, and the toast says why", async () => {
