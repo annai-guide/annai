@@ -1,5 +1,5 @@
 {
-  "build": "b209a3effdfa",
+  "build": "9e2271e0430b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -208,6 +208,7 @@
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "c81cc915598f",
+    "/src/ui/file-delete.js": "69fd7f00ce56",
     "/src/ui/format.js": "6dd7252ce335",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
