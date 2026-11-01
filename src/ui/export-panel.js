@@ -26,12 +26,14 @@ export function exportPanel(ctx, what) {
   places.el.hidden = true; // a Share option (§12.2)
   let mode = 'backup';
   // A Share without places carries no History (archive.js), so the box is greyed out.
-  const whyNoHistory = h('p', { class: 'sub', hidden: true, text: t`History holds where you were, so it needs places.` });
+  const whyNoHistory = h('p', { id: 'export-no-history', class: 'sub', hidden: true, text: t`History holds where you were, so it needs places.` });
   const syncHistory = () => {
     const off = mode === 'share' && !places.input.checked;
     if (off) history.input.checked = false;
     history.input.disabled = off;
     whyNoHistory.hidden = !off;
+    if (off) history.input.setAttribute('aria-describedby', whyNoHistory.id);
+    else history.input.removeAttribute('aria-describedby');
   };
   places.input.addEventListener('change', syncHistory);
   const preset = isTrip

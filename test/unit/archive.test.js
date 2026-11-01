@@ -856,6 +856,26 @@ test("a deleted photo's kept details say where it was taken only when the archiv
   assert.equal((await deleted({ include: { ...PRESETS.backup, photos: false } })).data.meta, undefined);
 });
 
+/** In the plan's own JSON: kept as written, a regex would break the file. */
+const PLAN_NOTE = 'meet at 40.40412, 50.50512';
+
+/** Every form a recap or a note may quote a position in, and one line of prices that must stay. */
+const RECAP = [
+  'Friday began at Bixby Bridge.',
+  '',
+  '- unnamed, near 47.612, -122.335',
+  '- the hotel (47.61234, -122.33456) and a pier at -33.857,151.215.',
+  '- degrees 47.610°, -122.300° here',
+  '- hemispheres 47.612° N, 122.335° W there',
+  '- tight 47.612N 122.335W then',
+  '- labelled lat 47.612, lng -122.335 and',
+  '- long form latitude: 47.612, longitude: -122.335 too',
+  '- two decimals near 47.61, -122.33 only after near',
+  '- dinner was 12.50, 14.00 euros',
+  '- Example Museum',
+  '',
+].join('\n');
+
 /**
  * A trip whose log and files hold what live mode, Shiori and the user wrote, with synthetic positions: 10.1234, 20.5678, 10.2345,
  * 22.2222, 33.3333 and 11.1111 are sensed (47.612, -122.335 too, in the recap), 40.4040 is the plan's.
@@ -863,9 +883,13 @@ test("a deleted photo's kept details say where it was taken only when the archiv
 async function drivenTrip() {
   const a = await device();
   const trip = await createTrip(a.ws, { title: 'Road trip' });
-  await a.ws.write(trip, '/plan/museum.json', { id: 'museum', title: 'Museum', fixed: false, place: { name: 'Example Museum', lat: 40.404, lng: 50.505 } }, { author: 'user' });
+  await a.ws.write(trip, '/plan/museum.json', { id: 'museum', title: 'Museum', fixed: false, place: { name: 'Example Museum', lat: 40.404, lng: 50.505 }, notes: PLAN_NOTE }, { author: 'user' });
   await a.ws.write(trip, '/watches/w9.json', { id: 'w9', owner: 'shiori', when: { type: 'enter', lat: 10.1234, lng: 20.5678, radius: 200 }, fallback: 'say so' }, { author: 'shiori' });
-  await a.ws.write(trip, '/recap.md', 'Friday began at Bixby Bridge.\n\n- unnamed, near 47.612, -122.335\n- the hotel (47.61234, -122.33456) and a pier at -33.857,151.215.\n- dinner was 12.50, 14.00 euros\n- Example Museum\n', { author: 'shiori' });
+  await a.ws.write(trip, '/recap.md', RECAP, { author: 'shiori' });
+  await a.ws.write(trip, '/notes/lookout.md', 'Lookout near 47.61234, -122.33456 at dusk.\n', { author: 'shiori' });
+  await a.ws.write(trip, '/notes/parked.txt', 'Parked at 36.37150, -121.90170, level 2.\n', { author: 'user' });
+  await a.ws.write(trip, '/notes/prices.md', 'Tickets 12.50, 14.00 and 47.61, -122.33 are not places; 1,234.567, 2.345 and 1.234, 6.789.1 neither.\n', { author: 'user' });
+  await a.ws.write(trip, '/memory.md', 'Likes the lookout at 47.612°, -122.335°.\n', { author: 'shiori' });
   const log = (/** @type {string} */ type, /** @type {string} */ actor, /** @type {any} */ data) => logEvent(a.store, trip, { type, actor, data });
   await log('msg.user', 'user', { text: 'we are driving to the museum' });
   await log('location', 'system', { lat: 10.1234, lng: 20.5678, accuracy: 8, speed: 20, source: 'gps' });
@@ -886,15 +910,32 @@ async function drivenTrip() {
 }
 
 /** What the sensed points look like in a file. */
-const SENSED = ['10.1234', '20.5678', '10.2345', '20.6789', '22.2222', '33.3333', '11.1111', 'Cafe Example', '47.612', '-122.335', '47.61234', '-122.33456', '151.215'];
+const SENSED = ['10.1234', '20.5678', '10.2345', '20.6789', '22.2222', '33.3333', '11.1111', 'Cafe Example', '47.612', '-122.335', '47.61234', '-122.33456', '151.215', '36.3715', '-121.9017', '47.610', '-122.300', '122.335'];
+
+/**
+ * Coordinate pairs in general, looser than archive.js's rule and written apart from it: two numbers of three decimals or more side by
+ * side (not a thousands separator or a version number), or a latitude/longitude label, or two numbers after "near". Whatever the Share's scrub misses, this finds.
+ */
+const LOOKS_LIKE_A_POSITION = [
+  /(?<![\d.]|\d,)-?\d{1,3}\.\d{3,}(?!\.?\d)\s*°?\s*[NSEW]?\s*[,;\s]\s*-?\d{1,3}\.\d{3,}(?!\.?\d)/i,
+  /\b(?:lat|lng|lon|long|latitude|longitude)\b\s*[:=]?\s*-?\d/i,
+  /\bnear\s+\(?\s*-?\d{1,3}\.\d{2,}\s*°?\s*[NSEW]?\s*,\s*-?\d{1,3}\.\d{2,}/i,
+];
 
 /** @param {any} a @param {string} trip @param {any} share @param {any} [include] @returns {Promise<{ lines: any[], entries: Map<string, Uint8Array>, manifest: any, blob: Blob }>} */
-async function shared(a, trip, share, include = { ...PRESETS.share, history: true }) {
+async function shared(a, trip, share, include = { ...PRESETS.share, history: true, memory: true }) {
   const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include, app: '0.1.0', share });
   const entries = await readZip(await bytesOf(blob));
   const log = manifest.scopes[0].events;
   const lines = log ? text(/** @type {Uint8Array} */ (entries.get(log))).trim().split('\n').map((l) => JSON.parse(l)) : [];
   return { lines, entries, manifest, blob };
+}
+
+/** The Share's copy of a file, by its path in the trip. @param {{ entries: Map<string, Uint8Array>, manifest: any }} s @param {string} path */
+function copyOf(s, path) {
+  const f = s.manifest.files.find((/** @type {any} */ x) => x.path === path);
+  assert.ok(f, `${path} is in the Share`);
+  return { f, body: text(/** @type {Uint8Array} */ (s.entries.get(f.name))) };
 }
 
 test('a Share without places carries no History, whatever the History box says, and no watches: no sensed point is in any entry or blob of it', async () => {
@@ -907,27 +948,75 @@ test('a Share without places carries no History, whatever the History box says, 
   assert.equal(manifest.files.some((/** @type {any} */ f) => f.path.startsWith('/watches/')), false);
   assert.equal([...entries.keys()].some((n) => n.includes('/watches/')), false);
   for (const [name, bytes] of entries) for (const point of SENSED) assert.equal(text(bytes).includes(point), false, `${point} is in ${name}`);
-  // What the plan says stays, and the Share still opens.
+  // Coordinate pairs in general, in every entry and blob; the plan's own place and note, in the plan's JSON, are kept by design.
   const plan = manifest.files.find((/** @type {any} */ f) => f.path === '/plan/museum.json');
+  for (const [name, bytes] of entries) {
+    if (name === plan.name) continue;
+    for (const re of LOOKS_LIKE_A_POSITION) assert.doesNotMatch(text(bytes), re, `a position is in ${name}`);
+  }
   assert.equal(JSON.parse(text(/** @type {Uint8Array} */ (entries.get(plan.name)))).place.lat, 40.404);
   const b = await device();
   assert.equal((await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips.length, 1);
 });
 
-test("a Share without places keeps the recap without its coordinate pairs, and the user's own recap is unchanged", async () => {
+test("a Share without places keeps the recap without its coordinate pairs, in every form, and the user's own recap is unchanged", async () => {
   const { a, trip } = await drivenTrip();
   const own = await a.ws.readText(trip, '/recap.md');
-  const { entries, manifest, blob } = await shared(a, trip, { places: false });
-  const f = manifest.files.find((/** @type {any} */ x) => x.path === '/recap.md');
-  const body = text(/** @type {Uint8Array} */ (entries.get(f.name)));
-  assert.equal(body, 'Friday began at Bixby Bridge.\n\n- unnamed\n- the hotel and a pier at.\n- dinner was 12.50, 14.00 euros\n- Example Museum\n');
+  const s = await shared(a, trip, { places: false });
+  const { f, body } = copyOf(s, '/recap.md');
+  assert.equal(body, [
+    'Friday began at Bixby Bridge.',
+    '',
+    '- unnamed',
+    '- the hotel and a pier at.',
+    '- degrees here',
+    '- hemispheres there',
+    '- tight then',
+    '- labelled and',
+    '- long form too',
+    '- two decimals only after near',
+    '- dinner was 12.50, 14.00 euros',
+    '- Example Museum',
+    '',
+  ].join('\n'));
   assert.equal(f.hash, await sha256Hex(utf8(body)));
   assert.equal(f.size, utf8(body).byteLength);
   assert.equal(await a.ws.readText(trip, '/recap.md'), own);
   assert.match(own, /near 47\.612, -122\.335/);
   const b = await device();
-  const imported = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
+  const imported = await importArchive(b.store, await peekArchive(await bytesOf(s.blob)));
   assert.equal(await b.ws.readText(imported.trips[0], '/recap.md'), body);
+});
+
+test("a Share without places scrubs every .md and .txt trip file, whoever wrote it, and never a JSON file; the user's own files are unchanged", async () => {
+  const { a, trip } = await drivenTrip();
+  const s = await shared(a, trip, { places: false });
+  for (const [path, want] of [
+    ['/notes/lookout.md', 'Lookout at dusk.\n'],
+    ['/notes/parked.txt', 'Parked at, level 2.\n'],
+    ['/memory.md', 'Likes the lookout at.\n'],
+    ['/notes/prices.md', 'Tickets 12.50, 14.00 and 47.61, -122.33 are not places; 1,234.567, 2.345 and 1.234, 6.789.1 neither.\n'], // nothing to remove: bytes as they were
+  ]) {
+    const { f, body } = copyOf(s, path);
+    assert.equal(body, want, path);
+    assert.equal(f.hash, await sha256Hex(utf8(want)), `${path} hash`);
+    assert.equal(f.size, utf8(want).byteLength, `${path} size`);
+  }
+  // JSON is kept as written: the plan's place and note are the plan's, and a pattern could break the file.
+  const plan = copyOf(s, '/plan/museum.json');
+  assert.equal(plan.body, await a.ws.readText(trip, '/plan/museum.json'));
+  assert.equal(JSON.parse(plan.body).notes, PLAN_NOTE);
+  assert.equal(plan.f.hash, (await a.store.tx(['files'], 'readonly', (t) => t.listFiles(trip, '/plan/')))[0].hash);
+  // The user's own copies.
+  assert.equal(await a.ws.readText(trip, '/notes/lookout.md'), 'Lookout near 47.61234, -122.33456 at dusk.\n');
+  assert.equal(await a.ws.readText(trip, '/notes/parked.txt'), 'Parked at 36.37150, -121.90170, level 2.\n');
+  assert.equal(await a.ws.readText(trip, '/memory.md'), 'Likes the lookout at 47.612°, -122.335°.\n');
+  // With places on, nothing is removed anywhere.
+  const on = await shared(a, trip, { places: true });
+  assert.equal(copyOf(on, '/notes/lookout.md').body, 'Lookout near 47.61234, -122.33456 at dusk.\n');
+  assert.equal(copyOf(on, '/notes/parked.txt').body, 'Parked at 36.37150, -121.90170, level 2.\n');
+  assert.equal(copyOf(on, '/memory.md').body, 'Likes the lookout at 47.612°, -122.335°.\n');
+  assert.equal(copyOf(on, '/recap.md').body, await a.ws.readText(trip, '/recap.md'));
 });
 
 test('a Share with places, and a backup, carry the log, the watches and the recap whole', async () => {
