@@ -52,8 +52,9 @@ export async function deleteGroup(ctx, id, d) {
   const r = file.length ? await forget(ctx.store, id, { history: await ownLife(ctx.store, id, paths), mustFree: (p) => p === file[0] }).catch(() => null) : null;
   ctx.notices.toast(!r ? t`Deleted ${what}`
     : r.kept === 'here' ? t`Deleted ${what}. The conversation still has it, so it's under Deleted, where you can restore it.`
-      : r.kept === 'elsewhere' ? t`Deleted ${what}. Another trip or file has the same content, so it's under Deleted, where you can restore it.`
-        : t`Deleted ${what}. ${size(r.bytes)} freed.`);
+      : r.kept === 'history' ? t`Deleted ${what}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.`
+        : r.kept === 'elsewhere' ? t`Deleted ${what}. Another trip or file has the same content, so it's under Deleted, where you can restore it.`
+          : t`Deleted ${what}. ${size(r.bytes)} freed.`);
   return paths;
 }
 
@@ -91,6 +92,11 @@ export async function restoreDeleted(ctx, id, path, done) {
     r = await restoreGroup(ctx.ws, id, path);
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.toast(t`That version isn't stored on this device.`);
+    return;
+  }
+  if (r.taken.includes(path)) {
+    const name = path.split('/').pop() ?? path;
+    ctx.notices.toast(t`A file named ${name} is there now: rename or delete it first.`);
     return;
   }
   /** @param {string[]} paths */

@@ -7,7 +7,7 @@ import { syncNames, readNames } from '../../src/core/names.js';
 import { record } from '../../src/core/agent/log.js';
 import { readTripFiles, fileDetails, deletedFiles, restoreGroup } from '../../src/core/trip-files.js';
 import { forget } from '../../src/core/forget.js';
-import { deleteGroup } from '../../src/ui/file-delete.js';
+import { deleteGroup, restoreDeleted } from '../../src/ui/file-delete.js';
 import { liveKit, iso, at, LA, MONTEREY, BIXBY } from './live-kit.js';
 
 /** A context for deleteGroup: the workspace, its store, and the toasts it gives. @param {Workspace} ws */
@@ -175,4 +175,29 @@ test("Delete frees only the bookings' and plan items' current life: a kept group
   assert.deepEqual(r, { restored: ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json'], taken: [] });
   assert.equal((await ws.readJSON(trip, '/bookings/stay.json')).title, 'Hotel Aurora Test');
   assert.equal((await ws.readJSON(trip, '/plan/check-in.json')).title, 'Check in');
+});
+
+test("Restore with another file at the deleted file's path brings back nothing of the group, and the toast says why", async () => {
+  const { ws, trip, details } = await hotel();
+  const file = /** @type {any} */ (await ws.read(trip, '/files/hotel.pdf')).entry;
+  await record(ws.store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: file.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: file.hash, type: 'application/pdf' }] });
+  await deleteGroup(ctxOf(ws), trip, await details());
+  await ws.write(trip, '/files/hotel.pdf', '%PDF-1.4 Another hotel', { author: 'user', type: 'application/pdf' });
+  assert.deepEqual(await restoreGroup(ws, trip, '/files/hotel.pdf'), { restored: [], taken: ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json'] });
+  const ctx = { ...ctxOf(ws), go: () => assert.fail('stays where it is'), render: async () => {} };
+  await restoreDeleted(ctx, trip, '/files/hotel.pdf', null);
+  assert.deepEqual(ctx.toasts, ['A file named hotel.pdf is there now: rename or delete it first.']);
+  assert.deepEqual((await ws.list(trip, '/bookings/')).concat(await ws.list(trip, '/plan/')), []);
+  assert.equal(await ws.readText(trip, '/files/hotel.pdf'), '%PDF-1.4 Another hotel');
+});
+
+test("Delete in Files: when the other deleted copy's history names the content, the toast doesn't blame the conversation", async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Testville' });
+  for (const p of ['/files/a.pdf', '/files/b.pdf']) await ws.write(trip, p, '%PDF-1.4 Same bytes', { author: 'user', type: 'application/pdf' });
+  const ctx = ctxOf(ws);
+  for (const p of ['/files/a.pdf', '/files/b.pdf']) await deleteGroup(ctx, trip, /** @type {any} */ (fileDetails(await readTripFiles(ws, ws.store, trip), p)));
+  assert.match(ctx.toasts[0], /^Deleted a\.pdf\. Another trip or file has the same content, /);
+  assert.equal(ctx.toasts[1], "Deleted b.pdf. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.");
 });

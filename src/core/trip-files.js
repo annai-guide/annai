@@ -204,7 +204,9 @@ export const deletesOf = (store, id) => store.tx(['events'], 'readonly', (t) => 
 /**
  * Restore on a deleted file's screen: the file at its last version, then each path its Delete took with it (the deletes marked with
  * the file, at the same moment), each only where nothing is now, through the workspace so its listeners hear of each. A file deleted
- * before Delete marked its group comes back alone. Throws NotFoundError when the path has no delete to undo.
+ * before Delete marked its group comes back alone. When another file is at the file's own path now, nothing comes back (a booking or
+ * plan item restored beside the wrong file would show as that file's), and `taken` names the file first. Throws NotFoundError when the
+ * path has no delete to undo.
  * @param {import('./workspace.js').Workspace} ws @param {string} id @param {string} path
  * @returns {Promise<{ restored: string[], taken: string[] }>} taken: what couldn't come back, as something is at its path now
  */
@@ -218,6 +220,7 @@ export async function restoreGroup(ws, id, path) {
   /** @type {string[]} */
   const taken = [];
   const group = [last, ...deletes.filter((e) => e !== last && e.data?.with === path && e.ts === last.ts && typeof e.data.path === 'string')];
+  if (there.has(path)) return { restored, taken: group.map((e) => e.data.path) };
   for (const e of group) {
     if (there.has(e.data.path)) {
       taken.push(e.data.path);
