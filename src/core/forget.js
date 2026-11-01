@@ -13,16 +13,17 @@
  *   files: current files to delete; history: file.write and file.delete entries (by data.path, and the entry itself) to delete; events: any other entries;
  *   mustFree: paths whose every version (as the history entries deleted name them) must be freed, or nothing is forgotten at all
  *   (Delete in Files: a file the conversation still names is kept whole, history and all)
- * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'elsewhere' }} Forgot
- *   kept: null when it forgot; else why nothing was: a mustFree version is still named in this scope's log ('here'), or by a file or
- *   another scope ('elsewhere')
+ * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'history' | 'elsewhere' }} Forgot
+ *   kept: null when it forgot; else why nothing was: a mustFree version is still named by an entry of this scope's log that isn't file
+ *   history (the conversation: 'here'), or by another path's file history in this scope ('history', say another deleted copy), or by a
+ *   file or another scope ('elsewhere')
  */
 
 const HISTORY = ['file.write', 'file.delete'];
 
 /** Thrown inside the transaction to roll it back when a mustFree version is still named. */
 class Kept {
-  /** @param {'here' | 'elsewhere'} where */
+  /** @param {'here' | 'history' | 'elsewhere'} where */
   constructor(where) { this.where = where; }
 }
 
@@ -73,7 +74,10 @@ function forgetIn(store, scope, match) {
         if (typeof e.data?.path !== 'string' || !match.mustFree(e.data.path)) continue;
         for (const h of [e.data.old, e.data.new]) {
           if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
-          throw new Kept((await t.blobInUse(h, { exceptScope: scope })) ? 'elsewhere' : 'here'); // rolls the transaction back
+          if (await t.blobInUse(h, { exceptScope: scope })) throw new Kept('elsewhere'); // rolls the transaction back
+          const names = (/** @type {EventRecord} */ x) => [x.data?.old, x.data?.new, ...(x.refs ?? [])].includes(h);
+          const log = (await t.listEvents(scope)).filter((x) => !doomed.has(x.seq) && names(x));
+          throw new Kept(log.some((x) => !HISTORY.includes(x.type)) ? 'here' : 'history');
         }
       }
     }
