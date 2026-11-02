@@ -9,10 +9,12 @@
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').EventRecord} EventRecord
  * @typedef {{ files?: (path: string) => boolean, history?: (path: string, e: EventRecord) => boolean, events?: (e: EventRecord) => boolean,
- *   mustFree?: (path: string) => boolean }} Match
+ *   mustFree?: (path: string) => boolean, dryRun?: boolean }} Match
  *   files: current files to delete; history: file.write and file.delete entries (by data.path, and the entry itself) to delete; events: any other entries;
  *   mustFree: paths whose every version (as the history entries deleted name them) must be freed, or nothing is forgotten at all
- *   (Delete in Files: a file the conversation still names is kept whole, history and all)
+ *   (Delete in Files: a file the conversation still names is kept whole, history and all);
+ *   dryRun: does all of it in the transaction, then rolls it back, so nothing in the store changes, and returns what a real forget would
+ *   (Delete for good asks this to show its button only for a file that would free space)
  * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'history' | 'elsewhere' }} Forgot
  *   kept: null when it forgot; else why nothing was: a mustFree version is still named by an entry of this scope's log that isn't file
  *   history (the conversation: 'here'), or by another path's file history in this scope ('history', say another deleted copy), or by a
@@ -27,6 +29,12 @@ class Kept {
   constructor(where) { this.where = where; }
 }
 
+/** Thrown at the end of a dry run to roll the transaction back, carrying what the forget would have done. */
+class DryRun {
+  /** @param {Forgot} result */
+  constructor(result) { this.result = result; }
+}
+
 /**
  * In one transaction: deletes the scope's matching files, history entries and log entries, then
  * every content they named that no file and no log entry names any more.
@@ -37,6 +45,7 @@ export async function forget(store, scope, match) {
   try {
     return await forgetIn(store, scope, match);
   } catch (e) {
+    if (e instanceof DryRun) return e.result;
     if (e instanceof Kept) return { files: 0, events: 0, bytes: 0, kept: e.where };
     throw e;
   }
@@ -94,6 +103,8 @@ function forgetIn(store, scope, match) {
       const now = Date.now();
       await t.putEvent({ scope, seq: top + 1, ts: now, at: now, type: 'forget', actor: 'system', data: { files, events: doomed.size, bytes } });
     }
-    return { files, events: doomed.size, bytes, kept: null };
+    const done = { files, events: doomed.size, bytes, kept: null };
+    if (match.dryRun) throw new DryRun(done); // rolls the transaction back
+    return done;
   });
 }

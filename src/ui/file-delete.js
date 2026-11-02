@@ -49,7 +49,7 @@ export async function deleteGroup(ctx, id, d) {
   const what = list([nameOf(d), ...countParts(file.length ? bookings.length : 0, items.length)]);
   // A booking with no file keeps its history (its JSON is tiny), and isn't listed under Deleted. If the page goes before the forget, the
   // file is simply kept, listed and restorable.
-  const r = file.length ? await forget(ctx.store, id, { history: await ownLife(ctx.store, id, paths), mustFree: (p) => p === file[0] }).catch(() => null) : null;
+  const r = file.length ? await forget(ctx.store, id, { history: ownLife(await deletesOf(ctx.store, id), paths), mustFree: (p) => p === file[0] }).catch(() => null) : null;
   ctx.notices.toast(!r ? t`Deleted ${what}`
     : r.kept === 'here' ? t`Deleted ${what}. The conversation still has it, so it's under Deleted, where you can restore it.`
       : r.kept === 'history' ? t`Deleted ${what}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.`
@@ -62,13 +62,67 @@ export async function deleteGroup(ctx, id, d) {
  * Which history entries this Delete dooms: for the file, all of them (mustFree guards it); for each booking or plan item, only its
  * current life, as those paths are reused by design (bookings are named by short name, calendar items by UID): the entries after its
  * newest earlier delete that didn't go with this file (a kept group's Restore needs those), and this Delete's own.
- * @param {any} store @param {string} id @param {string[]} paths what this Delete took, the file first
- * @returns {Promise<(path: string, e: import('../core/types.js').EventRecord) => boolean>}
+ * @param {import('../core/types.js').EventRecord[]} deletes the trip's file.delete entries, as deletesOf gives them
+ * @param {string[]} paths what this Delete takes, the file first
+ * @returns {(path: string, e: import('../core/types.js').EventRecord) => boolean}
  */
-async function ownLife(store, id, paths) {
+function ownLife(deletes, paths) {
   const earlier = /** @type {Map<string, number>} */ (new Map());
-  for (const e of await deletesOf(store, id)) if (paths.includes(e.data?.path) && e.data.with !== paths[0]) earlier.set(e.data.path, e.seq);
+  for (const e of deletes) if (paths.includes(e.data?.path) && e.data.with !== paths[0]) earlier.set(e.data.path, e.seq);
   return (p, e) => paths.includes(p) && (isGivenFile(p) || e.seq > (earlier.get(p) ?? -Infinity));
+}
+
+/**
+ * What Delete for good takes from a deleted file: the file with its whole history, and the bookings and plan items its newest Delete
+ * took with it (none for Shiori's delete, or one from before Delete marked its group), each only in its current life (ownLife). A
+ * path that has a file again, or was deleted again on its own since, is not part of it: it is someone's now. The match is forget's,
+ * with the file's own versions as what must be freed.
+ * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
+ * @returns {Promise<{ paths: string[], match: import('../core/forget.js').Match }>}
+ */
+async function foreverOf(ws, id, path) {
+  const deletes = await deletesOf(ws.store, id);
+  const there = new Set((await ws.list(id, '/')).map((f) => f.path));
+  const took = (deletedGroup(deletes, path) ?? []).slice(1)
+    .filter((e) => !there.has(e.data.path) && deletes.filter((x) => x.data?.path === e.data.path).at(-1) === e)
+    .map((e) => /** @type {string} */ (e.data.path));
+  const paths = [path, ...took];
+  return { paths, match: { history: ownLife(deletes, paths), mustFree: (p) => p === path } };
+}
+
+/**
+ * Whether Delete for good would free space on a deleted file, asked by a dry run of forget (one transaction, rolled back; no log walk).
+ * Null when it would free nothing: the conversation or another file still names the file's content, or no version of it is stored.
+ * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
+ * @returns {Promise<{ paths: string[], bytes: number } | null>} the paths it would delete and the bytes it would free
+ */
+export async function freeableDeleted(ws, id, path) {
+  if (!isGivenFile(path)) return null;
+  const { paths, match } = await foreverOf(ws, id, path);
+  const r = await forget(ws.store, id, { ...match, dryRun: true }).catch(() => null);
+  return r && r.kept === null && r.bytes > 0 ? { paths, bytes: r.bytes } : null;
+}
+
+/**
+ * Delete for good on a deleted file's screen: frees the file and its group (foreverOf) at once, and says how much. If something
+ * names the content by now, nothing is freed and the toast says so. A failure is explained and frees nothing.
+ * @param {any} ctx @param {string} id @param {string} path @param {string} name what the toast calls it
+ * @returns {Promise<string[] | null>} the paths freed, or null when nothing was
+ */
+export async function deleteForGood(ctx, id, path, name) {
+  const { paths, match } = await foreverOf(ctx.ws, id, path);
+  try {
+    const r = await forget(ctx.store, id, match);
+    if (r.kept) {
+      ctx.notices.toast(t`${name} is still used by something else, so it stays under Deleted.`);
+      return null;
+    }
+    ctx.notices.toast(t`Deleted ${name} for good. ${size(r.bytes)} freed.`);
+    return paths;
+  } catch (e) {
+    if (!explainStorageFull(ctx, e)) ctx.notices.toast(messageOf(e));
+    return null;
+  }
 }
 
 /** What the toast calls it: the file's name, else the lone booking's title, else its kind. @param {import('../core/trip-files.js').Details} d */
