@@ -49,7 +49,7 @@ export async function deleteGroup(ctx, id, d) {
   const what = list([nameOf(d), ...countParts(file.length ? bookings.length : 0, items.length)]);
   // A booking with no file keeps its history (its JSON is tiny), and isn't listed under Deleted. If the page goes before the forget, the
   // file is simply kept, listed and restorable.
-  const r = file.length ? await forget(ctx.store, id, { history: ownLife(await deletesOf(ctx.store, id), paths), mustFree: (p) => p === file[0] }).catch(() => null) : null;
+  const r = file.length ? await forget(ctx.store, id, { history: ownLife(await deletesOf(ctx.store, id), paths), mustFree: (p) => p === file[0], onlyDeleted: (p) => p !== file[0] }).catch(() => null) : null;
   ctx.notices.toast(!r ? t`Deleted ${what}`
     : r.kept === 'here' ? t`Deleted ${what}. The conversation still has it, so it's under Deleted, where you can restore it.`
       : r.kept === 'history' ? t`Deleted ${what}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.`
@@ -59,66 +59,116 @@ export async function deleteGroup(ctx, id, d) {
 }
 
 /**
- * Which history entries this Delete dooms: for the file, all of them (mustFree guards it); for each booking or plan item, only its
- * current life, as those paths are reused by design (bookings are named by short name, calendar items by UID): the entries after its
- * newest earlier delete that didn't go with this file (a kept group's Restore needs those), and this Delete's own.
+ * Which history entries a Delete dooms: for a file the user gave, all of them (mustFree guards them); for each booking or plan item,
+ * only its current life, as those paths are reused by design (bookings are named by short name, calendar items by UID): the entries
+ * after its newest earlier delete that didn't go with one of these files (a kept group's Restore needs those), and this Delete's own.
  * @param {import('../core/types.js').EventRecord[]} deletes the trip's file.delete entries, as deletesOf gives them
- * @param {string[]} paths what this Delete takes, the file first
+ * @param {string[]} paths what this Delete takes, each file followed by its group
+ * @param {string[]} [files] the files whose groups these are (default: the first path)
  * @returns {(path: string, e: import('../core/types.js').EventRecord) => boolean}
  */
-function ownLife(deletes, paths) {
+function ownLife(deletes, paths, files = [paths[0]]) {
   const earlier = /** @type {Map<string, number>} */ (new Map());
-  for (const e of deletes) if (paths.includes(e.data?.path) && e.data.with !== paths[0]) earlier.set(e.data.path, e.seq);
+  for (const e of deletes) if (paths.includes(e.data?.path) && !files.includes(e.data.with)) earlier.set(e.data.path, e.seq);
   return (p, e) => paths.includes(p) && (isGivenFile(p) || e.seq > (earlier.get(p) ?? -Infinity));
+}
+
+/**
+ * The deleted `/files/` paths whose history names the same content as the file's, and, through them, the same as theirs: the copies
+ * that would keep each other. Which of them can really go is forget's call (mustFree): a live file, the conversation or another trip
+ * naming a version keeps them all.
+ * @param {import('../core/types.js').Store} store @param {string} id @param {string} path
+ * @returns {Promise<string[]>}
+ */
+async function copiesOf(store, id, path) {
+  const history = await store.tx(['events'], 'readonly', (t) => t.listEvents(id, { types: ['file.write', 'file.delete'] }));
+  /** @type {Map<string, Set<string>>} */
+  const named = new Map();
+  for (const e of history) {
+    const p = e.data?.path;
+    if (typeof p !== 'string' || !isGivenFile(p)) continue;
+    for (const h of [e.data.old, e.data.new]) if (typeof h === 'string') named.set(p, (named.get(p) ?? new Set()).add(h));
+  }
+  const files = [path];
+  const hashes = new Set(named.get(path));
+  for (let grown = true; grown;) {
+    grown = false;
+    for (const [p, hs] of named) {
+      if (files.includes(p) || ![...hs].some((h) => hashes.has(h))) continue;
+      files.push(p);
+      for (const h of hs) hashes.add(h);
+      grown = true;
+    }
+  }
+  return files.slice(1);
 }
 
 /**
  * What Delete for good takes from a deleted file: the file with its whole history, and the bookings and plan items its newest Delete
  * took with it (none for Shiori's delete, or one from before Delete marked its group), each only in its current life (ownLife). A
- * path that has a file again, or was deleted again on its own since, is not part of it: it is someone's now. The match is forget's,
- * with the file's own versions as what must be freed.
- * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
- * @returns {Promise<{ paths: string[], match: import('../core/forget.js').Match }>}
+ * path that has a file again, or was deleted again on its own since, is not part of it: it is someone's now. With `copies`, the
+ * other deleted copies of the same content go too, each with its own group. The match is forget's, with the files' own versions as
+ * what must be freed, and the group's paths guarded (onlyDeleted) against being written again before the transaction runs.
+ * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path @param {string[]} [copies]
+ * @returns {Promise<{ paths: string[], files: string[], there: boolean, match: import('../core/forget.js').Match }>}
+ * there: the file is at its path again
  */
-async function foreverOf(ws, id, path) {
+async function foreverOf(ws, id, path, copies = []) {
   const deletes = await deletesOf(ws.store, id);
   const there = new Set((await ws.list(id, '/')).map((f) => f.path));
-  const took = (deletedGroup(deletes, path) ?? []).slice(1)
+  const files = [path, ...copies];
+  const paths = [...new Set(files.flatMap((f) => [f, ...(deletedGroup(deletes, f) ?? []).slice(1)
     .filter((e) => !there.has(e.data.path) && deletes.filter((x) => x.data?.path === e.data.path).at(-1) === e)
-    .map((e) => /** @type {string} */ (e.data.path));
-  const paths = [path, ...took];
-  return { paths, match: { history: ownLife(deletes, paths), mustFree: (p) => p === path } };
+    .map((e) => /** @type {string} */ (e.data.path))]))];
+  return { paths, files, there: there.has(path), match: { history: ownLife(deletes, paths, files), mustFree: (p) => files.includes(p), onlyDeleted: (p) => !files.includes(p) } };
 }
 
 /**
- * Whether Delete for good would free space on a deleted file, asked by a dry run of forget (one transaction, rolled back; no log walk).
- * Null when it would free nothing: the conversation or another file still names the file's content, or no version of it is stored.
+ * Whether Delete for good would free space on a deleted file, asked by a dry run of forget (one transaction, rolled back, no blob bytes
+ * read). When another deleted copy's history keeps the content (kept: 'history'), the copies are asked together, as one forget.
+ * Null when it would free nothing: the file is back, the conversation or another file or trip still names the content, or no
+ * version of it is stored.
  * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
- * @returns {Promise<{ paths: string[], bytes: number } | null>} the paths it would delete and the bytes it would free
+ * @returns {Promise<{ paths: string[], copies: number } | null>} the paths it would delete, and how many other copies of the file are among them
  */
 export async function freeableDeleted(ws, id, path) {
   if (!isGivenFile(path)) return null;
-  const { paths, match } = await foreverOf(ws, id, path);
-  const r = await forget(ws.store, id, { ...match, dryRun: true }).catch(() => null);
-  return r && r.kept === null && r.bytes > 0 ? { paths, bytes: r.bytes } : null;
+  let plan = await foreverOf(ws, id, path);
+  if (plan.there) return null;
+  let r = await forget(ws.store, id, { ...plan.match, dryRun: true }).catch(() => null);
+  if (r?.kept === 'history') {
+    const copies = await copiesOf(ws.store, id, path);
+    if (copies.length) {
+      plan = await foreverOf(ws, id, path, copies);
+      r = await forget(ws.store, id, { ...plan.match, dryRun: true }).catch(() => null);
+    }
+  }
+  return r && r.kept === null && r.blobs ? { paths: plan.paths, copies: plan.files.length - 1 } : null;
 }
 
 /**
- * Delete for good on a deleted file's screen: frees the file and its group (foreverOf) at once, and says how much. If something
- * names the content by now, nothing is freed and the toast says so. A failure is explained and frees nothing.
+ * Delete for good on a deleted file's screen: frees the file and its group (foreverOf), and any other deleted copy of the same
+ * content with theirs, at once, and says how much. If the file is back (restored in another tab), nothing is freed and the toast
+ * says so; if something names the content by now, nothing is freed and the toast says that. Either way the screen is to render
+ * again. A failure is explained and frees nothing.
  * @param {any} ctx @param {string} id @param {string} path @param {string} name what the toast calls it
  * @returns {Promise<string[] | null>} the paths freed, or null when nothing was
  */
 export async function deleteForGood(ctx, id, path, name) {
-  const { paths, match } = await foreverOf(ctx.ws, id, path);
   try {
-    const r = await forget(ctx.store, id, match);
+    const plan = await foreverOf(ctx.ws, id, path, await copiesOf(ctx.store, id, path));
+    if (plan.there) {
+      ctx.notices.toast(t`${name} is already back.`);
+      return null;
+    }
+    const r = await forget(ctx.store, id, plan.match);
     if (r.kept) {
       ctx.notices.toast(t`${name} is still used by something else, so it stays under Deleted.`);
       return null;
     }
-    ctx.notices.toast(t`Deleted ${name} for good. ${size(r.bytes)} freed.`);
-    return paths;
+    const others = plan.files.length - 1;
+    ctx.notices.toast(others ? t`Deleted ${name} and ${plural(others, '# other copy', '# other copies')} for good. ${size(r.bytes)} freed.` : t`Deleted ${name} for good. ${size(r.bytes)} freed.`);
+    return plan.paths;
   } catch (e) {
     if (!explainStorageFull(ctx, e)) ctx.notices.toast(messageOf(e));
     return null;

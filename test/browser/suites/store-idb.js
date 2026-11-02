@@ -28,8 +28,8 @@ export default function (test, assert) {
     const before = JSON.stringify(await snapshot(s));
     const dry = await forget(s, trip, { ...match, dryRun: true });
     assert.equal(JSON.stringify(await snapshot(s)), before);
-    assert.deepEqual(dry, { files: 0, events: 3, bytes: 'first bytes'.length + 'second bytes'.length, kept: null });
-    assert.deepEqual(await forget(s, trip, match), dry);
+    assert.deepEqual(dry, { files: 0, events: 3, bytes: 0, blobs: 2, kept: null });
+    assert.deepEqual(await forget(s, trip, match), { files: 0, events: 3, bytes: 'first bytes'.length + 'second bytes'.length, kept: null });
     assert.ok(JSON.stringify(await snapshot(s)) !== before);
     s.close();
   });
