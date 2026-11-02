@@ -156,7 +156,7 @@ test(`Delete for good over ${SEEDS} random histories: exact copies go together, 
       if (free && JSON.stringify([...free.copies].sort()) !== JSON.stringify(copies.filter((p) => p !== F).sort())) fail('the dry run found other copies than the exact ones', { found: free.copies, copies });
       /** @type {string[]} */
       const toasts = [];
-      const got = await deleteForGood({ ws: W.ws, store: W.store, notices: { toast: (/** @type {string} */ m) => toasts.push(m) } }, W.T, F, F);
+      const got = await deleteForGood({ ws: W.ws, store: W.store, notices: { toast: (/** @type {string} */ m) => toasts.push(m) } }, W.T, F, F, free?.paths);
       stats.taps++;
       if (free && !got) fail('the button was shown and the tap freed nothing', { free, toasts });
       if (!got) {
