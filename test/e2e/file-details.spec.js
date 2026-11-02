@@ -464,6 +464,7 @@ test('two deleted copies of one file: Delete for good on either frees both, says
   await expect(deleted.locator('summary')).toHaveText('Deleted (2)');
   await deleted.locator('summary').click();
   await deleted.getByRole('link').filter({ hasText: 'new-copy.pdf' }).click();
+  await expect(page.getByText('Also deletes new.pdf, a copy of this file.')).toBeVisible(); // named before the tap
   await page.getByRole('button', { name: 'Delete for good', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to delete for good' }).click();
   await expect(page.getByText(/^Deleted new-copy\.pdf and 1 other copy for good\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();

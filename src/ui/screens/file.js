@@ -1,4 +1,4 @@
-import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
+import { h, crumb, t, plural, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
 import { readNames } from '../../core/names.js';
 import { isTextType, isGivenFile, typeForPath } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
@@ -8,7 +8,7 @@ import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
 import { readTripFiles, fileDetails, deletionOf, deletesOf, deletedGroup } from '../../core/trip-files.js';
 import { BOOKING_FILE, PLAN_FILE } from '../../core/plan.js';
-import { deleteGroup, afterDelete, countParts, restoreDeleted, freeableDeleted, deleteForGood } from '../file-delete.js';
+import { deleteGroup, afterDelete, countParts, restoreDeleted, freeableDeleted, deleteForGood, deletedName } from '../file-delete.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
@@ -114,6 +114,8 @@ async function deletedScreen(ctx, id, path, history, names, o) {
         if (gone) ctx.go(afterDelete(o.back, gone, id));
         else await ctx.render();
       }) : null),
+    // Named before the tap: the copies go with it.
+    free?.copies.length ? h('p', { class: 'sub', text: plural(free.copies.length, 'Also deletes {0}, a copy of this file.', 'Also deletes {0}, copies of this file.', list(free.copies.map((p) => deletedName(names, deletes, p)))) }) : null,
     version,
     historyView(ctx, id, path, history, null, last.data.old));
 }

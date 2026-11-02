@@ -107,3 +107,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** free text has endless ways to write a position; a scrubber that caught all of them would also remove ordinary numbers.
 - **Revisit when:** Shiori's place tools take "here" instead of numbers, so she never sees exact coordinates (fixing it at the source), or the user meets a form that slipped through.
 - **Approved:** 2026-11-01, the user: "Common forms + limitation (Recommended)"; this exact wording, after the reviews: "Keep the wording (Recommended)".
+
+### A deleted file that matches only an older version of another can't be deleted for good
+- **Kind:** known limitation.
+- **What the user sees:** Delete for good frees a deleted file together with its exact deleted copies. When a deleted file matches only an older version of another deleted file (a duplicate, then an updated file saved under the same name, all deleted), neither shows Delete for good: both stay under Deleted, restorable, until the trip is removed, which frees them.
+- **Why:** freeing one would remove part of the other's history, which the user can still restore; telling the two apart safely needs more logic for a rare case.
+- **Revisit when:** the user meets it.
+- **Approved:** 2026-11-01, the user: "Yes, a limitation (Recommended)".

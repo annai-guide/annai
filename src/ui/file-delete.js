@@ -74,9 +74,20 @@ function ownLife(deletes, paths, files = [paths[0]]) {
 }
 
 /**
- * The deleted `/files/` paths whose history names the same content as the file's, and, through them, the same as theirs: the copies
- * that would keep each other. Which of them can really go is forget's call (mustFree): a live file, the conversation or another trip
- * naming a version keeps them all.
+ * What a deleted file is shown by: the short name its newest Delete carried, else Shiori's name for it, else its own.
+ * @param {Record<string, string>} names Shiori's short names @param {import('../core/types.js').EventRecord[]} deletes the trip's file.delete entries @param {string} path
+ */
+export function deletedName(names, deletes, path) {
+  const real = path.split('/').pop() ?? path;
+  const was = deletes.filter((x) => x.data?.path === path).at(-1)?.data.name;
+  return typeof was === 'string' && was !== real ? was : names[path] ?? real;
+}
+
+/**
+ * The other `/files/` paths that are copies of the file: the versions they ever stored are exactly the file's. (A copy that is a file
+ * now keeps them all, whole: forget's mustFree finds its content in use.) A deleted file that shares only some of its versions (a duplicate, then an updated file saved under the same name) is
+ * no copy: freeing it would take part of the other's history, so forget keeps both. Which copies can really go is forget's call
+ * (mustFree): a live file, the conversation or another trip naming a version keeps them all.
  * @param {import('../core/types.js').Store} store @param {string} id @param {string} path
  * @returns {Promise<string[]>}
  */
@@ -89,18 +100,9 @@ async function copiesOf(store, id, path) {
     if (typeof p !== 'string' || !isGivenFile(p)) continue;
     for (const h of [e.data.old, e.data.new]) if (typeof h === 'string') named.set(p, (named.get(p) ?? new Set()).add(h));
   }
-  const files = [path];
-  const hashes = new Set(named.get(path));
-  for (let grown = true; grown;) {
-    grown = false;
-    for (const [p, hs] of named) {
-      if (files.includes(p) || ![...hs].some((h) => hashes.has(h))) continue;
-      files.push(p);
-      for (const h of hs) hashes.add(h);
-      grown = true;
-    }
-  }
-  return files.slice(1);
+  const mine = named.get(path);
+  if (!mine) return [];
+  return [...named].filter(([p, hs]) => p !== path && hs.size === mine.size && [...hs].every((h) => mine.has(h))).map(([p]) => p);
 }
 
 /**
@@ -125,25 +127,18 @@ async function foreverOf(ws, id, path, copies = []) {
 
 /**
  * Whether Delete for good would free space on a deleted file, asked by a dry run of forget (one transaction, rolled back, no blob bytes
- * read). When another deleted copy's history keeps the content (kept: 'history'), the copies are asked together, as one forget.
- * Null when it would free nothing: the file is back, the conversation or another file or trip still names the content, or no
- * version of it is stored.
+ * read), with the file's deleted copies (copiesOf) as one forget. Null when it would free nothing: the file is back, the
+ * conversation or another file or trip still names a version, or no version of it with any bytes is stored.
  * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
- * @returns {Promise<{ paths: string[], copies: number } | null>} the paths it would delete, and how many other copies of the file are among them
+ * @returns {Promise<{ paths: string[], copies: string[] } | null>} the paths it would delete, and the other copies of the file among them
  */
 export async function freeableDeleted(ws, id, path) {
   if (!isGivenFile(path)) return null;
-  let plan = await foreverOf(ws, id, path);
+  const copies = await copiesOf(ws.store, id, path);
+  const plan = await foreverOf(ws, id, path, copies);
   if (plan.there) return null;
-  let r = await forget(ws.store, id, { ...plan.match, dryRun: true }).catch(() => null);
-  if (r?.kept === 'history') {
-    const copies = await copiesOf(ws.store, id, path);
-    if (copies.length) {
-      plan = await foreverOf(ws, id, path, copies);
-      r = await forget(ws.store, id, { ...plan.match, dryRun: true }).catch(() => null);
-    }
-  }
-  return r && r.kept === null && r.blobs ? { paths: plan.paths, copies: plan.files.length - 1 } : null;
+  const r = await forget(ws.store, id, { ...plan.match, dryRun: true }).catch(() => null);
+  return r && r.kept === null && r.blobs ? { paths: plan.paths, copies } : null;
 }
 
 /**
@@ -163,7 +158,9 @@ export async function deleteForGood(ctx, id, path, name) {
     }
     const r = await forget(ctx.store, id, plan.match);
     if (r.kept) {
-      ctx.notices.toast(t`${name} is still used by something else, so it stays under Deleted.`);
+      // Restored in another tab between the reads and the forget: its own versions kept it.
+      const back = (await ctx.ws.list(id, '/')).some((f) => f.path === path);
+      ctx.notices.toast(back ? t`${name} is already back.` : t`${name} is still used by something else, so it stays under Deleted.`);
       return null;
     }
     const others = plan.files.length - 1;
