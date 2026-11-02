@@ -163,7 +163,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
   await page.getByRole('button', { name: 'Export trip' }).click();
-  const places = page.getByLabel('Include where photos were taken');
+  const places = page.getByLabel('Include where photos were taken and where you went');
   await expect(places).toBeHidden(); // a Backup keeps everything
   await page.getByLabel('Share: plan, bookings, files and notes').check();
   await expect(places).toBeChecked();
@@ -174,6 +174,36 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   expect(shot.meta.taken).toBe('2026-11-26T19:04:12-08:00');
   expect(shot.meta.place).toBeUndefined();
   expect(readPhotoMeta(/** @type {Uint8Array} */ (entries.get(shot.name))).place).toBeUndefined();
+});
+
+test('a Share without places greys out History, with the reason; places on enables it again', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  const history = page.getByLabel('History (every version and the log)');
+  const places = page.getByLabel('Include where photos were taken and where you went');
+  const why = page.getByText('History holds where you were, so it needs places.');
+  await expect(history).toBeChecked(); // a Backup keeps everything
+  await expect(why).toBeHidden();
+  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await expect(history).toBeEnabled();
+  await history.check();
+  await places.uncheck();
+  await expect(history).toBeDisabled();
+  await expect(history).not.toBeChecked();
+  await expect(why).toBeVisible();
+  const reason = await why.getAttribute('id');
+  expect(reason).toBeTruthy();
+  await expect(history).toHaveAttribute('aria-describedby', /** @type {string} */ (reason));
+  await places.check();
+  await expect(history).toBeEnabled();
+  await expect(history).not.toHaveAttribute('aria-describedby');
+  await expect(why).toBeHidden();
+  await places.uncheck();
+  await page.getByLabel('Backup: everything').check();
+  await expect(history).toBeEnabled();
+  await expect(history).toBeChecked();
+  await expect(why).toBeHidden();
 });
 
 test('photos shared from another app go to the trip you choose', async ({ page }) => {

@@ -1,5 +1,5 @@
 {
-  "build": "417c325f402a",
+  "build": "3a66e840e3b8",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -30,7 +30,7 @@
     "/src/app/main.js": "721185b8cedb",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "6ee60f3d1f0d",
-    "/src/core/after/recap.js": "6238f6093ac3",
+    "/src/core/after/recap.js": "d8273fbf2eab",
     "/src/core/after/replay.js": "0c72caa47a5b",
     "/src/core/after/route.js": "a027e73d89e3",
     "/src/core/after/stamps.js": "aa5cc17c3ee3",
@@ -56,7 +56,7 @@
     "/src/core/agent/warmth.js": "ea988f822316",
     "/src/core/address.js": "e821e53d2023",
     "/src/core/answer.js": "3f8b2b51d66d",
-    "/src/core/archive.js": "ce845fcc7a9a",
+    "/src/core/archive.js": "de0a880015b6",
     "/src/core/backup.js": "d75cdfd9c6d5",
     "/src/core/backup-auto.js": "3f13bd8df6d5",
     "/src/core/backup-targets.js": "cd4f1e8f9035",
@@ -207,7 +207,7 @@
     "/src/ui/ask.js": "c4ab8fb83d2f",
     "/src/ui/avatar.js": "e2cdc17ea45f",
     "/src/ui/bring-in.js": "359195ba93c5",
-    "/src/ui/export-panel.js": "c81cc915598f",
+    "/src/ui/export-panel.js": "1113427caa38",
     "/src/ui/file-delete.js": "08801034389e",
     "/src/ui/format.js": "4dde184e010f",
     "/src/ui/grounding.html": "5dab86abb302",
@@ -288,8 +288,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "19e8b8489626",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "1e574af62c25",
-    "/l10n/zh-Hans.json": "eaab4af233b5",
-    "/l10n/zh-Hant.json": "306bc7be8956"
+    "/l10n/ja.json": "c37727a8a53d",
+    "/l10n/zh-Hans.json": "711d380d3d1e",
+    "/l10n/zh-Hant.json": "3501366fe64e"
   }
 }

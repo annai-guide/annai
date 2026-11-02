@@ -42,7 +42,8 @@ export const RECAP_SYSTEM = /* en */ 'You write the recap of a trip for the trav
   + 'their notes, and some of their photos. Write Markdown: a first line "# " with a title for the trip; then one "## " section for each day, in order, '
   + 'telling the day in a few short paragraphs: the places, what happened there, and the photos by their paths where they belong; '
   + 'then "## Highlights" with three to five short bullet points. Be warm, concrete and brief, about 150 words a day. '
-  + 'Use only what the record says, and leave out what you don\'t know rather than guess. Shiori may read the recap aloud, so write sentences that are easy to say. '
+  + 'Use only what the record says, and leave out what you don\'t know rather than guess. '
+  + 'Never write coordinates: name a stop that has no name by what the record says around it, or call it a stop. Shiori may read the recap aloud, so write sentences that are easy to say. '
   + 'Write in the traveler\'s language (their profile says which). Reply with the recap only.';
 
 /**

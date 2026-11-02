@@ -523,26 +523,26 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai 無法連到 {0
 1bw0b6k	ok	This file is not encrypted.	這個檔案沒有加密。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	這個檔案已損壞。	src/core/archive-crypto.js:91	
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	密碼片語不對，或者檔案已損壞。	src/core/archive-crypto.js:104	
-4ngq1	ok	annai couldn't build a file it could open again: {0}	annai 無法產生一個能再次開啟的檔案：{0}	src/core/archive.js:64	{0} = s.why; Note: {0} is a developer's detail, in English.
-gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} 的內容不在儲存空間中，因此無法匯出。	src/core/archive.js:65	{0} = s.path
-13a6l3r	ok	There is nothing to export.	沒有可匯出的內容。	src/core/archive.js:66	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的全部備份才能包含 API 金鑰。	src/core/archive.js:66	
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此檔案已加密。請輸入它的密碼片語來開啟。	src/core/archive.js:86	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案由更新版本的 annai 建立。請更新 annai，然後再開啟。	src/core/archive.js:389	
-q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:393	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:396	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:421	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案：其中沒有 annai-archive.json。	src/core/archive.js:423	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞：無法讀取其清單。	src/core/archive.js:430	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞：缺少 {0}。	src/core/archive.js:436	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞：無法讀取其中的金鑰。	src/core/archive.js:452	
-1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:464	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞：{0} 已被更改。	src/core/archive.js:469	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞：無法讀取 {1} 的第 {0} 行。	src/core/archive.js:495	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞：{1} 的第 {0} 行：{2}	src/core/archive.js:499	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞：無法讀取其外掛程式清單。	src/core/archive.js:583	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:687	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:688	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai 無法產生一個能再次開啟的檔案：{0}	src/core/archive.js:65	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} 的內容不在儲存空間中，因此無法匯出。	src/core/archive.js:66	{0} = s.path
+13a6l3r	ok	There is nothing to export.	沒有可匯出的內容。	src/core/archive.js:67	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的全部備份才能包含 API 金鑰。	src/core/archive.js:67	
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此檔案已加密。請輸入它的密碼片語來開啟。	src/core/archive.js:87	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案由更新版本的 annai 建立。請更新 annai，然後再開啟。	src/core/archive.js:402	
+q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:406	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:409	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:434	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案：其中沒有 annai-archive.json。	src/core/archive.js:436	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞：無法讀取其清單。	src/core/archive.js:443	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞：缺少 {0}。	src/core/archive.js:449	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞：無法讀取其中的金鑰。	src/core/archive.js:465	
+1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:477	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞：{0} 已被更改。	src/core/archive.js:482	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞：無法讀取 {1} 的第 {0} 行。	src/core/archive.js:508	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞：{1} 的第 {0} 行：{2}	src/core/archive.js:512	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞：無法讀取其外掛程式清單。	src/core/archive.js:596	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:700	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:701	
 e0756x	ok	annai tries again later.	annai 稍後會再試。	src/core/backup.js:45	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的外掛程式沒有執行。請在設定 → 備份中開啟此備份位置，把外掛程式開啟。	src/core/backup.js:47	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請輸入 {0} 加密備份的密碼片語，然後儲存。	src/core/backup.js:48	{0} = name
@@ -1022,26 +1022,27 @@ fj0t7x	ok	History (every version and the log)	歷史（每個版本和日誌）	
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's.
 1l4mw9c	ok	Photos	照片	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	包含 API 金鑰（需要密碼片語）	src/ui/export-panel.js:24	
-1k1mi4l	ok	Include where photos were taken	包含照片的拍攝地點	src/ui/export-panel.js:25	
-1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:29	Note: 分享 here (sending a trip to someone), as Taiwan's iPhone names its Share button too.
-40d3tk	ok	What to include	包含的內容	src/ui/export-panel.js:29	
-e1v954	ok	Backup: everything	備份：全部	src/ui/export-panel.js:29	
-1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:49	
-li1zvd	ok	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:49	
-1rtc92m	ok	Save file	儲存檔案	src/ui/export-panel.js:58	
-e8bmvg	ok	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:62	
-10xxtpg	ok	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:63	
-1vdabwr	ok	Building…	正在產生…	src/ui/export-panel.js:66	
-ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:66	
-9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	ok	Build file	產生檔案	src/ui/export-panel.js:85	
-1sh99lf	ok	Export	匯出	src/ui/export-panel.js:86	
-laav31	ok	Export {0}	匯出{0}	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:87	
-sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:90	
-xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:90	
-kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:91	
+lq7cxe	draft	Include where photos were taken and where you went	包含照片的拍攝地點和你去過的地方	src/ui/export-panel.js:25	English was: Include where photos were taken
+18keknu	draft	History holds where you were, so it needs places.	歷史包含你去過的位置，所以需要包含地點。	src/ui/export-panel.js:29	
+1ahfa0	ok	Share: plan, bookings, files and notes	分享：行程、預訂、檔案和筆記	src/ui/export-panel.js:38	Note: 分享 here (sending a trip to someone), as Taiwan's iPhone names its Share button too.
+40d3tk	ok	What to include	包含的內容	src/ui/export-panel.js:38	
+e1v954	ok	Backup: everything	備份：全部	src/ui/export-panel.js:38	
+1pgegxa	ok	Shared.	已分享。	src/ui/export-panel.js:59	
+li1zvd	ok	Saved to your downloads.	已儲存到下載資料夾。	src/ui/export-panel.js:59	
+1rtc92m	ok	Save file	儲存檔案	src/ui/export-panel.js:68	
+e8bmvg	ok	The passphrases don't match.	密碼片語不一致。	src/ui/export-panel.js:72	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API 金鑰只能在設定密碼片語時匯出。	src/ui/export-panel.js:73	
+1vdabwr	ok	Building…	正在產生…	src/ui/export-panel.js:76	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	正在產生並加密。這需要幾秒鐘…	src/ui/export-panel.js:76	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	以下內容未包含，因為此瀏覽器無法去掉拍攝地點：{0}。	src/ui/export-panel.js:85	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	已準備好：{0}（{1}）。請點一下「儲存檔案」。	src/ui/export-panel.js:86	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	產生檔案	src/ui/export-panel.js:95	
+1sh99lf	ok	Export	匯出	src/ui/export-panel.js:96	
+laav31	ok	Export {0}	匯出{0}	src/ui/export-panel.js:97	{0} = what.title
+xyot5w	ok	Export everything	匯出全部	src/ui/export-panel.js:97	
+sxjkia	ok	Repeat passphrase	再次輸入密碼片語	src/ui/export-panel.js:100	
+xyveyo	ok	Passphrase (optional)	密碼片語（選填）	src/ui/export-panel.js:100	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	設定密碼片語後，檔案會被加密。不設定的話，拿到檔案的人都能讀取。	src/ui/export-panel.js:101	
 128pon4#other	draft	# plan items	# 個行程項目	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
 141racs#other	draft	# bookings	# 項預訂	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	已刪除{0}	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
