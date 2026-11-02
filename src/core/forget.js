@@ -16,7 +16,7 @@
  *   onlyDeleted: paths whose history is doomed only while no file is at the path in this transaction (a booking or plan item that the
  *   caller found deleted, and another tab may have written again since: its history is its own again, and stays);
  *   dryRun: does all of it in the transaction, then rolls it back, so nothing in the store changes, and returns what a real forget would,
- *   except that it reads no blob (a key read says a content is stored): `blobs` counts the contents it would free, and `bytes` is 0
+ *   except that it reads no blob (a key read says a content is stored, the size index that it has bytes): `blobs` counts the contents with bytes it would free, and `bytes` is 0
  *   (Delete for good asks this to show its button only for a file that would free space)
  * @typedef {{ files: number, events: number, bytes: number, kept: null | 'here' | 'history' | 'elsewhere', blobs?: number }} Forgot
  *   kept: null when it forgot; else why nothing was: a mustFree version is still named by an entry of this scope's log that isn't file
@@ -102,7 +102,7 @@ function forgetIn(store, scope, match) {
     for (const h of named) {
       if (await t.blobInUse(h)) continue;
       if (match.dryRun) { // it rolls back, so nothing is deleted, and a key read says whether there is something to free
-        if (await t.hasBlob(h)) blobs++;
+        if (await t.hasBlob(h) && !(await t.blobSized(h, 0))) blobs++; // a content of no bytes frees no space
         continue;
       }
       const b = await t.getBlob(h);
