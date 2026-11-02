@@ -396,3 +396,59 @@ test('a file Shiori never read: Delete leaves nothing under Deleted', async ({ p
   await expect(page.getByText(/freed\.$/)).toBeVisible();
   await expect(page.locator('details.deleted-files')).toHaveCount(0);
 });
+
+/**
+ * Shiori deletes a file through the workspace, as her files tool does: the file's history stays, and nothing checks whether anything
+ * else names it. With `read`, the conversation has read it first (a tool result naming its content), as it would have.
+ * @param {import('@playwright/test').Page} page @param {string} trip @param {string} path @param {{ read?: boolean }} [o]
+ */
+async function shioriDeletes(page, trip, path, { read = false } = {}) {
+  await page.evaluate(async ({ trip, path, read }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    if (read) {
+      const { entry } = await ws.read(trip, path);
+      await record(store, trip, { type: 'tool.result', actor: 'system', data: { id: 'read-1', name: 'read', ok: true, document: { hash: entry.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: entry.hash, type: 'application/pdf' }] });
+    }
+    await ws.delete(trip, path, { author: 'shiori' });
+    store.close();
+  }, { trip, path, read });
+}
+
+test('a file Shiori deleted and nothing else names: Delete for good, two taps, frees it, says how much, goes to the trip, and the row leaves Deleted', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await shioriDeletes(page, trip, '/files/new.pdf');
+  await page.reload(); // her delete came from outside the page, so the open screen shows the file still
+  const deleted = page.getByRole('region', { name: 'Files', exact: true }).locator('details.deleted-files');
+  await expect(deleted.locator('summary')).toHaveText('Deleted (1)');
+  await deleted.locator('summary').click();
+  await deleted.getByRole('link').click();
+  await expect(page.getByText(/^This file was deleted\. Restore brings it back\.$/)).toBeVisible();
+  const forGood = page.getByRole('button', { name: 'Delete for good', exact: true });
+  await expect(forGood).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+  await forGood.click();
+  await expect(page.getByText('This file was deleted. Restore brings it back.')).toBeVisible(); // asked once: nothing has gone yet
+  await page.getByRole('button', { name: 'Tap again to delete for good' }).click();
+  await expect(page.getByText(/^Deleted new\.pdf for good\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+  await expect(page.locator('details.deleted-files')).toHaveCount(0);
+  // Its address now says it was deleted for good, and offers nothing.
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
+  await expect(page.getByText('This file was deleted for good.')).toBeVisible();
+});
+
+test('a file Shiori deleted after reading it in the conversation: Restore, and no Delete for good', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await shioriDeletes(page, trip, '/files/new.pdf', { read: true });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Delete for good/ })).toHaveCount(0);
+  await expect(page.getByText('Delete for good')).toHaveCount(0);
+});

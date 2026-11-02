@@ -7,7 +7,8 @@ import { syncNames, readNames } from '../../src/core/names.js';
 import { record } from '../../src/core/agent/log.js';
 import { readTripFiles, fileDetails, deletedFiles, restoreGroup } from '../../src/core/trip-files.js';
 import { forget } from '../../src/core/forget.js';
-import { deleteGroup, restoreDeleted } from '../../src/ui/file-delete.js';
+import { deleteGroup, restoreDeleted, freeableDeleted, deleteForGood } from '../../src/ui/file-delete.js';
+import { snapshot } from '../contract/snapshot.js';
 import { liveKit, iso, at, LA, MONTEREY, BIXBY } from './live-kit.js';
 
 /** A context for deleteGroup: the workspace, its store, and the toasts it gives. @param {Workspace} ws */
@@ -251,4 +252,114 @@ test('Deleted names a kept file by the short name it had, though the name goes w
   assert.equal(Object.hasOwn(await readNames(ws, trip), '/files/hotel.pdf'), false);
   const [gone] = deletedFiles(await deletes(ws, trip), await ws.list(trip, '/'));
   assert.deepEqual([gone.real, gone.name], ['hotel.pdf', 'Hotel stay']);
+});
+
+/** The conversation reading some content: a tool result naming it, so a file with it can't be freed. @param {Workspace} ws @param {string} trip @param {string} hash */
+async function conversationReads(ws, trip, hash) {
+  await record(ws.store, trip, { type: 'tool.result', actor: 'system', data: { id: `c-${hash}`, name: 'read', ok: true, document: { hash, mediaType: 'application/pdf' } }, blobs: [{ hash, type: 'application/pdf' }] });
+}
+const stored = (/** @type {Workspace} */ ws, /** @type {string} */ hash) => ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash));
+
+test("Delete for good: Shiori's own delete, which never went through the check, frees the file alone and says how much", async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Testville' });
+  await ws.write(trip, '/files/note.pdf', '%PDF-1.4 Shiori filed this', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/bookings/stay.json', { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/note.pdf', title: 'Hotel Aurora Test' }, { author: 'shiori' });
+  const hash = /** @type {any} */ (await ws.read(trip, '/files/note.pdf')).entry.hash;
+  await ws.delete(trip, '/files/note.pdf', { author: 'shiori' });
+  const before = await snapshot(ws.store);
+  const can = await freeableDeleted(ws, trip, '/files/note.pdf');
+  assert.deepEqual(can, { paths: ['/files/note.pdf'], bytes: '%PDF-1.4 Shiori filed this'.length });
+  assert.deepEqual(await snapshot(ws.store), before, 'asking changes nothing');
+  const ctx = ctxOf(ws);
+  assert.deepEqual(await deleteForGood(ctx, trip, '/files/note.pdf', 'note.pdf'), ['/files/note.pdf']);
+  assert.deepEqual(ctx.toasts, ['Deleted note.pdf for good. 26 bytes freed.']);
+  assert.deepEqual(await ws.history(trip, '/files/note.pdf'), []);
+  assert.equal(await stored(ws, hash), false);
+  assert.equal((await ws.history(trip, '/bookings/stay.json')).length, 1, "the booking, which was never deleted, is untouched");
+  assert.deepEqual(deletedFiles(await deletes(ws, trip), await ws.list(trip, '/')), []);
+  assert.equal(await freeableDeleted(ws, trip, '/files/note.pdf'), null, 'nothing left to free');
+});
+
+test('Delete for good: a file the conversation names has no button, and a tap that comes too late changes nothing and says why', async () => {
+  const { ws, trip } = await hotel();
+  const hash = /** @type {any} */ (await ws.read(trip, '/files/hotel.pdf')).entry.hash;
+  await ws.delete(trip, '/files/hotel.pdf', { author: 'shiori' });
+  // Freeable now; then the conversation reads it (a wake, a second tab) before the tap.
+  assert.ok(await freeableDeleted(ws, trip, '/files/hotel.pdf'));
+  const ctx = ctxOf(ws);
+  await conversationReads(ws, trip, hash);
+  const before = await snapshot(ws.store);
+  assert.equal(await freeableDeleted(ws, trip, '/files/hotel.pdf'), null);
+  assert.equal(await deleteForGood(ctx, trip, '/files/hotel.pdf', 'Hotel stay'), null);
+  assert.deepEqual(ctx.toasts, ['Hotel stay is still used by something else, so it stays under Deleted.']);
+  assert.deepEqual(await snapshot(ws.store), before);
+});
+
+test('Delete for good: the same bytes in another trip keep it, and when that copy goes the button comes', async () => {
+  const { ws, trip, details } = await hotel();
+  const other = await createTrip(ws, { title: 'Elsewhere' });
+  await ws.write(other, '/files/copy.pdf', '%PDF-1.4 Hotel Aurora Test', { author: 'user', type: 'application/pdf' });
+  await deleteGroup(ctxOf(ws), trip, await details());
+  assert.equal(await freeableDeleted(ws, trip, '/files/hotel.pdf'), null);
+  await removeTrip(ws.store, other);
+  assert.ok(await freeableDeleted(ws, trip, '/files/hotel.pdf'));
+});
+
+/** A hotel group deleted from its details screen and kept (another trip had the bytes), the copy then gone; its booking has an earlier life. */
+async function keptGroup() {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Testville' });
+  // An earlier life of the booking's path, deleted on its own (its JSON is tiny, and it is no part of this group).
+  await ws.write(trip, '/bookings/stay.json', { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/talk', title: 'Earlier stay' }, { author: 'shiori' });
+  const earlier = /** @type {any} */ (await ws.read(trip, '/bookings/stay.json')).entry.hash;
+  await ws.delete(trip, '/bookings/stay.json', { author: 'shiori' });
+  const { details } = await hotel({ ws, trip });
+  const other = await createTrip(ws, { title: 'Elsewhere' });
+  await ws.write(other, '/files/copy.pdf', '%PDF-1.4 Hotel Aurora Test', { author: 'user', type: 'application/pdf' });
+  const ctx = ctxOf(ws);
+  await deleteGroup(ctx, trip, await details());
+  await removeTrip(ws.store, other);
+  return { ws, trip, ctx, earlier };
+}
+
+test("Delete for good on a details screen's group frees the file and the booking and plan item it took, each only in its current life", async () => {
+  const { ws, trip, ctx, earlier } = await keptGroup();
+  const can = await freeableDeleted(ws, trip, '/files/hotel.pdf');
+  assert.deepEqual(can?.paths, ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json']);
+  const before = await snapshot(ws.store);
+  await freeableDeleted(ws, trip, '/files/hotel.pdf');
+  assert.deepEqual(await snapshot(ws.store), before, 'asking changes nothing');
+  assert.deepEqual(await deleteForGood(ctx, trip, '/files/hotel.pdf', 'Hotel stay'), can?.paths);
+  assert.match(ctx.toasts.at(-1) ?? '', /^Deleted Hotel stay for good\. \d+ bytes freed\.$/);
+  assert.deepEqual(await ws.history(trip, '/files/hotel.pdf'), []);
+  assert.deepEqual(await ws.history(trip, '/plan/check-in.json'), []);
+  // The booking's earlier life, which this group never took, stays: its write and its own delete.
+  assert.deepEqual((await ws.history(trip, '/bookings/stay.json')).map((v) => [v.type, v.actor]), [['file.write', 'shiori'], ['file.delete', 'shiori']]);
+  assert.equal(await stored(ws, earlier), true);
+  await assert.rejects(() => restoreGroup(ws, trip, '/files/hotel.pdf'), { name: 'NotFoundError' });
+});
+
+test("Delete for good leaves alone a booking or plan path that has a file again: only what the group took and is still deleted goes", async () => {
+  const { ws, trip, ctx } = await keptGroup();
+  // Shiori reads another file and writes the plan item's path again; the booking's path is deleted again on its own.
+  await ws.write(trip, '/plan/check-in.json', { id: 'check-in', title: 'Check in at the note', fixed: true }, { author: 'shiori' });
+  await ws.write(trip, '/bookings/stay.json', { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/talk', title: 'Newer stay' }, { author: 'shiori' });
+  await ws.delete(trip, '/bookings/stay.json', { author: 'shiori' });
+  const planBefore = await ws.history(trip, '/plan/check-in.json');
+  const bookingBefore = await ws.history(trip, '/bookings/stay.json');
+  const can = await freeableDeleted(ws, trip, '/files/hotel.pdf');
+  assert.deepEqual(can?.paths, ['/files/hotel.pdf']);
+  await deleteForGood(ctx, trip, '/files/hotel.pdf', 'Hotel stay');
+  assert.deepEqual(await ws.history(trip, '/plan/check-in.json'), planBefore);
+  assert.deepEqual(await ws.history(trip, '/bookings/stay.json'), bookingBefore);
+  assert.equal((await ws.readJSON(trip, '/plan/check-in.json')).title, 'Check in at the note');
+});
+
+test('Delete for good on a file deleted before the update (no mark of a group) frees the file alone', async () => {
+  const { ws, trip } = await hotel();
+  await ws.writeMany(trip, ['/files/hotel.pdf', '/bookings/stay.json'].map((path) => ({ path, content: null })), { author: 'user' });
+  assert.deepEqual((await freeableDeleted(ws, trip, '/files/hotel.pdf'))?.paths, ['/files/hotel.pdf']);
 });

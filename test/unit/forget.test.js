@@ -9,6 +9,7 @@ import { resolveEvent } from '../../src/core/agent/transcript.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { noteQueries } from './store-spy.js';
+import { snapshot as everything } from '../contract/snapshot.js';
 
 async function setup() {
   const store = createMemoryStore();
@@ -237,4 +238,64 @@ test('forget: with no mustFree, nothing is kept back', async () => {
   const { store, ws } = await setup();
   await ws.write(SYS_PLUGINS, '/tides/a.md', 'a', { author: 'system' });
   assert.equal((await forget(store, SYS_PLUGINS, { files: inTides, history: inTides })).kept, null);
+});
+
+// dryRun: the same work in the same transaction, rolled back at the end.
+const named = (/** @type {string} */ p) => p === '/files/a.pdf';
+
+test('forget dryRun: a freeable file reports what a real forget reports, and changes nothing in the store', async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/files/a.pdf', 'first bytes', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/files/a.pdf', 'second bytes', { author: 'user', type: 'application/pdf' });
+  await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+  const before = await everything(store);
+  const dry = await forget(store, trip, { history: named, mustFree: named, dryRun: true });
+  assert.deepEqual(await everything(store), before);
+  assert.equal(await stored(store, 'first bytes'), true);
+  assert.deepEqual(dry, { files: 0, events: 3, bytes: 'first bytes'.length + 'second bytes'.length, kept: null });
+  const real = await forget(store, trip, { history: named, mustFree: named });
+  assert.deepEqual(real, dry);
+  assert.notDeepEqual(await everything(store), before);
+  assert.equal(await stored(store, 'first bytes'), false);
+});
+
+test('forget dryRun: a plugin-style forget (files, history, log entries) reports the same and leaves no forget entry', async () => {
+  const { store, ws } = await setup();
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v1 code', { author: 'system' });
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v2 code', { author: 'system' });
+  await record(store, SYS_PLUGINS, { type: 'tides.cache', actor: 'plugin:tides', data: {}, texts: [['table', 'x'.repeat(3000)]] });
+  const match = { files: inTides, history: inTides, events: (/** @type {any} */ e) => e.actor === 'plugin:tides' };
+  const before = await everything(store);
+  const dry = await forget(store, SYS_PLUGINS, { ...match, dryRun: true });
+  assert.deepEqual(await everything(store), before);
+  assert.deepEqual(dry, await forget(store, SYS_PLUGINS, match));
+  assert.deepEqual([dry.files, dry.events, dry.bytes], [1, 3, 14 + 3000]);
+});
+
+test('forget dryRun: a kept file says why, as a real forget does, and both leave the store as it was', async () => {
+  for (const [why, setUp] of /** @type {[string, (store: any, ws: Workspace, trip: string) => Promise<void>][]} */ ([
+    ['here', async (store, ws, trip) => {
+      const { entry } = /** @type {any} */ (await ws.read(trip, '/files/a.pdf'));
+      await record(store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: entry.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: entry.hash, type: 'application/pdf' }] });
+    }],
+    ['elsewhere', async (_store, ws) => { await ws.write(ME, '/files/copy.pdf', 'bytes', { author: 'user', type: 'application/pdf' }); }],
+  ])) {
+    const { store, ws } = await setup();
+    const trip = await createTrip(ws, { title: 'Big Sur' });
+    await ws.write(trip, '/files/a.pdf', 'bytes', { author: 'user', type: 'application/pdf' });
+    await setUp(store, ws, trip);
+    await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+    const before = await everything(store);
+    const dry = await forget(store, trip, { history: named, mustFree: named, dryRun: true });
+    assert.deepEqual(dry, { files: 0, events: 0, bytes: 0, kept: why });
+    assert.deepEqual(await everything(store), before, why);
+    assert.deepEqual(await forget(store, trip, { history: named, mustFree: named }), dry);
+    assert.deepEqual(await everything(store), before, `${why}: a kept real forget changes nothing either`);
+  }
+});
+
+test('forget dryRun: nothing that matches reports nothing', async () => {
+  const { store } = await setup();
+  assert.deepEqual(await forget(store, SYS_PLUGINS, { files: inTides, dryRun: true }), { files: 0, events: 0, bytes: 0, kept: null });
 });
