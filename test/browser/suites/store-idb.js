@@ -1,6 +1,10 @@
 import { storeContract } from '../../contract/store-contract.js';
 import { createIdbStore, eraseDatabase, openDatabase, DB_VERSION } from '../../../src/core/store-idb.js';
 import { storedTexts } from '../../../src/core/agent/log.js';
+import { forget } from '../../../src/core/forget.js';
+import { Workspace } from '../../../src/core/workspace.js';
+import { ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
+import { snapshot } from '../../contract/snapshot.js';
 
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
@@ -11,6 +15,24 @@ export default function (test, assert) {
     return createIdbStore(name);
   };
   storeContract(test, assert, fresh);
+
+  test("idb: forget's dry run reports what a real forget does and rolls everything back, blobs and log included", async () => {
+    const s = await fresh();
+    const ws = new Workspace(s);
+    await ensureBaseScopes(ws);
+    const trip = await createTrip(ws, { title: 'Dry' });
+    await ws.write(trip, '/files/a.pdf', 'first bytes', { author: 'user', type: 'application/pdf' });
+    await ws.write(trip, '/files/a.pdf', 'second bytes', { author: 'user', type: 'application/pdf' });
+    await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+    const match = { history: (/** @type {string} */ p) => p === '/files/a.pdf', mustFree: (/** @type {string} */ p) => p === '/files/a.pdf' };
+    const before = JSON.stringify(await snapshot(s));
+    const dry = await forget(s, trip, { ...match, dryRun: true });
+    assert.equal(JSON.stringify(await snapshot(s)), before);
+    assert.deepEqual(dry, { files: 0, events: 3, bytes: 0, blobs: 2, kept: null });
+    assert.deepEqual(await forget(s, trip, match), { files: 0, events: 3, bytes: 'first bytes'.length + 'second bytes'.length, kept: null });
+    assert.ok(JSON.stringify(await snapshot(s)) !== before);
+    s.close();
+  });
 
   const rec = { scope: 'trip-1', path: '/a.md', hash: 'h1', size: 1, type: 'text/plain', author: 'user', created: 1, modified: 1 };
 
