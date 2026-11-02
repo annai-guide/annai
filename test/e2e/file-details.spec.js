@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, allFiles, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy } from './helpers.js';
+import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -450,5 +450,33 @@ test('a file Shiori deleted after reading it in the conversation: Restore, and n
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
   await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Delete for good/ })).toHaveCount(0);
+  await expect(page.getByText('Delete for good')).toHaveCount(0);
+});
+
+test('two deleted copies of one file: Delete for good on either frees both, says "1 other copy", and both rows leave Deleted', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await putFile(page, trip, '/files/new-copy.pdf', Buffer.from('%PDF-1.4 new'), 'application/pdf'); // the same bytes as new.pdf, which Shiori is waiting to read
+  await shioriDeletes(page, trip, '/files/new.pdf');
+  await shioriDeletes(page, trip, '/files/new-copy.pdf');
+  await page.reload();
+  const deleted = page.getByRole('region', { name: 'Files', exact: true }).locator('details.deleted-files');
+  await expect(deleted.locator('summary')).toHaveText('Deleted (2)');
+  await deleted.locator('summary').click();
+  await deleted.getByRole('link').filter({ hasText: 'new-copy.pdf' }).click();
+  await page.getByRole('button', { name: 'Delete for good', exact: true }).click();
+  await page.getByRole('button', { name: 'Tap again to delete for good' }).click();
+  await expect(page.getByText(/^Deleted new-copy\.pdf and 1 other copy for good\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
+  await expect(page.locator('details.deleted-files')).toHaveCount(0);
+});
+
+test('Delete for good on a copy that is still a current file shows no button on the deleted one', async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await putFile(page, trip, '/files/new-copy.pdf', Buffer.from('%PDF-1.4 new'), 'application/pdf'); // stays
+  await shioriDeletes(page, trip, '/files/new.pdf');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
   await expect(page.getByText('Delete for good')).toHaveCount(0);
 });
