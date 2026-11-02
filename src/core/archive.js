@@ -307,6 +307,7 @@ function withoutPhotoMeta(e, include) {
 }
 
 // A position quoted in a trip's text (the recap, notes, memory, a CSV or HTML file), as a Share without places removes it.
+// (An encoded bar, %7C, also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.)
 // Matched, in every form annai itself writes and the forms people use:
 //  - a pair of numbers with three decimals or more, split by a comma, a semicolon, a slash or an encoded comma (%2C): "47.612, -122.335",
 //    "47.612;-122.335", "47.612/-122.335", "36.3715%2C-121.9017" (a maps link), also in brackets, with ° and N/S/E/W:
@@ -321,34 +322,39 @@ function withoutPhotoMeta(e, include) {
 // optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:
 // a position on its own line leaves the line break.
 
-/** @param {string} h one horizontal space, as a character class @returns {RegExp} */
-function pointPattern(h) {
+/**
+ * @param {string} h one horizontal space, as a character class
+ * @param {boolean} [bytes] text read byte for byte: a number never starts at the 4th byte of a GB18030 four-byte character (high,
+ *   digit, high, digit), which would cut the character; a number straight after a GBK, Shift-JIS or Big5 character still matches
+ * @returns {RegExp}
+ */
+function pointPattern(h, bytes = false) {
   const H = `${h}*`;
   /** @param {number} d the fewest decimals */
   const num = (d) => String.raw`-?\d{1,3}\.\d{${d},}(?!\.?\d)`;
   const deg = `(?:${H}°)?`;
-  const before = String.raw`(?<![\d.]|\d,)`;
+  const before = bytes ? String.raw`(?<![\d.]|\d,|[\x81-\xfe]\d[\x81-\xfe])` : String.raw`(?<![\d.]|\d,)`;
   /** @param {number} d @param {string} sep */
   const pair = (d, sep) => `${before}${num(d)}${deg}${H}(?:${sep})${H}${num(d)}${deg}`;
   /** @param {number} d */
   const hemispheres = (d) => `${before}${num(d)}${H}(?:°${H})?[NS]${H}(?:,${H})?${num(d)}${H}(?:°${H})?[EW]\\b`;
   const any = String.raw`-?\d{1,3}(?:\.\d+)?${deg}`;
   const labelled = String.raw`\bm?lat(?:itude)?\b${H}(?:[:=]${H})?${any}${H}(?:[,;&]${H})?(?:and${h}+)?\bm?(?:lng|lon|long|longitude)\b${H}(?:[:=]${H})?${any}`;
-  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C')}|${hemispheres(3)})`;
+  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C|%7C')}|${hemispheres(3)})`;
   const nearby = `(?:${pair(2, ',')}|${hemispheres(2)})`;
   return new RegExp(`(?<!${h})(?:(?:${H},)?${H}\\bnear${h}+(?:\\(${H}${nearby}${H}\\)|${nearby})|${H}\\(${H}${plain}${H}\\)|${H}${plain})`, 'gi');
 }
-/** Text read as UTF-8: any horizontal space, a no-break space too. */
-const POINT = pointPattern(String.raw`[^\S\r\n  ]`);
+/** Text read as UTF-8: any horizontal space, a no-break space too, but never a BOM, which stays at the start of the file. */
+const POINT = pointPattern(String.raw`[^\S\r\n\u2028\u2029\uFEFF]`);
 /** Text read byte for byte (an old Latin-1 or Shift-JIS file): only a space or a tab, since 0xA0 can be half of a letter. */
-const POINT_BYTES = pointPattern('[ \\t]');
+const POINT_BYTES = pointPattern('[ \\t]', true);
 /** Trip text a Share without places removes positions from: notes, memory, the recap, CSV and HTML files, whoever wrote them. Never JSON or .ics: the plan's, bookings' and a calendar event's places stay. */
 const TEXT_FILE = /\.(?:md|txt|csv|html)$/i;
 const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }); // ignoreBOM: a BOM stays in the text, so it is written back
 
 /**
- * The text of a file with its positions removed, byte for byte otherwise: UTF-8 when it is, else every byte as one character (digits and
- * separators are single ASCII bytes in every text encoding annai meets), written back the same way. A UTF-16 file is not read.
+ * The text of a file with its positions removed, byte for byte otherwise: UTF-8 when it is, else every byte as one character, written back
+ * the same way (POINT_BYTES then matches only ASCII forms, never one that starts inside a multi-byte character). A UTF-16 file is not read.
  * @param {Uint8Array} bytes @returns {Uint8Array} the same bytes when there is no position in them
  */
 export function withoutPoints(bytes) {

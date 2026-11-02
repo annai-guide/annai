@@ -1176,6 +1176,18 @@ test('the scrub keeps every other byte of a file that is not UTF-8, and a BOM', 
   // UTF-16 is not read: left as it was.
   const utf16 = Uint8Array.from([0xff, 0xfe, ...[...'47.61234, -122.33456'].flatMap((c) => [c.charCodeAt(0), 0])]);
   assert.equal(withoutPoints(utf16), utf16);
+  // GB18030: a four-byte character's 2nd and 4th bytes are ASCII digits, so no number starts right after a byte above 0x7F; the
+  // position written straight after one stays, and the character is never cut.
+  const gb18030 = Uint8Array.from([0x95, 0x32, 0x82, 0x36, ...latin1('35.681,139.767 ok\n')]);
+  assert.equal(withoutPoints(gb18030), gb18030);
+  assert.deepEqual(withoutPoints(Uint8Array.from([0x95, 0x32, 0x82, 0x36, ...latin1(' 35.681,139.767 ok\n')])), Uint8Array.from([0x95, 0x32, 0x82, 0x36, ...latin1(' ok\n')]));
+  // A BOM right before the position stays.
+  const bomFirst = Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('47.612, -122.335 is the lookout\n')]);
+  assert.deepEqual(withoutPoints(bomFirst), Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8(' is the lookout\n')]));
+});
+
+test("the scrub removes the encoded bar of annai's Wikipedia nearby search", () => {
+  assert.equal(scrub('https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=36.3715%7C-121.9017&gsradius=1000'), 'https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=&gsradius=1000');
 });
 
 test('a Share without places keeps every other byte of a Shift-JIS, a Latin-1 and a BOM file', async () => {
