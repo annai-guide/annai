@@ -11,6 +11,7 @@ import { blobsOf, isName } from './events.js';
 import { dayIn, deviceZone } from './time.js';
 import { t, plural } from './l10n.js';
 import { list } from './intl.js';
+import { WATCH_DIR } from './live/watches.js';
 
 /**
  * @typedef {import('./types.js').Store} Store
@@ -164,14 +165,17 @@ const EVENT_SCHEMA = {
  * @param {Store} store
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
- *   share: this is a Share (§12.2). Photos go only as encoded copies, older versions of photos are
- *   left out, and unless places is true, nothing says where a photo was taken.
+ *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions. Unless places is true, nothing says where
+ *   anything was: no photo's place, no History (Shiori's lookups copy the live position into it) whatever include.history says,
+ *   no /watches/, and every .md, .txt, .csv and .html file (notes, memory, the recap) without positions; JSON and .ics are never touched.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
  */
 export async function exportArchive(store, opts) {
   const now = opts.now ?? Date.now();
+  const noPlaces = Boolean(opts.share && !opts.share.places);
+  const include = noPlaces ? { ...opts.include, history: false } : opts.include;
   if (opts.secrets && (opts.kind !== 'everything' || !opts.passphrase)) {
     throw new ArchiveError(/* en */ `API keys can only be included in an encrypted backup of everything.`, { said: { code: 'keys-plain' } });
   }
@@ -179,12 +183,12 @@ export async function exportArchive(store, opts) {
   const scopes = opts.kind === 'trip'
     ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
     // This device's own scope never travels (spec §12.4); the system log goes only with history.
-    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || opts.include.history));
+    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || include.history));
   if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { said: { code: 'nothing' } });
 
   /** @type {Manifest} */
   const manifest = {
-    format: ARCHIVE_FORMAT, app: opts.app, kind: opts.kind, created: now, include: { ...opts.include },
+    format: ARCHIVE_FORMAT, app: opts.app, kind: opts.kind, created: now, include: { ...include },
     encrypted: Boolean(opts.passphrase), scopes: [], files: [], blobs: [], extras: [],
   };
   const zip = new ZipWriter();
@@ -197,20 +201,27 @@ export async function exportArchive(store, opts) {
     const dir = dirFor(scope.id);
     const { files, events } = await store.tx(['files', 'events'], 'readonly', async (t) => ({
       files: await t.listFiles(scope.id, '/'),
-      events: opts.include.history ? (await t.listEvents(scope.id)).map((e) => withoutPlaces(e, opts)) : [],
+      events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
     }));
     const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
     /** @type {ManifestScope} */
     const ms = { dir, record };
     for (const f of files) {
-      if (!opts.include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
+      if (!include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
+      if (noPlaces && f.path.startsWith(WATCH_DIR)) continue;
       const name = dir + f.path;
-      const bytes = await readBlob(store, f.hash, f.path);
+      /** @type {Uint8Array} */
+      let bytes = await readBlob(store, f.hash, f.path);
+      let hash = f.hash;
+      if (noPlaces && TEXT_FILE.test(f.path)) {
+        const clean = withoutPoints(bytes);
+        if (clean !== bytes) hash = await sha256Hex(bytes = clean);
+      }
       // An image is known by its bytes, not by the type it was saved under.
       const sniffed = sniffImageType(bytes);
-      if (!opts.include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
+      if (!include.photos && f.path.startsWith('/files/') && (sniffed !== null || f.type.startsWith('image/'))) continue;
       /** @type {{ bytes: Uint8Array, type: string, hash: string, meta?: PhotoMeta }} */
-      let out = { bytes, type: f.type, hash: f.hash, meta: f.meta };
+      let out = { bytes, type: f.type, hash, meta: f.meta };
       const image = opts.share ? photoTypeOf(sniffed, f.type) : null;
       if (opts.share && image) {
         const shared = await sharePhoto({ ...f, type: image }, out.bytes, opts.share);
@@ -218,7 +229,7 @@ export async function exportArchive(store, opts) {
           skipped.push(f.path);
           continue;
         }
-        out = { ...shared, hash: shared.bytes === out.bytes ? f.hash : await sha256Hex(shared.bytes) };
+        out = { ...shared, hash: shared.bytes === out.bytes ? hash : await sha256Hex(shared.bytes) };
       } else if (opts.share && !opts.share.places && (sniffMediaType(bytes) !== null || /^(image|video)\//.test(f.type))) {
         // Other images (GIF, TIFF and raw photos, SVG…) and videos can hold a location too: cleaned without re-encoding, or left out.
         const stripped = stripMetadata(bytes, sniffed ?? f.type);
@@ -255,7 +266,7 @@ export async function exportArchive(store, opts) {
     if (!(rec?.data instanceof ArrayBuffer)) continue;
     // A Share leaves out older versions of images and videos; Photos unticked, older photos too.
     if (opts.share && (sniffMediaType(new Uint8Array(rec.data)) !== null || /^(image|video)\//.test(rec.type))) continue;
-    if (!opts.include.photos && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/'))) continue;
+    if (!include.photos && (sniffImageType(new Uint8Array(rec.data)) !== null || rec.type.startsWith('image/'))) continue;
     const name = `blobs/${hash}`;
     await zip.add(name, new Uint8Array(rec.data), { compress: !isCompressedType(rec.type), mtime: now });
     manifest.blobs.push({ name, hash, type: rec.type, size: rec.size });
@@ -288,22 +299,78 @@ export async function exportArchive(store, opts) {
   return { blob, manifest, skipped, seqs, filename: archiveName({ kind: opts.kind, title, encrypted: Boolean(opts.passphrase), now }) };
 }
 
-/**
- * A log entry as an archive carries it. A file.delete keeps the file's `meta` so a Restore brings it back, and that says where a photo
- * was taken: a Share without locations drops the place from it, and Photos unticked drops the whole of it.
- * @param {import('./types.js').EventRecord} e @param {{ include: Include, share?: { places: boolean } }} opts
- * @returns {import('./types.js').EventRecord}
- */
-function withoutPlaces(e, opts) {
-  const meta = e.type === 'file.delete' ? e.data?.meta : undefined;
-  if (!meta || typeof meta !== 'object') return e;
+/** A log entry as an archive carries it: a file.delete keeps its `meta` (so a Restore brings the file back) unless Photos is unticked. @param {EventRecord} e @param {Include} include @returns {EventRecord} */
+function withoutPhotoMeta(e, include) {
+  if (include.photos || e.type !== 'file.delete') return e;
   const { meta: _, ...data } = e.data;
-  if (!opts.include.photos) return { ...e, data };
-  if (opts.share && !opts.share.places) {
-    const { place: __, ...rest } = meta;
-    return { ...e, data: { ...data, meta: rest } };
+  return { ...e, data };
+}
+
+// A position quoted in a trip's text (the recap, notes, memory, a CSV or HTML file), as a Share without places removes it.
+// (An encoded bar, %7C, also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.)
+// Matched, in every form annai itself writes and the forms people use:
+//  - a pair of numbers with three decimals or more, split by a comma, a semicolon, a slash or an encoded comma (%2C): "47.612, -122.335",
+//    "47.612;-122.335", "47.612/-122.335", "36.3715%2C-121.9017" (a maps link), also in brackets, with ° and N/S/E/W:
+//    "47.612° N, 122.335° W", "47.612N 122.335W";
+//  - a labelled pair, any decimals: "lat 47.612, lng -122.335", "latitude: …, longitude: …", OpenStreetMap's "mlat=…&mlon=…";
+//  - after "near", a pair with two decimals: "near 47.61, -122.33".
+// Not matched: a bare pair with two decimals (prices, "12.50, 14.00"), two numbers with only a space between and no hemisphere,
+// degrees-minutes-seconds, a hemisphere written before its number, a pair split over two lines.
+// Some number pairs that aren't positions go too ("near 12.50, 14.00", a list "1.250, 3.500"): the price of catching the rest.
+//
+// Run time: a match can only start where no horizontal space comes before it and takes the spaces in front of it itself, and the
+// optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:
+// a position on its own line leaves the line break.
+
+/**
+ * @param {string} h one horizontal space, as a character class
+ * @param {boolean} [bytes] text read byte for byte: a number never starts at the 4th byte of a GB18030 four-byte character (high,
+ *   digit, high, digit), which would cut the character; a number straight after a GBK, Shift-JIS or Big5 character still matches
+ * @returns {RegExp}
+ */
+function pointPattern(h, bytes = false) {
+  const H = `${h}*`;
+  /** @param {number} d the fewest decimals */
+  const num = (d) => String.raw`-?\d{1,3}\.\d{${d},}(?!\.?\d)`;
+  const deg = `(?:${H}°)?`;
+  const before = bytes ? String.raw`(?<![\d.]|\d,|[\x81-\xfe]\d[\x81-\xfe])` : String.raw`(?<![\d.]|\d,)`;
+  /** @param {number} d @param {string} sep */
+  const pair = (d, sep) => `${before}${num(d)}${deg}${H}(?:${sep})${H}${num(d)}${deg}`;
+  /** @param {number} d */
+  const hemispheres = (d) => `${before}${num(d)}${H}(?:°${H})?[NS]${H}(?:,${H})?${num(d)}${H}(?:°${H})?[EW]\\b`;
+  const any = String.raw`-?\d{1,3}(?:\.\d+)?${deg}`;
+  const labelled = String.raw`\bm?lat(?:itude)?\b${H}(?:[:=]${H})?${any}${H}(?:[,;&]${H})?(?:and${h}+)?\bm?(?:lng|lon|long|longitude)\b${H}(?:[:=]${H})?${any}`;
+  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C|%7C')}|${hemispheres(3)})`;
+  const nearby = `(?:${pair(2, ',')}|${hemispheres(2)})`;
+  return new RegExp(`(?<!${h})(?:(?:${H},)?${H}\\bnear${h}+(?:\\(${H}${nearby}${H}\\)|${nearby})|${H}\\(${H}${plain}${H}\\)|${H}${plain})`, 'gi');
+}
+/** Text read as UTF-8: any horizontal space, a no-break space too, but never a BOM, which stays at the start of the file. */
+const POINT = pointPattern(String.raw`[^\S\r\n\u2028\u2029\uFEFF]`);
+/** Text read byte for byte (an old Latin-1 or Shift-JIS file): only a space or a tab, since 0xA0 can be half of a letter. */
+const POINT_BYTES = pointPattern('[ \\t]', true);
+/** Trip text a Share without places removes positions from: notes, memory, the recap, CSV and HTML files, whoever wrote them. Never JSON or .ics: the plan's, bookings' and a calendar event's places stay. */
+const TEXT_FILE = /\.(?:md|txt|csv|html)$/i;
+const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }); // ignoreBOM: a BOM stays in the text, so it is written back
+
+/**
+ * The text of a file with its positions removed, byte for byte otherwise: UTF-8 when it is, else every byte as one character, written back
+ * the same way (POINT_BYTES then matches only ASCII forms, never one that starts inside a multi-byte character). A UTF-16 file is not read.
+ * @param {Uint8Array} bytes @returns {Uint8Array} the same bytes when there is no position in them
+ */
+export function withoutPoints(bytes) {
+  /** @type {string} */
+  let was;
+  let utf = true;
+  try {
+    was = UTF8_STRICT.decode(bytes);
+  } catch {
+    utf = false;
+    was = '';
+    for (let i = 0; i < bytes.length; i += 8192) was += String.fromCharCode(...bytes.subarray(i, i + 8192));
   }
-  return e;
+  const now = was.replace(utf ? POINT : POINT_BYTES, '');
+  if (now === was) return bytes;
+  return utf ? utf8(now) : Uint8Array.from(now, (c) => c.charCodeAt(0));
 }
 
 /**

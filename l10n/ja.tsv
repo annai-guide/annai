@@ -523,26 +523,26 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai は {0} につ�
 1bw0b6k	ok	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
-4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:64	{0} = s.why; Note: {0} is a developer's detail, in English.
-gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:65	{0} = s.path
-13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:66	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:66	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:86	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:389	
-q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:393	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:396	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:421	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:423	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:430	
-lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:436	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:452	
-1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:464	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:469	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:495	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:499	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:583	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:687	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:688	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:65	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:66	{0} = s.path
+13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:67	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:67	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:87	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:402	
+q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:406	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:409	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:434	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:436	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:443	
+lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:449	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:465	
+1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:477	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:482	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:508	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:512	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:596	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:700	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:701	
 e0756x	ok	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:45	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:47	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:48	{0} = name
@@ -1022,26 +1022,27 @@ fj0t7x	ok	History (every version and the log)	履歴（すべての版とログ�
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's: 記憶, as the recap's list says it; メモリー reads as the device's memory.
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
 fz72ei	ok	Include API keys (needs a passphrase)	API キーを含める（パスフレーズが必要）	src/ui/export-panel.js:24	
-1k1mi4l	ok	Include where photos were taken	写真の撮影場所を含める	src/ui/export-panel.js:25	
-1ahfa0	ok	Share: plan, bookings, files and notes	共有：予定、予約、ファイル、メモ	src/ui/export-panel.js:29	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
-40d3tk	ok	What to include	含めるもの	src/ui/export-panel.js:29	
-e1v954	ok	Backup: everything	バックアップ：すべて	src/ui/export-panel.js:29	
-1pgegxa	ok	Shared.	共有しました。	src/ui/export-panel.js:49	
-li1zvd	ok	Saved to your downloads.	ダウンロードに保存しました。	src/ui/export-panel.js:49	
-1rtc92m	ok	Save file	ファイルを保存	src/ui/export-panel.js:58	
-e8bmvg	ok	The passphrases don't match.	パスフレーズが一致しません。	src/ui/export-panel.js:62	
-10xxtpg	ok	API keys can only be exported with a passphrase.	API キーはパスフレーズ付きでしかエクスポートできません。	src/ui/export-panel.js:63	
-1vdabwr	ok	Building…	作成しています…	src/ui/export-panel.js:66	
-ix6wsj	ok	Building and encrypting. This takes a few seconds…	作成して暗号化しています。数秒かかります…	src/ui/export-panel.js:66	
-9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	このブラウザでは撮影場所を消せないため、次は含めませんでした：{0}。	src/ui/export-panel.js:75	{0} = list(result.skipped, 'plain')
-mf5yva	ok	Ready: {0} ({1}). Tap Save file.	準備ができました：{0}（{1}）。「ファイルを保存」をタップしてください。	src/ui/export-panel.js:76	{0} = result.filename; {1} = size(result.blob.size)
-vkn7z3	ok	Build file	ファイルを作成	src/ui/export-panel.js:85	
-1sh99lf	ok	Export	エクスポート	src/ui/export-panel.js:86	
-laav31	ok	Export {0}	{0}をエクスポート	src/ui/export-panel.js:87	{0} = what.title
-xyot5w	ok	Export everything	すべてをエクスポート	src/ui/export-panel.js:87	
-sxjkia	ok	Repeat passphrase	パスフレーズをもう一度	src/ui/export-panel.js:90	
-xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-panel.js:90	
-kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを付けると、ファイルは暗号化されます。付けないと、ファイルを持っている人なら誰でも読めます。	src/ui/export-panel.js:91	
+lq7cxe	draft	Include where photos were taken and where you went	写真の撮影場所と訪れた場所を含める	src/ui/export-panel.js:25	English was: Include where photos were taken
+18keknu	draft	History holds where you were, so it needs places.	履歴にはあなたがいた場所が含まれるため、場所を含める設定が必要です。	src/ui/export-panel.js:29	
+1ahfa0	ok	Share: plan, bookings, files and notes	共有：予定、予約、ファイル、メモ	src/ui/export-panel.js:38	Note: zh 分享 here (sending a trip to someone), not the platform's Share button (共享).
+40d3tk	ok	What to include	含めるもの	src/ui/export-panel.js:38	
+e1v954	ok	Backup: everything	バックアップ：すべて	src/ui/export-panel.js:38	
+1pgegxa	ok	Shared.	共有しました。	src/ui/export-panel.js:59	
+li1zvd	ok	Saved to your downloads.	ダウンロードに保存しました。	src/ui/export-panel.js:59	
+1rtc92m	ok	Save file	ファイルを保存	src/ui/export-panel.js:68	
+e8bmvg	ok	The passphrases don't match.	パスフレーズが一致しません。	src/ui/export-panel.js:72	
+10xxtpg	ok	API keys can only be exported with a passphrase.	API キーはパスフレーズ付きでしかエクスポートできません。	src/ui/export-panel.js:73	
+1vdabwr	ok	Building…	作成しています…	src/ui/export-panel.js:76	
+ix6wsj	ok	Building and encrypting. This takes a few seconds…	作成して暗号化しています。数秒かかります…	src/ui/export-panel.js:76	
+9powzm	ok	Left out, because this browser can't remove where they were taken: {0}.	このブラウザでは撮影場所を消せないため、次は含めませんでした：{0}。	src/ui/export-panel.js:85	{0} = list(result.skipped, 'plain')
+mf5yva	ok	Ready: {0} ({1}). Tap Save file.	準備ができました：{0}（{1}）。「ファイルを保存」をタップしてください。	src/ui/export-panel.js:86	{0} = result.filename; {1} = size(result.blob.size)
+vkn7z3	ok	Build file	ファイルを作成	src/ui/export-panel.js:95	
+1sh99lf	ok	Export	エクスポート	src/ui/export-panel.js:96	
+laav31	ok	Export {0}	{0}をエクスポート	src/ui/export-panel.js:97	{0} = what.title
+xyot5w	ok	Export everything	すべてをエクスポート	src/ui/export-panel.js:97	
+sxjkia	ok	Repeat passphrase	パスフレーズをもう一度	src/ui/export-panel.js:100	
+xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-panel.js:100	
+kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを付けると、ファイルは暗号化されます。付けないと、ファイルを持っている人なら誰でも読めます。	src/ui/export-panel.js:101	
 128pon4#other	draft	# plan items	予定の項目#件	src/ui/file-delete.js:15	plural; # = items; English: "# plan item" (one), "# plan items" (other); Note: counts the plan items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 plan item"; Plan: 予定/行程).
 141racs#other	draft	# bookings	予約#件	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 x8r2sg	draft	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:53	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
