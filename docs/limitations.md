@@ -101,16 +101,16 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** an iPhone or Mac shows the frame blank too, or someone on GNOME Web asks.
 - **Approved:** 2026-10-29, the user: "Known limitation (Recommended)".
 
-### Identical deleted copies in one trip aren't freed
-- **Kind:** known limitation.
-- **What the user sees:** when the same file was added to a trip twice and both copies are deleted, neither is freed: each keeps the other's content named. Both stay under Deleted in Files, restorable, until the trip is removed, which frees them.
-- **Why:** Delete frees a file only when nothing else names its content, and another deleted copy's history names it. Freeing every copy at once needs Delete to look past other deleted files' history, for a case that needs the same file twice in one trip.
-- **Revisit when:** the user meets it, or Deleted gains a "Delete for good".
-- **Approved:** 2026-11-01, the user: "Leave it (Recommended)".
-
 ### A Share without places can still name a place written in an unusual way
 - **Kind:** known limitation.
 - **What the user sees:** a Share with "Include where photos were taken and where you went" off carries nothing annai sensed (no GPS points, arrivals, conversation, watch files or photo places), and removes positions from the trip's text files (notes, memory, the recap; .md, .txt, .csv, .html) in every form annai itself writes (its position note, its maps links and its Wikipedia search) and in labelled, "near" and degree forms. Place names stay: the recap and notes still say where you went by name. A position written by hand in a rarer form can stay: degrees-minutes-seconds, a hemisphere before the number ("N 47.6, W 122.3"), two numbers with only a space between, a bare pair with two decimals, a pair split over two lines, a label inside quotes (`"lat": 47.6`, `data-lat="47.6"`), a position inside a JSON or calendar file Shiori wrote, any text file saved as UTF-16, a degree sign written in a Japanese or Chinese encoding other than UTF-8, or a position written straight after one of the rare four-byte characters of GB18030. It also removes some things that aren't positions: number pairs such as "near 12.50, 14.00 euros" or a European list "1.250, 3.500", and, in a Shift-JIS file, a half-width ｰ written right after a removed position.
 - **Why:** free text has endless ways to write a position; a scrubber that caught all of them would also remove ordinary numbers.
 - **Revisit when:** Shiori's place tools take "here" instead of numbers, so she never sees exact coordinates (fixing it at the source), or the user meets a form that slipped through.
 - **Approved:** 2026-11-01, the user: "Common forms + limitation (Recommended)"; this exact wording, after the reviews: "Keep the wording (Recommended)".
+
+### A deleted file that matches only an older version of another can't be deleted for good
+- **Kind:** known limitation.
+- **What the user sees:** Delete for good frees a deleted file together with its exact deleted copies. When a deleted file matches only an older version of another deleted file (a duplicate, then an updated file saved under the same name, all deleted), neither shows Delete for good: both stay under Deleted, restorable, until the trip is removed, which frees them.
+- **Why:** freeing one would remove part of the other's history, which the user can still restore; telling the two apart safely needs more logic for a rare case.
+- **Revisit when:** the user meets it.
+- **Approved:** 2026-11-01, the user: "Yes, a limitation (Recommended)".

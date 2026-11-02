@@ -8,7 +8,7 @@ import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
 import { readTripFiles, fileDetails, deletionOf, deletesOf, deletedGroup } from '../../core/trip-files.js';
 import { BOOKING_FILE, PLAN_FILE } from '../../core/plan.js';
-import { deleteGroup, afterDelete, countParts, restoreDeleted } from '../file-delete.js';
+import { deleteGroup, afterDelete, countParts, restoreDeleted, freeableDeleted, deleteForGood, deletedName, forGoodLine } from '../file-delete.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
@@ -82,7 +82,9 @@ export async function renderFile(ctx, route) {
  * A deleted file's screen (Task 7): what Restore brings back, Restore itself, the file's last version, as a waiting file's is shown (a
  * photo, a PDF, or Download), and its history, whose own Restore buttons bring back one version. Restore is first, under the line
  * that says what it does: a deleted file's screen has little else. The crumb names the trip, as a details screen's does, and the
- * heading is the name the file had when deleted (the Delete's entry keeps it, as the short name goes with the file).
+ * heading is the name the file had when deleted (the Delete's entry keeps it, as the short name goes with the file). Beside Restore,
+ * Delete for good (asks once) when a dry run of forget says it would free space: Shiori's deletes, and those from before Delete freed
+ * what nothing else names, are kept under Deleted until then.
  * @param {any} ctx @param {string} id @param {string} path @param {import('../../core/workspace.js').HistoryEntry[]} history
  * @param {Record<string, string>} names @param {{ back: string, from: { name: string } | null, trip: string }} o
  */
@@ -101,11 +103,20 @@ async function deletedScreen(ctx, id, path, history, names, o) {
     return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file was deleted. You can bring back a version below.` }),
       historyView(ctx, id, path, history, null));
   }
+  const free = await freeableDeleted(ctx.ws, id, path);
   const group = (deletedGroup(deletes, path) ?? []).slice(1).map((x) => x.data.path);
   const parts = countParts(group.filter((p) => BOOKING_FILE.test(p)).length, group.filter((p) => PLAN_FILE.test(p)).length);
+  const also = free && forGoodLine(free, (p) => deletedName(names, deletes, p));
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'empty', text: parts.length ? t`This file was deleted. Restore brings it back with ${list(parts)} that Shiori read from it.` : t`This file was deleted. Restore brings it back.` }),
-    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restoreDeleted(ctx, id, path) }, t`Restore`)),
+    h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restoreDeleted(ctx, id, path) }, t`Restore`),
+      free ? twoStep(t`Delete for good`, t`Tap again to delete for good`, async () => {
+        const gone = await deleteForGood(ctx, id, path, was[path] ?? real, free.paths);
+        if (gone) ctx.go(afterDelete(o.back, gone, id));
+        else await ctx.render();
+      }) : null),
+    // Named before the tap: the copies and the bookings and plan items that go with it.
+    also ? h('p', { class: 'sub', text: also }) : null,
     version,
     historyView(ctx, id, path, history, null, last.data.old));
 }

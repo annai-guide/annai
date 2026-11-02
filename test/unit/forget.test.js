@@ -8,7 +8,8 @@ import { record } from '../../src/core/agent/log.js';
 import { resolveEvent } from '../../src/core/agent/transcript.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
-import { noteQueries } from './store-spy.js';
+import { noteQueries, noteBlobReads } from './store-spy.js';
+import { snapshot as everything } from '../contract/snapshot.js';
 
 async function setup() {
   const store = createMemoryStore();
@@ -237,4 +238,110 @@ test('forget: with no mustFree, nothing is kept back', async () => {
   const { store, ws } = await setup();
   await ws.write(SYS_PLUGINS, '/tides/a.md', 'a', { author: 'system' });
   assert.equal((await forget(store, SYS_PLUGINS, { files: inTides, history: inTides })).kept, null);
+});
+
+// dryRun: the same work in the same transaction, rolled back at the end. It reads no blob bytes (a key read says a content is stored),
+// so it counts the contents it would free (`blobs`) and leaves `bytes` 0.
+const named = (/** @type {string} */ p) => p === '/files/a.pdf';
+
+test('forget dryRun: a freeable file reports the same events and contents as a real forget, reads no blob, and changes nothing', async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/files/a.pdf', 'first bytes', { author: 'user', type: 'application/pdf' });
+  await ws.write(trip, '/files/a.pdf', 'second bytes', { author: 'user', type: 'application/pdf' });
+  await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+  const before = await everything(store);
+  const reads = noteBlobReads(store);
+  const dry = await forget(store, trip, { history: named, mustFree: named, dryRun: true });
+  assert.equal(reads.whole, 0, 'a dry run must not load blob bytes');
+  assert.ok(reads.key > 0, 'it asks by key');
+  assert.deepEqual(await everything(store), before);
+  assert.equal(await stored(store, 'first bytes'), true);
+  assert.deepEqual(dry, { files: 0, events: 3, bytes: 0, blobs: 2, kept: null });
+  const real = await forget(store, trip, { history: named, mustFree: named });
+  assert.deepEqual(real, { files: 0, events: 3, bytes: 'first bytes'.length + 'second bytes'.length, kept: null });
+  assert.notDeepEqual(await everything(store), before);
+  assert.equal(await stored(store, 'first bytes'), false);
+});
+
+test('forget dryRun: a plugin-style forget (files, history, log entries) counts the same contents and leaves no forget entry', async () => {
+  const { store, ws } = await setup();
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v1 code', { author: 'system' });
+  await ws.write(SYS_PLUGINS, '/tides/index.js', 'v2 code', { author: 'system' });
+  await record(store, SYS_PLUGINS, { type: 'tides.cache', actor: 'plugin:tides', data: {}, texts: [['table', 'x'.repeat(3000)]] });
+  const match = { files: inTides, history: inTides, events: (/** @type {any} */ e) => e.actor === 'plugin:tides' };
+  const before = await everything(store);
+  const dry = await forget(store, SYS_PLUGINS, { ...match, dryRun: true });
+  assert.deepEqual(await everything(store), before);
+  assert.deepEqual([dry.files, dry.events, dry.bytes, dry.blobs], [1, 3, 0, 3]);
+  const real = await forget(store, SYS_PLUGINS, match);
+  assert.deepEqual([real.files, real.events, real.bytes], [1, 3, 14 + 3000]);
+});
+
+test('forget dryRun: a kept file says why, as a real forget does, and both leave the store as it was', async () => {
+  for (const [why, setUp] of /** @type {[string, (store: any, ws: Workspace, trip: string) => Promise<void>][]} */ ([
+    ['here', async (store, ws, trip) => {
+      const { entry } = /** @type {any} */ (await ws.read(trip, '/files/a.pdf'));
+      await record(store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: entry.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: entry.hash, type: 'application/pdf' }] });
+    }],
+    ['elsewhere', async (_store, ws) => { await ws.write(ME, '/files/copy.pdf', 'bytes', { author: 'user', type: 'application/pdf' }); }],
+  ])) {
+    const { store, ws } = await setup();
+    const trip = await createTrip(ws, { title: 'Big Sur' });
+    await ws.write(trip, '/files/a.pdf', 'bytes', { author: 'user', type: 'application/pdf' });
+    await setUp(store, ws, trip);
+    await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+    const before = await everything(store);
+    const dry = await forget(store, trip, { history: named, mustFree: named, dryRun: true });
+    assert.deepEqual(dry, { files: 0, events: 0, bytes: 0, kept: why });
+    assert.deepEqual(await everything(store), before, why);
+    assert.deepEqual(await forget(store, trip, { history: named, mustFree: named }), dry);
+    assert.deepEqual(await everything(store), before, `${why}: a kept real forget changes nothing either`);
+  }
+});
+
+test('forget dryRun: nothing that matches reports nothing', async () => {
+  const { store } = await setup();
+  assert.deepEqual(await forget(store, SYS_PLUGINS, { files: inTides, dryRun: true }), { files: 0, events: 0, bytes: 0, blobs: 0, kept: null });
+});
+
+test('forget dryRun: a content whose bytes are not stored is not counted as freeable', async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/files/a.pdf', 'bytes', { author: 'user', type: 'application/pdf' });
+  await ws.delete(trip, '/files/a.pdf', { author: 'shiori' });
+  await store.tx(['blobs'], 'readwrite', async (t) => { for (const { hash } of await t.listBlobs()) await t.deleteBlob(hash); });
+  assert.equal((await forget(store, trip, { history: named, mustFree: named, dryRun: true })).blobs, 0);
+});
+
+// onlyDeleted: a path's history is doomed only while no file is at that path in the transaction.
+test('forget onlyDeleted: the history of a path that has a file is kept whole, with its content; a deleted path goes', async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/bookings/stay.json', { v: 1 }, { author: 'shiori' });
+  await ws.write(trip, '/bookings/stay.json', { v: 2 }, { author: 'shiori' }); // live again, as another tab wrote it
+  await ws.write(trip, '/plan/gone.json', { v: 1 }, { author: 'shiori' });
+  await ws.delete(trip, '/plan/gone.json', { author: 'shiori' });
+  const history = await ws.history(trip, '/bookings/stay.json');
+  const r = await forget(store, trip, { history: (p) => p !== '/files/x.pdf', onlyDeleted: () => true });
+  assert.equal(r.kept, null);
+  assert.deepEqual(await ws.history(trip, '/bookings/stay.json'), history);
+  assert.deepEqual(await ws.history(trip, '/plan/gone.json'), []);
+  assert.deepEqual(await ws.readJSON(trip, '/bookings/stay.json'), { v: 2 });
+  const [v1] = /** @type {any[]} */ (await store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: ['file.write'] }))).filter((e) => e.data.path === '/bookings/stay.json');
+  assert.equal(await store.tx(['blobs'], 'readonly', (t) => t.hasBlob(v1.data.new)), true, "the live path's old version is still stored");
+});
+
+test('forget onlyDeleted: only for the paths it names; a file deleted by this very forget counts as deleted', async () => {
+  const { store, ws } = await setup();
+  const trip = await createTrip(ws, { title: 'Big Sur' });
+  await ws.write(trip, '/a.md', 'a1', { author: 'user' });
+  await ws.write(trip, '/a.md', 'a2', { author: 'user' });
+  await ws.write(trip, '/b.md', 'b1', { author: 'user' });
+  await ws.write(trip, '/b.md', 'b2', { author: 'user' });
+  await forget(store, trip, { history: () => true, files: (p) => p === '/a.md', onlyDeleted: () => true });
+  assert.deepEqual(await ws.history(trip, '/a.md'), [], 'its file went in this transaction, so its history may');
+  assert.equal((await ws.history(trip, '/b.md')).length, 2);
+  await forget(store, trip, { history: () => true, onlyDeleted: (p) => p === '/a.md' });
+  assert.deepEqual(await ws.history(trip, '/b.md'), [], 'not named by onlyDeleted: unguarded');
 });
