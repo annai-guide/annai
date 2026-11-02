@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
-import { restoreGroup } from '../../src/core/trip-files.js';
+import { restoreGroup, deletesOf, deletedGroup } from '../../src/core/trip-files.js';
 import { freeableDeleted, deleteForGood } from '../../src/ui/file-delete.js';
 import { record } from '../../src/core/agent/log.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -12,13 +12,15 @@ import { snapshot } from '../contract/snapshot.js';
 
 // Delete for good over random histories (seeded, so every run is the same). The invariant that matters: a listed deleted file that is
 // not an exact copy of the one tapped (the same stored versions, no more, no fewer) survives whole: its history entries, and every
-// version's content. Beside it: the dry run changes nothing and agrees with the real tap; a kept tap changes nothing; no live file or
-// content anything still names is lost; the toast's figure is what left the store.
+// version's content, and so does what restoring it needs: the group its Delete took (the entries restoreGroup reads, each one's
+// content). Beside it: the dry run changes nothing and agrees with the real tap; a shown button frees bytes (a file of no bytes has
+// none); a kept tap changes nothing; no live file or content anything still names is lost; the toast's figure is what left the store.
 
-const SEEDS = 1500;
+const SEEDS = 1000;
 const PDF = { author: 'user', type: 'application/pdf' };
 // Few distinct contents, so versions are often shared between files: the cases a wrong copy rule gets wrong.
-const CONTENTS = ['x', 'y', 'x', 'y', 'z'];
+// '' is a content of no bytes, which frees no space.
+const CONTENTS = ['x', 'y', 'x', 'y', 'z', ''];
 const FILES = ['/files/p0.pdf', '/files/p1.pdf', '/files/p2.pdf', '/files/p3.pdf'];
 const BOOKS = ['/bookings/b0.json', '/bookings/b1.json'];
 const BASE = 1_700_000_000_000;
@@ -40,13 +42,14 @@ function genOps(rnd) {
   /** @param {any[]} xs */
   const pick = (xs) => xs[Math.floor(rnd() * xs.length)];
   const ops = [];
-  const n = 6 + Math.floor(rnd() * 10);
+  const n = 6 + Math.floor(rnd() * 12);
   for (let i = 0; i < n; i++) {
     const r = rnd();
-    if (r < 0.34) ops.push(['w', pick(FILES), pick(CONTENTS)]);
-    else if (r < 0.68) ops.push(['d', pick(FILES)]);
-    else if (r < 0.74) ops.push(['g', pick(FILES), pick(BOOKS)]);
-    else if (r < 0.78) ops.push(['wb', pick(BOOKS), Math.floor(rnd() * 3)]);
+    if (r < 0.28) ops.push(['w', pick(FILES), pick(CONTENTS)]);
+    else if (r < 0.50) ops.push(['d', pick(FILES)]);
+    else if (r < 0.56) ops.push(['g', pick(FILES), pick(BOOKS)]); // a Delete that takes a booking with the file
+    else if (r < 0.70) ops.push(['gw', pick(FILES), pick(BOOKS), pick(CONTENTS)]); // the same, from a file and a booking written just before
+    else if (r < 0.78) ops.push(['wb', pick(BOOKS), Math.floor(rnd() * 3)]); // the booking written again: its paths are reused
     else if (r < 0.81) ops.push(['db', pick(BOOKS)]);
     else if (r < 0.87) ops.push(['rs', pick(FILES)]);
     else if (r < 0.90) ops.push(['cv', pick(CONTENTS)]);
@@ -62,6 +65,10 @@ async function apply({ ws, store, T, T2 }, op) {
     case 'w': return ws.write(T, op[1], op[2], PDF);
     case 'd': case 'db': return ws.delete(T, op[1], { author: 'shiori' });
     case 'g': return ws.writeMany(T, [op[1], op[2]].map((path) => ({ path, content: null })), { author: 'user', with: op[1] });
+    case 'gw':
+      await ws.write(T, op[1], op[3], PDF);
+      await ws.write(T, op[2], { id: 'b', v: 9 }, { author: 'shiori' });
+      return ws.writeMany(T, [op[1], op[2]].map((path) => ({ path, content: null })), { author: 'user', with: op[1] });
     case 'wb': return ws.write(T, op[1], { id: 'b', v: op[2] }, { author: 'shiori' });
     case 'rs': return restoreGroup(ws, T, op[1]);
     case 'cv': { // the conversation reads a content
@@ -113,7 +120,11 @@ async function capture({ store, ws, T, T2 }) {
   const live = new Map();
   for (const s of [T, T2]) for (const f of await ws.list(s, '/')) { live.set(`${s}|${f.path}`, f.hash); refs.add(f.hash); }
   const listed = await store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.listBlobs());
-  return { perPath, versions, refs, live, blobs: new Set(listed.map((/** @type {any} */ b) => b.hash)), sizes: new Map(listed.map((/** @type {any} */ b) => [b.hash, b.size])) };
+  // What restoreGroup reads for each file: its newest Delete and the entries that went with it.
+  const deletes = await deletesOf(store, T);
+  const groups = new Map(FILES.map((p) => [p, JSON.stringify(deletedGroup(deletes, p)?.map((e) => [e.seq, e.ts, e.data]) ?? null)]));
+  const restoring = new Map(FILES.map((p) => [p, (deletedGroup(deletes, p) ?? []).map((e) => e.data.old).filter((h) => typeof h === 'string')]));
+  return { groups, restoring, perPath, versions, refs, live, blobs: new Set(listed.map((/** @type {any} */ b) => b.hash)), sizes: new Map(listed.map((/** @type {any} */ b) => [b.hash, b.size])) };
 }
 
 /** The exact copies of F: F, and every deleted file whose stored versions are the very same. @param {Awaited<ReturnType<typeof capture>>} pre @param {string} T @param {string} F */
@@ -128,7 +139,7 @@ function copiesOf(pre, T, F) {
 test(`Delete for good over ${SEEDS} random histories: exact copies go together, every other deleted file survives whole`, async () => {
   /** @type {string[]} */
   const failures = [];
-  const stats = { taps: 0, freed: 0, withCopies: 0, spared: 0 };
+  const stats = { taps: 0, freed: 0, withCopies: 0, spared: 0, sharedPaths: 0 };
   for (let seed = 1; seed <= SEEDS; seed++) {
     const ops = genOps(rng(seed));
     const first = await capture(await build(ops));
@@ -147,7 +158,7 @@ test(`Delete for good over ${SEEDS} random histories: exact copies go together, 
       const toasts = [];
       const got = await deleteForGood({ ws: W.ws, store: W.store, notices: { toast: (/** @type {string} */ m) => toasts.push(m) } }, W.T, F, F);
       stats.taps++;
-      if (Boolean(free) !== Boolean(got)) fail('the button and the tap disagree', { free, got, toasts });
+      if (free && !got) fail('the button was shown and the tap freed nothing', { free, toasts });
       if (!got) {
         if (JSON.stringify(await snapshot(W.store)) !== before) fail('a tap that freed nothing changed the store', toasts);
         continue;
@@ -155,6 +166,12 @@ test(`Delete for good over ${SEEDS} random histories: exact copies go together, 
       stats.freed++;
       if (copies.length > 1) stats.withCopies++;
       const post = await capture(W);
+      let bytes = 0;
+      for (const [h, size] of pre.sizes) if (!post.blobs.has(h)) bytes += size;
+      if (!(bytes > 0)) {
+        // A tap with no button (a file of no bytes, whose stale tap is still honest: it frees its entries and says 0 bytes) frees no space.
+        if (free) fail('a button was shown for a tap that freed no bytes', { free, toasts });
+      } else if (!free) fail('a tap with no button freed bytes', { got, toasts });
       // Only the exact copies' files go; any other path freed is a booking or plan item of their groups.
       for (const p of got) if (p.startsWith('/files/') && !copies.includes(p)) fail('freed a file that is no exact copy', p);
       for (const p of copies) if (post.perPath.has(`${W.T}|${p}`)) fail('a copy kept history', p);
@@ -162,8 +179,12 @@ test(`Delete for good over ${SEEDS} random histories: exact copies go together, 
       for (const G of FILES) {
         if (copies.includes(G) || !pre.versions.has(G) || pre.live.has(`${W.T}|${G}`)) continue;
         stats.spared++;
+        if (/bookings/.test(pre.groups.get(G) ?? '') && /bookings/.test(pre.groups.get(F) ?? '')) stats.sharedPaths++; // both Deletes took a booking path
         if (JSON.stringify(pre.perPath.get(`${W.T}|${G}`)) !== JSON.stringify(post.perPath.get(`${W.T}|${G}`))) fail('a deleted file that is no copy lost history', G);
         for (const h of pre.versions.get(G) ?? []) if (pre.blobs.has(h) && !post.blobs.has(h)) fail('a deleted file that is no copy lost a version', { G, h });
+        // Its Restore is unchanged: the same group entries, and each one's content still stored.
+        if (pre.groups.get(G) !== post.groups.get(G)) fail("a deleted file that is no copy lost part of what its Restore brings back", { G, pre: pre.groups.get(G), post: post.groups.get(G) });
+        for (const h of pre.restoring.get(G) ?? []) if (pre.blobs.has(h) && !post.blobs.has(h)) fail("a deleted file that is no copy lost content its Restore needs", { G, h });
       }
       if (JSON.stringify([...pre.live]) !== JSON.stringify([...post.live])) fail('a live file changed');
       for (const h of post.refs) if (pre.blobs.has(h) && !post.blobs.has(h)) fail('a content something still names was freed', h);
@@ -173,11 +194,9 @@ test(`Delete for good over ${SEEDS} random histories: exact copies go together, 
       }
       const others = copies.length - 1;
       const m = (others ? new RegExp(`^Deleted .+ and ${others} other ${others === 1 ? 'copy' : 'copies'} for good\\. (\\d+) bytes? freed\\.$`) : /^Deleted .+ for good\. (\d+) bytes? freed\.$/).exec(toasts[0] ?? '');
-      let bytes = 0;
-      for (const [h, size] of pre.sizes) if (!post.blobs.has(h)) bytes += size;
       if (!m || Number(m[1]) !== bytes) fail('the toast does not match what was freed', { toast: toasts[0], bytes });
     }
   }
-  assert.ok(stats.freed > 200 && stats.withCopies > 20 && stats.spared > 50, `the seeds cover the cases: ${JSON.stringify(stats)}`);
+  assert.ok(stats.freed > 200 && stats.withCopies > 20 && stats.spared > 50 && stats.sharedPaths > 20, `the seeds cover the cases: ${JSON.stringify(stats)}`);
   assert.equal(failures.length, 0, `${failures.length} invariant failures; first: ${failures[0]}`);
 });

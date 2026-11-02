@@ -16,6 +16,21 @@ export function countParts(bookings, items) {
 }
 
 /**
+ * The line beside Delete for good: all that the tap frees besides the file, named before the tap. Its copies (by the names `shown`
+ * gives), and the bookings and plan items Shiori read from the file and from them. Null when there are none of either.
+ * @param {{ paths: string[], copies: string[] }} free freeableDeleted's answer @param {(path: string) => string} shown a copy's name
+ * @returns {string | null}
+ */
+export function forGoodLine(free, shown) {
+  const group = list(countParts(free.paths.filter((p) => BOOKING_FILE.test(p)).length, free.paths.filter((p) => PLAN_FILE.test(p)).length));
+  const copies = free.copies.length ? list(free.copies.map(shown)) : '';
+  if (!copies) return group ? t`Also deletes the ${group} Shiori read from it.` : null;
+  return group
+    ? plural(free.copies.length, 'Also deletes {0}, a copy of this file, and the {1} Shiori read from them.', 'Also deletes {0}, copies of this file, and the {1} Shiori read from them.', copies, group)
+    : plural(free.copies.length, 'Also deletes {0}, a copy of this file.', 'Also deletes {0}, copies of this file.', copies);
+}
+
+/**
  * Where Delete goes: back, unless back is a screen of something just deleted (its route's `path` param, `/trip` stripped, is one of
  * gone: a plan item's details, this file's raw or details screen), then the trip.
  * @param {string} back @param {string[]} gone @param {string} id
@@ -144,16 +159,22 @@ export async function freeableDeleted(ws, id, path) {
 /**
  * Delete for good on a deleted file's screen: frees the file and its group (foreverOf), and any other deleted copy of the same
  * content with theirs, at once, and says how much. If the file is back (restored in another tab), nothing is freed and the toast
- * says so; if something names the content by now, nothing is freed and the toast says that. Either way the screen is to render
- * again. A failure is explained and frees nothing.
+ * says so; if something names the content by now, nothing is freed and the toast says that; if the paths to free are no longer the
+ * ones the screen named (`named`, freeableDeleted's `paths`: another copy appeared, one went, a group changed), nothing is freed
+ * and the toast says that. Either way the screen is to render again. A failure is explained and frees nothing.
  * @param {any} ctx @param {string} id @param {string} path @param {string} name what the toast calls it
+ * @param {string[]} [named] the paths the screen named as going; omitted by a caller that named nothing
  * @returns {Promise<string[] | null>} the paths freed, or null when nothing was
  */
-export async function deleteForGood(ctx, id, path, name) {
+export async function deleteForGood(ctx, id, path, name, named) {
   try {
     const plan = await foreverOf(ctx.ws, id, path, await copiesOf(ctx.store, id, path));
     if (plan.there) {
       ctx.notices.toast(t`${name} is already back.`);
+      return null;
+    }
+    if (named && [...named].sort().join('\n') !== [...plan.paths].sort().join('\n')) {
+      ctx.notices.toast(t`What goes with ${name} has changed, so nothing was deleted.`);
       return null;
     }
     const r = await forget(ctx.store, id, plan.match);
