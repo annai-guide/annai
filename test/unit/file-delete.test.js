@@ -7,7 +7,7 @@ import { syncNames, readNames } from '../../src/core/names.js';
 import { record } from '../../src/core/agent/log.js';
 import { readTripFiles, fileDetails, deletedFiles, restoreGroup } from '../../src/core/trip-files.js';
 import { forget } from '../../src/core/forget.js';
-import { deleteGroup, restoreDeleted, freeableDeleted, deleteForGood, deletedName } from '../../src/ui/file-delete.js';
+import { deleteGroup, restoreDeleted, freeableDeleted, deleteForGood, deletedName, forGoodLine } from '../../src/ui/file-delete.js';
 import { snapshot } from '../contract/snapshot.js';
 import { noteBlobReads } from './store-spy.js';
 import { liveKit, iso, at, LA, MONTEREY, BIXBY } from './live-kit.js';
@@ -626,4 +626,86 @@ test('Delete for good: a file restored in another tab between the reads and the 
   assert.deepEqual(ctx.toasts, ['a.pdf is already back.']);
   assert.equal((await ws.list(trip, '/files/')).length, 1);
   assert.equal((await ws.history(trip, '/files/a.pdf')).length, 3, 'its history is whole');
+});
+
+// E1 (fix pass 3): the line beside the button names what the tap frees besides the file: its copies, and the bookings and plan items
+// Shiori read from the file and from them. The probe: copy b.pdf was deleted from its screen with stay.json; a.pdf's tap frees stay.json.
+
+/** Two deleted copies; b went with a booking and a plan item (when `bookings`), a with its own booking (when `own`). @param {{ own?: boolean, bookings?: boolean }} o */
+async function copiesWithGroups({ own = false, bookings = true }) {
+  const { ws, trip } = await trove({ '/files/a.pdf': SAME, '/files/b.pdf': SAME }, []);
+  const book = (/** @type {string} */ id) => ws.write(trip, `/bookings/${id}.json`, { id }, { author: 'shiori' });
+  await book('stay');
+  await ws.write(trip, '/plan/check-in.json', { id: 'check-in' }, { author: 'shiori' });
+  await book('own');
+  await ws.writeMany(trip, [{ path: '/files/b.pdf', content: null }, ...(bookings ? [{ path: '/bookings/stay.json', content: null }, { path: '/plan/check-in.json', content: null }] : [])], { author: 'user', with: '/files/b.pdf' });
+  await ws.writeMany(trip, [{ path: '/files/a.pdf', content: null }, ...(own ? [{ path: '/bookings/own.json', content: null }] : [])], { author: 'user', with: '/files/a.pdf' });
+  return { ws, trip };
+}
+/** The line a deleted file's screen shows for `path`, as the screen builds it. @param {Workspace} ws @param {string} trip @param {string} path */
+async function lineFor(ws, trip, path) {
+  const free = await freeableDeleted(ws, trip, path);
+  return free && forGoodLine(free, (p) => p.split('/').pop() ?? p);
+}
+
+test("Delete for good's line names the copy's booking and plan item too (the probe: b.pdf deleted with stay.json)", async () => {
+  const { ws, trip } = await copiesWithGroups({});
+  assert.equal(await lineFor(ws, trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file, and the 1 booking and 1 plan item Shiori read from them.');
+  const before = await snapshot(ws.store);
+  const ctx = ctxOf(ws);
+  const gone = await deleteForGood(ctx, trip, '/files/a.pdf', 'a.pdf');
+  assert.ok(gone?.includes('/bookings/stay.json') && gone.includes('/plan/check-in.json'), 'what the line named is what went');
+  assert.notDeepEqual(await snapshot(ws.store), before);
+});
+
+test("Delete for good's line: the file's own group alone, copies alone, both, none, and plurals", async () => {
+  const own = await copiesWithGroups({ own: true, bookings: false });
+  assert.equal(await lineFor(own.ws, own.trip, '/files/b.pdf'), 'Also deletes a.pdf, a copy of this file, and the 1 booking Shiori read from them.');
+  const bare = await copiesWithGroups({ bookings: false });
+  assert.equal(await lineFor(bare.ws, bare.trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file.');
+  const alone = await trove({ '/files/a.pdf': SAME }, []);
+  await alone.ws.write(alone.trip, '/bookings/one.json', { id: 'one' }, { author: 'shiori' });
+  await alone.ws.write(alone.trip, '/bookings/two.json', { id: 'two' }, { author: 'shiori' });
+  await alone.ws.writeMany(alone.trip, ['/files/a.pdf', '/bookings/one.json', '/bookings/two.json'].map((path) => ({ path, content: null })), { author: 'user', with: '/files/a.pdf' });
+  assert.equal(await lineFor(alone.ws, alone.trip, '/files/a.pdf'), 'Also deletes the 2 bookings Shiori read from it.');
+  const lone = await trove({ '/files/a.pdf': SAME }, ['/files/a.pdf']);
+  assert.equal(await lineFor(lone.ws, lone.trip, '/files/a.pdf'), null, 'a file with nothing else says nothing');
+  const three = await trove({ '/files/a.pdf': SAME, '/files/b.pdf': SAME, '/files/c.pdf': SAME }, ['/files/a.pdf', '/files/b.pdf', '/files/c.pdf']);
+  assert.equal(await lineFor(three.ws, three.trip, '/files/a.pdf'), 'Also deletes b.pdf and c.pdf, copies of this file.');
+});
+
+// E2 (fix pass 3): the tap frees only what the screen named. Probe S1: c.pdf becomes an exact copy and is deleted after the screen opened.
+
+test('Delete for good frees nothing when the copies differ from the ones the screen named: toast, nothing changed, null to re-render', async () => {
+  const { ws, trip } = await trove({ '/files/a.pdf': SAME, '/files/b.pdf': SAME }, ['/files/a.pdf', '/files/b.pdf']);
+  const rendered = await freeableDeleted(ws, trip, '/files/a.pdf');
+  await ws.write(trip, '/files/c.pdf', SAME, PDF); // a third exact copy, made and deleted after the screen was drawn
+  await ws.delete(trip, '/files/c.pdf', { author: 'shiori' });
+  const before = await snapshot(ws.store);
+  const ctx = ctxOf(ws);
+  assert.equal(await deleteForGood(ctx, trip, '/files/a.pdf', 'a.pdf', rendered?.paths), null);
+  assert.deepEqual(ctx.toasts, ['What goes with a.pdf has changed, so nothing was deleted.']);
+  assert.deepEqual(await snapshot(ws.store), before);
+  // The screen drawn again names all three, and that tap frees them.
+  const again = await freeableDeleted(ws, trip, '/files/a.pdf');
+  assert.deepEqual(again?.copies, ['/files/b.pdf', '/files/c.pdf']);
+  assert.deepEqual((await deleteForGood(ctxOf(ws), trip, '/files/a.pdf', 'a.pdf', again?.paths))?.length, 3);
+});
+
+test('Delete for good frees nothing when a copy the screen named is gone, or a booking it named no longer goes', async () => {
+  const gone = await copiesWithGroups({});
+  const rendered = await freeableDeleted(gone.ws, gone.trip, '/files/a.pdf');
+  await restoreGroup(gone.ws, gone.trip, '/files/b.pdf'); // another tab brings b.pdf back, with its booking
+  const before = await snapshot(gone.ws.store);
+  const ctx = ctxOf(gone.ws);
+  assert.equal(await deleteForGood(ctx, gone.trip, '/files/a.pdf', 'a.pdf', rendered?.paths), null);
+  assert.equal(ctx.toasts.length, 1);
+  assert.deepEqual(await snapshot(gone.ws.store), before);
+});
+
+test('Delete for good with the very set the screen named frees it, as before', async () => {
+  const { ws, trip } = await copiesWithGroups({});
+  const rendered = await freeableDeleted(ws, trip, '/files/a.pdf');
+  const got = await deleteForGood(ctxOf(ws), trip, '/files/a.pdf', 'a.pdf', rendered?.paths ? [...rendered.paths].reverse() : undefined);
+  assert.deepEqual(got, rendered?.paths, 'the order does not matter');
 });

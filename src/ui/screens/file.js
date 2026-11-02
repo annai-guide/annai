@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
+import { h, crumb, t, asUser, field, twoStep, messageOf, linkIn } from '../dom.js';
 import { readNames } from '../../core/names.js';
 import { isTextType, isGivenFile, typeForPath } from '../../core/paths.js';
 import { text } from '../../core/bytes.js';
@@ -8,7 +8,7 @@ import { readAppSettings } from '../../core/settings.js';
 import { relTime, size, num, takenText, pathParts, authorName, speaksScreens, list } from '../format.js';
 import { readTripFiles, fileDetails, deletionOf, deletesOf, deletedGroup } from '../../core/trip-files.js';
 import { BOOKING_FILE, PLAN_FILE } from '../../core/plan.js';
-import { deleteGroup, afterDelete, countParts, restoreDeleted, freeableDeleted, deleteForGood, deletedName } from '../file-delete.js';
+import { deleteGroup, afterDelete, countParts, restoreDeleted, freeableDeleted, deleteForGood, deletedName, forGoodLine } from '../file-delete.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
@@ -106,16 +106,17 @@ async function deletedScreen(ctx, id, path, history, names, o) {
   const free = await freeableDeleted(ctx.ws, id, path);
   const group = (deletedGroup(deletes, path) ?? []).slice(1).map((x) => x.data.path);
   const parts = countParts(group.filter((p) => BOOKING_FILE.test(p)).length, group.filter((p) => PLAN_FILE.test(p)).length);
+  const also = free && forGoodLine(free, (p) => deletedName(names, deletes, p));
   return h('div', { class: 'screen' }, ...head,
     h('p', { class: 'empty', text: parts.length ? t`This file was deleted. Restore brings it back with ${list(parts)} that Shiori read from it.` : t`This file was deleted. Restore brings it back.` }),
     h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => restoreDeleted(ctx, id, path) }, t`Restore`),
       free ? twoStep(t`Delete for good`, t`Tap again to delete for good`, async () => {
-        const gone = await deleteForGood(ctx, id, path, was[path] ?? real);
+        const gone = await deleteForGood(ctx, id, path, was[path] ?? real, free.paths);
         if (gone) ctx.go(afterDelete(o.back, gone, id));
         else await ctx.render();
       }) : null),
-    // Named before the tap: the copies go with it.
-    free?.copies.length ? h('p', { class: 'sub', text: plural(free.copies.length, 'Also deletes {0}, a copy of this file.', 'Also deletes {0}, copies of this file.', list(free.copies.map((p) => deletedName(names, deletes, p)))) }) : null,
+    // Named before the tap: the copies and the bookings and plan items that go with it.
+    also ? h('p', { class: 'sub', text: also }) : null,
     version,
     historyView(ctx, id, path, history, null, last.data.old));
 }

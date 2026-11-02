@@ -472,6 +472,39 @@ test('two deleted copies of one file: Delete for good on either frees both, says
   await expect(page.locator('details.deleted-files')).toHaveCount(0);
 });
 
+test("two deleted copies, one deleted with a booking: the line names the booking before the tap, and the tap frees it too", async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await putFile(page, trip, '/files/new-copy.pdf', Buffer.from('%PDF-1.4 new'), 'application/pdf');
+  await page.evaluate(async (trip) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.write(trip, '/bookings/copy.json', { id: 'copy', kind: 'lodging', status: 'unverified', source: '/files/new-copy.pdf', title: 'Copy stay', unsure: [] }, { author: 'shiori' });
+    await ws.writeMany(trip, ['/files/new-copy.pdf', '/bookings/copy.json'].map((path) => ({ path, content: null })), { author: 'user', with: '/files/new-copy.pdf' });
+    store.close();
+  }, trip);
+  await shioriDeletes(page, trip, '/files/new.pdf');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
+  await page.reload();
+  await expect(page.getByText('Also deletes new-copy.pdf, a copy of this file, and the 1 booking Shiori read from them.')).toBeVisible();
+  await page.getByRole('button', { name: 'Delete for good', exact: true }).click();
+  await page.getByRole('button', { name: 'Tap again to delete for good' }).click();
+  await expect(page.getByText(/^Deleted new\.pdf and 1 other copy for good\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
+  const history = await page.evaluate(async (trip) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    const n = (await new Workspace(store).history(trip, '/bookings/copy.json')).length;
+    store.close();
+    return n;
+  }, trip);
+  expect(history).toBe(0);
+});
+
 test('Delete for good on a copy that is still a current file shows no button on the deleted one', async ({ page }) => {
   await openApp(page);
   const trip = await fileTrip(page);
