@@ -263,10 +263,13 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   if (place) {
     const p = { ...place };
     const was = record(old?.place);
-    // A patch that gives another name for the place leaves its address and position as the old place's, unless the patch gives them.
-    if (changes && typeof was?.name === 'string' && typeof p.name === 'string' && p.name !== was.name) {
+    // A patch that gives another name for the place leaves its address and position as the old place's, and another address its
+    // position, unless the patch gives them.
+    if (changes && was) {
       const given = record(record(changes)?.place) ?? {};
-      for (const k of ['address', 'lat', 'lng']) if (!Object.hasOwn(given, k)) delete p[k];
+      const moved = (/** @type {string} */ k) => typeof was[k] === 'string' && typeof p[k] === 'string' && p[k] !== was[k];
+      const stale = moved('name') ? ['address', 'lat', 'lng'] : moved('address') ? ['lat', 'lng'] : [];
+      for (const k of stale) if (!Object.hasOwn(given, k)) delete p[k];
     }
     if (!(typeof p.name === 'string' && p.name.trim()) && typeof p.address === 'string' && p.address.trim()) p.name = p.address;
     const { place: _, ...rest } = next;
