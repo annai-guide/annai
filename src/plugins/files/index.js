@@ -6,7 +6,7 @@ import { dropWaiting } from '../../core/waiting.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
-import { isBookingPath, shioriBooking } from '../../core/bookings.js';
+import { isBookingPath, shioriBooking, unalias } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
 import { NAMES_FILE } from '../../core/names.js';
 
@@ -63,15 +63,21 @@ export function activate(annai) {
   };
   /**
    * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is stored and on the value as
-   * it will be read, so no wording of the text and no timing gets around it. The trip's time zones are read first, for a time written
-   * under another name (the drive-test follow-ups, section 3); the booking schema in force is the one the format check uses.
+   * it will be read, so no wording of the text and no timing gets around it; and `own`, which renames this write's own keys written
+   * under other names before it is merged (the drive-test follow-ups, section 3), with the trip's time zones and the stored booking's
+   * kind. The booking schema in force is the one the format check uses. Not a booking: neither.
    * @param {string} scope @param {string} path
+   * @returns {Promise<{ guard?: (before: any, next: any) => any, own: (v: any, append?: boolean) => any }>}
    */
-  const guardOf = async (scope, path) => {
-    if (!isBookingPath(scope, path)) return undefined;
+  const bookingOf = async (scope, path) => {
+    if (!isBookingPath(scope, path)) return { own: (v) => v };
     const zones = (await ws.readJSON(scope, '/trip.json').catch(() => null))?.timezones;
-    const o = { zones: Array.isArray(zones) ? zones.filter((z) => typeof z === 'string') : [], schema: ws.schemaFor(scope, path) };
-    return (/** @type {any} */ before, /** @type {any} */ next) => shioriBooking(before, next, o);
+    const kind = (await ws.readJSON(scope, path).catch(() => undefined))?.kind;
+    const o = { zones: Array.isArray(zones) ? zones.filter((z) => typeof z === 'string') : [], schema: ws.schemaFor(scope, path), kind };
+    return {
+      guard: (before, next) => shioriBooking(before, next, o),
+      own: (v, append = false) => unalias(v, { ...o, append }),
+    };
   };
   /** @param {string} scope @param {string} prefix @param {string} shown the root as Shiori sees it */
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
@@ -193,7 +199,14 @@ export function activate(annai) {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
-        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const { guard, own } = await bookingOf(scope, path);
+        // JSON text (as Gemini writes it) is renamed as the value it is; text that isn't JSON is the format check's.
+        let value = i.content;
+        try {
+          value = typeof value === 'string' && guard ? JSON.parse(value) : value;
+        } catch {}
+        const renamed = own(value);
+        const e = await ws.write(scope, path, renamed === value ? i.content : renamed, { author: 'shiori', guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).`;
       },
     },
@@ -211,7 +224,7 @@ export function activate(annai) {
         const n = i.old ? now.split(i.old).length - 1 : 0;
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: (await bookingOf(scope, path)).guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.`;
       }),
     },
@@ -227,7 +240,8 @@ export function activate(annai) {
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         // Her short names for files start with her first one (names.js): no write of an empty file first.
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const { guard, own } = await bookingOf(scope, path);
+        await ws.patch(scope, path, own(i.changes, true), { author: 'shiori', append: true, create: path === NAMES_FILE, guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.`;
       }),
     },
