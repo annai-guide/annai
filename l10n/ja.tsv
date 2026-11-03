@@ -2213,37 +2213,38 @@ ki7u7j	ok	Shiori, your turn	Shiori、あなたの番	src/ui/screens/shiori.js:19
 1iimwg8	ok	Offline	オフライン	src/ui/screens/shiori.js:20	
 jcy1qy	ok	Shiori, offline	Shiori、オフライン	src/ui/screens/shiori.js:20	
 9chhxd	ok	"{0}"	「{0}」	src/ui/screens/shiori.js:43	{0} = name; Note: a personality's name, quoted, as the editor's label.
-veugk0	ok	Reset to original	オリジナルに戻す	src/ui/screens/shiori.js:45	Note: puts a personality back to annai's original text; 原版 is a printing word.
-1vcli95	ok	Ask me before Shiori changes her personality	Shiori が性格を変える前に、私に確認する	src/ui/screens/shiori.js:57	
-1atbaso	ok	Show what the halves tell each other	半身どうしのやりとりを表示	src/ui/screens/shiori.js:61	
-1csnvhb	ok	Quiet until	静かな時間帯の終了	src/ui/screens/shiori.js:69	Note: quiet hours' end; the fields stand alone, so they name the glossary's quiet hours.
-1p3ttz9	ok	Quiet from	静かな時間帯の開始	src/ui/screens/shiori.js:69	Note: quiet hours' start; the fields stand alone, so they name the glossary's quiet hours.
-1ite7lp	ok	Set the other time too.	もう一方の時刻も設定してください。	src/ui/screens/shiori.js:74	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	静かな時間帯には両方の時刻が必要です。なしにするには両方を消してください。	src/ui/screens/shiori.js:95	
-1qa55ez	ok	How she looks	見た目	src/ui/screens/shiori.js:102	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	ドックでの表示と、その下の言葉を状態ごとに並べています。	src/ui/screens/shiori.js:103	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:105	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori のふるまいです。Shiori は確認済みの変更で自分で調整でき、あなたはいつでも元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:106	
-1amzdg4	ok	The new original of "{0}"	「{0}」の新しいオリジナル	src/ui/screens/shiori.js:113	{0} = compare; Note: as Reset to original (オリジナル).
-pmpsfk	ok	Use the new original	新しいオリジナルを使う	src/ui/screens/shiori.js:116	
-eh67ee	ok	Saved. It applies at her next wake.	保存しました。次の起動から反映されます。	src/ui/screens/shiori.js:125	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名前は小文字、数字、ハイフンだけで、my-shiori のように付けます。	src/ui/screens/shiori.js:133	
-8vtmkf	ok	There is already a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:133	{0} = name
-codbeh	ok	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:138	
-10pf3h4	ok	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:139	
-185xhpb	ok	Her two halves	Shiori の2つの半身	src/ui/screens/shiori.js:142	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe はあなたと話して、すぐに答えます。Kokoro はじっくり考えて作業をします。2人は短いメモを渡し合います。オン：メモが会話に控えめな行として表示されます。オフ：記録にだけ残ります。	src/ui/screens/shiori.js:143	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	話す言語と Shiori が答える言語は、設定 → 言語にあります。	src/ui/screens/shiori.js:145	Note: a link on Settings → Shiori to the Languages screen; 言語 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	Shiori が自分から動く頻度	src/ui/screens/shiori.js:147	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	Shiori を起動するのはあなただけでなく、プラグイン、リマインダー、GPS もです。どれも設定しない限り制限はありません。1時間の上限を超えた起動は飛ばされ、静かな時間帯は終わるまで待ち（リマインダーは届きます）、1回の起動のステップ数を超えるとカードを出して止まります。	src/ui/screens/shiori.js:148	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	1時間あたりの起動回数は1以上の整数です。上限なしにするには空欄にしてください。	src/ui/screens/shiori.js:149	
-pd5jqf	ok	Wakes per hour, not counting yours	1時間あたりの起動回数（あなたからの分を除く）	src/ui/screens/shiori.js:149	
-av9dc1	ok	Steps per wake	1回の起動のステップ数	src/ui/screens/shiori.js:151	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	1回の起動のステップ数は1以上の整数です。空欄にすると、あなたの依頼には上限がなくなります。Shiori が自分から行う作業は50ステップで止まります。	src/ui/screens/shiori.js:151	
-1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:165	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（{1} から）	src/ui/screens/shiori.js:165	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:170	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:174	{0} = p.name
+1imu4jh	draft	Back to the original. It applies at her next wake.	オリジナルに戻しました。次の起動から反映されます。	src/ui/screens/shiori.js:47	
+veugk0	ok	Reset to original	オリジナルに戻す	src/ui/screens/shiori.js:49	Note: puts a personality back to annai's original text; 原版 is a printing word.
+1vcli95	ok	Ask me before Shiori changes her personality	Shiori が性格を変える前に、私に確認する	src/ui/screens/shiori.js:61	
+1atbaso	ok	Show what the halves tell each other	半身どうしのやりとりを表示	src/ui/screens/shiori.js:65	
+1csnvhb	ok	Quiet until	静かな時間帯の終了	src/ui/screens/shiori.js:73	Note: quiet hours' end; the fields stand alone, so they name the glossary's quiet hours.
+1p3ttz9	ok	Quiet from	静かな時間帯の開始	src/ui/screens/shiori.js:73	Note: quiet hours' start; the fields stand alone, so they name the glossary's quiet hours.
+1ite7lp	ok	Set the other time too.	もう一方の時刻も設定してください。	src/ui/screens/shiori.js:78	
+11mcr74	ok	Quiet hours need both times. Clear both for none.	静かな時間帯には両方の時刻が必要です。なしにするには両方を消してください。	src/ui/screens/shiori.js:99	
+1qa55ez	ok	How she looks	見た目	src/ui/screens/shiori.js:106	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	ドックでの表示と、その下の言葉を状態ごとに並べています。	src/ui/screens/shiori.js:107	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:109	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori のふるまいです。Shiori は確認済みの変更で自分で調整でき、あなたはいつでも元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:110	
+1amzdg4	ok	The new original of "{0}"	「{0}」の新しいオリジナル	src/ui/screens/shiori.js:117	{0} = compare; Note: as Reset to original (オリジナル).
+pmpsfk	ok	Use the new original	新しいオリジナルを使う	src/ui/screens/shiori.js:120	
+eh67ee	ok	Saved. It applies at her next wake.	保存しました。次の起動から反映されます。	src/ui/screens/shiori.js:129	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名前は小文字、数字、ハイフンだけで、my-shiori のように付けます。	src/ui/screens/shiori.js:137	
+8vtmkf	ok	There is already a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:137	{0} = name
+codbeh	ok	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:142	
+10pf3h4	ok	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:143	
+185xhpb	ok	Her two halves	Shiori の2つの半身	src/ui/screens/shiori.js:146	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe はあなたと話して、すぐに答えます。Kokoro はじっくり考えて作業をします。2人は短いメモを渡し合います。オン：メモが会話に控えめな行として表示されます。オフ：記録にだけ残ります。	src/ui/screens/shiori.js:147	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	話す言語と Shiori が答える言語は、設定 → 言語にあります。	src/ui/screens/shiori.js:149	Note: a link on Settings → Shiori to the Languages screen; 言語 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	Shiori が自分から動く頻度	src/ui/screens/shiori.js:151	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	Shiori を起動するのはあなただけでなく、プラグイン、リマインダー、GPS もです。どれも設定しない限り制限はありません。1時間の上限を超えた起動は飛ばされ、静かな時間帯は終わるまで待ち（リマインダーは届きます）、1回の起動のステップ数を超えるとカードを出して止まります。	src/ui/screens/shiori.js:152	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	1時間あたりの起動回数は1以上の整数です。上限なしにするには空欄にしてください。	src/ui/screens/shiori.js:153	
+pd5jqf	ok	Wakes per hour, not counting yours	1時間あたりの起動回数（あなたからの分を除く）	src/ui/screens/shiori.js:153	
+av9dc1	ok	Steps per wake	1回の起動のステップ数	src/ui/screens/shiori.js:155	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	1回の起動のステップ数は1以上の整数です。空欄にすると、あなたの依頼には上限がなくなります。Shiori が自分から行う作業は50ステップで止まります。	src/ui/screens/shiori.js:155	
+1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:169	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（{1} から）	src/ui/screens/shiori.js:169	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:174	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:178	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600倍：1時間が6秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	実時間の10倍：1時間が6分	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60倍：1時間が1分	src/ui/screens/simulate.js:10	

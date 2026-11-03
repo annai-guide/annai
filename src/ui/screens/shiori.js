@@ -42,7 +42,11 @@ export async function renderShiori(ctx, route) {
   /** The editor's label: the personality's name, quoted. @param {string} name */
   const quoted = (name) => t`"${name}"`;
   const editor = field(quoted(editing), text);
-  const reset = h('button', { class: 'btn', type: 'button', hidden: !(PRESETS.includes(editing) && ctx.presets), onclick: async () => { await resetPersonality(ctx.ws, editing, ctx.presets); ctx.render(); } }, t`Reset to original`);
+  const reset = h('button', { class: 'btn', type: 'button', hidden: !(PRESETS.includes(editing) && ctx.presets), onclick: async () => {
+    await resetPersonality(ctx.ws, editing, ctx.presets);
+    ctx.notices.toast(t`Back to the original. It applies at her next wake.`);
+    ctx.render();
+  } }, t`Reset to original`);
   /** The editor follows the choice, so Save and Reset act on it, unless opened on one or holding unsaved words. @param {string} n */
   const follow = async (n) => {
     if (route.params.edit || text.value !== loaded) return;
@@ -113,7 +117,7 @@ export async function renderShiori(ctx, route) {
         h('h3', { text: t`The new original of "${compare}"` }), h('pre', { class: 'mono', lang: 'en', text: ctx.presets[compare] }),
         h('div', { class: 'acts' },
           h('button', { class: 'btn', type: 'button', onclick: async () => { await keepMine(ctx.ws, compare, ctx.presets[compare]); ctx.go('#/shiori'); } }, t`Keep mine`),
-          h('button', { class: 'btn', type: 'button', onclick: async () => { await resetPersonality(ctx.ws, compare, ctx.presets); ctx.go('#/shiori'); } }, t`Use the new original`))) : null,
+          h('button', { class: 'btn', type: 'button', onclick: async () => { await resetPersonality(ctx.ws, compare, ctx.presets); ctx.notices.toast(t`Back to the original. It applies at her next wake.`); ctx.go('#/shiori'); } }, t`Use the new original`))) : null,
       editor,
       h('div', { class: 'acts' },
         h('button', {
