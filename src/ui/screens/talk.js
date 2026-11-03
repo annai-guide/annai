@@ -519,9 +519,11 @@ export async function renderTalk(ctx) {
   });
   built = true;
   showCost();
+  const tidy = tidyMenu(ctx);
   const screen = h('div', { class: 'screen' },
     // Tidy up is a ⋯ by the title, out of the conversation's way (the user, 2026-11-02).
-    h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidyMenu(ctx)),
+    // It stays at the top (under the app's bar) on a long conversation, so the ⋯ is always there.
+    h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
     h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     cost,
     list.childElementCount ? null : empty,
@@ -632,6 +634,7 @@ function undoLine(ctx, scope, list) {
  * Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
  * Neither deletes a line: the earlier ones stay in the conversation, searchable and recallable (spec §6.5, §16.2).
  * @param {any} ctx
+ * @returns {{ el: HTMLElement, status: HTMLElement }} the ⋯ and its menu, and a line that says "Starting fresh…" while Start fresh runs
  */
 function tidyMenu(ctx) {
   const agent = ctx.agent;
@@ -656,11 +659,14 @@ function tidyMenu(ctx) {
       if (r === 'done') ctx.render();
     },
   }, t`Summarize now`);
+  // The button is a ⋯, so sighted users read it here; the button's own name says it to a screen reader.
+  const status = h('span', { class: 'sub tidy-status', 'aria-hidden': 'true', hidden: true, text: t`Starting fresh…` });
   /** Start fresh runs: the toggle says so, and opens nothing meanwhile. @param {boolean} on */
   const working = (on) => {
     toggle.setAttribute('aria-busy', String(on));
     toggle.setAttribute('aria-disabled', String(on));
     toggle.setAttribute('aria-label', on ? t`Starting fresh…` : t`Tidy up the conversation`);
+    status.hidden = !on;
   };
   const fresh = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-fresh',
@@ -708,7 +714,7 @@ function tidyMenu(ctx) {
     offTap();
     document.removeEventListener('keydown', escape);
   });
-  return el;
+  return { el, status };
 }
 
 /**

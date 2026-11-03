@@ -149,9 +149,16 @@ export function planRows(items, bookings, { fallbackTz }) {
    * @param {{ apart: number, between: string[] } | null} span @param {string} [not] the item drawing the set
    */
   const rest = (base, view, endAt, kind, span, not) => {
-    const item = { ...view, fixed: true, start: endAt };
+    // The end isn't where the start is for a flight or train, nor for a car dropped somewhere else (named, when fields says where).
+    const drop = record(base.booking?.fields)?.dropoff;
+    const dropped = typeof drop === 'string' && drop.trim() ? { name: drop } : record(drop)?.name ? record(drop) : undefined;
+    const place = kind === 'flight' || kind === 'rail' ? undefined : kind === 'car' && drop !== undefined && drop !== null ? dropped : view.place;
+    const item = { ...view, fixed: true, start: endAt, place };
     /** @type {PlanRow} */
     const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };
+    // An end in another zone than the start's names it (an Arrive at 07:30 ET after a departure in PT).
+    const [from, to] = [view.start?.tz, endAt?.tz].map((z) => (validZone(z) ? z : fallbackTz));
+    if (end.at !== null && offsetMinutes(end.at, to) !== offsetMinutes(end.at, from)) end.endZone = zone(end.at, to);
     if (end.day && !(base.bookingPath && base.booking && standsFor(base.bookingPath, end, not))) out.push(end);
     const title = view.title;
     span?.between.forEach((day, k) => out.push({
@@ -162,8 +169,6 @@ export function planRows(items, bookings, { fallbackTz }) {
   for (const { path, item, ref } of own) {
     const booking = ref ? byPath.get(ref) ?? null : null;
     const span = setOf(item);
-    // Its end is its own row, or its booking's.
-    const view = span ? withoutEnd(item) : item;
     const marks = checkOf(booking);
     const base = {
       path, bookingPath: ref, booking, check: booking !== null && marks.whole, checkFields: booking ? marks.fields : [],
@@ -171,6 +176,8 @@ export function planRows(items, bookings, { fallbackTz }) {
     };
     const kind = String(booking?.kind ?? item.kind ?? '');
     const draws = span && (!booking || (ref && drawer.get(ref) === path));
+    // Its end is its own row, or its booking's; an item that is neither keeps its end (a second one for a booking with no times).
+    const view = draws || (span && booking && spanOf(booking)) ? withoutEnd(item) : item;
     out.push({ ...base, item: view, from: 'item', ...timesOf(view, fallbackTz), set: draws ? { kind, part: 'start' } : null, line: null });
     if (draws) rest(base, view, item.end, kind, span, path);
   }

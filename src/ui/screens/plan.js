@@ -114,9 +114,9 @@ function row(ctx, id, r, undo, here) {
   const it = r.item;
   // "Staying at Hotel Aurora Test · night 2 of 7", "Car · day 3 of 8": a quiet line, not a link (mockup 2b).
   if (r.line) return h('li', { class: 'plan-row night' }, h('span', { class: 'stay', text: lineName(r) }));
-  // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
+  // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so; so does an Arrive row ("07:30 EST").
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
-  const when = it.kind === 'all-day' ? t`All day` : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : r.time;
+  const when = it.kind === 'all-day' ? t`All day` : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : [r.time, r.endZone].filter(Boolean).join(' ');
   // A plugin's row (spec §16.4: plan-row), or annai's own, also when the plugin's fails.
   return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
     h('span', { class: 'when', text: when }),

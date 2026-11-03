@@ -75,7 +75,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   // It lands the next day, in another zone: its arrival is a row of its own there (the drive-test follow-ups, section 2).
   await expect(day.locator('.plan-row')).toHaveText(/^21:00●Fixed: UA 456 to San Francisco/);
   await tabs.nth(4).click();
-  await expect(day.locator('.plan-row')).toHaveText(/^00:30●Fixed: Arrive · UA 456 to San Francisco/);
+  await expect(day.locator('.plan-row')).toHaveText(/^00:30 PT●Fixed: Arrive · UA 456 to San Francisco/);
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
   await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
