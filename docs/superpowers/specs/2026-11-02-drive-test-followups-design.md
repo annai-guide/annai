@@ -176,11 +176,16 @@ New:
   taps and typing, and a heard turn she answers with words: not by audio chunks, turn edges or turns she dismisses. `#brief` clears only
   on a tap, typing, or a heard turn she answers. When the spell runs out while only a user turn (or its answer) is pending, that turn
   decides: an answer re-arms it, a dismissed turn closes the session.
-- **Sound that never stops closes it.** Two user turns in a row that end at the 15 s cap close the session (`noise`).
+- **Sound that never stops: Kokoro decides, annai never closes on it.** The user (2026-11-02): "for the close on 30s of noise, let's
+  make sure we do not cutoff actual exchange, looping back to maybe only kokoro should able to determine that." Two user turns in a row
+  that end at the 15 s cap don't close anything: annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop
+  sound for about 30 s, with what was heard in those turns. Kokoro reads it with the conversation and, if it is music, other people or
+  noise and not the user talking to Shiori, tells Koe to sleep; otherwise it does nothing. Once per stretch: not again until a turn ends
+  on a pause. There is no `noise` close reason.
 - **Sleep, when the user asks or Kokoro says so.** Live Koe gets `sleep` (reverses plan decision 29), described as: only when the user
   asks you to sleep or stop listening, or a note from Kokoro tells you to. It closes the session like a tap (`sleep`). Kokoro's part says
   it may tell Koe to sleep when the live session is only hearing music, other people or noise. Koe (non-live) already has `sleep`.
-- New close reasons in the trace: `noise`, `sleep`. Plan decisions 12 and 29 get a line each saying what changed and why; a LESSONS.md
+- New close reason in the trace: `sleep`. Plan decisions 12 and 29 get a line each saying what changed and why; a LESSONS.md
   entry for decision 29 (an API reversed) is the main session's, not the builder's.
 - Not done: muting the mic while media plays (a web app can't see what the car stereo plays) and an on-phone music classifier (several
   MB, and sung lyrics still look like speech).
