@@ -173,20 +173,22 @@ New:
   an immediate note too.
 - **Urgent says it now.** An urgent event (an immediate note from Kokoro; a fired watch that is time-critical, if watches carry such a
   mark; otherwise immediate notes only) is said at once: never held behind a user turn in progress, and not cut by sound the detector
-  takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most). The mark belongs to the turn that answers the latest urgent note and ends with that turn however it ends (said, cut, dropped with its connection), or on a tap or close; a turn a newer urgent note cut off leaves it. Notes waiting go in after the urgent answer is said, not before.
+  takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most). The mark is set as the urgent note comes (a session it opens lets nothing in before it), belongs to the turn that answers the latest urgent note, and ends with that turn however it ends: said, answered by a silent tool or by nothing at all, cut by the player, dropped with its connection; or on a tap or close. A turn a newer urgent note cut off leaves it, and so does the end of a turn of the provider's begun before the note went in. Notes waiting go in after the urgent answer, not before.
 - **Noise rejection: only exchanges keep her listening.** The quiet spell is re-armed by her sound, words or tool calls, text going in,
   taps and typing, and a heard turn she answers with words: not by audio chunks, turn edges or turns she dismisses. `#brief` clears only
-  on a tap, typing, or a heard turn she answers (words, a card or a question; a tool call that answers nobody, such as already_told, doesn't). When the spell runs out while only a user turn (or its answer) is pending, that turn
+  on a tap, typing, or a heard turn she answers (words, a card or a question; a tool call that answers nobody, such as already_told, doesn't, though words after it do). When the spell runs out while only a user turn (or its answer) is pending, that turn
   decides: an answer re-arms it, a dismissed turn closes the session unless the detector still holds speech.
 - **Sound that never stops: Kokoro decides, annai never closes on it.** The user (2026-11-02): "for the close on 30s of noise, let's
   make sure we do not cutoff actual exchange, looping back to maybe only kokoro should able to determine that." When the quiet spell
   has run out (nothing exchanged for that long) and the sound goes on, that is sound that never stops (talk radio, people in the car,
-  music with dips): once a user turn that began after the lapse is itself let go (she answers it with nothing), or runs to the 15 s cap
-  with no pause, annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop sound, with the speech
+  music with dips): once a user turn that began after the lapse is itself let go (she answers it with nothing, the next turn cuts her answer before
+  a sound or a word of it, or it runs to the 15 s cap with no pause), annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop sound, with the speech
   recognition of that turn, as input she sees answered or not (never at the moment a turn begins: it may be the user asking). Kokoro
   reads it with the conversation and, if it is music, other people or noise and not the user talking to Shiori, tells Koe to sleep;
-  otherwise it does nothing. Her answering a turn (an exchange) ends the stretch. A sleep note from that Kokoro turn to a session that
-  has closed meanwhile (a quiet gap) is nothing: it opens no session. The quiet spell running out on a run the detector still holds
+  otherwise it does nothing. Her answering a turn (an exchange) ends the stretch. A note with no words for the user (go to sleep, its
+  final text) from a Kokoro turn woken for that alone, to a session that has closed meanwhile (a quiet gap), is nothing: it opens no
+  session; one with words for the user, or from a turn something else woke too, goes as ever. After the wake, the quiet spell can still
+  close it: a turn she lets go in a pause closes it. The quiet spell running out, or a let-go turn, on a run the detector still holds
   looks again 250 ms later, so a run let go as no turn doesn't leave the session open for good.
   Nothing closes by itself on sound; a real quiet spell (no sound, or a turn she lets go in a pause) still closes as before. There is
   no `noise` close reason.

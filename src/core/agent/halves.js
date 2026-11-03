@@ -70,14 +70,17 @@ const BOTH_CARD = 'model:both';
 
 export class Channel {
   /**
-   * @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void>, by?: Record<Side, () => any> }} c
-   *   by: the model each half's call that is running was answered by, for the notes it sends
+   * @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void>, by?: Record<Side, () => any>,
+   *   skip?: (n: { from: Side, why: NoteWhy, wake?: string, forUser: string }) => string | null }} c
+   *   by: the model each half's call that is running was answered by, for the notes it sends; skip: a note that is nothing now, neither
+   *   written nor handed over, and what its sender is told instead
    */
-  constructor({ log, deliver, cut, by }) {
+  constructor({ log, deliver, cut, by, skip }) {
     this.log = log;
     this.deliver = deliver;
     this.cut = cut;
     this.by = by;
+    this.skip = skip;
   }
 
   /**
@@ -87,9 +90,11 @@ export class Channel {
    * @param {boolean} [watched] Koe's turn that sends it is one the user is watching (isWatched): a note of Koe's is the user's only then
    * @param {string} [forUser] Kokoro's exact words for the user (tell_koe's for_user)
    * @param {{ by?: any }} [o] by: the model whose words it is, when not the sender's call running now (Kokoro's final text, after its turn)
-   * @returns {Promise<'sent'>}
+   * @returns {Promise<string>} 'sent', or what skip says
    */
   async send(from, text, mode, why, wake, call, watched = false, forUser = '', o = {}) {
+    const skipped = this.skip?.({ from, why, ...(wake ? { wake } : {}), forUser });
+    if (skipped) return skipped;
     const to = from === 'koe' ? 'kokoro' : 'koe';
     // Which model wrote it, taken now: annai's own notes to a half name none (the reviews of phone-fixes-1).
     const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
@@ -147,7 +152,7 @@ export class Halves {
   #answered = false;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
-  /** The ids of Kokoro's turns woken for non-stop sound: their notes to a live session that has closed meanwhile are dropped (#gate). @type {Set<string>} */
+  /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user, to a live session closed meanwhile, are nothing (Channel skip). @type {Set<string>} */
   #nonstop = new Set();
   /** Koe's reply asks Kokoro, so its question wakes Kokoro, not its answer (owed: unless the question fails). */
   #asking = false;
@@ -221,6 +226,10 @@ export class Halves {
       },
       // A live session's immediate note cuts Koe off itself.
       cut: { koe: () => { if (this.koeState !== 'live') this.koe.cutIn(); }, kokoro: () => this.kokoro.cutIn() },
+      // Kokoro's turn woken for non-stop sound alone, its note with no words for the user (go to sleep, nothing to do), to a live session
+      // that closed meanwhile: nothing, not a new session that listens and says good night. Whatever else woke the turn goes on as ever.
+      skip: ({ from, why, wake, forUser }) => (from === 'kokoro' && !forUser && !why.startsWith('gated:') && wake && this.#nonstop.has(wake) && this.koeState === 'live' && this.live.state === 'closed'
+        ? /* en */ 'Koe is already asleep; nothing more to do.' : null),
     });
     const serial = (/** @type {() => Promise<any>} */ fn) => this.#serial(fn);
     const ready = () => this.#ready;
@@ -237,7 +246,8 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
         logged: async (e, r) => {
           if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
-          if (e.type === 'wake' && e.data?.reasons?.some((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
+          const reasons = e.type === 'wake' ? e.data?.reasons ?? [] : [];
+          if (reasons.length && reasons.every((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
           if (this.#split) await this.koe.observe(e, r);
         },
         gate: (call) => this.#gate(call),
@@ -979,8 +989,6 @@ export class Halves {
   /** Kokoro's speak, show and ask while Koe talks become notes to Koe; its wait is answered (plan decision 15). @param {{ id: string, name: string, input: any, wake: string }} call */
   async #gate({ name, input, wake }) {
     if (!this.#works()) return null;
-    // The live session closed while Kokoro weighed non-stop sound: its note to Koe is nothing, not a new session to listen and say good night.
-    if (name === 'tell_koe' && this.#nonstop.has(wake) && this.koeState === 'live' && this.live.state === 'closed') return { content: /* en */ 'Koe is already asleep; nothing more to do.' };
     if (name === 'wait') return { content: /* en */ "Koe is talking with the user; what they say reaches you. Call sleep when you're done." };
     const text = name === 'speak' ? String(input?.text ?? '')
       : name === 'show' ? /* en */ `Kokoro wants to show: ${cardText(input?.card)}`
@@ -1106,7 +1114,10 @@ export class Halves {
     if (t.ok && t.finalText && !t.told && !t.slept) {
       told = true;
       this.#note(t.finalText, 'final-text', t.wakeId, t.by);
-    } else if (!told && this.koe.waiting) this.#nothingToAdd(...(t.ok && !this.#stopped.on ? [] : /** @type {const} */ ([/* en */ 'Kokoro was stopped.', 'stopped'])));
+    } else if (!told && this.koe.waiting) {
+      const stopped = !t.ok || this.#stopped.on;
+      this.#nothingToAdd(stopped ? /* en */ 'Kokoro was stopped.' : undefined, stopped ? 'stopped' : undefined, t.wakeId);
+    }
     if (told) {
       this.#answered = true;
       this.#asked = false;
@@ -1114,11 +1125,11 @@ export class Halves {
     }
   }
 
-  /** @param {string} [text] @param {NoteWhy} [why] */
-  #nothingToAdd(text = /* en */ 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add')) {
+  /** @param {string} [text] @param {NoteWhy} [why] @param {string} [wake] the turn of Kokoro's it ends */
+  #nothingToAdd(text = /* en */ 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add'), wake = undefined) {
     if (this.#nothingTold) return;
     this.#nothingTold = true;
-    this.#note(text, why);
+    this.#note(text, why, wake);
   }
 
   /**
