@@ -22,7 +22,7 @@ import { t } from '../l10n.js';
  *   heard or written; audible: its sound has started playing, so its words may show
  * @typedef {{ sent: number, spoke: boolean, timer: any }} Mark  an urgent note's (LiveKoe's #urgent)
  * @typedef {{ text: string }} Waiting  what waits to go in (LiveKoe's #notes)
- * @typedef {{ text: string, of: object, by: number, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
+ * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean, late?: boolean }} Hearing
  *   answered: her verdict came (dismissed: answered with nothing)
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
@@ -183,9 +183,12 @@ export class LiveKoe {
   #notes = [];
   /**
    * Kokoro's note for the stretch of non-stop sound (its sleep), waiting to go in (#sleepy): of: that stretch, nothing once it is over;
-   * by: the latest it waits for her verdict (0: not known yet, the user's turn goes on). @type {Late | null}
+   * by: the latest it waits for her verdict (0: not known yet, the user's turn goes on); more: the one wait past it was given.
+   * @type {Late | null}
    */
   #late = null;
+  /** Why the user's last turn ended (a cap: the next began at once, the same sound). @type {import('../realtime/input.js').TurnEnd | null} */
+  #endedBy = null;
   /**
    * Kokoro's notes for the user (§6.8): waiting to go in, gone in and not passed on, whether Koe was asked once more, and whether
    * that ask waits to go in. @type {{ waiting: Wake[], sent: Wake[], cued: boolean, cue: boolean }}
@@ -431,6 +434,7 @@ export class LiveKoe {
         this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } });
         // One begun after the spell ran out that went on to the cap, 15 s of sound with no pause, is let go now: the next begins at once.
         if (t.end === 'cap' && this.#lapsed && this.#hear?.late) this.#stretched(this.#hear);
+        this.#endedBy = t.end;
       },
     }));
     clearTimeout(this.#toPlayback);
@@ -647,7 +651,7 @@ export class LiveKoe {
     const note = wrapNote(text, this.c.nonce);
     if (stretch) {
       if (this.#late && this.#late.of === this.#stretch) this.#late.text += `\n${note}`;
-      else if (this.#stretch) this.#late = { text: note, of: this.#stretch, by: 0, timer: null };
+      else if (this.#stretch) this.#late = { text: note, of: this.#stretch, by: 0, more: false, timer: null };
       this.#sleepy();
       return Promise.resolve(true);
     }
@@ -925,6 +929,7 @@ export class LiveKoe {
       this.#trail = this.#t ?? newTurn();
       this.#trail.cut = true;
       this.#t = null;
+      this.#idle(); // what waited for her turn goes in now, as at any end of it
     } else if (e.type === 'turn') this.#complete();
     else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
@@ -1087,8 +1092,13 @@ export class LiveKoe {
    * (already_told), which alone doesn't. @param {boolean} dismissed @param {boolean} [reaches]
    */
   #answered(dismissed, reaches = !dismissed) {
-    // One that comes while the user's next turn goes on is the turn before's (let go as this one began), never this one's.
-    const h = this.#input?.active ? null : this.#hear;
+    // One that comes while the user's next turn goes on is the turn before's (let go as this one began), never marked on this one; an
+    // answer still ends the stretch (#exchanged): the user was in it.
+    if (this.#input?.active) {
+      if (reaches) this.#exchanged();
+      return this.#chain;
+    }
+    const h = this.#hear;
     if (!h) return this.#chain;
     if (!h.answered) Object.assign(h, { answered: true, dismissed });
     if (reaches && !h.dismissed) this.#exchanged();
@@ -1271,18 +1281,27 @@ export class LiveKoe {
    * (#exchanged), or it closed. Else it goes in on the urgent path, so the next turn of the music can't cut her sleep call; never owed.
    * Her own turn, a tool call or an urgent note goes first. A user turn going on, or one awaiting her verdict, may be the user talking
    * to her: it waits for that verdict, at most STRETCH_WAIT_MS after that turn ends. Answered, the stretch is over; dismissed, it goes in
-   * at once; no verdict by then, or the next turn going on, holds it no longer (that turn is cut, as an urgent note cuts one).
+   * at once. At that bound a user turn going on is let end, and it or one ended since gets its own STRETCH_WAIT_MS, once; then no
+   * verdict, or the next turn going on, holds it no longer (that turn is cut, as an urgent note cuts one).
    */
   #sleepy() {
     const n = this.#late;
     if (!n) return;
     clearTimeout(n.timer);
     if (n.of !== this.#stretch || this.state !== 'open') return void (this.#late = null);
-    if (this.#hers() || this.#urgent || this.#closing) return; // each calls #idle as it ends
+    // Each calls #idle as it ends; a session told to go (GoAway) takes it once the next is ready, never the one being left.
+    if (this.#hers() || this.#urgent || this.#closing || this.#rotate) return;
     const going = Boolean(this.#input?.active);
     const due = this.#due?.text === null;
     if (going && !n.by) return; // its end sets the bound (#activity)
     n.by ||= due ? this.#endedAt + STRETCH_WAIT_MS : Date.now();
+    // At the bound, a user turn going on is never cut, nor one ended since pre-empted: it gets its own wait for her verdict, once. One
+    // the cap's end began at once is the same sound (steady music), not the user beginning: none.
+    if ((going || due) && Date.now() >= n.by && !n.more && !(going && this.#endedBy === 'cap')) {
+      n.more = true;
+      n.by = going ? 0 : this.#endedAt + STRETCH_WAIT_MS;
+      return this.#sleepy();
+    }
     if ((going || due) && Date.now() < n.by) return void (n.timer = setTimeout(() => this.#sleepy(), n.by - Date.now()));
     this.#late = null;
     this.#stretch = null; // its note is in: a later stretch may wake Kokoro again
