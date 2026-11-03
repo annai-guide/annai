@@ -101,10 +101,18 @@ New:
   with words saying what to write. An unknown zone is never compared, only stored as written.
 - **Stored records are never touched.** Keys already stored, aliases or unknown, stay as they are and never block a patch or an edit. A
   whole write renames what it is given, copied stored keys included (so a copied `checkin` beside a `start` is the same time, or is
-  refused with "write start as {...} in place of checkin"). A null alias in a patch deletes its own field and the stored alias key; a
-  null in a whole write is the same as no key. A patch's place made from a location or pick-up replaces the stored place (address and
-  position go); an address alone sets only the address; a booking left with a place that has no name is named from its address. An
-  edit that adds an alias is refused naming the format's field. Legs appended with `flights+` move `end` to the last leg's arrival.
+  refused with "write start as {...} in place of checkin"). In a patch, a renamed key also sets its own name to null, so a copy stored
+  under it goes at once and the double state never forms (`+` forms append and never delete); a null alias deletes its own field and
+  the stored alias key (`total: null` clears `cost` and `fields.total`). In a whole write a null is the same as no key, except
+  `unsure`, which the format check refuses. An edit that adds an alias is refused naming the format's field. Legs appended with
+  `flights+` move `end` to the last leg's arrival. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+- **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
+  location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
+  null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or
+  `place: null` (or `location: null`) beside a non-null alias, are refused naming both. What is stale is decided in `shioriBooking`,
+  which sees the stored booking and the merged one: if the merged place's name differs from the stored one and this patch does not give
+  the address or lat/lng, they are the old place's and go. A place left with a name that is blank is named from its address (a drop-off
+  at that same address is then the place, not `fields.dropoff`).
 - **Unknown keys:** only a top-level key this write introduces that the schema in force doesn't list is refused, with words naming the
   format's fields and `fields`. The schema stays open, so the user's own edits, Undo, Restore and imports work as before.
 - **Plugins** add fields inside `fields` (any key) or as top-level properties of a booking schema they register.
