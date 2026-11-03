@@ -315,7 +315,7 @@ test('fix pass 2, 1: a place alias in a patch replaces the stored place whole; a
   const stay = { ...base, kind: 'lodging', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test', address: '1 Test St', lat: 61.2, lng: -149.9 } };
   await ws.write(trip, '/bookings/s.json', stay, { author: 'user' });
   await run('patch', { path: '/trip/bookings/s.json', changes: { address: '2 Test St' } });
-  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).place, { name: 'Hotel Aurora Test', address: '2 Test St', lat: 61.2, lng: -149.9 });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).place, { name: 'Hotel Aurora Test', address: '2 Test St' }); // the old position went with the old address
   await run('patch', { path: '/trip/bookings/s.json', changes: { location: 'Hotel Borealis Test' } });
   assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).place, { name: 'Hotel Borealis Test' });
   // A car's pick-up moved: the old address and coordinates go with the old place.
@@ -393,7 +393,9 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
   };
   // The same name: the rest of the place stays, and what is given replaces.
   assert.deepEqual(await patch({ location: { lat: 61.2, lng: -149.9 } }), { name: 'Hilton Airport', address: '1 Airport Rd', lat: 61.2, lng: -149.9 });
-  assert.deepEqual(await patch({ address: '2 Test St' }), { name: 'Hilton Airport', address: '2 Test St', lat: 61.17, lng: -149.99 });
+  // Another address: the old position goes, unless this write gives one.
+  assert.deepEqual(await patch({ address: '2 Test St' }), { name: 'Hilton Airport', address: '2 Test St' });
+  assert.deepEqual(await patch({ location: { address: '2 Test St', lat: 61.2, lng: -149.9 } }), { name: 'Hilton Airport', address: '2 Test St', lat: 61.2, lng: -149.9 });
   // Another name: the address and position of the old place go, unless this write gives them (even as they were).
   assert.deepEqual(await patch({ location: 'Downtown Inn' }), { name: 'Downtown Inn' });
   assert.deepEqual(await patch({ place: { name: 'Downtown Inn' } }), { name: 'Downtown Inn' });
@@ -401,7 +403,7 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
   assert.deepEqual(await patch({ location: { name: 'Downtown Inn', lat: 61.2, lng: -149.9 } }), { name: 'Downtown Inn', lat: 61.2, lng: -149.9 });
   // A pick-up's location is the name, its address the address.
   assert.deepEqual(await patch({ pickup: { location: 'Downtown desk', address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Downtown desk', address: '5 Main St' });
-  assert.deepEqual(await patch({ pickup: { address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Hilton Airport', address: '5 Main St', lat: 61.17, lng: -149.99 });
+  assert.deepEqual(await patch({ pickup: { address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Hilton Airport', address: '5 Main St' });
   // Nulls: an address null removes the address, a location null the place.
   assert.deepEqual(await patch({ address: null }), { name: 'Hilton Airport', lat: 61.17, lng: -149.99 });
   assert.equal(await patch({ location: null }), undefined);

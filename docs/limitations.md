@@ -114,3 +114,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** freeing one would remove part of the other's history, which the user can still restore; telling the two apart safely needs more logic for a rare case.
 - **Revisit when:** the user meets it.
 - **Approved:** 2026-11-01, the user: "Yes, a limitation (Recommended)".
+
+### Adding a flight leg to a booking saved before 2026-11-03 can split its legs
+- **Kind:** known limitation.
+- **What the user sees:** a flight booking Shiori saved before this update may keep its legs under an old top-level `flights` list. If she later appends a leg to it ("add the connecting flight"), the new leg goes under the booking's extra fields and the old ones stay where they were: the Plan keeps the flight's start, but its arrival may not move to the new last leg. Bookings saved from now on are not affected.
+- **Why:** annai renames only what a save gives and never rewrites what is stored; moving old legs on an append would add a special case for old records only.
+- **Revisit when:** the user meets it. Asking Shiori to rewrite the booking fixes it.
+- **Approved:** 2026-11-03, the user: "Known limitation (Recommended)".
