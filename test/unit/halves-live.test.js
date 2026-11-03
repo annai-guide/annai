@@ -222,8 +222,10 @@ test("voice on with a realtime Koe: a tap opens a session with Koe's live instru
     assert.match(system, /<today>\ntrip: Big Sur/);
     assert.ok(system.includes(`Kokoro's notes carry id="${k.agent.nonce}".`));
     const names = setup.tools[0].functionDeclarations.map((/** @type {any} */ f) => f.name);
-    for (const n of ['show', 'ask', 'recall', 'list', 'read', 'write', 'tell_kokoro']) assert.ok(names.includes(n), n);
-    for (const n of ['speak', 'wait', 'sleep']) assert.ok(!names.includes(n), `no ${n}: it speaks natively, and its turns end by themselves`);
+    for (const n of ['show', 'ask', 'recall', 'list', 'read', 'write', 'tell_kokoro', 'sleep']) assert.ok(names.includes(n), n);
+    for (const n of ['speak', 'wait']) assert.ok(!names.includes(n), `no ${n}: it speaks natively, and its turns end by themselves`);
+    // Its sleep closes the session, only when the user asks or Kokoro says so (the drive-test follow-ups, reversing plan decision 29).
+    assert.match(setup.tools[0].functionDeclarations.find((/** @type {any} */ f) => f.name === 'sleep').description, /a note from Kokoro tells you to/);
     assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1);
     assert.equal(k.platform.sessions.at(-1), 'play-and-record');
     assert.deepEqual(await blocks(k), ['live-open']);
@@ -785,6 +787,28 @@ test("a tap that closes a live session with Kokoro's note still owed says and sh
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await soon(async () => texts(k).some((t) => t.includes('Big Sur story')));
+  } finally {
+    await k.done();
+  }
+});
+
+test("a sleep (Koe's, from Kokoro or the user) that closes a live session with Kokoro's note still owed hands it on, its words for the user shown, as any close but a tap does (fix pass 1)", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // the user is still speaking
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    k.agent.live.close('sleep');
+    await settled(k);
+    assert.equal(k.agent.live.state, 'closed');
+    assert.ok(!texts(k).some((t) => t.includes('Big Sur story')), 'it never went in');
+    const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    assert.deepEqual(shown, ['Highway 1 took from 1919 to 1937 to build.'], 'shown as text, not lost with the sleep');
   } finally {
     await k.done();
   }

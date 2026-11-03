@@ -64,14 +64,14 @@ export class LiveInput {
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
-   *   speaking?: () => boolean, duplex?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void, onOver?: () => void,
+   *   speaking?: () => boolean, duplex?: () => boolean, deaf?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void, onOver?: () => void,
    *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null }) => void }} o
    *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
-   *   speaking now (else half-duplex); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
+   *   speaking now (else half-duplex); deaf: whether nothing heard is the user's now (an urgent line of hers, said whole); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
    *   maxMs: a turn's longest (the iPhone trace: one ran on for 29 s); onOver: speech begun over her was let go
    */
   constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,
-    speaking = () => false, duplex = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn, onOver }) {
+    speaking = () => false, duplex = () => false, deaf = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn, onOver }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
@@ -81,6 +81,7 @@ export class LiveInput {
     this.bargeInDb = bargeInDb;
     this.speaking = speaking;
     this.duplex = duplex;
+    this.deaf = deaf;
     this.tailMs = tailMs;
     this.maxMs = maxMs;
     this.onLevel = onLevel;
@@ -152,6 +153,10 @@ export class LiveInput {
       this.#resampler = new StreamResampler(sampleRate, this.rate);
     }
     const d = this.#detector;
+    if (this.deaf()) {
+      this.#was = this.speaking();
+      return this.#deaf(d);
+    }
     const playing = this.speaking();
     // Her voice's first frames, if speech had begun just before (held, or loud frames in the last 40 ms, which her voice can't be yet:
     // she is let go, at the cap or in a noisy room, as a word begins), are still heard: the user's.

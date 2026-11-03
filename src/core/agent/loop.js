@@ -50,8 +50,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string }} Wake
- *   by: a note's, the model that wrote it
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string, urgent?: boolean }} Wake
+ *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
  *   written into another conversation, the one it came from
@@ -61,6 +61,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
  *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
+ *   urgent: a trigger with an urgent watch, said at once in a live voice session (drive-test design §7);
  *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation;
  *   watched: Koe's note, or its "answered the user" cue, was made by a Koe turn the user is watching (isWatched); forUser: Kokoro's exact words
  *   for the user with its note (tell_koe's for_user), all annai ever shows of it (§7.1); retold: the note, never passed on, went to Koe's next turn again
@@ -107,6 +108,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
  * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
+ * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -138,6 +140,8 @@ const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
 const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
 
+/** A live Koe's sleep (the drive-test follow-ups). */
+/* en */ const LIVE_SLEEP = 'Stop listening: the live session closes, the microphone with it. Only when the user asks you to sleep or stop listening, or a note from Kokoro tells you to.';
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
@@ -927,7 +931,8 @@ export class Agent {
 
   /** A live session's tools (K5): this half's now, less speak, wait and sleep (plan decision 29). */
   async liveTools() {
-    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait', 'sleep'].includes(t.name));
+    // A live session's sleep closes it, the microphone with it, as a tap does (the drive-test follow-ups, reversing plan decision 29).
+    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait'].includes(t.name)).map((t) => (t.name === 'sleep' ? { ...t, description: LIVE_SLEEP } : t));
   }
 
   /** The user is watching this half's turn (its wakes include one of theirs, isWatched): its notes to the other half say so. */
@@ -1738,8 +1743,12 @@ export class Agent {
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
     const unanswered = () => wrote || (theirs && !this.#facts.told);
-    /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
-    const join = (more) => {
+    /**
+     * Wakes joining the turn (first: those that began it): what they owe; not a note a reply that reached the user had read already (a
+     * wake can trail its note). @param {Wake[]} more @param {boolean} [first]
+     */
+    const join = (more, first = false) => {
+      if (!first) this.#half.joined?.(wakeId);
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(isTheirs);
@@ -1747,7 +1756,7 @@ export class Agent {
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
     };
-    join(wakes);
+    join(wakes, true);
     let nudged = false;
     let silent = false;
     /** Steps since the cue that still owed the user (Koe's). */

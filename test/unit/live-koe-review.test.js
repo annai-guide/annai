@@ -287,7 +287,7 @@ test('item 9 (probe I): a trigger while the page is out of view shows its remind
   }
 });
 
-test("item 11 (consent): a session a trigger opened listens after it speaks only for the answer window (Settings → Voice's \"Listen for an answer\"), not the quiet spell; once the user speaks, or taps, the spell holds", async () => {
+test("item 11 (consent): a session a trigger opened listens after it speaks only for the answer window (Settings → Voice's \"Listen for an answer\"), not the quiet spell; once the user taps (or types, or she answers what she heard), the spell holds", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'thanks', said: 'You are welcome.', audio: tone(0.1) }]);
   try {

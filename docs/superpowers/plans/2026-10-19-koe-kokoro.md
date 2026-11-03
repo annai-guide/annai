@@ -314,6 +314,7 @@ The design leaves these to the builder. Each line says why.
       - short enough that the car's music returns to full Bluetooth quality soon;
       - the free tier isn't spent holding a session open;
       - the microphone isn't left open (privacy).
+    - Changed 2026-11-02 (drive-test follow-ups §6): only exchanges hold the spell (her sound, words or tool calls, text going in, a tap or typing, a heard turn she answers), not sound going in, since car music kept a session open the whole drive. Non-stop sound (a user turn that began after the quiet spell ran out on one is let go, or reaches the 15 s cap) wakes Kokoro, who decides whether Koe sleeps; annai never closes on it, so a user talking on is never cut off.
 13. **Barge-in by voice is on, with a tap always cutting in.** While Koe plays, the detector needs a louder start (+6 dB over its floor) before it sends `activityStart`. A setting, "Cut her off by speaking", turns voice barge-in off, leaving the tap.
     - Why: realtime models are chosen for cutting in. A car's echo can trip it, so the margin and the switch are there until the device check settles it.
 14. **Notes into a live session are `clientContent` text turns** wrapped in `<from_kokoro>…</from_kokoro>`.
@@ -374,6 +375,7 @@ The design leaves these to the builder. Each line says why.
     - Why: a handle resumes a conversation on the server, so it is treated like a credential. Nothing new is stored.
 29. **A live Koe has no `speak`, `wait` or `sleep`.**
     - Why: it speaks natively, its turn ends by itself, and the "Kokoro is working" sign follows Kokoro's own state. Fewer tools also keep the session's setup small (the spike's setup was about 580 tokens).
+    - Changed 2026-11-02 (drive-test follow-ups §6): a live Koe has `sleep` again, which closes the session as a tap does (`sleep` in the trace), used only when the user asks or a note from Kokoro says so. Why: the user wanted to put her to sleep by voice, and Kokoro, the more capable model, to stop a session that only hears music, other people or noise.
 
 ---
 

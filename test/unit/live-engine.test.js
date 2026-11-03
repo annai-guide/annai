@@ -473,3 +473,102 @@ test("a plan item removed and made again remembers what it fired, as the log doe
   await k.stay(BIXBY, at('09:34'), at('09:40'));
   assert.equal(await arrived(), 1);
 });
+
+/** Driving south from Monterey at 12–15 m/s, a fix every 5 s from t0 for so many seconds; returns where it ended. @param {any} k @param {number} t0 @param {number} secs */
+async function fastFrom(k, t0, secs) {
+  let p = MONTEREY;
+  for (let s = 0; s <= secs; s += 5) {
+    const speed = 12 + (s % 20) / 5; // 12 to 15 m/s
+    p = off(p, 0, -speed * 5);
+    await k.fix(t0 + s * 1000, p, { speed });
+  }
+  return p;
+}
+
+test('parking after a drive: the slower speed held completes on the recheck, not only on a new fix; no fix for 2 min reads as still (drive test 2026-11-02)', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const leftFast = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', edge: 'stop' }, fallback: 'Stopped driving.' });
+  const p = await fastFrom(k, at('17:00'), 300);
+  assert.equal(k.live.activity, 'moving-fast');
+  const parked = off(p, 0, -30);
+  /** @type {string[]} */
+  const seen = [];
+  k.registry.list('activity')[0].onChange(() => { seen.push(k.live.activity); });
+  for (const [t, speed] of /** @type {const} */ ([['17:05:10', 0.8], ['17:05:30', 1.3], ['17:05:55', 1.5]])) await k.fix(at(t), parked, { speed });
+  await k.to(at('17:06:09'));
+  assert.equal(k.live.activity, 'moving-fast', 'the slower speed has held 59 s');
+  await k.to(at('17:06:10'));
+  assert.equal(k.live.activity, 'walking', 'a minute after the first slow fix, with no new fix');
+  assert.deepEqual(k.agent.wakes.filter((w) => w.text.includes(leftFast.id)).length, 1, 'the activity watch fired on the recheck');
+  await k.to(at('17:07:54'));
+  assert.equal(k.live.activity, 'walking');
+  await k.to(at('17:07:55'));
+  assert.equal(k.live.activity, 'still', 'no fix for 2 min after a slow speed');
+  assert.match(k.live.nowInfo().activity, /^still$/);
+  assert.deepEqual(seen, ['walking', 'still']);
+});
+
+test('a tunnel: moving fast, then 3 min with no fix, stays moving fast', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  await fastFrom(k, at('17:00'), 300);
+  await k.to(at('17:08'));
+  assert.equal(k.live.activity, 'moving-fast');
+});
+
+test('after parking with no more fixes, arrived and dwell fire on the recheck', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  await k.fix(at('17:00'), MONTEREY, { speed: 0 });
+  const arrived = await k.live.setWatch(k.trip, { when: { type: 'arrived', minutes: 3 }, fallback: 'Arrived.' }); // set where the drive starts
+  const p = await fastFrom(k, at('17:00:05'), 300);
+  const parked = off(p, 0, -30);
+  const dwell = await k.live.setWatch(k.trip, { when: { type: 'dwell', lat: parked.lat, lng: parked.lng, radius: 25, minutes: 5 }, fallback: 'Five minutes here.' });
+  for (const [t, speed] of /** @type {const} */ ([['17:05:10', 0.8], ['17:05:30', 1.3], ['17:05:55', 1.5]])) await k.fix(at(t), parked, { speed });
+  const fired = (/** @type {string} */ id) => k.agent.wakes.filter((w) => w.text.includes(id)).length;
+  const since = /** @type {number} */ (k.live.stop?.since);
+  assert.ok(since >= at('17:05') && since <= at('17:05:10'), 'the stop began as the car slowed');
+  await k.to(since + 3 * 60_000 - 1000);
+  assert.equal(fired(arrived.id), 0);
+  await k.to(since + 3 * 60_000);
+  assert.equal(fired(arrived.id), 1, 'arrived: 3 min after the stop began, no new fix');
+  await k.to(at('17:10:09'));
+  assert.equal(fired(dwell.id), 0);
+  await k.to(at('17:10:10'));
+  assert.equal(fired(dwell.id), 1, 'dwell: 5 min inside, no new fix');
+});
+
+test('a plugin change while a slower speed is being held does not drop the change (the GPS restarts only after time off screen)', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const p = await fastFrom(k, at('17:00'), 300);
+  const parked = off(p, 0, -30);
+  for (const [t, speed] of /** @type {const} */ ([['17:05:10', 0.8], ['17:05:30', 1.3], ['17:05:55', 1.5]])) await k.fix(at(t), parked, { speed });
+  await k.to(at('17:05:56'));
+  k.registry.add('test', 'sensor', { kind: 'other', start: () => () => {} }); // a plugin installed meanwhile: the sensors are looked at again
+  await k.settle();
+  await k.to(at('17:06:10'));
+  assert.equal(k.live.activity, 'walking', 'a minute after the first slow fix, as without the plugin change');
+});
+
+test('an urgent watch (drive-test design §7): stored with its mark, said so when set and listed, and its wake carries it; a plain one does not', async () => {
+  const { validate } = await import('../../src/core/schema.js');
+  const { WATCH_SCHEMA } = await import('../../src/core/live/watches.js');
+  const base = { id: 'w-1', owner: 'shiori', when: { type: 'time', at: iso('10:00') }, fallback: 'Leave now.' };
+  assert.deepEqual(validate(WATCH_SCHEMA, { ...base, urgent: true }), []);
+  assert.deepEqual(validate(WATCH_SCHEMA, { ...base, urgent: false }), []);
+  assert.deepEqual(validate(WATCH_SCHEMA, base), []);
+  assert.notDeepEqual(validate(WATCH_SCHEMA, { ...base, urgent: 'yes' }), []);
+  const k = await liveKit({ live: false });
+  const leave = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Leave now for the last ferry.', urgent: true });
+  const plain = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Tea time.', urgent: false });
+  assert.equal(leave.urgent, true);
+  assert.equal('urgent' in plain, false, 'absent is false');
+  const stored = (await readWatches(k.ws, k.trip)).watches;
+  assert.deepEqual([stored.find((w) => w.id === leave.id)?.urgent, stored.find((w) => w.id === plain.id)?.urgent], [true, undefined]);
+  assert.match(k.live.watchText(leave), /^Set w-\S+: at \S+, urgent\./);
+  assert.ok((await k.live.listWatches(k.trip)).includes(`${leave.id}\tshiori\tat ${iso('10:00')}, urgent\tno\t`));
+  await k.to(at('10:00'));
+  assert.equal(k.agent.wakes.length, 1);
+  assert.equal(k.agent.wakes[0].urgent, true);
+  await k.to(at('11:00'));
+  assert.equal(k.agent.wakes.length, 2);
+  assert.equal('urgent' in k.agent.wakes[1], false);
+});

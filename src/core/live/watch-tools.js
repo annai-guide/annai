@@ -12,7 +12,7 @@ export function watchTools(live) {
       // Read each time the tools are sent: a plugin may have added a trigger type (spec §11.3).
       get description() {
         const lines = [...live.types().values()].map((t) => `- ${t.summary}`).join('\n');
-        /* en */ return `Set a watch: annai wakes you when it fires, and says why. when.type is one of:\n${lines}\nfallback (required): what annai shows, and says with voice on, by itself if you can't be reached when it fires, such as "Low tide at Pfeiffer Beach in 30 minutes." repeat: fire every time, not just once (every always repeats; time never does). expires: an ISO date-time after which it is dropped. Location, distance and activity watches need GPS on; time and every watches work whenever annai is on screen. The plan already sets its own reminders (leave, arrived, running late, off plan): don't add those.`;
+        /* en */ return `Set a watch: annai wakes you when it fires, and says why. when.type is one of:\n${lines}\nfallback (required): what annai shows, and says with voice on, by itself if you can't be reached when it fires, such as "Low tide at Pfeiffer Beach in 30 minutes." repeat: fire every time, not just once (every always repeats; time never does). expires: an ISO date-time after which it is dropped. urgent: set it only when the alert loses its point if late (a turn coming up, leave now, a last train or ferry): in a live voice session it is said at once, over music or talk; never for routine reminders. Location, distance and activity watches need GPS on; time and every watches work whenever annai is on screen. The plan already sets its own reminders (leave, arrived, running late, off plan): don't add those.`;
       },
       get input() {
         return {
@@ -28,6 +28,7 @@ export function watchTools(live) {
             },
             fallback: { type: 'string', minLength: 1, maxLength: 500 },
             repeat: { type: 'boolean' },
+            urgent: { type: 'boolean' },
             expires: { type: 'string' },
           },
         };
@@ -36,7 +37,7 @@ export function watchTools(live) {
     },
     {
       name: 'watch_list', pluginId: core, group: 'Time',
-      description: "Your watches in this conversation, and the plan's own reminders, as TSV: id, owner, when, repeat, reminder, expires, last_fired.",
+      description: "Your watches in this conversation, and the plan's own reminders, as TSV: id, owner, when (ending \", urgent\" for an urgent one), repeat, reminder, expires, last_fired.",
       input: { type: 'object', properties: {} },
       run: async (/** @type {any} */ _i, /** @type {any} */ call) => live.listWatches(call.scope),
     },
