@@ -51,6 +51,8 @@ const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
 const REVIEW = /* en */ "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+/** Non-stop sound in a live session (two turns in a row at the 15 s cap): Kokoro decides whether Koe sleeps. @param {string} heard */
+/* en */ const NONSTOP = (heard) => `the live session's microphone has heard non-stop sound for about 30 seconds${heard ? `; the speech recognition made of it: ${heard}` : ', with no words recognised'}. If it is music, other people or noise and not the user talking to Shiori, tell Koe to go to sleep; otherwise do nothing.`;
 /** Words for the user as annai shows them: a leading "Say:" (an instruction to Koe) goes, and the first letter is a capital. @param {unknown} text */
 const forUserText = (text) => String(text ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** The conversation's lines, for the review. */
@@ -314,6 +316,7 @@ export class Halves {
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),
       left: (notes) => this.#leftUnsaid(notes),
+      noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true }),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.

@@ -17,25 +17,31 @@ import { t } from '../l10n.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean, urgent?: boolean }} Turn  one of Koe's; held: its sound until a real word;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
- *   heard or written; audible: its sound has started playing, so its words may show
+ *   heard or written; audible: its sound has started playing, so its words may show; urgent: begun after
+ *   an urgent note, its answer
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean }} Hearing
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
- *   held?: () => Promise<void> | null, saying?: (words: string) => void }} LiveHost
+ *   held?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; saying: her words so far, while she speaks
- *   them (the dock's bubble), as the transcript grows; her line is written once, at the end
+ *   them (the dock's bubble), as the transcript grows; her line is written once, at the end; noisy: the microphone has heard
+ *   non-stop sound (two turns in a row at the cap), with what was heard in them: Kokoro decides whether Koe sleeps
  */
 
 /** Tool answers that add no speech (decision 10). */
-const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told'];
+const SILENT = ['tell_kokoro', 'show', 'ask', 'already_told', 'sleep'];
+/** Opens the user asked for: they listen with the quiet spell; any other (a trigger, a note, back in view) listens only briefly. */
+const ASKED = ['tap', 'typed'];
+/** Closes the user (or Kokoro, through Koe's sleep) asked for: Kokoro's waiting notes go in with the next session, which starts fresh. */
+const ASLEEP = ['tap', 'sleep'];
 /** The ask once more, as a text Koe's (§6.8), in annai's words. */
 const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /** The ask again when the user's turn got no sound and no word (the watchdog, in a session that is alive). */
@@ -170,9 +176,23 @@ export class LiveKoe {
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
-  /** A session a trigger or a note opened listens only this long after it speaks, as Shiori's speak does (K2), until the user speaks or taps. */
+  /** A session a trigger or a note opened listens only this long after it speaks, as Shiori's speak does (K2), until the user taps or types, or she answers what she heard. */
   #answerMs = 8_000;
   #brief = false;
+  /** The quiet spell ran out while only the user's turn (or its answer) was pending: her answer re-arms it, a dismissed turn closes. */
+  #lapsed = false;
+  /**
+   * An urgent note (immediate) went in: the microphone is deaf until her answer to it is said, so sound the detector takes for speech
+   * (music) can't cut it.
+   */
+  #urgent = false;
+  /** User turns in a row that ended at the cap, what was heard in them, and whether Kokoro was told of this stretch (once, until a pause). */
+  #caps = 0;
+  /** @type {Hearing[]} */
+  #capHeard = [];
+  #capTold = false;
+  /** Wakes Kokoro about the stretch, once her answer to its last turn comes. @type {(() => void) | null} */
+  #capWake = null;
   /** Koe's sound's sample rate, and the microphone's as the session takes it. */
   #rate = 24_000;
   #inRate = 16_000;
@@ -240,6 +260,8 @@ export class LiveKoe {
    */
   async open(why, { mic = false } = {}) {
     if (this.state !== 'open') {
+      // Nobody asked to talk (a trigger, a note): it listens for an answer, not the quiet spell.
+      if (this.state === 'closed' && !this.#opening) this.#brief = !ASKED.includes(why);
       this.#opening ??= this.#start(why).finally(() => {
         this.#opening = null;
         this.#changed();
@@ -374,10 +396,13 @@ export class LiveKoe {
     }
     const input = (this.#input = new LiveInput({
       // Deaf while her sound plays, not while her turn's end is still to come after it (a quick reply then is heard whole).
-      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, onOver: () => void this.#talkedOver().catch(() => {}),
+      mic: p.mic, rate: this.#inRate, pauseMs, speaking: () => Boolean(this.#sounding?.stream?.queued()), duplex: () => this.#duplex, deaf: () => this.#urgent, onOver: () => void this.#talkedOver().catch(() => {}),
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
       // Each turn's end, why and in numbers only, for the Trace.
-      onTurn: (t) => { this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } }); },
+      onTurn: (t) => {
+        this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t } });
+        this.#capped(t.end);
+      },
     }));
     clearTimeout(this.#toPlayback);
     p.session('play-and-record');
@@ -441,13 +466,17 @@ export class LiveKoe {
     this.#again();
     // Kokoro's notes it owes: a page out of view has them go in once back (shown()), and the user's tap with the next session (the
     // iPhone trace, 2026-10-22: a tap had annai read one aloud); any other close hands them on (Halves).
-    if (why !== 'away' && why !== 'tap' && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
+    if (why !== 'away' && !ASLEEP.includes(why) && this.#owed.waiting.length) this.c.owed(this.#owed.waiting.splice(0));
     const was = this.state;
     // The user's turn going on ends first: no session is left waiting for its end.
     if (this.#input?.active) this.#s?.activity('end', {});
     this.#answer(undefined);
     this.state = 'closed';
     this.#watched = false;
+    this.#urgent = this.#lapsed = this.#capTold = false;
+    this.#caps = 0;
+    this.#capHeard = [];
+    this.#capWake = null;
     // A microphone is always let go, whatever came before; the user's words it cut off are kept, marked.
     this.#cutHearing();
     const input = this.#input;
@@ -466,7 +495,7 @@ export class LiveKoe {
     const s = this.#s;
     this.#s = null;
     if (!forget && s?.handle) this.#handle = s.handle;
-    if (why === 'tap') this.#handle = undefined; // the user stopped it: the next one starts fresh, with the last lines
+    if (ASLEEP.includes(why)) this.#handle = undefined; // the user (or Kokoro, through sleep) stopped it: the next one starts fresh, with the last lines
     this.voiced = this.#rotate = false;
     const fading = Boolean(this.#sounding?.stream);
     this.#cut(true);
@@ -511,6 +540,7 @@ export class LiveKoe {
 
   /** A tap on Shiori (§10.4): while she speaks, stops her and listens; while she listens, closes; else, with voice on, opens and listens. */
   tap() {
+    this.#brief = false;
     if (this.#sounding) {
       this.interrupt();
       this.listen();
@@ -520,7 +550,6 @@ export class LiveKoe {
       this.close('tap');
       return 'stopped';
     }
-    this.#brief = false;
     if (!this.c.voice?.on) return 'typing';
     if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
     this.open('tap', { mic: true }).catch(() => {});
@@ -593,6 +622,9 @@ export class LiveKoe {
     return this.open('note', { mic: Boolean(this.c.voice?.unlocked) }).then((ok) => {
       if (ok) {
         if (owed) this.#went([owed]);
+        // Urgent: said now, whole. The user's turn going on ends here, and the microphone is deaf until she has said it.
+        this.#urgent = true;
+        this.#input?.cut('voice');
         this.#text(note, this.#cut());
       }
       return ok;
@@ -650,7 +682,6 @@ export class LiveKoe {
    */
   async #go(why, undo) {
     if (!this.c.visible()) return true;
-    if (this.state === 'closed') this.#brief = true; // nobody asked to talk: it listens for an answer, not the quiet spell
     if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
       this.#idle();
       return true;
@@ -718,6 +749,7 @@ export class LiveKoe {
       return this.#arm();
     }
     this.#due = null;
+    this.#urgent = false;
     const again = !this.#rescued;
     /* en */ const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
     /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
@@ -741,7 +773,6 @@ export class LiveKoe {
     if (edge === 'start') {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
-      this.#brief = false; // the user talks: the quiet spell holds
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
       if (this.#sounding || this.#t || this.#pending || this.#queue.length) cut = this.#cut();
       this.#flushHeard(false);
@@ -751,7 +782,7 @@ export class LiveKoe {
       this.#trail = null;
       this.#endedAt = Date.now();
     }
-    this.#poke();
+    // Sound going in is no exchange (music is enough for the detector): only her answer to it re-arms the quiet spell.
     this.#send((s) => s.activity(edge, cut));
     this.#changed();
     if (edge === 'end') {
@@ -777,14 +808,14 @@ export class LiveKoe {
     if (this.state === 'closed') return;
     if (!this.c.visible()) return this.close('away');
     if (this.#keep && this.#hear) this.#hear.pcm.push(samples(b));
-    this.#poke();
     this.#send((s) => s.audio(b));
   }
 
   /** @param {LiveSession} s @param {import('../llm/contract.js').LiveEvent} e */
   #on(s, e) {
     if (s !== this.#s) return; // a connection being left
-    if (e.type !== 'usage' && e.type !== 'resume') this.#poke();
+    // Her sound, words or tool calls are an exchange; what was heard, and turn edges, are not.
+    if (e.type === 'audio' || e.type === 'tool' || (e.type === 'said' && realWord(e.text))) this.#poke();
     if (this.#answers(e)) {
       this.#answer(undefined); // it answers
       this.#rescued = false;
@@ -805,10 +836,10 @@ export class LiveKoe {
       this.#trail.cut = true;
       this.#t = null;
     } else if (e.type === 'turn') this.#complete();
-    else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
+    else if (e.type === 'tool') this.#tool(s, this.#turn(), e);
     else if (e.type === 'audio') {
       this.#trail = null;
-      const t = (this.#t ??= newTurn());
+      const t = this.#turn();
       t.bytes += e.data.length;
       if (t.stream) t.stream.push(samples(e.data));
       else if (!t.cut) t.held.push(e.data);
@@ -817,12 +848,17 @@ export class LiveKoe {
       if (!t.cut && !t.logged) t.said += e.text;
       this.#saying(t); // after the provider's turn ended, while her voice plays
     } else if (e.type === 'said') {
-      const t = (this.#t ??= newTurn());
+      const t = this.#turn();
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
       else this.#saying(t);
     }
     this.#changed();
+  }
+
+  /** Koe's turn now, a new one if none: one begun after an urgent note is its answer. */
+  #turn() {
+    return (this.#t ??= { ...newTurn(), urgent: this.#urgent });
   }
 
   /** Her words so far, for the bubble: only once her voice is heard, and never after it was cut. @param {Turn} t */
@@ -849,6 +885,8 @@ export class LiveKoe {
   #speak(t) {
     t.spoken = true;
     t.wordAt = Date.now();
+    this.#capWake?.();
+    if (this.#hear && !this.#hear.answered) this.#brief = false; // she answers what was heard: the user is in it
     this.#answered(false);
     if (this.#pending || this.#sounding) return void this.#queue.push(t); // after the one before it
     if (t.cut || this.#mayPlay(t)) return this.#play(t);
@@ -934,13 +972,19 @@ export class LiveKoe {
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
+    this.#capWake?.();
     if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
-    this.#answered(!t?.spoken && !t?.tools);
+    const dismissed = !t?.spoken && !t?.tools;
+    if (!dismissed) this.#poke(); // her turn ended: the quiet spell runs from here
+    this.#answered(dismissed);
+    if (t?.urgent && !t.spoken && !t.goesOn) this.#urgent = false; // nothing said for it: the microphone hears again
     if (t) t.done = true;
     if (!t?.calls) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
     this.#idle();
+    // The quiet spell ran out on the user's turn, and she let it go: nothing was exchanged.
+    if (dismissed && this.#lapsed && !this.busy && !this.c.asked()) this.close('quiet');
   }
 
   /** Koe's turn for what was heard began, or ended with nothing (dismissed): it is written. @param {boolean} dismissed */
@@ -1002,6 +1046,7 @@ export class LiveKoe {
   #said(t, playedMs) {
     if (t.logged) return;
     t.logged = true;
+    if (t.urgent) this.#urgent = false; // said: the microphone hears again
     const next = this.#sounding === t || this.#pending === t;
     if (this.#sounding === t) this.#sounding = null;
     if (this.#pending === t) this.#pending = null;
@@ -1015,6 +1060,7 @@ export class LiveKoe {
     }
     const cut = t.cut && !t.whole;
     if (text && cut) text += '✂';
+    if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
     if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, by: null, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
     if (next) this.#next();
     this.#idle();
@@ -1076,6 +1122,8 @@ export class LiveKoe {
       if (s === this.#s) answer(s);
       else if (this.state === 'open' && this.#handle) this.#send(answer);
       if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null; // a turn of a call alone, answered silently, is over
+      // The user asked her to sleep, or Kokoro said so: it closes as a tap does, once what she is saying has ended.
+      if (e.name === 'sleep' && !out.isError) this.closeSoon('sleep');
     } finally {
       t.calls--;
       this.#tools--;
@@ -1167,13 +1215,58 @@ export class LiveKoe {
     this.c.dropped(cut);
   }
 
-  /** Re-arms the quiet spell: no speech either way and no tool call for that long closes it (decision 12). */
+  /**
+   * Re-arms the quiet spell: no exchange (her sound, words or tool calls, text going in, a tap or typing) for that long closes it
+   * (decision 12; sound going in alone, music, never holds it).
+   */
   #poke() {
     clearTimeout(this.#quiet);
-    // Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is an answer the session still owes (#due): a text turn
-    // sent, or the user's turn ended, and nothing back yet, which with a slow model or network can be longer than the answer window.
-    // That wait has its own bound: #silent asks again, once, then lets the session go (SILENT_S each, so about twice that at most).
-    if (this.state !== 'closed') this.#quiet = setTimeout(() => (this.busy || this.c.asked() || this.#due ? this.#poke() : this.close('quiet')), this.#brief ? this.#answerMs : this.#quietMs);
+    this.#lapsed = false;
+    if (this.state !== 'closed') this.#quiet = setTimeout(() => this.#quietEnd(), this.#brief ? this.#answerMs : this.#quietMs);
+  }
+
+  /**
+   * The quiet spell ran out. Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is her own turn, a tool call, or
+   * a text turn's answer still owed (#due; #silent bounds that wait). Only the user's turn going on, or its answer, left: that turn
+   * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete). Else it closes.
+   */
+  #quietEnd() {
+    const hers = Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
+    if (hers || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
+    if (this.#input?.active || this.#due) {
+      this.#lapsed = true;
+      return undefined;
+    }
+    return this.close('quiet');
+  }
+
+  /**
+   * A user turn ended: two in a row at the cap (non-stop sound for about 30 s) wake Kokoro once, with what was heard in them, and it
+   * decides whether Koe sleeps (annai never closes on it: it may be the user talking on). Once per stretch: again only after a pause.
+   * @param {string} end
+   */
+  #capped(end) {
+    if (end !== 'cap') {
+      this.#caps = 0;
+      this.#capHeard = [];
+      if (end === 'pause') this.#capTold = false;
+      return;
+    }
+    this.#caps++;
+    if (this.#hear) this.#capHeard.push(this.#hear);
+    if (this.#caps < 2 || this.#capTold) return;
+    this.#capTold = true;
+    // Its words come with her answer to it (or nothing, SILENT_S): Kokoro is woken then.
+    const heard = this.#capHeard.splice(0);
+    const gen = this.#gen;
+    const timer = setTimeout(() => this.#capWake?.(), SILENT_S * Math.max(125, this.c.secondMs ?? 1000));
+    this.#capWake = () => {
+      clearTimeout(timer);
+      this.#capWake = null;
+      // The turn going on now has the stretch's latest words, and those that came after its turns ended.
+      if (this.#hear && !heard.includes(this.#hear)) heard.push(this.#hear);
+      if (gen === this.#gen) this.c.noisy?.(heard.map((h) => cleanSaid(h.text)).filter(Boolean).join(' '));
+    };
   }
 
   /** Today's spend reached (Spend per day): none opens, and one open closes, with the budget card. @returns {Promise<boolean>} */
