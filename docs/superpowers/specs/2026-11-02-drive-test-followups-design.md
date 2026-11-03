@@ -186,7 +186,7 @@ New:
   recognition of that turn, as input she sees answered or not (never at the moment a turn begins: it may be the user asking). Kokoro
   reads it with the conversation and, if it is music, other people or noise and not the user talking to Shiori, tells Koe to sleep;
   otherwise it does nothing. Her answering a turn (an exchange) ends the stretch. A note with no words for the user (go to sleep, its
-  final text) from a Kokoro turn woken for that alone (its first wake line; the line joining a turn something else woke doesn't count)
+  final text) from a Kokoro turn woken for that alone (its first wake line; the line joining a turn something else woke doesn't count, and anything that joins it later, Koe's question or another wake, makes it a turn of its own whose notes are never dropped)
   is for that stretch, and is nothing once the stretch is over: any exchange since the wake, or a close (it opens no session). It is
   never urgent, and one that comes during a user turn waits for that turn's verdict, as it may be the user talking to her: answered,
   the stretch is over and it is dropped; let go (dismissed, or the next turn began first), it goes in. With sound that never stops,

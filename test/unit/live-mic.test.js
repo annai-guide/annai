@@ -749,3 +749,39 @@ test("Kokoro's turn woken by a watch that the non-stop line joins: its note with
     await k.done();
   }
 });
+
+// Re-review 5: the user's question joins Kokoro's turn woken for non-stop sound; its answer is the user's, never dropped as the stretch's.
+for (const [how, reply] of /** @type {[string, any][]} */ ([
+  ['final text', { text: 'The museum opens at nine tomorrow.' }],
+  ['tell_koe with no for_user', { toolCalls: [{ name: 'tell_koe', input: { text: 'The museum opens at nine tomorrow.' } }, { name: 'sleep', input: {} }] }],
+])) {
+  test(`Koe's question joins Kokoro's turn for non-stop sound: its answer by ${how} reaches Koe (re-review 5)`, async () => {
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    const { clip } = await import('./voice-kit.js');
+    const k = await liveKit([
+      { heard: 'la la', delayMs: 1500 },
+      { heard: 'la la la', delayMs: 1500 },
+      { heard: 'where should we eat', tool: { name: 'tell_kokoro', args: { text: 'Is the museum open tomorrow? The user asks.' } } },
+      { said: 'It opens at nine.', audio: tone(0.5) },
+    ], { kokoro: [{ rules: [
+      { match: 'non-stop sound', reply: { delayMs: 3500, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, then: { toolCalls: [{ name: 'sleep', input: {} }] } },
+      { match: 'museum', reply },
+      { match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } },
+    ] }] });
+    try {
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here
+      await k.voice.unlock();
+      k.agent.tap();
+      await until(() => k.agent.live.listening, 3000);
+      await realtime(k, quiet(0.3));
+      await realtime(k, hum(4));
+      await realtime(k, quiet(0.9));
+      await realtime(k, hum(1.5));
+      await realtime(k, quiet(0.9));
+      await realtime(k, cat(await clip('where-eat'), quiet(1.5)));
+      await until(() => texts(k).some((x) => x.includes('The museum opens at nine tomorrow.')), 8000);
+    } finally {
+      await k.done();
+    }
+  });
+}

@@ -224,6 +224,8 @@ export class Halves {
         kokoro: (w) => {
           if (w.from === 'koe' && (this.#answered || this.#stopped.on)) return;
           this.#asked ||= w.from === 'koe';
+          // Koe's question makes a turn running for non-stop sound one that answers it: its notes are never dropped as the stretch's.
+          if (w.from === 'koe') this.#nonstop.clear();
           this.#wakeKokoro(w);
         },
       },
@@ -251,6 +253,8 @@ export class Halves {
           // From the turn's first wake line only: one it joins later (meanwhile) carries only what joined.
           const reasons = e.type === 'wake' && !e.data?.meanwhile ? e.data?.reasons ?? [] : [];
           if (reasons.length && reasons.every((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
+          // Anything else that joins it (Koe's question, a watch) makes it a turn of its own: its notes are answers, never dropped.
+          else if (e.type === 'wake' && e.data?.meanwhile) this.#nonstop.delete(e.data.id);
           if (this.#split) await this.koe.observe(e, r);
         },
         gate: (call) => this.#gate(call),
