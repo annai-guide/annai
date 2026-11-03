@@ -99,7 +99,12 @@ New:
 - **Times:** a string time becomes `{ at, tz }` only with a known zone: a `tz` beside it, else, for anything but a flight or train, the
   trip's only zone. An offset that the zone doesn't have at that instant, an impossible date (Nov 31) or a date with no time is refused
   with words saying what to write. An unknown zone is never compared, only stored as written.
-- **Stored records are never touched.** Keys already stored, aliases or unknown, stay as they are and never block a write.
+- **Stored records are never touched.** Keys already stored, aliases or unknown, stay as they are and never block a patch or an edit. A
+  whole write renames what it is given, copied stored keys included (so a copied `checkin` beside a `start` is the same time, or is
+  refused with "write start as {...} in place of checkin"). A null alias in a patch deletes its own field and the stored alias key; a
+  null in a whole write is the same as no key. A patch's place made from a location or pick-up replaces the stored place (address and
+  position go); an address alone sets only the address; a booking left with a place that has no name is named from its address. An
+  edit that adds an alias is refused naming the format's field. Legs appended with `flights+` move `end` to the last leg's arrival.
 - **Unknown keys:** only a top-level key this write introduces that the schema in force doesn't list is refused, with words naming the
   format's fields and `fields`. The schema stays open, so the user's own edits, Undo, Restore and imports work as before.
 - **Plugins** add fields inside `fields` (any key) or as top-level properties of a booking schema they register.

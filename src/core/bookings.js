@@ -50,6 +50,13 @@ const TIMES = /** @type {Record<string, string>} */ ({
 const COSTS = ['total', 'price'];
 const EXTRAS = ['notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flight', 'flights'];
 const ALIASES = [...Object.keys(TIMES), 'name', 'location', 'address', ...COSTS, ...EXTRAS];
+/* en */ const WHEN = '{ "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }';
+/** The format's field an alias stands for, and how that field is written (for the refusal of an edit that adds one). */
+const OWN = /** @type {Record<string, [string, string]>} */ ({
+  ...Object.fromEntries(Object.entries(TIMES).map(([k, to]) => [k, [to, WHEN]])),
+  /* en */ name: ['title', 'text'], location: ['place', '{ "name": "...", "address": "..." }'], address: ['place', '{ "name": "...", "address": "..." }'],
+  /* en */ ...Object.fromEntries(COSTS.map((k) => [k, ['cost', '{ "amount": 245, "currency": "EUR" }']])),
+});
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
 /** Kinds whose times are in the place they leave or arrive: the trip's only zone says nothing about them. */
 const FAR = ['flight', 'rail'];
@@ -66,7 +73,7 @@ function timeOf(name, v, beside, zones, to, far) {
   const raw = o ? o.at ?? o.time : v;
   const at = typeof raw === 'string' ? raw.trim().replace(' ', 'T') : '';
   const tz = [o?.tz, beside, !far && zones.length === 1 ? zones[0] : ''].find((z) => typeof z === 'string' && z) ?? '';
-  /* en */ const how = `write ${to} as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }`;
+  /* en */ const how = `write ${to} as ${WHEN}${name.includes('[') ? '' : ` in place of ${name}`}`;
   const m = AT.exec(at);
   const day = m ? Date.parse(`${m[1]}T00:00Z`) : NaN;
   // Date.parse reads Nov 31 as Dec 1: the day must read back as written.
@@ -100,6 +107,12 @@ function eq(a, b) {
   return p && q ? Object.keys(p).length === Object.keys(q).length && Object.keys(p).every((k) => Object.hasOwn(q, k) && eq(p[k], q[k])) : Object.is(a, b);
 }
 
+/** The same value, or the same time (its instant and zone) written two ways. @param {unknown} a @param {unknown} b */
+function same(a, b) {
+  const [p, q] = [record(a), record(b)];
+  return eq(a, b) || Boolean(p && q && typeof p.at === 'string' && typeof q.at === 'string' && p.tz === q.tz && Date.parse(p.at) === Date.parse(q.at));
+}
+
 /**
  * This write's own keys, written under other names, renamed to the format's own before it is stored (the drive-test follow-ups, section
  * 3): the write tool's whole value, or the patch tool's changes (with append, "notes+" too). What is stored is never read or changed
@@ -112,10 +125,13 @@ function eq(a, b) {
 export function unalias(own, { zones = [], schema, kind, append = false } = {}) {
   const listed = record(record(schema)?.properties) ?? {};
   const base = (/** @type {string} */ k) => (append && k.endsWith('+') && EXTRAS.includes(k.slice(0, -1)) ? k.slice(0, -1) : k);
-  const keys = record(own) ? Object.keys(own).filter((k) => ALIASES.includes(base(k)) && !Object.hasOwn(listed, base(k)) && own[k] !== null) : [];
-  if (!keys.length) return own;
+  const isAlias = (/** @type {string} */ k) => ALIASES.includes(base(k)) && !Object.hasOwn(listed, base(k));
+  // A null alias in a patch deletes its own field and the alias key as stored; in a whole write, a null is the same as not there.
+  const gone = record(own) ? Object.keys(own).filter((k) => own[k] === null && (!append || isAlias(k))) : [];
+  const keys = record(own) ? Object.keys(own).filter((k) => isAlias(k) && own[k] !== null) : [];
+  if (!keys.length && !gone.length) return own;
   const out = { ...own };
-  for (const k of keys) delete out[k];
+  for (const k of [...keys, ...gone]) delete out[k];
   const what = own.kind ?? kind;
   const far = FAR.includes(what);
   const besideKey = ['tz', 'timezone'].find((k) => typeof own[k] === 'string');
@@ -129,7 +145,7 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     const sub = to.startsWith('fields.') ? to.slice(7) : '';
     if (sub && !fields) return void (out[alias] = own[alias]);
     const at = sub ? fields : out;
-    /* en */ if (at[sub || to] != null && !eq(at[sub || to], v)) throw new Error(`${alias} and ${to} are both given and differ: keep one and remove the other.`);
+    /* en */ if (at[sub || to] != null && !same(at[sub || to], v)) throw new Error(`${alias} and ${to} are both given and differ: keep one and remove the other.`);
     at[sub || to] = v;
     named[alias] = sub || to;
   };
@@ -142,12 +158,20 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     const where = record(own[k]) && (own[k].location ?? own[k].place ?? own[k].address);
     if (where) (TIMES[k] === 'start' ? parts : ends).push([k, where]);
   }
-  const legs = keys.includes('flights') && Array.isArray(own.flights) ? own.flights.map(record) : [];
+  const fk = keys.find((k) => base(k) === 'flights');
+  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []).map(record) : [];
   if (legs.length && legs.every(Boolean)) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written.
+    // Legs appended by a patch only move the end, and only when the last of them can be placed.
     const [first, last, n] = [legs[0], legs[legs.length - 1], legs.length - 1];
-    if (out.start == null) put('flights', 'start', timeOf('flights[0].departure', first?.departure ?? first?.depart, first?.tz ?? beside, zones, 'start', true));
-    if (out.end == null) put('flights', 'end', timeOf(`flights[${n}].arrival`, last?.arrival ?? last?.arrive, last?.tz ?? beside, zones, 'end', true));
+    if (out.start == null && fk === 'flights') put(fk, 'start', timeOf('flights[0].departure', first?.departure ?? first?.depart, first?.tz ?? beside, zones, 'start', true));
+    if (out.end == null) {
+      try {
+        put(fk ?? '', 'end', timeOf(`flights[${n}].arrival`, last?.arrival ?? last?.arrive, last?.tz ?? beside, zones, 'end', true));
+      } catch (e) {
+        if (fk === 'flights') throw e;
+      }
+    }
   }
   for (const k of ['location', 'address']) if (keys.includes(k)) parts.push([k, own[k]]);
   if (parts.length) {
@@ -166,7 +190,11 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
       else if (k === 'address' || (place.name !== undefined && place.name !== v && from.name !== 'place')) part(k, 'address', v);
       else part(k, 'name', v);
     }
-    place.name ??= [own.title, own.name].find((x) => typeof x === 'string' && x.trim()) ?? place.address;
+    // In a patch a place made from a location or pick-up is a different place: the stored address and position go (an address alone is
+    // only the address). A booking with no name is named from its address by shioriBooking.
+    if (append && parts.some(([k]) => k !== 'address')) for (const key of ['address', 'lat', 'lng']) place[key] ??= null;
+    const title = [own.title, own.name].find((x) => typeof x === 'string' && x.trim());
+    if (place.name === undefined && title) place.name = title;
     out.place = place;
   }
   for (const [k, where] of ends) {
@@ -180,9 +208,19 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     else if (cost) put(k, 'cost', cost);
     else if (COSTS.includes(k) || EXTRAS.includes(base(k))) put(k, `fields.${k}`, own[k]);
   }
+  for (const k of append ? gone.filter((x) => !x.endsWith('+')) : []) {
+    const to = TIMES[k] ?? (k === 'name' ? 'title' : COSTS.includes(k) ? 'cost' : EXTRAS.includes(k) ? `fields.${k}` : '');
+    out[k] = null;
+    if (to.startsWith('fields.')) {
+      if (fields) fields[to.slice(7)] ??= null;
+    } else if (to) out[to] ??= null;
+  }
   if (fields && Object.keys(fields).length) out.fields = fields;
   if (besideKey && (legs.length || keys.some((k) => Object.hasOwn(TIMES, k)))) delete out[besideKey];
-  if (Array.isArray(out.unsure)) out.unsure = [...new Set(out.unsure.map((n) => (typeof n === 'string' && Object.hasOwn(named, n) ? named[n] : n)))];
+  /** @param {unknown} n */
+  const renamed = (n) => (typeof n === 'string' && Object.hasOwn(named, n) ? named[n] : n);
+  if (Array.isArray(out.unsure)) out.unsure = [...new Set(out.unsure.map(renamed))];
+  if (append && out['unsure+'] != null) out['unsure+'] = Array.isArray(out['unsure+']) ? [...new Set(out['unsure+'].map(renamed))] : renamed(out['unsure+']);
   return out;
 }
 
@@ -208,9 +246,13 @@ export function shioriBooking(before, next, { schema } = {}) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
   }
   const own = record(record(schema)?.properties);
+  const place = record(next.place);
+  if (place && !(typeof place.name === 'string' && place.name.trim()) && typeof place.address === 'string' && place.address.trim()) next = { ...next, place: { ...place, name: place.address } };
   const added = own ? Object.keys(next).filter((k) => !Object.hasOwn(own, k) && !(old && Object.hasOwn(old, k))) : [];
   if (added.length) {
-    /* en */ throw new Error(`${added.map((k) => JSON.stringify(k)).join(', ')} ${added.length === 1 ? "isn't a booking field" : "aren't booking fields"}, so nothing was written. A booking's own fields are ${Object.keys(own ?? {}).join(', ')}; put anything else in fields.`);
+    // A name from the other format is told its field (an edit has no renaming, and a model would file it in fields).
+    const is = added.filter((k) => Object.hasOwn(OWN, k)).map((k) => ` ${k} is ${OWN[k][0]}: write ${OWN[k][0]} as ${OWN[k][1]}.`).join('');
+    /* en */ throw new Error(`${added.map((k) => JSON.stringify(k)).join(', ')} ${added.length === 1 ? "isn't a booking field" : "aren't booking fields"}, so nothing was written.${is} A booking's own fields are ${Object.keys(own ?? {}).join(', ')}; put anything else in fields.`);
   }
   return next;
 }
