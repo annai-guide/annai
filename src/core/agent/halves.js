@@ -100,7 +100,7 @@ export class Channel {
     const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), by }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(wake ? { turn: wake } : {}), ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -152,7 +152,7 @@ export class Halves {
   #answered = false;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
-  /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user, to a live session closed meanwhile, are nothing (Channel skip). @type {Set<string>} */
+  /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user belong to that stretch (#ofStretch). @type {Set<string>} */
   #nonstop = new Set();
   /** Koe's reply asks Kokoro, so its question wakes Kokoro, not its answer (owed: unless the question fails). */
   #asking = false;
@@ -213,9 +213,12 @@ export class Halves {
       by: { koe: () => this.koe.by, kokoro: () => this.kokoro.by },
       deliver: {
         koe: (w) => {
-          if (isForUser(w) && !w.retold) this.#unsaid.push(w.text);
+          // Kokoro's note for a stretch of non-stop sound (its sleep) is Koe's alone, nothing the user is owed.
+          const stretch = this.#ofStretch({ from: w.from, why: String(w.why ?? ''), wake: w.turn, forUser: w.forUser ?? '' });
+          const owed = isForUser(w) && !stretch;
+          if (owed && !w.retold) this.#unsaid.push(w.text);
           this.#koeOpen();
-          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', isForUser(w) ? w : null), w);
+          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', owed ? w : null, { stretch }), w);
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
@@ -226,10 +229,9 @@ export class Halves {
       },
       // A live session's immediate note cuts Koe off itself.
       cut: { koe: () => { if (this.koeState !== 'live') this.koe.cutIn(); }, kokoro: () => this.kokoro.cutIn() },
-      // Kokoro's turn woken for non-stop sound alone, its note with no words for the user (go to sleep, nothing to do), to a live session
-      // that closed meanwhile: nothing, not a new session that listens and says good night. Whatever else woke the turn goes on as ever.
-      skip: ({ from, why, wake, forUser }) => (from === 'kokoro' && !forUser && !why.startsWith('gated:') && wake && this.#nonstop.has(wake) && this.koeState === 'live' && this.live.state === 'closed'
-        ? /* en */ 'Koe is already asleep; nothing more to do.' : null),
+      // Kokoro's note for a stretch of non-stop sound that is over (the user and Koe talked since, or the session closed): nothing, not a
+      // sleep closing on the user, nor a new session that listens and says good night. Live checks it again where it would go in.
+      skip: (n) => (this.#ofStretch(n) && !this.live.stretching ? /* en */ 'Koe has talked with the user or gone to sleep since; nothing more to do.' : null),
     });
     const serial = (/** @type {() => Promise<any>} */ fn) => this.#serial(fn);
     const ready = () => this.#ready;
@@ -246,7 +248,8 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
         logged: async (e, r) => {
           if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
-          const reasons = e.type === 'wake' ? e.data?.reasons ?? [] : [];
+          // From the turn's first wake line only: one it joins later (meanwhile) carries only what joined.
+          const reasons = e.type === 'wake' && !e.data?.meanwhile ? e.data?.reasons ?? [] : [];
           if (reasons.length && reasons.every((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
           if (this.#split) await this.koe.observe(e, r);
         },
@@ -1123,6 +1126,15 @@ export class Halves {
       this.#asked = false;
       this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
     }
+  }
+
+  /**
+   * Kokoro's note with no words for the user (go to sleep, its final text, nothing to add) from its turn woken for non-stop sound alone,
+   * to live Koe: it is for that stretch of sound, and is nothing once the stretch is over. Whatever else woke the turn goes on as ever.
+   * @param {{ from?: string, why: string, wake?: string, forUser: string }} n
+   */
+  #ofStretch({ from, why, wake, forUser }) {
+    return Boolean(from === 'kokoro' && !forUser && !why.startsWith('gated:') && wake && this.#nonstop.has(wake) && this.koeState === 'live');
   }
 
   /** @param {string} [text] @param {NoteWhy} [why] @param {string} [wake] the turn of Kokoro's it ends */

@@ -458,10 +458,10 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori が止まりました�
 67wvld	ok	Shiori stopped: step limit	Shiori が止まりました：ステップ数の上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori は誰にも頼まれずに自分で進めていたことで{0}ステップ進んだため、そこで止まりました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進めるステップ数（設定 → Shiori → Shiori が自分から動く頻度）の{0}ステップに達しました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:548	
-yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:548	
-bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:670	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:670	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:561	
+yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:561	
+bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:683	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:683	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:124	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:124	
 4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:124	
@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:438	
-1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:438	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:448	
+1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:448	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:337	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:338	

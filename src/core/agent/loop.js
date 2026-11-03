@@ -50,8 +50,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string }} Wake
- *   by: a note's, the model that wrote it
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string }} Wake
+ *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
  *   written into another conversation, the one it came from
