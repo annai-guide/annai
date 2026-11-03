@@ -204,6 +204,19 @@ New:
 - Not done: muting the mic while media plays (a web app can't see what the car stereo plays) and an on-phone music classifier (several
   MB, and sung lyrics still look like speech).
 
+## 7. Urgent watches
+
+The user (2026-11-03), asked whether watches should get an urgent mark: "Yes, after the mic fix (Recommended)". The question said:
+Shiori sets it on time-critical watches (a turn coming up, leave now, last train); when an urgent watch fires, the alert is said at once,
+never held behind music, and the mic stays shut until she's finished; other watches still wait up to 15 s for sound already playing.
+
+- A watch may carry `urgent: true` (optional; absent is false). The watch tools' description tells Shiori to set it only for alerts that
+  lose their point if late (a turn, leave now, a last train or ferry), never for routine reminders.
+- When an urgent watch fires while live Koe is in charge, its alert goes into the live session the way an urgent note does (section 6's
+  urgent mark: said at once over sound, the mic deaf until her line has played, 8 s / 20 s caps). A closed session opens for it as for
+  any event (brief listening after). Without a live session nothing changes.
+- Kokoro still hears of the fire as today; only the delivery to live Koe changes.
+
 ## Not in this change
 - Geocoding road intersections by name (Nominatim failing): not asked for.
 
