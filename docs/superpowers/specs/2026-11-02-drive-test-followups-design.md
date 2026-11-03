@@ -176,7 +176,7 @@ New:
   takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most). The mark is set as the urgent note comes (a session it opens lets nothing in before it); while it holds, the microphone is deaf and notes waiting hold behind it. It is a bound, not a match of her turns to the note: it ends once her voice that began after the note went in has played out and nothing more of her answer is to come (no turn of hers going on or waiting, no tool call running, the last not calling a tool she speaks after), or at a cap, whichever comes first: 8 s from the note if no sound of hers begins (the silence watchdog's figure), 20 s from the note however long she talks. A tap, a close or a dropped connection ends it too; a newer urgent note replaces it. With no session to take the note (the open fails, or the session closes while the microphone opens) there is no mark, and the note is handed on as a closed session's are. So an answer with nothing or a silent tool frees the microphone at 8 s, and a provider that answers the cut user turn and the note as one turn (Gemini) frees it as her line ends. (The main session's call, fix pass 4: four rounds of matching "the turn that answers the note" each left a case where the mark never ended or ended early.) Notes waiting go in after the mark ends, not before.
 - **Noise rejection: only exchanges keep her listening.** The quiet spell is re-armed by her sound, words or tool calls, text going in,
   taps and typing, and a heard turn she answers with words: not by audio chunks, turn edges or turns she dismisses. `#brief` clears only
-  on a tap, typing, or a heard turn she answers (words, a card or a question; a tool call that answers nobody, such as already_told, doesn't, though words after it do). When the spell runs out while only a user turn (or its answer) is pending, that turn
+  on a tap, typing, or a heard turn she answers (words, a card or a question, or asking Kokoro about it (fix pass 6); a tool call that answers nobody, such as already_told, doesn't, though words after it do). When the spell runs out while only a user turn (or its answer) is pending, that turn
   decides: an answer re-arms it, a dismissed turn closes the session unless the detector still holds speech.
 - **Sound that never stops: Kokoro decides, annai never closes on it.** The user (2026-11-02): "for the close on 30s of noise, let's
   make sure we do not cutoff actual exchange, looping back to maybe only kokoro should able to determine that." When the quiet spell
@@ -185,14 +185,20 @@ New:
   a sound or a word of it, or it runs to the 15 s cap with no pause), annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop sound, with the speech
   recognition of that turn, as input she sees answered or not (never at the moment a turn begins: it may be the user asking). Kokoro
   reads it with the conversation and, if it is music, other people or noise and not the user talking to Shiori, tells Koe to sleep;
-  otherwise it does nothing. Her answering a turn (an exchange) ends the stretch. A note with no words for the user (go to sleep, its
+  otherwise it does nothing. Only a real exchange ends the stretch: she answers a heard turn (words, a card or a question, or asking
+  Kokoro about it), or the user taps or types; a close (the note then opens no session) or the stretch's note going in ends it too (a
+  later stretch may wake Kokoro again). A note with no words for the user (go to sleep, its
   final text) from a Kokoro turn woken for that alone (its first wake line; the line joining a turn something else woke doesn't count, and anything that joins it later, the user's words, a choice or a photo, Koe's question or another wake, makes it a turn of its own whose notes are never dropped)
-  is for that stretch, and is nothing once the stretch is over: any exchange since the wake, or a close (it opens no session). It is
-  never urgent, and it waits while the user's latest turn has no verdict, as that turn may be the user talking to her: answered,
-  the stretch is over and it is dropped; let go (dismissed, or run to the 15 s cap), it goes in. A turn the next began before her
-  verdict was let go, and the next one's verdict is waited for in its place (fix pass 5: it went in as that next turn ended, before
-  its verdict, so Koe could sleep right after the user spoke). A verdict that comes while the user's next turn goes on is the turn
-  before's, never marked on the one going on. With sound that never stops, that is one turn later (up to the 15 s cap). One with words for the user, or from a turn something else woke too, goes as ever. After the wake, the quiet spell can still
+  is for that stretch, and is nothing once the stretch is over. Otherwise it goes in on the urgent path (the microphone deaf until her
+  answer has played, the 8 s / 20 s caps), so the next piece of music can't cut her sleep call; it is still never owed to the user.
+  Her own turn or a tool call goes first. A user turn going on as it is ready, or one awaiting her verdict, may be the user talking to
+  her: it waits for that verdict, but at most about 3 s after that turn ends (real time, as the provider's verdict comes). Answered,
+  the stretch is over and it is dropped; dismissed, it goes in at once; no verdict by then, or the next turn going on, holds it no
+  longer, and that turn is cut as an urgent note cuts one. A verdict that comes while the user's next turn goes on is the turn
+  before's, never marked on the one going on: a music turn's dismissal landing in the user's question must not stop her answer to
+  it counting as an exchange. (Fix pass 6, the main session's call: fix 5 waited for the latest turn's
+  verdict, which never came under talk radio whose every verdict lands in its next piece, and at a cap the next music turn cut her
+  sleep call, so she never slept and Kokoro was woken again and again.) One with words for the user, or from a turn something else woke too, goes as ever. After the wake, the quiet spell can still
   close it: a turn she lets go in a pause closes it. A let-go turn that the spell's own look then closes on (a quiet gap) wakes nobody:
   there is no session left to decide about. The quiet spell running out, or a let-go turn, on a run the detector still holds
   looks again 250 ms later, so a run let go as no turn doesn't leave the session open for good.
