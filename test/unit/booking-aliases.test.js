@@ -437,6 +437,17 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
   // An empty pick-up address or location says nothing: the stored place stays, and the new time is written.
   assert.deepEqual(await patch({ pickup: { address: '', at: '2026-11-20T10:00' } }), hotel.place);
   assert.deepEqual(await patch({ pickup: { location: '', at: '2026-11-20T10:00' } }), hotel.place);
+  // Empty top-level names and addresses say nothing too; an empty drop-off name leaves its address as the drop-off.
+  assert.deepEqual(await patch({ address: '' }), hotel.place);
+  assert.deepEqual(await patch({ location: '' }), hotel.place);
+  await ws.write(trip, '/bookings/s.json', hotel, { author: 'user' });
+  await run('patch', { path: P, changes: { dropoff: { location: '', address: '5 Main St', at: '2026-11-27T09:00' } } });
+  const d = await ws.readJSON(trip, '/bookings/s.json');
+  assert.deepEqual([d.place, d.fields?.dropoff], [hotel.place, '5 Main St']);
+  // A total turned cost on a booking with no fields leaves none.
+  await ws.write(trip, '/bookings/t.json', { ...base, kind: 'lodging' }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/t.json', changes: { total: '100 USD' } });
+  assert.equal('fields' in (await ws.readJSON(trip, '/bookings/t.json')), false);
   // A detail alias beside a fields that isn't an object is left for the format check: the patch is refused, nothing lost.
   await ws.write(trip, '/bookings/f.json', { ...base, kind: 'lodging', fields: { room: '9' } }, { author: 'user' });
   await assert.rejects(run('patch', { path: '/trip/bookings/f.json', changes: { room: '12', fields: null } }));
