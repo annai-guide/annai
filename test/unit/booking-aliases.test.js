@@ -94,7 +94,7 @@ test('review 4: a flight with its start and end and its legs keeps the legs in f
 
 test('refusals in words: a time with no zone in a trip of two, a date with no time; nothing else changes', () => {
   assert.throws(() => guard({ ...base, kind: 'lodging', checkin: '2026-11-20 15:00' }, [AK, TOKYO]),
-    /^Error: checkin "2026-11-20 15:00" has no time zone annai knows \(this trip has America\/Anchorage, Asia\/Tokyo\): write start as \{ "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" \}\.$/);
+    /^Error: checkin "2026-11-20 15:00" has no time zone annai knows \(this trip has America\/Anchorage, Asia\/Tokyo\): write start as \{ "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" \} in place of checkin\.$/);
   assert.throws(() => guard({ ...base, kind: 'lodging', checkout: '2026-11-27' }), /checkout "2026-11-27" isn't a date with a time: write end as \{ "at"/);
   assert.throws(() => guard({ ...base, kind: 'car', pickup: { location: 'Airport lot' } }), /pickup null isn't a date with a time/);
   assert.throws(() => guard({ ...base, kind: 'lodging', checkin: '2026-11-20T15:00', tz: 'Alaska' }), /has no time zone annai knows: write start/);
@@ -149,8 +149,8 @@ test('a patch: its own changes are renamed, + forms too; the schema in force kee
   assert.deepEqual(unalias({ 'notes+': ['x'] }, { schema: BOOKING_SCHEMA }), { 'notes+': ['x'] });
   // The stored kind decides a flight's zone: a checkout patched onto a stored flight never takes the trip's zone.
   assert.throws(() => unalias({ checkout: '2026-11-23T11:00' }, { ...o, kind: 'flight' }), /a flight's or train's time/);
-  // A null removes a stored key under that name, as a merge patch does.
-  assert.deepEqual(unalias({ checkin: null }, o), { checkin: null });
+  // A null removes the format's field and a stored key under that name, as a merge patch does.
+  assert.deepEqual(unalias({ checkin: null }, o), { start: null, checkin: null });
   const wider = { ...BOOKING_SCHEMA, properties: { ...BOOKING_SCHEMA.properties, seat: { type: 'string' }, notes: { type: 'array' } } };
   assert.deepEqual(unalias({ seat: '12A', 'notes+': ['x'] }, { schema: wider, append: true }), { seat: '12A', 'notes+': ['x'] });
 });
@@ -308,4 +308,75 @@ test('review 8 through the tool: a fields that is a string is refused by the for
   const { ws, trip, run } = await setup([AK]);
   await assert.rejects(run('write', { path: '/trip/bookings/stay.json', content: { ...base, kind: 'lodging', room: '12', fields: 'a string' } }), /fields/);
   assert.equal(await ws.read(trip, '/bookings/stay.json'), undefined);
+});
+
+test('fix pass 2, 1: a place alias in a patch replaces the stored place whole; an address alone sets only the address', async () => {
+  const { ws, trip, run } = await setup([AK]);
+  const stay = { ...base, kind: 'lodging', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test', address: '1 Test St', lat: 61.2, lng: -149.9 } };
+  await ws.write(trip, '/bookings/s.json', stay, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { address: '2 Test St' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).place, { name: 'Hotel Aurora Test', address: '2 Test St', lat: 61.2, lng: -149.9 });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { location: 'Hotel Borealis Test' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).place, { name: 'Hotel Borealis Test' });
+  // A car's pick-up moved: the old address and coordinates go with the old place.
+  await ws.write(trip, '/bookings/c.json', { ...base, kind: 'car', place: { name: 'Airport lot', address: '5000 Test Rd', lat: 61.17, lng: -149.99 }, start: { at: '2026-11-20T10:00:00-09:00', tz: AK } }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/c.json', changes: { pickup: { location: 'Downtown desk', at: '2026-11-20T11:00' } } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/c.json')).place, { name: 'Downtown desk' });
+  // A booking with no name: the address is its name, filled in from the merged record.
+  await ws.write(trip, '/bookings/n.json', { ...base, kind: 'lodging', place: { name: 'Gone' } }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/n.json', changes: { place: { name: null }, address: '3 Test St' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/n.json')).place, { name: '3 Test St', address: '3 Test St' });
+  // A whole write with only an address: the same name.
+  await run('write', { path: '/trip/bookings/w.json', content: { ...base, kind: 'lodging', address: '4 Test St' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/w.json')).place, { name: '4 Test St', address: '4 Test St' });
+});
+
+test('fix pass 2, 2 and 3: the refusal says "in place of checkin"; an edit adding a known alias is told the format\'s field', async () => {
+  const { ws, trip, run } = await setup([AK, TOKYO]);
+  await assert.rejects(run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', checkin: '2026-11-20 15:00', start: { at: '2026-11-20T15:00:00-09:00', tz: AK } } }),
+    /write start as \{ "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" \} in place of checkin\./);
+  await ws.write(trip, '/bookings/e.json', { ...base, kind: 'lodging', title: 'Hotel' }, { author: 'user' });
+  await assert.rejects(run('edit', { path: '/trip/bookings/e.json', old: '"title": "Hotel"', new: '"title": "Hotel",\n  "checkout": "2026-11-27 11:00"' }),
+    /"checkout" isn't a booking field, so nothing was written\. checkout is end: write end as \{ "at"/);
+  await assert.rejects(run('edit', { path: '/trip/bookings/e.json', old: '"title": "Hotel"', new: '"title": "Hotel", "name": "H", "total": "10 USD"' }),
+    /name is title: write title as text\. total is cost: write cost as \{ "amount": 245, "currency": "EUR" \}\./);
+  assert.equal((await ws.readJSON(trip, '/bookings/e.json')).title, 'Hotel');
+});
+
+test('fix pass 2, 4 and 5: unsure+ is renamed like unsure; a flights+ patch moves end to the last appended leg', async () => {
+  const { ws, trip, run } = await setup([AK]);
+  await ws.write(trip, '/bookings/s.json', { ...base, kind: 'lodging', title: 'T' }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { checkout: '2026-11-23T11:00', 'unsure+': ['checkout'] } });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { name: 'U', 'unsure+': 'name' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).unsure, ['end', 'title']);
+  const leg = (/** @type {string} */ d, /** @type {string} */ a) => ({ flight: 'AN 1', departure: d, arrival: a, tz: TOKYO });
+  await run('write', { path: '/trip/bookings/f.json', content: { ...base, kind: 'flight', flights: [leg('2026-11-20T08:00', '2026-11-20T10:00')] } });
+  await run('patch', { path: '/trip/bookings/f.json', changes: { 'flights+': [leg('2026-11-20T12:00', '2026-11-20T15:00')] } });
+  const f = await ws.readJSON(trip, '/bookings/f.json');
+  assert.deepEqual([f.start, f.end, f.fields.flights.length], [{ at: '2026-11-20T08:00:00+09:00', tz: TOKYO }, { at: '2026-11-20T15:00:00+09:00', tz: TOKYO }, 2]);
+  // A leg that can't be placed (no zone) is still appended; end stays.
+  await run('patch', { path: '/trip/bookings/f.json', changes: { 'flights+': [{ flight: 'AN 3' }] } });
+  const g = await ws.readJSON(trip, '/bookings/f.json');
+  assert.deepEqual([g.end, g.fields.flights.length], [f.end, 3]);
+});
+
+test('fix pass 2, 6: one time written two ways is the same time; a different instant or zone still differs', () => {
+  const start = { at: '2026-11-20T15:00-09:00', tz: AK };
+  assert.deepEqual(guard({ ...base, kind: 'lodging', start, checkin: '2026-11-20T15:00' }).start, { at: '2026-11-20T15:00:00-09:00', tz: AK });
+  assert.throws(() => guard({ ...base, kind: 'lodging', start, checkin: '2026-11-20T16:00' }), /checkin and start are both given and differ/);
+});
+
+test('fix pass 2, S1 to S3: a null alias deletes its own field and its stored alias; "+" with null adds nothing; a whole write drops nulls', async () => {
+  const { ws, trip, run } = await setup([AK]);
+  const old = { ...base, kind: 'lodging', start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, checkin: '2026-11-20 15:00', notes: 'old', fields: { notes: 'n', room: '1' } };
+  await ws.write(trip, '/bookings/s.json', old, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { checkin: null, notes: null } });
+  const got = await ws.readJSON(trip, '/bookings/s.json');
+  assert.deepEqual([got.start, 'checkin' in got, 'notes' in got, got.fields], [undefined, false, false, { room: '1' }]);
+  await run('patch', { path: '/trip/bookings/s.json', changes: { 'notes+': null } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).fields, { room: '1' });
+  assert.deepEqual(unalias({ checkin: null }, { zones: [AK], append: true }), { start: null, checkin: null });
+  assert.deepEqual(unalias({ checkin: null, start: { at: 'x', tz: AK } }, { zones: [AK], append: true }), { start: { at: 'x', tz: AK }, checkin: null });
+  await run('write', { path: '/trip/bookings/w.json', content: { ...base, kind: 'lodging', checkout: null, notes: null, title: 'T' } });
+  assert.deepEqual(await ws.readJSON(trip, '/bookings/w.json'), { ...base, kind: 'lodging', title: 'T' });
 });
