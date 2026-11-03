@@ -152,10 +152,40 @@ does both), for every user. "Keep them stable": each change restarts their cache
 
 Exact words are the builder's, close to the above, short, and in the style of the files they go in.
 
-## Not in this change
+## 6. Live mic: event wakes, noise, and sleep
 
-- Live mic listening: an event wake that opens the mic fully, listening that never ends with music or road noise, and whether Shiori
-  can pause listening herself. Its own design, next.
+The user's answers (2026-11-02), asked after a design pass over core/koe/live.js:
+- Event wake: "For an urgent time sensitive event, like when to turn while driving, maybe she should say it immediatly. for when it is
+  fine delaying a bit. I think current listen for a bit still make sense. we just want to improve our noise rejection methods"
+- Never-quiet sound: "Exchanges + close on 30 s of noise (Recommended)": only real exchanges (her speaking, the user speaking to her
+  and her answering, taps, typing) keep her listening; two turns in a row that end at the 15 s cap close the session.
+- Sleep: "I think we should allow when I ask, or kokoro tells koe to go to sleep. often kokoro is much more capable than realtime models."
+
+What the code does today (the design pass): an event that opens a closed session sets `#brief` (listen ~8 s for an answer) but opens the
+mic at once; any detector "speech" (music is enough) clears `#brief`, may make `busy` true so the event's message waits behind a music
+turn (up to 15 s), and can cut her turn; `#poke` re-arms the quiet spell on every audio chunk, turn edge and provider event, so with
+music the session never closes. An immediate note that opens a closed session never sets `#brief`. Nothing remembers a tap-sleep.
+
+New:
+- **Events keep "listen for a bit".** Every open that isn't the user's tap or typing (a trigger, a note) is brief, decided in one place;
+  an immediate note too.
+- **Urgent says it now.** An urgent event (an immediate note from Kokoro; a fired watch that is time-critical, if watches carry such a
+  mark; otherwise immediate notes only) is said at once: never held behind a user turn in progress, and not cut by sound the detector
+  takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most).
+- **Noise rejection: only exchanges keep her listening.** The quiet spell is re-armed by her sound, words or tool calls, text going in,
+  taps and typing, and a heard turn she answers with words: not by audio chunks, turn edges or turns she dismisses. `#brief` clears only
+  on a tap, typing, or a heard turn she answers. When the spell runs out while only a user turn (or its answer) is pending, that turn
+  decides: an answer re-arms it, a dismissed turn closes the session.
+- **Sound that never stops closes it.** Two user turns in a row that end at the 15 s cap close the session (`noise`).
+- **Sleep, when the user asks or Kokoro says so.** Live Koe gets `sleep` (reverses plan decision 29), described as: only when the user
+  asks you to sleep or stop listening, or a note from Kokoro tells you to. It closes the session like a tap (`sleep`). Kokoro's part says
+  it may tell Koe to sleep when the live session is only hearing music, other people or noise. Koe (non-live) already has `sleep`.
+- New close reasons in the trace: `noise`, `sleep`. Plan decisions 12 and 29 get a line each saying what changed and why; a LESSONS.md
+  entry for decision 29 (an API reversed) is the main session's, not the builder's.
+- Not done: muting the mic while media plays (a web app can't see what the car stereo plays) and an on-phone music classifier (several
+  MB, and sung lyrics still look like speech).
+
+## Not in this change
 - Geocoding road intersections by name (Nominatim failing): not asked for.
 
 ## Review focus
