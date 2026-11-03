@@ -1151,6 +1151,38 @@ for (const [name, clips, ms] of /** @type {[string, string[], number][]} */ ([
   });
 }
 
+// After fix 7 (Step): the sleep note came during a music turn that ran to the cap; the user asks after a gap. Only a turn begun at
+// once after a cap is the same sound: this question gets its own wait, and is never cut.
+test("Kokoro's sleep note during music that ran to the cap, then a question after a gap: Koe answers it and the note is dropped", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const { clip } = await import('./voice-kit.js');
+  const k = await liveKit([
+    ...Array.from({ length: 4 }, () => ({ heard: 'la la', delayMs: 1000 })),
+    { heard: 'is there a gas station', said: 'There is one in two miles.', audio: tone(0.8), delayMs: 1000 },
+    { tool: { name: 'sleep', args: {} } },
+  ], { agent: { secondMs: 200 }, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2 s here
+    await k.voice.unlock();
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await realtime(k, quiet(0.3));
+    await realtime(k, hum(3)); // the spell runs out in it
+    await realtime(k, quiet(0.9));
+    await realtime(k, hum(1.5)); // let go as the next begins: Kokoro is woken
+    await realtime(k, quiet(0.9));
+    await realtime(k, hum(15.1)); // runs to the cap and stops just after it; the sleep note comes during it
+    await realtime(k, quiet(1));
+    await realtime(k, cat(await clip('gas-station'), await clip('where-lunch'), quiet(2)));
+    await soon(async () => (await k.events(['out.speak'])).some((e) => /two miles/.test(JSON.stringify(e))), 6000).catch(() => assert.fail(`Koe never answered: ${JSON.stringify(texts(k))}`));
+    await wait(500);
+    assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
+    assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
+  } finally {
+    await k.done();
+  }
+});
+
 // Fix pass 7, 2: her answer to the user's question comes as the next turn (more music) goes on: it is still an exchange, and the
 // sleep note waiting on that question is dropped.
 test("Kokoro's sleep note waiting on the user's question, whose answer comes during the next music turn: the note is dropped (fix 7)", async () => {

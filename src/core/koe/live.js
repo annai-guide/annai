@@ -103,6 +103,8 @@ const URGENT_MAX_S = 20;
  * turn ends: on the real clock, as the provider's verdict comes (talk radio's every verdict lands in its next piece, fix pass 6).
  */
 const STRETCH_WAIT_MS = 3000;
+/** A user turn that begins this soon after one ended at the cap is the same sound going on, not the user beginning. */
+const AFTER_CAP_MS = 500;
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
@@ -189,6 +191,8 @@ export class LiveKoe {
   #late = null;
   /** Why the user's last turn ended (a cap: the next began at once, the same sound). @type {import('../realtime/input.js').TurnEnd | null} */
   #endedBy = null;
+  /** The user's latest turn began at once after one that ended at the cap: the same sound going on (steady music), not the user. */
+  #afterCap = false;
   /**
    * Kokoro's notes for the user (§6.8): waiting to go in, gone in and not passed on, whether Koe was asked once more, and whether
    * that ask waits to go in. @type {{ waiting: Wake[], sent: Wake[], cued: boolean, cue: boolean }}
@@ -862,6 +866,7 @@ export class LiveKoe {
     if (edge === 'start') {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
+      this.#afterCap = this.#endedBy === 'cap' && Date.now() - this.#endedAt < AFTER_CAP_MS;
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
       if (this.#sounding || this.#t || this.#pending || this.#queue.length) cut = this.#cut();
       this.#flushHeard(false);
@@ -929,7 +934,6 @@ export class LiveKoe {
       this.#trail = this.#t ?? newTurn();
       this.#trail.cut = true;
       this.#t = null;
-      this.#idle(); // what waited for her turn goes in now, as at any end of it
     } else if (e.type === 'turn') this.#complete();
     else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
@@ -1297,7 +1301,7 @@ export class LiveKoe {
     n.by ||= due ? this.#endedAt + STRETCH_WAIT_MS : Date.now();
     // At the bound, a user turn going on is never cut, nor one ended since pre-empted: it gets its own wait for her verdict, once. One
     // the cap's end began at once is the same sound (steady music), not the user beginning: none.
-    if ((going || due) && Date.now() >= n.by && !n.more && !(going && this.#endedBy === 'cap')) {
+    if ((going || due) && Date.now() >= n.by && !n.more && !this.#afterCap) {
       n.more = true;
       n.by = going ? 0 : this.#endedAt + STRETCH_WAIT_MS;
       return this.#sleepy();
