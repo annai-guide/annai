@@ -458,57 +458,57 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori が止まりました�
 67wvld	ok	Shiori stopped: step limit	Shiori が止まりました：ステップ数の上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori は誰にも頼まれずに自分で進めていたことで{0}ステップ進んだため、そこで止まりました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進めるステップ数（設定 → Shiori → Shiori が自分から動く頻度）の{0}ステップに達しました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:540	
-yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:540	
-bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:662	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:662	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:124	
-1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:124	
-4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:124	
-89yydm	ok	Listening	聞いています	src/core/agent/loop.js:124	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:124	
-yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:124	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:125	
-izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:125	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:569	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:569	
-19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:888	
-16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1117	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1117	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1150	
-oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1150	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1308	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1518	
-1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1518	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1622	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1622	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1622	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1679	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:1995	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:1995	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:2032	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:2036	
-1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:2100	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2128	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2187	
-vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2653	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2796	
-guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2796	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2797	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2797	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2935	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3070	
-43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3244	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3245	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3246	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3247	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3248	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3249	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3256	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3266	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3267	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3268	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3269	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:564	
+yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:564	
+bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:686	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:686	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:126	
+1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:126	
+4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:126	
+89yydm	ok	Listening	聞いています	src/core/agent/loop.js:126	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	あなたの OK を待っています	src/core/agent/loop.js:126	
+yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:126	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:127	
+izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:127	
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:573	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理しています	src/core/agent/loop.js:573	
+19793n8	ok	Shiori skipped a wake	Shiori は起動を見送りました	src/core/agent/loop.js:892	
+16ny0z2	ok	Shiori stopped	Shiori が止まりました	src/core/agent/loop.js:1122	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1122	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori は会話を整理できませんでした	src/core/agent/loop.js:1155	
+oeaxaa	ok	She will try again later.	あとでもう一度試します。	src/core/agent/loop.js:1155	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori は会話を要約できませんでした	src/core/agent/loop.js:1313	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1523	
+1szzjml	ok	Shiori's answer	Shiori の答え	src/core/agent/loop.js:1523	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:1627	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1627	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真が Shiori に送られませんでした	src/core/agent/loop.js:1627	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori は作業の途中でした。戻ってきたら続きをします。	src/core/agent/loop.js:1684	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを同じ結果で3回呼んだため、このターンは終わりました。別の言葉でもう一度聞いてください。	src/core/agent/loop.js:2004	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shiori は同じことの繰り返しをやめました	src/core/agent/loop.js:2004	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shiori のモデルは、あなたに何も言わずに終わりました。	src/core/agent/loop.js:2041	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shiori が答えませんでした	src/core/agent/loop.js:2045	
+1mjdfzn	ok	Shiori can't reach her model	Shiori がモデルにつながりません	src/core/agent/loop.js:2109	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け取る写真は{0}だけで、このブラウザでは作れません。{1}を追加するプラグインがあれば解決します（設定 → プラグイン）。	src/core/agent/loop.js:2137	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori は写真を送れませんでした	src/core/agent/loop.js:2196	
+vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2662	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザは、タップした後にしか音を鳴らしません。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2805	
+guullf	ok	Tap the screen so Shiori can speak	Shiori が話せるように画面をタップしてください	src/core/agent/loop.js:2805	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori は声に出して話せませんでした	src/core/agent/loop.js:2806	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:2806	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:2944	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3079	
+43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3253	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3254	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3255	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3256	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3257	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3258	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3265	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3275	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3276	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3277	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3278	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:405	
-1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:405	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:467	
+1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:467	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:337	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:338	
@@ -2580,10 +2580,10 @@ rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer paus
 11q2yij	ok	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:161	
 mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。通常は700です。	src/ui/screens/voice.js:161	
 d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字にするために送られ、その後は残りません。オン：クリップはそれぞれ会話とともに保存され、バックアップにも含まれます。	src/ui/screens/voice.js:164	
-6fykc6	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.	ライブセッションが聞いている間、あなたの言葉は音声のまま {0} に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:168	{0} = list(live, 'or')
-eptz99	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the quiet below, on voice off, or when annai leaves the screen.	ライブセッションが聞いている間、あなたの言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:169	
-1yvcgvq	ok	Close after 10 to 300 seconds of quiet.	無音10〜300秒で閉じるようにしてください。	src/ui/screens/voice.js:170	
-tc460l	ok	Close a live session after (seconds of quiet)	ライブセッションを閉じるまでの無音（秒）	src/ui/screens/voice.js:170	
+byedp9	draft	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、あなたの言葉は音声のまま {0} に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:168	{0} = list(live, 'or'); English was: While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.
+8znos	draft	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、あなたの言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞いています」と表示されます。下の無音時間が過ぎたとき、音声オフにしたとき、annai が画面から離れたときに閉じます。	src/ui/screens/voice.js:169	English was: While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.
+18jgtvh	draft	Close after 10 to 300 seconds with no exchange.	無音10〜300秒で閉じるようにしてください。	src/ui/screens/voice.js:170	English was: Close after 10 to 300 seconds of quiet.
+csv386	draft	Close a live session after (seconds with no exchange)	ライブセッションを閉じるまでの無音（秒）	src/ui/screens/voice.js:170	English was: Close a live session after (seconds of quiet)
 w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンかカーオーディオのときだけです。端末のスピーカーではマイクが Shiori の声を拾うので、タップでしかさえぎれません。オフ：どこでもタップだけ。スピーカーが Shiori の声を返してしまう車向けです。	src/ui/screens/voice.js:172	Note: car audio is the glossary's カーオーディオ, as on the voice chip.
 ph6h35	ok	Where your voice goes	あなたの声の行き先	src/ui/screens/voice.js:173	
 rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	あなたの言葉は、聞き取れる最初のものに送られます。Shiori の言葉は、動作する最初の声に送られます。順番を変えるには、{0}へ。	src/ui/screens/voice.js:174	{0} = models

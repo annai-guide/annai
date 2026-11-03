@@ -412,7 +412,7 @@ export class Live {
     if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${when.at} has already passed. Give a time ahead.`);
     /** @type {Watch} */
     const w = {
-      id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true),
+      id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true), ...(i.urgent === true ? { urgent: true } : {}),
       fallback: fallback.slice(0, 500), ...(i.expires ? { expires: i.expires } : {}), created: new Date(now).toISOString(),
     };
     return this.#run(async () => {
@@ -430,7 +430,7 @@ export class Live {
   /** watch_set's result: what was set, and how things stand. @param {Watch} w */
   watchText(w) {
     const type = this.types().get(w.when.type);
-    const parts = [/* en */ `Set ${w.id}: ${this.#describe(type, w)}${w.repeat ? /* en */ ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
+    const parts = [/* en */ `Set ${w.id}: ${this.#describe(type, w)}${w.urgent ? /* en */ ', urgent' : ''}${w.repeat ? /* en */ ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
     if (type?.gps && !this.on) parts.push(/* en */ 'GPS is off, so it waits until the user turns it on.');
     const here = this.nowInfo();
     parts.push(/* en */ `Now: ${here.activity}; ${here.place}.`);
@@ -443,7 +443,7 @@ export class Live {
     const types = this.types();
     const rows = [];
     for (const w of this.#watches.get(scope) ?? []) {
-      rows.push([w.id, w.owner, this.#describe(types.get(w.when?.type), w), w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
+      rows.push([w.id, w.owner, `${this.#describe(types.get(w.when?.type), w)}${w.urgent === true ? /* en */ ', urgent' : ''}`, w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
     }
     if (scope === this.#scope()) for (const w of this.#plan) rows.push([w.id, 'system', PLAN.describe(w.when), w.repeat ? 'yes' : 'no', w.fallback, '', this.#lastFired(scope, w.id)]);
     return rows.length ? tsv(['id', 'owner', 'when', 'repeat', 'reminder', 'expires', 'last_fired'], rows) : /* en */ 'No watches.';
@@ -902,6 +902,7 @@ export class Live {
     }
     const away = this.#away ?? { since: this.clock.now(), from: this.fix };
     this.#away = null;
+    this.#tracker.heard(this.clock.now()); // time off screen isn't a quiet GPS
     if (this.on) this.#gpsStart();
     this.#tell();
     await this.#catchUp({ ...away, how: 'shown' });
@@ -1188,6 +1189,7 @@ export class Live {
   async #check(o = {}) {
     if (this.#elsewhere()) return;
     await this.#follow();
+    if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
     const open = this.#scope();
     /** @type {Fired[]} */
@@ -1199,6 +1201,17 @@ export class Live {
     }
     // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
     this.#tellReminders(fired.length ? 'urgent' : 'calm');
+  }
+
+  /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {{ from: string, to: string } | null} */
+  #settle() {
+    if (!this.on || !this.shown) return null;
+    const c = this.#tracker.tick(this.clock.now());
+    if (!c) return null;
+    this.activity = c.to;
+    this.#tellActivity();
+    this.#tell();
+    return { from: c.from, to: c.to };
   }
 
   /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
@@ -1312,7 +1325,9 @@ export class Live {
         this.#held.push({ scope, text });
         continue;
       }
-      await this.agent.wake({ kind, text, fallbacks, titles });
+      // An urgent watch's alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
+      const urgent = kind === 'trigger' && xs.some((x) => x.watch.urgent === true);
+      await this.agent.wake({ kind, text, fallbacks, titles, ...(urgent ? { urgent } : {}) });
     }
   }
 
@@ -1424,6 +1439,7 @@ export class Live {
     const consider = (/** @type {number | null | undefined} */ t) => {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
+    if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {
