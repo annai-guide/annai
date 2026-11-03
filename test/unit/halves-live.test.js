@@ -222,8 +222,10 @@ test("voice on with a realtime Koe: a tap opens a session with Koe's live instru
     assert.match(system, /<today>\ntrip: Big Sur/);
     assert.ok(system.includes(`Kokoro's notes carry id="${k.agent.nonce}".`));
     const names = setup.tools[0].functionDeclarations.map((/** @type {any} */ f) => f.name);
-    for (const n of ['show', 'ask', 'recall', 'list', 'read', 'write', 'tell_kokoro']) assert.ok(names.includes(n), n);
-    for (const n of ['speak', 'wait', 'sleep']) assert.ok(!names.includes(n), `no ${n}: it speaks natively, and its turns end by themselves`);
+    for (const n of ['show', 'ask', 'recall', 'list', 'read', 'write', 'tell_kokoro', 'sleep']) assert.ok(names.includes(n), n);
+    for (const n of ['speak', 'wait']) assert.ok(!names.includes(n), `no ${n}: it speaks natively, and its turns end by themselves`);
+    // Its sleep closes the session, only when the user asks or Kokoro says so (the drive-test follow-ups, reversing plan decision 29).
+    assert.match(setup.tools[0].functionDeclarations.find((/** @type {any} */ f) => f.name === 'sleep').description, /a note from Kokoro tells you to/);
     assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1);
     assert.equal(k.platform.sessions.at(-1), 'play-and-record');
     assert.deepEqual(await blocks(k), ['live-open']);

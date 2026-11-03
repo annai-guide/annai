@@ -138,6 +138,8 @@ const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
 /** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
 const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
 
+/** A live Koe's sleep (the drive-test follow-ups). */
+/* en */ const LIVE_SLEEP = 'Stop listening: the live session closes, the microphone with it. Only when the user asks you to sleep or stop listening, or a note from Kokoro tells you to.';
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
@@ -927,7 +929,8 @@ export class Agent {
 
   /** A live session's tools (K5): this half's now, less speak, wait and sleep (plan decision 29). */
   async liveTools() {
-    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait', 'sleep'].includes(t.name));
+    // A live session's sleep closes it, the microphone with it, as a tap does (the drive-test follow-ups, reversing plan decision 29).
+    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait'].includes(t.name)).map((t) => (t.name === 'sleep' ? { ...t, description: LIVE_SLEEP } : t));
   }
 
   /** The user is watching this half's turn (its wakes include one of theirs, isWatched): its notes to the other half say so. */
