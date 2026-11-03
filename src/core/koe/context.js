@@ -1,5 +1,6 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
+import { planRows } from '../plan.js';
 
 /** Koe's compact view of the trip, in its tail (plan decision 6); its words escaped. */
 export const VIEW_MAX = 2000;
@@ -11,12 +12,15 @@ function local(ms, timeZone) {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
-/** The JSON files of a folder of the trip. @param {import('../workspace.js').Workspace} ws @param {string} trip @param {string} dir */
+/** The JSON files of a folder of the trip, with their paths. @param {import('../workspace.js').Workspace} ws @param {string} trip @param {string} dir */
 async function items(ws, trip, dir) {
   const out = [];
-  for (const f of await ws.list(trip, dir)) if (f.path.endsWith('.json')) out.push(await ws.readJSON(trip, f.path).catch(() => null));
-  return out.filter((x) => x && typeof x === 'object');
+  for (const f of await ws.list(trip, dir)) if (f.path.endsWith('.json')) out.push({ path: f.path, value: await ws.readJSON(trip, f.path).catch(() => null) });
+  return out.filter((x) => x.value && typeof x.value === 'object');
 }
+
+/** What the end of something over several days is, as the Plan says it (the drive-test follow-ups, section 2). */
+/* en */ const ENDS = /** @type {Record<string, string>} */ ({ lodging: 'Check out', car: 'Return', flight: 'Arrive', rail: 'Arrive' });
 
 /**
  * @param {{ ws: import('../workspace.js').Workspace, trip: string | null, now: number, timeZone: string, next: { due: number, text: string } | null }} c
@@ -28,11 +32,18 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
   const days = [local(now, timeZone).slice(0, 10), local(now + DAY, timeZone).slice(0, 10)];
   const at = (/** @type {any} */ t) => Date.parse(t?.at ?? '');
   const e = (/** @type {unknown} */ v) => escapeTags(String(v ?? ''));
-  const plan = (await items(ws, trip, '/plan/'))
-    .filter((it) => Number.isFinite(at(it.start)) && days.includes(local(at(it.start), timeZone).slice(0, 10)))
-    .sort((a, b) => at(a.start) - at(b.start))
-    .map((it) => [local(at(it.start), timeZone), Number.isFinite(at(it.end)) ? local(at(it.end), timeZone) : '', e(it.title), it.fixed ? 'yes' : 'no', e(it.place?.name)]);
-  const bookings = (await items(ws, trip, '/bookings/'))
+  const planFiles = await items(ws, trip, '/plan/');
+  const bookingFiles = await items(ws, trip, '/bookings/');
+  // The plan's items, and the ends of what runs over several days (a check-out, a return, an arrival) at their times, as the Plan shows.
+  const rows = planRows(planFiles.map((f) => ({ path: f.path, item: f.value })), bookingFiles.map((f) => ({ path: f.path, booking: f.value })), { fallbackTz: timeZone });
+  const plan = rows.filter((r) => r.at !== null && (r.from === 'item' || r.from === 'end') && days.includes(local(r.at, timeZone).slice(0, 10)))
+    .sort((a, b) => /** @type {number} */ (a.at) - /** @type {number} */ (b.at))
+    .map((r) => {
+      const end = r.from === 'item' ? at(r.item.end) : NaN;
+      const name = r.from === 'end' ? `${ENDS[r.set?.kind ?? ''] ?? 'Ends'} · ${r.item.title}` : r.item.title;
+      return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), r.item.fixed ? 'yes' : 'no', e(r.item.place?.name)];
+    });
+  const bookings = bookingFiles.map((f) => f.value)
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)
     .sort((a, b) => at(a.start) - at(b.start))
     .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), e(b.status), e(b.confirmation)]);

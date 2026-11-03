@@ -72,7 +72,10 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.leg').getByRole('link', { name: 'Directions' })).toHaveAttribute('href', /^https:\/\/(maps\.apple\.com|www\.google\.com\/maps)/);
   await expect(day.getByText('Booking missing')).toBeVisible();
   await tabs.nth(3).click();
-  await expect(day.locator('.plan-row')).toContainText('21:00–00:30 +1 PT'); // it lands the next day, in another zone
+  // It lands the next day, in another zone: its arrival is a row of its own there (the drive-test follow-ups, section 2).
+  await expect(day.locator('.plan-row')).toHaveText(/^21:00●Fixed: UA 456 to San Francisco/);
+  await tabs.nth(4).click();
+  await expect(day.locator('.plan-row')).toHaveText(/^00:30 PT●Fixed: Arrive · UA 456 to San Francisco/);
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
   await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
@@ -408,7 +411,7 @@ test('a trip from before: unverified and confirmed bookings without unsure, plan
   await putFile(page, trip, '/files/hotel.pdf', Buffer.from('%PDF-1.4 hotel'), 'application/pdf');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   // No dates: the days with something on them.
-  await expect(page.getByRole('tab')).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Sat, Nov 28', 'No time yet (1)']);
+  await expect(page.getByRole('tab')).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Sat, Nov 28', 'Sun, Nov 29', 'No time yet (1)']); // the 29th: a flight's arrival
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   const day = page.getByRole('tabpanel');
   await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check this' })).toBeVisible();

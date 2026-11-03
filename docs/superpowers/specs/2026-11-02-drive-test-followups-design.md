@@ -84,33 +84,38 @@ but does not refuse other keys, so the writes passed and nothing read their time
 
 New:
 
-- **Aliases first.** Before the format check, a booking Shiori writes is rewritten from common other names to the format's own, so a
-  small model's first try is stored right, in one call. At least the names above, and their obvious spellings (`check_in`, `checkIn`,
-  `pick_up`, `drop_off`, `return`, `depart`/`departure`, `arrive`/`arrival`, `price`/`total`): times to `start`/`end`; `name` to `title`;
-  `address`/`location` to `place`; a total with an amount and currency to `cost`. The builder writes the table, small and plain.
-  - A time written as a string becomes `{ at, tz }` only when its zone is known: a `tz` beside it, else the trip's only time zone
-    (trip.json `timezones` with exactly one). Otherwise it is refused, with words that say to write `{ at, tz }`.
-  - A flight's `flights[]` legs: `start` is the first leg's departure and `end` the last's arrival, and the legs are kept in
-    `fields.flights`, as written.
-  - An alias never overwrites the format's own field when both are given; the alias is then refused as unknown.
-- **Then refuse unknown keys, in Shiori's guard, not in the schema.** After the aliases, `shioriBooking` refuses a top-level key that the
-  booking schema in force doesn't list in its `properties` (the one `schemaFor` returns for that path, so a plugin's registered booking
-  schema with more properties is honoured). The error names that schema's fields and says anything else goes in `fields` (one line, in
-  the tool result, as every format error today). The schema itself stays open, so the user's own edits, Undo, Restore and imports of
-  bookings already stored work as before.
-- **Plugins add fields** either inside `fields` (any key, no registration) or as top-level properties of a booking schema they register
-  (the last registered for a path wins, as today). (My call; a call to confirm.)
-- **An alias and its own field both present** (a stored `name` beside `title`): equal values, the alias is dropped quietly; different,
-  refused, the error naming both and saying to remove one (write it as null in a patch).
-- Mapping details (my calls): a car's pick-up location is `place`; a different drop-off location goes to `fields.dropoff`. A date with
-  no time, or a time with neither `tz` nor the trip's only zone, is refused with words saying to write `{ at: "YYYY-MM-DDTHH:MM", tz }`.
-  A string with an offset is a good `at`; its `tz` still comes from beside it or the trip's only zone. A `total`/`price` that is
-  `{ amount, currency }` or "123.45 USD" becomes `cost`; anything else goes to `fields.total` as written. A flight's legs give no
-  `place`.
-- The guard runs synchronously inside the write's lock; the trip's zones are read before the write (the files plugin) and handed to it.
-  `writeMany` takes no guard: if any Shiori booking write goes through it, the builder routes the aliases there too.
-- **Bookings already stored** are not rewritten. They read as before. Shiori's next write of one goes through the aliases, so she fixes
-  it in one call when she touches it.
+- **Revised 2026-11-02 after two review rounds (my call, RULES 1 and 7):** the first shape rewrote the whole merged record and compared
+  aliases with stored fields; each fix brought new edge cases (a second note refused, a rebooked flight keeping its old times, a plugin's
+  field moved). The rule now works on what this write says, never on what is stored:
+- **Aliases rename this write's own keys, before the merge.** In the write tool (the whole value) and the patch tool (its changes, `+`
+  forms included), a booking's keys are renamed from common other names to the format's own, so a small model's first try is stored right,
+  in one call. Times to `start`/`end`; `name` to `title`; `location`/`address` and a pick-up's location to one `place`; a total with an
+  amount and currency to `cost` (a comma only as a thousands group; anything else to `fields.total` as written); flights[] legs to
+  `start`/`end` (first departure, last arrival) and kept as `fields.flights`; common detail names the user's model wrote (notes, room,
+  phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
+  arrival's to `fields.arrival`. A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
+- **This write wins.** A renamed key replaces the stored own field (a patch `{checkout: …}` moves the stored `end`; `{flights: legsB}`
+  moves `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
+- **Times:** a string time becomes `{ at, tz }` only with a known zone: a `tz` beside it, else, for anything but a flight or train, the
+  trip's only zone. An offset that the zone doesn't have at that instant, an impossible date (Nov 31) or a date with no time is refused
+  with words saying what to write. An unknown zone is never compared, only stored as written.
+- **Stored records are never touched.** Keys already stored, aliases or unknown, stay as they are and never block a patch or an edit. A
+  whole write renames what it is given, copied stored keys included (so a copied `checkin` beside a `start` is the same time, or is
+  refused with "write start as {...} in place of checkin"). In a patch, a renamed key also sets its own name to null, so a copy stored
+  under it goes at once and the double state never forms (`+` forms append and never delete); a null alias deletes its own field and
+  the stored alias key (`total: null` clears `cost` and `fields.total`). In a whole write a null is the same as no key, except
+  `unsure`, which the format check refuses. An edit that adds an alias is refused naming the format's field. Legs appended with
+  `flights+` move `end` to the last leg's arrival. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+- **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
+  location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
+  null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or
+  `place: null` (or `location: null`) beside a non-null alias, are refused naming both. What is stale is decided in `shioriBooking`,
+  which sees the stored booking and the merged one: if the merged place's name differs from the stored one and this patch does not give
+  the address or lat/lng, they are the old place's and go; likewise a new address without lat/lng drops the old position. A name that was only a copy of the address is no real name: naming the place keeps its address, and a new address takes the copy along. An empty name or address in an alias says nothing. A place left with a name that is blank is named from its address (a drop-off
+  at that same address is then the place, not `fields.dropoff`).
+- **Unknown keys:** only a top-level key this write introduces that the schema in force doesn't list is refused, with words naming the
+  format's fields and `fields`. The schema stays open, so the user's own edits, Undo, Restore and imports work as before.
+- **Plugins** add fields inside `fields` (any key) or as top-level properties of a booking schema they register.
 - The plan-item format gets no aliases (no model has written it wrong).
 
 ## 4. GPS: "moving fast" after arriving

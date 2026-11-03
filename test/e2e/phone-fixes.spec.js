@@ -102,28 +102,81 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
 });
 
-// "for the ridy up button, maybe put at the bottom of conversation instead of top?"
-test('Tidy up is at the foot of the Conversation, under its last line, and its menu opens upward, in view (item 10)', async ({ page }) => {
-  await openApp(page);
-  const trip = await startTrip(page, 'Alaska');
-  for (let i = 0; i < 6; i++) {
-    await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
-    await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
-  }
-  await page.goto('/#/talk');
-  await expect(page.locator('.convo .shiori')).toHaveCount(6);
-  const toggle = page.getByRole('button', { name: 'Tidy up' });
-  await toggle.scrollIntoViewIfNeeded();
-  const last = /** @type {any} */ (await page.locator('.convo > li').last().boundingBox());
-  const at = /** @type {any} */ (await toggle.boundingBox());
-  expect(at.y).toBeGreaterThanOrEqual(last.y + last.height);
-  await toggle.click();
-  const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
-  await expect(menu).toBeInViewport({ ratio: 1 });
-  const m = /** @type {any} */ (await menu.boundingBox());
-  expect(m.y + m.height).toBeLessThanOrEqual(at.y + 1);
-  await expect(menu.getByRole('button', { name: 'Summarize now' })).toBeVisible();
-});
+// "the tidy up button now is bit intrusive on the conversation pannel... is there some better place to put it / hide it?" (the user,
+// 2026-11-02): a ⋯ at the right of the Conversation title, its menu below it, inside the screen at phone width.
+for (const width of [390, 320]) {
+  test(`Tidy up is a ⋯ by the Conversation title, not in the conversation, and its menu opens below it, inside the screen, at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await openApp(page);
+    const trip = await startTrip(page, 'Alaska');
+    for (let i = 0; i < 6; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+    }
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .shiori')).toHaveCount(6);
+    // The screen scrolls itself to the end as it opens; wait for that, or it can come after the scroll back to the top.
+    await page.waitForFunction(() => scrollY > 0 || document.documentElement.scrollHeight <= innerHeight);
+    await page.evaluate(() => scrollTo(0, 0));
+    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    await expect(toggle).toHaveText('⋯');
+    const title = /** @type {any} */ (await page.getByRole('heading', { name: 'Conversation' }).boundingBox());
+    const at = /** @type {any} */ (await toggle.boundingBox());
+    // On the title's line, at its right, above the conversation's first line.
+    expect(at.y).toBeLessThan(title.y + title.height);
+    expect(at.y + at.height).toBeGreaterThan(title.y);
+    expect(at.x).toBeGreaterThan(title.x + title.width - 1);
+    expect(at.x + at.width).toBeLessThanOrEqual(width);
+    const first = /** @type {any} */ (await page.locator('.convo > li').first().boundingBox());
+    expect(at.y + at.height).toBeLessThanOrEqual(first.y);
+    await expect(page.locator('.convo ~ .tidy, .convo .tidy')).toHaveCount(0);
+    await toggle.click();
+    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    await expect(menu).toBeInViewport({ ratio: 1 });
+    const m = /** @type {any} */ (await menu.boundingBox());
+    expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(width);
+    await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
+  });
+}
+
+// On a long conversation the screen opens at the end; the title and ⋯ stay under the app's bar (pass 1 of the drive-plan review).
+for (const width of [390, 320]) {
+  test(`the Conversation's title and ⋯ stay under the app's bar on a long conversation, at ${width} px, opaque, and the menu still opens`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await openApp(page);
+    const trip = await startTrip(page, 'Alaska');
+    for (let i = 0; i < 25; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+    }
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .shiori')).toHaveCount(25);
+    // It opens at the end: the last line is in view, and the title row is still at the top, right under the bar.
+    await expect(page.locator('.convo .shiori').last()).toBeInViewport();
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(500);
+    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    await expect(toggle).toBeInViewport({ ratio: 1 });
+    const bar = /** @type {any} */ (await page.locator('header.topbar').boundingBox());
+    const row = /** @type {any} */ (await page.locator('.screen > .title-row').boundingBox());
+    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeInViewport({ ratio: 1 });
+    expect(Math.abs(row.y - (bar.y + bar.height))).toBeLessThanOrEqual(5); // the row's 4 px of padding is under the bar's edge
+    // Opaque: what is under a point of the row, between its text and the lines, is the row, not a line.
+    const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.title-row') !== null, [width / 2, row.y + 2]);
+    expect(covered).toBe(true);
+    await toggle.click();
+    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    await expect(menu).toBeInViewport({ ratio: 1 });
+    await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
+    // Back at the top it is where it was, above the first line.
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => scrollTo(0, 0));
+    const first = /** @type {any} */ (await page.locator('.convo > li').first().boundingBox());
+    const top = /** @type {any} */ (await page.locator('.screen > .title-row').boundingBox());
+    expect(top.y + top.height).toBeLessThanOrEqual(first.y + 4);
+  });
+}
 
 // "the drag model also does not work as intended. the long press and hold text selection will show up..." (IMG_3014)
 /** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */
