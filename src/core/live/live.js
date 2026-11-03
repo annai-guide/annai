@@ -808,6 +808,7 @@ export class Live {
   }
 
   #gpsStart() {
+    this.#tracker.heard(this.clock.now()); // time off screen isn't a quiet GPS
     for (const { pluginId, item: s } of this.registry.entries('sensor')) {
       if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function' || !this.#heeds(pluginId)) continue;
       if (this.gps !== 'ok') this.gps = 'waiting';
@@ -1188,6 +1189,7 @@ export class Live {
   async #check(o = {}) {
     if (this.#elsewhere()) return;
     await this.#follow();
+    if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
     const open = this.#scope();
     /** @type {Fired[]} */
@@ -1199,6 +1201,17 @@ export class Live {
     }
     // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
     this.#tellReminders(fired.length ? 'urgent' : 'calm');
+  }
+
+  /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {{ from: string, to: string } | null} */
+  #settle() {
+    if (!this.on || !this.shown) return null;
+    const c = this.#tracker.tick(this.clock.now());
+    if (!c) return null;
+    this.activity = c.to;
+    this.#tellActivity();
+    this.#tell();
+    return { from: c.from, to: c.to };
   }
 
   /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
@@ -1424,6 +1437,7 @@ export class Live {
     const consider = (/** @type {number | null | undefined} */ t) => {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
+    if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {

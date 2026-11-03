@@ -118,3 +118,26 @@ test('parked with 30 m of GPS wander, no GPS speed, accuracy 20 to 65 m: still f
     assert.equal(walk.activity, 'walking', `accuracy ${accuracy}`);
   }
 });
+
+test('activity asked without a fix: a held change completes on time; a quiet GPS after a slow speed is still, after a fast one stays moving fast; a restarted GPS counts afresh', () => {
+  const t = new ActivityTracker();
+  let p = BIXBY;
+  for (let s = 0; s <= 60; s += 5) t.feed(at((p = off(p, 0, -70)), s, { speed: 14 }));
+  assert.equal(t.activity, 'moving-fast');
+  assert.equal(t.due(), null, 'moving fast, nothing pending: no gap rule');
+  assert.equal(t.tick(T0 + 240_000), null, 'a tunnel stays moving fast');
+  for (const [s, speed] of [[245, 0.8], [265, 1.3], [290, 1.5]]) assert.equal(t.feed(at(p, s, { speed })), null);
+  assert.equal(t.due(), T0 + 305_000);
+  assert.equal(t.tick(T0 + 304_000), null);
+  assert.deepEqual(t.tick(T0 + 305_000), { from: 'moving-fast', to: 'walking', at: T0 + 305_000 });
+  assert.equal(t.due(), T0 + 410_000, 'two minutes after the last fix');
+  assert.equal(t.tick(T0 + 409_000), null);
+  assert.deepEqual(t.tick(T0 + 410_000), { from: 'walking', to: 'still', at: T0 + 410_000 });
+  assert.equal(t.due(), null);
+  const u = new ActivityTracker();
+  for (let s = 0; s <= 40; s += 5) u.feed(at(BIXBY, s, { speed: 1.2 }));
+  assert.equal(u.activity, 'walking');
+  u.heard(T0 + 600_000); // annai came back on screen after ten minutes
+  assert.equal(u.tick(T0 + 600_000), null);
+  assert.equal(u.due(), T0 + 720_000);
+});
