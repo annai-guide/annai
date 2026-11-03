@@ -268,7 +268,11 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
     if (changes && was) {
       const given = record(record(changes)?.place) ?? {};
       const moved = (/** @type {string} */ k) => typeof was[k] === 'string' && typeof p[k] === 'string' && p[k] !== was[k];
-      const stale = moved('name') ? ['address', 'lat', 'lng'] : moved('address') ? ['lat', 'lng'] : [];
+      // A name that was only a copy of the address (named from it below) is no real name: naming the place keeps its address, and
+      // another address takes the copy with it.
+      const copy = was.name === was.address;
+      if (copy && moved('address') && p.name === was.name) p.name = p.address;
+      const stale = moved('name') && !copy ? ['address', 'lat', 'lng'] : moved('address') ? ['lat', 'lng'] : [];
       for (const k of stale) if (!Object.hasOwn(given, k)) delete p[k];
     }
     if (!(typeof p.name === 'string' && p.name.trim()) && typeof p.address === 'string' && p.address.trim()) p.name = p.address;

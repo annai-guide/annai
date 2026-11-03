@@ -401,6 +401,14 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
   assert.deepEqual(await patch({ place: { name: 'Downtown Inn' } }), { name: 'Downtown Inn' });
   assert.deepEqual(await patch({ location: 'Hilton Anchorage', address: '1 Airport Rd' }), { name: 'Hilton Anchorage', address: '1 Airport Rd' });
   assert.deepEqual(await patch({ location: { name: 'Downtown Inn', lat: 61.2, lng: -149.9 } }), { name: 'Downtown Inn', lat: 61.2, lng: -149.9 });
+  // A place stored with only an address (its name a copy of it): naming it keeps the address; another address takes the copy along.
+  const bare = async (/** @type {any} */ changes) => {
+    await ws.write(trip, '/bookings/b.json', { ...base, kind: 'lodging', title: 'T', place: { name: '1 Main St', address: '1 Main St' } }, { author: 'user' });
+    await run('patch', { path: '/trip/bookings/b.json', changes });
+    return (await ws.readJSON(trip, '/bookings/b.json')).place;
+  };
+  assert.deepEqual(await bare({ location: 'Garden Inn Test' }), { name: 'Garden Inn Test', address: '1 Main St' });
+  assert.deepEqual(await bare({ address: '2 Other St' }), { name: '2 Other St', address: '2 Other St' });
   // A pick-up's location is the name, its address the address.
   assert.deepEqual(await patch({ pickup: { location: 'Downtown desk', address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Downtown desk', address: '5 Main St' });
   assert.deepEqual(await patch({ pickup: { address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Hilton Airport', address: '5 Main St' });
