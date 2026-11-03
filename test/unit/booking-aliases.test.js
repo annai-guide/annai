@@ -429,6 +429,18 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
   await run('patch', { path: '/trip/bookings/t.json', changes: { total: null } });
   const t = await ws.readJSON(trip, '/bookings/t.json');
   assert.deepEqual([t.cost, t.fields], [undefined, { room: '1' }]);
+  // A total that becomes a cost also takes a total kept in words before.
+  await ws.write(trip, '/bookings/t.json', { ...base, kind: 'lodging', fields: { total: 'about 100 dollars', room: '1' } }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/t.json', changes: { total: '100 USD' } });
+  const t2 = await ws.readJSON(trip, '/bookings/t.json');
+  assert.deepEqual([t2.cost, t2.fields], [{ amount: 100, currency: 'USD' }, { room: '1' }]);
+  // An empty pick-up address or location says nothing: the stored place stays, and the new time is written.
+  assert.deepEqual(await patch({ pickup: { address: '', at: '2026-11-20T10:00' } }), hotel.place);
+  assert.deepEqual(await patch({ pickup: { location: '', at: '2026-11-20T10:00' } }), hotel.place);
+  // A detail alias beside a fields that isn't an object is left for the format check: the patch is refused, nothing lost.
+  await ws.write(trip, '/bookings/f.json', { ...base, kind: 'lodging', fields: { room: '9' } }, { author: 'user' });
+  await assert.rejects(run('patch', { path: '/trip/bookings/f.json', changes: { room: '12', fields: null } }));
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/f.json')).fields, { room: '9' });
   // A drop-off at the address of a place made only from an address is the place itself.
   await run('write', { path: '/trip/bookings/c.json', content: { ...base, kind: 'car', address: '1 Main St', pickup: { at: '2026-11-20T10:00' }, dropoff: { location: '1 Main St', at: '2026-11-27T09:00' } } });
   const c = await ws.readJSON(trip, '/bookings/c.json');
@@ -438,7 +450,7 @@ test('fix pass 3: place aliases merge into the place like a merge patch; the sta
 test('fix pass 3, 1: a renamed alias in a patch also nulls its own key, so a stored copy goes at once; "+" never deletes', async () => {
   const o = { zones: [AK], append: true };
   assert.deepEqual(unalias({ checkin: '2026-11-21T15:00' }, o), { start: { at: '2026-11-21T15:00:00-09:00', tz: AK }, checkin: null });
-  assert.deepEqual(unalias({ name: 'U', notes: 'x', total: '5 USD' }, o), { title: 'U', name: null, cost: { amount: 5, currency: 'USD' }, total: null, fields: { notes: 'x' }, notes: null });
+  assert.deepEqual(unalias({ name: 'U', notes: 'x', total: '5 USD' }, o), { title: 'U', name: null, cost: { amount: 5, currency: 'USD' }, total: null, fields: { notes: 'x', total: null }, notes: null });
   assert.deepEqual(unalias({ 'notes+': 'x' }, o), { fields: { 'notes+': 'x' } });
   const { ws, trip, run } = await setup([AK]);
   await ws.write(trip, '/bookings/s.json', { ...base, kind: 'lodging', title: 'Inn', checkin: '2026-11-20 15:00', checkout: '2026-11-27 11:00' }, { author: 'user' });

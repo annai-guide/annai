@@ -141,10 +141,12 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const fields = out.fields === undefined ? {} : record(out.fields) && { ...out.fields };
   /** @type {Record<string, string>} unsure's names for them, as stored */
   const named = {};
+  /** @type {Set<string>} aliases kept as written, for the format check to refuse */
+  const kept = new Set();
   /** @param {string} alias @param {string} to "start", or "fields.dropoff" @param {unknown} v */
   const put = (alias, to, v) => {
     const sub = to.startsWith('fields.') ? to.slice(7) : '';
-    if (sub && !fields) return void (out[alias] = own[alias]);
+    if (sub && !fields) return void (kept.add(alias), (out[alias] = own[alias]));
     const at = sub ? fields : out;
     /* en */ if (at[sub || to] != null && !same(at[sub || to], v)) throw new Error(`${alias} and ${to} are both given and differ: keep one and remove the other.`);
     at[sub || to] = v;
@@ -162,8 +164,10 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     const where = o && (o.location ?? o.place ?? o.address);
     if (where && TIMES[k] !== 'start') ends.push([k, where]);
     else if (o) {
-      if ((o.location ?? o.place) != null) note(k, o.location ?? o.place, 'name');
-      if (o.address != null) note(k, o.address, 'address');
+      // An empty name or address says nothing: it never replaces the stored one.
+      const name = [o.location, o.place].find((x) => x != null && x !== '');
+      if (name !== undefined) note(k, name, 'name');
+      if (o.address != null && o.address !== '') note(k, o.address, 'address');
     }
   }
   const fk = keys.find((k) => base(k) === 'flights');
@@ -214,7 +218,10 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   for (const k of keys) {
     const cost = COSTS.includes(k) && costOf(own[k]);
     if (k === 'name') put(k, 'title', own[k]);
-    else if (cost) put(k, 'cost', cost);
+    else if (cost) {
+      put(k, 'cost', cost);
+      if (append && fields) fields[k] ??= null; // a total kept in words before goes, now it is a cost
+    }
     else if (COSTS.includes(k) || EXTRAS.includes(base(k))) put(k, `fields.${k}`, own[k]);
   }
   for (const k of append ? gone.filter((x) => !x.endsWith('+')) : []) {
@@ -226,7 +233,7 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     if (COSTS.includes(k) && fields) fields[k] ??= null;
   }
   // A renamed key of a patch also nulls its own name, so a copy stored under it goes at once ("+" only appends: it never deletes).
-  if (append) for (const k of keys) if (!k.endsWith('+')) out[k] = null;
+  if (append) for (const k of keys) if (!k.endsWith('+') && !kept.has(k)) out[k] = null;
   if (fields && Object.keys(fields).length) out.fields = fields;
   if (besideKey && (legs.length || keys.some((k) => Object.hasOwn(TIMES, k)))) delete out[besideKey];
   /** @param {unknown} n */
