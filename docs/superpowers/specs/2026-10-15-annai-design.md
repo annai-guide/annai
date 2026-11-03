@@ -118,7 +118,7 @@ The top-level folder `/.annai` is reserved inside every scope; archives keep the
   - **names.json** (a trip's, the waiting space's): `{ "/files/<name>": "<short name>" }`, 1 to 80 characters each
   - **plan item:** `id, title, kind, fixed: bool, priority, start {at, tz}, end?, place? {name, lat, lng, address}, booking?, notes?`
   - **booking:** `id, kind (flight · lodging · car · rail · event · restaurant · other), status (unverified · confirmed), source (path of original), times, place, confirmation, cost {amount, currency}, fields{}, unsure[]`. `unsure` names just the fields Shiori isn't sure of (`[]` when none: her own, `start`, `end`, `place`, `confirmation`, `cost`, `title`, or a key of `fields`); a booking she writes new always carries it, and one without it is from before (seeing bookings). Shiori never sets `confirmed`; her change to a confirmed one keeps it confirmed (with no confirming step, nothing would clear it again). `status` stays, and marks only a booking from before.
-  - **watch** (stored as a record so it survives reloads): `id, owner, when {type, …}, repeat, fallback, expires`
+  - **watch** (stored as a record so it survives reloads): `id, owner, when {type, …}, repeat, urgent, fallback, expires` (urgent: said at once in a live voice session; drive-test design §7)
 
 ### 4.5 Events
 
@@ -484,7 +484,7 @@ Every tool can be switched off, except `show`, `ask`, `wait`, `sleep`, `tell_koe
 | Files | `list(path)` → TSV · `read(path, region?)` → text / JSON / image / PDF-as-document; for a photo, `region` crops it (§4.8) · `write(path, text \| object)` · `edit(path, old, new)` (text files) · `patch(path, mergePatch)` (JSON files) · `search(query, path?)` → TSV · `delete(path)` |
 | Web | `web_search(query)` → TSV (title, url, snippet) · `fetch(url)` → readable text |
 | Places | `nearby(lat, lng, radius, kinds?)` → TSV (OpenStreetMap Overpass + Wikipedia geosearch; a place's website and opening hours in its note where OpenStreetMap has them) · `geocode(query)` → TSV with `website` and `opening_hours` where Nominatim's extratags have them · `reverse(lat, lng)` (Nominatim, the same two) · `weather(lat, lng, when)` (Open-Meteo, also returns the time zone) · `guide(place)` (Wikivoyage sections) |
-| Time | `watch.set({when, fallback, repeat?, expires?})` · `watch.list` · `watch.cancel` |
+| Time | `watch.set({when, fallback, repeat?, urgent?, expires?})` · `watch.list` · `watch.cancel` |
 | Go | `maps_link(destination, mode)` → Apple/Google Maps card · `search_link(kind, params)` → prefilled flight, hotel or car-rental search links |
 | Trips | `list_trips` → TSV (id, title, start, end, places of the other active trips; nothing else of theirs) · `start_trip(title, start?, end?, places?, timezones?, recap?, files?)` · `open_trip(trip, recap?, files?)` (no trip open) · `move_file(path, trip)` (§7.3). Kokoro's, never Koe's. Renaming a trip and changing its dates are her `patch` of `/trip/trip.json`, dates the user typed too: she says so, and Undo covers it |
 | Self | `tune_personality(text, reason)` · `skill(name)` · `task(prompt, tools?, reasoning?)` (a subagent on the utility model, with its own loop and a subset of tools, returning its result) · `recall(query \| range)` → earlier conversation, word for word, from before a compaction (photos as stubs) |

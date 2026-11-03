@@ -620,7 +620,9 @@ export class LiveKoe {
   /** A wake Koe answers (a trigger, the recap asked aloud), as annai's text turn; not said, its reminders are annai's (Halves). @param {import('../agent/loop.js').Wake} w */
   wake(w) {
     if (isWatched(w)) this.#watched = true;
-    return this.#say(`[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`, w.kind);
+    const text = `[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`;
+    // An urgent watch fired (drive-test design §7): said now, as an urgent note is; out of view, it waits as any wake does.
+    return w.urgent && this.c.visible() ? this.#now(text, w.kind) : this.#say(text, w.kind);
   }
 
   /**
@@ -644,18 +646,24 @@ export class LiveKoe {
         else this.#notes = this.#notes.filter((x) => x !== n);
       });
     }
-    // Urgent: said now, whole, before anything that waits (a session it opens lets nothing else in first); the microphone is deaf
-    // until she has said it, or the cap.
+    return this.#now(note, 'note', owed);
+  }
+
+  /**
+   * Urgent (an immediate note, an urgent watch's trigger): said now, whole, before anything that waits (a session it opens lets nothing
+   * else in first); the microphone is deaf until she has said it, or the cap. @param {string} text @param {string} why @param {Wake | null} [owed]
+   */
+  #now(text, why, owed = null) {
     clearTimeout(this.#urgent?.timer);
     const mark = (this.#urgent = { sent: 0, spoke: false, timer: null });
-    return this.open('note', { mic: Boolean(this.c.voice?.unlocked) }).then((ok) => {
+    return this.open(why, { mic: Boolean(this.c.voice?.unlocked) }).then((ok) => {
       if (!ok) {
         this.#unmark(mark);
         return ok;
       }
       if (owed) this.#went([owed]);
       this.#input?.cut('voice'); // the user's turn going on ends here
-      this.#text(note, this.#cut());
+      this.#text(text, this.#cut());
       // A newer urgent note came meanwhile: its own mark runs once it goes in, after this one.
       if (this.#urgent === mark) this.#capped(mark, (mark.sent = Date.now()) + URGENT_S * this.#unit());
       return ok;

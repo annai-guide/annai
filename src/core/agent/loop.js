@@ -50,7 +50,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string, urgent?: boolean }} Wake
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -61,6 +61,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
  *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
+ *   urgent: a trigger with an urgent watch, said at once in a live voice session (drive-test design §7);
  *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation;
  *   watched: Koe's note, or its "answered the user" cue, was made by a Koe turn the user is watching (isWatched); forUser: Kokoro's exact words
  *   for the user with its note (tell_koe's for_user), all annai ever shows of it (§7.1); retold: the note, never passed on, went to Koe's next turn again
