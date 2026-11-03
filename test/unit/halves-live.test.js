@@ -792,6 +792,28 @@ test("a tap that closes a live session with Kokoro's note still owed says and sh
   }
 });
 
+test("a sleep (Koe's, from Kokoro or the user) that closes a live session with Kokoro's note still owed hands it on, its words for the user shown, as any close but a tap does (fix pass 1)", async () => {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  try {
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const { clip } = await import('./voice-kit.js');
+    const lunch = await clip('where-lunch');
+    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // the user is still speaking
+    await until(() => k.agent.live.view.name === 'hearing');
+    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
+    await until(() => k.agent.live.owing);
+    k.agent.live.close('sleep');
+    await settled(k);
+    assert.equal(k.agent.live.state, 'closed');
+    assert.ok(!texts(k).some((t) => t.includes('Big Sur story')), 'it never went in');
+    const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    assert.deepEqual(shown, ['Highway 1 took from 1919 to 1937 to build.'], 'shown as text, not lost with the sleep');
+  } finally {
+    await k.done();
+  }
+});
+
 test("review S3: the session a tap opens holds a kept note while the user starts to speak: it goes in after their activityEnd, not over them", async () => {
   const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
   try {

@@ -19,7 +19,7 @@ export const FAST_FROM = 5;
 export const SETTLE_MS = 30_000;
 /** …and leaving moving fast this long (a red light isn't the end of a drive). */
 export const LEAVE_FAST_MS = 60_000;
-/** No fix this long after a last speed below moving fast reads as still: a parked phone hardly sends fixes. A last speed that was moving fast keeps it through a gap (a tunnel). */
+/** No fix this long after a last speed that was slow (below walking, while moving fast; below moving fast otherwise) reads as still: a parked phone hardly sends fixes. A faster last speed keeps the activity through a gap (a tunnel). */
 export const QUIET_STILL_MS = 120_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
 const SPAN_MS = 15_000;
@@ -102,9 +102,9 @@ export class ActivityTracker {
     return this.activity === 'moving-fast' ? LEAVE_FAST_MS : SETTLE_MS;
   }
 
-  /** The last speed was below moving fast, and the activity isn't still yet. */
+  /** The last speed was a slow one (while moving fast, below walking: slow traffic before a tunnel isn't a stop), and the activity isn't still yet. */
   #quiet() {
-    return this.speed !== null && this.speed < FAST_FROM && this.activity !== 'still';
+    return this.speed !== null && this.speed < (this.activity === 'moving-fast' ? WALK_BELOW : FAST_FROM) && this.activity !== 'still';
   }
 
   /** Forgets everything: live mode went off. */

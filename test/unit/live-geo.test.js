@@ -141,3 +141,17 @@ test('activity asked without a fix: a held change completes on time; a quiet GPS
   assert.equal(u.tick(T0 + 600_000), null);
   assert.equal(u.due(), T0 + 720_000);
 });
+
+test('a last speed of 3 to 5 m/s while moving fast (slow traffic before a tunnel) stays moving fast through a gap; below 3 it reads still', () => {
+  const t = new ActivityTracker();
+  let p = BIXBY;
+  for (let s = 0; s <= 60; s += 5) t.feed(at((p = off(p, 0, -70)), s, { speed: 14 }));
+  for (let s = 65; s <= 90; s += 5) t.feed(at((p = off(p, 0, -20)), s, { speed: 4 }));
+  assert.equal(t.activity, 'moving-fast');
+  assert.equal(t.tick(T0 + 90_000 + 600_000), null, 'ten minutes with no fix after a 4 m/s: still moving fast');
+  assert.equal(t.activity, 'moving-fast');
+  const u = new ActivityTracker();
+  for (let s = 0; s <= 60; s += 5) u.feed(at((p = off(p, 0, -70)), s, { speed: 14 }));
+  u.feed(at(p, 65, { speed: 2.5 }));
+  assert.deepEqual(u.tick(T0 + 65_000 + 120_000)?.to, 'still');
+});
