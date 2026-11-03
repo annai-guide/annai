@@ -65,13 +65,13 @@ export function activate(annai) {
    * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is stored and on the value as
    * it will be read, so no wording of the text and no timing gets around it. The booking schema in force is the one the format check
    * uses. Not a booking: none.
-   * @param {string} scope @param {string} path
+   * @param {string} scope @param {string} path @param {any} [changes] a patch's changes, as renamed
    * @returns {((before: any, next: any) => any) | undefined}
    */
-  const guardOf = (scope, path) => {
+  const guardOf = (scope, path, changes) => {
     if (!isBookingPath(scope, path)) return undefined;
     const schema = ws.schemaFor(scope, path);
-    return (before, next) => shioriBooking(before, next, { schema });
+    return (before, next) => shioriBooking(before, next, { schema, changes });
   };
   /**
    * What renames this write's own keys written under other names, before it is merged (the drive-test follow-ups, section 3), with the
@@ -248,7 +248,8 @@ export function activate(annai) {
         recordPlace(scope, path);
         // Her short names for files start with her first one (names.js): no write of an empty file first.
         const own = await ownOf(scope, path);
-        await ws.patch(scope, path, own(i.changes, true), { author: 'shiori', append: true, create: path === NAMES_FILE, guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const changes = own(i.changes, true);
+        await ws.patch(scope, path, changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: guardOf(scope, path, changes), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.`;
       }),
     },

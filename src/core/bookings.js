@@ -126,8 +126,9 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const listed = record(record(schema)?.properties) ?? {};
   const base = (/** @type {string} */ k) => (append && k.endsWith('+') && EXTRAS.includes(k.slice(0, -1)) ? k.slice(0, -1) : k);
   const isAlias = (/** @type {string} */ k) => ALIASES.includes(base(k)) && !Object.hasOwn(listed, base(k));
-  // A null alias in a patch deletes its own field and the alias key as stored; in a whole write, a null is the same as not there.
-  const gone = record(own) ? Object.keys(own).filter((k) => own[k] === null && (!append || isAlias(k))) : [];
+  // A null alias in a patch deletes its own field and the alias key as stored; in a whole write, a null is the same as not there (but
+  // unsure: the format check says what is wrong with it, so a booking never silently loses its marking list).
+  const gone = record(own) ? Object.keys(own).filter((k) => own[k] === null && (append ? isAlias(k) : k !== 'unsure')) : [];
   const keys = record(own) ? Object.keys(own).filter((k) => isAlias(k) && own[k] !== null) : [];
   if (!keys.length && !gone.length) return own;
   const out = { ...own };
@@ -151,12 +152,19 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   };
   /** @type {[string, unknown][]} where a time says it ends (a drop-off, an arrival) */
   const ends = [];
-  /** @type {[string, unknown][]} the place's parts, in order: a pick-up's place, a location, an address */
+  /** @type {[string, string, unknown][]} the place's parts, in order, as [alias, key of place, value]: a pick-up's place, a location, an address */
   const parts = [];
+  /** @param {string} alias @param {unknown} v a name or address, or an object with the place's keys @param {string} key what a string is */
+  const note = (alias, v, key) => void (record(v) ? Object.entries(/** @type {object} */ (v)).forEach(([x, y]) => parts.push([alias, x, y])) : parts.push([alias, key, v]));
   for (const k of keys.filter((x) => Object.hasOwn(TIMES, x))) {
     put(k, TIMES[k], timeOf(k, own[k], beside, zones, TIMES[k], far));
-    const where = record(own[k]) && (own[k].location ?? own[k].place ?? own[k].address);
-    if (where) (TIMES[k] === 'start' ? parts : ends).push([k, where]);
+    const o = record(own[k]);
+    const where = o && (o.location ?? o.place ?? o.address);
+    if (where && TIMES[k] !== 'start') ends.push([k, where]);
+    else if (o) {
+      if ((o.location ?? o.place) != null) note(k, o.location ?? o.place, 'name');
+      if (o.address != null) note(k, o.address, 'address');
+    }
   }
   const fk = keys.find((k) => base(k) === 'flights');
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []).map(record) : [];
@@ -173,33 +181,34 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
       }
     }
   }
-  for (const k of ['location', 'address']) if (keys.includes(k)) parts.push([k, own[k]]);
-  if (parts.length) {
-    // One place from its parts and any place this write gives: a second name is the address of an alias-made one.
+  for (const k of ['location', 'address']) if (keys.includes(k)) note(k, own[k], k === 'address' ? 'address' : 'name');
+  // In a patch a null address is the place's address null, and a null location is no place.
+  const wipe = append && gone.includes('location');
+  if (append && gone.includes('address')) parts.push(['address', 'address', null]);
+  if (wipe || out.place === null) {
+    const live = parts.find((x) => x[2] !== null)?.[0];
+    const [a, b] = wipe ? ['location', live ?? (out.place != null ? 'place' : '')] : [live ?? '', 'place'];
+    /* en */ if (a && b) throw new Error(`${a} and ${b} are both given and differ: keep one and remove the other.`);
+    out.place = null;
+  } else if (parts.length) {
+    // The place's parts merge into the place this write gives, as a merge patch would; what the stored place keeps or loses is
+    // shioriBooking's to say, who sees it. A second name is the address of an alias-made one.
     const place = { ...(record(out.place) ?? {}) };
     /** @type {Record<string, string>} */
     const from = Object.fromEntries(Object.keys(place).map((x) => [x, 'place']));
-    /** @param {string} alias @param {string} key @param {unknown} v */
-    const part = (alias, key, v) => {
-      /* en */ if (place[key] !== undefined && !eq(place[key], v)) throw new Error(`${alias} and ${from[key]} are both given and differ: keep one and remove the other.`);
-      [place[key], from[key]] = [v, from[key] ?? alias];
-    };
-    for (const [k, v] of parts) {
+    for (const [k, key0, v] of parts) {
       named[k] = TIMES[k] ?? 'place';
-      if (record(v)) for (const [key, x] of Object.entries(/** @type {object} */ (v))) part(k, key, x);
-      else if (k === 'address' || (place.name !== undefined && place.name !== v && from.name !== 'place')) part(k, 'address', v);
-      else part(k, 'name', v);
+      const key = key0 === 'name' && typeof v === 'string' && place.name !== undefined && place.name !== v && from.name !== 'place' ? 'address' : key0;
+      /* en */ if (place[key] !== undefined && !eq(place[key], v)) throw new Error(`${k} and ${from[key]} are both given and differ: keep one and remove the other.`);
+      [place[key], from[key]] = [v, from[key] ?? k];
     }
-    // In a patch a place made from a location or pick-up is a different place: the stored address and position go (an address alone is
-    // only the address). A booking with no name is named from its address by shioriBooking.
-    if (append && parts.some(([k]) => k !== 'address')) for (const key of ['address', 'lat', 'lng']) place[key] ??= null;
     const title = [own.title, own.name].find((x) => typeof x === 'string' && x.trim());
-    if (place.name === undefined && title) place.name = title;
+    if (!append && place.name === undefined && title) place.name = title;
     out.place = place;
   }
   for (const [k, where] of ends) {
     // An end elsewhere than the place is kept in fields: a car's is its drop-off, whatever it was called; an arrival's, its arrival.
-    if (where !== out.place?.name && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'arrival' : 'dropoff'}`, where);
+    if (where !== (record(out.place)?.name ?? record(out.place)?.address) && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'arrival' : 'dropoff'}`, where);
     named[k] = 'end';
   }
   for (const k of keys) {
@@ -214,7 +223,10 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     if (to.startsWith('fields.')) {
       if (fields) fields[to.slice(7)] ??= null;
     } else if (to) out[to] ??= null;
+    if (COSTS.includes(k) && fields) fields[k] ??= null;
   }
+  // A renamed key of a patch also nulls its own name, so a copy stored under it goes at once ("+" only appends: it never deletes).
+  if (append) for (const k of keys) if (!k.endsWith('+')) out[k] = null;
   if (fields && Object.keys(fields).length) out.fields = fields;
   if (besideKey && (legs.length || keys.some((k) => Object.hasOwn(TIMES, k)))) delete out[besideKey];
   /** @param {unknown} n */
@@ -232,10 +244,11 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
  * the user's own edits, Undo, Restore and imports work as before; a plugin adds fields in `fields`, or as properties of a booking schema
  * it registers.
  * @param {any} before the booking as stored, or undefined @param {any} next what she would store
- * @param {{ schema?: any }} [o] the booking schema in force
+ * @param {{ schema?: any, changes?: any }} [o] the booking schema in force; a patch's changes (as renamed), which decide what of a
+ * renamed place is stale
  * @returns {any}
  */
-export function shioriBooking(before, next, { schema } = {}) {
+export function shioriBooking(before, next, { schema, changes } = {}) {
   if (!next || typeof next !== 'object' || Array.isArray(next)) return next; // the format check says what is wrong
   const old = record(before);
   if (next.status === 'confirmed' && old?.status !== 'confirmed') {
@@ -247,7 +260,18 @@ export function shioriBooking(before, next, { schema } = {}) {
   }
   const own = record(record(schema)?.properties);
   const place = record(next.place);
-  if (place && !(typeof place.name === 'string' && place.name.trim()) && typeof place.address === 'string' && place.address.trim()) next = { ...next, place: { ...place, name: place.address } };
+  if (place) {
+    const p = { ...place };
+    const was = record(old?.place);
+    // A patch that gives another name for the place leaves its address and position as the old place's, unless the patch gives them.
+    if (changes && typeof was?.name === 'string' && typeof p.name === 'string' && p.name !== was.name) {
+      const given = record(record(changes)?.place) ?? {};
+      for (const k of ['address', 'lat', 'lng']) if (!Object.hasOwn(given, k)) delete p[k];
+    }
+    if (!(typeof p.name === 'string' && p.name.trim()) && typeof p.address === 'string' && p.address.trim()) p.name = p.address;
+    const { place: _, ...rest } = next;
+    next = Object.keys(p).length ? { ...next, place: p } : rest;
+  }
   const added = own ? Object.keys(next).filter((k) => !Object.hasOwn(own, k) && !(old && Object.hasOwn(old, k))) : [];
   if (added.length) {
     // A name from the other format is told its field (an edit has no renaming, and a model would file it in fields).

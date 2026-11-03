@@ -144,7 +144,7 @@ test("a car's return written as an arrival is its drop-off, which the Plan's Ret
 
 test('a patch: its own changes are renamed, + forms too; the schema in force keeps its own names', () => {
   const o = { schema: BOOKING_SCHEMA, zones: [AK], append: true };
-  assert.deepEqual(unalias({ 'notes+': ['late arrival'], notes: 'x' }, o), { fields: { 'notes+': ['late arrival'], notes: 'x' } });
+  assert.deepEqual(unalias({ 'notes+': ['late arrival'], notes: 'x' }, o), { notes: null, fields: { 'notes+': ['late arrival'], notes: 'x' } });
   // A write isn't a patch: a "+" key is left for the unknown-field check.
   assert.deepEqual(unalias({ 'notes+': ['x'] }, { schema: BOOKING_SCHEMA }), { 'notes+': ['x'] });
   // The stored kind decides a flight's zone: a checkout patched onto a stored flight never takes the trip's zone.
@@ -199,10 +199,10 @@ test('through write and patch: stored right in one call; refused with nothing st
   await ws.write(trip, '/bookings/stay.json', old, { author: 'user' });
   await run('patch', { path: '/trip/bookings/stay.json', changes: { confirmation: 'TEST42' } });
   assert.deepEqual(await ws.readJSON(trip, '/bookings/stay.json'), { ...old, confirmation: 'TEST42' });
-  // Her patch with its own times sets them; the old names stay until she removes them.
+  // Her patch with its own times sets them, and the old names it renames go with them (fix pass 3, 1).
   await run('patch', { path: '/trip/bookings/stay.json', changes: { checkin: '2026-11-20T15:00', checkout: null } });
   const now = await ws.readJSON(trip, '/bookings/stay.json');
-  assert.deepEqual([now.start, now.checkin, 'checkout' in now], [{ at: '2026-11-20T15:00:00-09:00', tz: AK }, '2026-11-20 15:00', false]);
+  assert.deepEqual([now.start, 'checkin' in now, 'checkout' in now], [{ at: '2026-11-20T15:00:00-09:00', tz: AK }, false, false]);
 });
 
 test('through patch: notes append into fields; a rebooked flight moves; a checkout replaces the stored end; an impossible date is refused', async () => {
@@ -379,4 +379,81 @@ test('fix pass 2, S1 to S3: a null alias deletes its own field and its stored al
   assert.deepEqual(unalias({ checkin: null, start: { at: 'x', tz: AK } }, { zones: [AK], append: true }), { start: { at: 'x', tz: AK }, checkin: null });
   await run('write', { path: '/trip/bookings/w.json', content: { ...base, kind: 'lodging', checkout: null, notes: null, title: 'T' } });
   assert.deepEqual(await ws.readJSON(trip, '/bookings/w.json'), { ...base, kind: 'lodging', title: 'T' });
+});
+
+test('fix pass 3: place aliases merge into the place like a merge patch; the stale parts of a renamed place go, the ones this write gives stay', async () => {
+  const { ws, trip, run } = await setup([AK]);
+  const P = '/trip/bookings/s.json';
+  const hotel = { ...base, kind: 'lodging', title: 'Hilton', place: { name: 'Hilton Airport', address: '1 Airport Rd', lat: 61.17, lng: -149.99 } };
+  /** @param {any} changes */
+  const patch = async (changes) => {
+    await ws.write(trip, '/bookings/s.json', hotel, { author: 'user' });
+    await run('patch', { path: P, changes });
+    return (await ws.readJSON(trip, '/bookings/s.json')).place;
+  };
+  // The same name: the rest of the place stays, and what is given replaces.
+  assert.deepEqual(await patch({ location: { lat: 61.2, lng: -149.9 } }), { name: 'Hilton Airport', address: '1 Airport Rd', lat: 61.2, lng: -149.9 });
+  assert.deepEqual(await patch({ address: '2 Test St' }), { name: 'Hilton Airport', address: '2 Test St', lat: 61.17, lng: -149.99 });
+  // Another name: the address and position of the old place go, unless this write gives them (even as they were).
+  assert.deepEqual(await patch({ location: 'Downtown Inn' }), { name: 'Downtown Inn' });
+  assert.deepEqual(await patch({ place: { name: 'Downtown Inn' } }), { name: 'Downtown Inn' });
+  assert.deepEqual(await patch({ location: 'Hilton Anchorage', address: '1 Airport Rd' }), { name: 'Hilton Anchorage', address: '1 Airport Rd' });
+  assert.deepEqual(await patch({ location: { name: 'Downtown Inn', lat: 61.2, lng: -149.9 } }), { name: 'Downtown Inn', lat: 61.2, lng: -149.9 });
+  // A pick-up's location is the name, its address the address.
+  assert.deepEqual(await patch({ pickup: { location: 'Downtown desk', address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Downtown desk', address: '5 Main St' });
+  assert.deepEqual(await patch({ pickup: { address: '5 Main St', at: '2026-11-20T10:00' } }), { name: 'Hilton Airport', address: '5 Main St', lat: 61.17, lng: -149.99 });
+  // Nulls: an address null removes the address, a location null the place.
+  assert.deepEqual(await patch({ address: null }), { name: 'Hilton Airport', lat: 61.17, lng: -149.99 });
+  assert.equal(await patch({ location: null }), undefined);
+  // A place of its own and an alias merge; different values for one part, or a null place beside an alias, are refused naming both.
+  assert.deepEqual(await patch({ place: { address: '7 X St' }, location: 'X desk' }), { name: 'X desk', address: '7 X St' });
+  await assert.rejects(run('patch', { path: P, changes: { place: { name: 'X' }, location: 'Y' } }), /location and place are both given and differ/);
+  await assert.rejects(run('patch', { path: P, changes: { place: null, location: 'Y' } }), /location and place are both given and differ/);
+  await assert.rejects(run('patch', { path: P, changes: { place: null, address: '1 A' } }), /address and place are both given and differ/);
+  // No place and a null address: still no place.
+  await ws.write(trip, '/bookings/n.json', { ...base, kind: 'lodging', title: 'T' }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/n.json', changes: { address: null } });
+  assert.equal('place' in (await ws.readJSON(trip, '/bookings/n.json')), false);
+  // A total null removes the cost and fields.total.
+  await ws.write(trip, '/bookings/t.json', { ...base, kind: 'lodging', cost: { amount: 5, currency: 'USD' }, fields: { total: 'about 5', room: '1' } }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/t.json', changes: { total: null } });
+  const t = await ws.readJSON(trip, '/bookings/t.json');
+  assert.deepEqual([t.cost, t.fields], [undefined, { room: '1' }]);
+  // A drop-off at the address of a place made only from an address is the place itself.
+  await run('write', { path: '/trip/bookings/c.json', content: { ...base, kind: 'car', address: '1 Main St', pickup: { at: '2026-11-20T10:00' }, dropoff: { location: '1 Main St', at: '2026-11-27T09:00' } } });
+  const c = await ws.readJSON(trip, '/bookings/c.json');
+  assert.deepEqual([c.place, c.fields], [{ name: '1 Main St', address: '1 Main St' }, undefined]);
+});
+
+test('fix pass 3, 1: a renamed alias in a patch also nulls its own key, so a stored copy goes at once; "+" never deletes', async () => {
+  const o = { zones: [AK], append: true };
+  assert.deepEqual(unalias({ checkin: '2026-11-21T15:00' }, o), { start: { at: '2026-11-21T15:00:00-09:00', tz: AK }, checkin: null });
+  assert.deepEqual(unalias({ name: 'U', notes: 'x', total: '5 USD' }, o), { title: 'U', name: null, cost: { amount: 5, currency: 'USD' }, total: null, fields: { notes: 'x' }, notes: null });
+  assert.deepEqual(unalias({ 'notes+': 'x' }, o), { fields: { 'notes+': 'x' } });
+  const { ws, trip, run } = await setup([AK]);
+  await ws.write(trip, '/bookings/s.json', { ...base, kind: 'lodging', title: 'Inn', checkin: '2026-11-20 15:00', checkout: '2026-11-27 11:00' }, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { checkin: '2026-11-21T15:00' } });
+  const got = await ws.readJSON(trip, '/bookings/s.json');
+  assert.deepEqual([got.start.at, 'checkin' in got, got.checkout], ['2026-11-21T15:00:00-09:00', false, '2026-11-27 11:00']);
+  // Her whole write of the record as read is then the same time written once.
+  await run('write', { path: '/trip/bookings/s.json', content: { ...got, confirmation: 'X1' } });
+});
+
+test('fix pass 3, 2: appending to a stored value that is not a list keeps it as the first item', async () => {
+  const { mergePatch } = await import('../../src/core/patch.js');
+  assert.deepEqual(mergePatch({ n: 'a' }, { 'n+': 'b' }, { append: true }), { n: ['a', 'b'] });
+  assert.deepEqual(mergePatch({ n: 5 }, { 'n+': [6] }, { append: true }), { n: [5, 6] });
+  assert.deepEqual(mergePatch({ n: null }, { 'n+': 'b' }, { append: true }), { n: ['b'] });
+  const { ws, trip, run } = await setup([AK]);
+  await run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn', notes: 'late arrival' } });
+  await run('patch', { path: '/trip/bookings/s.json', changes: { 'notes+': 'door code' } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).fields, { notes: ['late arrival', 'door code'] });
+});
+
+test('fix pass 3, 3: a whole write with unsure null is refused by the format check, not stripped', async () => {
+  const { ws, trip, run } = await setup([AK]);
+  await assert.rejects(run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn', unsure: null } }), /unsure/);
+  await run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn', unsure: ['title'] } });
+  await assert.rejects(run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn 2', checkin: '2026-11-20T15:00', unsure: null } }), /unsure/);
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).unsure, ['title']);
 });
