@@ -785,3 +785,64 @@ for (const [how, reply] of /** @type {[string, any][]} */ ([
     }
   });
 }
+
+// Urgent watches (the drive-test design, section 7): an urgent watch's alert goes into the live session as an urgent note does.
+const FIRED = { kind: /** @type {const} */ ('trigger'), text: 'Your watch w-1 (at 10:00) fired. Its reminder: "Turn left at the next exit."', fallbacks: [{ watch: 'w-1', text: 'Turn left at the next exit.' }] };
+const ALERT = /Turn left at the next exit/;
+
+for (const urgent of [true, false]) {
+  test(`${urgent ? 'an urgent' : 'a plain'} watch firing while music holds a user turn: ${urgent ? 'said at once and whole, the microphone deaf until it is' : 'waits for the turn to end, as today'} (section 7)`, async () => {
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left at the next exit.', audio: tone(0.6) }]);
+    try {
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+      await k.voice.unlock();
+      k.voice.route = async () => 'car'; // where speaking cuts her off (full duplex)
+      k.platform.streamSpeed = 1;
+      k.agent.tap();
+      await until(() => k.agent.live.listening, 3000);
+      k.platform.mic.feed(cat(quiet(0.3), hum(5)), RATE); // music: a user turn going on
+      assert.equal(k.agent.live.view.name, 'hearing');
+      await k.agent.wake({ ...FIRED, ...(urgent ? { urgent: true } : {}) });
+      if (!urgent) {
+        await wait(500);
+        assert.ok(!texts(k).some((x) => ALERT.test(x)), 'not while the turn goes on');
+        k.platform.mic.feed(cat(hum(11), quiet(1)), RATE); // the turn reaches the cap
+        await soon(async () => texts(k).some((x) => ALERT.test(x)), 3000);
+        return;
+      }
+      await soon(async () => texts(k).some((x) => ALERT.test(x)), 1000);
+      assert.ok(texts(k).some((x) => x.startsWith('[annai] ') && ALERT.test(x)), "in a trigger's words, not a note's");
+      let done = false;
+      const feeding = feedWhile(k, () => done); // the music goes on while she says it
+      try {
+        await until(() => k.agent.live.view.name === 'speaking', 3000);
+        await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+      } finally {
+        done = true;
+        await feeding;
+      }
+      const [out] = await k.events(['out.speak']);
+      assert.equal(out.data.cut, undefined, 'never cut by the music');
+      assert.equal(out.data.voice, true);
+      assert.deepEqual(await k.events(['reminder']), [], 'said by her, not by annai too');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('an urgent watch firing with no live session (Koe in text) is answered as a plain one is (section 7)', async () => {
+  const { agentKit } = await import('./agent-kit.js');
+  const run = async (/** @type {boolean} */ urgent) => {
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { talk: [{ toolCalls: [{ name: 'speak', input: { text: 'Turn left at the next exit.' } }, { name: 'sleep', input: {} }] }] } });
+    await k.agent.idle();
+    assert.equal(k.agent.koeState, 'text');
+    await k.agent.wake({ ...FIRED, ...(urgent ? { urgent: true } : {}) });
+    await k.agent.idle();
+    const koe = k.sent['model-koet'].map((/** @type {any} */ r) => JSON.stringify(r.messages ?? r).replace(/\b[wct]-[a-z0-9]+|\d{4}-\d\d-\d\dT[\d:.]+Z|scripted_\d+_\d+/g, 'ID'));
+    assert.ok(koe.some((x) => ALERT.test(x)), 'Koe got it');
+    return { koe, events: (await k.events()).map((e) => e.type) };
+  };
+  assert.deepEqual(await run(true), await run(false));
+});

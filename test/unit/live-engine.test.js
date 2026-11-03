@@ -547,3 +547,28 @@ test('a plugin change while a slower speed is being held does not drop the chang
   await k.to(at('17:06:10'));
   assert.equal(k.live.activity, 'walking', 'a minute after the first slow fix, as without the plugin change');
 });
+
+test('an urgent watch (drive-test design §7): stored with its mark, said so when set and listed, and its wake carries it; a plain one does not', async () => {
+  const { validate } = await import('../../src/core/schema.js');
+  const { WATCH_SCHEMA } = await import('../../src/core/live/watches.js');
+  const base = { id: 'w-1', owner: 'shiori', when: { type: 'time', at: iso('10:00') }, fallback: 'Leave now.' };
+  assert.deepEqual(validate(WATCH_SCHEMA, { ...base, urgent: true }), []);
+  assert.deepEqual(validate(WATCH_SCHEMA, { ...base, urgent: false }), []);
+  assert.deepEqual(validate(WATCH_SCHEMA, base), []);
+  assert.notDeepEqual(validate(WATCH_SCHEMA, { ...base, urgent: 'yes' }), []);
+  const k = await liveKit({ live: false });
+  const leave = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Leave now for the last ferry.', urgent: true });
+  const plain = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Tea time.', urgent: false });
+  assert.equal(leave.urgent, true);
+  assert.equal('urgent' in plain, false, 'absent is false');
+  const stored = (await readWatches(k.ws, k.trip)).watches;
+  assert.deepEqual([stored.find((w) => w.id === leave.id)?.urgent, stored.find((w) => w.id === plain.id)?.urgent], [true, undefined]);
+  assert.match(k.live.watchText(leave), /^Set w-\S+: at \S+, urgent\./);
+  assert.ok((await k.live.listWatches(k.trip)).includes(`${leave.id}\tshiori\tat ${iso('10:00')}, urgent\tno\t`));
+  await k.to(at('10:00'));
+  assert.equal(k.agent.wakes.length, 1);
+  assert.equal(k.agent.wakes[0].urgent, true);
+  await k.to(at('11:00'));
+  assert.equal(k.agent.wakes.length, 2);
+  assert.equal('urgent' in k.agent.wakes[1], false);
+});
