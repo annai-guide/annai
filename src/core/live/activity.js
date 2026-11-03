@@ -6,6 +6,7 @@ import { meters } from './geo.js';
  * voice Auto treats them the same (§10.5).
  * @typedef {'still' | 'walking' | 'moving-fast' | 'unknown'} Activity
  * @typedef {import('./geo.js').Fix} Fix
+ * @typedef {{ from: Activity, to: Activity, at: number }} Change
  */
 
 /** m/s: below this, still. */
@@ -18,6 +19,8 @@ export const FAST_FROM = 5;
 export const SETTLE_MS = 30_000;
 /** …and leaving moving fast this long (a red light isn't the end of a drive). */
 export const LEAVE_FAST_MS = 60_000;
+/** No fix this long after a last speed below moving fast reads as still: a parked phone hardly sends fixes. A last speed that was moving fast keeps it through a gap (a tunnel). */
+export const QUIET_STILL_MS = 120_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
 const SPAN_MS = 15_000;
 /** …and at most this far: the longer the span, the less GPS jitter looks like walking. */
@@ -32,27 +35,76 @@ export class ActivityTracker {
   #candidate = null;
   /** @type {Fix[]} */
   #recent = [];
+  /** @type {number | null} when the last fix came */
+  #lastAt = null;
+  /** @type {Activity | null} what the last speed said (null: between walking and moving fast) */
+  #seen = null;
 
-  /** @param {Fix} fix @returns {{ from: Activity, to: Activity, at: number } | null} the change, when there is one */
+  /** @param {Fix} fix @returns {Change | null} the change, when there is one */
   feed(fix) {
     this.#recent = [...this.#recent.filter((f) => f.at < fix.at && fix.at - f.at <= RECENT_MS), fix];
+    this.#lastAt = fix.at;
     const speed = this.#speedAt(fix);
     if (speed === null) return null;
     this.speed = speed;
-    /** @type {Activity | null} */
-    const seen = speed < STILL_BELOW ? 'still' : speed < WALK_BELOW ? 'walking' : speed >= FAST_FROM ? 'moving-fast' : null;
-    if (seen === null) return null; // between walking and moving fast: it says neither
+    this.#seen = speed < STILL_BELOW ? 'still' : speed < WALK_BELOW ? 'walking' : speed >= FAST_FROM ? 'moving-fast' : null; // between: neither
+    return this.#decide(fix.at);
+  }
+
+  /**
+   * Asked without a new fix (live mode's recheck): a held change completes on time, the last speed seen
+   * counting as still holding; no fix for QUIET_STILL_MS after a slow last speed is still.
+   * @param {number} now @returns {Change | null}
+   */
+  tick(now) {
+    if (this.#lastAt === null) return null;
+    if (this.#quiet() && now - this.#lastAt >= QUIET_STILL_MS) return this.#become('still', now);
+    return this.#decide(now);
+  }
+
+  /** When tick could next change something, or null. @returns {number | null} */
+  due() {
+    if (this.#lastAt === null) return null;
+    const c = this.#candidate;
+    const held = c && this.#seen === c.activity ? c.since + this.#hold() : Infinity;
+    const t = Math.min(held, this.#quiet() ? this.#lastAt + QUIET_STILL_MS : Infinity);
+    return t === Infinity ? null : t;
+  }
+
+  /** The GPS (re)started, after annai was off screen: a gap counts from now, and a change starts holding again with the next fix. @param {number} now */
+  heard(now) {
+    if (this.#lastAt !== null) this.#lastAt = Math.max(this.#lastAt, now);
+    this.#candidate = null;
+  }
+
+  /** @param {number} at @returns {Change | null} */
+  #decide(at) {
+    const seen = this.#seen;
+    if (seen === null) return null;
     if (seen === this.activity) {
       this.#candidate = null;
       return null;
     }
-    if (this.#candidate?.activity !== seen) this.#candidate = { activity: seen, since: fix.at };
-    const hold = this.activity === 'moving-fast' ? LEAVE_FAST_MS : SETTLE_MS;
-    if (fix.at - this.#candidate.since < hold) return null;
-    const change = { from: this.activity, to: seen, at: fix.at };
-    this.activity = seen;
+    if (this.#candidate?.activity !== seen) this.#candidate = { activity: seen, since: at };
+    if (at - this.#candidate.since < this.#hold()) return null;
+    return this.#become(seen, at);
+  }
+
+  /** @param {Activity} to @param {number} at @returns {Change} */
+  #become(to, at) {
+    const change = { from: this.activity, to, at };
+    this.activity = to;
     this.#candidate = null;
     return change;
+  }
+
+  #hold() {
+    return this.activity === 'moving-fast' ? LEAVE_FAST_MS : SETTLE_MS;
+  }
+
+  /** The last speed was below moving fast, and the activity isn't still yet. */
+  #quiet() {
+    return this.speed !== null && this.speed < FAST_FROM && this.activity !== 'still';
   }
 
   /** Forgets everything: live mode went off. */
@@ -61,6 +113,8 @@ export class ActivityTracker {
     this.speed = null;
     this.#candidate = null;
     this.#recent = [];
+    this.#lastAt = null;
+    this.#seen = null;
   }
 
   /**
