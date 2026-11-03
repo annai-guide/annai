@@ -108,6 +108,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
  * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
+ * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -1742,8 +1743,12 @@ export class Agent {
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
     const unanswered = () => wrote || (theirs && !this.#facts.told);
-    /** Wakes joining the turn: what they owe; not a note a reply that reached the user had read already (a wake can trail its note). @param {Wake[]} more */
-    const join = (more) => {
+    /**
+     * Wakes joining the turn (first: those that began it): what they owe; not a note a reply that reached the user had read already (a
+     * wake can trail its note). @param {Wake[]} more @param {boolean} [first]
+     */
+    const join = (more, first = false) => {
+      if (!first) this.#half.joined?.(wakeId);
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(isTheirs);
@@ -1751,7 +1756,7 @@ export class Agent {
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
     };
-    join(wakes);
+    join(wakes, true);
     let nudged = false;
     let silent = false;
     /** Steps since the cue that still owed the user (Koe's). */

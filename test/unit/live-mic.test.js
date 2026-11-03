@@ -846,3 +846,165 @@ test('an urgent watch firing with no live session (Koe in text) is answered as a
   };
   assert.deepEqual(await run(true), await run(false));
 });
+
+// Fix pass 5, 1: Kokoro's sleep note came during a music turn; the user's question began before that turn's verdict. The note waits for
+// the question's verdict too: answered, it is dropped, never put in right after the user spoke.
+// late: that turn's verdict comes as the question goes on (a verdict that marks only its own turn, never the question).
+for (const late of [false, true]) {
+  test(`Kokoro's sleep note during a music turn the user's question begins before its verdict${late ? ', which comes during the question' : ''}: nothing, it waits for the question's verdict (fix 5)`, async () => {
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    const { clip } = await import('./voice-kit.js');
+    const k = await liveKit([
+      { heard: 'la la', delayMs: 1500 },
+      { heard: 'la la la', delayMs: 1500 },
+      { heard: 'la la la la', delayMs: 1500, ...(late ? { interruptOn: /** @type {const} */ ('text') } : {}) },
+      { heard: 'where should we eat', said: 'Tacos ahead, two miles.', audio: tone(0.5), delayMs: 600 },
+      { tool: { name: 'sleep', args: {} } },
+    ], { kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
+    try {
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 200 } }); // 2 s here
+      await k.voice.unlock();
+      k.agent.tap();
+      await until(() => k.agent.live.listening, 3000);
+      await realtime(k, quiet(0.3));
+      await realtime(k, hum(3)); // the spell runs out in it
+      await realtime(k, quiet(0.9));
+      await realtime(k, hum(1.5)); // begun after the lapse; let go as the next begins: Kokoro is woken
+      await realtime(k, quiet(0.9));
+      await realtime(k, hum(1.5)); // the sleep note comes during this one; the question begins before its verdict
+      await realtime(k, quiet(0.9));
+      await realtime(k, cat(await clip('where-eat'), quiet(2)));
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /Tacos/.test(JSON.stringify(e))), 5000);
+      assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
+      await wait(500);
+      await k.agent.idle();
+      assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
+      assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// Fix pass 5, 2: the user's own input (typed, a choice tapped) joining Kokoro's turn woken for non-stop sound makes it a turn of its own.
+for (const [how, o] of /** @type {[string, any][]} */ ([['typed', {}], ['a choice tapped', { chose: true }]])) {
+  test(`the user's message (${how}) joins Kokoro's turn for non-stop sound: its answer by final text reaches Koe (fix 5)`, async () => {
+    const k = await liveKit([{ said: 'Let me check.', audio: tone(0.1) }, { said: 'It opens at nine.', audio: tone(0.1) }], {
+      kokoro: [{ rules: [
+        { match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] } },
+        { match: 'the user wrote', reply: { text: 'The museum opens at nine tomorrow.' } },
+        { match: '.', reply: sleep },
+      ] }],
+    });
+    try {
+      await k.voice.unlock();
+      k.agent.live.c.noisy?.('la la la');
+      await until(() => k.agent.kokoro.busy, 2000);
+      await wait(200);
+      k.agent.send('Is the museum open tomorrow?', o);
+      await soon(async () => texts(k).some((x) => x.includes('The museum opens at nine tomorrow.')), 6000).catch(() => assert.fail(`the answer was dropped as the stretch's: ${JSON.stringify(texts(k))}`));
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// Fix pass 5, 3: her answer to an urgent note in two parts (Gemini goes on by itself): the music never cuts the second.
+test('an urgent note answered in two turns, the second with no word yet as the first ends: the second is said whole over the music too (fix 5)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  // In real time (pace 1): the second turn's sound comes over 1.2 s, its first word 0.9 s in, after the first has played out.
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.3), andThen: true }, { said: 'Then keep right for the bridge.', audio: tone(1.2), saidAt: 900 }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      await k.agent.live.note('Say now: turn left, then keep right.', 'immediate');
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /keep right/.test(JSON.stringify(e))), 8000);
+    } finally {
+      done = true;
+      await feeding;
+    }
+    const outs = await k.events(['out.speak']);
+    const second = outs.find((e) => /keep right/.test(JSON.stringify(e)));
+    assert.equal(second.data.cut, undefined, `the second part is not cut by the music: ${JSON.stringify(outs.map((e) => e.data))}`);
+  } finally {
+    await k.done();
+  }
+});
+
+// Fix pass 5, 3: her first part calls a tool she speaks after: the microphone stays deaf until the part after it has played.
+test('an urgent note answered with words and a tool she speaks after: the microphone stays deaf between the parts, and the second is said whole (fix 5)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([
+    { heard: 'la la' },
+    { said: 'Turn left now.', audio: tone(0.3), tool: { name: 'list', args: { path: '/trip/' } }, andThen: true },
+    { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 1500 },
+  ], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      await k.agent.live.note('Say now: turn left, then keep right.', 'immediate');
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn left/.test(JSON.stringify(e))), 5000);
+      await wait(300);
+      assert.notEqual(k.agent.live.view.name, 'hearing', 'deaf while the rest of her answer is to come');
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /keep right/.test(JSON.stringify(e))), 6000);
+    } finally {
+      done = true;
+      await feeding;
+    }
+    const second = (await k.events(['out.speak'])).find((e) => /keep right/.test(JSON.stringify(e)));
+    assert.equal(second.data.cut, undefined, 'the second part is not cut by the music');
+  } finally {
+    await k.done();
+  }
+});
+
+// Fix pass 5, 4: an open that fails for an urgent note leaves no mark: what waits still goes in, and the microphone hears.
+test('an urgent note whose session fails to open leaves no mark behind: the next note still goes in (fix 5)', async () => {
+  const k = await liveKit([{ said: 'Noted.', audio: tone(0.1) }]);
+  const budgets = k.agent.live.c.budgets;
+  try {
+    await k.voice.unlock();
+    k.agent.live.c.budgets = () => Promise.reject(new Error('the settings could not be read'));
+    await assert.rejects(k.agent.live.note('Say now: turn left.', 'immediate'));
+    k.agent.live.c.budgets = budgets;
+    await k.agent.live.note('The museum closes at five.', 'append');
+    await soon(async () => texts(k).some((x) => /museum closes/.test(x)), 3000).catch(() => assert.fail('the note waited behind a mark left from the failed open'));
+  } finally {
+    k.agent.live.c.budgets = budgets;
+    await k.done();
+  }
+});
+
+// Fix pass 5, 5: a session closing while the microphone opens for an urgent note: the note is handed on, never put into the next session.
+test('an urgent note whose session closes while its microphone opens is handed on, never said in the next session (fix 5)', async () => {
+  const k = await liveKit([{ said: 'Noted.', audio: tone(0.1) }]);
+  try {
+    await k.voice.unlock();
+    assert.equal(await k.agent.live.open('shown'), true);
+    assert.equal(k.agent.live.listening, false);
+    const p = k.agent.live.note('Say now: turn left.', 'immediate');
+    k.agent.live.close('tap');
+    assert.equal(await p, false, 'no session took it: Halves hands it on');
+    assert.equal(await k.agent.live.open('shown'), true);
+    await wait(300);
+    assert.ok(!texts(k).some((x) => /turn left/.test(x)), `not said in the next session: ${JSON.stringify(texts(k))}`);
+  } finally {
+    await k.done();
+  }
+});
