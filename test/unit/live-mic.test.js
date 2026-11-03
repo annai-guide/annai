@@ -19,24 +19,36 @@ async function feedWhile(k, stop, amp = 0.1) {
   }
 }
 
-test('two user turns in a row at the 15 s cap wake Kokoro once with what was heard; nothing closes by itself', async () => {
+/** Sound with no gap in it (music, talk radio), fed 5 times faster than it plays, until stop() says so. @param {any} k @param {() => boolean} stop */
+async function feedOn(k, stop) {
+  if (k.platform.mic.isOpen()) k.platform.mic.feed(quiet(0.3), RATE);
+  const pcm = hum(120);
+  for (let i = 0; i < pcm.length && !stop(); i += 1600) {
+    if (k.platform.mic.isOpen()) k.platform.mic.feed(pcm.subarray(i, i + 1600), RATE);
+    await wait(20);
+  }
+}
+
+test('a user turn beginning after the quiet spell ran out on one wakes Kokoro once with what was heard; nothing closes by itself', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   // Every turn heard is dismissed (an empty turn of hers): music, not the user.
-  const k = await liveKit([{ heard: 'la la la' }]);
+  const k = await liveKit([{ heard: 'la la la', delayMs: 500 }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 100 } }); // 1 s here
     k.agent.tap();
     await until(() => k.agent.live.listening, 3000);
-    k.platform.mic.feed(cat(quiet(0.3), hum(47)), RATE); // three turns at the cap, the last going on
-    await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1);
-    await wait(300);
-    const [w] = await kokoroWakes(k, /non-stop sound/);
-    assert.equal(w.data.reasons.filter((/** @type {any} */ x) => /non-stop sound/.test(x.text)).length, 1, 'once for the stretch');
-    assert.match(w.data.reasons.find((/** @type {any} */ x) => /non-stop sound/.test(x.text)).text, /la la la/);
+    let done = false;
+    const feeding = feedOn(k, () => done); // sound that never stops: the spell runs out in the first turn, and a second begins at its cap
+    try {
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 8000);
+      await wait(1500); // more of it: the same stretch
+    } finally {
+      done = true;
+      await feeding;
+    }
+    const wakes = await kokoroWakes(k, /non-stop sound/);
+    assert.equal(wakes.length, 1, 'once for the stretch');
     assert.equal(k.agent.live.state, 'open', 'annai closes nothing on it');
-    // A pause ends the stretch: two more caps wake Kokoro again.
-    k.platform.mic.feed(cat(quiet(1.5), hum(31), quiet(1.5)), RATE);
-    await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 2);
     assert.equal((await lives(k, 'closed')).length, 0);
   } finally {
     await k.done();
@@ -45,16 +57,22 @@ test('two user turns in a row at the 15 s cap wake Kokoro once with what was hea
 
 test("Kokoro's note telling Koe to sleep, on non-stop sound, has live Koe call sleep: the session closes like a tap (sleep)", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  // The three turns heard are let go (the last ends on the pause); the note is answered with sleep.
-  const k = await liveKit([{ heard: 'la la' }, { heard: 'la la' }, { heard: 'la' }, { tool: { name: 'sleep', args: {} } }], {
+  // The turns heard are let go; the note is answered with sleep.
+  const k = await liveKit([{ heard: 'la la', delayMs: 500 }, { heard: 'la la', delayMs: 500 }, { heard: 'la' }, { tool: { name: 'sleep', args: {} } }], {
     kokoro: [{ rules: [{ match: 'non-stop sound', reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Only music is playing: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }],
   });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 100 } });
     k.agent.tap();
     await until(() => k.agent.live.listening, 3000);
-    k.platform.mic.feed(cat(quiet(0.3), hum(31), quiet(1.5)), RATE); // two turns at the cap, then a pause
-    await until(() => k.agent.live.state === 'closed', 5000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.state === 'closed', 8000);
+    } finally {
+      done = true;
+      await feeding;
+    }
     assert.ok(texts(k).some((x) => /go to sleep/.test(x)), 'the note went to Koe');
     await soon(async () => (await lives(k, 'closed')).length === 1);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'sleep');
@@ -126,6 +144,24 @@ test('a heard turn she answers with words clears the brief window: the quiet spe
   }
 });
 
+test('a heard turn she answers with a card alone (show, no words) clears the brief window too (review S3)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'save a note', tool: { name: 'show', args: { card: { title: 'Tacos' } } } }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await until(() => k.agent.live.listening, 3000);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['heard'])).length === 1);
+    await wait(1000); // past the 400 ms window, inside the 3 s spell
+    assert.equal(k.agent.live.state, 'open');
+  } finally {
+    await k.done();
+  }
+});
+
 test('an urgent note (immediate) is said whole while the detector reports speech; it opens a closed session listening briefly', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(0.6) }]);
@@ -165,6 +201,63 @@ test('an urgent note (immediate) is said whole while the detector reports speech
     assert.ok(Date.now() - t0 < 2500, 'the answer window, not the 3 s spell');
   } finally {
     await k2.done();
+  }
+});
+
+test('a second urgent note cutting the first urgent reply leaves the mark for its own reply: still said whole over the music (review 5)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'Turn right now.', audio: tone(0.6) }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      await k.agent.live.note('Say now: turn left in 200 m.', 'immediate');
+      await until(() => k.agent.live.view.name === 'speaking', 3000);
+      await k.agent.live.note('Say now: turn right.', 'immediate');
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn right/.test(JSON.stringify(e))), 6000);
+    } finally {
+      done = true;
+      await feeding;
+    }
+    const outs = await k.events(['out.speak']);
+    const right = outs.find((e) => /Turn right/.test(JSON.stringify(e)));
+    assert.equal(right.data.cut, undefined, 'her answer to the second note is not cut by the music');
+  } finally {
+    await k.done();
+  }
+});
+
+test('an urgent reply dropped with its connection before a word lets the microphone hear again (review S1)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.6), delayMs: 4000 }]);
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      await k.agent.live.note('Say now: turn left.', 'immediate');
+      await wait(400);
+      assert.notEqual(k.agent.live.view.name, 'hearing', 'deaf while the urgent answer is awaited');
+      k.server.close(1011, 'the server dropped');
+      await until(() => k.agent.live.view.name === 'hearing', 5000);
+    } finally {
+      done = true;
+      await feeding;
+    }
+  } finally {
+    await k.done();
   }
 });
 

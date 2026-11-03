@@ -124,8 +124,10 @@ New:
 - A held change completes on time, not only on the next fix: the tracker is also asked when live.js's existing recheck runs
   (`RECHECK_MS` through `#schedule`), sooner while a change is pending, and the last speed seen counts as still holding. In the drive's
   case it reads "walking" a minute after the slow fixes began.
-- No fix for 2 minutes after a last speed below moving fast reads as still (a parked phone hardly sends fixes). A last speed that was
-  moving fast keeps moving fast through a gap (a tunnel). (My call, chosen to avoid a tunnel reading as a stop.)
+- No fix for 2 minutes after a slow last speed reads as still (a parked phone hardly sends fixes). While moving fast, "slow" means below
+  walking (3 m/s): a last speed of 3 to 5 m/s (slow traffic before a tunnel) keeps moving fast through a gap, as a fast one does. (My
+  call, chosen to avoid a tunnel reading as a stop; the review's fix.) The GPS restart's "time off screen" reset happens only when
+  annai comes back on screen, not when a plugin changes.
 - The UI shows the activity the tracker has now.
 - Note: the drive's arrived (3 min) and dwell (5 min) watches could not fire anyway: the user turned live mode off about 2 minutes after
   parking. Nothing to change there; the builder checks that arrived and dwell are also evaluated on the recheck, not only on new fixes.
@@ -141,12 +143,12 @@ does both), for every user. "Keep them stable": each change restarts their cache
 - **Silence is fine** (Koe live): "Not every line needs an answer. When the user only acknowledges (okay, cool, thanks) or thinks aloud,
   say nothing. Answer when they ask, tell you something, or need something." The live rule "speak first … even a short acknowledgement"
   applies to requests, not to everything the user says.
-- **"On it" (Kokoro, user's first idea):** when Kokoro starts something that takes more than a moment for the user (saving a note,
-  looking something up), it first tells Koe in one short line what it is doing ("saving your note now"), so Koe can say it at once, then
-  tells Koe when it is done. Koe, when the user asks for something Kokoro does, says it's on it, and claims nothing done until a note says
-  so.
-- **Kokoro corrects Koe (user's second idea):** Kokoro already checks Koe's claims. It also corrects Koe when Koe answered vaguely or
-  said something was done that isn't, with an immediate note of what is actually happening.
+- **"On it" (Kokoro, user's first idea):** when Kokoro starts something the user waits for (saving a note, changing the plan), it first
+  tells Koe in one short line what it is doing ("saving your note now"), so Koe can say it at once, then tells Koe when it is done. It
+  sends that line only when the [Koe said] lines don't show Koe already saying it's on it, and not for a quick look-up. Koe, when the
+  user asks for something Kokoro does, says it's on it, and claims nothing done until a note says so.
+- **Kokoro corrects Koe (user's second idea):** Kokoro already checks Koe's claims. A false "done" gets an immediate note of what is
+  actually happening; a vague answer about what Kokoro is doing is corrected with a normal (append) note.
 - The user's own Shiori personality now has two sections Shiori added on the drive (transcripts, and "Silence is fine"). They stay the
   user's: annai doesn't edit a personality. The handoff tells the user they can take them out.
 
@@ -171,17 +173,19 @@ New:
   an immediate note too.
 - **Urgent says it now.** An urgent event (an immediate note from Kokoro; a fired watch that is time-critical, if watches carry such a
   mark; otherwise immediate notes only) is said at once: never held behind a user turn in progress, and not cut by sound the detector
-  takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most).
+  takes for speech until she has said it. A non-urgent one may wait for a turn in progress to end, as today (15 s at most). The mark belongs to the turn that answers the latest urgent note and ends with that turn however it ends (said, cut, dropped with its connection), or on a tap or close; a turn a newer urgent note cut off leaves it.
 - **Noise rejection: only exchanges keep her listening.** The quiet spell is re-armed by her sound, words or tool calls, text going in,
   taps and typing, and a heard turn she answers with words: not by audio chunks, turn edges or turns she dismisses. `#brief` clears only
-  on a tap, typing, or a heard turn she answers. When the spell runs out while only a user turn (or its answer) is pending, that turn
-  decides: an answer re-arms it, a dismissed turn closes the session.
+  on a tap, typing, or a heard turn she answers (words, a card, a question or a tool call). When the spell runs out while only a user turn (or its answer) is pending, that turn
+  decides: an answer re-arms it, a dismissed turn closes the session unless the detector still holds speech.
 - **Sound that never stops: Kokoro decides, annai never closes on it.** The user (2026-11-02): "for the close on 30s of noise, let's
-  make sure we do not cutoff actual exchange, looping back to maybe only kokoro should able to determine that." Two user turns in a row
-  that end at the 15 s cap don't close anything: annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop
-  sound for about 30 s, with what was heard in those turns. Kokoro reads it with the conversation and, if it is music, other people or
-  noise and not the user talking to Shiori, tells Koe to sleep; otherwise it does nothing. Once per stretch: not again until a turn ends
-  on a pause. There is no `noise` close reason.
+  make sure we do not cutoff actual exchange, looping back to maybe only kokoro should able to determine that." When the quiet spell
+  has run out (nothing exchanged for that long) and another user turn begins, that is sound that never stops (talk radio, people in
+  the car, music with dips): annai wakes Kokoro once with an [annai] line saying the microphone has heard non-stop sound, with the
+  speech recognition of the turn before. Kokoro reads it with the conversation and, if it is music, other people or noise and not the
+  user talking to Shiori, tells Koe to sleep; otherwise it does nothing. Once per stretch: any exchange (or a close) ends the stretch.
+  Nothing closes by itself on sound; a real quiet spell (no sound, or a turn she lets go in a pause) still closes as before. There is
+  no `noise` close reason.
 - **Sleep, when the user asks or Kokoro says so.** Live Koe gets `sleep` (reverses plan decision 29), described as: only when the user
   asks you to sleep or stop listening, or a note from Kokoro tells you to. It closes the session like a tap (`sleep`). Kokoro's part says
   it may tell Koe to sleep when the live session is only hearing music, other people or noise. Koe (non-live) already has `sleep`.

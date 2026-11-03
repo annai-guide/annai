@@ -808,7 +808,6 @@ export class Live {
   }
 
   #gpsStart() {
-    this.#tracker.heard(this.clock.now()); // time off screen isn't a quiet GPS
     for (const { pluginId, item: s } of this.registry.entries('sensor')) {
       if (s?.kind !== 'location' || this.#gpsOn.has(s) || typeof s.start !== 'function' || !this.#heeds(pluginId)) continue;
       if (this.gps !== 'ok') this.gps = 'waiting';
@@ -903,6 +902,7 @@ export class Live {
     }
     const away = this.#away ?? { since: this.clock.now(), from: this.fix };
     this.#away = null;
+    this.#tracker.heard(this.clock.now()); // time off screen isn't a quiet GPS
     if (this.on) this.#gpsStart();
     this.#tell();
     await this.#catchUp({ ...away, how: 'shown' });

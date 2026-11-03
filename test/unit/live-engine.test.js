@@ -535,3 +535,15 @@ test('after parking with no more fixes, arrived and dwell fire on the recheck', 
   await k.to(at('17:10:10'));
   assert.equal(fired(dwell.id), 1, 'dwell: 5 min inside, no new fix');
 });
+
+test('a plugin change while a slower speed is being held does not drop the change (the GPS restarts only after time off screen)', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const p = await fastFrom(k, at('17:00'), 300);
+  const parked = off(p, 0, -30);
+  for (const [t, speed] of /** @type {const} */ ([['17:05:10', 0.8], ['17:05:30', 1.3], ['17:05:55', 1.5]])) await k.fix(at(t), parked, { speed });
+  await k.to(at('17:05:56'));
+  k.registry.add('test', 'sensor', { kind: 'other', start: () => () => {} }); // a plugin installed meanwhile: the sensors are looked at again
+  await k.settle();
+  await k.to(at('17:06:10'));
+  assert.equal(k.live.activity, 'walking', 'a minute after the first slow fix, as without the plugin change');
+});
