@@ -111,7 +111,7 @@ New:
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or
   `place: null` (or `location: null`) beside a non-null alias, are refused naming both. What is stale is decided in `shioriBooking`,
   which sees the stored booking and the merged one: if the merged place's name differs from the stored one and this patch does not give
-  the address or lat/lng, they are the old place's and go; likewise a new address without lat/lng drops the old position. A place left with a name that is blank is named from its address (a drop-off
+  the address or lat/lng, they are the old place's and go; likewise a new address without lat/lng drops the old position. A name that was only a copy of the address is no real name: naming the place keeps its address, and a new address takes the copy along. An empty name or address in an alias says nothing. A place left with a name that is blank is named from its address (a drop-off
   at that same address is then the place, not `fields.dropoff`).
 - **Unknown keys:** only a top-level key this write introduces that the schema in force doesn't list is refused, with words naming the
   format's fields and `fields`. The schema stays open, so the user's own edits, Undo, Restore and imports work as before.
