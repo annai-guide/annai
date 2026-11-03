@@ -51,8 +51,10 @@ const THEIRS = ['user', 'choice', 'file', 'live'];
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
 const REVIEW = /* en */ "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
+/** What Kokoro's non-stop sound line starts with, to tell its turn. */
+const NONSTOP_AT = "the live session's microphone has heard non-stop sound";
 /** Non-stop sound in a live session (a user turn begins after the quiet spell ran out on one): Kokoro decides whether Koe sleeps. @param {string} heard */
-/* en */ const NONSTOP = (heard) => `the live session's microphone has heard non-stop sound, with no exchange for a while${heard ? `; the speech recognition made of the turn before: ${heard}` : ''}. If it is music, other people or noise and not the user talking to Shiori, tell Koe to go to sleep; otherwise do nothing.`;
+/* en */ const NONSTOP = (heard) => `the live session's microphone has heard non-stop sound, with no exchange for a while${heard ? `; the speech recognition made of the last turn it let go: ${heard}` : ''}. If it is music, other people or noise and not the user talking to Shiori, tell Koe to go to sleep; otherwise do nothing.`;
 /** Words for the user as annai shows them: a leading "Say:" (an instruction to Koe) goes, and the first letter is a capital. @param {unknown} text */
 const forUserText = (text) => String(text ?? '').replace(/^\s*say\s*:\s*/i, '').trim().replace(/^./u, (c) => c.toUpperCase());
 /** The conversation's lines, for the review. */
@@ -145,6 +147,8 @@ export class Halves {
   #answered = false;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
+  /** The ids of Kokoro's turns woken for non-stop sound: their notes to a live session that has closed meanwhile are dropped (#gate). @type {Set<string>} */
+  #nonstop = new Set();
   /** Koe's reply asks Kokoro, so its question wakes Kokoro, not its answer (owed: unless the question fails). */
   #asking = false;
   #owed = false;
@@ -233,6 +237,7 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
         logged: async (e, r) => {
           if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
+          if (e.type === 'wake' && e.data?.reasons?.some((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
           if (this.#split) await this.koe.observe(e, r);
         },
         gate: (call) => this.#gate(call),
@@ -316,7 +321,7 @@ export class Halves {
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),
       left: (notes) => this.#leftUnsaid(notes),
-      noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true }),
+      noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.
@@ -974,6 +979,8 @@ export class Halves {
   /** Kokoro's speak, show and ask while Koe talks become notes to Koe; its wait is answered (plan decision 15). @param {{ id: string, name: string, input: any, wake: string }} call */
   async #gate({ name, input, wake }) {
     if (!this.#works()) return null;
+    // The live session closed while Kokoro weighed non-stop sound: its note to Koe is nothing, not a new session to listen and say good night.
+    if (name === 'tell_koe' && this.#nonstop.has(wake) && this.koeState === 'live' && this.live.state === 'closed') return { content: /* en */ 'Koe is already asleep; nothing more to do.' };
     if (name === 'wait') return { content: /* en */ "Koe is talking with the user; what they say reaches you. Call sleep when you're done." };
     const text = name === 'speak' ? String(input?.text ?? '')
       : name === 'show' ? /* en */ `Kokoro wants to show: ${cardText(input?.card)}`
