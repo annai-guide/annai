@@ -193,10 +193,14 @@ New:
   answer has played, the 8 s / 20 s caps), so the next piece of music can't cut her sleep call; it is still never owed to the user.
   Her own turn or a tool call goes first. A user turn going on as it is ready, or one awaiting her verdict, may be the user talking to
   her: it waits for that verdict, but at most about 3 s after that turn ends (real time, as the provider's verdict comes). Answered,
-  the stretch is over and it is dropped; dismissed, it goes in at once; no verdict by then, or the next turn going on, holds it no
-  longer, and that turn is cut as an urgent note cuts one. A verdict that comes while the user's next turn goes on is the turn
-  before's, never marked on the one going on: a music turn's dismissal landing in the user's question must not stop her answer to
-  it counting as an exchange. (Fix pass 6, the main session's call: fix 5 waited for the latest turn's
+  the stretch is over and it is dropped; dismissed, it goes in at once. At that bound a user turn is never cut: one going on is let
+  end, and one going on or ended since then gets its own about 3 s for her verdict, once (answered drops the note; otherwise it goes
+  in, and a turn going on then is cut as an urgent note cuts one). So talk radio ends one piece later; a piece that ran to the cap
+  gives the next, begun at once, no such wait (steady music sleeps as before). (Fix pass 7: the bound ran from the piece the note
+  waited on, so a question begun right after it was cut, or her answer to it pre-empted.) A verdict that comes while the user's next
+  turn goes on is the turn before's, never marked on the one going on: a music turn's dismissal landing in the user's question must
+  not stop her answer to it counting as an exchange, and her answer (words, a card or a question, asking Kokoro) to the turn before
+  still ends the stretch. A session told to go (GoAway) takes the note once the next is ready, never the one being left. (Fix pass 6, the main session's call: fix 5 waited for the latest turn's
   verdict, which never came under talk radio whose every verdict lands in its next piece, and at a cap the next music turn cut her
   sleep call, so she never slept and Kokoro was woken again and again.) One with words for the user, or from a turn something else woke too, goes as ever. After the wake, the quiet spell can still
   close it: a turn she lets go in a pause closes it. A let-go turn that the spell's own look then closes on (a quiet gap) wakes nobody:
