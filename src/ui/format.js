@@ -77,11 +77,24 @@ export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGive
  * plan item's; never the raw file. @param {string} id @param {import('../core/plan.js').PlanRow} r @param {string} [from]
  */
 export const detailsHref = (id, r, from) => (r.booking && r.bookingPath ? bookingHref(id, r.bookingPath, from) : itemHref(id, r.path, from));
-/** A Plan row's name: a stay's own row is its check-in, and its end its check-out (goal 5). @param {import('../core/plan.js').PlanRow} r */
+/**
+ * A Plan row's name: a set's start and end say what they are (the drive-test follow-ups, section 2): a stay's Check in and Check out, a
+ * car's Pick up and Return, a flight's or train's Arrive, anything else's Ends. @param {import('../core/plan.js').PlanRow} r
+ */
 export function rowName(r) {
   const name = String(r.item.title ?? r.path);
-  if (r.from === 'checkout') return t`Check out · ${name}`;
-  return r.from === 'booking' && r.booking?.kind === 'lodging' ? t`Check in · ${name}` : name;
+  const kind = r.set?.kind;
+  if (r.set?.part === 'end') return kind === 'lodging' ? t`Check out · ${name}` : kind === 'car' ? t`Return · ${name}` : kind === 'flight' || kind === 'rail' ? t`Arrive · ${name}` : t`Ends · ${name}`;
+  if (r.set?.part === 'start') return kind === 'lodging' ? t`Check in · ${name}` : kind === 'car' ? t`Pick up · ${name}` : name;
+  return name;
+}
+
+/** A set's quiet line: "Staying at Hotel · night 2 of 4", "Car · day 3 of 8". @param {import('../core/plan.js').PlanRow} r */
+export function lineName(r) {
+  const name = String(r.item.title ?? '');
+  const n = num(r.line?.n ?? 0);
+  const of = num(r.line?.of ?? 0);
+  return r.set?.kind === 'lodging' ? t`Staying at ${name} · night ${n} of ${of}` : t`${name} · day ${n} of ${of}`;
 }
 
 /** A booking's kind in words (a plan item's known kinds too). */

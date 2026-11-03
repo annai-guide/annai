@@ -191,8 +191,14 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
   .type-sheet input { min-height: 44px; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
-.tidy { position: relative; display: flex; justify-content: flex-end; }
-.tidy-menu { position: absolute; bottom: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
+.title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; }
+.title-row > .title { flex: 1 1 0; min-width: 0; }
+.title-row > .tidy-status { flex-basis: 100%; order: 3; margin-top: -4px; }
+/* On the Conversation, the title and its ⋯ stay under the app's bar (--topbar-h, shell.js) as the lines scroll under them. */
+.screen > .title-row { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); padding-block: 4px; margin-block: -4px; }
+.tidy { position: relative; flex: none; }
+.btn.tidy-toggle { min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 22px; line-height: 1; }
+.tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .tidy-menu[hidden] { display: none; }
 .tidy-menu .sub { margin: 4px 0 0; }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }

@@ -3,9 +3,9 @@
  * (unchanged nested objects may be shared with the target).
  *
  * With { append: true }, a key ending in "+" appends its value (an array, or a
- * single item) to the target's array under the key without the "+". This is the
- * extension used for provider request patches (spec §9.4). Record patches use
- * the default, strict RFC behaviour.
+ * single item) to the target's array under the key without the "+"; a stored value that is no list
+ * becomes its first item. This is the extension used for provider request patches (spec §9.4).
+ * Record patches use the default, strict RFC behaviour.
  * @param {any} target
  * @param {any} patch
  * @param {{ append?: boolean }} [opts]
@@ -20,7 +20,7 @@ export function mergePatch(target, patch, opts = {}) {
       const base = key.slice(0, -1);
       const add = Array.isArray(value) ? value : [value];
       const prev = own(out, base);
-      define(out, base, [...(Array.isArray(prev) ? prev : []), ...add.map(clone)]);
+      define(out, base, [...(Array.isArray(prev) ? prev : prev === undefined || prev === null ? [] : [prev]), ...add.map(clone)]);
     } else if (value === null) {
       delete out[key];
     } else {
