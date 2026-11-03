@@ -114,14 +114,14 @@ test('Tidy up (⋯) is a disclosure whose buttons say what they do; Start fresh 
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       w.busy = [];
-      new MutationObserver(() => { const t = document.querySelector('.tidy-toggle'); if (t?.getAttribute('aria-busy') === 'true') w.busy.push(t.getAttribute('aria-label')); }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['aria-busy'] });
+      new MutationObserver(() => { const t = document.querySelector('.tidy-toggle'); const s = /** @type {HTMLElement | null} */ (document.querySelector('.tidy-status')); if (t?.getAttribute('aria-busy') === 'true') w.busy.push(t.getAttribute('aria-label'), s && !s.hidden ? s.textContent : 'no visible line'); }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['aria-busy'] });
     });
     await toggle.click();
     await page.getByRole('button', { name: 'Start fresh' }).click();
     await page.getByRole('dialog', { name: 'Start fresh?' }).getByRole('button', { name: 'Start fresh' }).click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Started fresh' })).toHaveCount(1);
     await expect(page.getByRole('separator')).toHaveCount(0);
-    expect(await page.evaluate(() => /** @type {any} */ (window).busy)).toEqual(['Starting fresh…']);
+    expect(await page.evaluate(() => /** @type {any} */ (window).busy)).toEqual(['Starting fresh…', 'Starting fresh…']);
     await expect(page.getByRole('button', { name: 'Tidy up the conversation', exact: true })).toBeFocused();
     await expect(page.getByRole('button', { name: 'Tidy up the conversation', exact: true })).not.toHaveAttribute('aria-busy', 'true');
     // Again at once: nothing has been said since, which it says, rather than that there is nothing at all.

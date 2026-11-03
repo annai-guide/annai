@@ -379,7 +379,7 @@ test('a booking with no good times draws its set from the plan item that stands 
     start: { at: start, tz: AK }, end: { at: '2026-11-23T10:00:00-09:00', tz: AK }, place: { name: 'Airport lot' } } });
   const rows = planRows([rent('b', '2026-11-21T10:00:00-09:00'), rent('a', '2026-11-20T10:00:00-09:00')], [bare], { fallbackTz: 'UTC' });
   assert.deepEqual(shown(rows), [
-    'item@2026-11-21 10:00 Rental car b', 'item@2026-11-20 10:00 Pick up · Rental car a', 'end@2026-11-23 10:00 Return · Rental car a',
+    'item@2026-11-21 10:00–10:00 Rental car b', 'item@2026-11-20 10:00 Pick up · Rental car a', 'end@2026-11-23 10:00 Return · Rental car a',
     'line@2026-11-21  Rental car a · day 2 of 4', 'line@2026-11-22  Rental car a · day 3 of 4']);
   // The end row and the lines go to the booking's details.
   assert.deepEqual([rows[2].path, rows[2].bookingPath, rows[2].item.place.name], ['/plan/a.json', '/bookings/car.json', 'Airport lot']);
@@ -391,4 +391,49 @@ test('a booking with no good times draws its set from the plan item that stands 
   const stayItem = { path: '/plan/h.json', item: { id: 'h', title: 'Hotel Aurora Test', fixed: true, booking: '/bookings/h.json', start: { at: '2026-11-20T15:00', tz: AK }, end: { at: '2026-11-22T11:00', tz: AK } } };
   assert.deepEqual(shown(planRows([stayItem], [hotel], { fallbackTz: 'UTC' })), [
     'item@2026-11-20 15:00 Check in · Hotel Aurora Test', 'end@2026-11-22 11:00 Check out · Hotel Aurora Test', 'line@2026-11-21  Staying at Hotel Aurora Test · night 2 of 2']);
+});
+
+test('review 2: an end row is not at the start: a flight or train Arrive has no place; a one-way car is where it was dropped; a stay and a round trip keep theirs', () => {
+  const at = (/** @type {any} */ b) => planRows([], [{ path: '/bookings/x.json', booking: { ...car.booking, ...b } }], { fallbackTz: 'UTC' }).find((r) => r.from === 'end')?.item.place;
+  // A car with a drop-off elsewhere (a name, or a place with one): that; one the model wrote as something else: none.
+  assert.deepEqual(at({ fields: { dropoff: 'Downtown desk' } }), { name: 'Downtown desk' });
+  assert.deepEqual(at({ fields: { dropoff: { name: 'Downtown desk', lat: 61.2, lng: -149.9 } } })?.name, 'Downtown desk');
+  assert.equal(at({ fields: { dropoff: 42 } }), undefined);
+  assert.equal(at({ fields: { dropoff: '' } }), undefined);
+  assert.equal(at({ fields: { other: 1 } })?.name, 'Airport lot');
+  assert.equal(at({})?.name, 'Airport lot');
+  // A stay keeps its place; a flight and a train do not, so Plan legs, Drive and Directions don't point at the origin.
+  assert.equal(planRows([], [stay], { fallbackTz: 'UTC' }).find((r) => r.from === 'end')?.item.place.name, 'Hotel Aurora Test');
+  const far = (/** @type {string} */ kind) => ({ path: '/bookings/f.json', booking: { id: 'f', kind, status: 'unverified', source: '/files/f.pdf', unsure: [], title: 'Night one', place: { name: 'Origin', lat: 61, lng: -149 },
+    start: { at: '2026-11-20T23:30:00-08:00', tz: LA }, end: { at: '2026-11-21T07:30:00-05:00', tz: NY } } });
+  for (const kind of ['flight', 'rail']) {
+    const [start, end] = planRows([], [far(kind)], { fallbackTz: 'UTC' });
+    assert.deepEqual([start.item.place?.name, end.item.place, legKm(start, end)], ['Origin', undefined, null]);
+  }
+  // A plan item drawing the set takes the linked booking's drop-off too.
+  const bare = { path: '/bookings/car.json', booking: { id: 'car', kind: 'car', status: 'unverified', source: '/files/car.pdf', unsure: [], fields: { dropoff: 'Downtown desk' } } };
+  const item = { path: '/plan/c.json', item: { id: 'c', title: 'Rental', fixed: true, booking: '/bookings/car.json', place: { name: 'Airport lot' }, start: car.booking.start, end: car.booking.end } };
+  assert.deepEqual(planRows([item], [bare], { fallbackTz: 'UTC' }).find((r) => r.from === 'end')?.item.place, { name: 'Downtown desk' });
+});
+
+test('review 7: a second multi-day item for a booking with no times keeps its end; only the one drawing the set, or one whose booking draws, loses it', () => {
+  const bare = { path: '/bookings/car.json', booking: { id: 'car', kind: 'car', status: 'unverified', source: '/files/car.pdf', unsure: [], title: 'Test Rentals compact' } };
+  const rent = (/** @type {string} */ id, /** @type {string} */ day) => ({ path: `/plan/${id}.json`, item: { id, title: `Rental ${id}`, fixed: true, booking: '/bookings/car.json',
+    start: { at: `2026-11-${day}T10:00:00-09:00`, tz: AK }, end: { at: '2026-11-23T10:00:00-09:00', tz: AK } } });
+  const rows = planRows([rent('a', '20'), rent('b', '21')], [bare], { fallbackTz: 'UTC' });
+  const mine = (/** @type {string} */ p) => rows.find((r) => r.from === 'item' && r.path === p);
+  assert.deepEqual([mine('/plan/a.json')?.end, mine('/plan/b.json')?.end, mine('/plan/b.json')?.endDays], ['', '10:00', 2]);
+  // With a booking that draws its own set, the item (a Check in, a pick-up) stays without its end.
+  const rows2 = planRows([rent('a', '20')], [car], { fallbackTz: 'UTC' });
+  assert.equal(rows2.find((r) => r.path === '/plan/a.json')?.end, '');
+});
+
+test('review 10: an Arrive row names its zone when it differs from the departure\'s, and not when it does not', () => {
+  const f = (/** @type {string} */ tz2, /** @type {string} */ end) => planRows([], [{ path: '/bookings/f.json', booking: { id: 'f', kind: 'flight', status: 'unverified', source: '/files/f.pdf', unsure: [], title: 'AN 9',
+    start: { at: '2026-11-20T23:30:00-08:00', tz: LA }, end: { at: end, tz: tz2 } } }], { fallbackTz: 'UTC' });
+  const [, arrive] = f(NY, '2026-11-21T07:30:00-05:00');
+  assert.deepEqual([arrive.time, arrive.endZone], ['07:30', 'ET']);
+  assert.equal(f(LA, '2026-11-21T07:30:00-08:00')[1].endZone, '');
+  // A red-eye's start row has none.
+  assert.equal(f(NY, '2026-11-21T07:30:00-05:00')[0].endZone, '');
 });
