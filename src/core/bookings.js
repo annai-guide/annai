@@ -161,13 +161,14 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   for (const k of keys.filter((x) => Object.hasOwn(TIMES, x))) {
     put(k, TIMES[k], timeOf(k, own[k], beside, zones, TIMES[k], far));
     const o = record(own[k]);
-    const where = o && (o.location ?? o.place ?? o.address);
+    // An empty name or address says nothing: it never replaces the stored one.
+    const said = (/** @type {unknown} */ x) => x != null && x !== '';
+    const where = o && [o.location, o.place, o.address].find(said);
     if (where && TIMES[k] !== 'start') ends.push([k, where]);
     else if (o) {
-      // An empty name or address says nothing: it never replaces the stored one.
-      const name = [o.location, o.place].find((x) => x != null && x !== '');
+      const name = [o.location, o.place].find(said);
       if (name !== undefined) note(k, name, 'name');
-      if (o.address != null && o.address !== '') note(k, o.address, 'address');
+      if (said(o.address)) note(k, o.address, 'address');
     }
   }
   const fk = keys.find((k) => base(k) === 'flights');
@@ -185,7 +186,7 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
       }
     }
   }
-  for (const k of ['location', 'address']) if (keys.includes(k)) note(k, own[k], k === 'address' ? 'address' : 'name');
+  for (const k of ['location', 'address']) if (keys.includes(k) && own[k] !== '') note(k, own[k], k === 'address' ? 'address' : 'name');
   // In a patch a null address is the place's address null, and a null location is no place.
   const wipe = append && gone.includes('location');
   if (append && gone.includes('address')) parts.push(['address', 'address', null]);
@@ -285,6 +286,11 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
     if (!(typeof p.name === 'string' && p.name.trim()) && typeof p.address === 'string' && p.address.trim()) p.name = p.address;
     const { place: _, ...rest } = next;
     next = Object.keys(p).length ? { ...next, place: p } : rest;
+  }
+  // A patch that only cleared extras leaves no empty fields behind.
+  if (record(next.fields) && !Object.keys(next.fields).length && !record(old?.fields)) {
+    const { fields: _, ...rest } = next;
+    next = rest;
   }
   const added = own ? Object.keys(next).filter((k) => !Object.hasOwn(own, k) && !(old && Object.hasOwn(old, k))) : [];
   if (added.length) {
