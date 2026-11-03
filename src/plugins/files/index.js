@@ -63,9 +63,16 @@ export function activate(annai) {
   };
   /**
    * Shiori's rule for bookings (spec §4.4), as a guard the workspace runs inside the file's lock, on what is stored and on the value as
-   * it will be read, so no wording of the text and no timing gets around it. @param {string} scope @param {string} path
+   * it will be read, so no wording of the text and no timing gets around it. The trip's time zones are read first, for a time written
+   * under another name (the drive-test follow-ups, section 3); the booking schema in force is the one the format check uses.
+   * @param {string} scope @param {string} path
    */
-  const guardOf = (scope, path) => (isBookingPath(scope, path) ? shioriBooking : undefined);
+  const guardOf = async (scope, path) => {
+    if (!isBookingPath(scope, path)) return undefined;
+    const zones = (await ws.readJSON(scope, '/trip.json').catch(() => null))?.timezones;
+    const o = { zones: Array.isArray(zones) ? zones.filter((z) => typeof z === 'string') : [], schema: ws.schemaFor(scope, path) };
+    return (/** @type {any} */ before, /** @type {any} */ next) => shioriBooking(before, next, o);
+  };
   /** @param {string} scope @param {string} prefix @param {string} shown the root as Shiori sees it */
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
   /** @param {string} path @param {any} call */
@@ -186,7 +193,7 @@ export function activate(annai) {
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
-        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        const e = await ws.write(scope, path, i.content, { author: 'shiori', guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Wrote ${i.path} (${e.size} bytes).`;
       },
     },
@@ -204,7 +211,7 @@ export function activate(annai) {
         const n = i.old ? now.split(i.old).length - 1 : 0;
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.`;
       }),
     },
@@ -220,7 +227,7 @@ export function activate(annai) {
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         // Her short names for files start with her first one (names.js): no write of an empty file first.
-        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.patch(scope, path, i.changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: await guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Patched ${i.path}.`;
       }),
     },

@@ -102,28 +102,42 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
 });
 
-// "for the ridy up button, maybe put at the bottom of conversation instead of top?"
-test('Tidy up is at the foot of the Conversation, under its last line, and its menu opens upward, in view (item 10)', async ({ page }) => {
-  await openApp(page);
-  const trip = await startTrip(page, 'Alaska');
-  for (let i = 0; i < 6; i++) {
-    await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
-    await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
-  }
-  await page.goto('/#/talk');
-  await expect(page.locator('.convo .shiori')).toHaveCount(6);
-  const toggle = page.getByRole('button', { name: 'Tidy up' });
-  await toggle.scrollIntoViewIfNeeded();
-  const last = /** @type {any} */ (await page.locator('.convo > li').last().boundingBox());
-  const at = /** @type {any} */ (await toggle.boundingBox());
-  expect(at.y).toBeGreaterThanOrEqual(last.y + last.height);
-  await toggle.click();
-  const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
-  await expect(menu).toBeInViewport({ ratio: 1 });
-  const m = /** @type {any} */ (await menu.boundingBox());
-  expect(m.y + m.height).toBeLessThanOrEqual(at.y + 1);
-  await expect(menu.getByRole('button', { name: 'Summarize now' })).toBeVisible();
-});
+// "the tidy up button now is bit intrusive on the conversation pannel... is there some better place to put it / hide it?" (the user,
+// 2026-11-02): a ⋯ at the right of the Conversation title, its menu below it, inside the screen at phone width.
+for (const width of [390, 320]) {
+  test(`Tidy up is a ⋯ by the Conversation title, not in the conversation, and its menu opens below it, inside the screen, at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await openApp(page);
+    const trip = await startTrip(page, 'Alaska');
+    for (let i = 0; i < 6; i++) {
+      await writeEvent(page, trip, { type: 'msg.user', data: { text: `Question ${i}` } });
+      await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+    }
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .shiori')).toHaveCount(6);
+    await page.evaluate(() => scrollTo(0, 0));
+    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    await expect(toggle).toHaveText('⋯');
+    const title = /** @type {any} */ (await page.getByRole('heading', { name: 'Conversation' }).boundingBox());
+    const at = /** @type {any} */ (await toggle.boundingBox());
+    // On the title's line, at its right, above the conversation's first line.
+    expect(at.y).toBeLessThan(title.y + title.height);
+    expect(at.y + at.height).toBeGreaterThan(title.y);
+    expect(at.x).toBeGreaterThan(title.x + title.width - 1);
+    expect(at.x + at.width).toBeLessThanOrEqual(width);
+    const first = /** @type {any} */ (await page.locator('.convo > li').first().boundingBox());
+    expect(at.y + at.height).toBeLessThanOrEqual(first.y);
+    await expect(page.locator('.convo ~ .tidy, .convo .tidy')).toHaveCount(0);
+    await toggle.click();
+    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    await expect(menu).toBeInViewport({ ratio: 1 });
+    const m = /** @type {any} */ (await menu.boundingBox());
+    expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(width);
+    await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
+  });
+}
 
 // "the drag model also does not work as intended. the long press and hold text selection will show up..." (IMG_3014)
 /** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */

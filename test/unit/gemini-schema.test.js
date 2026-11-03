@@ -218,9 +218,13 @@ test("recorded (gemini-3.5-flash-lite, 2026-10-22): Gemini writes Shiori's booki
   assert.deepEqual([booking.kind, booking.status, booking.confirmation, booking.start, booking.end.tz], ['lodging', 'unverified', 'PRI-4471', { at: '2026-11-03T15:00:00-08:00', tz: 'America/Los_Angeles' }, 'America/Los_Angeles']);
   const patch = await callIn('tools-patch.sse');
   assert.deepEqual(patch?.input, { path: '/trip/bookings/post-ranch-inn.json', changes: { confirmation: 'PRI-9000', 'notes+': ['late arrival'] } });
-  await run('patch', patch.input);
+  // A booking has no notes of its own, so nothing would read them: refused in words, nothing changed (the drive-test follow-ups,
+  // section 3), and the same change with the note in fields goes in.
+  await assert.rejects(run('patch', patch.input), /"notes" isn't a booking field, so nothing was written\. .*put anything else in fields\./);
+  assert.equal((await ws.readJSON(trip, '/bookings/post-ranch-inn.json')).confirmation, 'PRI-4471');
+  await run('patch', { ...patch.input, changes: { confirmation: 'PRI-9000', fields: { 'notes+': ['late arrival'] } } });
   const changed = await ws.readJSON(trip, '/bookings/post-ranch-inn.json');
-  assert.deepEqual([changed.confirmation, changed.notes, changed.kind], ['PRI-9000', ['late arrival'], 'lodging']);
+  assert.deepEqual([changed.confirmation, changed.fields?.notes, changed.kind], ['PRI-9000', ['late arrival'], 'lodging']);
 });
 
 test('__proto__, constructor and prototype stay keys, never the prototype: at the top, nested, in lists, in JSON text, and through callOnce and runTool', async () => {

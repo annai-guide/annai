@@ -5,24 +5,28 @@ import { t } from './l10n.js';
 
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the legs between stops, and each booking on
- * its day (the bookings-and-trips design, goal 5): a flight where it leaves, a stay's check-in, a quiet line for each night between and
- * its check-out, and one with no time "Not on a day". A plan item that links a booking stands for it on the item's own day.
+ * its day (the bookings-and-trips design, goal 5). Anything that runs over several days (the drive-test follow-ups, section 2) is a set:
+ * its start row on its day, a quiet line on each day between, and its end as a row of its own on its day: a stay's check-in, nights and
+ * check-out; a car's pick-up, days and return; a red-eye's departure and arrival. A booking with no time is "Not on a day". A plan item
+ * that links a booking stands for it on the item's own day.
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
- * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'checkout' | 'night', at: number | null, day: string | null,
- *   time: string, end: string, endDays: number, endZone: string, night: { n: number, of: number } | null, bookingPath: string | null,
- *   booking: Record<string, any> | null, check: boolean, checkFields: string[], missing: boolean, note: string }} PlanRow
- *   from: a plan item, a booking no plan item stands for (at its start), a stay's check-out (at its end), or a night of a stay;
- *   path: the plan item's, else the booking's; item: the plan item, or a view of the booking ({ title, kind: 'booking', fixed, start, end,
- *   place }); time and end: "HH:MM" in the item's own zones ('' when there is none, and for an all-day item); endDays: how many days
- *   after the row's day the end falls, on the end's own clock (a red-eye's 1); endZone: the end's zone, named ("ET"), when its clock
- *   reads differently from the start's ('' when it doesn't, and when there is no end); night: which night of how many (night rows);
- *   check: its booking is from before and not confirmed (checkOf's whole); checkFields: the fields Shiori is unsure of (checkOf's);
- *   missing: it names a booking the trip doesn't have; note: what was wrong with its time
+ * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'end' | 'line', at: number | null, day: string | null,
+ *   time: string, end: string, endDays: number, endZone: string, set: { kind: string, part: 'start' | 'end' | 'line' } | null,
+ *   line: { n: number, of: number } | null, bookingPath: string | null, booking: Record<string, any> | null, check: boolean,
+ *   checkFields: string[], missing: boolean, note: string }} PlanRow
+ *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
+ *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
+ *   ({ title, kind: 'booking', fixed, start, end, place }); an end row's item has the end as its start; time and end: "HH:MM" in the
+ *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
+ *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
+ *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (the booking's, else the item's); line: which day
+ *   or night of how many (quiet lines); check: its booking is from before and not confirmed (checkOf's whole); checkFields: the fields
+ *   Shiori is unsure of (checkOf's); missing: it names a booking the trip doesn't have; note: what was wrong with its time
  */
 
 export const LEG_MAX_KM = 1000; // farther than a day's drive: a flight, not a leg
-/** The most night lines a stay gets: the Plan's day cap. */
+/** The most quiet lines a set gets: the Plan's day cap. */
 export const NIGHTS_MAX = 60;
 
 /** Where plan items and bookings live: directly in their folder, which is what the format check and the booking rule cover (§4.4). */
@@ -69,24 +73,36 @@ function timesOf(item, fallbackTz) {
 }
 
 /**
- * The nights of a stay with a good start and end, each in its own zone known, the end after the start: how many, and the days strictly
- * between check-in and check-out. None for anything else. @param {Record<string, any>} b
+ * A good start and end: each in its own zone annai knows, the end after the start, not all day. How many days apart they fall, each
+ * on its own clock, and the days strictly between (at most NIGHTS_MAX); null when either is missing or odd. @param {Record<string, any>} x
  */
-function nightsOf(b) {
-  const s = record(b.start);
-  const e = record(b.end);
-  if (b.kind !== 'lodging' || !s || !e || !validZone(s.tz) || !validZone(e.tz)) return { of: 0, days: [] };
+function spanOf(x) {
+  const s = record(x.start);
+  const e = record(x.end);
+  if (x.kind === 'all-day' || !s || !e || !validZone(s.tz) || !validZone(e.tz)) return null;
   const from = instantAt(s.at, s.tz);
   const to = instantAt(e.at, e.tz);
   const first = Number.isFinite(from) ? dayIn(from, s.tz) : null;
   const last = Number.isFinite(to) ? dayIn(to, e.tz) : null;
-  if (!first || !last || !(to > from)) return { of: 0, days: [] };
-  const of = daysApart(first, last);
+  if (!first || !last || !(to > from)) return null;
+  const apart = daysApart(first, last);
   /** @type {string[]} */
-  const days = [];
-  for (let k = 1; k < of && days.length < NIGHTS_MAX; k++) days.push(new Date(Date.parse(`${first}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10));
-  return { of, days };
+  const between = [];
+  for (let k = 1; k < apart && between.length < NIGHTS_MAX; k++) between.push(new Date(Date.parse(`${first}T00:00:00Z`) + k * 86_400_000).toISOString().slice(0, 10));
+  return { apart, between };
 }
+
+/** A good span that ends on a later day than it starts: a set. @param {Record<string, any>} x */
+const setOf = (x) => {
+  const s = spanOf(x);
+  return s && s.apart > 0 ? s : null;
+};
+
+/** The item without its end: a set's start row. @param {Record<string, any>} x */
+const withoutEnd = (x) => {
+  const { end: _, ...rest } = x;
+  return rest;
+};
 
 /**
  * @param {PlanFile[]} items @param {BookingFile[]} bookings
@@ -95,53 +111,83 @@ function nightsOf(b) {
  */
 export function planRows(items, bookings, { fallbackTz }) {
   const byPath = new Map(bookings.filter((b) => record(b.booking)).map((b) => [b.path, b.booking]));
-  /** @type {Map<string, number[]>} the instants of the plan items that stand for each booking (an untimed one adds none) */
+  const own = items.filter((x) => record(x.item)).map((x) => ({ ...x, ref: bookingRef(x.item.booking) }));
+  /** @type {Map<string, { path: string, at: number | null }[]>} the plan items that stand for each booking, with their instants */
   const linked = new Map();
+  for (const x of own) {
+    if (x.ref && byPath.has(x.ref)) linked.set(x.ref, [...(linked.get(x.ref) ?? []), { path: x.path, at: timesOf(x.item, fallbackTz).at }]);
+  }
+  // One set per thing. A booking with a good start and end draws its own; one without has the earliest item standing for it that runs
+  // over several days draw it, and adds no rows of its own.
+  /** @type {Map<string, string>} booking path → the plan item that draws its set */
+  const drawer = new Map();
+  for (const [path, b] of byPath) {
+    if (spanOf(b)) continue;
+    const by = own.filter((x) => x.ref === path && setOf(x.item))
+      .sort((p, q) => instantAt(p.item.start.at, p.item.start.tz) - instantAt(q.item.start.at, q.item.start.tz))[0];
+    if (by) drawer.set(path, by.path);
+  }
+  /**
+   * Whether a plan item standing for the booking is on this row's day, taken in the row's own zone (an item written in the arrival's
+   * zone, or UTC, is still that flight). Each item stands for one row: the first it is on the day of. A row with no day is stood for by
+   * any item. @param {string} path the booking @param {PlanRow} r @param {string} [not] the item drawing the set, which stands for none
+   */
+  const standsFor = (path, r, not) => {
+    const on = linked.get(path);
+    if (!on) return false;
+    if (!r.day) return true;
+    const tz = validZone(r.item.start?.tz) ? r.item.start.tz : fallbackTz;
+    const k = on.findIndex((x) => x.path !== not && x.at !== null && dayIn(x.at, tz) === r.day);
+    if (k >= 0) on.splice(k, 1);
+    return k >= 0;
+  };
   /** @type {PlanRow[]} */
   const out = [];
-  for (const { path, item } of items) {
-    if (!record(item)) continue;
-    const ref = bookingRef(item.booking);
+  /**
+   * A set's end row and its quiet lines. @param {Pick<PlanRow, 'path' | 'bookingPath' | 'booking' | 'check' | 'checkFields' | 'missing'>} base
+   * @param {Record<string, any>} view the start's view @param {Record<string, any>} endAt the end's time @param {string} kind
+   * @param {{ apart: number, between: string[] } | null} span @param {string} [not] the item drawing the set
+   */
+  const rest = (base, view, endAt, kind, span, not) => {
+    const item = { ...view, fixed: true, start: endAt };
+    /** @type {PlanRow} */
+    const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };
+    if (end.day && !(base.bookingPath && base.booking && standsFor(base.bookingPath, end, not))) out.push(end);
+    const title = view.title;
+    span?.between.forEach((day, k) => out.push({
+      ...base, item: { title, kind: view.kind, fixed: true, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
+      set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, check: false, checkFields: [], missing: false, note: '',
+    }));
+  };
+  for (const { path, item, ref } of own) {
     const booking = ref ? byPath.get(ref) ?? null : null;
-    const times = timesOf(item, fallbackTz);
-    if (ref && booking) linked.set(ref, [...(linked.get(ref) ?? []), ...(times.at !== null ? [times.at] : [])]);
+    const span = setOf(item);
+    // Its end is its own row, or its booking's.
+    const view = span ? withoutEnd(item) : item;
     const marks = checkOf(booking);
-    out.push({
-      path, item, from: 'item', ...times, night: null, bookingPath: ref, booking,
-      check: booking !== null && marks.whole, checkFields: booking ? marks.fields : [],
+    const base = {
+      path, bookingPath: ref, booking, check: booking !== null && marks.whole, checkFields: booking ? marks.fields : [],
       missing: item.booking !== undefined && item.booking !== '' && !booking,
-    });
+    };
+    const kind = String(booking?.kind ?? item.kind ?? '');
+    const draws = span && (!booking || (ref && drawer.get(ref) === path));
+    out.push({ ...base, item: view, from: 'item', ...timesOf(view, fallbackTz), set: draws ? { kind, part: 'start' } : null, line: null });
+    if (draws) rest(base, view, item.end, kind, span, path);
   }
   for (const [path, b] of byPath) {
+    if (drawer.has(path)) continue;
     const marks = checkOf(b);
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[b.kind] ?? t`Booking`;
     const place = record(b.place) ? b.place : undefined;
-    const stay = b.kind === 'lodging';
-    /** @param {PlanRow['from']} from @param {Record<string, any>} view @returns {PlanRow} */
-    const row = (from, view) => ({
-      path, item: view, from, ...timesOf(view, fallbackTz), night: null, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false,
-    });
-    // A plan item that links the booking stands for it on the item's own day: a check-out or a breakfast item leaves the check-in, and
-    // a flight on its day, as rows of their own. A booking with no time that an item stands for is no "Not on a day" row too.
-    // Each item's day is taken in the row's own zone: an item written in the arrival's zone, or UTC, is still that flight.
-    const on = linked.get(path);
-    const standsFor = (/** @type {PlanRow} */ r) => {
-      if (!on) return false;
-      if (!r.day) return true;
-      const own = r.item.start?.tz;
-      const tz = validZone(own) ? own : fallbackTz;
-      return on.some((at) => dayIn(at, tz) === r.day);
-    };
-    // A stay's check-in is at its own time, with no end: its end is the check-out's row.
-    const start = row('booking', { title, kind: 'booking', fixed: true, start: b.start, ...(stay ? {} : { end: b.end }), place });
-    if (!standsFor(start)) out.push(start);
-    const checkout = stay ? row('checkout', { title, kind: 'booking', fixed: true, start: b.end, place }) : null;
-    if (checkout?.day && !standsFor(checkout)) out.push(checkout);
-    const nights = nightsOf(b);
-    nights.days.forEach((day, k) => out.push({
-      path, item: { title, kind: 'booking', fixed: true, place }, from: 'night', at: null, day, time: '', end: '', endDays: 0, endZone: '',
-      night: { n: k + 2, of: nights.of }, bookingPath: path, booking: b, check: false, checkFields: [], missing: false, note: '',
-    }));
+    const kind = String(b.kind ?? '');
+    // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
+    const split = kind === 'lodging' || setOf(b);
+    const base = { path, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false };
+    const view = { title, kind: 'booking', fixed: true, start: b.start, ...(split ? {} : { end: b.end }), place };
+    /** @type {PlanRow} */
+    const start = { ...base, item: view, from: 'booking', ...timesOf(view, fallbackTz), set: split ? { kind, part: 'start' } : null, line: null };
+    if (!standsFor(path, start)) out.push(start);
+    if (split) rest(base, view, b.end, kind, spanOf(b));
   }
   return out;
 }
@@ -165,7 +211,7 @@ function tripDays(start, end) {
 
 /**
  * Rows by day: every day of the trip (even empty), then any other day with something on it, in
- * order; each day's nights first (mockup 2b), then its rows by time. Plan items without a time are
+ * order; each day's quiet lines first (mockup 2b), then its rows by time. Plan items without a time are
  * apart (untimed), and so are bookings without one ("Not on a day", notOnDay).
  * @param {PlanRow[]} rows @param {{ start?: unknown, end?: unknown }} trip
  * @returns {{ days: { key: string, rows: PlanRow[] }[], untimed: PlanRow[], notOnDay: PlanRow[] }}
@@ -175,7 +221,7 @@ export function planDays(rows, trip) {
   for (const r of rows) if (r.day) keys.add(r.day);
   const byTitle = (/** @type {PlanRow} */ a, /** @type {PlanRow} */ b) => sortWords(String(a.item.title ?? ''), String(b.item.title ?? ''));
   return {
-    days: [...keys].sort().map((key) => ({ key, rows: rows.filter((r) => r.day === key).sort((a, b) => Number(b.from === 'night') - Number(a.from === 'night') || (a.at ?? 0) - (b.at ?? 0) || byTitle(a, b)) })),
+    days: [...keys].sort().map((key) => ({ key, rows: rows.filter((r) => r.day === key).sort((a, b) => Number(b.from === 'line') - Number(a.from === 'line') || (a.at ?? 0) - (b.at ?? 0) || byTitle(a, b)) })),
     untimed: rows.filter((r) => !r.day && r.from === 'item').sort(byTitle),
     notOnDay: rows.filter((r) => !r.day && r.from !== 'item').sort(byTitle),
   };
