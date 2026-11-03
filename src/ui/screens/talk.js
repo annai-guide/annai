@@ -520,12 +520,12 @@ export async function renderTalk(ctx) {
   built = true;
   showCost();
   const screen = h('div', { class: 'screen' },
-    h('h1', { class: 'title', text: t`Conversation` }),
+    // Tidy up is a ⋯ by the title, out of the conversation's way (the user, 2026-11-02).
+    h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidyMenu(ctx)),
     h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     cost,
     list.childElementCount ? null : empty,
     list,
-    tidyMenu(ctx), // at the foot, under the last line (the user, 2026-10-28)
     announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
@@ -635,7 +635,7 @@ function undoLine(ctx, scope, list) {
  */
 function tidyMenu(ctx) {
   const agent = ctx.agent;
-  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu' }, t`Tidy up`);
+  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu', 'aria-label': t`Tidy up the conversation` }, '⋯');
   const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': t`Tidy up the conversation`, hidden: true });
   const close = () => {
     menu.hidden = true;
@@ -660,7 +660,7 @@ function tidyMenu(ctx) {
   const working = (on) => {
     toggle.setAttribute('aria-busy', String(on));
     toggle.setAttribute('aria-disabled', String(on));
-    toggle.textContent = on ? t`Starting fresh…` : t`Tidy up`;
+    toggle.setAttribute('aria-label', on ? t`Starting fresh…` : t`Tidy up the conversation`);
   };
   const fresh = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-fresh',

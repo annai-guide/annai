@@ -9,7 +9,7 @@ import { tripZoneOf } from '../../core/trip-files.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { ask } from '../ask.js';
-import { detailsHref, rowName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
+import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
 /**
  * The Plan (spec §16.2): "Not on a day" (bookings with no time), day tabs, a timetable with ● fixed and ○ flexible, every booking on
@@ -101,8 +101,8 @@ function timetable(ctx, id, rows, links, undo, here) {
   /** @type {HTMLElement[]} */
   const out = [];
   rows.forEach((r, i) => {
-    // A night is a quiet line: no legs to or from it.
-    const km = i && r.from !== 'night' && rows[i - 1].from !== 'night' ? legKm(rows[i - 1], r) : null;
+    // A quiet line: no legs to or from it.
+    const km = i && r.from !== 'line' && rows[i - 1].from !== 'line' ? legKm(rows[i - 1], r) : null;
     if (km !== null) out.push(leg(rows[i - 1], r, km, links));
     out.push(row(ctx, id, r, undo, here));
   });
@@ -112,8 +112,8 @@ function timetable(ctx, id, rows, links, undo, here) {
 /** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, { restore: string } | { remove: true }>} undo @param {string} here */
 function row(ctx, id, r, undo, here) {
   const it = r.item;
-  // "Staying at Hotel Aurora Test · night 2 of 7": a quiet line, not a link (mockup 2b).
-  if (r.night) return h('li', { class: 'plan-row night' }, h('span', { class: 'stay', text: t`Staying at ${String(it.title ?? '')} · night ${num(r.night.n)} of ${num(r.night.of)}` }));
+  // "Staying at Hotel Aurora Test · night 2 of 7", "Car · day 3 of 8": a quiet line, not a link (mockup 2b).
+  if (r.line) return h('li', { class: 'plan-row night' }, h('span', { class: 'stay', text: lineName(r) }));
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so.
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
   const when = it.kind === 'all-day' ? t`All day` : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : r.time;

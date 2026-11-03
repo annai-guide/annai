@@ -51,3 +51,16 @@ test('the compact view is cut to fit, and its words are escaped: a plan title is
   assert.doesNotMatch(view.slice('<today>'.length, -'</today>'.length), /[<>]/);
   assert.equal(await compactView({ ws: k.ws, trip: null, now, timeZone: LA, next: null }), '<today>\nNo trip is open.\n</today>');
 });
+
+test("the compact view lists today's ends of things over several days at their times: a check-out, a car's return, an arrival (the drive-test follow-ups, section 2)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  await write('/bookings/inn.json', { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/files/x.pdf', title: 'Cliffside Test Inn', start: at('2026-11-23T15:00:00'), end: at('2026-11-26T11:00:00') });
+  // A car whose booking has no times of its own: its plan item carries them.
+  await write('/bookings/car.json', { id: 'car', kind: 'car', status: 'unverified', source: '/files/c.pdf', unsure: [] });
+  await write('/plan/car.json', { id: 'car', title: 'Rental car', fixed: true, booking: '/trip/bookings/car.json', start: at('2026-11-20T09:00:00'), end: at('2026-11-27T18:00:00'), place: { name: 'Airport lot' } });
+  await write('/plan/lunch.json', { id: 'lunch', title: 'Lunch', fixed: false, start: at('2026-11-26T12:30:00') });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\tyes\t\n2026-11-26 12:30\t\tLunch\tno\t\n2026-11-27 18:00\t\tReturn · Rental car\tyes\tAirport lot/);
+  assert.doesNotMatch(view, /Pick up|day \d of/);
+});
