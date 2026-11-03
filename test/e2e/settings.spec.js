@@ -162,6 +162,21 @@ test('choosing another personality moves the editor to it, so its Save writes th
   expect(await meFile(page, '/personalities/shiori.md')).toBe(shiori);
 });
 
+test('Reset to original puts the original back in the editor and the file, and a toast says so (the user, 2026-11-03: "no confirmation or anything indicats that it have being set back to original")', async ({ page }) => {
+  await openApp(page);
+  await expect.poll(() => meFile(page, '/personalities/shiori.md')).toBeTruthy();
+  await page.goto('/#/shiori');
+  const original = await meFile(page, '/personalities/shiori.md');
+  const editor = page.getByLabel('"shiori"');
+  await editor.fill('# Mine\nA changed personality.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => meFile(page, '/personalities/shiori.md')).toBe('# Mine\nA changed personality.');
+  await page.getByRole('button', { name: 'Reset to original' }).click();
+  await expect(page.locator('.toast', { hasText: 'Back to the original. It applies at her next wake.' })).toBeVisible();
+  await expect.poll(() => meFile(page, '/personalities/shiori.md')).toBe(original);
+  await expect(page.getByLabel('"shiori"')).toHaveValue(/** @type {string} */ (original));
+});
+
 test("quiet hours set halfway ask for the other time quietly, and say they need both only once the pair is left (review, 2026-10-18)", async ({ page }) => {
   await openApp(page, '#/shiori');
   const from = page.getByLabel('Quiet from');

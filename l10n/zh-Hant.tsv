@@ -2213,37 +2213,38 @@ ki7u7j	ok	Shiori, your turn	Shiori，輪到你了	src/ui/screens/shiori.js:19
 1iimwg8	ok	Offline	離線	src/ui/screens/shiori.js:20	
 jcy1qy	ok	Shiori, offline	Shiori，離線	src/ui/screens/shiori.js:20	
 9chhxd	ok	"{0}"	「{0}」	src/ui/screens/shiori.js:43	{0} = name; Note: a personality's name, quoted, as the editor's label.
-veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:45	Note: puts a personality back to annai's original text.
-1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:57	
-1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:61	
-1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:69	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
-1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:69	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
-1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:74	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:95	
-1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:102	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:103	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:105	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:106	
-1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:113	{0} = compare
-pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:116	
-eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:125	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:133	
-8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:133	{0} = name
-codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:138	
-10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:139	
-185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:142	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:143	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:145	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:147	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:148	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:149	
-pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:149	
-av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:151	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:151	
-1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:165	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:165	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:170	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:174	{0} = p.name
+1imu4jh	draft	Back to the original. It applies at her next wake.	已還原原版。她下次喚醒時生效。	src/ui/screens/shiori.js:47	
+veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:49	Note: puts a personality back to annai's original text.
+1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:61	
+1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:65	
+1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:73	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
+1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:73	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
+1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:78	
+11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:99	
+1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:106	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:107	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:109	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:110	
+1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:117	{0} = compare
+pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:120	
+eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:129	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:137	
+8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:137	{0} = name
+codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:142	
+10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:143	
+185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:146	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:147	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:149	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:151	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:152	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:153	
+pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:153	
+av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:155	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:155	
+1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:169	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:169	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:174	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:178	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600 倍：一小時只需 6 秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	實際時間的 10 倍：一小時只需 6 分鐘	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60 倍：一小時只需一分鐘	src/ui/screens/simulate.js:10	
