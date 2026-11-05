@@ -88,6 +88,8 @@ const PLAYER_LOAD_MS = 1500;
 const PLAYER_TRIES = 3;
 /** A player that tells nothing this long, or whose clock stands still, has stalled (a context suspended, the audio thread gone). */
 const STALL_MS = 1000;
+/** How long the microphone waits for a suspended context: its resume() may never settle (WebKit 281566). */
+const RESUME_MS = 1000;
 
 /** A promise and the function that settles it. @template T @returns {[Promise<T>, (v: T) => void]} */
 function settled() {
@@ -148,11 +150,11 @@ function heldStream(made, running) {
  * has it played (a half-duplex microphone is deaf no shorter than her sound), and stop() adds what has played since the last report.
  * A node that tells nothing for stallMs, or fails, is stopped: done, stalled.
  * @param {{ port: { postMessage(m: any, t?: Transferable[]): void, onmessage: ((e: MessageEvent) => void) | null, close(): void }, disconnect(): void, onprocessorerror?: any }} node
- * @param {{ rate: number, sampleRate: number, now: () => number, onLevel?: (x: number) => void, running: Promise<boolean>, stallMs?: number }} o
- *   rate: the stream's; sampleRate: the context's; now: the context's time, in seconds
+ * @param {{ rate: number, sampleRate: number, now: () => number, onLevel?: (x: number) => void, running: Promise<boolean>, stallMs?: number, state?: () => string }} o
+ *   rate: the stream's; sampleRate: the context's; now: the context's time, in seconds; state: the context's state, for the Trace
  * @returns {PlayerStream}
  */
-export function workletStream(node, { rate, sampleRate, now, onLevel = () => {}, running, stallMs = STALL_MS }) {
+export function workletStream(node, { rate, sampleRate, now, onLevel = () => {}, running, stallMs = STALL_MS, state }) {
   /** Where each piece pushed ends, in samples: those played are let go. @type {number[]} */
   const ends = [];
   let pushed = 0;
@@ -167,7 +169,7 @@ export function workletStream(node, { rate, sampleRate, now, onLevel = () => {},
   const finish = (playedMs, stalled = false) => {
     if (result) return result;
     clearTimeout(watch);
-    result = { playedMs, holes: last.holes, holeMs: ms(last.holeFrames), waitMs: ms(last.waited), player: 'worklet', ...(stalled ? { stalled } : {}) };
+    result = { playedMs, holes: last.holes, holeMs: ms(last.holeFrames), waitMs: ms(last.waited), player: 'worklet', ...(state ? { ctx: state() } : {}), ...(stalled ? { stalled } : {}) };
     onLevel(0);
     start(false);
     settle(result);
@@ -263,7 +265,7 @@ function bufferStream(c, { rate, onLevel, running }) {
     start(false);
     // What was heard: sound only, never the gaps when pieces came late.
     const playedMs = Math.round((heard + pieces.reduce((s, p) => s + Math.max(0, Math.min(c.currentTime, p.end) - p.at), 0)) * 1000);
-    result = { playedMs, holes, holeMs: Math.round(holeS * 1000), waitMs: 30, player: 'buffers', ...(stalled ? { stalled } : {}) };
+    result = { playedMs, holes, holeMs: Math.round(holeS * 1000), waitMs: 30, player: 'buffers', ctx: c.state, ...(stalled ? { stalled } : {}) };
     settle(result);
     return result;
   };
@@ -388,9 +390,17 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
 
   return {
     player: {
-      unlock() {
+      unlock({ fresh = false } = {}) {
         // Inside a tap: the player, the microphone's context and the browser voice may start. Each is
         // started now, in the tap; after a wait it would no longer count. Until the player played, every tap tries again.
+        // Sound got stuck: resume() can't be trusted (state may read running after the unit failed, WebKit 217606), so a new context is made here.
+        if (fresh && ctx) {
+          ctx.close().catch(() => {});
+          ctx = null;
+          worklet = null;
+          playerModule = null;
+          playerTries = 0;
+        }
         /** @type {Promise<boolean>} */
         let played;
         try {
@@ -422,7 +432,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
             try {
               const node = new AudioWorkletNode(c, 'annai-player', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { rate } });
               node.connect(c.destination);
-              return workletStream(node, { rate, sampleRate: c.sampleRate, now: () => c.currentTime, onLevel, running });
+              return workletStream(node, { rate, sampleRate: c.sampleRate, now: () => c.currentTime, onLevel, running, state: () => c.state });
             } catch {
               // the buffers below
             }
@@ -560,7 +570,13 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         try {
           const c = context();
-          if (c.state !== 'running') await c.resume().catch(() => {});
+          if (c.state !== 'running') {
+            /** @type {any} */
+            let timer;
+            await Promise.race([c.resume().catch(() => {}), new Promise((r) => { timer = setTimeout(r, RESUME_MS); })]);
+            clearTimeout(timer);
+          }
+          if (c.state !== 'running') throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
           playerReady();
           worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
           try {

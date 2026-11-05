@@ -6,6 +6,7 @@ import { until } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -279,11 +280,13 @@ const opened = async (k) => {
 };
 /** A session with the mic open, the tap's lift over, the user's level known. @param {any} k @param {number} [db] */
 async function learned(k, db = -5) {
+  await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // no quiet spell closes it while a tap's lift runs out
   await opened(k);
   k.platform.mic.feed(room(1.5), RATE); // the floor is learned
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE); // the tap's first turn: it lifts the minimum no more
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
   await k.agent.live.idle();
+  await wait(1050); // a tap's lift: 8 s of the session's clock
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
 }
@@ -335,15 +338,17 @@ test('level check: the user is never unheard: a quiet car has no minimum', async
   }
 });
 
-test("level check: the first turn of a session, with no voice learned, has no minimum; a tap lifts one until its first turn ends", async () => {
+test("level check: the first turn of a session, with no voice learned, has no minimum; a tap lifts one for a while", async () => {
   const k = await liveKit([{ heard: 'hello' }, { heard: 'hello' }, { heard: 'la' }]);
   try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     await opened(k);
     k.platform.mic.feed(room(1.5), RATE);
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE); // quiet, first
     await soon(async () => starts(k) === 1, 2000);
     await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
     await k.agent.live.idle();
+    await wait(1050); // a tap's lift
     // Loud once: quiet words are now under the minimum...
     k.agent.live.level.heard(-3);
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE);
@@ -407,7 +412,7 @@ test('level check: a session a note opened keeps the level learned before, and l
   }
 });
 
-test('ignoring: sound the minimum keeps out shows, with the words that offer a tap, and is traced; the user\'s voice opens a turn and clears it', async () => {
+test('ignoring: sound the minimum keeps out shows, with the words that offer a tap; the user\'s voice opens a turn and clears it', async () => {
   const k = await liveKit([{ heard: 'hello' }, { heard: 'where to', said: 'Tacos ahead.', audio: tone(0.1) }]);
   const names = /** @type {string[]} */ ([]);
   try {
@@ -422,15 +427,12 @@ test('ignoring: sound the minimum keeps out shows, with the words that offer a t
     k.platform.mic.feed(hum(0.6, 0.5), RATE); // the user
     assert.equal(k.agent.state.name, 'hearing');
     assert.ok(names.includes('ignoring') && names.at(-1) === 'hearing', names.join());
-    await soon(async () => (await k.events(['live.ignored'])).length === 1, 1000);
-    assert.equal(typeof (await k.events(['live.ignored']))[0].data.ms, 'number');
   } finally {
     await k.done();
   }
 });
 
 test('ignoring: it ends on its own about 3 s after the last sound kept out, and doesn\'t flicker before', async () => {
-  const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'hello' }]);
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here: longer than what this looks at
@@ -442,7 +444,6 @@ test('ignoring: it ends on its own about 3 s after the last sound kept out, and 
     await wait(280);
     assert.equal(k.agent.state.name, 'ignoring', 'the later frame held it');
     await until(() => k.agent.state.name === 'listening', 1000);
-    await soon(async () => (await k.events(['live.ignored'])).length === 1, 1000);
   } finally {
     await k.done();
   }
@@ -476,7 +477,6 @@ test('ignoring: a quiet car never shows it', async () => {
     k.platform.mic.feed(cat(hum(0.6, 0.01), quiet(1, 0.0002)), RATE);
     await soon(async () => starts(k) === 1, 1000);
     assert.ok(!names.includes('ignoring'), names.join());
-    assert.deepEqual(await k.events(['live.ignored']), []);
   } finally {
     await k.done();
   }

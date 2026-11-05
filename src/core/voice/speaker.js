@@ -149,13 +149,14 @@ export async function playStream(player, a, { signal, onLevel, estimatedS, now, 
         out = player.stream({ rate: a.rate, onLevel });
         openedAt = now();
         out.running?.then((ok) => { if (!ok) refuse(notAllowed()); });
+        out.done.then((r) => { if (r.stalled) refuse(notAllowed()); }); // its player stopped it: the sound never came out
       }
       while (out && pushed < a.pieces.length) out.push(a.pieces[pushed++]);
       if (out && a.ended) {
         out.end();
         const left = Math.max(0, (a.samples / a.rate) * 1000 - (now() - openedAt));
         const stalled = new Promise((_, r) => { watchdog = setTimeout(() => r(notAllowed()), left + stallMs); });
-        await Promise.race([out.done, stopped, refused, stalled]);
+        if ((/** @type {any} */ (await Promise.race([out.done, stopped, refused, stalled])))?.stalled) throw notAllowed();
         break;
       }
       await Promise.race([a.changed(), stopped, refused]);
@@ -298,7 +299,8 @@ export class Utterance {
       for (;; i++) {
         const text = await this.#sentence(i);
         if (text === null) break;
-        if (i === 0) this.#deps.platform()?.session('playback'); // speaking: heard with the iPhone's silent switch on; music pauses (spec §10.1)
+        // Speaking: heard with the iPhone's silent switch on; music pauses (spec §10.1). Not under an open microphone, which needs play-and-record.
+        if (i === 0 && !this.#deps.platform()?.mic.inUse?.()) this.#deps.platform()?.session('playback');
         const r = await this.#say(i, text);
         if (r.failed) {
           failed = r.failed;

@@ -204,3 +204,62 @@ test("a processor error stops it as a stall", async () => {
   /** @type {any} */ (node).onprocessorerror();
   assert.equal((await s.done).stalled, true);
 });
+
+test('the context\'s state as a stream ended goes with its numbers, for the Trace (a stuck context reads running: WebKit 217606)', async () => {
+  const { node } = fakeNode();
+  const s = workletStream(node, { rate: 24_000, sampleRate: 48_000, now: () => 0, running: Promise.resolve(true), stallMs: 20, state: () => 'running' });
+  s.push(new Int16Array(240));
+  const r = await s.done;
+  assert.deepEqual([r.stalled, r.ctx], [true, 'running']);
+});
+
+/** The browser's audio, enough for the player's unlock and the microphone. */
+function fakeAudioGlobals(/** @type {{ state?: string, resumes?: boolean }} */ { state = 'running', resumes = true } = {}) {
+  /** @type {any[]} */
+  const contexts = [];
+  const stopped = { tracks: 0 };
+  const g = /** @type {any} */ (globalThis);
+  const saved = { AudioContext: g.AudioContext, Audio: g.Audio, AudioWorkletNode: g.AudioWorkletNode };
+  g.AudioContext = class {
+    state = state;
+    closed = false;
+    audioWorklet = { addModule: async () => {} };
+    destination = {};
+    sampleRate = 48_000;
+    constructor() { contexts.push(this); }
+    resume() { return resumes ? Promise.resolve() : new Promise(() => {}); }
+    async close() { this.closed = true; }
+    createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
+    createGain() { return { gain: {}, connect() { return {}; }, disconnect() {} }; }
+  };
+  g.Audio = class { canPlayType() { return ''; } async play() {} };
+  g.AudioWorkletNode = class { port = {}; connect() { return {}; } disconnect() {} };
+  const track = { stop() { stopped.tracks++; }, getSettings: () => ({}) };
+  Object.defineProperty(globalThis.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getAudioTracks: () => [track], getTracks: () => [track] }) } });
+  return { contexts, stopped, restore() {
+    Object.assign(g, saved);
+    delete /** @type {any} */ (globalThis.navigator).mediaDevices;
+  } };
+}
+
+test('after sound got stuck, a tap makes a new context; an ordinary tap keeps the one it has', async (t) => {
+  const { browserPlatform } = await import('../../src/plugins/voice-browser/index.js');
+  const a = fakeAudioGlobals();
+  t.after(a.restore);
+  const p = browserPlatform();
+  await p.player.unlock();
+  await p.player.unlock();
+  assert.equal(a.contexts.length, 1);
+  await p.player.unlock({ fresh: true });
+  assert.equal(a.contexts.length, 2);
+  assert.equal(a.contexts[0].closed, true);
+});
+
+test('the microphone doesn\'t wait for ever on a resume that never settles (WebKit 281566): it says sound is stuck, and lets go of its tracks', async (t) => {
+  const { browserPlatform } = await import('../../src/plugins/voice-browser/index.js');
+  const a = fakeAudioGlobals({ state: 'suspended', resumes: false });
+  t.after(a.restore);
+  const p = browserPlatform();
+  await assert.rejects(p.mic.open({ onFrames() {}, onError() {} }), (/** @type {any} */ e) => e.stuck === true && /stuck/.test(e.message));
+  assert.equal(a.stopped.tracks, 1);
+});

@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -324,7 +324,9 @@ export class Halves {
       koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce,
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
-      held: () => this.#fresh?.held ?? this.#voiceOut(),
+      held: () => this.#fresh?.held ?? null,
+      voiceOut: () => this.#voiceOut(),
+      tapFailed: () => this.#tapFailed(),
       saying: (words) => this.#emit('saying', words),
       visible: () => this.#visible(),
       release: () => { this.kokoro.release(); this.koe.release(); },
@@ -342,6 +344,7 @@ export class Halves {
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
+    this.voice?.onSound((stuck) => (stuck ? this.#notice(soundStuck()) : this.#emit('clear', 'sound')));
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.
     // Writes that come together (a provider saved with its models) make one refresh, which reads them all.
     this.ws.onChange((/** @type {{ scope: string, path: string }} */ x) => {
@@ -515,9 +518,11 @@ export class Halves {
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;
+    // Its own model has left the list, or rests. An earlier one coming back from a rest closes nothing: a healthy session is kept, and the next session uses it.
+    const leftUs = Boolean(model && model !== this.#liveId && (!cfg.roles[KOE_REALTIME]?.models?.includes(model) || until(model) > Date.now()));
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
     // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
-    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) {
+    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || leftUs || voiceOff)) {
       if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon(/* en */ 'voice off');
       else this.live.close(voiceOff ? /* en */ 'voice off' : 'pathway');
     }
@@ -549,12 +554,31 @@ export class Halves {
   #voiceOut() {
     const speaker = this.voice?.speaker;
     if (!speaker?.speaking) return null;
-    return Promise.race([speaker.quiet(), new Promise((/** @type {(v: void) => void} */ r) => { setTimeout(r, SAID_WAIT_MS); })]);
+    /** @type {any} */
+    let timer;
+    return Promise.race([speaker.quiet(), new Promise((/** @type {(v: void) => void} */ r) => { timer = setTimeout(r, SAID_WAIT_MS); })]).finally(() => clearTimeout(timer));
+  }
+
+  /** A tap's session couldn't open (its model refused and rests now): the next of Koe's list takes the tap, with no second one. */
+  #tapFailed() {
+    this.#route(async () => {
+      const failed = this.#liveId;
+      await this.#refresh();
+      if (this.koeState === 'live' && this.#liveId !== failed) await this.live.open('tap', { mic: true });
+      else if (this.koeState !== 'live') this.talking.tap();
+    });
   }
 
   /** One of Kokoro's instruction blocks: a live session opened, closed or dropped (Review Focus 2: messages, never its system text or tools). @param {Block} state */
   #block(state) {
     this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', BLOCKS[state]]] }).catch(() => {});
+  }
+
+  /** A session may wait for a reminder being said: nothing else waits for that (a typed line is written at once). @param {Promise<unknown>} p */
+  #alongside(p) {
+    const going = p.catch((e) => console.warn(/* en */ 'routing failed', e));
+    this.#sending.add(going);
+    going.finally(() => this.#sending.delete(going));
   }
 
   /**
@@ -694,7 +718,7 @@ export class Halves {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
       this.#koeOpen();
-      if (this.koeState === 'live') return this.#live(() => this.live.send(text, o), { kind: 'user', text, logged: true });
+      if (this.koeState === 'live') return this.#alongside(this.#live(() => this.live.send(text, o), { kind: 'user', text, logged: true }));
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
@@ -722,7 +746,7 @@ export class Halves {
       // From a page out of view, a session waits for it; its reminders show now, as annai's always do (review).
       const away = this.koeState === 'live' && !this.#visible() && Boolean(w.fallbacks?.length);
       if (away) this.kokoro.remind(w.fallbacks ?? []);
-      if (this.koeState === 'live') await this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w);
+      if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w));
       else this.koe.enqueue(w);
     });
     return Promise.resolve();

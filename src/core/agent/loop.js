@@ -147,6 +147,8 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
 /** How long a tap's window and a question aloud listen: not silenceSeconds, which is for what she says listening for an answer (the second-drive design). */
 const LISTEN_S = 8;
+/** The card when sound that worked stopped coming out (one name: a newer one replaces it, a tap takes it down). */
+export const soundStuck = () => ({ tone: /** @type {const} */ ('warn'), title: t`Tap the screen so Shiori can speak`, body: t`Her sound got stuck, and a tap brings it back. Her words are in the conversation.`, key: 'sound' });
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
 /** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
 const AFTER_CUE = 2;
@@ -383,6 +385,8 @@ export class Agent {
   #simScope = null;
   /** This turn speaks because the user asked to hear her, with voice mode off: it doesn't listen (spec §10.5, §6.2). */
   #aloudOnly = false;
+  /** When her last spoken words ended. */
+  #saidAt = 0;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
   #writeTries = new Map();
   /** @type {Half} */
@@ -2805,10 +2809,11 @@ export class Agent {
     if (spoken.heard) {
       this.#lastSaid = spoken.heard; // only what was said aloud
       this.#facts.aloud = true;
+      this.#saidAt = Date.now();
     }
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
-        ? { tone: 'info', title: t`Tap the screen so Shiori can speak`, body: t`This browser plays sound only after a tap. Her words are in the conversation.` }
+        ? (voice.stuck ? soundStuck() : { tone: 'info', title: t`Tap the screen so Shiori can speak`, body: t`This browser plays sound only after a tap. Her words are in the conversation.` })
         : { tone: 'warn', title: t`Shiori couldn't speak aloud`, body: t`No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.` });
       return unspoken(spoken.failed);
     }
@@ -2847,11 +2852,7 @@ export class Agent {
     if (spoken.heard) this.#lastSaid = spoken.heard;
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S);
-    if (got.dismissed) {
-      this.#chatter.push(got.dismissed); // written in at her next step; the buttons keep waiting
-      got = {};
-    }
-    if (got.heard || got.dismissed || got.text !== undefined || got.chosen !== undefined || got.stopped) {
+    if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
       if (this.#ear?.owner === 'turn') this.#closeEar();
@@ -2880,11 +2881,6 @@ export class Agent {
       /* en */
       return { content: `${lead}The user said:`, heard: [got.heard.id] };
     }
-    if (got.dismissed) {
-      await this.#logHeard(got.dismissed, { wake: call.wake, answer: call.id, dismissed: true, gate: 'chatter' });
-      /* en */
-      return { content: `${lead}Someone spoke, but not to you; it is below. You went back to sleep.`, heard: [got.dismissed.id], endTurn: true };
-    }
     if (got.text !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
       /* en */
@@ -2902,7 +2898,8 @@ export class Agent {
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a
    * silence of seconds. Speech heard before isn't an answer: it reaches her as heard while she was
-   * thinking, and with such speech waiting, speak and wait don't listen: it reaches her at once.
+   * thinking, and with such speech waiting, speak and wait don't listen: it reaches her at once. The silence runs from here: chatter or a
+   * noise neither ends it nor starts it again (music would hold the microphone open for ever, at a transcription and a gate each time).
    * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
    */
   async #listenFor(id, kind, seconds, tool = false) {
@@ -2918,13 +2915,14 @@ export class Agent {
     return new Promise((resolve) => {
       /** @type {any} */
       let timer = null;
+      const by = Date.now() + seconds * this.secondMs;
       const arm = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
           if (this.#pending?.id !== id) return;
           this.#pending = null;
           resolve({});
-        }, seconds * this.secondMs);
+        }, Math.max(0, by - Date.now()));
       };
       this.#pending = { id, kind, listening: true, tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
       arm();
@@ -2947,6 +2945,8 @@ export class Agent {
     const voice = this.voice;
     if (!voice) return /* en */ "voice isn't available here.";
     if (this.#ear) return null; // a tap's window stays the tap's until the first thing said: that needs no gate (choice 3)
+    // A turn cut by opening another conversation: nothing of its own listens in the conversation being left.
+    if (this.#opens && owner !== 'tap') return /* en */ 'another conversation is opening.';
     const how = await voice.howToListen(this.#half.role);
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
@@ -3011,11 +3011,18 @@ export class Agent {
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       const verdict = tapped ? null : await this.#gate(h);
+      if (this.#pending === p && verdict === 'chatter') {
+        // Not for her: written at the turn's end, and she listens on, to the same deadline (the second drive, item 10: one such verdict closed the microphone on the user).
+        this.#chatter.push(h);
+        if (this.state.name === 'hearing') this.#setState('listening');
+        p.arm?.();
+        return;
+      }
       if (this.#pending === p) {
         this.#pending = null;
         if (this.#ear) this.#ear.owner = 'turn';
         this.#setState('thinking');
-        p.resolve(verdict === 'chatter' ? { dismissed: h } : { heard: h, ...(verdict ? { gate: verdict } : {}) });
+        p.resolve({ heard: h, ...(verdict ? { gate: verdict } : {}) });
         return;
       }
     }
@@ -3033,7 +3040,7 @@ export class Agent {
       // Chatter: recorded, and she sleeps on (spec §10.4).
       if (this.#busy) this.#chatter.push(h);
       else await this.#logHeard(h, { dismissed: true, gate: 'chatter' });
-      if (this.#ear?.owner === 'after' && !this.#busy) this.#armQuiet(); // it listens on: the window starts again
+      if (this.#ear?.owner === 'after' && !this.#busy) this.#armQuiet(); // it listens on, to the same deadline
       return;
     }
     if (this.#ear?.owner === 'after') this.#ear.owner = 'turn';
@@ -3152,16 +3159,17 @@ export class Agent {
     });
   }
 
-  /** A tap's window that hears nothing closes after the silence limit. */
+  /** A tap's window that hears nothing closes after the silence limit; the one after she spoke, that long after her last words. */
   async #armQuiet() {
     clearTimeout(this.#quiet);
-    const seconds = this.#ear?.owner === 'after' && this.voice ? (await this.voice.settings()).silenceSeconds : LISTEN_S;
+    const after = this.#ear?.owner === 'after' && this.voice ? (await this.voice.settings()).silenceSeconds : 0;
+    const ms = after ? Math.max(0, this.#saidAt + after * this.secondMs - Date.now()) : LISTEN_S * this.secondMs;
     clearTimeout(this.#quiet);
     this.#quiet = setTimeout(() => {
       if (!this.#window() || this.#busy) return;
       this.#closeEar();
       this.#setState(this.online() ? 'sleeping' : 'offline');
-    }, seconds * this.secondMs);
+    }, ms);
   }
 
   /**

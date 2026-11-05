@@ -308,19 +308,27 @@ test("classic: a speak that listened and heard nothing ends the turn with no mod
   assert.equal(k.platform.mic.isOpen(), false);
 });
 
-test("classic: the window after a turn isn't a tap's: chatter goes through the gate, is written as such, and it listens on", async (t) => {
+test("classic: the window after a turn isn't a tap's: chatter goes through the gate and is written as such; it neither closes the window nor extends it, which ends that long after her last words", async (t) => {
   useClock(t);
-  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'wait', input: { seconds: 1 } }] }, { text: 'done' }]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'did you lock the car'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'B' } }] }] } });
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }] }, { text: 'done' }]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes', 'did you lock the car'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'A' } }] }, { toolCalls: [{ name: 'decide', input: { option: 'B' } }] }] } });
   await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } }); // 1 s here
-  await tapAndSay(k, 'where-eat');
-  assert.equal(k.platform.mic.isOpen(), true);
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => k.agent.state.name === 'listening'); // she spoke, and listens
+  const from = Date.now();
+  await hear(k, 'gas-station'); // the answer
+  await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
+  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
   const wakes = (await k.events(['wake'])).length;
-  await hear(k, 'gas-station');
-  while ((await k.events(['heard'])).length < 2) await new Promise((r) => setTimeout(r, 5));
-  await k.agent.idle();
+  await hear(k, 'first-one');
+  while ((await k.events(['heard'])).length < 3) await new Promise((r) => setTimeout(r, 5));
   assert.equal((await k.events(['wake'])).length, wakes, 'it woke no one');
-  assert.equal((await k.events(['heard']))[1].data.dismissed, true);
-  assert.equal(k.platform.mic.isOpen(), true, 'it listens on');
+  assert.equal((await k.events(['heard']))[2].data.dismissed, true);
+  assert.equal(k.platform.mic.isOpen(), true, 'chatter closes nothing');
+  await until(() => !k.platform.mic.isOpen(), 2000);
+  assert.ok(Date.now() - from <= 1050, `${Date.now() - from} ms: chatter extends nothing`);
 });
 
 test('silenceSeconds: the default is 20, a saved value stays; a tap window and a question aloud keep 8 s', async () => {

@@ -16,9 +16,12 @@
  *   languages section). Input transcription takes `languageCodes`, several BCP-47 hints ("If omitted or empty, defaults to automatic language
  *   detection"), in the guide's own codes (en, ja, zh-Hans), and only when every language listed has one (Cantonese has none); a session that
  *   refuses the field opens again without it, and again if it then refuses the proactive audio (two reopens at most);
- * - thinking (Google's Live guide, read 2026-11-04, and one short open on a free key): gemini-3.8-live takes no thinkingLevel and it must be left
- *   out; gemini-3.8-live-extended-thinking closes with 1007 "Thinking level must be specified for this model" without one, and takes
- *   generationConfig.thinkingConfig.thinkingLevel: low, medium or high, from the model's reasoning map, as the chat models give theirs;
+ * - thinking (Google's Live guide, read 2026-11-05, and runs on free keys that day): gemini-3.8-live-extended-thinking closes with 1007 "Thinking
+ *   level must be specified for this model" without generationConfig.thinkingConfig.thinkingLevel, and annai deliberately sends none, so the
+ *   session is refused and Koe's next model takes over. With a level and `behavior: "NON_BLOCKING"` on its tools, as the guide asks, it opened, said a filler
+ *   (turnComplete with interactionStatus IN_PROGRESS), and about 16 s later said "a system error occurred" (IDLE), never sending a toolCall: 12 of 12 runs
+ *   with a tool (any level, v1alpha or v1beta, either schema field, manual or automatic turns, a no-argument tool as in the guide); with no tools it answered.
+ *   gemini-3.8-live, in the same run, made the call at once. A Koe that can't reach Kokoro, and says so aloud, is no use;
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
@@ -107,7 +110,7 @@ export function activate(annai) {
       send({
         setup: {
           model: `models/${model.providerId}`,
-          generationConfig: { responseModalities: ['AUDIO'], ...(setup.reasoning?.generation_config?.thinking_level ? { thinkingConfig: { thinkingLevel: setup.reasoning.generation_config.thinking_level } } : {}), ...(t.voice ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: String(t.voice) } } } } : {}) },
+          generationConfig: { responseModalities: ['AUDIO'], ...(t.voice ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: String(t.voice) } } } } : {}) },
           systemInstruction: { parts: [{ text: [setup.instructions, setup.context].filter(Boolean).join('\n\n') }] },
           ...(setup.tools.length ? { tools: [{ functionDeclarations: setup.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, parametersJsonSchema: x.input })) }] } : {}),
           realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
