@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { NO_FIX_BACK_MS } from '../../src/core/live/activity.js';
 import assert from 'node:assert/strict';
 import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE, CAMBRIA, HEARST } from './live-kit.js';
 import { readAppSettings } from '../../src/core/settings.js';
@@ -914,12 +915,14 @@ test('reloading every 3 minutes on screen or off, moving fast is restored every 
   assert.equal(k.live.activity, 'moving-fast', 'back after two minutes off screen');
 });
 
-test('moving fast ends 2 min after a reload with no fix at all, not 15 (re-review)', async () => {
+test('moving fast holds after a reload with no fix at all, and ends at the bound, not at 15 min (re-review; one false "stops", 2026-11-05)', async () => {
   const k = await liveKit({ start: at('09:00') });
   await fastFrom(k, at('09:00'), 90);
   await k.restart();
   assert.equal(k.live.activity, 'moving-fast');
   await k.to(at('09:01:30') + 125_000);
+  assert.equal(k.live.activity, 'moving-fast', 'silence right after a reload says nothing of stopping');
+  await k.to(at('09:01:30') + NO_FIX_BACK_MS);
   assert.equal(k.live.activity, 'still');
 });
 

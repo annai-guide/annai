@@ -111,6 +111,63 @@ test("Realtime resting: Classic answers and the way says Realtime is resting; on
   }
 });
 
+test("Live resting because a model failed: one toast as it begins, once per rest; a new rest says it again; none with Live off or voice off, and none when Koe · Chat can't answer", async () => {
+  const WORDS = 'Live is resting; Koe · Chat is answering';
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    k.agent.on('notice', (/** @type {any} */ n) => notes.push(n));
+    k.llm.bench.bench('m-live', 1000);
+    assert.equal(await k.agent.split(), true);
+    assert.deepEqual([k.agent.koeState, k.agent.way.why], ['text', 'resting']);
+    assert.deepEqual(notes.map((n) => [n.title, n.toast]), [[WORDS, true]]);
+    await k.agent.split(); // every turn asks again
+    await k.agent.split();
+    assert.equal(notes.length, 1, 'not on every turn');
+    await updateAppSettings(k.ws, { voice: { mode: 'off' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.way.why, 'voice off');
+    await updateAppSettings(k.ws, { voice: { mode: 'on' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.way.why, 'resting');
+    assert.equal(notes.length, 1, 'voice off and on in the same rest says nothing new');
+    await soon(async () => k.agent.koeState === 'live', 3000);
+    assert.equal(notes.length, 1, 'coming back says nothing');
+    k.llm.bench.bench('m-live', 60_000);
+    await k.agent.split();
+    assert.deepEqual(notes.map((n) => n.title), [WORDS, WORDS], 'a new rest');
+  } finally {
+    await k.done();
+  }
+  const chose = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    chose.agent.on('notice', (/** @type {any} */ n) => notes.push(n));
+    await chose.agent.chooseKoe('classic');
+    chose.llm.bench.bench('m-live', 60_000);
+    await chose.agent.split();
+    assert.deepEqual(notes, [], 'the user chose Live off');
+  } finally {
+    await chose.done();
+  }
+  const empty = await liveKit([]);
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    empty.agent.on('notice', (/** @type {any} */ n) => notes.push(n));
+    empty.llm.bench.bench('m-live', 60_000);
+    await empty.agent.split();
+    assert.equal(empty.agent.koeState, 'down');
+    assert.deepEqual(notes.filter((n) => n.title === WORDS), [], 'Koe · Chat has no model: it is not answering');
+  } finally {
+    await empty.done();
+  }
+});
+
 test("Classic chosen while Realtime rests: when its model can answer again, Koe stays Classic, whatever asks again", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {

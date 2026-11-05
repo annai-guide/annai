@@ -135,6 +135,8 @@ export class Halves {
   #split = false;
   /** Until when Koe rests, after its list failed whole. */
   #downUntil = 0;
+  /** Until when the note that Live rests has been said for: the soonest its list can answer again. */
+  #restSaid = 0;
   /** Koe is back, but waits for Kokoro's turn with the voice to end. */
   #later = false;
   /** What Kokoro was told last, in which conversation. @type {{ scope: string | null, state: Told }} */
@@ -527,6 +529,11 @@ export class Halves {
     const was = this.state.name;
     this.koeState = !this.#split ? 'off' : told === 'koe-down' ? 'down' : path?.kind === 'live' ? 'live' : 'text';
     this.#liveId = path?.kind === 'live' && this.koeState === 'live' ? path.modelId : null;
+    // The chosen Live rests after a failure and Koe · Chat answers, with the chip still Live: one short note as that begins, once per rest.
+    if (way.why === 'resting' && this.koeState === 'text' && Date.now() >= this.#restSaid) {
+      this.#restSaid = back;
+      this.#emit('notice', { title: t`Live is resting; Koe · Chat is answering`, toast: true });
+    }
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;

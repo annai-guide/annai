@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { meters, fixOf, keep, travelMinutes, modeFor, kmText, span, KEEP_MS } from '../../src/core/live/geo.js';
-import { ActivityTracker, QUIET_STILL_MS } from '../../src/core/live/activity.js';
+import { ActivityTracker, QUIET_STILL_MS, NO_FIX_BACK_MS } from '../../src/core/live/activity.js';
 
 import { off, BIXBY, NEPENTHE } from './live-kit.js';
 
@@ -289,8 +289,8 @@ test('no fix for 15 minutes is still, whatever the last speed was; a tunnel shor
   const unlocked = driving();
   unlocked.feed(at(BIXBY, 0, { speed: 14 }));
   unlocked.heard(T0 + 3_600_000); // an hour off screen, and no fix since: no speed to say it is moving
-  assert.equal(unlocked.due(), T0 + 3_600_000 + QUIET_STILL_MS);
-  assert.equal(unlocked.tick(T0 + 3_600_000 + QUIET_STILL_MS)?.to, 'still');
+  assert.equal(unlocked.due(), T0 + 3_600_000 + NO_FIX_BACK_MS);
+  assert.equal(unlocked.tick(T0 + 3_600_000 + NO_FIX_BACK_MS)?.to, 'still');
 });
 
 test('after a gap the last speed says nothing: a no-speed first fix back decides nothing', () => {
@@ -367,11 +367,12 @@ test('the way since the last fix says the drive went on: a slow first fix back s
   d.heard(T0 + 100_000);
   d.heard(T0 + 170_000);
   assert.equal(d.feed(at(light, 185, { speed: 0 })), null);
-  // No fix since the unlock: it ends two minutes on, and dates from then.
+  // No fix since the unlock: it holds to the bound, and dates from the last fix.
   const n = driving();
   n.feed(at(BIXBY, 0, { speed: 14 }));
   n.heard(T0 + 180_000);
-  assert.equal(n.tick(T0 + 300_000)?.at, T0 + 300_000);
+  assert.equal(n.tick(T0 + 300_000), null);
+  assert.equal(n.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 60_000);
   // Between fixes on screen nothing is different: the hold of a stop goes on over an unlock whose way is short.
   const s = driving();
   s.feed(at(BIXBY, 0, { speed: 0.2 }));
@@ -389,4 +390,53 @@ test('moving fast is said to have ended when its hold ran out, not when the page
   assert.equal(c?.at, T0 + 10_000 + 60_000, 'a minute after the first slow speed');
   assert.deepEqual(Object.keys(c?.why ?? {}).sort(), ['gapS', 'heards', 'heldS', 'readings']);
   assert.equal(/** @type {any} */ (t).why, undefined, 'what it rested on goes with the change');
+});
+
+test('moving fast across an unlock or a reload, and no fix since: it holds to the bound, then ends dated from the last fix; a good fix decides sooner (one false "stops", 2026-11-05)', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 14 }));
+  t.heard(T0 + 180_000);
+  assert.equal(t.due(), T0 + 180_000 + NO_FIX_BACK_MS);
+  assert.ok(NO_FIX_BACK_MS > 300_000, 'a five-minute gap and the fix after it are not cut');
+  assert.equal(t.tick(T0 + 180_000 + NO_FIX_BACK_MS - 1), null);
+  const c = t.tick(T0 + 180_000 + NO_FIX_BACK_MS);
+  assert.deepEqual(bare(c), { from: 'moving-fast', to: 'still', at: T0 + 60_000 });
+  assert.equal(c?.noFix, true);
+
+  const place = at(BIXBY, -60);
+  const r = new ActivityTracker();
+  r.restore('moving-fast', T0, place);
+  assert.equal(r.due(), T0 + NO_FIX_BACK_MS);
+  assert.equal(r.tick(T0 + 120_000), null);
+  assert.deepEqual(bare(r.tick(T0 + NO_FIX_BACK_MS)), { from: 'moving-fast', to: 'still', at: T0 });
+
+  // A second unlock starts it again: time off screen is still no silence.
+  const u = driving();
+  u.feed(at(BIXBY, 0, { speed: 14 }));
+  u.heard(T0 + 180_000);
+  u.heard(T0 + 400_000);
+  assert.equal(u.tick(T0 + 180_000 + NO_FIX_BACK_MS), null);
+  assert.equal(u.due(), T0 + 400_000 + NO_FIX_BACK_MS);
+
+  // Only moving fast holds: any other activity reads quiet as before.
+  const w = new ActivityTracker();
+  w.restore('walking', T0, place);
+  assert.equal(w.due(), T0 + QUIET_STILL_MS);
+  assert.equal(w.tick(T0 + QUIET_STILL_MS)?.to, 'still');
+
+  // A coarse fix is no decision and moves no bound; two like it read nothing from each other.
+  const v = driving();
+  v.heard(T0 + 10_000);
+  assert.equal(v.feed(at(BIXBY, 20, { accuracy: 3000 })), null);
+  assert.equal(v.feed(at(BIXBY, 40, { accuracy: 3000 })), null);
+  assert.equal(v.activity, 'moving-fast');
+  assert.equal(v.due(), T0 + 10_000 + NO_FIX_BACK_MS);
+
+  // A good fix ends the wait: from there on, the rules of a fix (no speed: quiet for two minutes).
+  const g = driving();
+  g.heard(T0 + 10_000);
+  g.feed(at(BIXBY, 20));
+  assert.equal(g.due(), T0 + 20_000 + QUIET_STILL_MS);
+  g.reset();
+  assert.equal(g.due(), null);
 });
