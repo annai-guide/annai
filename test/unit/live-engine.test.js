@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE, CAMBRIA, HEARST } from './live-kit.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { readWatches } from '../../src/core/live/watches.js';
-import { createTrip, removeTrip, ME } from '../../src/core/scopes.js';
+import { createTrip, removeTrip, ME, SYS_DEVICE } from '../../src/core/scopes.js';
 import { ManualClock, scaledClock, realClock } from '../../src/core/live/clock.js';
 import { Live } from '../../src/core/live/live.js';
 import { planWords } from '../../src/core/live/plan-watches.js';
@@ -48,10 +48,11 @@ test('live mode on: GPS runs, the switch is kept, a state entry is logged and Sh
   assert.equal(k.sensors.gpsOn(), false);
   assert.equal(k.registry.list('activity')[0].now(), 'unknown');
   assert.equal(k.live.fix, null);
-  assert.deepEqual((await k.events(['state'])).map((e) => e.data.live), ['on', 'off']);
+  const switched = async () => (await k.events(['state'])).filter((e) => e.data.live);
+  assert.deepEqual((await switched()).map((e) => e.data.live), ['on', 'off']);
   assert.equal(k.agent.wakes.length, 1);
   await k.live.setLive(false);
-  assert.equal((await k.events(['state'])).length, 2);
+  assert.equal((await switched()).length, 2);
 });
 
 test('location points are kept as §4.5 says; GPS jitter at a stop adds no distance; the activity sensor follows (spec §11.2)', async () => {
@@ -123,7 +124,7 @@ test('moved fires after its km from when it was set: wakes do not start the coun
   k.agent.woke(); // she woke for something else
   await k.drive(off(MONTEREY, 0, -3000), off(MONTEREY, 0, -5500), at('09:03:05'), at('09:06'));
   assert.equal(k.agent.wakes.length, 1);
-  assert.match(k.agent.wakes[0].text, new RegExp(`^Your watch ${w.id} \\(after 5 km travelled\\) fired: you have travelled 5\\.\\d km since this watch started counting`));
+  assert.match(k.agent.wakes[0].text, new RegExp(`^Your watch ${w.id} \\(after 5 km travelled\\) fired: you have travelled 5\\.\\d km since this watch last started counting`));
   await k.drive(off(MONTEREY, 0, -5500), off(MONTEREY, 0, -9000), at('09:06:05'), at('09:09'));
   assert.equal(k.agent.wakes.length, 1, 'counting again from that firing: 3.5 km');
   await k.drive(off(MONTEREY, 0, -9000), off(MONTEREY, 0, -11000), at('09:09:05'), at('09:11'));
@@ -553,6 +554,27 @@ test('a red light does not fire "moving fast starts" again; the end of the drive
   assert.equal(count(starts), 2, 'stopped for over five minutes: a new drive');
 });
 
+test('every change of activity is logged once, on this device, from a fix or from the recheck, with what it rested on and no position', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  /** @type {string[]} */
+  const told = [];
+  k.registry.list('activity')[0].onChange(() => told.push(k.live.activity));
+  const p = await fastFrom(k, at('17:00'), 120);
+  const parked = off(p, 0, -30);
+  for (const [t, speed] of /** @type {const} */ ([['17:02:10', 0.8], ['17:02:30', 0.3], ['17:02:55', 1.1]])) await k.fix(at(t), parked, { speed });
+  await k.to(at('17:09')); // no more fixes: moving fast ended on the recheck
+  const states = (await k.events(['state'], SYS_DEVICE)).filter((e) => e.data.activity && e.data.from !== e.data.activity); // the changes; a beat has from equal to activity
+  assert.deepEqual(states.map((e) => e.data.activity), told.filter((x, i) => x !== told[i - 1]), 'listeners are also told when the hold of Auto voice is over');
+  assert.deepEqual(states.map((e) => [e.data.from, e.data.activity]), [['unknown', 'moving-fast'], ['moving-fast', 'still']]);
+  const end = states[1].data;
+  assert.deepEqual(Object.keys(end).sort(), ['activity', 'from', 'gapS', 'heards', 'heldS', 'readings', 'speed']);
+  assert.ok(end.heldS >= 60 && end.heldS < 120, `held ${end.heldS} s`);
+  assert.equal(end.heards, 0);
+  assert.equal(end.readings.still, 1);
+  assert.equal(end.readings.walking, 2);
+  assert.ok(!JSON.stringify(states).includes('lat') && !JSON.stringify(states).includes('lng'));
+});
+
 test('a tunnel: moving fast, then 3 min with no fix, stays moving fast', async () => {
   const k = await liveKit({ start: at('17:00') });
   await fastFrom(k, at('17:00'), 300);
@@ -616,4 +638,132 @@ test('an urgent watch (drive-test design §7): stored with its mark, said so whe
   await k.to(at('11:00'));
   assert.equal(k.agent.wakes.length, 2);
   assert.equal('urgent' in k.agent.wakes[1], false);
+});
+
+/** The first leg of a drive, then the page reloads: a Live over the same store. */
+const north = (/** @type {number} */ m) => off(MONTEREY, 0, -m);
+
+test('a moved watch survives a reload: its count comes from the log, so a reload at 2.5 km fires at 3 km', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  await k.live.setWatch(k.trip, { when: { type: 'moved', km: 3 }, fallback: 'Narrate.' });
+  await k.drive(MONTEREY, north(2500), at('09:00:05'), at('09:03'));
+  assert.equal(k.agent.wakes.length, 0);
+  await k.restart();
+  await k.drive(north(2500), north(2900), at('09:03:05'), at('09:03:35'));
+  assert.equal(k.agent.wakes.length, 0, '2.9 km');
+  await k.drive(north(2900), north(3300), at('09:03:40'), at('09:04:10'));
+  assert.equal(k.agent.wakes.length, 1);
+  assert.match(k.agent.wakes[0].text, /you have travelled 3\.\d km/);
+});
+
+test('reloading every 2 km, a 5 km moved watch still fires; a repeat counts from its last firing across a reload', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  await k.live.setWatch(k.trip, { when: { type: 'moved', km: 5 }, repeat: true, fallback: 'Narrate.' });
+  let t = at('09:00:05');
+  const leg = async (/** @type {number} */ a, /** @type {number} */ b) => {
+    await k.drive(north(a), north(b), t, t + 60_000);
+    t += 65_000;
+  };
+  await leg(0, 2000);
+  await k.restart();
+  await leg(2000, 4000);
+  await k.restart();
+  assert.equal(k.agent.wakes.length, 0, '4 km');
+  await leg(4000, 6000);
+  assert.equal(k.agent.wakes.length, 1);
+  await k.restart();
+  await leg(6000, 9000); // 3 km since the firing at 5 km: 8 km
+  assert.equal(k.agent.wakes.length, 1);
+  await leg(9000, 11000);
+  assert.equal(k.agent.wakes.length, 2, 'ten km: the second 5 km is done');
+});
+
+test('a drive while annai was closed counts once: the leg to the first fix back is the odometer\'s, not also the log\'s', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  await k.live.setWatch(k.trip, { when: { type: 'moved', km: 3.5 }, fallback: 'Narrate.' });
+  await k.drive(MONTEREY, north(1000), at('09:00:05'), at('09:01'));
+  k.live.dispose();
+  await k.clock.advanceTo(at('09:03'), k.settle);
+  await k.restart();
+  await k.fix(at('09:03:05'), north(3200), { speed: 14 }); // 2.2 km since the last point: 3.2 km in all
+  assert.equal(k.agent.wakes.filter((w) => w.text.includes('travelled')).length, 0, 'counted twice it would be 5.4 km');
+  await k.drive(north(3200), north(3700), at('09:03:10'), at('09:03:50'));
+  assert.equal(k.agent.wakes.filter((w) => w.text.includes('travelled')).length, 1);
+});
+
+test('a moved watch says where it counts from, near a named place, after a repeat from its last firing; without a place it says it as before', async () => {
+  const START = { title: 'Old Harbor', fixed: false, start: { at: iso('08:30'), tz: LA }, place: { name: 'Old Harbor', ...MONTEREY } };
+  const MIDWAY = { title: 'Half Moon Diner', fixed: false, start: { at: iso('09:30'), tz: LA }, place: { name: 'Half Moon Diner', ...north(5000) } };
+  const k = await liveKit({ start: at('09:00'), plan: { harbor: START, diner: MIDWAY } });
+  await k.fix(at('09:00'), MONTEREY, { speed: 0 });
+  const w = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 4 }, repeat: true, fallback: 'Narrate.' });
+  assert.deepEqual(/** @type {any} */ (w).setAt, { lat: MONTEREY.lat, lng: MONTEREY.lng });
+  assert.deepEqual((await readWatches(k.ws, k.trip)).watches[0].setAt, { lat: MONTEREY.lat, lng: MONTEREY.lng });
+  const moved = () => k.agent.wakes.filter((x) => x.text.includes('travelled'));
+  await k.drive(MONTEREY, north(4600), at('09:00:05'), at('09:04'));
+  assert.match(moved()[0].text, /you have travelled 4\.\d km since near Old Harbor/);
+  await k.restart();
+  await k.drive(north(4600), north(9000), at('09:04:05'), at('09:08'));
+  assert.equal(moved().length, 2);
+  assert.match(moved()[1].text, /since near Half Moon Diner/, 'from where the first firing was');
+  const far = await liveKit({ start: at('09:00') });
+  await far.live.setWatch(far.trip, { when: { type: 'moved', km: 2 }, fallback: 'Narrate.' });
+  await far.drive(MONTEREY, north(2400), at('09:00:05'), at('09:03'));
+  assert.match(far.agent.wakes[0].text, /km since this watch last started counting\./);
+});
+
+test('activity survives a reload: mid-drive and at a red light nothing fires again; after ten minutes parked, moving off does', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const starts = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast' }, repeat: true, fallback: 'Off we go.' });
+  const count = () => k.agent.wakes.filter((w) => w.text.includes(starts.id)).length;
+  let p = await fastFrom(k, at('09:00'), 120);
+  assert.equal(count(), 1);
+  await k.restart();
+  assert.equal(k.live.activity, 'moving-fast', 'restored');
+  p = await fastFrom(k, at('09:02:10'), 60);
+  assert.equal(count(), 1, 'mid-drive');
+  await k.stay(p, at('09:03:20'), at('09:05:00')); // a light long enough to read still
+  assert.equal(k.live.activity, 'still');
+  await k.restart();
+  assert.equal(k.live.activity, 'still');
+  await fastFrom(k, at('09:05:10'), 100);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(count(), 1, 'a reload at a red light');
+  await k.stay(p, at('09:07:00'), at('09:20:00'), 30); // parked for good
+  await k.restart();
+  assert.equal(k.live.activity, 'still');
+  await fastFrom(k, at('09:20:10'), 100);
+  assert.equal(count(), 2, 'ten minutes parked');
+  // Closed for ten minutes: nothing is known of the activity.
+  k.live.dispose();
+  await k.clock.advanceTo(at('09:35'), k.settle);
+  await k.restart();
+  assert.equal(k.live.activity, 'unknown');
+});
+
+test('each page load writes one app.start on this device', async () => {
+  const k = await liveKit();
+  const starts = async () => (await k.events(['app.start'], SYS_DEVICE)).length;
+  assert.equal(await starts(), 1);
+  await k.restart();
+  assert.equal(await starts(), 2);
+});
+
+test('a parked phone with GPS on writes a state entry every 5 minutes with its largest speed and accuracy; with GPS off, none', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  for (let s = 0; s <= 720; s += 30) await k.fix(at('09:00') + s * 1000, MONTEREY, { speed: s % 90 === 0 ? 0.4 : 0.1, accuracy: 10 + (s % 60) });
+  const states = async () => (await k.events(['state'], SYS_DEVICE)).filter((e) => e.data.activity);
+  const beats = (await states()).filter((e) => e.data.from === e.data.activity);
+  assert.equal(beats.length, 2, 'at about 5 and 10 minutes');
+  for (const b of beats) {
+    assert.equal(b.data.activity, 'still');
+    assert.deepEqual(Object.keys(b.data).sort(), ['activity', 'from', 'gapS', 'heards', 'heldS', 'maxAccuracy', 'maxSpeed', 'readings', 'speed']);
+    assert.equal(b.data.maxSpeed, 0.4);
+    assert.equal(b.data.maxAccuracy, 10 + 30);
+  }
+  assert.ok(beats[1].ts - beats[0].ts >= 300_000 && beats[1].ts - beats[0].ts < 360_000);
+  await k.live.setLive(false);
+  const n = (await states()).length;
+  await k.to(at('09:00') + 60 * 60_000);
+  assert.equal((await states()).length, n);
 });

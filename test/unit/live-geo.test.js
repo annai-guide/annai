@@ -124,7 +124,7 @@ test('activity asked without a fix: a held change completes on time; a quiet GPS
   let p = BIXBY;
   for (let s = 0; s <= 60; s += 5) t.feed(at((p = off(p, 0, -70)), s, { speed: 14 }));
   assert.equal(t.activity, 'moving-fast');
-  assert.equal(t.due(), null, 'moving fast, nothing pending: no gap rule');
+  assert.equal(t.due(), T0 + 60_000 + 15 * 60_000, 'moving fast, nothing pending: only the gap with no fix at all (a tunnel is shorter)');
   assert.equal(t.tick(T0 + 240_000), null, 'a tunnel stays moving fast');
   for (const [s, speed] of [[245, 0.8], [265, 1.3], [290, 1.5]]) assert.equal(t.feed(at(p, s, { speed })), null);
   assert.equal(t.due(), T0 + 305_000);
@@ -230,4 +230,99 @@ test('still after a quiet GPS stays still at every later look, until a new fix s
   t.feed(at(off(BIXBY, 0, 40), 1205, { speed: 1.2 }));
   t.feed(at(off(BIXBY, 0, 80), 1240, { speed: 1.2 }));
   assert.equal(t.activity, 'walking');
+});
+
+test('off screen and back every 50 s while parked: the hold of moving fast goes on from the last fast fix, and ends on the first fix after a minute', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 0.8 }));
+  let ended = null;
+  // The phone is locked 10 s after each fix and unlocked 40 s later; its first fix comes 5 s after that.
+  for (let s = 10; s <= 400 && ended === null; s += 50) {
+    t.heard(T0 + (s + 40) * 1000);
+    t.feed(at(BIXBY, s + 45, { speed: s % 100 === 10 ? 0.3 : 0.8 }));
+    if (t.activity !== 'moving-fast') ended = s + 45;
+  }
+  assert.ok(ended !== null && ended <= 110, `moving fast ended at ${ended}`); // the first fix a minute after the first slow speed
+  // Unlocked at a red light after a drive with the screen off: the first fix back that says slow ends it (accepted), a fast one keeps it.
+  const u = driving();
+  u.feed(at(BIXBY, 0, { speed: 14 }));
+  u.heard(T0 + 300_000);
+  u.feed(at(BIXBY, 305, { speed: 14 }));
+  assert.equal(u.activity, 'moving-fast');
+  u.heard(T0 + 600_000);
+  assert.equal(u.feed(at(BIXBY, 605, { speed: 0 }))?.to, 'still');
+});
+
+test('leaving moving fast goes to still when any speed in the hold said still, else to what the last speed said', () => {
+  // A phone parked in a city: the speeds wander about walking pace, now and then under 0.5 m/s.
+  const t = driving();
+  const speeds = [0.8, 0.3, 0.9, 1.1, 0.4, 0.9];
+  let to = null;
+  for (let s = 0, i = 0; s <= 70 && to === null; s += 10, i++) to = t.feed(at(BIXBY, s, { speed: speeds[i % speeds.length] }))?.to ?? null;
+  assert.equal(to, 'still');
+  for (let s = 80; s <= 400; s += 10) assert.notEqual(t.feed(at(BIXBY, s, { speed: speeds[(s / 10) % speeds.length] }))?.to, 'walking', `at ${s} s`);
+  assert.equal(t.activity, 'still');
+  // Slow and never still: a walk from the car.
+  const w = driving();
+  let walked = null;
+  for (let s = 0; s <= 70 && walked === null; s += 10) walked = w.feed(at(off(BIXBY, 0, s * 1.2), s, { speed: 1.2 }))?.to ?? null;
+  assert.equal(walked, 'walking');
+});
+
+test('no fix for 15 minutes is still, whatever the last speed was; a tunnel shorter than that stays', () => {
+  const GAP = 15 * 60_000;
+  const slow = driving();
+  slow.feed(at(BIXBY, 0, { speed: 3.5 })); // into a garage
+  assert.equal(slow.due(), T0 + GAP);
+  assert.equal(slow.tick(T0 + GAP - 1), null);
+  assert.deepEqual(slow.tick(T0 + GAP), { from: 'moving-fast', to: 'still', at: T0 + GAP });
+  assert.equal(slow.due(), null);
+  const glitch = new ActivityTracker();
+  for (let s = 0; s <= 20; s += 5) glitch.feed(at(BIXBY, s, { speed: 0 }));
+  glitch.feed(at(BIXBY, 25, { speed: 6 })); // a lone glitch, and then nothing
+  glitch.tick(T0 + 60_000);
+  assert.equal(glitch.activity, 'moving-fast');
+  assert.equal(glitch.tick(T0 + 25_000 + GAP)?.to, 'still');
+  const unlocked = driving();
+  unlocked.feed(at(BIXBY, 0, { speed: 14 }));
+  unlocked.heard(T0 + 3_600_000); // an hour off screen, and no fix since
+  assert.equal(unlocked.due(), T0 + 3_600_000 + GAP);
+  assert.equal(unlocked.tick(T0 + 3_600_000 + GAP)?.to, 'still');
+});
+
+test('after a gap the last speed says nothing: a no-speed first fix back decides nothing', () => {
+  const t = new ActivityTracker();
+  for (let s = 0; s <= 40; s += 5) t.feed(at(BIXBY, s, { speed: 1.2 }));
+  assert.equal(t.tick(T0 + 160_000)?.to, 'still');
+  t.heard(T0 + 600_000); // unlocked
+  assert.equal(t.feed(at(BIXBY, 601)), null); // no speed, nothing to compare it with
+  assert.equal(t.tick(T0 + 640_000), null, 'thirty seconds on');
+  assert.equal(t.due(), null);
+  assert.equal(t.activity, 'still');
+});
+
+test('a hold is kept only for the activity the speeds say: another one starts it again', () => {
+  const t = new ActivityTracker();
+  for (let s = 0; s <= 40; s += 5) t.feed(at(BIXBY, s, { speed: 0 }));
+  assert.equal(t.activity, 'still');
+  t.feed(at(BIXBY, 100, { speed: 0.6 })); // walking, for one reading
+  assert.equal(t.feed(at(BIXBY, 125, { speed: 5.2 })), null);
+  assert.equal(t.tick(T0 + 130_000), null, 'five seconds of fast speed are not a hold of thirty');
+  assert.equal(t.activity, 'still');
+  assert.equal(t.tick(T0 + 155_000)?.to, 'moving-fast', 'thirty seconds after the first fast speed');
+});
+
+test('what the last change rested on: readings since the one before, the hold, the gap and the unlocks', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 0.8 })); // walking: the hold begins
+  t.heard(T0 + 5000);
+  t.feed(at(BIXBY, 10)); // nothing to read a speed from yet
+  t.feed(at(BIXBY, 20, { speed: 0 }));
+  t.feed(at(BIXBY, 40, { speed: 4 }));
+  assert.equal(t.activity, 'moving-fast');
+  t.feed(at(BIXBY, 62, { speed: 0.3 }));
+  assert.equal(t.activity, 'still');
+  assert.deepEqual(t.why, { heldS: 62, gapS: 22, readings: { still: 2, walking: 1, between: 1, fast: 5, none: 1 }, heards: 1 }); // fast: the drive's last fixes, since it began
+  t.feed(at(BIXBY, 70, { speed: 0 }));
+  assert.equal(t.why.readings.still, 2, 'the counts stay with the change they explain');
 });

@@ -11,14 +11,18 @@
  */
 import { t } from '../l10n.js';
 
-/** @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'> }} c @returns {VoiceMode} */
-export function voiceMode({ setting, activity, route, lastChoices }) {
+/**
+ * @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'>, held?: boolean }} c
+ *   held: moving fast ended a moment ago, which live mode counts for Auto as still moving (a light, a queue)
+ * @returns {VoiceMode}
+ */
+export function voiceMode({ setting, activity, route, lastChoices, held = false }) {
   /* en */
   if (setting === 'on') return { setting, on: true, why: 'on' };
   /* en */
   if (setting === 'off') return { setting, on: false, why: 'off' };
   /* en */
-  if (activity === 'moving-fast') return { setting, on: true, why: 'moving' };
+  if (activity === 'moving-fast' || held) return { setting, on: true, why: 'moving' };
   /* en */
   if (route === 'car') return { setting, on: true, why: 'car audio' };
   /* en */

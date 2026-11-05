@@ -596,7 +596,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:355	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:243	
+1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:260	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -857,28 +857,28 @@ h8lp19	ok	On Android: tap the icon left of the address (in the installed app: ho
 1kv2ch5	ok	The microphone is busy	麥克風正被佔用	src/core/voice/mic.js:20	
 1mv2ac5	ok	Try again; if it keeps happening, restart annai.	請再試一次；如果反覆出現，請重新啟動 annai。	src/core/voice/mic.js:23	
 8ycwt2	ok	The microphone didn't start	麥克風未能啟動	src/core/voice/mic.js:23	
-1r1k76k	ok	Realtime	即時	src/core/voice/mode.js:65	
-1kmd589	ok	Realtime off	即時已關閉	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
-599lim	ok	Realtime resting	即時休息中	src/core/voice/mode.js:68	Note: a label on the voice chip, after "Voice on".
-v13cxh	ok	Shiori answers directly until it can.	在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:68	
-1xyn0at	ok	Classic unavailable	經典無法使用	src/core/voice/mode.js:69	Note: a label on the voice chip, after "Voice on".
-2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 經典現在無法回答。在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:69	
-1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 經典沒有模型，所以 Shiori 獨自回答。請在設定 → 模型中新增。	src/core/voice/mode.js:71	
-nr2jvc	ok	(no model)	（無模型）	src/core/voice/mode.js:71	
-y7erjn	ok	Classic	經典	src/core/voice/mode.js:71	
-1jfshdf	ok	(no Realtime model)	（無即時模型）	src/core/voice/mode.js:73	
-pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	即時沒有模型：請在設定 → 模型的 Koe · 即時下新增。在此期間由經典說話。	src/core/voice/mode.js:73	
-1fq5gan	ok	(Realtime resting)	（即時休息中）	src/core/voice/mode.js:74	
-1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	即時在出錯後正在休息。在它恢復之前，由經典說話。	src/core/voice/mode.js:74	
-1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	Koe · 即時所用的即時語音已關閉，或它的外掛程式沒有執行。在此期間由經典說話。	src/core/voice/mode.js:75	Note: "Realtime's live voice" is the glossary's Live voice (即時語音); the list is named whole so 即時 isn't said twice in a row.
-mszveu	ok	(Realtime off)	（即時已關閉）	src/core/voice/mode.js:75	
-dra7tz	ok	moving	移動中	src/core/voice/mode.js:81	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-3c71hb	ok	car audio	車用音響	src/core/voice/mode.js:82	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-86z50m	ok	headphones	耳機	src/core/voice/mode.js:83	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-1noivph	ok	your last choice	上次的選擇	src/core/voice/mode.js:84	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-bxwivy	ok	Voice auto · off	語音自動 · 關	src/core/voice/mode.js:94	Note: The glossary's own example: 語音自動 · 關.
-46l9so	ok	Voice off	語音關閉	src/core/voice/mode.js:95	
-1o81qfq	ok	Voice on	語音開啟	src/core/voice/mode.js:96	
+1r1k76k	ok	Realtime	即時	src/core/voice/mode.js:69	
+1kmd589	ok	Realtime off	即時已關閉	src/core/voice/mode.js:72	Note: a label on the voice chip, after "Voice on".
+599lim	ok	Realtime resting	即時休息中	src/core/voice/mode.js:72	Note: a label on the voice chip, after "Voice on".
+v13cxh	ok	Shiori answers directly until it can.	在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:72	
+1xyn0at	ok	Classic unavailable	經典無法使用	src/core/voice/mode.js:73	Note: a label on the voice chip, after "Voice on".
+2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 經典現在無法回答。在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:73	
+1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 經典沒有模型，所以 Shiori 獨自回答。請在設定 → 模型中新增。	src/core/voice/mode.js:75	
+nr2jvc	ok	(no model)	（無模型）	src/core/voice/mode.js:75	
+y7erjn	ok	Classic	經典	src/core/voice/mode.js:75	
+1jfshdf	ok	(no Realtime model)	（無即時模型）	src/core/voice/mode.js:77	
+pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	即時沒有模型：請在設定 → 模型的 Koe · 即時下新增。在此期間由經典說話。	src/core/voice/mode.js:77	
+1fq5gan	ok	(Realtime resting)	（即時休息中）	src/core/voice/mode.js:78	
+1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	即時在出錯後正在休息。在它恢復之前，由經典說話。	src/core/voice/mode.js:78	
+1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	Koe · 即時所用的即時語音已關閉，或它的外掛程式沒有執行。在此期間由經典說話。	src/core/voice/mode.js:79	Note: "Realtime's live voice" is the glossary's Live voice (即時語音); the list is named whole so 即時 isn't said twice in a row.
+mszveu	ok	(Realtime off)	（即時已關閉）	src/core/voice/mode.js:79	
+dra7tz	ok	moving	移動中	src/core/voice/mode.js:85	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+3c71hb	ok	car audio	車用音響	src/core/voice/mode.js:86	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+86z50m	ok	headphones	耳機	src/core/voice/mode.js:87	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+1noivph	ok	your last choice	上次的選擇	src/core/voice/mode.js:88	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+bxwivy	ok	Voice auto · off	語音自動 · 關	src/core/voice/mode.js:98	Note: The glossary's own example: 語音自動 · 關.
+46l9so	ok	Voice off	語音關閉	src/core/voice/mode.js:99	
+1o81qfq	ok	Voice on	語音開啟	src/core/voice/mode.js:100	
 xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 聽不到你：語音辨識清單是空的。請在設定 → 模型 → 語音辨識中新增一項。	src/core/voice/resolve.js:157	
 1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 還聽不到你：{0} 不接受音訊，語音辨識清單中也沒有可用的語音轉文字模型。	src/core/voice/resolve.js:163	{0} = model.name
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 還聽不到你：沒有設定主要模型，語音辨識清單中也沒有可用的語音轉文字模型。	src/core/voice/resolve.js:164	
@@ -2432,46 +2432,46 @@ vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/
 1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:209	{0} = d.using || unnamed
 bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:209	
 3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:210	
-1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:216	Note: The glossary's Voice on mode (語音開啟).
-z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:216	Note: The glossary's Voice off mode (語音關閉).
-1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:219	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:219	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:220	
-cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:221	
-3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:231	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:235	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:236	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:237	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
-beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:239	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:244	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:244	
-njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:244	
-9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:245	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:245	
-1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:246	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:246	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:247	{0} = d.player
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:250	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:253	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:255	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:255	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:257	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:257	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:261	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:261	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:262	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:262	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:264	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:265	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:267	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:268	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:269	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:271	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:271	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:294	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:294	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:311	
+1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:224	Note: The glossary's Voice on mode (語音開啟).
+z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:224	Note: The glossary's Voice off mode (語音關閉).
+1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:227	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:227	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:228	
+cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:229	
+3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:239	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:243	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:244	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:245	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
+beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:247	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:252	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:252	
+njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:252	
+9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:253	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:253	
+1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:254	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:254	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:255	{0} = d.player
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:258	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:261	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:263	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:263	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:265	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:265	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:269	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:269	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:270	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:270	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:272	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:273	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:275	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:275	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:276	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:277	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:279	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:279	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:302	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:302	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:319	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:40	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:50	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:52	

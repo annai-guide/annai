@@ -443,7 +443,7 @@ export class Voice {
   async refresh() {
     const s = await this.settings();
     const route = s.mode === 'auto' ? await this.route() : 'unknown';
-    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices });
+    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices, held: this.#held() });
     this.#watch();
     const first = !this.#read;
     this.#read = true;
@@ -458,6 +458,15 @@ export class Voice {
       }
     }
     return next.on;
+  }
+
+  /** Whether the activity sensor says moving fast ended only a moment ago (a light, a queue). @returns {boolean} */
+  #held() {
+    try {
+      return this.registry.list('activity')[0]?.held?.() === true;
+    } catch {
+      return false;
+    }
   }
 
   /** What the activity sensor says (live mode's, spec §11.2); unknown without one. @returns {string} */

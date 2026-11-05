@@ -11,10 +11,10 @@ test('a simulated Big Sur drive produces the expected wakes, and Shiori does wha
   const catchUp = String(wakes.find((e) => e.data.reasons[0].kind === 'catch-up')?.data.reasons[0].text);
   assert.match(catchUp, /^Catch-up: annai was off screen for 47 min \(since 15:18\), and the user moved \d+\.\d km\. /);
   assert.match(catchUp, /Plan: time to leave soon for "Hearst Castle tour" \(fixed, 16:30\): .*\(late by 1\d min: annai was off screen\)\./);
-  assert.match(catchUp, /fired: you have travelled \d+\.\d km since this watch started counting/);
+  assert.match(catchUp, /fired: you have travelled \d+\.\d km since this watch last started counting/);
   // With no connection near Lucia, annai said the narration watch's reminder itself, aloud (spec §11.3, §17).
   assert.deepEqual((await k.events(['reminder'])).map((e) => [e.data.text, e.data.aloud]), [[NARRATE, true], [NARRATE, true], [NARRATE, true]]);
-  // Each went to the speaker; on the simulation's quick clock, whether it has fetched the third by the end depends on timing (as with "Here we are.").
+  // Each is shown; the speaker says two (exactly 2 in 26 of 26 runs): say, say, say, stop, so voice going off drops the third on the simulation's quick clock (as with "Here we are.").
   assert.ok(k.said.filter((/** @type {string} */ s) => s === NARRATE).length >= 2);
   // What Shiori did, as the skills say.
   const calls = (await k.events(['tool.call'])).map((e) => e.data.name);

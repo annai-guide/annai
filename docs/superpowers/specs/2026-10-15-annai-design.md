@@ -924,7 +924,7 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 | `enter`, `leave` | crossing a circle around a place, with a margin so GPS jitter at the edge doesn't refire it |
 | `dwell` | inside a place longer than X |
 | `arrived` | stopped somewhere new for N minutes |
-| `moved` | X km travelled since the watch was set, annai last started, or (with repeat) it last fired |
+| `moved` | X km travelled since the watch was set or (with repeat) it last fired; restarting annai doesn't reset it (the count is read back from the kept location points) |
 | `activity` | an activity starts or stops; moving fast starting again under 5 minutes after it ended doesn't count as starting |
 | `plan` | a plan item is coming up, running late, or the user is off-plan |
 
