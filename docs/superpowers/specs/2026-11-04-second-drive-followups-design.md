@@ -147,9 +147,9 @@ Measured on the drive (53 live turns, one car, one volume): the user's voice pea
 
 annai decides when each audio turn begins (`automaticActivityDetection: { disabled: true }`), so lyrics that never open a turn never reach the model, cost nothing, and can't be answered:
 - The detector (`src/core/voice/detector.js`, about line 240) gains a minimum level for starting speech, reaching LiveInput through a callback as `speaking` does. Under it, a frame doesn't start a turn. A turn already going on is untouched. Every turn start comes from the detector's one `speech` event. Frames kept out this way raise `blips`, so `noisy` turns true and she plays at once: keep them out of that count, and test that the floor's creep doesn't defeat the -70 dB line.
-- `voiceDb`: the loudest turn peak heard lately, a running maximum that falls about 3 dB a minute, so a lyric can't lower it quickly and a slammed door passes. It lives on the Koe live object across sessions, and resets when the audio route changes (`voice.route`).
+- `voiceDb`: the second-loudest peak of the last 5 turns she answered (none with fewer than two), not a running maximum, so one loud answered lyric (-7.8 against a normal voice of -23.3) can't leave the normal voice opening no turns until a tap. A turn she lets go teaches nothing, and it never falls with time. It lives on the Koe live object across sessions, and resets when the audio route changes (`voice.route`), or when a turn begun in a tap's lift is answered: that turn starts it again.
 - While the floor is above about -70 dB, the minimum is `voiceDb - 10`. In a quiet car there is no minimum. With no `voiceDb` yet there is no minimum.
-- A tap lifts the minimum until its first turn ends: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
+- A tap lifts the minimum for 8 s from when the microphone hears: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
 - `live.turn` also logs `voiceDb` and the minimum in force, and a count of frames over the floor that the minimum kept from starting a turn, so the next drive can tune the constants. The constants are the main session's first guess, measured from one drive.
 - Dictation has no level to read (the browser holds the audio), so classic relies on the gate.
 
@@ -204,4 +204,6 @@ Sketches (private): https://claude.ai/artifact/XKxbX3EtPvHkDBxXHjyueP. Nothing h
 - "See what Koe sees" beside Kokoro's (the user asked about Kokoro's).
 - A dismissed live turn at the user's own level cues Kokoro; lyrics don't.
 - A live session's listening windows stay at 8 s.
-- `voiceDb` learns from every turn, not only answered ones: the spec check's worry, a lyric setting it first, is no worse than today until the user speaks, and a running maximum recovers at once.
+- `voiceDb` learns only from answered turns, as the second-loudest of the last 5: learning from every turn, or a running maximum, let lyrics read as the user's own, and one loud lyric lock the normal voice out.
+- A turn at the user's own level is also one let go over a quiet floor with nothing learned; those cue Kokoro once until an exchange.
+- `REFUSED_REST_MS` (6 h) is for a refusal naming a thinking level; any other 1007 gets the normal rest.

@@ -162,12 +162,13 @@ test('section 2: a dismissed live turn at the user\'s own level wakes Kokoro; a 
     k.platform.mic.feed(cat(quiet(1.2), hum(0.6, 0.3), quiet(1)), RATE);
     await soon(async () => (await cues()).length === 1, 4000);
     await k.agent.idle();
+    k.agent.live.level.heard(-5);
     k.agent.live.level.heard(-5); // the user's own level; what follows is 20 dB under it, yet starts a turn (the floor is quiet)
     k.platform.mic.feed(cat(hum(0.6, 0.02), quiet(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === 2, 4000);
     await k.agent.idle();
     assert.equal((await cues()).length, 1, 'lyrics cost no Kokoro call');
-    assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.ownLevel), [true, undefined]);
+    assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.ownLevel), [true, undefined]); // the first: quiet floor, nothing learned
   } finally {
     await k.done();
   }
@@ -289,6 +290,7 @@ async function learned(k, db = -5) {
   await wait(1050); // a tap's lift: 8 s of the session's clock
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
+  k.agent.live.level.heard(db);
 }
 
 test('level check: with something playing, sound quieter than the minimum starts no turn, and what it kept out is logged; the user at their own level still gets through', async () => {
@@ -330,6 +332,7 @@ test('level check: the user is never unheard: a quiet car has no minimum', async
   try {
     await opened(k);
     k.agent.live.level.heard(-3);
+    k.agent.live.level.heard(-3);
     k.platform.mic.feed(quiet(1.5, 0.0002), RATE); // under -70 dB
     k.platform.mic.feed(cat(hum(0.6, 0.01), quiet(1, 0.0002)), RATE); // a word 30 dB under the voice
     await soon(async () => starts(k) >= 1, 1000); // heard
@@ -351,6 +354,7 @@ test("level check: the first turn of a session, with no voice learned, has no mi
     await wait(1050); // a tap's lift
     // Loud once: quiet words are now under the minimum...
     k.agent.live.level.heard(-3);
+    k.agent.live.level.heard(-3);
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE);
     await wait(80);
     assert.equal(starts(k), 1, 'kept out');
@@ -359,6 +363,7 @@ test("level check: the first turn of a session, with no voice learned, has no mi
   }
   const k2 = await liveKit([{ heard: 'hello' }]);
   try {
+    k2.agent.live.level.heard(-3);
     k2.agent.live.level.heard(-3); // loud in an earlier session
     await opened(k2); // ...and a tap lifts it, with the floor learned and something playing
     k2.platform.mic.feed(room(1.5), RATE);
@@ -375,6 +380,7 @@ test('level check: a new audio route forgets the level: the first turn after it 
     k.voice.route = async () => 'speaker';
     await learned(k);
     await wait(20); // the route is read as the microphone opens
+    k.agent.live.level.heard(-3);
     k.agent.live.level.heard(-3);
     k.voice.route = async () => 'car';
     k.agent.live.unmute(); // Halves asks on every change of the audio
@@ -472,6 +478,7 @@ test('ignoring: a quiet car never shows it', async () => {
   try {
     await opened(k);
     k.agent.on('state', (/** @type {any} */ s) => names.push(s.name));
+    k.agent.live.level.heard(-3);
     k.agent.live.level.heard(-3);
     k.platform.mic.feed(quiet(1.5, 0.0002), RATE);
     k.platform.mic.feed(cat(hum(0.6, 0.01), quiet(1, 0.0002)), RATE);

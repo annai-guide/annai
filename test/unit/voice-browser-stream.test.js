@@ -214,7 +214,7 @@ test('the context\'s state as a stream ended goes with its numbers, for the Trac
 });
 
 /** The browser's audio, enough for the player's unlock and the microphone. */
-function fakeAudioGlobals(/** @type {{ state?: string, resumes?: boolean }} */ { state = 'running', resumes = true } = {}) {
+function fakeAudioGlobals(/** @type {{ state?: string, resumes?: boolean, resumeMs?: number }} */ { state = 'running', resumes = true, resumeMs = 0 } = {}) {
   /** @type {any[]} */
   const contexts = [];
   const stopped = { tracks: 0 };
@@ -227,16 +227,31 @@ function fakeAudioGlobals(/** @type {{ state?: string, resumes?: boolean }} */ {
     destination = {};
     sampleRate = 48_000;
     constructor() { contexts.push(this); }
-    resume() { return resumes ? Promise.resolve() : new Promise(() => {}); }
+    resume() {
+      if (!resumes) return new Promise(() => {});
+      if (!resumeMs) return Promise.resolve();
+      return new Promise((r) => { setTimeout(() => { this.state = 'running'; r(undefined); }, resumeMs); });
+    }
     async close() { this.closed = true; }
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     createGain() { return { gain: {}, connect() { return {}; }, disconnect() {} }; }
   };
-  g.Audio = class { canPlayType() { return ''; } async play() {} };
-  g.AudioWorkletNode = class { port = {}; connect() { return {}; } disconnect() {} };
+  /** @type {any[]} */
+  const audios = [];
+  g.Audio = class {
+    paused = true;
+    ended = false;
+    sources = 0;
+    constructor() { audios.push(this); }
+    set src(_) { this.sources++; }
+    canPlayType() { return ''; }
+    async play() { this.paused = false; }
+  };
+  g.URL.createObjectURL ??= () => 'blob:fake';
+  g.AudioWorkletNode = class { port = {}; connect(/** @type {any} */ x) { return x; } disconnect() {} };
   const track = { stop() { stopped.tracks++; }, getSettings: () => ({}) };
   Object.defineProperty(globalThis.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getAudioTracks: () => [track], getTracks: () => [track] }) } });
-  return { contexts, stopped, restore() {
+  return { contexts, stopped, audios, restore() {
     Object.assign(g, saved);
     delete /** @type {any} */ (globalThis.navigator).mediaDevices;
   } };
@@ -262,4 +277,30 @@ test('the microphone doesn\'t wait for ever on a resume that never settles (WebK
   const p = browserPlatform();
   await assert.rejects(p.mic.open({ onFrames() {}, onError() {} }), (/** @type {any} */ e) => e.stuck === true && /stuck/.test(e.message));
   assert.equal(a.stopped.tracks, 1);
+});
+
+test('finding: a resume that takes 1.4 s and works opens the microphone: no false "stuck"', async (t) => {
+  const { browserPlatform } = await import('../../src/plugins/voice-browser/index.js');
+  const a = fakeAudioGlobals({ state: 'suspended', resumeMs: 1400 });
+  t.after(a.restore);
+  const p = browserPlatform();
+  const session = await p.mic.open({ onFrames() {}, onError() {} });
+  assert.equal(a.contexts[0].state, 'running');
+  session.close();
+});
+
+test('a tap while a whole clip plays leaves it alone: no silent clip over her sentence, and sound is unlocked', async (t) => {
+  const { browserPlatform } = await import('../../src/plugins/voice-browser/index.js');
+  const a = fakeAudioGlobals();
+  t.after(a.restore);
+  const p = browserPlatform();
+  await p.player.unlock();
+  assert.equal(a.audios[0].sources, 1, 'the first: its silent clip');
+  assert.equal(a.audios[0].paused, false);
+  assert.equal(await p.player.unlock({ fresh: true }), true);
+  assert.equal(a.audios[0].sources, 1, 'she goes on');
+  assert.equal(a.contexts.length, 2, 'the stuck context is still made anew');
+  a.audios[0].ended = true;
+  await p.player.unlock();
+  assert.equal(a.audios[0].sources, 2, 'one that ended takes the clip');
 });

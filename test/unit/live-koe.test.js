@@ -155,6 +155,7 @@ test('chatter: speech the model chose not to answer (proactive audio) is in both
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await new Promise((r) => setTimeout(r, 1050)); // past a tap's lift: a turn begun in it is the user's by their own word
+    k.agent.live.level.heard(10);
     k.agent.live.level.heard(10); // the user's voice is far louder: at their own level, it would cue Kokoro (live-drive2.test.js)
     await say(k, 'gas-station');
     await soon(async () => (await k.events(['heard'])).length === 1);

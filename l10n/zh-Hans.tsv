@@ -458,10 +458,10 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在没人要求时自己做事，已经走了{0}步，所以停在了这里。想让她继续，就告诉她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次唤醒可走的{0}步（设置 → Shiori → 她主动行动的频率）。想让她继续，就告诉她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:603	
-yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:603	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:725	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:725	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因见记录（模型）；Koe 几分钟后会再试。	src/core/agent/halves.js:598	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:598	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:726	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:726	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:126	
 1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:126	
 1lqngim	draft	Ignoring background sound · tap to talk	正在忽略背景声音 · 轻点说话	src/core/agent/loop.js:126	
@@ -572,8 +572,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:566	
-1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:566	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:586	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:586	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:338	
@@ -889,6 +889,7 @@ l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Gr
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:132	
 jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:345	
 ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:390	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:597	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	仅在这部手机上：浏览器在设备上识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
@@ -949,11 +950,10 @@ gec6zp	ok	Built-in skills	内置技能	src/plugins/skills/index.js:15
 1t0u9tp	ok	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
 fsfyxb	ok	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:68	
 wp5yx4	ok	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:68	Note: Voice as the Voice screen is named (音声 / 语音).
-elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音频。	src/plugins/voice-browser/index.js:466	Note: The voice is a Speech out voice (声音).
-9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:525	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/plugins/voice-browser/index.js:579	
-1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:595	
-1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:693	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音频。	src/plugins/voice-browser/index.js:470	Note: The voice is a Speech out voice (声音).
+9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:529	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:597	
+1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:695	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
 1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:119	
 scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	

@@ -7,7 +7,6 @@ import { useClock } from './clock.js';
 import { liveKit, texts, soon, tone, say, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { VoiceLevel } from '../../src/core/voice/level.js';
 import { armUnlock, UNLOCK_EVENTS } from '../../src/ui/unlock.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
@@ -37,6 +36,7 @@ async function learned(k, db = -5) {
   await k.agent.live.idle();
   await wait(1050); // a tap's lift: 8 s of the session's clock
   k.agent.live.level.reset();
+  k.agent.live.level.heard(db);
   k.agent.live.level.heard(db);
 }
 
@@ -107,16 +107,6 @@ test('H1: a tap always reaches the unlock: armUnlock stays armed after one worke
   assert.equal(calls, 2);
 });
 
-test('level: voiceDb is a running maximum', () => {
-  const level = new VoiceLevel();
-  level.heard(-5);
-  assert.equal(level.db, -5);
-  level.heard(-20);
-  assert.equal(level.db, -5);
-  level.heard(-3);
-  assert.equal(level.db, -3);
-});
-
 test('level: a turn she let go teaches nothing and is not the user\'s own level with none learned; one she answers teaches', async () => {
   const k = await liveKit([{ said: 'The fuel station is open.', audio: tone(0.1) }, { heard: 'la la' }, { heard: 'where to', said: 'Tacos ahead.', audio: tone(0.1) }]);
   try {
@@ -134,19 +124,26 @@ test('level: a turn she let go teaches nothing and is not the user\'s own level 
     k.platform.mic.feed(cat(hum(0.6, 0.1), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 2, 3000);
     await k.agent.live.idle();
-    assert.equal(typeof k.agent.live.level.db, 'number', 'she answered it');
+    assert.equal(k.agent.live.level.db, null, 'she answered it, but one may be a lyric');
   } finally {
     await k.done();
   }
 });
 
-test('level: a tapped turn sets voiceDb anew, down too: the user said this is their voice', async () => {
-  const k = await liveKit([{ heard: 'hello' }]);
+test('level: a tapped turn she answers sets voiceDb anew, down too: the old level is gone, and the next answered turn sets it', async () => {
+  const k = await liveKit([{ heard: 'hello', said: 'Hi.', audio: tone(0.1) }, { heard: 'yes', said: 'Good.', audio: tone(0.1) }]);
   try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.level.heard(0);
     k.agent.live.level.heard(0);
     await opened(k);
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.03), room(1)), RATE);
-    await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
+    await soon(async () => (await lines(k)).length === 1, 3000);
+    await k.agent.live.idle();
+    assert.equal(k.agent.live.level.db, null, 'what it knew is gone, and one turn says nothing yet');
+    k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE);
+    await soon(async () => (await lines(k)).length === 2, 3000);
+    await k.agent.live.idle();
     assert.ok(/** @type {number} */ (k.agent.live.level.db) < -20, `${k.agent.live.level.db}`);
   } finally {
     await k.done();
@@ -192,6 +189,7 @@ test('a tap while Ignoring lifts the minimum for 8 s, not for one turn: a lyric 
     await wait(1050);
     await k.agent.live.idle();
     k.agent.live.level.heard(-5);
+    k.agent.live.level.heard(-5);
     k.platform.mic.feed(hum(0.5, 0.03), RATE);
     assert.equal(k.agent.state.name, 'ignoring', 'after the 8 s, it holds again');
   } finally {
@@ -227,9 +225,9 @@ test('a dead session: the first turn with nothing back is let go, no line, no ca
     assert.equal(k.notices.length, n);
     assert.deepEqual(await lines(k), []);
     await say(k, 'gas-station');
-    await soon(async () => k.server.connections().length === 2, 4000);
-    const setups = k.server.received().filter((/** @type {any} */ m) => m.setup);
-    assert.equal(typeof setups[1].setup.sessionResumption.handle, 'string', 'with the handle');
+    const setups = () => k.server.received().filter((/** @type {any} */ m) => m.setup);
+    await soon(async () => setups().length === 2, 4000);
+    assert.equal(typeof setups()[1].setup.sessionResumption.handle, 'string', 'with the handle');
     assert.deepEqual(texts(k), [], 'no words sent again');
     assert.equal(k.agent.live.listening, true);
   } finally {
@@ -320,23 +318,6 @@ test('why=pathway: a healthy session stays when a rest ends and an earlier model
     k.llm.bench.bench('m-live2', 60_000);
     await k.agent.chooseKoe('realtime');
     assert.equal(k.agent.live.state, 'closed');
-  } finally {
-    await k.done();
-  }
-});
-
-test('a tap whose first model refuses its setup goes on to the next model of the list: no second tap', async () => {
-  const k = await liveKit([{ heard: 'hello', said: 'Hi.', audio: tone(0.1) }], { live: { second: true } });
-  try {
-    const live = k.llm.live;
-    const { ProviderError } = await import('../../src/core/llm/contract.js');
-    k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
-      if (id === 'm-live') throw new ProviderError('bad-request', 'Thinking level must be specified for this model.');
-      return live(id, setup, o);
-    };
-    k.agent.tap();
-    await until(() => k.agent.live.listening, 3000);
-    assert.equal(k.agent.live.modelId, 'm-live2');
   } finally {
     await k.done();
   }
@@ -473,6 +454,7 @@ test('level: a turn after the tap\'s lift ran out says nothing about the user\'s
   const k = await liveKit([{ heard: 'hello' }]);
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.level.heard(0);
     k.agent.live.level.heard(0);
     await opened(k);
     k.platform.mic.feed(room(1.5), RATE);

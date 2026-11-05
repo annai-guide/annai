@@ -88,8 +88,8 @@ const PLAYER_LOAD_MS = 1500;
 const PLAYER_TRIES = 3;
 /** A player that tells nothing this long, or whose clock stands still, has stalled (a context suspended, the audio thread gone). */
 const STALL_MS = 1000;
-/** How long the microphone waits for a suspended context: its resume() may never settle (WebKit 281566). */
-const RESUME_MS = 1000;
+/** How long the microphone waits for a suspended context to run: its resume() may take over a second and work, or never settle (WebKit 281566). */
+const RESUME_MS = 3000;
 
 /** A promise and the function that settles it. @template T @returns {[Promise<T>, (v: T) => void]} */
 function settled() {
@@ -405,8 +405,12 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         let played;
         try {
           const a = player();
-          a.src = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (encodeWav(new Float32Array(800), 16000))], { type: 'audio/wav' }));
-          played = a.play().then(() => true, () => false);
+          // One playing is proof enough, and a new src would cut her sentence off (and report it ended).
+          if (a.paused === false && !a.ended) played = Promise.resolve(true);
+          else {
+            a.src = URL.createObjectURL(new Blob([/** @type {BlobPart} */ (encodeWav(new Float32Array(800), 16000))], { type: 'audio/wav' }));
+            played = a.play().then(() => true, () => false);
+          }
         } catch {
           played = Promise.resolve(false);
         }
@@ -570,13 +574,12 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         try {
           const c = context();
-          if (c.state !== 'running') {
-            /** @type {any} */
-            let timer;
-            await Promise.race([c.resume().catch(() => {}), new Promise((r) => { timer = setTimeout(r, RESUME_MS); })]);
-            clearTimeout(timer);
+          const running = () => c.state === 'running';
+          if (!running()) {
+            c.resume().catch(() => {});
+            for (const by = Date.now() + RESUME_MS; !running() && Date.now() < by;) await new Promise((r) => { setTimeout(r, 50); });
           }
-          if (c.state !== 'running') throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
+          if (!running()) throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
           playerReady();
           worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
           try {
