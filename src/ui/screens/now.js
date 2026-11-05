@@ -127,8 +127,8 @@ export function whereWords(live) {
   if (!live || !live.on) return t`GPS is off, so annai isn't following where you are.`;
   const f = knownFix(live);
   if (!f) {
-    if (live.gps === 'denied') return t`Location isn't allowed for annai. Tap GPS below to say where you are.`;
-    return live.gps === 'unavailable' ? t`No GPS signal right now. Tap GPS below to say where you are.` : t`Finding where you are…`;
+    if (live.gps === 'denied') return t`Location isn't allowed for annai. Open Driving to say where you are.`;
+    return live.gps === 'unavailable' ? t`No GPS signal right now. Open Driving to say where you are.` : t`Finding where you are…`;
   }
   const near = live.near(f);
   if (near) return near.m < 100 ? t`At ${near.name}` : t`Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
@@ -159,7 +159,7 @@ export async function eventCard(ctx, e) {
   const app = await readAppSettings(ctx.ws);
   const hers = wording(app, true);
   const who = () => h('span', { class: 'who', text: t`Shiori` });
-  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
+  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o, { chose: true }), say: hers }));
   if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));

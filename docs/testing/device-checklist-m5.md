@@ -6,14 +6,14 @@ trip with three stops in annai (one fixed, two flexible, with places), and have 
 Note what you see in the trip's Trace (kind: Live) after each part.
 
 ## Live mode on both phones
-- [ ] Open the trip, tap the GPS chip on the dock, and turn GPS on. The phone asks for location once; allow it "While Using". The chip says "GPS on · finding you", then "GPS on · stopped" (or on).
+- [ ] Open the trip and tap the GPS chip on the dock once: GPS is on at once, with no menu. The phone asks for location once; allow it "While Using". The chip says "GPS on · finding you", then "GPS on · stopped" (or on). Tap it again: "GPS off".
 - [ ] Shiori is woken once ("The user turned live mode on"); she sets an activity watch (Trace → Live: no; Trace → Tools: watch_set).
 - [ ] Now shows "At …" or "Near …" a plan stop, the sun chips, what's next and the latest card.
 - [ ] Close annai fully and open it again: live mode is still on, and nothing is asked again.
 
 ## Refused location
 - [ ] On one phone, refuse location (or turn it off in Settings). A card says "annai can't see where you are" with steps for this phone; the steps are right for iOS / Android. On iPhone, try it both in a Safari tab (the card points to aA → Website Settings → Location) and in the Home Screen app (Location Services → Safari Websites, and Safari's own Location setting): note whether each path leads to the setting that lets annai see where you are, and what it is called on your iOS version.
-- [ ] Live → Where are you? lists the plan's places; choosing one makes Now say "At …".
+- [ ] Open Driving: "Where are you?" lists the plan's places; choosing one makes Now say "At …".
 - [ ] Allow location again, turn live mode off and on: the GPS works.
 
 ## The drive
@@ -25,8 +25,8 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] Stop somewhere not on the plan for 20 minutes: she welcomes the detour, says what it costs, and moves flexible items; the Plan shows "Changed by Shiori · Undo", and Undo puts an item back.
 
 ## The screen kept on
-- [ ] On the car charger, Live → Keep the screen on while driving or riding. The screen stays on while driving.
-- [ ] Walk somewhere: the screen turns off as usual (the choice is per situation). Drive again: it stays on again.
+- [ ] Settings → Voice → "Keep the screen on while GPS is on" is checked (it is on until you turn it off). On the car charger, with GPS on, the screen stays on while driving.
+- [ ] Walk somewhere with GPS on: the screen stays on too (one setting, not one per situation). Tap the GPS chip to turn GPS off: the screen turns off as usual. Uncheck the setting, turn GPS on: the screen turns off as usual.
 - [ ] Installed app on iPhone: the wake lock works there too (it didn't before iOS 18.4).
 
 ## Locked and unlocked: catch-up

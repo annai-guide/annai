@@ -212,7 +212,7 @@ test('a composition the box lost (it closed, or lost focus) holds back nothing: 
     } else await page.evaluate(() => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).blur(); });
     await page.waitForTimeout(300);
     await box(page).press('Enter');
-    await expect(page.locator('.convo .you').last()).toHaveText(`words after ${lose}`);
+    await expect(page.locator('.convo .you p').last()).toHaveText(`words after ${lose}`);
   }
 });
 
