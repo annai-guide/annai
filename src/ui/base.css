@@ -386,3 +386,8 @@ pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: 
 .deleted-files .name { color: var(--ink-2); }
 .all-files > summary::marker, .deleted-files > summary::marker { color: var(--ink-2); }
 .all-files > summary::-webkit-details-marker, .deleted-files > summary::-webkit-details-marker { color: var(--ink-2); } /* apart: a browser that knows one drops a rule naming both */
+
+/* Text shown as it was sent: its own line breaks, never wider than the phone. */
+.wrap-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; margin: 0; }
+.instructions > summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.tidy-menu a.btn { display: block; text-align: center; }

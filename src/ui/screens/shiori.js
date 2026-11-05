@@ -5,6 +5,7 @@ import { shownSettings } from '../../core/shown.js';
 import { ME } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
 import { LABELS } from '../../core/agent/loop.js';
+import { INSTRUCTIONS, instructionState, saveInstruction, resetInstruction, keepMyInstruction } from '../../core/agent/her-instructions.js';
 import { createAvatar } from '../avatar.js';
 import { numField } from '../format.js';
 
@@ -143,6 +144,7 @@ export async function renderShiori(ctx, route) {
       field(t`Name for a new one`, newName),
       nameError,
       askFirst.el),
+    await herInstructions(ctx),
     section(t`Her two halves`,
       h('p', { class: 'sub', text: t`Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.` }),
       showHalves.el),
@@ -153,6 +155,68 @@ export async function renderShiori(ctx, route) {
       savedField(t`Wakes per hour, not counting yours`, wakes, () => numberIn(wakes, 1, 10_000, t`Wakes per hour is a whole number from 1; leave it empty for no limit.`, { whole: true }), (v) => budgets({ wakesPerHour: v })),
       h('div', { class: 'saving' }, quiet, quietNote, quietHint, quietError),
       savedField(t`Steps per wake`, steps, () => numberIn(steps, 1, 10_000, t`Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.`, { whole: true }), (v) => budgets({ stepsPerWake: v }))));
+}
+
+/** What each of her instructions is, in the screen's words. */
+const INSTRUCTION_WORDS = /** @type {const} */ ({
+  shiori: { name: t`Shiori's core`, about: t`How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.` },
+  kokoro: { name: t`Kokoro's part`, about: t`What Kokoro adds while Shiori is two halves: how it works behind Koe.` },
+  koe: { name: t`Koe, classic`, about: t`What Koe reads when its words go to a voice.` },
+  koeLive: { name: t`Koe, live`, about: t`What Koe reads in a live voice session.` },
+});
+
+/** Her instructions (the second-drive design): annai's text until the user changes it, here to read and change. @param {any} ctx */
+async function herInstructions(ctx) {
+  return section(t`Her instructions`,
+    h('p', { class: 'sub', text: t`These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.` }),
+    ...await Promise.all(INSTRUCTIONS.map((x) => instructionEditor(ctx, x.id))));
+}
+
+/** One of them, folded: the words, Save, Reset to original, and annai's new text when it changed under the user's. @param {any} ctx @param {import('../../core/agent/her-instructions.js').InstructionId} id */
+async function instructionEditor(ctx, id) {
+  const words = INSTRUCTION_WORDS[id];
+  const state = await instructionState(ctx.ws, id);
+  const area = h('textarea', { id: `instructions-${id}`, class: 'mono', rows: 16, lang: 'en', spellcheck: 'false', value: state.text });
+  const mark = h('span', { class: 'sub', text: t`changed`, hidden: !state.edited });
+  const reset = h('button', {
+    class: 'btn', type: 'button', hidden: !state.edited, 'aria-label': t`Reset to original: ${words.name}`,
+    onclick: async () => {
+      await resetInstruction(ctx.ws, id);
+      ctx.notices.toast(t`Back to the original. It applies at her next wake.`);
+      await redraw();
+      area.focus();
+    },
+  }, t`Reset to original`);
+  const offer = h('div', { class: 'compare', hidden: true });
+  /** The screen follows what is stored now. */
+  const redraw = async () => {
+    const now = await instructionState(ctx.ws, id);
+    area.value = now.text;
+    mark.hidden = reset.hidden = !now.edited;
+    offer.hidden = !now.newOriginal;
+    offer.replaceChildren(...(now.newOriginal ? [
+      h('h3', { text: t`The new original of ${words.name}` }), h('pre', { class: 'mono wrap-text', lang: 'en', text: now.newOriginal }),
+      h('div', { class: 'acts' },
+        h('button', { class: 'btn', type: 'button', 'aria-label': t`Keep mine: ${words.name}`, onclick: async () => { await keepMyInstruction(ctx.ws, id); await redraw(); area.focus(); } }, t`Keep mine`),
+        h('button', { class: 'btn', type: 'button', 'aria-label': t`Use the new original: ${words.name}`, onclick: async () => { await resetInstruction(ctx.ws, id); ctx.notices.toast(t`Back to the original. It applies at her next wake.`); await redraw(); area.focus(); } }, t`Use the new original`)),
+    ] : []));
+  };
+  await redraw();
+  return h('details', { class: 'instructions', dataset: { instructions: id } },
+    h('summary', {}, words.name, ' ', mark),
+    h('p', { class: 'sub', text: words.about }),
+    offer,
+    field(words.name, area),
+    h('div', { class: 'acts' },
+      h('button', {
+        class: 'btn pri', type: 'button', 'aria-label': t`Save: ${words.name}`,
+        onclick: async () => {
+          const kept = await saveInstruction(ctx.ws, id, area.value);
+          ctx.notices.toast(kept ? t`Saved. It applies at her next wake.` : t`Back to the original. It applies at her next wake.`);
+          await redraw();
+        },
+      }, t`Save`),
+      reset));
 }
 
 /**
