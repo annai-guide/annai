@@ -885,9 +885,11 @@ export class Live {
       this.gps = 'ok';
       if (this.#wasFast && fix.accuracy <= 100) {
         if (waySpeed(this.#wasFast, fix) >= FAST_FROM) { // the same drive: nothing starts
-          this.activity = 'moving-fast';
-          this.#tracker.restore(this.activity, fix.at);
-          this.#tellActivity();
+          if ((fix.speed ?? 0) >= FAST_FROM) { // and still on the road
+            this.activity = 'moving-fast';
+            this.#tracker.restore(this.activity, fix.at);
+            this.#tellActivity();
+          } else this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
         }
         this.#wasFast = null;
       }
@@ -1280,7 +1282,7 @@ export class Live {
     const o = this.#odo;
     this.#stateAt = now;
     this.#savedKm = odometer;
-    this.keep.set({ at: now, odometer, odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded });
+    if (!this.#wasFast) this.keep.set({ at: now, odometer, odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded });
     const data = { activity: this.activity, from: this.activity, speed: speed === null ? null : Math.round(speed * 10) / 10, odometer, ...extra };
     await logEvent(this.store, SYS_DEVICE, { type: 'state', actor: 'system', data }, now).catch((e) => this.#fail(e));
   }
