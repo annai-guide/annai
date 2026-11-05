@@ -18,6 +18,7 @@ import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
 import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
+import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
@@ -296,7 +297,9 @@ export async function renderTalk(ctx) {
     const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: 'heard', data: l.data }));
     const quiet = line.kind === 'unanswered' || line.kind === 'judged';
     l.li.className = lineClass(line, quiet ? 'you quiet' : 'you heard');
-    const claim = quiet && !claimed.has(l.data.id) ? h('button', {
+    // Only real words can be claimed: not before they come, and not the placeholder a sound that was never written down leaves.
+    const words = typeof l.data.text === 'string' && l.data.text !== NOT_TRANSCRIBED;
+    const claim = quiet && words && !claimed.has(l.data.id) ? h('button', {
       class: 'claim', type: 'button',
       onclick: () => {
         claimed.add(l.data.id);
@@ -413,7 +416,7 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'out.show') {
-      const card = shownCard(d, { ctx, onChoice: (o) => agent.send(o), say: hers });
+      const card = shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
       const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
       return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));

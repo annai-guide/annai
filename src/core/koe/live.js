@@ -310,8 +310,14 @@ export class LiveKoe {
   /** Kokoro was told of a stretch of sound that never stops, and it goes on: no exchange since, no close. */
   get stretching() { return this.#stretch !== null; }
 
+  /** What a tap's session came to: 'failed' when the connection itself couldn't be made (Halves tells the user), else 'ok' (including a close the user asked for). @type {Promise<'ok' | 'failed'> | null} */
+  tapping = null;
+  /** The last session start failed to connect (not a close that won). */
+  #failed = false;
+
   /** @param {string} why */
   async #start(why) {
+    this.#failed = false;
     // Start fresh runs: a session opens once it is done, its setup from the fresh start; a close meanwhile wins.
     const asked = this.#gen;
     const held = this.c.held?.();
@@ -326,6 +332,7 @@ export class LiveKoe {
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
     const s = (await this.#over()) ? null : await this.#resume(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (gen !== this.#gen || !s) {
+      this.#failed = !s && gen === this.#gen;
       s?.close('closed');
       if (gen === this.#gen) this.state = 'closed';
       return false;
@@ -577,6 +584,7 @@ export class LiveKoe {
 
   /** A tap on Shiori (§10.4): while she speaks, stops her and listens; while she listens, closes; else, with voice on, opens and listens. */
   tap() {
+    this.tapping = null;
     this.#exchanged();
     this.#unmark();
     if (this.#sounding) {
@@ -590,7 +598,7 @@ export class LiveKoe {
     }
     if (!this.c.voice?.on) return 'typing';
     if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
-    this.open('tap', { mic: true }).catch(() => {});
+    this.tapping = this.open('tap', { mic: true }).then((ok) => ok || !this.#failed ? 'ok' : 'failed', () => 'failed');
     return 'listening';
   }
 

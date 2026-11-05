@@ -25,7 +25,7 @@ const EVENTS = [
   { type: 'out.speak', data: { id: 's6', by, text: 'One half, as now.' } },
 ];
 const LABELS = ['typed', 'Koe · text · Model One', 'tapped', 'spoken · phone dictation', 'Koe · said aloud · Model One', 'spoken · live voice', `Koe · live · ${LONG}`, "heard · she didn't answer", 'heard · judged not for her',
-  'Kokoro directly · Model One', 'Koe · live', 'annai · shown', 'annai · said aloud', "Kokoro's words · said aloud", "Kokoro's words · shown", 'hearing you', 'Model One'];
+  'Kokoro directly · Model One', 'Koe · live', 'annai · shown', 'annai · said aloud', "Kokoro's words · said aloud", "Kokoro's words · shown", 'spoken · no words yet', 'Model One'];
 
 /** Every kind of line in a trip's Conversation. @param {import('@playwright/test').Page} page */
 async function everyLine(page) {
@@ -143,13 +143,60 @@ test('"This was for Shiori" on an old line: a tap sends the words as a spoken li
   }
 });
 
+test('a quiet line offers "This was for Shiori" only once it has real words: not before they come, not for a sound that was never written down', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  await writeEvent(page, trip, { type: 'heard', data: { id: 'q1', source: 'mic', dismissed: true, gate: 'chatter' } });
+  await writeEvent(page, trip, { type: 'heard', data: { id: 'q2', source: 'mic', dismissed: true, gate: 'chatter' } });
+  await writeEvent(page, trip, { type: 'heard.text', data: { of: 'q2', text: '[audio, not transcribed]' } });
+  await writeEvent(page, trip, { type: 'heard', data: { id: 'q3', source: 'mic', dismissed: true, gate: 'chatter' } });
+  await writeEvent(page, trip, { type: 'heard.text', data: { of: 'q3', text: 'Is there parking nearby?' } });
+  await page.goto('/#/talk');
+  const quiet = page.locator('.convo .you.quiet');
+  await expect(quiet).toHaveCount(3); // the quiet line, not the dashed bubble, before its words come
+  await expect(page.locator('.convo .line-hearing')).toHaveCount(0);
+  await expect(quiet.getByRole('button', { name: 'This was for Shiori' })).toHaveCount(1);
+  await expect(quiet.nth(2).getByRole('button')).toHaveCount(1);
+  await expect(quiet.nth(0).getByRole('button')).toHaveCount(0);
+  await expect(quiet.nth(1).getByRole('button')).toHaveCount(0);
+});
+
+test('a tap on a card\'s choice and on a Driving quick ask say "tapped", not "typed"', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Here.' } }, { name: 'sleep', input: {} }]) },
+  ] });
+  try {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await modelSetUp(page, llm.origin, 'Sample trip');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await writeEvent(page, trip, { type: 'out.show', data: { card: { title: 'Which one?', text: 'Pick a place.', choice: ['The noodle place'] } } });
+    await page.goto('/#/talk');
+    await page.reload();
+    await page.locator('.convo').getByRole('button', { name: 'The noodle place' }).click();
+    const tapped = page.locator('.convo .you.line-tapped');
+    await expect(tapped).toHaveCount(1);
+    await expect(tapped.locator('.line-label')).toHaveText('tapped');
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('Got it.');
+    await page.goto('/#/drive');
+    await page.locator('.quick-ask button').first().click();
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .you.line-tapped')).toHaveCount(2);
+    await expect(page.locator('.convo .you.line-typed')).toHaveCount(0);
+  } finally {
+    await llm.stop();
+  }
+});
+
 test.describe('the bottom bar, at phone width', () => {
-  for (const [width, height] of [[320, 844], [390, 844], [320, 544], [568, 296]]) {
+  for (const [width, height] of [[360, 640], [320, 844], [390, 844], [320, 544], [568, 296]]) {
     test.describe(`${width} × ${height}`, () => {
       test.use({ viewport: { width, height } });
-      test('the working status has its space kept: nothing in the bar moves as it shows, voice off and voice on', async ({ page }) => {
+      test('the working sign floats just above the bar: nothing in the bar moves as it shows, the bar costs it no height, and the page foot clears it', async ({ page }) => {
         await openApp(page, '#/talk');
-        const boxes = () => page.evaluate(() => ['nav.dock', '.dock .talk', '.voice-chip', '.live-chip', '.halves-sign'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, b.y, b.width, b.height]; }));
+        const boxes = () => page.evaluate(() => ['nav.dock', '.dock .talk', '.voice-chip', '.live-chip'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, b.y, b.width, b.height]; }));
         for (const voice of ['Off', 'On']) {
           await page.goto('/#/voice');
           await page.getByRole('radio', { name: voice, exact: true }).check();
@@ -161,15 +208,39 @@ test.describe('the bottom bar, at phone width', () => {
           await sign.evaluate((el) => el.classList.remove('idle'));
           await expect(sign).toBeVisible();
           expect(await boxes()).toEqual(before);
-          const inside = await sign.evaluate((el) => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
-          expect(inside).toBe(true);
+          const where = await sign.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const dock = /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect();
+            const style = getComputedStyle(el);
+            return { inside: r.left >= 0 && r.right <= innerWidth, above: r.bottom <= dock.top, near: dock.top - r.bottom <= 8, left: style.borderLeftWidth };
+          });
+          expect(where).toMatchObject({ inside: true, above: true, near: true, left: '1px' });
+          // The end of the conversation is readable under the sign (the page learns the bar's height a moment after it changes).
+          await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.body).paddingBottom) - /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect().height)).toBeGreaterThanOrEqual(40);
           await sign.evaluate((el) => el.classList.add('idle'));
-          // The space kept takes nothing a tap could find, and no name for a screen reader.
+          // Hidden, it takes nothing a tap could find, and no name for a screen reader.
           await expect(page.getByRole('button', { name: 'Stop Kokoro' })).toHaveCount(0);
+          expect(await boxes()).toEqual(before);
         }
       });
     });
   }
+
+  test('at 360 × 640 the bar is no taller than it was before the sign had a row: 138 px voice off, 168 px voice on', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await openApp(page, '#/talk');
+    const heights = [];
+    for (const voice of ['Off', 'On']) {
+      await page.goto('/#/voice');
+      await page.getByRole('radio', { name: voice, exact: true }).check();
+      await page.goto('/#/talk');
+      await expect(page.locator('nav.dock')).toHaveClass(voice === 'On' ? /\bvoice\b/ : /^(?!.*\bvoice\b)/);
+      heights.push(await page.locator('nav.dock').evaluate((el) => Math.round(el.getBoundingClientRect().height)));
+    }
+    expect(heights[1] - heights[0]).toBeGreaterThanOrEqual(26);
+    expect(heights[0]).toBeLessThanOrEqual(142);
+    expect(heights[1]).toBeLessThanOrEqual(172);
+  });
 });
 
 test.describe('the GPS chip', () => {
@@ -190,4 +261,17 @@ test.describe('the GPS chip', () => {
     const keep = page.getByLabel('Keep the screen on while GPS is on');
     if (await page.evaluate(() => 'wakeLock' in navigator)) await expect(keep).toBeChecked();
   });
+});
+
+test('the Driving screen has no "Keep the screen on" button, with GPS off or on: its one home is Settings → Voice', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 10, longitude: 20, accuracy: 10 });
+  await openApp(page, '#/trips');
+  await startTrip(page, 'Sample trip');
+  await page.goto('/#/drive');
+  await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+  await page.getByRole('button', { name: 'Turn GPS on' }).click();
+  await expect(page.getByRole('button', { name: 'Turn GPS on' })).toHaveCount(0);
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  await expect(page.getByText('Keep the screen on')).toHaveCount(0);
 });

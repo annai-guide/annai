@@ -1241,3 +1241,36 @@ test('a claim in a live session goes in as a text turn that says it was for her,
     await k.done();
   }
 });
+
+// Fix pass 1, finding 4: a tap whose live session can't open did nothing the user could see.
+for (const mode of /** @type {const} */ (['auto', 'on'])) {
+  test(`${mode}: a tap whose live session can't open falls back to Classic's microphone, and voice stays on`, async () => {
+    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: mode === 'on' ? 'on' : 'auto' } });
+    try {
+      if (mode === 'auto') {
+        await k.voice.refresh();
+        await k.agent.idle();
+      }
+      k.llm.live = async () => { throw new Error('the connection was refused'); };
+      assert.equal(k.agent.tap(), 'listening');
+      await soon(async () => k.agent.koeState === 'text');
+      await soon(async () => k.agent.state.name === 'listening');
+      assert.equal(k.voice.on, true);
+      assert.ok(k.platform.log.some((/** @type {string} */ l) => l.startsWith('mic open')), 'Classic opened the microphone');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("a tap whose live session can't open, with Classic resting too, says so in the card that sends use", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    k.llm.live = async () => { throw new Error('the connection was refused'); };
+    assert.equal(k.agent.tap(), 'listening');
+    await soon(async () => k.notices.some((/** @type {any} */ n) => n.title === "Koe's live voice couldn't start"));
+  } finally {
+    await k.done();
+  }
+});

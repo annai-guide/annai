@@ -91,7 +91,7 @@
 }
 
 /* The dock (spec §16.2): camera · Shiori · type, at the bottom of every screen. Not her seat, whose size is also called dock. */
-body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
+body { padding-bottom: calc(var(--dock-h, 154px) + 52px); } /* the working sign floats above the bar: the end of the page stays readable under it */
 .dock:not(.seat) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--paper); border-top: 1px solid var(--line);
   padding: 8px 16px calc(10px + env(safe-area-inset-bottom)); }
 /* A text field outside the dock has focus (dock-hides.js): the dock steps aside, keeping its box and its place in the accessibility tree, so nothing moves as the keyboard comes and goes, and taps go through to the page. */
@@ -138,9 +138,10 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */
 .voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; flex-wrap: wrap; }
-.voice-row > :not(:empty) ~ :not(:empty) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
+.voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
 .voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
-/* Its space is always kept, so nothing moves as Kokoro starts and stops (the second drive, item 5). */
+/* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops (the second drive, item 5). */
+.voice-row .halves-sign { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; margin: 0 0 4px; padding: 0 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .voice-row .halves-sign.idle { visibility: hidden; }
 .voice-row .halves-sign .btn { min-height: 32px; padding-block: 2px; }
 .voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); }
@@ -183,9 +184,6 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
   .seat.dock, .ib { width: 44px; height: 44px; }
   .talk { gap: 0; font-size: 11px; line-height: 1.2; }
   .voice-row { margin-top: 0; }
-  /* No room for a row of its own (a compact dock is under a fifth of the height): the sign sits just above the bar, the page's foot keeping its place. */
-  body { padding-bottom: calc(var(--dock-h, 154px) + 52px); }
-  .voice-row .halves-sign { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; margin: 0 0 4px; padding: 0 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
   .dock.voice .seat.dock { width: 72px; height: 72px; }
   .dock.voice .ib { width: 50px; height: 50px; }
 }

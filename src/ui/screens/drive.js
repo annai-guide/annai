@@ -57,7 +57,7 @@ export async function renderDrive(ctx) {
   const strip = h('ol', { class: 'route-strip', 'aria-label': t`The road ahead` });
   const maps = h('div', { class: 'maps-card' });
   const ask = h('div', { class: 'quick-ask' });
-  const awake = h('div', { class: 'acts' });
+  const gps = h('div', { class: 'acts' });
   // With no GPS, the user can say where they are, from the plan's places (spec §17: "a manual place").
   const where = h('div', { class: 'acts' });
   const places = await planPlaces(ctx);
@@ -80,14 +80,11 @@ export async function renderDrive(ctx) {
     ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
       class: 'btn big', type: 'button',
       onclick: () => {
-        ctx.agent.send(text);
+        ctx.agent.send(text, { chose: true });
         ctx.notices.toast(t`Asked Shiori: ${text}`);
       },
     }, label)));
-    const a = ctx.awake;
-    awake.replaceChildren(...(live?.on && a?.available
-      ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, t`Keep the screen on while GPS is on`)]
-      : live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
+    gps.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
     const lost = live?.on && (live.gps === 'denied' || live.gps === 'unavailable');
     where.replaceChildren(...(!lost ? [] : [
       h('p', { class: 'sub', text: places.length ? t`Where are you?` : sentences(t`Where are you?`, t`The plan has no places to choose from yet.`) }),
@@ -126,6 +123,6 @@ export async function renderDrive(ctx) {
   addEventListener('hashchange', leave);
   return h('div', { class: 'screen drive' },
     h('h1', { class: 'title', text: t`Driving` }),
-    strip, maps, ask, latest, where, awake,
+    strip, maps, ask, latest, where, gps,
     h('p', {}, crumb('#/now', t`Now`)));
 }
