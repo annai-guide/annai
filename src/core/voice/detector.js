@@ -18,7 +18,8 @@ import { biquad } from './pcm.js';
  * has passed: the floor is then its quietest frame (or steady sound's level), the run judged again. reset()
  * drops a guess. minDb (the level check, voice/level.js): a frame under the minimum it gives never starts speech, though a run going on is
  * untouched. Only once the floor is learned: a guess, or a floor a second old, says nothing about the room. Such a frame is neither a blip nor
- * the room, as far as the floor goes: its quiet counts as quiet, and only steady sound (a second of it) moves the floor.
+ * the room, as far as the floor goes: its quiet counts as quiet, and only steady sound (a second of it) moves the floor. floorDb: a floor
+ * learned earlier on this microphone, taken as learned (a new session's first second would have no minimum).
  * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number, cut: 'pause' | 'cap' | 'end', peakDb: number } | { type: 'discard' }} DetectorEvent
  *   cut: what ended it: its pause, maxMs, or end(); peakDb: its loudest frame
  * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number, peak: number }} Run  speech going on: its frames, their loudness, and counts
@@ -91,11 +92,15 @@ export class Detector {
 
   /**
    * @param {{ sampleRate: number, pauseMs?: number, startDb?: number, keepDb?: number, prerollMs?: number, tailMs?: number,
-   *   minSpeechMs?: number, maxMs?: number, minDb?: (floorDb: number) => number | null }} o
+   *   minSpeechMs?: number, maxMs?: number, minDb?: (floorDb: number) => number | null, floorDb?: number | null }} o
    */
-  constructor({ sampleRate, pauseMs = 700, startDb = 10, keepDb = 6, prerollMs = 300, tailMs = 200, minSpeechMs = 250, maxMs = 30_000, minDb }) {
+  constructor({ sampleRate, pauseMs = 700, startDb = 10, keepDb = 6, prerollMs = 300, tailMs = 200, minSpeechMs = 250, maxMs = 30_000, minDb, floorDb = null }) {
     this.sampleRate = sampleRate;
     this.minDb = minDb;
+    if (floorDb !== null) {
+      this.#floor = floorDb;
+      this.#learned = LEARN_FRAMES;
+    }
     this.startDb = startDb;
     this.keepDb = keepDb;
     const frames = (/** @type {number} */ msOf) => Math.max(1, Math.round(msOf / FRAME_MS));

@@ -68,15 +68,15 @@ export class LiveInput {
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
    *   speaking?: () => boolean, duplex?: () => boolean, deaf?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void, onOver?: () => void,
-   *   minDb?: (floorDb: number) => number | null, onKept?: () => void,
+   *   minDb?: (floorDb: number) => number | null, onKept?: () => void, floorDb?: number | null,
    *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null, minDb: number | null, keptFrames: number, keptPeakDb: number | null }) => void }} o
    *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
    *   speaking now (else half-duplex); deaf: whether nothing heard is the user's now (an urgent line of hers, said whole); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
    *   maxMs: a turn's longest (the iPhone trace: one ran on for 29 s); onOver: speech begun over her was let go; minDb: the level check's minimum; onKept: a frame over the floor was just kept out by it
-   *   to begin a turn (voice/level.js); onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn
+   *   to begin a turn (voice/level.js); floorDb: the floor learned earlier on this microphone; onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn
    */
   constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,
-    speaking = () => false, duplex = () => false, deaf = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn, onOver, minDb, onKept }) {
+    speaking = () => false, duplex = () => false, deaf = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn, onOver, minDb, onKept, floorDb = null }) {
     this.mic = mic;
     this.send = send;
     this.rate = rate;
@@ -95,6 +95,7 @@ export class LiveInput {
     this.onOver = onOver;
     this.minDb = minDb;
     this.onKept = onKept;
+    this.floorDb = floorDb;
     // What the detector keeps before speech, and the frames it takes to be sure of it.
     this.keep = Math.round(((preRollMs + 100) * rate) / 1000);
     this.#chunk = new Int16Array(Math.round((chunkMs * rate) / 1000));
@@ -157,7 +158,7 @@ export class LiveInput {
   #frames(pcm, sampleRate) {
     if (this.#closed) return;
     if (this.#detector?.sampleRate !== sampleRate) {
-      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb, minSpeechMs: this.minSpeechMs, maxMs: this.maxMs, ...(this.minDb ? { minDb: this.minDb } : {}) });
+      this.#detector = new Detector({ sampleRate, pauseMs: this.pauseMs, startDb: this.startDb, minSpeechMs: this.minSpeechMs, maxMs: this.maxMs, ...(this.minDb ? { minDb: this.minDb } : {}), floorDb: this.floorDb });
       this.#resampler = new StreamResampler(sampleRate, this.rate);
     }
     const d = this.#detector;

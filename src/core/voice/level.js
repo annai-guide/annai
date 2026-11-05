@@ -5,6 +5,8 @@
  * quiet words of the user's lower ("yeah." at -19); the floor with music on was about -54 to -66 dB, without it mostly -66 to -86 dB. So
  * these numbers are a first guess: `live.turn` logs voiceDb, minDb, keptFrames and keptPeakDb to tune them. Too high a minimum leaves the
  * user unheard, the worst failure here, so every doubt means no minimum: a floor not yet learned (Detector), no voiceDb yet, a tap, a new route.
+ * It learns only from the user: a turn she answered, or one they tapped for. A level that fell with time, or learned from every turn, let
+ * lyrics through within a minute, and they then read as the user's own, so each one the model let go woke Kokoro.
  */
 export const LEVEL = Object.freeze({
   /** A floor above this says something is playing; under it (a quiet car) there is no minimum. */
@@ -13,36 +15,20 @@ export const LEVEL = Object.freeze({
   BELOW_VOICE_DB: 10,
   /** A turn's peak this near voiceDb is at the user's own level. */
   OWN_WITHIN_DB: 6,
-  /** How fast voiceDb falls: a lyric can't lower it quickly, and a slammed door passes. */
-  FALL_DB_PER_MIN: 3,
 });
 
 export class VoiceLevel {
-  /** @type {number | null} */
-  #db = null;
-  #at = 0;
+  /** The loudest of the user's turns, in dB; null with none since the route last changed, or a tap's turn. @type {number | null} */
+  db = null;
 
-  /** @param {() => number} [now] */
-  constructor(now = Date.now) {
-    this.now = now;
-  }
-
-  /** The loudest turn peak heard lately, in dB; null with none since the route last changed. */
-  get db() {
-    return this.#db === null ? null : this.#db - ((this.now() - this.#at) / 60_000) * LEVEL.FALL_DB_PER_MIN;
-  }
-
-  /** A turn's peak: a running maximum. @param {number} peakDb */
+  /** A turn of the user's: a running maximum. @param {number} peakDb */
   heard(peakDb) {
-    const db = this.db;
-    if (db !== null && db >= peakDb) return;
-    this.#db = peakDb;
-    this.#at = this.now();
+    if (this.db === null || peakDb > this.db) this.db = peakDb;
   }
 
-  /** The audio route changed: what was learned was for another microphone. */
+  /** The audio route changed (what was learned was for another microphone), or a tapped turn says what their voice is now. */
   reset() {
-    this.#db = null;
+    this.db = null;
   }
 
   /** The least a frame must reach to begin a turn over this floor; null: no minimum. @param {number} floorDb */
@@ -51,9 +37,8 @@ export class VoiceLevel {
     return db !== null && floorDb > LEVEL.NOISY_FLOOR_DB ? db - LEVEL.BELOW_VOICE_DB : null;
   }
 
-  /** Whether a turn's peak is at the user's own level; with no voiceDb, it is. @param {number | null} peakDb */
+  /** Whether a turn's peak is at the user's own level; with no voiceDb, nothing says so. @param {number | null} peakDb */
   own(peakDb) {
-    const db = this.db;
-    return peakDb !== null && (db === null || peakDb >= db - LEVEL.OWN_WITHIN_DB);
+    return peakDb !== null && this.db !== null && peakDb >= this.db - LEVEL.OWN_WITHIN_DB;
   }
 }

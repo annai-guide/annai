@@ -16,7 +16,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.ignored', 'live.reply', 'voice.route', 'reading'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'reading'],
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
@@ -247,7 +247,6 @@ export function traceSummary(e, { costs: perWake } = {}) {
       d.player ? t`on ${d.player}` : null);
   }
   // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).
-  if (e.type === 'live.ignored') return t`ignored background sound for ${duration(d.ms ?? 0)}`;
   if (e.type === 'live.turn') {
     // What the level check did, to tune it (the second-drive design, section 3); lines from before it have none of this.
     const check = d.keptFrames === undefined ? null : t`your voice ${d.voiceDb ?? '?'} dB, least to start ${d.minDb ?? '–'} dB, ${d.keptFrames} frames kept out (loudest ${d.keptPeakDb ?? '?'} dB)`;

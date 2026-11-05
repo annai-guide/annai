@@ -11,7 +11,7 @@ const mainRequests = (k) => k.requests.filter((/** @type {any} */ r) => !String(
 /** The gate's requests. @param {any} k */
 const gateRequests = (k) => k.requests.filter((/** @type {any} */ r) => String(r.system ?? '').startsWith('You make one quick decision'));
 
-test('chatter after she speaks is recorded, and she goes back to sleep without a call (spec §10.4)', async (t) => {
+test('chatter after she speaks is recorded, and when her window ends she goes back to sleep without a call (spec §10.4, the second drive, item 10)', async (t) => {
   useClock(t);
   const k = await agentKit([[speakOnly('Bixby Bridge is ahead.')]], { voice: { decide: [choose('B')], speechIn: ['m-hear'], hears: ['turn the radio down'] } });
   k.agent.send('What is ahead?');
@@ -19,9 +19,9 @@ test('chatter after she speaks is recorded, and she goes back to sleep without a
   await hear(k, 'where-lunch');
   await k.agent.idle();
   const speak = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'speak');
-  assert.equal(speak.data.content, 'Said aloud. Someone spoke, but not to you; it is below. You went back to sleep.');
+  assert.equal(speak.data.content, 'Said aloud. Heard nothing (20 seconds).');
   const [heard] = await k.events(['heard']);
-  assert.deepEqual([heard.data.dismissed, heard.data.answer, heard.data.gate], [true, speak.data.id, 'chatter']);
+  assert.deepEqual([heard.data.dismissed, heard.data.gate], [true, 'chatter']);
   assert.equal(mainRequests(k).length, 1, 'no call for chatter');
   assert.match(JSON.stringify(gateRequests(k)[0].messages), /turn the radio down/);
   assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She last said aloud: "Bixby Bridge is ahead\."/);
@@ -98,7 +98,7 @@ test('chatter during an ask is written in, and the buttons keep waiting (spec §
   assert.equal(heard[0].data.dismissed, true);
 });
 
-test('after chatter ends her turn, a later speak in the same reply is not said and does not listen; the gate is told only what she said (spec §10.4)', async (t) => {
+test('chatter leaves her turn going: a later speak in the same reply is said; the gate is told only what she said (spec §10.4, the second drive, item 10)', async (t) => {
   useClock(t);
   const k = await agentKit([[
     { toolCalls: [{ name: 'speak', input: { text: 'Bixby Bridge is ahead.' } }, { name: 'speak', input: { text: 'Want to stop there?' } }] },
@@ -109,10 +109,9 @@ test('after chatter ends her turn, a later speak in the same reply is not said a
   await hear(k, 'where-lunch');
   await k.agent.idle();
   const [a, b] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
-  assert.match(a.data.content, /You went back to sleep\.$/);
-  assert.equal(b.data.content, 'Not said aloud: you went back to sleep. It was shown on screen.');
-  assert.ok(!k.platform.log.includes('play m-say:Want to stop there?'));
-  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1);
+  assert.match(a.data.content, /Heard nothing/);
+  assert.match(b.data.content, /Heard nothing/);
+  assert.ok(k.platform.log.includes('play m-say:Want to stop there?'));
   assert.equal(mainRequests(k).length, 1);
   // Her next turn: speech heard while she thinks goes to the gate, which is told what she last said aloud.
   k.agent.tap();
@@ -121,5 +120,5 @@ test('after chatter ends her turn, a later speak in the same reply is not said a
   await until(() => mainRequests(k).length === 2);
   await hear(k, 'first-one');
   await k.agent.idle();
-  assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She last said aloud: "Bixby Bridge is ahead\."/);
+  assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She last said aloud: "Want to stop there\?"/);
 });
