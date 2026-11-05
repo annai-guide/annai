@@ -19,10 +19,13 @@ export function toolReply(calls) {
 
 /**
  * @param {{ delayMs?: number, port?: number }} [o] delayMs: how long Kokoro "thinks" before its note
- * @returns {Promise<{ origin: string, wakes: () => number, stop: () => Promise<void> }>}
+ * @returns {Promise<{ origin: string, wakes: () => number, repeatNote: (on: boolean) => void, stop: () => Promise<void> }>}
  */
 export async function startKokoro({ delayMs = 1500, port = 0 } = {}) {
   let wakes = 0;
+  /** Sends its note again once Koe has said it (the second drive's item 11). */
+  let repeat = false;
+  let noted = false;
   const server = http.createServer((req, res) => {
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': String(req.headers['access-control-request-headers'] ?? 'content-type') };
     /** @type {Buffer[]} */
@@ -45,10 +48,13 @@ export async function startKokoro({ delayMs = 1500, port = 0 } = {}) {
       // Koe's question reaches Kokoro as a wake ("[Koe asks]" in the conversation, or "Koe notes:" as the wake's reason): one note back.
       const last = JSON.stringify((body.messages ?? []).at(-1) ?? '');
       const heard = /Koe asks|Koe notes/.test(last);
-      const calls = heard
-        ? [{ name: 'tell_koe', input: { text: 'What you asked about is about twenty minutes ahead on Highway 1 (source: example.org).', for_user: 'About twenty minutes ahead on Highway 1.' } }, { name: 'sleep', input: {} }]
-        : [{ name: 'sleep', input: {} }];
-      setTimeout(() => { if (!res.destroyed) res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' }).end(toolReply(calls)); }, delayMs);
+      const note = { name: 'tell_koe', input: { text: 'What you asked about is about twenty minutes ahead on Highway 1 (source: example.org).', for_user: 'About twenty minutes ahead on Highway 1.' } };
+      // repeat: the note, then its next step the same note again once Koe has had time to say it.
+      const again = repeat && noted;
+      if (again) repeat = noted = false;
+      if (repeat && heard) noted = true;
+      const calls = noted ? [note] : heard || again ? [note, { name: 'sleep', input: {} }] : [{ name: 'sleep', input: {} }];
+      setTimeout(() => { if (!res.destroyed) res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' }).end(toolReply(calls)); }, again ? delayMs + 8000 : delayMs);
     });
   });
   await new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(undefined)));
@@ -56,6 +62,7 @@ export async function startKokoro({ delayMs = 1500, port = 0 } = {}) {
   return {
     origin: `http://127.0.0.1:${addr.port}`,
     wakes: () => wakes,
+    repeatNote: (on) => { repeat = on; noted = false; },
     stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
   };
 }

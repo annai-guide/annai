@@ -114,6 +114,42 @@
       "seconds": 2.32,
       "bytes": 74284,
       "sha256": "643e8f0b080b1b77"
+    },
+    "auto-gps": {
+      "words": "Is there an auto GPS mode in this app?",
+      "voice": "Kore",
+      "seconds": 2.66,
+      "bytes": 85164,
+      "sha256": "af01b06078e5f315"
+    },
+    "built": {
+      "words": "What year was Bixby Bridge built?",
+      "voice": "Puck",
+      "seconds": 2.24,
+      "bytes": 71724,
+      "sha256": "a5762fce337a24d1"
+    },
+    "annoyed": {
+      "words": "You keep saying sorry and that you understand. Stop that, it's really annoying.",
+      "voice": "Leda",
+      "seconds": 5.66,
+      "bytes": 181164,
+      "sha256": "e0b614e1c9727246"
+    },
+    "ko-word": {
+      "words": "안녕하세요",
+      "voice": "Aoede",
+      "lang": "ko",
+      "seconds": 1.1,
+      "bytes": 35244,
+      "sha256": "1eeac18fe54c2de0"
+    },
+    "lyric": {
+      "words": "Oh baby baby, dancing through the night, hold me till the morning light.",
+      "voice": "Puck",
+      "seconds": 6.7,
+      "bytes": 214444,
+      "sha256": "f25bcbcdf76cb022"
     }
   }
 }
