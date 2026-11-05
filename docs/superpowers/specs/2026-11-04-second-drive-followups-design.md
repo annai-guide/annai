@@ -182,11 +182,40 @@ The status read "moving fast" about 4 minutes after the car had stopped: speed f
 - **Parked 3 minutes.** Not the activity's fault: `arrived` reads `m.stop` (`src/core/live/triggers.js`, about lines 150 to 162). Shiori also cancelled the leftover watches about 3 minutes after the car stopped, so it may not have had its chance. Read how `m.stop` behaves with those fixes and report; fix only if it's wrong.
 - **Red lights.** "When moving fast starts" fired again after a stop at a light. It fires unless moving fast ended under 5 minutes ago: that also covers parked for an hour, walked 3 minutes, then drove. Watches on stopping still fire as they do: the user counted that as a pass. No new options on `watch_set`.
 
+### Surviving a reload (the user, 2026-11-04)
+"I think we might need to fix this? because iphone clears background apps (we are web pages?) quite aggressively? And if user want to be notified then it is quite important we make that accurate. and user may actually want to know where they said that as well?" And: "I think restart actaully might be quite common? indeed today I almost did not switch away still happened?"
+
+- A `moved` watch counts from the log (kept `location` events and `trigger.fired`), so a reload loses nothing. No new store.
+- A `moved` watch records where it was set, and its firing says so.
+- The last activity and when moving fast ended come back at start from the newest activity `state` event, under 5 minutes old, so a reload at a light or mid-drive doesn't re-fire "moving fast starts".
+- `app.start` is logged per page load. The trace can't show reloads today, so how common they are is not yet measured.
+
+### A parked phone drifting to walking
+Not decided. The user will leave the app open at home with GPS on, on the build with the activity log and its 5-minute heartbeat: "do you want to test now? I can have the app open while at home to see if it drifts?"
+
 ## 5. How annai's screens are organised (waiting for the user)
 
 The user, on 2026-11-04: "Yeah I do not think Now is a good idea. however I kinda want to explore some other options as well... because everything come back to the conversation screen, maybe make that the base screen to come back to?... maybe the plan screen can say something like agenda, calendar or something? because plan is also a verb... for the trip, is more like to manage this trip? maybe we can make that a screen they enter after pressing a button? this way maybe we do not need the three tabs at all?... or maybe we can emulate some sort of chat app? user click a trip to open its conversation, and manage everything related to it inside that trip?... let's explore some wild ideas first and decide on the more general stuff before digging into which module where".
 
 Sketches (private): https://claude.ai/artifact/XKxbX3EtPvHkDBxXHjyueP. Nothing here is decided, and nothing here is built yet.
+
+## 6. Voice switches (after the branches above)
+
+The user: "the voice is bit busy? it says Voice on ` your last choice ` realtime, which almost takes the whole line... for the auto voice mode, shall we review its design? do you think user will understand what it does? should it just be a simple toggle for on and off? ( well also the realtime mode on and off )". Picked: "On/off, plus on while driving (Recommended)". Evidence: across the whole trace the iPhone's audio read only as unknown or speaker; a car was never detected.
+
+- Voice is one tap on or off. Live is its own switch (it replaces the Realtime and Classic wording). The chips read `Voice on` and `Live`, and `Voice on · driving` while driving; no other reason shows.
+- A tap on Shiori always talks, for that exchange, with Voice off too. The keyboard button is how to type. The hold from item 1 stays.
+- One automatic rule: voice is on while driving (needs GPS on).
+- Auto goes, with `route`, `lastChoices` and the audio-name matching. A saved `auto` reads as off. The settings format stays tolerant.
+
+## 7. Detailed trace (before the next long drive)
+
+The user: "do you want to build a more enhanced and heavier trace mode (option) with more information like recordings / even screenshots able to be collected?" Picked: "Yes, before the next long drive (Recommended)". Off by default; sends only to the user's own trace server.
+
+- Recordings of what the microphone heard, including samples of sound the level check kept out. Stored and sent as blobs named as spec §4.9 asks. The trace server takes them.
+- A text copy of what's on screen at each moment that matters. Real screenshots aren't possible from an iPhone web page as far as the main session knows (not checked).
+- A "flag this" button: it marks the moment and keeps the sound and screen around it.
+- A plain warning: recordings include passengers and whatever is playing.
 
 ## Out of scope
 
