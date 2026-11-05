@@ -1,5 +1,5 @@
 import { LiveInput } from '../realtime/input.js';
-import { escapeTags, wrapNote, theirs } from '../agent/blocks.js';
+import { escapeTags, wrapNote, theirs, claimLine } from '../agent/blocks.js';
 import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
@@ -613,14 +613,14 @@ export class LiveKoe {
   /**
    * What the user typed or sent: written first (Kokoro has it at once), then its photos, each a turn that waits, and its words. Files
    * handed over are Kokoro's to read: the session hears only that they came.
-   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
    * @returns {Promise<boolean>} false: no session
    */
-  async send(text, { photos = [], chose = false, handed = [], handover } = {}) {
+  async send(text, { photos = [], chose = false, claim, handed = [], handover } = {}) {
     this.#exchanged();
     this.#watched = true;
     await this.c.held?.(); // typed while Start fresh runs: written below its divider
-    const e = await this.c.koe.logUser(text, photos, { chose, handed, ...(handover ? { handover } : {}) });
+    const e = await this.c.koe.logUser(text, photos, { chose, handed, ...(handover ? { handover } : {}), ...(claim ? { claim } : {}) });
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
     const takes = Boolean(rec && modelOf(rec).input.includes('image'));
@@ -630,7 +630,7 @@ export class LiveKoe {
     const words = String(text ?? '').trim();
     /* en */
     const files = handed.length ? `[the user handed you ${handed.length === 1 ? 'a file' : `${handed.length} files`}; Kokoro reads them]` : '';
-    /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
+    /* en */ this.#text(claim ? theirs(claimLine(words)) : chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
       : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]`
         : files && !words ? files : `${theirs(words)}${files ? ` ${files}` : ''}`);
     return true;
@@ -1185,7 +1185,12 @@ export class LiveKoe {
     const cut = t.cut && !t.whole;
     if (text && cut) text += '✂';
     if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
-    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, by: null, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
+    const [modelId, wake] = [this.modelId, this.#wake]; // as they are now: a close clears the model before the write below runs
+    if (text) this.#write(async () => {
+      const rec = (await this.c.llm.config()).models[modelId ?? ''];
+      const by = rec ? { name: modelOf(rec).name, first: null, tried: false } : null;
+      return { type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake, live: true, by, ...(t.stream ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] };
+    });
     if (next) this.#next();
     this.#heardOut();
     this.#idle();

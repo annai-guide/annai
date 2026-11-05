@@ -763,3 +763,65 @@ test("heard, then the Stop, then Koe's answer and a question for Kokoro: the que
   assert.deepEqual((await results(k, 'tell_kokoro')).map((e) => e.data.ok), [false]);
   assert.equal((k.sent['model-0'] ?? []).length, 0, 'Kokoro was not woken');
 });
+
+// The second drive, item 1: "I expect tapping avatar starts a voice session even if I'm in auto".
+test('Auto, voice off: a tap starts voice, held on for that exchange, and she answers aloud; then Auto decides again', async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: { toolCalls: [{ name: 'speak', input: { text: 'A concrete arch.' } }, { name: 'sleep', input: {} }] } }] } },
+    voice: { mode: 'auto', speechIn: ['m-hear'], hears: ['what is that bridge'] },
+  });
+  assert.equal(k.voice.on, false);
+  assert.equal(k.agent.tap(), 'listening');
+  assert.deepEqual([k.voice.on, k.voice.mode.why, k.voice.mode.setting], [true, 'tapped', 'auto']);
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => plays(k).length === 1);
+  assert.deepEqual(plays(k), ['A concrete arch.']);
+  assert.equal((await k.events(['out.speak']))[0].data.voice, true, 'a reply said aloud, not a bubble');
+  await k.agent.idle();
+  await until(() => !k.voice.on);
+  assert.equal(k.voice.mode.why, 'not sure');
+  assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
+});
+
+test('Auto: a tap that hears nothing lets voice go when its window closes; one with no way to hear says so, and lets it go', async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', speechIn: ['m-hear'] } });
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => k.agent.state.name === 'listening');
+  assert.equal(k.voice.on, true);
+  assert.equal(k.agent.tap(), 'stopped');
+  await until(() => !k.voice.on);
+  const deaf = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', micFails: 'NotAllowedError', speechIn: ['m-hear'] } });
+  assert.equal(deaf.agent.tap(), 'listening');
+  await until(() => deaf.notices.length > 0);
+  await until(() => !deaf.voice.on);
+  assert.equal(deaf.agent.state.name, 'sleeping');
+});
+
+test('voice set to Off: a tap still opens typing, and a choice ends a hold', async (t) => {
+  useClock(t);
+  const off = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
+  assert.equal(off.agent.tap(), 'typing');
+  assert.equal(off.voice.on, false);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', speechIn: ['m-hear'] } });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await k.voice.choose('off');
+  assert.deepEqual([k.voice.on, k.voice.mode.why], [false, 'off']);
+  await k.voice.choose('auto');
+  assert.equal(k.voice.on, false, 'the hold ended with the choice');
+});
+
+// "This was for Shiori": the existing send path, as a msg.user with claim.
+test('a claim goes through the send path as a msg.user with claim: Koe and Kokoro read that it was for them, and Kokoro wakes', async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'Yes.' }]) }] } } });
+  k.agent.send('Is there parking?', { claim: 'h1' });
+  await k.agent.idle();
+  const line = (await k.events(['msg.user']))[0];
+  assert.deepEqual([line.data.claim, line.data.split, line.data.text], ['h1', true, 'Is there parking?']);
+  assert.match(JSON.stringify(k.sent['model-koe']), /\[the user says this was for you\] \\"Is there parking\?\\"/);
+  assert.match(JSON.stringify(k.sent['model-0']), /\[the user says this was for you\] \\"Is there parking\?\\"/);
+});

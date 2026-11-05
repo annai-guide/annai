@@ -279,7 +279,7 @@ test('the dock is on every screen; typing to Shiori shows her answer in the conv
     await page.getByLabel('Message to Shiori').fill('Where should we eat?');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-    await expect(page.locator('.convo .you')).toHaveText('Where should we eat?');
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText('Where should we eat?');
     await expect(page.locator('.convo .shiori p')).toHaveText('Nepenthe is 25 minutes south.');
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
   } finally {
@@ -442,7 +442,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(3);
     await page.reload();
     await page.goto('/#/talk');
-    await expect(page.locator('.convo .you').last()).toHaveText('Are you there?');
+    await expect(page.locator('.convo .you p').last()).toHaveText('Are you there?');
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Yes, still here.', { timeout: 15_000 });
 
     // The note is a file in the trip.
@@ -583,7 +583,7 @@ test('the conversation follows what comes, clear of the dock: your new question 
     const empty = page.getByText('Nothing yet. Tap Shiori or Type below to talk.');
     await expect(empty).toBeVisible();
     await send('Hello');
-    await expect(page.locator('.convo .you')).toHaveText('Hello');
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText('Hello');
     await expect(empty).toHaveCount(0);
     await expect(page.locator('.convo .shiori p')).toHaveText('Light rain around 1 PM.');
     // A long conversation, opened: its last words show above the dock.

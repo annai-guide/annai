@@ -1,0 +1,193 @@
+import { test, expect } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { savedBy, openApp, startTrip, writeEvent, startModelServer, modelSetUp, anthropicToolReply } from './helpers.js';
+
+// The Conversation shows faithfully what happened (the second-drive design, section 1), read from stored events. Fixtures are synthetic.
+const LONG = 'A-very-long-model-name-with-no-spaces-to-break-at-whatsoever-preview-2026-11-04-experimental-build';
+const by = { name: 'Model One', first: null, tried: false };
+const EVENTS = [
+  { type: 'msg.user', data: { text: 'When do we leave for the station?' } },
+  { type: 'out.speak', data: { id: 's1', half: 'koe', by, text: 'Leave by 8:40.' } },
+  { type: 'msg.user', data: { text: 'The earlier one', chose: true } },
+  { type: 'heard', data: { id: 'h1', source: 'dictation', text: 'Is the noodle place on the way?' } },
+  { type: 'out.speak', data: { id: 's2', half: 'koe', voice: true, by, text: 'Four minutes off your route.' } },
+  { type: 'heard', data: { id: 'h2', source: 'live', text: 'What is the next turn?' } },
+  { type: 'out.speak', data: { id: 's3', half: 'koe', live: true, voice: true, by: { name: LONG, first: null, tried: false }, text: 'Left at the light.' } },
+  { type: 'heard', data: { id: 'h3', source: 'live', text: 'lyrics of a song on the radio', dismissed: true, gate: 'chatter' } },
+  { type: 'heard', data: { id: 'h4', source: 'mic', text: 'Did you grab the umbrella?', dismissed: true, gate: 'chatter' } },
+  { type: 'out.speak', data: { id: 's4', half: 'kokoro', by, text: 'The train is on time today.' } },
+  { type: 'out.speak', data: { id: 's5', live: true, voice: true, by: null, text: 'An old live line.' } },
+  { type: 'reminder', data: { watch: 'w1', text: 'Check out by 11:00.' } },
+  { type: 'reminder', data: { watch: 'w2', text: 'Check out by 11:00.', aloud: true } },
+  { type: 'reminder', data: { watch: '', text: 'The train leaves from platform 2.', answer: true, aloud: true } },
+  { type: 'reminder', data: { watch: '', text: 'An older note of hers.', title: "Shiori's answer" } },
+  { type: 'heard', data: { id: 'h5', source: 'mic' } },
+  { type: 'out.speak', data: { id: 's6', by, text: 'One half, as now.' } },
+];
+const LABELS = ['typed', 'Koe · text · Model One', 'tapped', 'spoken · phone dictation', 'Koe · said aloud · Model One', 'spoken · live voice', `Koe · live · ${LONG}`, "heard · she didn't answer", 'heard · judged not for her',
+  'Kokoro directly · Model One', 'Koe · live', 'annai · shown', 'annai · said aloud', "Kokoro's words · said aloud", "Kokoro's words · shown", 'hearing you', 'Model One'];
+
+/** Every kind of line in a trip's Conversation. @param {import('@playwright/test').Page} page */
+async function everyLine(page) {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  for (const ev of EVENTS) await writeEvent(page, trip, ev);
+  await page.goto('/#/talk'); // no reload: she opened this conversation before these lines, so she owes none of them an answer
+  await expect(page.locator('.convo > li')).toHaveCount(EVENTS.length);
+  return trip;
+}
+
+for (const scheme of /** @type {const} */ (['light', 'dark'])) {
+  test.describe(`${scheme}, at phone width`, () => {
+    test.use({ colorScheme: scheme, viewport: { width: 390, height: 844 } });
+
+    test('each kind of line says what it is; a long model name wraps inside its bubble; no bubble sticks out of the page', async ({ page }, info) => {
+      await everyLine(page);
+      await expect(page.locator('.convo .line-label')).toHaveText(LABELS);
+      const fit = await page.evaluate(() => [...document.querySelectorAll('.convo > li')].flatMap((li) => {
+        const box = li.getBoundingClientRect();
+        const out = [...li.querySelectorAll('.line-label, .line-label span')].filter((x) => { const r = x.getBoundingClientRect(); return r.right > box.right + 0.5 || r.left < box.left - 0.5; });
+        return out.length || box.right > innerWidth || li.scrollWidth > li.clientWidth + 1 ? [li.textContent] : [];
+      }));
+      expect(fit).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const long = page.locator('.convo .line-koe-live .line-label').first();
+      expect(/** @type {{ height: number }} */ (await long.boundingBox()).height).toBeGreaterThan(24); // on more than one line
+      {
+        // The tints show, and each label reads on its wash as the browser draws it (4.5:1).
+        const low = await page.evaluate(() => {
+          const rgb = (/** @type {string} */ c) => (c.match(/[\d.]+/g) ?? []).slice(0, 4).map(Number);
+          const lum = (/** @type {number[]} */ c) => { const [r, g, b] = c.slice(0, 3).map((v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+          const under = (/** @type {Element | null} */ el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.length < 4 || c[3] > 0) return c; } return [255, 255, 255]; };
+          return [...document.querySelectorAll('.convo .line-label')].flatMap((l) => {
+            const [a, b] = [lum(rgb(getComputedStyle(l).color)), lum(under(l))].sort((x, y) => y - x);
+            const ratio = (a + 0.05) / (b + 0.05);
+            return ratio < 4.5 ? [`${l.textContent}: ${ratio.toFixed(2)}`] : [];
+          });
+        });
+        expect(low).toEqual([]);
+        const wash = (/** @type {string} */ sel) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
+        const expected = scheme === 'light' ? { teal: 'rgb(240, 248, 246)', blue: 'rgb(241, 245, 252)', violet: 'rgb(245, 241, 251)' } : { teal: 'rgb(24, 37, 42)', blue: 'rgb(26, 34, 48)', violet: 'rgb(32, 29, 46)' };
+        expect(await wash('.convo .line-koe-live')).toBe(expected.teal);
+        expect(await wash('.convo .line-koe-aloud')).toBe(expected.blue);
+        expect(await wash('.convo .you.line-spoken')).toBe(expected.blue);
+        expect(await wash('.convo .line-kokoro')).toBe(expected.violet);
+        expect(await wash('.convo .you.quiet')).toBe('rgba(0, 0, 0, 0)');
+      }
+      // Evidence, for the eye: only one browser's, one file per theme (gitignored).
+      if (info.project.name === 'webkit') {
+        await mkdir('.superpowers/evidence', { recursive: true });
+        // The whole conversation in one picture: what stays on screen as it scrolls would otherwise lie across its middle.
+        await page.evaluate(() => {
+          for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('header, .screen > .title-row, nav.dock'))) el.style.setProperty('position', 'static', 'important');
+          for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.notices'))) el.style.setProperty('display', 'none', 'important');
+        });
+        await page.screenshot({ path: `.superpowers/evidence/conversation-${scheme}.png`, fullPage: true });
+      }
+    });
+  });
+}
+
+test('words still coming become the line they are, drawn from the log; with "Show what she says" off, spoken words fold away above their label', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const trip = await everyLine(page);
+  await expect(page.locator('.convo .line-hearing')).toHaveCount(1);
+  await writeEvent(page, trip, { type: 'heard.text', data: { of: 'h5', text: 'Now the words are in.' } });
+  await page.goto('/#/trips');
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo .line-hearing')).toHaveCount(0);
+  const line = page.locator('.convo .you.line-spoken').last();
+  await expect(line).toContainText('Now the words are in.');
+  await expect(line.locator('.line-label')).toHaveText('spoken');
+  // Her spoken words are the normal size, not smaller and grey.
+  const size = (/** @type {import('@playwright/test').Locator} */ l) => l.evaluate((el) => getComputedStyle(el).fontSize);
+  expect(await size(page.locator('.convo .said p').first())).toBe(await size(page.locator('.convo .line-koe-text p').first()));
+  await page.goto('/#/voice');
+  await page.getByLabel('Show what she says').uncheck();
+  await expect(savedBy(page.getByLabel('Show what she says'))).toHaveText('Saved');
+  await page.goto('/#/talk');
+  const said = page.locator('.convo .line-koe-aloud');
+  await expect(said).toBeVisible();
+  await expect(said.getByText('Four minutes off your route.')).toBeHidden();
+  await expect(said.locator('.line-label')).toHaveText('Koe · said aloud · Model One');
+  await said.getByRole('button', { name: 'Show what she said' }).click();
+  await expect(said.getByText('Four minutes off your route.')).toBeVisible();
+});
+
+test('"This was for Shiori" on an old line: a tap sends the words as a spoken line, the quiet line loses its button, and the model reads what happened', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }]) }] });
+  try {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await modelSetUp(page, llm.origin, 'Sample trip');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await writeEvent(page, trip, { type: 'heard', data: { id: 'h9', source: 'mic', text: 'Is there parking nearby?', dismissed: true, gate: 'chatter' } });
+    await page.goto('/#/talk');
+    await page.reload();
+    const quiet = page.locator('.convo .you.quiet');
+    await expect(quiet).toContainText('Is there parking nearby?');
+    await quiet.getByRole('button', { name: 'This was for Shiori' }).click();
+    await expect(quiet.getByRole('button')).toHaveCount(0);
+    const spoken = page.locator('.convo .you.line-spoken');
+    await expect(spoken).toContainText('Is there parking nearby?');
+    await expect(spoken.locator('.line-label')).toHaveText('spoken');
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
+    expect(JSON.stringify(llm.bodies('/b/v1/messages')[0])).toContain('[the user says this was for you] \\"Is there parking nearby?\\"');
+    await expect(page.locator('.convo .shiori p')).toHaveText('Got it.');
+    // Drawn again from the log: still no button, and still a spoken line.
+    await page.reload();
+    await expect(page.locator('.convo .you.quiet')).toHaveCount(1);
+    await expect(page.locator('.convo .you.quiet').getByRole('button')).toHaveCount(0);
+    await expect(page.locator('.convo .you.line-spoken')).toHaveCount(1);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test.describe('the bottom bar, at phone width', () => {
+  for (const [width, height] of [[320, 844], [390, 844], [320, 544], [568, 296]]) {
+    test.describe(`${width} × ${height}`, () => {
+      test.use({ viewport: { width, height } });
+      test('the working status has its space kept: nothing in the bar moves as it shows, voice off and voice on', async ({ page }) => {
+        await openApp(page, '#/talk');
+        const boxes = () => page.evaluate(() => ['nav.dock', '.dock .talk', '.voice-chip', '.live-chip', '.halves-sign'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, b.y, b.width, b.height]; }));
+        for (const voice of ['Off', 'On']) {
+          await page.goto('/#/voice');
+          await page.getByRole('radio', { name: voice, exact: true }).check();
+          await page.goto('/#/talk');
+          await expect(page.locator('nav.dock')).toHaveClass(voice === 'On' ? /\bvoice\b/ : /^(?!.*\bvoice\b)/);
+          const sign = page.locator('.halves-sign');
+          await expect(sign).toBeHidden();
+          const before = await boxes();
+          await sign.evaluate((el) => el.classList.remove('idle'));
+          await expect(sign).toBeVisible();
+          expect(await boxes()).toEqual(before);
+          const inside = await sign.evaluate((el) => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
+          expect(inside).toBe(true);
+          await sign.evaluate((el) => el.classList.add('idle'));
+          // The space kept takes nothing a tap could find, and no name for a screen reader.
+          await expect(page.getByRole('button', { name: 'Stop Kokoro' })).toHaveCount(0);
+        }
+      });
+    });
+  }
+});
+
+test.describe('the GPS chip', () => {
+  test('one tap on, one tap off, with no menu; the screen is kept on by default and the setting is in Settings → Voice', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 10, longitude: 20, accuracy: 10 });
+    await openApp(page, '#/talk');
+    const chip = page.locator('.live-chip');
+    await expect(chip).toHaveText('GPS off');
+    await expect(chip).toHaveAttribute('aria-pressed', 'false');
+    await chip.click();
+    await expect(chip).toHaveText(/^GPS on\b/);
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#live-menu')).toBeHidden();
+    await chip.click();
+    await expect(chip).toHaveText('GPS off');
+    await page.goto('/#/voice');
+    const keep = page.getByLabel('Keep the screen on while GPS is on');
+    if (await page.evaluate(() => 'wakeLock' in navigator)) await expect(keep).toBeChecked();
+  });
+});

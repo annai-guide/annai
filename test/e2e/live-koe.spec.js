@@ -86,7 +86,7 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     expect(kokoroSaw).toContain('[Koe asks]');
     expect(kokoroSaw).toContain('A live voice session opened');
     await page.getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.locator('.convo .you')).toHaveText(['Is Nepenthe open now?']);
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });
     await expect(said.nth(0)).toContainText("I'm checking.");
@@ -216,7 +216,7 @@ test('in Koe · Realtime the last words heard, coming after her turn, reach the 
     });
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect(page.locator('.convo .shiori.said')).toContainText('Somewhere nice by the water.', { timeout: 20_000 });
-    await expect(page.locator('.convo .you.heard')).toHaveText(['Where should we eat tonight?'], { timeout: 10_000 });
+    await expect(page.locator('.convo .you.heard p')).toHaveText(['Where should we eat tonight?'], { timeout: 10_000 });
     // Announced once, its last words, however many times they were revised (follow-up 2).
     await page.waitForTimeout(1200);
     expect((await page.evaluate(() => /** @type {any} */ (window).announced)).filter((/** @type {string} */ t) => t.startsWith('Heard'))).toEqual(['Heard: Where should we eat tonight?']);
@@ -254,7 +254,7 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.append').length).toBeGreaterThan(5);
     expect(kinds.lastIndexOf('input_audio_buffer.append')).toBeLessThan(kinds.indexOf('input_audio_buffer.commit'));
     await page.getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.locator('.convo .you')).toHaveText(['Is Nepenthe open now?']);
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });
     await expect(said.nth(1)).toContainText("It's open until ten tonight.");

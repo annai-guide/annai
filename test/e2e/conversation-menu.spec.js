@@ -51,7 +51,7 @@ test('the Conversation has a menu with Summarize now and Start fresh; Start fres
     await menu.getByRole('button', { name: 'Start fresh' }).click();
     await page.getByRole('dialog', { name: 'Start fresh?' }).getByRole('button', { name: 'Start fresh' }).click();
     await expect(page.locator('.convo .fresh-divider')).toHaveText('Started fresh');
-    await expect(page.locator('.convo .you').first()).toHaveText('Tell me about pelicans');
+    await expect(page.locator('.convo .you p').first()).toHaveText('Tell me about pelicans');
     await expect(page.locator('.convo .shiori p').first()).toContainText('Pelicans nest on the cliffs.');
     // Her next request holds none of the earlier lines.
     await say(page, 'And the weather?', 2);
@@ -62,7 +62,7 @@ test('the Conversation has a menu with Summarize now and Start fresh; Start fres
     // The divider stays between the old lines and the new, and is still there on a reload.
     await page.reload();
     await expect(page.locator('.convo .fresh-divider')).toHaveText('Started fresh');
-    await expect(page.locator('.convo .you')).toHaveText(['Tell me about pelicans', 'And the weather?']);
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Tell me about pelicans', 'And the weather?']);
   } finally {
     await llm.stop();
   }
@@ -82,7 +82,7 @@ test('Summarize now: with too little said it says so; after a few exchanges it s
     await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
     await page.getByRole('button', { name: 'Summarize now' }).click();
     await expect(page.locator('.convo .system-line', { hasText: 'Earlier conversation summarized.' })).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator('.convo .you')).toHaveText(['First', 'Second', 'Third', 'Fourth']);
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['First', 'Second', 'Third', 'Fourth']);
     await expect(page.locator('.convo .fresh-divider')).toHaveCount(0);
     // Her next request: the summary, then only the last exchange word for word (spec §6.5).
     await say(page, 'Fifth', 5);

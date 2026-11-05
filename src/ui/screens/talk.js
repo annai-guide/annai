@@ -17,6 +17,7 @@ import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
+import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
@@ -145,11 +146,15 @@ export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigg
  * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */
 export function reminderParts(d, mine, make = h) {
+  const message = kokorosWords(d) ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
+  return around(message, reminderWords(d, mine, make));
+}
+
+/** A reminder's words alone, marked with their language. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] */
+function reminderWords(d, mine, make = h) {
   const words = d.plan ? planWords(d.plan) : String(d.text ?? '');
-  const answer = d.answer === true || d.title === /* en */ "Shiori's answer";
-  const message = answer ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
   const marked = d.plan ? {} : String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words);
-  return around(message, make('span', { ...marked, text: words }));
+  return make('span', { ...marked, text: words });
 }
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -254,13 +259,15 @@ export async function renderTalk(ctx) {
   const tell = (/** @type {string[]} */ [before, said, after], /** @type {string | undefined} */ lang) => { if (built && (before || said)) announce.replaceChildren(h('span', {}, before, h('span', { lang }, said), after)); };
   /** Heard lines announced, and those waiting HEARD_MS for more words: each is announced once, as its last revision. @type {Map<string, any>} */
   const hearing = new Map();
-  /** @param {string} id @param {HTMLElement} words */
-  const hearSoon = (id, words) => {
+  /** @param {string} id @param {HeardLine} line */
+  const hearSoon = (id, line) => {
     if (!built || hearing.get(id) === true) return;
     clearTimeout(hearing.get(id));
     hearing.set(id, setTimeout(() => {
       hearing.set(id, true);
-      tell(/** @type {string[]} */ (around(words.closest('.system-line') ? t`Heard, not for Shiori: ${WORDS}` : t`Heard: ${WORDS}`, words.textContent ?? '')), mine(words.textContent ?? '').lang);
+      const kind = lineKind({ type: 'heard', data: line.data })?.kind;
+      const words = line.words.textContent ?? '';
+      tell(/** @type {string[]} */ (around(kind === 'unanswered' ? t`Heard, she didn't answer: ${WORDS}` : kind === 'judged' ? t`Heard, not for Shiori: ${WORDS}` : t`Heard: ${WORDS}`, words)), mine(words).lang);
     }, HEARD_MS));
   };
   const cost = h('p', { class: 'sub' });
@@ -277,8 +284,28 @@ export async function renderTalk(ctx) {
     span.textContent = text;
     mark(span, mine(text));
   };
-  /** @type {Map<string, HTMLElement>} heard lines' words, by id: written down, or ending, later (heard.text) */
+  /** @typedef {{ data: any, words: HTMLElement, li: HTMLElement }} HeardLine */
+  /** @type {Map<string, HeardLine>} heard lines, by id: their words are written down, or end, later (heard.text) */
   const unheard = new Map();
+  /** Heard lines the user said were for her ("This was for Shiori"): the quiet line has no button any more. @type {Set<string>} */
+  const claimed = new Set();
+  /** What each ask offered, by call id: a one-half answer doesn't say it was tapped. @type {Map<string, string[]>} */
+  const offered = new Map();
+  /** A heard line, as it stands now: what it is follows its words, and a quiet line offers "This was for Shiori" until it is used. @param {HeardLine} l */
+  const drawHeard = (l) => {
+    const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: 'heard', data: l.data }));
+    const quiet = line.kind === 'unanswered' || line.kind === 'judged';
+    l.li.className = lineClass(line, quiet ? 'you quiet' : 'you heard');
+    const claim = quiet && !claimed.has(l.data.id) ? h('button', {
+      class: 'claim', type: 'button',
+      onclick: () => {
+        claimed.add(l.data.id);
+        drawHeard(l);
+        agent.send(l.words.textContent ?? '', { claim: l.data.id });
+      },
+    }, t`This was for Shiori`) : null;
+    l.li.replaceChildren(h('p', {}, l.words), ...[lineLabel(line), claim].filter((x) => x !== null));
+  };
   // A refused photo's copy is replaced (spec §4.8): your bubble shows the copy Shiori was sent in the end.
   const replaced = replacements(await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: ['photo.replace'] })));
   /** @type {string[]} the photos' addresses, whose memory goes with the screen */
@@ -299,12 +326,10 @@ export async function renderTalk(ctx) {
     }
     return out;
   };
-  /** A line of hers, quietly naming the model that wrote it, as written with it (the user, 2026-10-28). @param {any} d @param {HTMLElement} li */
+  /** A note of the halves', quietly naming the model that wrote it (the user, 2026-10-28; her own lines say it in their label). @param {any} d @param {HTMLElement} li */
   const by = (d, li) => {
-    const b = d.by;
-    if (!b?.name) return li;
-    const who = !b.first || b.first === b.name ? b.name : b.tried ? t`${b.name} · ${b.first} didn't answer` : t`${b.name} · instead of ${b.first}`;
-    li.append(h('span', { class: 'sub by', text: who }));
+    const who = modelWords(d.by);
+    if (who) li.append(h('span', { class: 'sub by', text: who }));
     return li;
   };
   /** The files a message handed over, as chips under its words: each a link to where it is now, plain once it has moved on. @param {any} d */
@@ -334,7 +359,7 @@ export async function renderTalk(ctx) {
   const item = async (e) => {
     const d = e.data ?? {};
     const line = await itemOf(e, d);
-    return line && ['out.speak', 'out.show', 'out.ask', 'note'].includes(e.type) ? by(d, line) : line;
+    return line && e.type === 'note' ? by(d, line) : line;
   };
   /** @param {any} e @param {any} d */
   const itemOf = async (e, d) => {
@@ -343,13 +368,21 @@ export async function renderTalk(ctx) {
       // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words. Files handed over alone: no words.
       const said = d.images?.length && texts.text === PHOTO_ONLY ? t`(a photo)` : String(texts.text ?? '');
       const words = (Array.isArray(d.handed) || typeof d.handover === 'string') && said === FILES_ONLY ? null : h('p', { ...(said === texts.text ? mine(said) : {}), text: said });
-      return h('li', { class: 'you' }, words, ...(await sentPhotos(e)), await handedChips(d));
+      if (typeof d.claim === 'string') {
+        claimed.add(d.claim);
+        const was = unheard.get(d.claim);
+        if (was) drawHeard(was);
+      }
+      const tapped = d.chose || offered.get(d.answer)?.includes(said); // one half's tapped answer stores no chose
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: { ...texts, chose: tapped } }));
+      return h('li', { class: lineClass(line, 'you') }, words, ...(await sentPhotos(e)), await handedChips(d), lineLabel(line));
     }
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
-      if (!d.voice) return h('li', { class: 'shiori' }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }));
-      // Said aloud: its words show like any of hers, marked; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
-      if (showWords) return h('li', { class: 'shiori said' }, h('span', { class: 'who-row' }, h('span', { class: 'who', text: t`Shiori` }), h('span', { class: 'sub said-mark', text: t`said aloud` })), h('p', { ...hers(said), class: 'said-words', text: said }));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      if (!d.voice) return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
+      // Said aloud: its words show like any of hers, marked by the label; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
+      if (showWords) return h('li', { class: lineClass(line, 'shiori said') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
       const words = h('p', { ...hers(said), text: said, hidden: true });
       const show = h('button', {
         class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
@@ -359,33 +392,39 @@ export async function renderTalk(ctx) {
           show.textContent = words.hidden ? t`Show what she said` : t`Hide`;
         },
       }, t`Show what she said`);
-      return h('li', { class: 'shiori said' }, h('span', { class: 'who', text: t`Shiori` }), h('span', { class: 'sub', text: t`Said aloud` }), show, words);
+      return h('li', { class: lineClass(line, 'shiori said') }, h('span', { class: 'who', text: t`Shiori` }), show, words, lineLabel(line));
     }
     if (e.type === 'heard') {
       // What annai heard you say, so you can see what it understood (spec §10.3).
-      const words = h('span', {});
-      heardAs(words, typeof d.text === 'string' ? d.text : '…');
-      unheard.set(d.id, words); // its words may come later, or end later (Gemini's input transcript): heard.text
-      return d.dismissed ? h('li', { class: 'system-line' }, ...around(t`Heard, not for Shiori: ${WORDS}`, words)) : h('li', { class: 'you heard' }, h('p', {}, words));
+      const l = { data: d, words: h('span', {}), li: h('li', {}) };
+      heardAs(l.words, typeof d.text === 'string' ? d.text : '…');
+      unheard.set(d.id, l); // its words may come later, or end later (Gemini's input transcript): heard.text
+      drawHeard(l);
+      return l.li;
     }
     if (e.type === 'heard.text') {
-      const words = unheard.get(d.of);
-      if (words) {
-        heardAs(words, String(d.text ?? ''));
-        hearSoon(d.of, words);
+      const l = unheard.get(d.of);
+      if (l) {
+        l.data = { ...l.data, text: String(d.text ?? '') };
+        heardAs(l.words, l.data.text);
+        drawHeard(l);
+        hearSoon(d.of, l);
       }
       return null;
     }
     if (e.type === 'out.show') {
       const card = shownCard(d, { ctx, onChoice: (o) => agent.send(o), say: hers });
       const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
-      return h('li', { class: 'shiori' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo);
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
       const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
-      const node = h('li', { class: 'shiori' }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), lineLabel(line));
       asks.set(d.id, node);
+      offered.set(d.id, (Array.isArray(d.options) ? d.options : []).map(String));
       return node;
     }
     if (e.type === 'tool.result' && asks.has(d.id)) {
@@ -394,7 +433,8 @@ export async function renderTalk(ctx) {
       return null;
     }
     if (e.type === 'reminder') {
-      return h('li', { class: 'system-line' }, ...reminderParts(d, mine));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      return h('li', { class: lineClass(line, 'note') }, h('p', {}, reminderWords(d, mine)), lineLabel(line));
     }
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
     if (e.type === 'note') return halves ? h('li', { class: 'halves-note' }, h('strong', { text: d.from === 'koe' ? t`Koe to Kokoro:` : t`Kokoro to Koe:` }), sentenceGap(), h('span', { ...hers(String(texts.text ?? '')), text: String(texts.text ?? '') })) : null;
@@ -483,8 +523,8 @@ export async function renderTalk(ctx) {
         list.append(node);
         undo.saw(e);
         if (e.type === 'heard') {
-          const words = unheard.get(e.data?.id);
-          if (words && typeof e.data?.text === 'string') hearSoon(e.data.id, words);
+          const l = unheard.get(e.data?.id);
+          if (l && typeof e.data?.text === 'string') hearSoon(e.data.id, l);
         } else {
           const who = node.querySelector('.who');
           // A plugin's kind of card is drawn by its plugin: the choices and the photo annai draws on its own cards are not on it.
@@ -492,11 +532,13 @@ export async function renderTalk(ctx) {
           const choices = (e.type === 'out.ask' ? e.data?.options : kind ? [] : e.data?.card?.choice);
           const pick = Array.isArray(choices) ? choices.slice(0, 6).map(String) : [];
           let words = plain(node);
-          if (e.type === 'out.speak') words = node.querySelector('p')?.textContent ?? '';
+          // A reminder reads as it says itself, not its words run into its label.
+          if (e.type === 'reminder') words = reminderParts(e.data ?? {}, mine, (_, a) => String(a.text)).join('');
+          else if (e.type === 'out.speak') words = node.querySelector('p')?.textContent ?? '';
           else if (e.type === 'out.ask') words = String(e.data?.question ?? '');
           else if (e.type === 'out.show') {
             // The card's own words, its blocks apart, without the label and the buttons that answer it (they are read as its choices).
-            words = textOf(node, pick.length ? /* en */ '.who, .by, .card .acts button' : '.who, .by');
+            words = textOf(node, pick.length ? /* en */ '.who, .line-label, .card .acts button' : '.who, .line-label');
           }
           // Her words carry their language; annai's labels, errors and notes around and beside them do not.
           const parts = announced(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {});

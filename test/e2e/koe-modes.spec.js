@@ -98,7 +98,7 @@ test("the voice chip says which of Koe's lists talks and switches it, kept acros
     await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime off');
     m = await menu(page);
     await expect(m.getByText('Shiori answers directly until it can.')).toBeVisible();
-    await page.keyboard.press('Escape');
+    await page.locator('.voice-chip').click(); // its menu closes, not left over the next screen's buttons
     await page.goto('/#/models');
     await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'koe-model' });
     await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
