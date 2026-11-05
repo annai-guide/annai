@@ -246,7 +246,7 @@ test('off screen and back every 50 s while parked: the hold of moving fast goes 
     if (t.activity !== 'moving-fast') ended = s + 45;
   }
   assert.ok(ended !== null && ended <= 110, `moving fast ended at ${ended}`); // the first fix a minute after the first slow speed
-  // Unlocked at a red light after a drive with the screen off: the first fix back that says slow ends it (accepted), a fast one keeps it.
+  // Unlocked where the phone locked, with the screen off since: the first fix back that says slow ends it, a fast one keeps it.
   const u = driving();
   u.feed(at(BIXBY, 0, { speed: 14 }));
   u.heard(T0 + 300_000);
@@ -344,6 +344,39 @@ test('after an unlock or a reload one fix without a speed and then silence ends 
   u.heard(T0 + 600_000);
   u.feed(at(BIXBY, 601, { speed: 14 }));
   assert.equal(u.tick(T0 + 601_000 + 600_000), null);
+});
+
+test('the way since the last fix says the drive went on: a slow first fix back starts the hold; a short way leaves it dating from the last fix (fix pass 3)', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 14 }));
+  t.heard(T0 + 180_000);
+  const light = off(BIXBY, 0, -2500); // 14 m/s for three minutes
+  assert.equal(t.feed(at(light, 185, { speed: 0 })), null);
+  assert.equal(t.feed(at(light, 240, { speed: 0 })), null);
+  assert.equal(t.feed(at(light, 246, { speed: 0 }))?.at, T0 + 185_000 + 60_000);
+  // A coarse first fix can't say it did not go on: the first good one can.
+  const c = driving();
+  c.feed(at(BIXBY, 0, { speed: 14 }));
+  c.heard(T0 + 180_000);
+  assert.equal(c.feed(at(BIXBY, 185, { accuracy: 3000 })), null);
+  assert.equal(c.feed(at(light, 200, { speed: 0 })), null);
+  assert.equal(c.activity, 'moving-fast');
+  // Two locks before a fix: the way counts from the last fix of all.
+  const d = driving();
+  d.feed(at(BIXBY, 0, { speed: 14 }));
+  d.heard(T0 + 100_000);
+  d.heard(T0 + 170_000);
+  assert.equal(d.feed(at(light, 185, { speed: 0 })), null);
+  // No fix since the unlock: it ends two minutes on, and dates from then.
+  const n = driving();
+  n.feed(at(BIXBY, 0, { speed: 14 }));
+  n.heard(T0 + 180_000);
+  assert.equal(n.tick(T0 + 300_000)?.at, T0 + 300_000);
+  // Between fixes on screen nothing is different: the hold of a stop goes on over an unlock whose way is short.
+  const s = driving();
+  s.feed(at(BIXBY, 0, { speed: 0.2 }));
+  s.heard(T0 + 50_000);
+  assert.equal(s.feed(at(BIXBY, 65, { speed: 0.2 }))?.at, T0 + 60_000);
 });
 
 test('moving fast is said to have ended when its hold ran out, not when the page found out (fix pass 2)', () => {

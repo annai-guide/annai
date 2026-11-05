@@ -167,7 +167,7 @@ function startSide(w, m, mem) {
 
 /** @type {TriggerType} */
 /* en */ const MOVED = {
-  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far with GPS on, counted from when the watch is set or (with repeat) its last firing, in any conversation; a reload doesn\'t reset it',
+  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far, counted from when the watch is set or (with repeat) its last firing, in any conversation; a reload doesn\'t reset it',
   validate: (w) => (num(w?.km, 0.1, 1000) ? null : 'km must be a number from 0.1 to 1000'),
   describe: (w) => `after ${w.km} km travelled`,
   check: (w, m, mem) => {

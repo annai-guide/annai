@@ -185,6 +185,8 @@ function eraseControls(ctx) {
       go.disabled = true;
       // A live session closes and is forgotten first: its microphone with it (security review).
       ctx.agent?.hush?.('erase');
+      // Live mode stops: as the page goes it would write its record again.
+      ctx.live?.dispose?.();
       // Shiori's turns stop; what providers keep is deleted while the keys are here (spec §4.9).
       status.textContent = t`Erasing…`;
       ctx.agent?.leaving?.();

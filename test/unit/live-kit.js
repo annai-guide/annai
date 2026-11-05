@@ -91,6 +91,16 @@ export function fakeSensors(registry) {
   };
 }
 
+/** Where the drive's one record is kept, as main.js's localStorage does it: whole, as text, and overwritten. @param {any} [first] */
+export function memoryKeep(first = null) {
+  let text = JSON.stringify(first);
+  return {
+    get: () => JSON.parse(text),
+    /** @param {any} r */
+    set: (r) => { text = JSON.stringify(r); },
+  };
+}
+
 /**
  * A memory annai in live mode: a trip with the plan and bookings given, a Live engine on a manual
  * clock (08:30 on the day of the drive), sensors driven by hand, and an agent that records.
@@ -110,23 +120,24 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
   const clock = new ManualClock(start);
   const agent = fakeAgent(trip);
   const sensors = fakeSensors(registry);
-  const engine = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
+  const keep = memoryKeep();
+  const engine = new Live({ store, ws, registry, agent, clock, keep, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
   await engine.start();
   await engine.logStart(); // main.js writes it once the installed plugins have started
   await engine.settled();
   const settle = () => k.live.settled();
   const k = {
-    registry, store, ws, trip, clock, agent, sensors, live: engine, settle,
+    registry, store, ws, trip, clock, agent, sensors, keep, live: engine, settle,
     /** The page reloads: the engine stops, and a new one starts over the same store, with the same clock and sensors. */
     async restart() {
       k.live.dispose();
-      k.live = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
+      k.live = new Live({ store, ws, registry, agent, clock, keep, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
       await k.live.start();
       await k.live.logStart();
       await k.live.settled();
       return k.live;
     },
-    /** The page reloads as a phone does it: it goes out of view first (the odometer is logged), then the page is gone. */
+    /** The page reloads as a phone does it: it goes out of view first (the record is written), then the page is gone. */
     async reload() {
       k.sensors.visible(false);
       await settle();

@@ -147,7 +147,7 @@ Measured on the drive (53 live turns, one car, one volume): the user's voice pea
 
 annai decides when each audio turn begins (`automaticActivityDetection: { disabled: true }`), so lyrics that never open a turn never reach the model, cost nothing, and can't be answered:
 - The detector (`src/core/voice/detector.js`, about line 240) gains a minimum level for starting speech, reaching LiveInput through a callback as `speaking` does. Under it, a frame doesn't start a turn. A turn already going on is untouched. Every turn start comes from the detector's one `speech` event. Frames kept out this way raise `blips`, so `noisy` turns true and she plays at once: keep them out of that count, and test that the floor's creep doesn't defeat the -70 dB line.
-- `voiceDb`: the loudest turn peak heard lately, a running maximum that falls about 3 dB a minute, so a lyric can't lower it quickly and a slammed door passes. It lives on the Koe live object across sessions, and resets when the audio route changes (`voice.route`).
+- `voiceDb`: the loudest peak of turns Koe answered or the user tapped, a running maximum with no fall over time. A tapped turn sets it anew, and it resets when the audio route changes (`voice.route`). It lives on the Koe live object across sessions. (Reversed from a first version that fell 3 dB a minute and learned from every turn: lyrics got through after a minute, and each woke Kokoro.)
 - While the floor is above about -70 dB, the minimum is `voiceDb - 10`. In a quiet car there is no minimum. With no `voiceDb` yet there is no minimum.
 - A tap lifts the minimum until its first turn ends: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
 - `live.turn` also logs `voiceDb` and the minimum in force, and a count of frames over the floor that the minimum kept from starting a turn, so the next drive can tune the constants. The constants are the main session's first guess, measured from one drive.
@@ -182,11 +182,48 @@ The status read "moving fast" about 4 minutes after the car had stopped: speed f
 - **Parked 3 minutes.** Not the activity's fault: `arrived` reads `m.stop` (`src/core/live/triggers.js`, about lines 150 to 162). Shiori also cancelled the leftover watches about 3 minutes after the car stopped, so it may not have had its chance. Read how `m.stop` behaves with those fixes and report; fix only if it's wrong.
 - **Red lights.** "When moving fast starts" fired again after a stop at a light. It fires unless moving fast ended under 5 minutes ago: that also covers parked for an hour, walked 3 minutes, then drove. Watches on stopping still fire as they do: the user counted that as a pass. No new options on `watch_set`.
 
+### Surviving a reload (the user, 2026-11-04)
+"I think we might need to fix this? because iphone clears background apps (we are web pages?) quite aggressively? And if user want to be notified then it is quite important we make that accurate. and user may actually want to know where they said that as well?" And: "I think restart actaully might be quite common? indeed today I almost did not switch away still happened?"
+
+- All a reload needs lives in **one small overwritten record**, read synchronously at start: `{ at, odometer, odo: { lat, lng, at, accuracy }, activity, ended }`. It stays in localStorage (`annai.drive`), reached through Live's injected `keep`, so a simulation writes none and core stays testable; it isn't in exports, backups or the trace sink, and Erase clears it. It is written on each activity change, each km while moving, the 5-minute beat and going off screen, all from one method. (Three earlier rounds kept this state in several places: in-memory fields, `state` entries read back at start, the open trip's last point. Each round found another disagreement among them.)
+- The `state` entries stay as evidence for the Trace (no position), and nothing reads them back.
+- The odometer and the place it counts from come back whatever the record's age. They are written together, so the way since then counts once at the first fix back, even after a page killed unseen, and whichever conversation is open. A `moved` watch records the odometer reading and place when set and at each firing, and its firing says where it was set. (A first version recounted from the logged points: it skipped the odometer's filters and couldn't count outside the open trip.)
+- The activity and when moving fast ended come back if the record is under 5 minutes old, so a reload at a light or mid-drive doesn't re-fire "moving fast starts". If the record says moving fast and is older, the way speed from its place to the first fix decides: at or above 5 m/s it's the same drive (the usual iPhone case: killed while locked on the road), and nothing starts.
+- A place the user gives is a jump: the next fix counts from where it is. A fix coarser than 100 m is no place to count from.
+- Locked on the road and unlocked: if the way since the last fix is at or above 5 m/s the drive went on, so moving fast's hold starts at the first slow fix. With no fix since the unlock, moving fast ends 2 minutes on and dates from then.
+- `app.start` is logged per page load. The trace can't show reloads today, so how common they are is not yet measured.
+
+### A parked phone drifting to walking
+Not decided. The user will leave the app open at home with GPS on, on the build with the activity log and its 5-minute heartbeat: "do you want to test now? I can have the app open while at home to see if it drifts?"
+
 ## 5. How annai's screens are organised (waiting for the user)
 
 The user, on 2026-11-04: "Yeah I do not think Now is a good idea. however I kinda want to explore some other options as well... because everything come back to the conversation screen, maybe make that the base screen to come back to?... maybe the plan screen can say something like agenda, calendar or something? because plan is also a verb... for the trip, is more like to manage this trip? maybe we can make that a screen they enter after pressing a button? this way maybe we do not need the three tabs at all?... or maybe we can emulate some sort of chat app? user click a trip to open its conversation, and manage everything related to it inside that trip?... let's explore some wild ideas first and decide on the more general stuff before digging into which module where".
 
 Sketches (private): https://claude.ai/artifact/XKxbX3EtPvHkDBxXHjyueP. Nothing here is decided, and nothing here is built yet.
+
+## 6. Voice switches (after the branches above)
+
+The user: "the voice is bit busy? it says Voice on ` your last choice ` realtime, which almost takes the whole line... for the auto voice mode, shall we review its design? do you think user will understand what it does? should it just be a simple toggle for on and off? ( well also the realtime mode on and off )". Picked: "On/off, plus on while driving (Recommended)". Evidence: across the whole trace the iPhone's audio read only as unknown or speaker; a car was never detected.
+
+- Voice is one tap on or off. Live is its own switch (it replaces the Realtime and Classic wording). The chips read `Voice on` and `Live`, and `Voice on · driving` while driving; no other reason shows.
+- A tap on Shiori always talks, for that exchange, with Voice off too. The keyboard button is how to type. The hold from item 1 stays.
+- One automatic rule: voice is on while driving (needs GPS on).
+- Auto goes, with `route`, `lastChoices` and the audio-name matching. A saved `auto` reads as off. The settings format stays tolerant.
+
+Voice also turns off by itself, in two cases. The user: "I am thinking maybe we should include some automatic turns voice off senerios? maybe like from moving fast to stopped, or headphone disconnect? for things we know user might not want it play through speaker. and they can always just start talking again by tapping the avator."
+- **A drive ends:** when Auto's old "moving" hold ends, about 3 minutes after stopping (section 4's `fastEnded`), voice goes off, even if the user turned it on themselves. Only at that moment: turning it on afterwards stays on. A reminder due in that same moment is said first.
+- **An audio device disconnects:** when a non-phone audio device disappears (`devicechange`, with no name matching), voice goes off at once and stops mid-word. That also covers a car's Bluetooth. Not verified: that iOS tells a web page. The iPhone did list a watch by name in the trace. A device check, and `voice.route` logs the change.
+- A short note says why ("Voice off: headphones disconnected"). A tap on Shiori still talks.
+
+## 7. Detailed trace (before the next long drive)
+
+The user: "do you want to build a more enhanced and heavier trace mode (option) with more information like recordings / even screenshots able to be collected?" Picked: "Yes, before the next long drive (Recommended)". Off by default; sends only to the user's own trace server.
+
+- Recordings of what the microphone heard, including samples of sound the level check kept out. Stored and sent as blobs named as spec §4.9 asks. The trace server takes them.
+- A text copy of what's on screen at each moment that matters. Real screenshots aren't possible from an iPhone web page as far as the main session knows (not checked).
+- A "flag this" button: it marks the moment and keeps the sound and screen around it.
+- A plain warning: recordings include passengers and whatever is playing.
 
 ## Out of scope
 
@@ -204,4 +241,3 @@ Sketches (private): https://claude.ai/artifact/XKxbX3EtPvHkDBxXHjyueP. Nothing h
 - "See what Koe sees" beside Kokoro's (the user asked about Kokoro's).
 - A dismissed live turn at the user's own level cues Kokoro; lyrics don't.
 - A live session's listening windows stay at 8 s.
-- `voiceDb` learns from every turn, not only answered ones: the spec check's worry, a lyric setting it first, is no worse than today until the user speaks, and a running maximum recovers at once.
