@@ -284,7 +284,7 @@ test('voice off, a conversation switch, the page going and Erase each close it a
 test('a trigger opens a session, says it, then listens; its reminder is never said by annai too', async () => {
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone() }]);
   try {
-    await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } }); // it listens for an answer this long (0.6 s here)
+    k.agent.live.answerSeconds = 60; // it listens for an answer this long (0.6 s here)
     await k.voice.unlock(); // an earlier tap
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -1199,6 +1199,170 @@ test("a session whose audio rate is missing doesn't stop her voice at once (foll
     const [line] = await k.events(['out.speak']);
     assert.equal(Boolean(line.data.cut), false, 'not cut');
     assert.ok(k.platform.streams.at(-1).playedMs > 500, 'played through');
+  } finally {
+    await k.done();
+  }
+});
+
+test('Auto, voice off, Realtime chosen: a tap works Koe out again and opens a live session, held on until it closes; its line names its model; then Classic again', async () => {
+  const k = await liveKit([{ said: 'Left at the light.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    await updateAppSettings(k.ws, { voice: { mode: 'auto' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
+    assert.equal(k.agent.tap(), 'listening');
+    assert.equal(k.voice.mode.why, 'tapped');
+    await soon(async () => k.agent.koeState === 'live' && k.agent.live.state === 'open');
+    await soon(async () => k.agent.live.listening);
+    k.agent.send('Which way?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    const said = (await k.events(['out.speak']))[0];
+    assert.equal(said.data.live, true);
+    assert.deepEqual(said.data.by, { name: 'Gemini 3.8 Live', first: null, tried: false });
+    assert.equal(k.voice.on, true, 'the session is open: the exchange goes on');
+    k.agent.live.close('tap');
+    await soon(async () => !k.voice.on);
+    await soon(async () => k.agent.koeState === 'text');
+    assert.equal(k.voice.mode.why, 'not sure');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a claim in a live session goes in as a text turn that says it was for her, in the log as a msg.user with claim', async () => {
+  const k = await liveKit([{ said: 'Yes.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.agent.send('Is there parking?', { claim: 'h1' });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.deepEqual((await k.events(['msg.user'])).map((e) => [e.data.claim, e.data.text]), [['h1', 'Is there parking?']]);
+    assert.ok(texts(k).some((x) => x.includes('[the user says this was for you] "Is there parking?"')), JSON.stringify(texts(k)));
+  } finally {
+    await k.done();
+  }
+});
+
+// Fix pass 1, finding 4: a tap whose live session can't open did nothing the user could see.
+for (const mode of /** @type {const} */ (['auto', 'on'])) {
+  test(`${mode}: a tap whose live session can't open falls back to Classic's microphone, and voice stays on`, async () => {
+    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: mode === 'on' ? 'on' : 'auto' } });
+    try {
+      if (mode === 'auto') {
+        await k.voice.refresh();
+        await k.agent.idle();
+      }
+      k.llm.live = async () => { throw new Error('the connection was refused'); };
+      assert.equal(k.agent.tap(), 'listening');
+      await soon(async () => k.agent.koeState === 'text');
+      await soon(async () => k.agent.state.name === 'listening');
+      assert.equal(k.voice.on, true);
+      assert.ok(k.platform.log.some((/** @type {string} */ l) => l.startsWith('mic open')), 'Classic opened the microphone');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("a tap whose live session can't open, with Classic resting too, says so in the card that sends use", async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    k.llm.live = async () => { throw new Error('the connection was refused'); };
+    assert.equal(k.agent.tap(), 'listening');
+    await soon(async () => k.notices.some((/** @type {any} */ n) => n.title === "Koe's live voice couldn't start"));
+  } finally {
+    await k.done();
+  }
+});
+
+// Fix pass 2.
+/** The second tap's fallback tests: live fails to open. @param {any} k */
+const refuse = (k, only = null) => {
+  const real = k.llm.live;
+  k.llm.live = async (/** @type {string} */ id, /** @type {any} */ ...rest) => { if (only && id !== only) return real(id, ...rest); throw new Error('the connection was refused'); };
+};
+
+test("fix pass 2, finding 2: a tap whose live session can't open leaves a Kokoro turn that is working alone (no Stopped by the user), and says so", async () => {
+  const k = await liveKit([], { kokoro: [[{ delayMs: 400, toolCalls: [{ name: 'speak', input: { text: 'Here is the note.' } }] }, sleep]], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live');
+    refuse(k);
+    k.agent.kokoro.send('Where are we?'); // Kokoro is working on its own
+    await soon(async () => k.agent.kokoro.state.name === 'thinking');
+    assert.equal(k.agent.tap(), 'listening');
+    await soon(async () => k.notices.some((/** @type {any} */ n) => n.title === "Koe's live voice couldn't start"));
+    await k.agent.idle();
+    const spoken = (await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text);
+    assert.deepEqual(spoken, ['Here is the note.']);
+    assert.doesNotMatch(JSON.stringify(await k.events(['msg.tool', 'msg.assistant', 'tool.result'])), /Stopped by the user/);
+  } finally {
+    await k.done();
+  }
+});
+
+test("fix pass 2, finding 2: On, tapped then typed while the open fails: the typed message's fallback is not stopped by the tap's", async () => {
+  const k = await liveKit([], { kokoro: [[{ delayMs: 300, toolCalls: [{ name: 'speak', input: { text: 'Typed answer.' } }] }, sleep]], koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'on' } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    assert.equal(await k.agent.split(), true);
+    k.llm.live = async () => { await new Promise((r) => setTimeout(r, 150)); throw new Error('the connection was refused'); };
+    assert.equal(k.agent.tap(), 'listening'); // the open is under way
+    k.agent.send('Where are we?');
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 600));
+    await k.agent.idle();
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Typed answer.']);
+  } finally {
+    await k.done();
+  }
+});
+
+test("fix pass 2, finding 3: spend reached: a tap shows the budget card and not 'Koe's live voice couldn't start'", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }]);
+  try {
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    await k.agent.idle();
+    const budget = () => k.notices.filter((/** @type {any} */ n) => n.title === "Shiori stopped: today's budget is spent").length;
+    assert.equal(budget(), 1);
+    assert.equal(k.agent.tap(), 'listening');
+    await new Promise((r) => setTimeout(r, 400));
+    await k.agent.idle();
+    assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((/** @type {string} */ t) => /couldn't start/.test(t)), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("fix pass 2, finding 4: two Realtime models, the first refusing: one tap opens the second and Koe listens, without a card", async () => {
+  const k = await liveKit([], { live: { second: true }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    refuse(k, 'm-live');
+    assert.equal(k.agent.tap(), 'listening');
+    await soon(async () => k.agent.live.state === 'open' && k.agent.live.listening);
+    assert.equal(k.agent.live.modelId, 'm-live2');
+    assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((/** @type {string} */ t) => /couldn't start/.test(t)), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("fix pass 2, finding 5 (Step): Auto, two quick taps on the avatar while the first's refresh runs: the microphone opens and stays open", async () => {
+  const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'auto' } });
+  try {
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.equal(k.agent.tap(), 'listening'); // voice off in Auto: held on, the route works Koe's way out
+    const second = k.agent.tap();
+    assert.equal(second, 'listening');
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(k.agent.state.name, 'listening', `the second tap's listening was shut by the first's re-run (${second})`);
+    assert.ok(k.platform.log.some((/** @type {string} */ l) => l.startsWith('mic open')));
   } finally {
     await k.done();
   }

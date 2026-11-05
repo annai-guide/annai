@@ -521,6 +521,9 @@ test("the trace's one-line summaries of live mode: points, firings, reminders an
   assert.equal(traceSummary({ type: 'reminder', data: { text: 'Tea time.', aloud: true } }), 'said aloud · Tea time.');
   assert.equal(traceSummary({ type: 'state', data: { live: 'on' } }), 'GPS on');
   assert.equal(traceSummary({ type: 'state', data: { voice: 'on', why: 'moving' } }), 'voice on (moving)');
+  // The entry for each km of way carries no hold, gap or readings; the odometer shows on every activity entry.
+  assert.equal(traceSummary({ type: 'state', data: { activity: 'moving-fast', from: 'moving-fast', speed: 14.2, odometer: 12.345 } }), 'moving-fast, unchanged · 14.2 m/s · 12.3 km');
+  assert.match(traceSummary({ type: 'state', data: { activity: 'still', from: 'moving-fast', speed: 0.2, odometer: 3, heldS: 61, gapS: 4, readings: { still: 1 } } }), /^moving-fast to still · 0\.2 m\/s · 3\.0 km · held 61 s/);
 });
 
 test('the Offline pack panel: the estimate before anything is downloaded, then what it holds and what an update brings (spec §11.5)', () => {
@@ -927,4 +930,13 @@ test('countParts: what else goes, in words', () => {
   assert.deepEqual(countParts(2, 1), ['2 bookings', '1 plan item']);
   assert.deepEqual(countParts(0, 3), ['3 plan items']);
   assert.deepEqual(countParts(0, 0), []);
+});
+
+// Fix pass 1, item 9: the Trace says a claim was a claim, and a live line nobody answered was not judged.
+test("the trace's lines: a claim says so, a live heard line nobody answered says that, and a plain message is as it was", () => {
+  const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'x', scope: 's' });
+  assert.equal(traceSummary(e('msg.user', { text: 'Is there parking?', claim: 'h1' })), 'this was for Shiori · Is there parking?');
+  assert.equal(traceSummary(e('msg.user', { text: 'Is there parking?' })), 'Is there parking?');
+  assert.match(traceSummary(e('heard', { id: 'h', source: 'live', text: 'la la', dismissed: true })), /she didn't answer/);
+  assert.match(traceSummary(e('heard', { id: 'h', source: 'mic', ms: 900, text: 'la la', dismissed: true })), /not for Shiori/);
 });

@@ -334,10 +334,11 @@ test('a reminder\'s label is annai\'s: only its words carry their language', asy
   const trip = await startTrip(page, 'Kyoto Spring');
   await writeEvent(page, trip, { type: 'reminder', data: { title: 'Reminder', aloud: true, text: '京都駅で会いましょう。' } });
   await page.goto('/#/talk');
-  const line = page.locator('.convo li.system-line');
-  await expect(line).toHaveText('Reminder, said aloud: 京都駅で会いましょう。');
+  const line = page.locator('.convo li.line-reminder');
+  await expect(line.locator('p')).toHaveText('京都駅で会いましょう。');
+  await expect(line.locator('.line-label')).toHaveText('annai · said aloud');
   await expect(line).not.toHaveAttribute('lang', /./);
-  await expect(line.locator('span')).toHaveAttribute('lang', 'ja');
+  await expect(line.locator('p span')).toHaveAttribute('lang', 'ja');
   await page.goto('/#/now');
   const card = page.locator('p.system-line');
   await expect(card).toHaveText('Reminder, said aloud: 京都駅で会いましょう。');

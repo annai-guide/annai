@@ -16,7 +16,7 @@ const fileOf = (name) => /* en */ `/personalities/${name}.md`;
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
 /** Her states as spec §16.3 names them, in its order, each with what a screen reader says of her in it. */
-const LOOKS = /** @type {const} */ ([['sleeping', t`Asleep`, t`Shiori, asleep`], ['listening', t`Listening`, t`Shiori, listening`], ['hearing', t`Hearing you`, t`Shiori, hearing you`],
+const LOOKS = /** @type {const} */ ([['sleeping', t`Asleep`, t`Shiori, asleep`], ['listening', t`Listening`, t`Shiori, listening`], ['ignoring', t`Ignoring sound`, t`Shiori, ignoring background sound`], ['hearing', t`Hearing you`, t`Shiori, hearing you`],
   ['thinking', t`Thinking`, t`Shiori, thinking`], ['speaking', t`Talking`, t`Shiori, talking`], ['waiting', t`Your turn`, t`Shiori, your turn`], ['away', t`Working`, t`Shiori, working`],
   ['offline', t`Offline`, t`Shiori, offline`]]);
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
+import { openApp, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const sleep = { name: 'sleep', input: {} };
@@ -21,7 +21,6 @@ async function setUp(page, origin) {
 /** Turns live mode on from the chip. @param {any} page */
 async function liveOn(page) {
   await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS on' }).click();
 }
 
 /** The page as if the phone locked (true) or unlocked (false). @param {any} page @param {boolean} hidden */
@@ -84,7 +83,7 @@ test("no model can be reached: annai shows the plan's reminder itself, and the c
     await expect(page.locator('.notice', { hasText: 'Reminder' })).toContainText('In 15 min: Tea at the inn at');
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toBeVisible();
     await page.goto('/#/talk');
-    await expect(page.locator('.convo .system-line', { hasText: 'Reminder:' })).toContainText('In 15 min: Tea at the inn at');
+    await expect(page.locator('.convo .line-reminder').filter({ hasText: 'annai · shown' })).toContainText('In 15 min: Tea at the inn at');
   } finally {
     await llm.stop();
   }
@@ -122,6 +121,28 @@ test('the phone locked and unlocked: one catch-up wake, with the time away and w
   }
 });
 
+test('the drive\'s one record is kept in this browser as the page goes off screen, and Erase takes it, though the page goes after it', async ({ page, context }) => {
+  const record = () => page.evaluate(() => JSON.parse(localStorage.getItem('annai.drive') ?? 'null'));
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.40, longitude: -121.90, accuracy: 10 });
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.goto('/#/now');
+  await liveOn(page);
+  // Off screen and back until the first fix has come: the record then says where the odometer counts from.
+  await expect.poll(async () => {
+    await locked(page, true);
+    await locked(page, false);
+    return (await record())?.odo?.lat;
+  }).toBe(36.40);
+  expect((await record()).odometer).toBe(0);
+  await page.goto('/#/settings');
+  await page.getByLabel('Type ERASE to confirm').fill('ERASE');
+  await page.getByRole('button', { name: 'Erase now' }).click();
+  await pastWelcome(page);
+  expect(await record()).toBeNull();
+});
+
 test('location refused: a card with steps for this phone, and "Where are you?" with the plan\'s places (spec §17)', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
@@ -133,8 +154,9 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);
   await expect(page.locator('.live-chip')).toHaveText('GPS on · no location');
-  await page.locator('.live-chip').click();
-  await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Bixby Creek Bridge' }).click();
+  await page.goto('/#/drive');
+  await page.getByRole('button', { name: 'Bixby Creek Bridge' }).click();
+  await page.goto('/#/now');
   await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
   // annai starts again with location still refused: the card isn't shown again.
   await page.reload();
@@ -198,7 +220,7 @@ test("Trace → Live shows the firings, reminders and switches however many loca
   await expect(page.locator('ol.trace .k', { hasText: 'trigger.fired' })).toHaveCount(1);
 });
 
-test('the live menu fits a narrow phone, says it pops up, closes on a tap elsewhere, and a double tap never opens it twice', async ({ page }) => {
+test('the GPS chip is a switch on a narrow phone: no menu; with no location, Driving asks where you are, from the plan\'s places', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
@@ -207,21 +229,16 @@ test('the live menu fits a narrow phone, says it pops up, closes on a tap elsewh
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   const chip = page.locator('.live-chip');
-  const menu = page.getByRole('group', { name: 'GPS' });
-  await expect(chip).toHaveAttribute('aria-haspopup', 'true');
-  await chip.click();
-  await expect(menu).toBeVisible();
-  const box = await menu.boundingBox();
-  expect(box && box.x >= 0 && box.x + box.width <= 320).toBe(true);
-  await page.getByRole('heading', { name: 'Big Sur' }).click();
-  await expect(menu).toBeHidden();
-  await expect(chip).toHaveAttribute('aria-expanded', 'false');
-  // With no location, the menu reads the plan's places as it opens: a second tap meanwhile closes it.
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+  await expect(chip).not.toHaveAttribute('aria-haspopup', /./);
   await liveOn(page);
   await expect(chip).toHaveText('GPS on · no location');
-  await chip.dblclick();
-  await expect(menu).toBeHidden();
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: 'GPS' })).toHaveCount(0);
+  await page.goto('/#/drive');
+  await expect(page.locator('.screen.drive').getByText('Where are you?')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Bixby Creek Bridge' })).toHaveCount(1);
   await chip.click();
-  await expect(menu.getByText('Where are you?')).toHaveCount(1);
-  await expect(menu.getByRole('button', { name: 'Bixby Creek Bridge' })).toHaveCount(1);
+  await expect(chip).toHaveText('GPS off');
+  await expect(page.locator('.screen.drive').getByText('Where are you?')).toHaveCount(0);
 });

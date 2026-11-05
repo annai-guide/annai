@@ -331,3 +331,39 @@ test('a floor whose first frame was speech (a microphone that opens on a word) s
   const events = detect(cat(new Float32Array(RATE / 2), loud, eat, quiet(1.5)));
   assert.deepEqual(events.map((e) => e.type), ['speech', 'segment']);
 });
+
+// The level check (the second-drive design, section 3).
+test('the minimum: a frame under it starts no speech once the floor is learned; a run going on is untouched; neither a blip nor the floor', () => {
+  const heard = [];
+  const d = new Detector({ sampleRate: RATE, minDb: () => -15 });
+  const push = (/** @type {Float32Array} */ pcm) => { for (const e of d.push(pcm)) heard.push(e.type); };
+  push(quiet(1.2, 0.006)); // learned
+  const floor = /** @type {number} */ (d.floorDb);
+  const blips = d.blips;
+  push(hum(3, 0.05)); // about -30 dB: over the floor, under the minimum
+  assert.deepEqual(heard, []);
+  assert.ok(d.keptFrames > 50, `${d.keptFrames} kept`);
+  assert.equal(d.blips, blips, 'not noise');
+  assert.ok(/** @type {number} */ (d.floorDb) < floor + 3, `floor ${floor} to ${d.floorDb}`);
+  assert.ok(d.stillMs > 1000, 'its quiet is quiet');
+  push(hum(0.5, 0.5)); // about -9 dB: speech; and what falls under it goes on as the run
+  assert.deepEqual(heard, ['speech']);
+  assert.ok(d.speaking);
+  push(hum(0.5, 0.05));
+  assert.ok(d.speaking, 'a quiet stretch in a run is the run');
+  d.reset();
+});
+
+test('the minimum: never before a floor is learned: a word said as a microphone opens is heard', () => {
+  const d = new Detector({ sampleRate: RATE, minDb: () => -5 });
+  const events = [...d.push(quiet(0.2, 0.006)), ...d.push(hum(0.5, 0.05))];
+  assert.ok(events.some((e) => e.type === 'speech'));
+});
+
+test('the minimum: a room gone loud for good, steady, becomes the floor all the same', () => {
+  const d = new Detector({ sampleRate: RATE, minDb: () => -5 });
+  d.push(quiet(1.2, 0.0006));
+  const was = /** @type {number} */ (d.floorDb);
+  d.push(quiet(1.5, 0.02));
+  assert.ok(/** @type {number} */ (d.floorDb) > was + 15, `floor ${was} to ${d.floorDb}`);
+});

@@ -70,6 +70,8 @@ export class Voice {
   unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: /* en */ 'not sure' };
+  /** A tap on the avatar holds Auto on (hold). */
+  #tapped = false;
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
@@ -85,6 +87,10 @@ export class Voice {
   #unlocking = Promise.resolve();
   /** @type {Promise<boolean> | null} the unlock still starting, which no other starts over (unlock) */
   #trying = null;
+  /** Sound stopped coming out after a tap had unlocked it: the next tap makes the sound anew. */
+  #stuck = false;
+  /** @type {Set<(stuck: boolean) => void>} */
+  #sound = new Set();
 
   /**
    * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
@@ -104,8 +110,7 @@ export class Voice {
       synthesize: (entry, text, signal) => this.#clip(entry.id, text, signal),
       platform: () => this.platform,
       now: () => this.now(),
-      // A stream the page couldn't play (an iPhone's audio suspended): whole clips until a tap unlocks sound again.
-      onBlocked: () => { this.#unlocked = false; },
+      onBlocked: () => this.soundStopped(),
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
       browserOptions: async (text) => {
         const app = await readAppSettings(this.ws);
@@ -236,14 +241,17 @@ export class Voice {
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
     try {
-      tried = this.platform?.player.unlock();
+      tried = this.platform?.player.unlock(this.#stuck ? { fresh: true } : undefined);
     } catch {
       tried = undefined;
     }
     if (!tried) return Promise.resolve(false);
     // A platform's unlock may give a plain boolean rather than a promise of one.
     const trying = (this.#unlocking = Promise.resolve(tried).then((ok) => {
-      if (ok) this.#unlocked = true;
+      if (ok) {
+        this.#unlocked = true;
+        if (this.#stuck) this.#tellSound((this.#stuck = false));
+      }
       return Boolean(ok);
     }, () => false));
     this.#trying = trying;
@@ -265,6 +273,31 @@ export class Voice {
   /** Whether a tap has unlocked sound (spec §10.1). */
   get unlocked() {
     return this.#unlocked;
+  }
+
+  /**
+   * The page may not play sound now, or its sound stopped coming out (a stream that stalled or never ran: an iPhone's audio suspended, or
+   * stuck while it reads as running, WebKit 217606): whole clips and no microphone until a tap, which makes the sound anew if it had worked.
+   */
+  soundStopped() {
+    if (this.#unlocked && !this.#stuck) this.#tellSound((this.#stuck = true));
+    this.#unlocked = false;
+  }
+
+  /** Whether sound that worked has stopped coming out, until a tap brings it back. */
+  get stuck() {
+    return this.#stuck;
+  }
+
+  /** Hears sound getting stuck (true), and a tap bringing it back (false). @param {(stuck: boolean) => void} fn @returns {() => void} */
+  onSound(fn) {
+    this.#sound.add(fn);
+    return () => this.#sound.delete(fn);
+  }
+
+  /** @param {boolean} stuck */
+  #tellSound(stuck) {
+    for (const fn of this.#sound) fn(stuck);
   }
 
   /** A live session's sound, for the glow (K5). @param {number} x @param {'her' | 'you'} who */
@@ -443,21 +476,45 @@ export class Voice {
   async refresh() {
     const s = await this.settings();
     const route = s.mode === 'auto' ? await this.route() : 'unknown';
-    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices });
+    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices, tapped: this.#tapped, held: this.#held() });
     this.#watch();
     const first = !this.#read;
     this.#read = true;
-    if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) {
-      this.mode = next;
-      for (const fn of this.#changes) {
-        try {
-          fn(next, first);
-        } catch (e) {
-          console.warn(/* en */ 'a voice listener failed', e);
-        }
+    if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) this.#setMode(next, first);
+    return next.on;
+  }
+
+  /** @param {import('./mode.js').VoiceMode} next @param {boolean} first */
+  #setMode(next, first) {
+    this.mode = next;
+    for (const fn of this.#changes) {
+      try {
+        fn(next, first);
+      } catch (e) {
+        console.warn(/* en */ 'a voice listener failed', e);
       }
     }
-    return next.on;
+  }
+
+  /** A tap on the avatar in Auto: voice is on now, inside the tap, until release(). */
+  hold() {
+    this.#tapped = true;
+    this.#setMode(voiceMode({ setting: this.mode.setting, activity: '', route: 'unknown', lastChoices: {}, tapped: true }), false);
+  }
+
+  /** That exchange ended: Auto decides again. */
+  release() {
+    this.#tapped = false;
+    return this.refresh();
+  }
+
+  /** Whether the activity sensor says moving fast ended only a moment ago (a light, a queue). @returns {boolean} */
+  #held() {
+    try {
+      return this.registry.list('activity')[0]?.held?.() === true;
+    } catch {
+      return false;
+    }
   }
 
   /** What the activity sensor says (live mode's, spec §11.2); unknown without one. @returns {string} */
@@ -501,6 +558,7 @@ export class Voice {
    */
   async choose(setting) {
     this.unlock(); // a choice is a tap (spec §10.1)
+    this.#tapped = false;
     /** @type {Record<string, any>} */
     const change = { mode: setting };
     if (setting !== 'auto' && (await this.route()) === 'unknown') change.lastChoices = { [this.activity()]: setting };
@@ -561,6 +619,9 @@ export class Voice {
   async open({ kind, onSegment, onSpeech, onQuiet, onError, scope = this.scope }) {
     const platform = this.platform;
     if (!platform) throw new Error(t`This browser can't use the microphone here.`);
+    // A microphone runs on the sound that is stuck. The tap that brings it back may still be starting.
+    if (this.#stuck) await this.settled(3000);
+    if (this.#stuck) throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
     const { pauseMs } = await this.settings();
     const local = kind === 'dictation' && (await this.dictationLocal());
     const recording = kind === 'record' ? await this.#recordWith() : undefined;
@@ -583,6 +644,7 @@ export class Voice {
       return session;
     } catch (e) {
       platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1)
+      if (/** @type {any} */ (e)?.stuck) this.soundStopped();
       throw e;
     }
   }

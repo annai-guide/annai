@@ -135,12 +135,12 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 ### A10. Live mode
 
-- [ ] **m5 #1**: GPS chip → on: Android asks for location once (allow "While using the app"); the chip says "GPS on · finding you", then "GPS on · stopped". How: `adb emu geo fix`; screen. Then C.
+- [ ] **m5 #1**: One tap on the GPS chip turns it on, with no menu (a second tap turns it off): Android asks for location once (allow "While using the app"); the chip says "GPS on · finding you", then "GPS on · stopped". How: `adb emu geo fix`; screen. Then C.
 - [ ] **m5 #2**: Shiori is woken once ("The user turned live mode on"); Trace → Tools: watch_set. How: Trace.
 - [ ] **m5 #3**: Now shows "At …" or "Near …" a plan stop, the sun chips, what's next and the latest card. How: geo fix at a stop; screen.
 - [ ] **m5 #4**: Close annai fully and open it again: live mode is still on; nothing is asked again. How: `am force-stop`; screen. Then C.
 - [ ] **m5 #5**: Location refused: a card "annai can't see where you are" with the right Android steps. How: deny it; screen. Then C (the iPhone has two paths to try).
-- [ ] **m5 #6**: Live → Where are you? lists the plan's places; choosing one makes Now say "At …". How: screen.
+- [ ] **m5 #6**: Driving: "Where are you?" lists the plan's places; choosing one makes Now say "At …". How: screen.
 - [ ] **m5 #7**: Location allowed again, live mode off and on: the GPS works. How: screen. Then C.
 - [ ] **m5 #19, #20, #21**: Airplane mode with voice on, and a reminder comes due: the fallback shows as a card and is spoken by the phone's own voice; the dock says "Offline · reminders still work"; back online, Shiori hears what came while offline, once. How: a faked route; adb airplane mode; console speech events; Trace → Live and Conversation. Then C.
 - [ ] **m5 #22**: Offline pack: "Download (about … KB)" before anything; on Wi-Fi it shows each part, then "Downloaded just now · … places, … Wikipedia summaries, … Wikivoyage guides" and the guides' names; Stop and "Download the rest" work. How: screen (it can take minutes).
@@ -431,10 +431,10 @@ By hand, on either phone unless a line says both. Claude reads the Traces when y
 ### D1. One short walk
 
 Before you leave:
-- [ ] m5 #14, #15 (setup): Live mode on, with Live → "Keep the screen on while driving or riding" chosen. Both phones; walk to a café or a shop with a menu.
+- [ ] m5 #14, #15 (setup): GPS on (one tap on the chip), with Settings → Voice → "Keep the screen on while GPS is on" checked (it is, unless you turned it off). Both phones; walk to a café or a shop with a menu.
 
 On the walk:
-- [ ] **m5 #15**: Walking, the screen turns off as usual (the choice is per situation). On the next drive (D2), it stays on again.
+- [ ] **m5 #15**: Walking with GPS on: the screen stays on too (one setting, not one per situation). Turning GPS off lets it go; on the next drive (D2), it stays on again.
 - [ ] **m2c #1**: At the café, the dock's camera → a photo of the menu: it shows in your bubble, and Shiori says what it is. On both phones.
 
 After:
@@ -459,7 +459,7 @@ GPS on:
 - [ ] **m5 #11**: At a plan stop, after about two minutes stopped, she knows you arrived.
 - [ ] **m5 #12**: The fixed stop's "leave in about 15 min" comes before you need to leave; dawdle, and "running late" comes.
 - [ ] **m5 #13**: Stop 20 minutes somewhere not on the plan: she welcomes the detour, says what it costs, and moves flexible items; the Plan shows "Changed by Shiori · Undo", and Undo puts an item back.
-- [ ] **m5 #14**: On the charger, with Keep the screen on: the screen stays on while driving.
+- [ ] **m5 #14**: On the charger, with GPS on and Keep the screen on checked: the screen stays on while driving, and while walking; turning GPS off lets it go.
 - [ ] **m5 #16**: On the way back, the installed app on the iPhone keeps the screen on too.
 - [ ] **m5 #17, #18**: Lock the phone for 15 minutes while driving, then unlock: one catch-up wake (she hears how long annai was off screen and how far you went), and the reminder came late, labelled. Nothing fires inside annai while it's locked. With notifications on, a push may come while locked: note it.
 - [ ] **m5 #28**: An hour of live mode with the screen on, on the charger, and an hour off it: note the battery used and whether the phone got warm. Another day, an hour of Maps navigation, to compare.

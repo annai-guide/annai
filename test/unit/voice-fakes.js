@@ -85,15 +85,15 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         },
       },
     } : {}),
-    /** Each live stream: what was pushed (ms of sound), and how it ended. @type {{ rate: number, ms: number, ended: boolean, stopped: boolean, playedMs: number | null }[]} */
+    /** Each live stream: what was pushed (ms of sound), and how it ended; stall: its player stops, as a stuck context's does. @type {{ rate: number, ms: number, ended: boolean, stopped: boolean, playedMs: number | null, stall(): void }[]} */
     streams: [],
     player: {
-      async unlock() { log.push('unlock'); return true; },
+      async unlock(/** @type {{ fresh?: boolean } | undefined} */ o) { log.push(o?.fresh ? 'unlock fresh' : 'unlock'); return true; },
       output: () => ({ sampleRate: 48_000, baseLatency: 0.01 }),
       ...(plays ? { plays: () => plays } : {}),
       /** A live session's voice: it "plays" streamSpeed times faster than real time, from its first piece. @param {{ rate: number }} o */
       stream({ rate }) {
-        const s = { rate, ms: 0, ended: false, stopped: false, playedMs: /** @type {number | null} */ (null) };
+        const s = { rate, ms: 0, ended: false, stopped: false, playedMs: /** @type {number | null} */ (null), stall: () => { finish(true); } };
         platform.streams.push(s);
         log.push('stream');
         let started = 0;
@@ -103,11 +103,11 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         const played = () => (started ? Math.min(s.ms, (Date.now() - started) * platform.streamSpeed) : 0);
         /** The player's own numbers, as the worklet's are: no holes, a start at once. @type {any} */
         let result = null;
-        const finish = () => {
+        const finish = (stalled = false) => {
           if (result) return result;
           clearInterval(timer);
           s.playedMs = Math.round(played());
-          result = { playedMs: s.playedMs, holes: 0, holeMs: 0, waitMs: 0, player: 'fake' };
+          result = { playedMs: s.playedMs, holes: 0, holeMs: 0, waitMs: 0, player: 'fake', ...(stalled ? { stalled } : {}) };
           settle(result);
           return result;
         };

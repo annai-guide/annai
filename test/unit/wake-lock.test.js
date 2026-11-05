@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { keepAwake, situation } from '../../src/ui/wake-lock.js';
-import { liveText, screenOn, knownFix } from '../../src/ui/live-chip.js';
+import { keepAwake } from '../../src/ui/wake-lock.js';
+import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { whereWords } from '../../src/ui/screens/now.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
-import { readAppSettings } from '../../src/core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
 /** Live mode as the wake lock sees it. @param {Record<string, any>} o */
@@ -46,27 +46,23 @@ function fakeLock() {
   return lock;
 }
 
-test('the screen is kept on per situation: chosen for driving, not for walking; let go off screen and asked for again (spec §11.1)', async () => {
+test('the screen is kept on while GPS is on, by default, whatever the activity; let go off screen and asked for again; one setting turns it off (the second drive, item 3)', async () => {
   const ws = new Workspace(createMemoryStore());
   await ensureBaseScopes(ws);
+  // What older versions stored, per situation, is ignored.
+  await updateAppSettings(ws, { live: { awake: { 'moving-fast': false, walking: false } } });
   const live = fakeLive({ activity: 'moving-fast' });
   const lock = fakeLock();
   const a = keepAwake({ live, ws, lock });
   await a.ready;
   assert.equal(a.available, true);
-  assert.equal(lock.requests, 0); // nothing until it is chosen
-  assert.equal(a.chosen, false);
-  await a.choose(true);
+  assert.equal(a.chosen, true);
   assert.equal(a.held, true);
   assert.equal(lock.requests, 1);
-  assert.deepEqual((await readAppSettings(ws)).live.awake, { 'moving-fast': true });
   live.set({ activity: 'walking' });
   await tick();
-  assert.equal(a.held, false);
-  assert.equal(lock.released, 1);
-  live.set({ activity: 'moving-fast' });
-  await tick();
   assert.equal(a.held, true);
+  assert.equal(lock.requests, 1, 'the activity changes nothing');
   live.set({ shown: false });
   lock.browserRelease();
   await tick();
@@ -74,19 +70,26 @@ test('the screen is kept on per situation: chosen for driving, not for walking; 
   live.set({ shown: true });
   await tick();
   assert.equal(a.held, true);
-  assert.equal(lock.requests, 3);
+  assert.equal(lock.requests, 2);
   live.set({ on: false });
   await tick();
   assert.equal(a.held, false);
-  const again = keepAwake({ live: fakeLive({ activity: 'moving-fast' }), ws, lock: fakeLock() });
+  live.set({ on: true });
+  await tick();
+  assert.equal(a.held, true);
+  await a.choose(false);
+  assert.equal(a.held, false);
+  assert.equal(a.chosen, false);
+  assert.equal((await readAppSettings(ws)).live.keepScreenOn, false);
+  const again = keepAwake({ live: fakeLive({ activity: 'still' }), ws, lock: fakeLock() });
   await again.ready;
-  assert.equal(again.held, true); // a later start remembers the choice
+  assert.equal(again.held, false); // a later start remembers the choice
+  await again.choose(true);
+  assert.equal(again.held, true);
   const none = keepAwake({ live: fakeLive({ activity: 'moving-fast' }), ws, lock: null });
   await none.ready;
   assert.equal(none.available, false);
   assert.equal(none.held, false);
-  assert.equal(situation('moving-fast'), 'moving-fast');
-  assert.equal(situation('anything'), 'unknown');
 });
 
 test('the live chip says how things stand, in a few words', () => {
@@ -98,10 +101,6 @@ test('the live chip says how things stand, in a few words', () => {
   assert.equal(liveText({ on: true, gps: 'denied', activity: 'unknown', fix: { lat: 1, lng: 2, at: now - 3_600_000, source: 'manual' } }), 'GPS on'); // a place the user set
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'moving-fast', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'GPS on · moving fast');
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { lat: 1, lng: 2, at: now, source: 'gps' } }), 'GPS on · stopped');
-  assert.equal(screenOn('moving-fast').keep, 'Keep the screen on while driving or riding');
-  assert.equal(screenOn('walking').keep, 'Keep the screen on while walking');
-  assert.equal(screenOn('still').keep, 'Keep the screen on while stopped');
-  assert.equal(screenOn('unknown').keep, 'Keep the screen on while GPS is on');
 });
 
 test('a GPS position from before the GPS was lost, or too old, is not shown as where you are (B1)', () => {
@@ -111,31 +110,11 @@ test('a GPS position from before the GPS was lost, or too old, is not shown as w
   assert.equal(liveText({ on: true, gps: 'unavailable', activity: 'moving-fast', fix: old }), 'GPS on · no signal');
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { ...old, at: now - 11 * 60_000 } }), 'GPS on · finding you');
   const live = (/** @type {any} */ o) => ({ on: true, activity: 'still', near: () => ({ name: 'Bixby Creek Bridge', m: 10 }), ...o });
-  assert.equal(whereWords(live({ gps: 'denied', fix: old })), "Location isn't allowed for annai. Tap GPS below to say where you are.");
-  assert.equal(whereWords(live({ gps: 'unavailable', fix: old })), 'No GPS signal right now. Tap GPS below to say where you are.');
+  assert.equal(whereWords(live({ gps: 'denied', fix: old })), "Location isn't allowed for annai. Open Driving to say where you are.");
+  assert.equal(whereWords(live({ gps: 'unavailable', fix: old })), 'No GPS signal right now. Open Driving to say where you are.');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now - 11 * 60_000 } })), 'Finding where you are…');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now } })), 'At Bixby Creek Bridge');
   assert.equal(whereWords(live({ gps: 'denied', fix: { ...old, source: 'manual' } })), 'At Bixby Creek Bridge');
   assert.equal(knownFix({ on: true, gps: 'ok', fix: { ...old, at: now } })?.lat, 36.3715);
   assert.equal(knownFix({ on: true, gps: 'denied', fix: old }), null);
-});
-
-test('a choice made before the activity is known (just after live mode came on) carries over to the activity that follows (B6)', async () => {
-  const ws = new Workspace(createMemoryStore());
-  await ensureBaseScopes(ws);
-  await (await import('../../src/core/settings.js')).updateAppSettings(ws, { live: { awake: { 'moving-fast': false } } }); // an older choice
-  const live = fakeLive({ activity: 'unknown' });
-  const lock = fakeLock();
-  const a = keepAwake({ live, ws, lock });
-  await a.ready;
-  await a.choose(true);
-  assert.equal(a.held, true);
-  live.set({ activity: 'moving-fast' });
-  await tick();
-  assert.equal(a.held, true, 'the screen stays on as the drive settles');
-  assert.equal(a.chosen, true);
-  assert.equal((await readAppSettings(ws)).live.awake['moving-fast'], true);
-  live.set({ activity: 'walking' });
-  await tick();
-  assert.equal(a.held, false, 'it was a choice for the drive');
 });

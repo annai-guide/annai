@@ -56,6 +56,8 @@ export async function renderVoice(ctx) {
   const live = [...new Set((cfg.roles[KOE_REALTIME]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
     .map((/** @type {string} */ id) => providerOf(cfg.providers[cfg.models[id].provider]).name))];
   const closeAfter = h('input', { id: 'voice-close-after', inputmode: 'numeric', value: numField(s.closeAfterSeconds) });
+  // One setting, on by default (the second drive, item 3): on a phone that can keep its screen on.
+  const awake = ctx.awake?.available ? savedCheck(t`Keep the screen on while GPS is on`, ctx.awake.chosen, (on) => ctx.awake.choose(on)) : null;
   const bargeIn = savedCheck(t`Cut her off by speaking`, s.bargeIn, (on) => save({ bargeIn: on }));
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
@@ -140,7 +142,7 @@ export async function renderVoice(ctx) {
     h('h1', { class: 'title', text: tc('screen')`Voice` }),
     h('p', { class: 'sub', text: t`How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.` }),
     section(t`On or off`,
-      h('p', { class: 'sub', text: t`Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. The chip on the dock changes it too.` }),
+      h('p', { class: 'sub', text: t`Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. In Auto, a tap on Shiori turns voice on until that talk ends. The chip on the dock changes it too.` }),
       mode, modeStatus,
       h('div', { class: 'row' },
         savedField(t`Listen for an answer (seconds)`, silence, () => numberIn(silence, 2, 60, t`Listen for 2 to 60 seconds.`, { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
@@ -170,6 +172,9 @@ export async function renderVoice(ctx) {
       savedField(t`Close a live session after (seconds with no exchange)`, closeAfter, () => numberIn(closeAfter, 10, 300, t`Close after 10 to 300 seconds with no exchange.`, { whole: true, need: true }), (n) => save({ closeAfterSeconds: n })),
       bargeIn.el,
       h('p', { class: 'sub', text: t`Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.` })),
+    awake && section(t`GPS`,
+      awake.el,
+      h('p', { class: 'sub', text: t`The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.` })),
     section(t`Where your voice goes`,
       h('p', { class: 'sub' }, ...linkIn(t`What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to ${models}.`, h('a', { href: '#/models' }, models))),
       h('h3', { class: 'section', text: t`What you say` }), heardWhere,
