@@ -256,3 +256,27 @@ test("by default a session asks for Sulafat, Shiori's voice in Classic too, so K
     await s.stop();
   }
 });
+
+test('a model with a level takes it as thinkingConfig.thinkingLevel (Extended Thinking refuses a setup without one: 1007, 2026-11-04); one without sends none, as gemini-3.8-live must', async () => {
+  const server = await startRealtimeServer({ flavour: 'gemini', turns: [{ said: 'OK.' }], needsThinking: ['gemini-3.8-live-extended-thinking'] });
+  const type = geminiLive();
+  const open = (/** @type {string} */ providerId, /** @type {any} */ extra = {}) => openLive({
+    type, endpoint: { id: 'e', provider: 'p', ability: 'a', type: 'gemini-live', name: 'G', baseUrl: server.origin, headers: {}, tunables: type.tunables, extraBody: {} },
+    model: /** @type {any} */ ({ id: 'm', provider: 'p', ability: 'a', name: providerId, providerId, input: ['text'], tools: true, reasoning: {}, tunables: {}, extraBody: {}, prices: null }),
+    key: KEY, tunables: { ...type.tunables }, setup: { instructions: 'x', context: '', tools: [], ...extra }, trace: modelTrace(createMemoryStore(), SYS),
+  });
+  try {
+    const refused = open('gemini-3.8-live-extended-thinking');
+    await assert.rejects(refused.ready, (/** @type {any} */ e) => e.kind === 'bad-request');
+    const s = open('gemini-3.8-live-extended-thinking', { reasoning: { generation_config: { thinking_level: 'low' } } });
+    await s.ready;
+    s.close();
+    const plain = open('gemini-3.8-live');
+    await plain.ready;
+    plain.close();
+    const setups = server.received().filter((/** @type {any} */ m) => m.setup).map((/** @type {any} */ m) => m.setup.generationConfig.thinkingConfig);
+    assert.deepEqual(setups, [undefined, { thinkingLevel: 'low' }, undefined]);
+  } finally {
+    await server.stop();
+  }
+});

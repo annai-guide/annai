@@ -65,7 +65,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation;
  *   watched: Koe's note, or its "answered the user" cue, was made by a Koe turn the user is watching (isWatched); forUser: Kokoro's exact words
  *   for the user with its note (tell_koe's for_user), all annai ever shows of it (§7.1); retold: the note, never passed on, went to Koe's next turn again
- * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
+ * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'ignoring' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
  * @typedef {{ snapshot: import('./context.js').Snapshot, system: string, tools: LoopTool[], defs: import('../llm/contract.js').ToolDef[], via: ReturnType<typeof webVia>,
@@ -123,7 +123,7 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 
 /** The dock's words for each state (spec §16.3), in the screens' language: boot.js sets the words before this module loads. */
 export const LABELS = Object.freeze({
-  sleeping: t`Tap to talk`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
+  sleeping: t`Tap to talk`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring background sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
   away: t`Working on …`, offline: t`Offline · reminders still work`,
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
@@ -145,6 +145,8 @@ const waitingMedia = (output) => [...(output.images ?? []), ...(output.document 
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
+/** How long a tap's window and a question aloud listen: not silenceSeconds, which is for what she says listening for an answer (the second-drive design). */
+const LISTEN_S = 8;
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
 /** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
 const AFTER_CUE = 2;
@@ -350,7 +352,7 @@ export class Agent {
   #utterances = new Map();
   /**
    * The listening window (spec §10.4), and who opened it: a tap (until the first thing said, or a
-   * silence) or the turn (until it ends). @type {{ owner: 'tap' | 'turn', session: { stop(): void } | null } | null}
+   * silence) or the turn (until it ends), or the time after a turn that spoke and didn't sleep (a silence; what is heard goes through the gate). @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void } | null } | null}
    */
   #ear = null;
   /** Openings of the window, one at a time. @type {Promise<unknown>} */
@@ -408,7 +410,7 @@ export class Agent {
   /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
   #handovers = [];
   /** What the running turn did (Half.ended). */
-  #facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
+  #facts = { finalText: '', told: false, slept: false, spoke: false, aloud: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told (the third emulator pass). */
@@ -945,7 +947,7 @@ export class Agent {
 
   /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
   get voicing() {
-    return (this.#turning && this.#voiceNow) || Boolean(this.#ear);
+    return (this.#turning && this.#voiceNow) || Boolean(this.#ear && this.#ear.owner !== 'after');
   }
 
   /** A turn runs (not one still gathering the user's messages, GATHER). */
@@ -1126,7 +1128,7 @@ export class Agent {
       this.#owing = null;
       this.#noteOwed = () => false;
       // A tap's listening window outlives the turn until something is said, or a silence (spec §10.4).
-      const tapped = this.#ear?.owner === 'tap';
+      const tapped = this.#window();
       this.#setState(tapped ? 'listening' : this.online() ? 'sleeping' : 'offline');
       if (tapped) this.#armQuiet();
       this.#settle();
@@ -1498,7 +1500,8 @@ export class Agent {
    * card, the words aloud with voice on, and an entry in the conversation they belong to. They are
    * never in Shiori's voice (§16.1).
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
-   * @param {{ unsaid?: boolean, silent?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; silent: shown, never said
+   * @param {{ unsaid?: boolean, silent?: boolean, aloud?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; silent: shown, never said;
+   *   aloud: said even with a live session's voice in use, which holds back and doesn't listen meanwhile (what a session failed to say)
    */
   async remind(list, scope = this.#target ?? ME, o = {}) {
     const open = scope === (this.#target ?? ME);
@@ -1506,7 +1509,7 @@ export class Agent {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
-      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.() && !o.silent;
+      const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else {
@@ -1638,7 +1641,7 @@ export class Agent {
     this.#abort = abort;
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
-    this.#facts = { finalText: '', told: false, slept: false, spoke: false, wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
+    this.#facts = { finalText: '', told: false, slept: false, spoke: false, aloud: false, wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
     this.#userStop = false;
     this.#cutByOpen = false;
     // Shiori became two halves, or one again.
@@ -1987,7 +1990,7 @@ export class Agent {
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, reads });
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads });
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -2287,7 +2290,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>> }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>> }} o
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2313,7 +2316,7 @@ export class Agent {
       const scope = this.scope;
       const call = {
         id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
-        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.last ? { last: true } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -2799,7 +2802,10 @@ export class Agent {
     }
     u.end(text);
     const spoken = await u.done;
-    if (spoken.heard) this.#lastSaid = spoken.heard; // only what was said aloud
+    if (spoken.heard) {
+      this.#lastSaid = spoken.heard; // only what was said aloud
+      this.#facts.aloud = true;
+    }
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
         ? { tone: 'info', title: t`Tap the screen so Shiori can speak`, body: t`This browser plays sound only after a tap. Her words are in the conversation.` }
@@ -2820,7 +2826,10 @@ export class Agent {
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
-    return this.#answer(before, await this.#listenFor(call.id, 'wait', silenceSeconds), call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
+    const got = await this.#listenFor(call.id, 'wait', silenceSeconds);
+    const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
+    // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
+    return call.last && Object.keys(got).length === 0 && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
   }
 
   /**
@@ -2837,7 +2846,7 @@ export class Agent {
     const spoken = await u.done;
     if (spoken.heard) this.#lastSaid = spoken.heard;
     /** @type {Got} */
-    let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', (await voice.settings()).silenceSeconds);
+    let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S);
     if (got.dismissed) {
       this.#chatter.push(got.dismissed); // written in at her next step; the buttons keep waiting
       got = {};
@@ -2925,7 +2934,7 @@ export class Agent {
   /**
    * Opens the listening window (spec §10.2, §10.4) if voice can listen: recording or phone
    * dictation, as the speech-in list says. A window already open stays as it is.
-   * @param {'tap' | 'turn'} owner @returns {Promise<string | null>} null when listening; otherwise why not
+   * @param {'tap' | 'turn' | 'after'} owner @returns {Promise<string | null>} null when listening; otherwise why not
    */
   #openEar(owner) {
     const run = this.#earLock.then(() => this.#openEarNow(owner));
@@ -2933,7 +2942,7 @@ export class Agent {
     return run;
   }
 
-  /** @param {'tap' | 'turn'} owner @returns {Promise<string | null>} */
+  /** @param {'tap' | 'turn' | 'after'} owner @returns {Promise<string | null>} */
   async #openEarNow(owner) {
     const voice = this.voice;
     if (!voice) return /* en */ "voice isn't available here.";
@@ -2945,7 +2954,7 @@ export class Agent {
       this.#toldDeaf = true;
       return how.why;
     }
-    /** @type {{ owner: 'tap' | 'turn', session: { stop(): void } | null }} */
+    /** @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void } | null }} */
     const ear = { owner, session: null };
     this.#ear = ear;
     try {
@@ -3024,8 +3033,10 @@ export class Agent {
       // Chatter: recorded, and she sleeps on (spec §10.4).
       if (this.#busy) this.#chatter.push(h);
       else await this.#logHeard(h, { dismissed: true, gate: 'chatter' });
+      if (this.#ear?.owner === 'after' && !this.#busy) this.#armQuiet(); // it listens on: the window starts again
       return;
     }
+    if (this.#ear?.owner === 'after') this.#ear.owner = 'turn';
     this.#push({ kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}) });
     this.#drain();
   }
@@ -3068,7 +3079,7 @@ export class Agent {
   #speechStopped() {
     this.#speaking = false;
     this.#pending?.arm?.();
-    const tapped = this.#ear?.owner === 'tap' && !this.#busy;
+    const tapped = this.#window() && !this.#busy;
     if (tapped) this.#armQuiet();
     if (this.state.name === 'hearing') this.#setState(this.#pending?.listening || tapped ? 'listening' : 'thinking');
     this.#noted();
@@ -3124,6 +3135,11 @@ export class Agent {
     return 'listening';
   }
 
+  /** A window outlives the turn until something is said, or a silence: a tap's, or the one after she spoke. */
+  #window() {
+    return this.#ear?.owner === 'tap' || this.#ear?.owner === 'after';
+  }
+
   /** The user tapped to talk (spec §10.4): the microphone opens; a silence closes it again. */
   #tapListen() {
     this.#openEar('tap').then(async (deaf) => {
@@ -3139,10 +3155,10 @@ export class Agent {
   /** A tap's window that hears nothing closes after the silence limit. */
   async #armQuiet() {
     clearTimeout(this.#quiet);
-    const seconds = this.voice ? (await this.voice.settings()).silenceSeconds : 8;
+    const seconds = this.#ear?.owner === 'after' && this.voice ? (await this.voice.settings()).silenceSeconds : LISTEN_S;
     clearTimeout(this.#quiet);
     this.#quiet = setTimeout(() => {
-      if (this.#ear?.owner !== 'tap' || this.#busy) return;
+      if (!this.#window() || this.#busy) return;
       this.#closeEar();
       this.#setState(this.online() ? 'sleeping' : 'offline');
     }, seconds * this.secondMs);
@@ -3156,8 +3172,18 @@ export class Agent {
   async #afterTurn(ok, wakeId) {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
-    if (this.#ear?.owner === 'turn') this.#closeEar();
-    else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
+    // She spoke and didn't sleep: she listens on (the second drive, item 10), through the gate; sleep closes the microphone at once.
+    const listens = ok && this.#facts.aloud && !this.#facts.slept && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
+    if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.slept)) {
+      if (listens && this.#ear) this.#ear.owner = 'after';
+      else this.#closeEar();
+    } else if (!this.#ear && listens) {
+      this.#openEar('after').then((deaf) => {
+        if (deaf || this.#busy || this.#ear?.owner !== 'after') return;
+        this.#setState('listening');
+        this.#armQuiet();
+      });
+    } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
     if (ok && this.#half.voice()) await this.#writeDown(wakeId);
   }

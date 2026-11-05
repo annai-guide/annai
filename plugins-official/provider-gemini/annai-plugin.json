@@ -1,7 +1,7 @@
 {
   "id": "provider-gemini",
   "name": "Google Gemini",
-  "version": "2.7.2",
+  "version": "2.7.3",
   "api": 1,
   "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
   "category": "providers",
@@ -295,6 +295,28 @@
             ],
             "name": "Gemini 3.8 Live Extended Thinking",
             "contextWindow": 131072,
+            "reasoning": {
+              "low": {
+                "generation_config": {
+                  "thinking_level": "low"
+                }
+              },
+              "medium": {
+                "generation_config": {
+                  "thinking_level": "medium"
+                }
+              },
+              "high": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              },
+              "max": {
+                "generation_config": {
+                  "thinking_level": "high"
+                }
+              }
+            },
             "prices": {
               "input": 0.75,
               "audioIn": 3,

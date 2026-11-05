@@ -475,7 +475,7 @@ export function safeId(id) {
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
  * @typedef {{ spoken: import('../languages.js').Language[], answer: import('../languages.js').Language | null }} Languages  the languages the user speaks, in order, each with the
  *   codes models take (iso, live, google, locale), and the one Shiori answers in (null: she follows the user) (phase 2; spec §10.9)
- * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat, languages?: Languages }} LiveSetup  languages: for the
+ * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat, languages?: Languages, reasoning?: Record<string, any> }} LiveSetup  reasoning: the model's reasoning map's patch for Koe · Realtime's level, for a live model that has one; languages: for the
  *   protocol's own language fields (the words it is told are in instructions); resume: a handle
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches
  * @typedef {{ ready: Promise<void>, audio(chunk: Uint8Array): void, activity(edge: 'start' | 'end', o?: { playedMs?: number }): void, text(t: string, o?: { interrupt?: boolean, playedMs?: number }): void,

@@ -1,5 +1,6 @@
 import { SYS } from '../scopes.js';
-import { abilityName, readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
+import { levelPatch } from './reasoning.js';
+import { abilityName, readConfig, getKey, endpointOf, modelOf, markVerified, saveProvider, KOE_REALTIME, providerOf, providerBase, sendKey, removeProviderRecords, splitOldKoe } from './config.js';
 import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
@@ -574,8 +575,10 @@ export function createLlm({
       const trace = modelTrace(store, scope);
       if (secret) trace.secret(secret);
       const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
+      // A live model that takes a level (Extended Thinking must have one) is asked at Koe · Realtime's, or its nearest.
+      const reasoning = levelPatch(model.reasoning, (await readConfig(ws)).roles[KOE_REALTIME]?.level ?? 'off');
       const session = openLive({
-        type, endpoint, model, key, tunables, setup, trace,
+        type, endpoint, model, key, tunables, setup: { ...setup, ...(reasoning ? { reasoning } : {}) }, trace,
         registry: plugins.registry, wake, output, ...(openSocket ? { socket: openSocket } : {}),
       });
       // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it

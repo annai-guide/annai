@@ -37,7 +37,7 @@ test('voice on: Koe speaks and listens with the speech pipeline; Kokoro never op
   assert.deepEqual(plays(k), ["That's Bixby Bridge, a 1932 concrete arch."]);
   const [speak] = await results(k, 'speak');
   assert.equal(speak.data.half, 'koe');
-  assert.equal(speak.data.content, 'Said aloud. Heard nothing (8 seconds).');
+  assert.equal(speak.data.content, 'Said aloud. Heard nothing (20 seconds).');
   assert.equal(micOpens(k), 2, "the tap's window, then the speak's");
   assert.equal(k.platform.log.at(-1), 'mic close');
   const turn = (await k.events(['model.turn'])).find((e) => e.data.tag === 'koe');
@@ -100,7 +100,6 @@ test('with no Koe model and voice on, Halves and the one Agent send the same req
     { stream: true, toolCalls: [{ name: 'speak', input: { text: 'There is a taco stand ahead. Want to stop?' } }] },
     { toolCalls: [{ name: 'speak', input: { text: 'Great.' } }, { name: 'sleep', input: {} }] },
     { toolCalls: [{ name: 'speak', input: { text: 'You are welcome.' } }] },
-    { toolCalls: [{ name: 'sleep', input: {} }] },
     { toolCalls: [{ name: 'speak', input: { text: 'Sunset is soon.' } }, { name: 'wait', input: { seconds: 2 } }] },
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ];
@@ -557,7 +556,7 @@ test('[speak, show] with voice on still listens: only a question to Kokoro or a 
   await say(k, 'where-eat');
   await new Promise((r) => setTimeout(r, 50));
   await k.agent.idle();
-  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (8 seconds).');
+  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
   assert.equal(micOpens(k), 2, "the tap's window, then the speak's");
 });
 
