@@ -171,10 +171,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
   }
   if (e.type === 'note') return line(d.from === 'koe' ? t`Koe to Kokoro` : t`Kokoro to Koe`, d.mode, d.why && d.why !== 'tool' ? d.why : null, cut(d.text));
   if (e.type === 'halves') return line(t`annai to Kokoro`, d.state, cut(d.text));
-  if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
+  if (e.type === 'msg.user') return line(d.claim ? t`this was for Shiori` : null, cut(d.text));
+  if (e.type === 'out.speak') return cut(d.text);
   if (e.type === 'heard') {
     return line(d.source === 'dictation' ? t`phone dictation` : t`${duration(d.ms ?? 0)} from the microphone`, d.text ? quoted(d.text) : null,
-      d.answer ? t`an answer` : d.meanwhile ? t`while she was thinking` : null, d.dismissed ? t`not for Shiori` : null,
+      d.answer ? t`an answer` : d.meanwhile ? t`while she was thinking` : null, d.dismissed ? (d.source === 'live' ? t`she didn't answer` : t`not for Shiori`) : null,
       d.clip ? (d.clipFormat ? t`clip kept: ${d.clipFormat}, ${size(d.clipBytes ?? 0)}` : t`clip kept`) : null);
   }
   if (e.type === 'heard.text') return line(quoted(d.text), d.by ? t`written down by ${d.by}` : null);

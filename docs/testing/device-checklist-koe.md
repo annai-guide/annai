@@ -130,6 +130,16 @@ The one Koe list is two again, with a switch on the voice chip (the user: "Two l
 - [ ] **Voice off types through Classic.** Realtime chosen, voice off: the chip says only **Voice off**. Type a question: flash-lite answers as a bubble, and Trace → Type contains `live.session` shows no new session.
 - [ ] **The recommended models.** On a fresh install (or after emptying both Koe lists and choosing Classic), Google Gemini's page → **Use the recommended models**: Live voice is switched on, Gemini 3.8 Live goes into Koe · Realtime, gemini-3.5-flash-lite into Koe · Classic, and the chip says **Realtime** with voice on.
 
+## The first tap in Auto (the second drive, 2026-11-04)
+
+The user: "I expect tapping avatar starts a voice session even if I'm in auto". On the phone's own speaker Auto has voice off, so a tap holds voice on for that exchange. These steps need a real phone: the harness has no real microphone, no call and no permission prompt.
+
+- [ ] **Dictation.** Voice on Auto, on the phone's speaker, Speech in with Phone dictation first. The first tap on Shiori (nothing said before): the dock says Listening, you speak, she answers aloud. Afterwards the dock goes back to asleep and the chip to its Auto words ("Voice auto · off").
+- [ ] **Recording.** The same with Send audio to the model first in Speech in (no dictation): the first tap asks for the microphone once (allow it); she hears you and answers aloud.
+- [ ] **The first tap, microphone refused.** Refuse the microphone (or turn it off in Settings) and tap Shiori: a card says why, the dock does not stay on Listening, and voice goes back to Auto's own answer. Allow it and tap again: it works.
+- [ ] **A call takes the microphone.** Tap Shiori, then ring the phone from another phone (or start a call) before you speak: a card says listening stopped, the dock goes back to asleep and does not say Listening, and nothing she says afterwards is spoken aloud on the speaker until you tap or speak again.
+- [ ] **Realtime in Auto.** Realtime chosen, Auto on the speaker: the first tap opens a live session (Listening live) and she answers aloud. With Live voice switched off on Google Gemini's page (or the key refused), the first tap lands on Classic's microphone instead: you are listened to, never left looking at nothing.
+
 ## The languages you speak (phase 2, 2026-10-23)
 
 The field failure was on a phone: in realtime mode Gemini Live heard short English replies as other languages ("¿Qué?", "chưa") and answered in Spanish. The harness's clean speech in a quiet room did not reproduce it, so this is the check that can. Before you start, open Settings → Updates and update Google Gemini and Gemini Live.

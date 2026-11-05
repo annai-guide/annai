@@ -1,3 +1,4 @@
+import { claimLine } from './blocks.js';
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
@@ -50,7 +51,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string, urgent?: boolean }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, fromScope?: string, turn?: string, urgent?: boolean }} Wake
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -219,6 +220,13 @@ const webLink = (l) => {
 const inside = (p, root) => typeof p === 'string' && root.test(p) && !p.split('/').some((x) => x === '..' || x === '.');
 /** Words: a string with something in it. @param {unknown} x @returns {x is string} */
 const words = (x) => typeof x === 'string' && x.trim() !== '';
+/** What a listen got from a user's message taken off the queue: its words, and a claim or a tap that came with them. @param {Wake} w @returns {Got} */
+const typedGot = (w) => ({ text: w.text, ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}) });
+/** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
+const typedAs = (got) => ({
+  data: { ...(got.claim ? { claim: got.claim } : {}), ...(got.chose ? { chose: true } : {}) },
+  /* en */ said: got.claim ? claimLine(String(got.text)) : got.chose ? `The user chose: ${got.text}` : `The user wrote: ${got.text}`,
+});
 /**
  * How much a card or a question holds (the second fix pass), in characters: a title of two lines on a phone; a card's text, read
  * at a glance (more belongs in a file); a place's name or address; as many links or choices as ask has buttons, each a button's
@@ -387,6 +395,7 @@ export class Agent {
   #aloudOnly = false;
   /** When her last spoken words ended. */
   #saidAt = 0;
+  #afterOpening = false;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
   #writeTries = new Map();
   /** @type {Half} */
@@ -810,22 +819,24 @@ export class Agent {
   /**
    * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). It answers a pending ask or wait; otherwise
    * it wakes Shiori, or reaches her next call. Photos and files sent with an answer reach her right after it.
-   * @param {string} text @param {{ photos?: SentPhoto[], handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @param {string} text @param {{ photos?: SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   claim: "This was for Shiori": the id of the heard line these are the words of; chose: a tap (a card's button, a quick ask) that comes as words
    */
   send(text, o = {}) {
     const photos = (o.photos ?? []).filter((x) => x && typeof x.path === 'string');
     const handed = (o.handed ?? []).filter((x) => x && typeof x.path === 'string');
     const given = { ...(handed.length ? { handed } : {}), ...(handed.length && o.handover ? { handover: o.handover } : {}) };
+    const how = { ...(o.claim ? { claim: o.claim } : {}), ...(o.chose && !o.claim ? { chose: true } : {}) };
     const said = String(text ?? '').trim() || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '');
     if (!said) return;
     const p = this.#pending;
     if (p) {
       this.#pending = null;
-      p.resolve({ text: said });
+      p.resolve({ text: said, ...how });
       if (photos.length || handed.length) this.#push({ kind: 'user', text: photos.length ? PHOTO_ONLY : FILES_ONLY, ...(photos.length ? { photos } : {}), ...given });
       return;
     }
-    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}), ...given });
+    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}), ...how, ...given });
     this.#drain();
   }
 
@@ -836,7 +847,7 @@ export class Agent {
       this.#pending = null;
       p.resolve({ chosen: option });
     } else {
-      this.send(option);
+      this.send(option, { chose: true });
     }
   }
 
@@ -923,7 +934,7 @@ export class Agent {
   /**
    * What the user typed or sent to a live session (K5), written as a turn writes it, photos as request copies.
    * @param {string} text @param {SentPhoto[]} photos
-   * @param {{ chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o] chose: a tap on a live ask's buttons; handed, handover: a hand-over
+   * @param {{ chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o] chose: a tap on a live ask's buttons; claim: "This was for Shiori"; handed, handover: a hand-over
    */
   async logUser(text, photos, o = {}) {
     const { images, blobs } = photos.length ? await this.#userPhotos(photos, this.trip) : { images: [], blobs: [] };
@@ -931,7 +942,7 @@ export class Agent {
     const words = String(text ?? '').trim() || (photos.length || !handed.length ? PHOTO_ONLY : FILES_ONLY);
     return this.#log({
       type: 'msg.user', actor: 'user', texts: [['text', words]], blobs,
-      data: { ...(images.length ? { images } : {}), ...(o.chose ? { chose: true } : {}), ...(handed.length ? { handed, ...(o.handover ? { handover: o.handover } : {}) } : {}) },
+      data: { ...(images.length ? { images } : {}), ...(o.chose ? { chose: true } : {}), ...(o.claim ? { claim: o.claim } : {}), ...(handed.length ? { handed, ...(o.handover ? { handover: o.handover } : {}) } : {}) },
     });
   }
 
@@ -952,6 +963,11 @@ export class Agent {
   /** Its turn has the voice, or its tap's window is open: the other half waits to take the voice. */
   get voicing() {
     return (this.#turning && this.#voiceNow) || Boolean(this.#ear && this.#ear.owner !== 'after');
+  }
+
+  /** The window after she spoke is open or opening: no voice held from the other half, but her exchange goes on. */
+  get listensOn() {
+    return this.#afterOpening || this.#ear?.owner === 'after';
   }
 
   /** A turn runs (not one still gathering the user's messages, GATHER). */
@@ -1604,7 +1620,7 @@ export class Agent {
       if (w.kind !== 'user' && w.kind !== 'choice') continue;
       const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
       const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
-      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...handed }, texts: [['text', w.text]], blobs });
+      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}), ...handed }, texts: [['text', w.text]], blobs });
     }
   }
 
@@ -2622,8 +2638,9 @@ export class Agent {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
           }
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text ?? '']] });
-          return `The user wrote: ${got.text}`;
+          const wrote = typedAs(got);
+          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text ?? '']] });
+          return wrote.said;
         },
       },
       {
@@ -2640,9 +2657,10 @@ export class Agent {
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
+          const wrote = typedAs(got);
+          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
           if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
-          return `The user wrote: ${got.text}`;
+          return wrote.said;
         },
       },
       {
@@ -2661,7 +2679,7 @@ export class Agent {
    */
   #waitFor(id, kind, ms) {
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-    if (queued >= 0) return Promise.resolve({ text: this.#queue.splice(queued, 1)[0].text });
+    if (queued >= 0) return Promise.resolve(typedGot(this.#queue.splice(queued, 1)[0]));
     // A note already queued answers a wait.
     const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
     if (note) return Promise.resolve({ note: note.from ?? 'kokoro' });
@@ -2882,9 +2900,9 @@ export class Agent {
       return { content: `${lead}The user said:`, heard: [got.heard.id] };
     }
     if (got.text !== undefined) {
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
-      /* en */
-      return `${lead}The user wrote: ${got.text}`;
+      const wrote = typedAs(got);
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      return `${lead}${wrote.said}`;
     }
     /* en */
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
@@ -2904,7 +2922,7 @@ export class Agent {
    */
   async #listenFor(id, kind, seconds, tool = false) {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-    if (typed >= 0) return { text: this.#queue.splice(typed, 1)[0].text };
+    if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
     const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
     if (note) return { note: note.from ?? 'kokoro' };
@@ -3096,12 +3114,15 @@ export class Agent {
   #earFailed(e) {
     const problem = this.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(/** @type {any} */ (e)?.shown ?? e?.message ?? e), plain: /* en */ 'Listening stopped' };
     this.#closeEar();
-    this.#notice({ tone: 'warn', title: problem.title, body: problem.body });
+    const stuck = Boolean(/** @type {any} */ (e)?.stuck); // dictation failed, and the microphone it fell back to runs on sound that's stuck
+    if (stuck) this.voice?.soundStopped();
+    this.#notice(stuck ? soundStuck() : { tone: 'warn', title: problem.title, body: problem.body });
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       this.#pending = null;
       p.resolve({ deaf: `${problem.plain}.` }); // the tool's result: annai's English
     }
+    if (!this.#busy) this.#setState(this.online() ? 'sleeping' : 'offline'); // a tap's window was listening: the dock says she sleeps, and a hold on voice ends
   }
 
   /**
@@ -3147,10 +3168,15 @@ export class Agent {
     return this.#ear?.owner === 'tap' || this.#ear?.owner === 'after';
   }
 
+  /** A tap's microphone is opening: it may yet say why it can't. */
+  tapOpening = false;
+
   /** The user tapped to talk (spec §10.4): the microphone opens; a silence closes it again. */
   #tapListen() {
+    this.tapOpening = true;
     this.#openEar('tap').then(async (deaf) => {
-      if (deaf) return; // the card said why
+      this.tapOpening = false;
+      if (deaf) return void this.#emit('state', this.state); // the card said why; whoever waits on this tap hears it came to nothing
       const p = this.#pending;
       if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
       if (this.#busy) return; // she is speaking or working: the window serves her turn
@@ -3186,8 +3212,10 @@ export class Agent {
       if (listens && this.#ear) this.#ear.owner = 'after';
       else this.#closeEar();
     } else if (!this.#ear && listens) {
+      this.#afterOpening = true;
       this.#openEar('after').then((deaf) => {
-        if (deaf || this.#busy || this.#ear?.owner !== 'after') return;
+        this.#afterOpening = false;
+        if (deaf || this.#busy || this.#ear?.owner !== 'after') return void this.#emit('state', this.state); // whoever waits on this window hears it came to nothing
         this.#setState('listening');
         this.#armQuiet();
       });
