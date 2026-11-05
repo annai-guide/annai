@@ -624,12 +624,12 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 38320,
+      "size": 38602,
       "requires": [],
       "provides": {},
       "files": {
         "annai-plugin.json": "28d17140f22cf279b9759c57156bca1d5b82a1604dd90b5d0702b2c5755f6d9f",
-        "index.js": "9d64a255ab75bbbb31b4fa65695ec7bdfcd8875656cd6084f81d1716011d50f7"
+        "index.js": "c80889111783839c97a49bf31fc2fda63b3bbf9a60ec1b7c527b4f419e2c3a45"
       }
     },
     {

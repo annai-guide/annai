@@ -8,7 +8,7 @@ import { utf8 } from '../../src/core/bytes.js';
 import { logEvent } from '../../src/core/events.js';
 import { withoutSecretsIn } from '../../src/core/agent/net.js';
 import { SYS, SYS_SETTINGS, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { start, activate, serverProblem, shellBuild, clipAddress, screenText, BATCH_MS, BATCH_MAX, KEEP_MAX, KEEP_BYTES, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE, DETAIL_MS, CLIPS_KEEP_BYTES, FLAG_MS, SCREEN_CHARS, SCREEN_SETTLE_MS } from '../../plugins-official/remote-trace/index.js';
+import { start, activate, serverProblem, shellBuild, clipAddress, screenText, BATCH_MS, BATCH_MAX, KEEP_MAX, KEEP_BYTES, BATCH_BYTES, ENTRY_BYTES, RETRY_MS, RETRY_MAX_MS, REFUSALS, SETTINGS_FILE, DETAIL_MS, CLIPS_KEEP_BYTES, FLAG_MS, SCREEN_CHARS, SCREEN_SETTLE_MS , isOwnTrace } from '../../plugins-official/remote-trace/index.js';
 import { hostKit } from './package-kit.js';
 import { pluginWords } from './l10n-kit.js';
 
@@ -79,7 +79,7 @@ const entry = (seq, type = 'msg.user', data = { text: `hello ${seq}` }) => Objec
  * online: whether the browser says it is online, which the test changes with goOnline/goOffline.
  * @param {{ settings?: any, token?: string | null, answer?: (n: number, init: any) => Response | Error | Promise<Response>, secrets?: Record<string, string>, online?: boolean, startAt?: number, screen?: () => { route: string, text: string } }} [o]
  */
-async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, answer = () => new Response('{}'), secrets = {}, online = true, startAt = T0, screen = () => ({ route: '#/now', text: 'on screen' }) } = {}) {
+async function kit({ saveFails = false, settings = { server: SERVER, send: true }, token = TOKEN, answer = () => new Response('{}'), secrets = {}, online = true, startAt = T0, screen = () => ({ route: '#/now', text: 'on screen' }) } = {}) {
   let isOnline = online;
   /** @type {Set<any>} */
   const tapped = new Set();
@@ -127,7 +127,7 @@ async function kit({ settings = { server: SERVER, send: true }, token = TOKEN, a
     hooks: { on: (/** @type {any} */ fn) => { hook = fn; return () => { hook = null; }; } },
     settings: {
       get: async () => ({ location: false, send: false, ...saved }),
-      set: async (/** @type {any} */ c) => { Object.assign(saved, c); },
+      set: async (/** @type {any} */ c) => { if (saveFails) throw new Error('the disk is full'); Object.assign(saved, c); },
     },
     secrets: {
       get: async (/** @type {string} */ n) => (await store.tx(['secrets'], 'readonly', (t) => t.getSecret(`plugin:remote-trace:${n}`))) ?? null,
@@ -1086,6 +1086,19 @@ test('a line that looks like a key by its prefix (sk-ant-, AIza, ghp_) is left o
   const root = el('BODY', {}, el('P', {}, 'Paste sk-ant-api03-abcdefghijklmnop here'), el('P', {}, 'AIzaSyA1234567890abcdefghij'), el('P', {}, 'ghp_abcdefghijklmnopqrstuvwxyz0123'),
     el('P', {}, 'The ghp_ prefix, and sk-ant- alone, are words'), el('P', {}, 'Lunch'));
   assert.equal(screenText(root, { gone: () => false, seen: () => true }), 'The ghp_ prefix, and sk-ant- alone, are words\nLunch');
+});
+
+test('Detailed trace turned on but its end and address can\'t be saved: it stays off, so it can\'t outlive what was agreed (Step)', async () => {
+  const k = await kit({ saveFails: true, settings: { ...ON } });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(k.tapped.size, 0);
+  k.stop();
+});
+
+test('another plugin\'s entry whose type starts with trace. isn\'t dropped when Detailed trace goes off (Step)', () => {
+  assert.equal(isOwnTrace('trace.screen'), true);
+  assert.equal(isOwnTrace('trace.clip.dropped'), true);
+  assert.equal(isOwnTrace('trace.mine'), false);
 });
 
 test('Detailed trace ends 24 hours after it began even when the saved end is later: a clock set ahead cannot lengthen it', async () => {
