@@ -364,3 +364,44 @@ test('a clip folder that can\'t be made answers 500, and the sink goes on', asyn
   }
 });
 
+
+test('a clip is refused with 507 while less than the floor would be left free on the disk, and batches still go; with room it is written', async () => {
+  const GIB = 1024 ** 3;
+  let free = 1.5 * GIB;
+  const s = await sink([PAGE], { floor: 2 * GIB, free: async () => free });
+  try {
+    const res = await sendClip(s, { device: 'd', id: 'a', format: 'ogg' });
+    assert.equal(res.status, 507);
+    const body = await res.json();
+    assert.equal(body.error, 'full');
+    assert.match(body.message, /2 GiB/);
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')).catch(() => []), []);
+    assert.equal((await post(`${s.origin}/`, { entries: [entry(1)] })).status, 200, 'the log goes on: the floor keeps room for it');
+    free = 2 * GIB + 2; // the clip's own 4 bytes count against what is left
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 507, 'a clip that would take it under the floor');
+    free = 3 * GIB;
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 200);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('the log file is private: made readable by its user only, and an existing one too, since it holds the screen text', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-trace-sink-'));
+  try {
+    const old = join(dir, 'old.jsonl');
+    await writeFile(old, '{"a":1}\n', { mode: 0o644 });
+    const s = await startSink({ port: 0, token: TOKEN, out: old, origins: [PAGE] });
+    assert.equal((await stat(old)).mode & 0o777, 0o600);
+    assert.equal((await post(`${s.origin}/`, { entries: [entry(1)] })).status, 200);
+    assert.equal((await stat(old)).mode & 0o777, 0o600);
+    await s.close();
+    const fresh = join(dir, 'fresh.jsonl');
+    const t = await startSink({ port: 0, token: TOKEN, out: fresh, origins: [PAGE] });
+    assert.equal((await post(`${t.origin}/`, { entries: [entry(1)] })).status, 200);
+    assert.equal((await stat(fresh)).mode & 0o777, 0o600);
+    await t.close();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -3,10 +3,11 @@
  * user runs, so a developer can watch a phone's entries, requests and errors as they happen. It is
  * off until the user gives it a server and a token and turns Send on (spec §15: no telemetry), and
  * leaves location points out unless asked. Every entry goes through annai's own secret blanking
- * (annai.secrets.blank) first, though entries never hold keys. Stored content (texts over 2,000
+ * (annai.secrets.blank) first, which blanks the keys annai keeps. Stored content (texts over 2,000
  * characters, photos) stays on the device. scripts/trace-sink.mjs is a server that receives it;
  * docs/plugins.md, "Remote trace (for developers)", says what it sends and never sends.
- * Detailed trace, a switch of its own for at most 24 hours, adds recordings, a text copy of the screen and a Flag button.
+ * Detailed trace, a switch of its own for at most 24 hours, adds recordings, a text copy of the screen and a Flag button (in the Trace chip's place);
+ * it goes off at once, and drops all it holds, when it is switched off, expires, or the server address changes.
  */
 
 export const ID = 'remote-trace';
@@ -44,6 +45,10 @@ const DEVICE_SCOPE = 'sys:device';
 const PAGE = `#/plugins/${ID}`;
 /** What a screen copy leaves out: fields and what they hold (typed words, keys), and what has no text to read. */
 const NOT_COPIED = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'CANVAS', 'AUDIO', 'VIDEO', 'IFRAME', 'OBJECT', 'EMBED']);
+/** A line that looks like a key by its prefix (Anthropic, Google, GitHub); annai's blanking knows only the keys it keeps, so these never get that far. */
+const KEY_LIKE = /(?:sk-ant-|AIza|ghp_)[\w-]{8,}/;
+/** The Trace screen shows the log's rows, with every request and place in them: its text is never copied. */
+const TRACE_ROUTE = /^#\/?trace(?:[/?]|$)/i;
 /** The elements a screen copy names as landmarks; a section only with a name. */
 const LANDMARKS = /** @type {Record<string, string>} */ ({ HEADER: 'header', NAV: 'nav', MAIN: 'main', ASIDE: 'aside', FOOTER: 'footer', DIALOG: 'dialog', FORM: 'form' });
 const LANDMARK_ROLES = new Set(['banner', 'navigation', 'main', 'complementary', 'contentinfo', 'dialog', 'alertdialog', 'region', 'form', 'search', 'alert', 'status']);
@@ -97,9 +102,9 @@ export function clipAddress(server, what) {
 
 /**
  * The text a person can see under root, a line per piece, with its landmarks as [main] or [nav: name]. Never what is in a field: no value is
- * read, and a textarea's or a contenteditable's words are left out with it. No pixels.
- * @param {any} root @param {{ gone: (el: any) => boolean, seen: (el: any) => boolean }} look
- *   gone: the element and all in it draw nothing (display: none); seen: text directly in it is on the screen now
+ * read, and a textarea's or a contenteditable's words are left out with it; nor a closed <details>' body, nor a line that looks like a key. No pixels.
+ * @param {any} root @param {{ gone: (el: any) => boolean, seen: (el: any, text: any) => boolean }} look
+ *   gone: the element and all in it draw nothing (display: none); seen: this text node, directly in the element, is on the screen now
  */
 export function screenText(root, look) {
   /** @type {string[]} */
@@ -109,8 +114,13 @@ export function screenText(root, look) {
     for (const n of el.childNodes) {
       if (n.nodeType === 3) {
         const text = String(n.nodeValue ?? '').replace(/\s+/g, ' ').trim();
-        if (text && look.seen(el)) lines.push(text);
+        if (text && !KEY_LIKE.test(text) && look.seen(el, n)) lines.push(text);
       } else if (n.nodeType === 1 && !NOT_COPIED.has(n.tagName) && !n.hasAttribute('contenteditable') && !look.gone(n)) {
+        if (n.tagName === 'DETAILS' && !n.hasAttribute('open')) {
+          // Closed: its summary is what shows, and nothing else (the Trace screen's rows are closed ones).
+          for (const c of n.childNodes) if (c.nodeType === 1 && c.tagName === 'SUMMARY') walk({ childNodes: [c] });
+          continue;
+        }
         const role = n.getAttribute('role');
         const name = n.getAttribute('aria-label');
         const kind = role && LANDMARK_ROLES.has(role) ? role : role ? null : LANDMARKS[n.tagName] ?? (n.tagName === 'SECTION' && name ? 'section' : null);
@@ -131,11 +141,14 @@ function browserScreen() {
   if (typeof document === 'undefined') return { route: '', text: '' };
   const text = screenText(document.body, {
     gone: (el) => getComputedStyle(el).display === 'none',
-    seen: (el) => {
+    seen: (el, node) => {
       const style = getComputedStyle(el);
       if (style.visibility !== 'visible') return false;
-      const r = el.getBoundingClientRect();
-      return style.display === 'contents' || (r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth);
+      // Where the text itself is: its parent may be a tall block, scrolled mostly away.
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
     },
   });
   return { route: location.hash, text };
@@ -305,6 +318,9 @@ export function start(annai, {
     }
   };
 
+  /** The Trace chip shows while it sends, except while Detailed trace is on: its Flag chip takes the place, so the dock's row is no wider (it wraps, and the bar jumps). */
+  const chipNow = () => showChip(on !== null && !detail);
+
   /** A fresh start on what the user changed: try now, and a new run of refusals may give a card. */
   const afresh = () => {
     failures = 0;
@@ -314,6 +330,12 @@ export function start(annai, {
     retryAt = 0;
     problem = null;
     limit = BATCH_MAX;
+  };
+
+  /** The entries of Detailed trace's own that wait go, as the recordings do: text of the screen must not leave after it is off. */
+  const dropTrace = () => {
+    queue = queue.filter((x) => !String(x.e.type).startsWith('trace.'));
+    queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
   };
 
   /** Detailed trace off: nothing more heard or copied, no flag, nothing waiting, at once. */
@@ -332,6 +354,8 @@ export function start(annai, {
     clipsBytes = 0;
     clipFailures = 0;
     clipRetryAt = 0;
+    dropTrace();
+    chipNow();
   };
 
   /** Off: no timer, no request, nothing waiting, no chip, at once. */
@@ -347,7 +371,7 @@ export function start(annai, {
     queueBytes = 0;
     dropped = 0;
     afresh();
-    showChip(false);
+    chipNow();
   };
 
   /** Drops the oldest entries waiting while there are more than KEEP_MAX, or more than KEEP_BYTES, counting them. */
@@ -496,6 +520,7 @@ export function start(annai, {
           // Kept, before what came since, within the caps.
           queue = [...items, ...queue];
           queueBytes += bytes;
+          if (!detail) dropTrace(); // it went off while this batch was on its way
           trim();
         }
         schedule();
@@ -523,7 +548,9 @@ export function start(annai, {
     try {
       const clean = await annai.secrets.blank(data);
       if (!detail) return false;
-      take(await annai.events.append(DEVICE_SCOPE, type, clean));
+      const written = await annai.events.append(DEVICE_SCOPE, type, clean);
+      if (!detail) return false; // off while it was being written: it does not leave
+      take(written);
       return true;
     } catch {
       return false; // the database closed under it, as an iPhone's can
@@ -553,7 +580,8 @@ export function start(annai, {
 
   /** The screen as text, cut to size. */
   const screenNow = () => {
-    const { route, text } = screen();
+    const { route, text: all } = screen();
+    const text = TRACE_ROUTE.test(route) ? '' : all;
     return { route, text: text.slice(0, SCREEN_CHARS), ...(text.length > SCREEN_CHARS ? { cut: true } : {}) };
   };
 
@@ -563,7 +591,7 @@ export function start(annai, {
     const at = (flagAt = now());
     const { route, text, ...more } = screenNow();
     const copied = await note('trace.screen', { route, text, ...more, flag: at, message: route });
-    const flagged = await note('trace.flag', { at, route, lastClip, screen: text, ...more, message: route });
+    const flagged = await note('trace.flag', { at, route, lastClip, message: route });
     annai.ui.toast(copied && flagged ? t`Flagged` : t`Not flagged`);
   };
 
@@ -671,6 +699,7 @@ export function start(annai, {
         }, SCREEN_SETTLE_MS);
       }));
       detail = { until, timer: null, ends };
+      chipNow();
     }
     detail.timer = timers.set(expire, Math.max(0, until - now()));
   };
@@ -682,7 +711,8 @@ export function start(annai, {
       if (s?.detailedUntil != null) saveOff(); // the next turn on starts a fresh 24 hours
       return;
     }
-    const until = typeof s.detailedUntil === 'number' ? s.detailedUntil : now() + DETAIL_MS;
+    // Never more than 24 hours from now: a saved end further off (a clock set ahead) is cut back.
+    const until = typeof s.detailedUntil === 'number' ? Math.min(s.detailedUntil, now() + DETAIL_MS) : now() + DETAIL_MS;
     if (now() >= until) {
       expire();
       return;
@@ -709,6 +739,7 @@ export function start(annai, {
       card({ tone: 'warn', title: t`Remote trace isn't sending`, body: format.sentences(why, settingsAt()) });
       return;
     }
+    const moved = on !== null && on.server !== String(s.server).trim();
     on = { server: String(s.server).trim(), location: s.location === true };
     if (typeof s.device === 'string' && s.device.trim()) device = s.device.trim();
     if (!on.location) {
@@ -716,8 +747,15 @@ export function start(annai, {
       queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
     }
     afresh();
-    showChip(true);
+    chipNow();
     label();
+    if (moved && detail) {
+      // Recordings and screen text were agreed for the old address: not one byte goes to the new one unless it is turned on again.
+      detailOff();
+      saveOff();
+      card({ tone: 'info', title: t`Detailed trace turned off`, body: format.sentences(t`The server address changed, and recordings go only where you turned it on.`, settingsAt()) });
+      return;
+    }
     applyDetail(s);
   };
 

@@ -1,11 +1,11 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "api": 2,
   "category": "developer",
   "entry": "index.js",
-  "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
+  "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. The keys annai keeps are blanked.",
   "homepage": "https://github.com/annai-guide/annai/blob/main/docs/plugins.md#remote-trace-for-developers",
   "settings": {
     "type": "object",
@@ -31,13 +31,13 @@
         "type": "boolean",
         "default": false,
         "title": "Send",
-        "description": "On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once."
+        "description": "On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. The keys annai keeps are blanked, and stored content (photos, long texts) stays here. Off stops it at once."
       },
       "detailed": {
         "type": "boolean",
         "default": false,
         "title": "Detailed trace",
-        "description": "Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, without what's typed in fields or keys, and a Flag button shows beside the chips, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours."
+        "description": "Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, at each screen change and when you tap Flag, without what's typed in fields or the keys annai keeps, and never from the Trace screen. A Flag button takes the Trace chip's place in the dock, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours."
       },
       "device": {
         "type": "string",

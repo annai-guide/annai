@@ -173,3 +173,58 @@ test('LiveInput tells sound outside a turn only: never what a turn sends', async
 test('joinPcm puts pieces together', () => {
   assert.deepEqual([...joinPcm([new Int16Array([1, 2]), new Int16Array([3])])], [1, 2, 3]);
 });
+
+test('a sample half taken belongs to the plugin that was listening: off and on again, or a new input, starts none of its sound over', async () => {
+  const k = await liveKit([], { voice: VOICE });
+  try {
+    const t = 1_000_000;
+    k.voice.now = () => t;
+    const rate = 16_000;
+    const second = new Int16Array(rate).fill(500);
+    const first = listen(k);
+    k.voice.keptOut();
+    k.voice.outside(second, rate);
+    first.off();
+    const again = listen(k); // turned on again later; no sound came while it was off
+    k.voice.outside(second, rate);
+    k.voice.outside(second, rate);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(again.clips.length, 0, 'the old second is not the start of a new sample');
+    // A new microphone input starts clean as well.
+    k.voice.keptOut();
+    k.voice.endSample();
+    for (let i = 0; i < 2; i++) k.voice.outside(second, rate);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(again.clips.length, 0);
+    // And a sample taken from the start is whole.
+    k.voice.now = () => t + 60_000;
+    k.voice.keptOut();
+    for (let i = 0; i < 3; i++) k.voice.outside(second, rate);
+    await soon(async () => again.clips.length === 1);
+    assert.equal(again.clips[0].ms, 3000);
+  } finally {
+    await k.done();
+  }
+});
+
+test('Detailed trace off and a quiet room: the sample is let go at the next keptOut too, not kept for the next listener', async () => {
+  const k = await liveKit([], { voice: VOICE });
+  try {
+    const rate = 16_000;
+    const second = new Int16Array(rate).fill(500);
+    k.voice.now = () => 5_000_000;
+    const first = listen(k);
+    k.voice.keptOut();
+    k.voice.outside(second, rate);
+    first.off();
+    k.voice.keptOut(); // nobody listens: it drops what it held
+    const again = listen(k);
+    k.voice.now = () => 5_000_000 + 60_000;
+    k.voice.keptOut();
+    for (let i = 0; i < 2; i++) k.voice.outside(second, rate);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(again.clips.length, 0, 'two seconds are not three');
+  } finally {
+    await k.done();
+  }
+});

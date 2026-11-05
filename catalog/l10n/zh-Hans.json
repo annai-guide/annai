@@ -112,7 +112,7 @@
     },
     "remote-trace": {
       "name": "远程记录（开发者）",
-      "description": "开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。从不发送密钥。"
+      "description": "开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。annai 保存的密钥会被遮盖。"
     },
     "scripted-model": {
       "name": "脚本模型",
@@ -185,7 +185,7 @@
     "provider-scripted": "9dfb3901051de397e56465adb78a6d14712730275536b85bccefc18b4026f41e",
     "provider-sglang": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665",
     "provider-vllm": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916",
-    "remote-trace": "2b52110b0030281098ebe37b68f9f6cb72a3e210554cb7907340f68b7e335a7d",
+    "remote-trace": "e0d355c3ba5ea43518d4bc4b2116142ecaffe77e8ceb48f5e4b46baf328a3f81",
     "scripted-model": "f0475b034744ccc5cd6ba794ac1e05a5a9d2174adbb9c979eab75b7cfc598a1b",
     "search-searxng": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2",
     "search-serper": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a",

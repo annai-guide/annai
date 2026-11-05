@@ -187,13 +187,14 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.flag').length, { timeout: 20_000 }).toBe(1);
     const lines = await sink.lines();
     const flagged = lines.find((l) => l.type === 'trace.flag');
-    expect(flagged.data.screen).toContain('Recordings include passengers');
-    expect(flagged.data.screen).toContain('[nav: Shiori]');
+    const copy = lines.find((l) => l.type === 'trace.screen' && l.data.flag === flagged.data.at);
+    expect(copy.data.text).toContain('Recordings include passengers');
+    expect(copy.data.text).toContain('[nav: Shiori]');
     expect(flagged.data.route).toBe('#/plugins/remote-trace');
-    expect(lines.find((l) => l.type === 'trace.screen').data.flag).toBe(flagged.data.at);
+    expect(flagged.data.screen).toBeUndefined(); // the copy is its own entry
     expect(await sink.text()).not.toContain(SECRET);
     expect(await sink.text()).not.toContain(TOKEN);
-    expect(flagged.data.screen).not.toContain(`${sink.url}/trace`); // an address in a field stays there too
+    expect(copy.data.text).not.toContain(`${sink.url}/trace`); // an address in a field stays there too
 
     // A route change sends a copy of the new screen.
     await page.goto('/#/talk');
@@ -213,6 +214,9 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     // It's in the Trace too.
     await page.goto('/#/trace?type=trace.flag');
     await expect(page.locator('.trace li').filter({ hasText: 'trace.flag' }).first()).toBeVisible();
+    // Its rows are not screen text: the Trace screen's copy is its route and nothing else, and no row's JSON reaches the sink.
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && l.data.route.startsWith('#/trace')).length, { timeout: 20_000 }).toBeGreaterThan(0);
+    for (const l of (await sink.lines()).filter((x) => x.type === 'trace.screen' && x.data.route.startsWith('#/trace'))) expect(l.data.text).toBe('');
 
     // Off: the flag goes at once.
     await page.goto('/#/plugins/remote-trace');
@@ -223,3 +227,40 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     await sink.stop();
   }
 });
+
+for (const width of [320, 360, 375, 393]) {
+  test(`${width} px: Flag takes the Trace chip's place, so the dock does not grow or move whatever the voice words are`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await openApp(page, '#/voice');
+    await page.getByRole('radio', { name: 'On', exact: true }).check();
+    /** The dock's box and the row of chips, with the voice chip saying each of its words. */
+    const measureWords = async () => {
+      await page.goto('/#/talk');
+      await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
+      const out = [];
+      for (const words of ['Voice auto · off', 'Voice on · car audio · Realtime', 'Voice on · headphones · Classic']) {
+        await page.locator('.voice-chip').evaluate((el, w) => { el.textContent = w; }, words);
+        out.push(await page.evaluate(() => ['nav.dock', '.dock-row', '.voice-row'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, Math.round(b.y), b.width, Math.round(b.height)]; })));
+      }
+      return out;
+    };
+    const none = await measureWords();
+    await page.goto('/#/add');
+    await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
+    await page.getByRole('link', { name: 'Open Remote trace (for developers)' }).click();
+    await page.getByLabel('Server address').fill('https://sink.example/trace');
+    await page.getByRole('checkbox', { name: 'Send', exact: true }).check();
+    await expect(page.getByRole('button', { name: 'Sending trace' })).toBeVisible();
+    const trace = await measureWords();
+    await page.goto('/#/plugins/remote-trace');
+    // A tall dock can cover the box on a short page: the click is the box's own.
+    await page.getByRole('checkbox', { name: 'Detailed trace', exact: true }).evaluate((el) => /** @type {HTMLInputElement} */ (el).click());
+    await expect(page.getByRole('checkbox', { name: 'Detailed trace', exact: true })).toBeChecked();
+    const flag = await measureWords();
+    await expect(page.getByRole('button', { name: 'Flag this moment' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sending trace' })).toHaveCount(0);
+    // In Trace's place it costs the row nothing more than that chip did, and with the usual words the bar is as tall as with no chip at all.
+    expect(flag).toEqual(trace);
+    expect(flag[0]).toEqual(none[0]);
+  });
+}

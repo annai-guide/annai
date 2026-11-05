@@ -61,7 +61,7 @@ export const WRITE_DOWN = /* en */ 'Write down exactly what is said in this audi
 export class Voice {
   /** The conversation speech requests are traced in. */
   scope = SYS;
-  /** The level check's sample being taken, and when the next may start. @type {{ pieces: Int16Array[], samples: number } | null} */
+  /** The level check's sample being taken, and when the next may start. @type {{ pieces: Int16Array[], samples: number, taps: any[] } | null} */
   #sample = null;
   #sampleAfter = 0;
   /** Heard segments, until the turn that used them succeeds (spec §10.3). */
@@ -245,22 +245,38 @@ export class Voice {
     }
   }
 
+  /** The plugins that listen now, as the items they registered: a sample belongs to the ones that were listening when it began. */
+  #listeners() {
+    return this.registry.entries('heard-clips').map((e) => e.item);
+  }
+
   /** The level check just kept sound out: at most once a minute, the next SAMPLE_S of sound outside a turn go as a sample, while a plugin listens. */
   keptOut() {
+    if (!this.tapped) this.#sample = null;
     if (this.#sample || !this.tapped || this.now() < this.#sampleAfter) return;
-    this.#sample = { pieces: [], samples: 0 };
+    this.#sample = { pieces: [], samples: 0, taps: this.#listeners() };
     this.#sampleAfter = this.now() + SAMPLE_EVERY_MS;
+  }
+
+  /** A new microphone input opens: sound taken for a sample on the last one is not the start of this one's. */
+  endSample() {
+    this.#sample = null;
   }
 
   /** Sound outside a turn, for the sample being taken. @param {Int16Array} pcm @param {number} rate */
   outside(pcm, rate) {
     const s = this.#sample;
     if (!s) return;
+    // Everyone it was taken for must still be listening: turned off, and on again later, is another plugin's sample.
+    if (!this.tapped || !s.taps.every((x) => this.#listeners().includes(x))) {
+      this.#sample = null;
+      return;
+    }
     s.pieces.push(pcm);
     s.samples += pcm.length;
     if (s.samples < SAMPLE_S * rate) return;
     this.#sample = null;
-    if (this.tapped) void this.tell({ id: newId('kept'), pcm: joinPcm(s.pieces), rate }, 'kept');
+    void this.tell({ id: newId('kept'), pcm: joinPcm(s.pieces), rate }, 'kept');
   }
 
   /** A MediaRecorder type to record alongside, when some receiver would take its format over the encoder's (decision 24). */
