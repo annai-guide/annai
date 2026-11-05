@@ -49,6 +49,8 @@ const NOT_COPIED = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'N
 const KEY_LIKE = /(?:sk-ant-|AIza|ghp_)[\w-]{8,}/;
 /** The Trace screen shows the log's rows, with every request and place in them: its text is never copied. */
 const TRACE_ROUTE = /^#\/?trace(?:[/?]|$)/i;
+/** The Trace screen's list of rows, by element: the shell keeps the old screen until the next one draws, so the route alone is not enough. @param {any} n */
+const isTraceRows = (n) => n.tagName === 'OL' && /(?:^|\s)trace(?:\s|$)/.test(n.getAttribute('class') ?? '');
 /** The elements a screen copy names as landmarks; a section only with a name. */
 const LANDMARKS = /** @type {Record<string, string>} */ ({ HEADER: 'header', NAV: 'nav', MAIN: 'main', ASIDE: 'aside', FOOTER: 'footer', DIALOG: 'dialog', FORM: 'form' });
 const LANDMARK_ROLES = new Set(['banner', 'navigation', 'main', 'complementary', 'contentinfo', 'dialog', 'alertdialog', 'region', 'form', 'search', 'alert', 'status']);
@@ -115,7 +117,7 @@ export function screenText(root, look) {
       if (n.nodeType === 3) {
         const text = String(n.nodeValue ?? '').replace(/\s+/g, ' ').trim();
         if (text && !KEY_LIKE.test(text) && look.seen(el, n)) lines.push(text);
-      } else if (n.nodeType === 1 && !NOT_COPIED.has(n.tagName) && !n.hasAttribute('contenteditable') && !look.gone(n)) {
+      } else if (n.nodeType === 1 && !NOT_COPIED.has(n.tagName) && !n.hasAttribute('contenteditable') && !isTraceRows(n) && !look.gone(n)) {
         if (n.tagName === 'DETAILS' && !n.hasAttribute('open')) {
           // Closed: its summary is what shows, and nothing else (the Trace screen's rows are closed ones).
           for (const c of n.childNodes) if (c.nodeType === 1 && c.tagName === 'SUMMARY') walk({ childNodes: [c] });
@@ -333,8 +335,9 @@ export function start(annai, {
   };
 
   /** The entries of Detailed trace's own that wait go, as the recordings do: text of the screen must not leave after it is off. */
+  const isTraceItem = (/** @type {Item} */ x) => String(x.e.type).startsWith('trace.');
   const dropTrace = () => {
-    queue = queue.filter((x) => !String(x.e.type).startsWith('trace.'));
+    queue = queue.filter((x) => !isTraceItem(x));
     queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
   };
 
@@ -355,6 +358,17 @@ export function start(annai, {
     clipFailures = 0;
     clipRetryAt = 0;
     dropTrace();
+    if (flight && flight.items.some(isTraceItem)) {
+      // A batch holding screen text or a flag is cut off, wherever it is (token, blanking, the request): its ordinary entries wait again.
+      const { items, abort } = flight;
+      flight = null;
+      abort.abort();
+      const rest = items.filter((x) => !isTraceItem(x));
+      queue = [...rest, ...queue];
+      queueBytes += rest.reduce((sum, x) => sum + x.bytes, 0);
+      trim();
+      schedule();
+    }
     chipNow();
   };
 
@@ -431,6 +445,7 @@ export function start(annai, {
 
   /** Sends the oldest entries waiting, one batch, and keeps them when the server doesn't take them. */
   const flush = async () => {
+    expired(); // a phone asleep past the end: the screen text waiting goes before a batch is made
     if (!on || holding || flight || stopped || !queue.length) return;
     if (!online()) {
       schedule();
@@ -520,7 +535,6 @@ export function start(annai, {
           // Kept, before what came since, within the caps.
           queue = [...items, ...queue];
           queueBytes += bytes;
-          if (!detail) dropTrace(); // it went off while this batch was on its way
           trim();
         }
         schedule();
@@ -561,7 +575,7 @@ export function start(annai, {
   const saveOff = () => {
     const box = globalThis.document?.getElementById(`setting-${ID}-detailed`);
     if (box) /** @type {HTMLInputElement} */ (box).checked = false;
-    annai.settings.set({ detailed: false, detailedUntil: null }).catch(() => {});
+    annai.settings.set({ detailed: false, detailedUntil: null, detailedFor: null }).catch(() => {});
   };
 
   /** 24 hours are up: off, and saved so, with one card. */
@@ -711,13 +725,20 @@ export function start(annai, {
       if (s?.detailedUntil != null) saveOff(); // the next turn on starts a fresh 24 hours
       return;
     }
+    // It was turned on for one address, saved with it: at another (changed while it ran, or while it was off) recordings and screen text were not agreed to.
+    if (typeof s.detailedUntil === 'number' && s.detailedFor !== on?.server) {
+      detailOff();
+      saveOff();
+      card({ tone: 'info', title: t`Detailed trace turned off`, body: format.sentences(t`The server address changed, and recordings go only where you turned it on.`, settingsAt()) });
+      return;
+    }
     // Never more than 24 hours from now: a saved end further off (a clock set ahead) is cut back.
     const until = typeof s.detailedUntil === 'number' ? Math.min(s.detailedUntil, now() + DETAIL_MS) : now() + DETAIL_MS;
     if (now() >= until) {
       expire();
       return;
     }
-    if (s.detailedUntil !== until) annai.settings.set({ detailedUntil: until }).catch(() => {});
+    if (s.detailedUntil !== until || s.detailedFor !== on?.server) annai.settings.set({ detailedUntil: until, detailedFor: on?.server }).catch(() => {});
     detailOn(until);
   };
 
@@ -739,7 +760,6 @@ export function start(annai, {
       card({ tone: 'warn', title: t`Remote trace isn't sending`, body: format.sentences(why, settingsAt()) });
       return;
     }
-    const moved = on !== null && on.server !== String(s.server).trim();
     on = { server: String(s.server).trim(), location: s.location === true };
     if (typeof s.device === 'string' && s.device.trim()) device = s.device.trim();
     if (!on.location) {
@@ -749,13 +769,6 @@ export function start(annai, {
     afresh();
     chipNow();
     label();
-    if (moved && detail) {
-      // Recordings and screen text were agreed for the old address: not one byte goes to the new one unless it is turned on again.
-      detailOff();
-      saveOff();
-      card({ tone: 'info', title: t`Detailed trace turned off`, body: format.sentences(t`The server address changed, and recordings go only where you turned it on.`, settingsAt()) });
-      return;
-    }
     applyDetail(s);
   };
 

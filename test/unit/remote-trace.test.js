@@ -61,7 +61,7 @@ function virtualClock(t0 = T0) {
         const next = [...due].filter(([, d]) => d.at <= end).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
         if (!next) break;
         due.delete(next[0]);
-        t = next[1].at;
+        t = Math.max(t, next[1].at); // a jump has moved the clock past it: time never runs back
         next[1].fn();
       }
       t = end;
@@ -1089,7 +1089,7 @@ test('a line that looks like a key by its prefix (sk-ant-, AIza, ghp_) is left o
 });
 
 test('Detailed trace ends 24 hours after it began even when the saved end is later: a clock set ahead cannot lengthen it', async () => {
-  const k = await kit({ settings: { ...ON, detailedUntil: T0 + 10 * DETAIL_MS } });
+  const k = await kit({ settings: { ...ON, detailedUntil: T0 + 10 * DETAIL_MS, detailedFor: SERVER } });
   assert.equal(k.saved.detailedUntil, T0 + DETAIL_MS);
   await k.clock.advance(DETAIL_MS);
   assert.equal(k.tapped.size, 0);
@@ -1118,4 +1118,90 @@ test('Flag takes the Trace chip\'s place while Detailed trace is on, so the dock
   await k.save({ send: false });
   assert.deepEqual([...k.chips.keys()], [], 'Send off: no chip at all');
   k.stop();
+});
+
+// Fix pass 2 (findings from the re-review).
+/** The entry types of every batch that went to the server's batch address, in order. @param {any} k */
+const batchTypes = (k) => k.posts.filter((/** @type {any} */ x) => x.url === SERVER).map((/** @type {any} */ x) => x.body.entries.map((/** @type {any} */ e) => e.type));
+
+test('Detailed trace off while a batch holding screen text is on its way: that request is cut off, and its ordinary entries go again without it', async () => {
+  const k = await kit({ settings: ON, screen: () => ({ route: '#/now', text: 'Dinner at eight' }), answer: (n) => (n === 1 ? new Promise(() => {}) : new Response('{}')) });
+  await k.tapFlag();
+  k.give(entry(1));
+  await k.clock.advance(BATCH_MS);
+  assert.equal(k.posts.filter((p) => p.url === SERVER).length, 1, 'the batch is on its way');
+  assert.ok(batchTypes(k)[0].includes('trace.screen'));
+  await k.save({ detailed: false });
+  assert.equal(k.posts[0].init.signal.aborted, true, 'the request holding screen text is cut off');
+  await k.clock.advance(RETRY_MAX_MS);
+  const later = batchTypes(k).slice(1).flat();
+  assert.ok(later.includes('msg.user'), 'the ordinary entry still goes');
+  assert.equal(later.some((t) => t.startsWith('trace.')), false);
+  assert.equal(JSON.stringify(k.posts.slice(1)).includes('Dinner at eight'), false);
+  k.stop();
+});
+
+test('Detailed trace off while a batch is still getting its token and its blanking: it does not post, and what goes later has no trace entries', async () => {
+  const k = await kit({ settings: ON, screen: () => ({ route: '#/now', text: 'Dinner at eight' }) });
+  await k.tapFlag();
+  k.give(entry(1));
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(null); });
+  const real = k.store.tx;
+  k.store.tx = /** @type {any} */ ((/** @type {any[]} */ ...a) => held.then(() => real.apply(k.store, /** @type {any} */ (a))));
+  await k.clock.advance(BATCH_MS);
+  assert.equal(k.posts.length, 0, 'the batch is waiting for its token');
+  await k.save({ detailed: false });
+  k.store.tx = real;
+  release();
+  await k.clock.advance(RETRY_MAX_MS);
+  const sent = batchTypes(k).flat();
+  assert.ok(sent.includes('msg.user'));
+  assert.equal(sent.some((t) => t.startsWith('trace.')), false);
+  assert.equal(JSON.stringify(k.posts).includes('Dinner at eight'), false);
+  k.stop();
+});
+
+test('a phone asleep past the end of Detailed trace, with a retry of a batch due: the retry finds it over, and screen text does not go', async () => {
+  const k = await kit({ settings: ON, screen: () => ({ route: '#/now', text: 'Dinner at eight' }), answer: (n) => (n === 1 ? new Response('{}', { status: 503 }) : new Response('{}')) });
+  await k.tapFlag();
+  k.give(entry(1));
+  await k.clock.advance(BATCH_MS);
+  assert.equal(batchTypes(k).length, 1, 'the first try was refused, and a retry is due');
+  k.clock.jump(DETAIL_MS);
+  await k.clock.advance(0);
+  const later = batchTypes(k).slice(1).flat();
+  assert.ok(later.includes('msg.user'));
+  assert.equal(later.some((t) => t.startsWith('trace.')), false);
+  assert.equal(k.saved.detailed, false);
+  k.stop();
+});
+
+test('a different address saved while it was not running turns Detailed trace off when it comes back: no Flag, no screen copy, the switch saved off, one card', async () => {
+  const first = await kit({ settings: ON });
+  assert.equal(first.saved.detailedFor, SERVER);
+  first.stop();
+  const again = await kit({ settings: { ...first.saved, server: 'https://other.example/trace' }, screen: () => ({ route: '#/now', text: 'Dinner at eight' }) });
+  assert.equal(again.tapped.size, 0);
+  assert.equal(again.chips.has('flag'), false);
+  assert.equal(again.saved.detailed, false);
+  assert.equal(again.saved.detailedUntil, null);
+  assert.equal(again.cards.length, 1);
+  assert.equal(again.cards[0].title, 'Detailed trace turned off');
+  again.route();
+  await again.clock.advance(RETRY_MAX_MS);
+  assert.equal(again.appended.length, 0);
+  assert.equal(JSON.stringify(again.posts).includes('Dinner at eight'), false);
+  again.stop();
+  // Turned on afresh for the new address, it starts, and is tied to that address.
+  const fresh = await kit({ settings: { server: 'https://other.example/trace', send: true, detailed: true } });
+  assert.equal(fresh.tapped.size, 1);
+  assert.equal(fresh.saved.detailedFor, 'https://other.example/trace');
+  fresh.stop();
+});
+
+test('rows of the Trace screen are left out by the element, so they stay out while the old screen is still drawn under a new route', () => {
+  const rows = el('OL', { class: 'trace' }, el('LI', {}, el('DETAILS', { open: '' }, el('SUMMARY', {}, 'net.request'), el('PRE', {}, '{"url":"https://example.test/forecast?lat=1"}'))));
+  const text = screenText(el('BODY', {}, el('MAIN', {}, el('H1', {}, 'Trace'), rows), el('OL', { class: 'steps' }, el('LI', {}, 'Lunch'))), { gone: () => false, seen: () => true });
+  assert.equal(text, '[main]\nTrace\nLunch');
 });
