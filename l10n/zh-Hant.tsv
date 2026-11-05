@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:487	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:487	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:488	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:488	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:338	
@@ -2367,25 +2367,25 @@ mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的�
 urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:587	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
 1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:599	Note: Taiwan wording: 復原 as Undo, 檔案.
 bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:641	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:658	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:660	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:660	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:660	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:660	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:663	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:665	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:678	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:679	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:680	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:690	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:693	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:693	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:693	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:693	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:713	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:714	
-15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:715	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:737	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:656	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:658	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:658	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:658	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:658	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:661	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:663	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:676	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:677	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:678	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:688	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:691	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:691	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:691	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:691	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:711	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:712	
+15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:713	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:735	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

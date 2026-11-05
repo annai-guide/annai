@@ -141,8 +141,8 @@ export class Transcript {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         // Koe reads typed words marked; one half's plain lines are the typed ones, as its instructions say.
-        /* en */ const said = koe ? (d.meanwhile ? `[meanwhile, the user wrote] ${theirs(texts.text)}` : koeLine(d, texts.text, { photo: r.images.length > 0 })) : d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text;
-        this.#line([{ type: 'text', text: said }, ...r.images, ...this.#handed(d)]);
+        /* en */ const said = koe ? koeLine(d, texts.text, { files: false }) : d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text;
+        this.#line([...(said ? /** @type {Part[]} */ ([{ type: 'text', text: said }]) : []), ...r.images, ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;

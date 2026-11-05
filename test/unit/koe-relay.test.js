@@ -221,13 +221,13 @@ test("Koe already said what Kokoro's note says, and settles it with already_told
   assert.deepEqual(k.notices, []);
 });
 
-test("the cue asks Koe for what the note adds, in its own words, and names already_told; Koe settles it after the cue", async () => {
+test("the cue asks Koe for what the note adds, without changing what it claims, and names already_told; Koe settles it after the cue", async () => {
   const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep, calls(['already_told', {}], ['sleep', {}])] } });
   k.agent.send('A sunset drink in Carmel');
   await k.agent.idle();
   assert.equal(k.sent['model-koe'].length, 3);
   const cue = JSON.stringify(k.sent['model-koe'][2].messages.at(-1));
-  assert.match(cue, /what it adds, in your own words/);
+  assert.match(cue, /what it adds, without changing what it claims/);
   assert.match(cue, /already_told/);
   assert.doesNotMatch(cue, /Say what the note says/);
   assert.deepEqual(await backstop(k), []);

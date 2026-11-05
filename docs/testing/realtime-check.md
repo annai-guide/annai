@@ -91,6 +91,7 @@ with no network, after the analysis changed.
 | relay-filler (only by name) | phone speaker | a question, then being told off for apologising: a scold clip: silence is right, and the check "no filler" fails on an apology, "I understand" or "I will…" in anything she says |
 | relay-greet (only by name) | phone speaker | "Good morning, Shiori.", a question, then "What?" after her answer: the greeting gets a greeting, and "What?" gets her last words again (fix pass 1) |
 | relay-stray (only by name) | phone speaker | the languages setting English and Japanese: a stray word in Korean and song lyrics, each should get no sound back (the check "strays left alone"); then a question |
+| relay-unset-ja (only by name) | phone speaker | no languages set: a Japanese sentence, which the user may speak, is answered (in Japanese); the stay-silent rule must not catch it (fix pass 2) |
 | relay-note (only by name) | phone speaker | a question, Kokoro's note, then the same note again once she has said it (the stand-in Kokoro repeats it): the first is said with nothing added, the second settled with already_told |
 | multilingual (only by name) | phone speaker | the languages setting English, Chinese and Japanese; a Japanese sentence, a Chinese one and an English one, each after her answer: each should be answered in kind |
 

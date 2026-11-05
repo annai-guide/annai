@@ -132,11 +132,14 @@ for (const width of [390, 320]) {
     await expect(page.locator('.convo ~ .tidy, .convo .tidy')).toHaveCount(0);
     await toggle.click();
     const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
-    await expect(menu).toBeInViewport({ ratio: 1 });
     const m = /** @type {any} */ (await menu.boundingBox());
     expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
     expect(m.x).toBeGreaterThanOrEqual(0);
     expect(m.x + m.width).toBeLessThanOrEqual(width);
+    // No taller than the screen less the bar and the title (CSS only); where it hangs below the fold, the page scrolls to it.
+    expect(m.height).toBeLessThanOrEqual(700 - 56 - 64 + 1);
+    await menu.scrollIntoViewIfNeeded();
+    await expect(menu).toBeInViewport({ ratio: 1 });
     await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
   });
 }

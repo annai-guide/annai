@@ -116,7 +116,7 @@ export function channelTool(from, channel, refuse = () => null) {
     name, pluginId: 'core', group: /* en */ 'Talk',
     description: koe
       ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
-      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says it in its own words. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them; annai shows them only if Koe never says it.',
+      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them; annai shows them only if Koe never says it.',
     input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
     run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
@@ -629,7 +629,7 @@ export class Halves {
       const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
       if (e.type === 'msg.user') {
-        lines.unshift(koeLine(d, text, { photo: Boolean(d.images?.length), quoted: true }));
+        lines.unshift(koeLine(d, text, { quoted: true }));
         continue;
       }
       const who = e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
@@ -669,13 +669,13 @@ export class Halves {
     for (const e of events) {
       const d = { ...e.data, ...(await storedTexts(this.store, e)) };
       /* en */
-      const line = e.type === 'msg.user' ? koeLine(d, String(d.text ?? ''), { photo: Boolean(d.images?.length) })
-        : e.type === 'heard' ? `${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${later.get(d.id) ?? d.text ?? NOT_TRANSCRIBED}`
+      const line = e.type === 'msg.user' ? koeLine(d, String(d.text ?? ''))
+        : e.type === 'heard' ? `${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${theirs(String(later.get(d.id) ?? d.text ?? NOT_TRANSCRIBED))}`
           : e.type === 'note' && d.from === 'kokoro' ? wrapNote(String(d.text ?? ''), this.nonce)
             : e.type === 'tool.call' && d.half === 'koe' ? `[it calls] ${d.name} ${JSON.stringify(d.input ?? {})}`
               : e.type === 'tool.result' && d.half === 'koe' ? `[the result${d.ok === false ? ', an error' : ''}] ${theirs(String(d.content ?? ''))}`
                 // Koe's own words are Koe's: "[said to the user]" is what Shiori said without it.
-                : e.type.startsWith('out.') ? (d.half === 'koe' ? `[you said] ${quote(e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text)}` : saidWithout(e, d)) : null;
+                : e.type.startsWith('out.') ? (d.half === 'koe' ? `[you said] ${escapeTags(quote(e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text))}` : escapeTags(saidWithout(e, d) ?? '')) : null;
       if (line) lines.push({ ts: e.ts, line });
     }
     return lines.sort((a, b) => a.ts - b.ts).map((x) => x.line);

@@ -73,7 +73,20 @@ test("the Conversation's ⋯ opens what each half sees: its instructions and its
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(size).toBe('15px');
     expect(box.width).toBeGreaterThan(/** @type {any} */ ((await menu.boundingBox())).width - 30);
-    await expect(menu).toBeInViewport({ ratio: 1 });
+    // Turned sideways with it open, and opened again there: the menu is the screen's height at most (CSS only), and the link is reachable.
+    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const height = async () => /** @type {any} */ ((await menu.boundingBox())).height;
+    for (const size of [{ width: 844, height: 390 }, { width: 320, height: 568 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      const most = size.height - 56 - 64; // the screen less the bar (56 px) and the room the title and its ⋯ take
+      await expect.poll(height, { message: `open, ${size.width}x${size.height}` }).toBeLessThanOrEqual(most + 1);
+      await toggle.click();
+      await toggle.click();
+      await expect.poll(height, { message: `opened again, ${size.width}x${size.height}` }).toBeLessThanOrEqual(most + 1);
+      expect(await height()).toBeGreaterThan(Math.min(200, most - 1)); // never the 120 px box
+      await link.scrollIntoViewIfNeeded();
+      await expect(link).toBeInViewport({ ratio: 1 });
+    }
     await link.click();
     await expect(page.getByRole('heading', { level: 1, name: 'What Kokoro sees' })).toBeVisible();
     await expect(page.getByText('Shiori is one half right now')).toBeVisible();
@@ -115,7 +128,10 @@ test("a new original of a text the user changed opens its fold and says so in it
   await expect(koe.getByRole('button', { name: 'Use the new original: Koe, classic' })).toBeVisible();
   // The others stay folded.
   await expect(page.locator('details[data-instructions="shiori"]')).toHaveJSProperty('open', false);
+  // Merging by hand beside the new original, then Keep mine: the typing stays in the box (unsaved, as it was).
+  await koe.locator('textarea').fill('My Koe words, with a line from the new original.');
   await koe.getByRole('button', { name: 'Keep mine: Koe, classic' }).click();
   await expect(koe.locator('summary')).not.toContainText('new original');
+  await expect(koe.locator('textarea')).toHaveValue('My Koe words, with a line from the new original.');
   await expect(koe.locator('summary')).toContainText('changed');
 });

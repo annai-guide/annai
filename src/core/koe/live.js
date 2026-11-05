@@ -21,7 +21,7 @@ import { t } from '../l10n.js';
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
  *   heard or written; audible: its sound has started playing, so its words may show
  * @typedef {{ sent: number, spoke: boolean, timer: any }} Mark  an urgent note's (LiveKoe's #urgent)
- * @typedef {{ text: string }} Waiting  what waits to go in (LiveKoe's #notes)
+ * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
  * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
  * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean, late?: boolean }} Hearing
  *   answered: her verdict came (dismissed: answered with nothing)
@@ -161,8 +161,9 @@ export class LiveKoe {
   #pauseMs = 700;
   /**
    * Waiting for an answer: to a text turn's words, or the user's turn (null). strict: only sound, a word, or a card or question shown
-   * answers (the user's turn, and annai's ask again); tools: tool calls came, and nothing else yet; alive: the session gave something back.
-   * @type {{ timer: any, text: string | null, strict: boolean, tools: boolean, alive: boolean } | null}
+   * answers (the user's turn, and annai's ask again); tools: tool calls came, and nothing else yet; alive: the session gave something back;
+   * told: annai's own lines in that text, sent again where a fresh session gets it again.
+   * @type {{ timer: any, text: string | null, strict: boolean, tools: boolean, alive: boolean, told: string[] } | null}
    */
   #due = null;
   /** A silent session was replaced already, with no answer since: the next silence is only traced. */
@@ -647,7 +648,7 @@ export class LiveKoe {
     // The request copies Kokoro gets, as its transcript reads them.
     const { images } = await resolveEvent(this.c.store, e);
     for (const im of takes ? images : []) if (im.type === 'image' && im.data) this.#send((s) => s.image({ mediaType: im.mediaType, data: im.data }));
-    this.#text(koeLine(e.data, String(text ?? '').trim(), { photo: images.length > 0, unseen: !takes }));
+    this.#text(koeLine(e.data, String(text ?? '').trim(), { unseen: !takes }));
     return true;
   }
 
@@ -656,10 +657,7 @@ export class LiveKoe {
     if (isWatched(w)) this.#watched = true;
     const text = `[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`;
     // An urgent watch fired (drive-test design §7): said now, as an urgent note is; out of view, it waits as any wake does.
-    const ts = Date.now();
-    const sent = w.urgent && this.c.visible() ? this.#now(text, w.kind) : this.#say(text, w.kind);
-    // What Koe was told, for What each half sees: after the open, which starts a new list when the session is a fresh one.
-    return sent.then((ok) => { if (ok) this.#told.push({ ts, text }); return ok; });
+    return w.urgent && this.c.visible() ? this.#now(text, w.kind, null, true) : this.#say(text, w.kind);
   }
 
   /**
@@ -692,8 +690,9 @@ export class LiveKoe {
   /**
    * Urgent (an immediate note, an urgent watch's trigger): said now, whole, before anything that waits (a session it opens lets nothing
    * else in first); the microphone is deaf until she has said it, or the cap. @param {string} text @param {string} why @param {Wake | null} [owed]
+   * @param {boolean} [told] annai's own line, which the log holds none of
    */
-  async #now(text, why, owed = null) {
+  async #now(text, why, owed = null, told = false) {
     clearTimeout(this.#urgent?.timer);
     const mark = (this.#urgent = { sent: 0, spoke: false, timer: null });
     // No session to take it (none opened, the open failed, or it closed while the microphone opened): no mark is left, and Halves
@@ -707,7 +706,7 @@ export class LiveKoe {
     if (!ok) return false;
     if (owed) this.#went([owed]);
     this.#input?.cut('voice'); // the user's turn going on ends here
-    this.#text(text, this.#cut());
+    this.#text(text, this.#cut(), false, told ? [text] : []);
     // A newer urgent note came meanwhile: its own mark runs once it goes in, after this one.
     if (this.#urgent === mark) this.#capped(mark, (mark.sent = Date.now()) + URGENT_S * this.#unit());
     return true;
@@ -782,7 +781,7 @@ export class LiveKoe {
 
   /** Words said once Koe's turn and voice end (#go). @param {string} text @param {string} why @returns {Promise<boolean>} */
   #say(text, why) {
-    const n = { text };
+    const n = { text, told: true };
     this.#notes.push(n);
     return this.#go(why, () => { this.#notes = this.#notes.filter((x) => x !== n); });
   }
@@ -813,18 +812,24 @@ export class LiveKoe {
     else if (this.#waiting.length < 200) this.#waiting.push(fn); // about 20 s of speech
   }
 
-  /** A text turn, which Koe answers; cut: it cuts Koe off, heard this far; strict: only sound, a word, a card or a question answers it. @param {string} text @param {{ playedMs?: number }} [cut] */
-  #text(text, cut, strict = false) {
+  /**
+   * A text turn, which Koe answers; cut: it cuts Koe off, heard this far; strict: only sound, a word, a card or a question answers it;
+   * told: the lines in it that are annai's own (a reminder, a cue), which the log holds none of: What each half sees shows them.
+   * @param {string} text @param {{ playedMs?: number }} [cut] @param {boolean} [strict] @param {string[]} [told]
+   */
+  #text(text, cut, strict = false, told = []) {
     this.#trail = null;
     this.#poke();
+    const ts = Date.now();
+    for (const line of told) this.#told.push({ ts, text: line });
     this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
-    this.#answer(text, strict);
+    this.#answer(text, strict, told);
   }
 
-  /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text */
-  #answer(text, strict = text === null) {
+  /** Waits for the answer to a text turn (its words) or the user's turn (null); undefined: stops. @param {string | null | undefined} text @param {boolean} [strict] @param {string[]} [told] */
+  #answer(text, strict = text === null, told = []) {
     clearTimeout(this.#due?.timer);
-    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null, strict, tools: false, alive: false };
+    this.#due = text === undefined || this.state === 'closed' ? null : { text, timer: null, strict, tools: false, alive: false, told };
     this.#arm();
   }
 
@@ -867,11 +872,11 @@ export class LiveKoe {
     // Twice in a row: not a session to keep (its cut flag has Halves give the answer to Koe's next model, or Kokoro).
     if (!again) return this.#gone(true);
     this.#rescued = true;
-    if (due.alive) return this.#text(UNANSWERED, undefined, true);
+    if (due.alive) return this.#text(UNANSWERED, undefined, true, [UNANSWERED]);
     const heard = cleanSaid(this.#hear?.text ?? '');
     const words = due.text ?? (heard ? theirs(heard) : null);
     if (!(await this.#reconnect('silent', { fresh: true }))) return this.#gone(false);
-    if (words) this.#text(words);
+    if (words) this.#text(words, undefined, false, due.told);
   }
 
   /** @param {'start' | 'end'} edge */
@@ -1291,11 +1296,13 @@ export class LiveKoe {
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
     const o = this.#owed;
     const kept = this.#hearFirst ? [] : o.waiting;
-    const text = [...this.#notes.splice(0).map((n) => n.text), ...kept.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];
+    const notes = this.#notes.splice(0);
+    const text = [...notes.map((n) => n.text), ...kept.map((w) => wrapNote(String(w.note ?? ''), this.c.nonce)), ...(o.cue ? [CUE] : [])];
     if (!text.length) return;
+    const told = [...notes.filter((n) => n.told).map((n) => n.text), ...(o.cue ? [CUE] : [])];
     o.cue = false;
     if (kept.length) this.#went(o.waiting.splice(0));
-    this.#text(text.join('\n'));
+    this.#text(text.join('\n'), undefined, false, told);
   }
 
   /**
