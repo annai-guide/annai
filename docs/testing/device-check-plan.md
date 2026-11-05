@@ -434,7 +434,7 @@ Before you leave:
 - [ ] m5 #14, #15 (setup): GPS on (one tap on the chip), with Settings → Voice → "Keep the screen on while GPS is on" checked (it is, unless you turned it off). Both phones; walk to a café or a shop with a menu.
 
 On the walk:
-- [ ] **m5 #15**: Walking, the screen turns off as usual (the choice is per situation). On the next drive (D2), it stays on again.
+- [ ] **m5 #15**: Walking with GPS on: the screen stays on too (one setting, not one per situation). Turning GPS off lets it go; on the next drive (D2), it stays on again.
 - [ ] **m2c #1**: At the café, the dock's camera → a photo of the menu: it shows in your bubble, and Shiori says what it is. On both phones.
 
 After:
