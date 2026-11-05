@@ -316,7 +316,7 @@ test('GoAway: a new connection with the handle, and the conversation carries on 
     const setups = got(k, 'setup');
     assert.equal(setups[1].setup.sessionResumption.handle, 'h-2');
     const order = k.server.received().map((/** @type {any} */ m) => (m.setup ? 'setup' : m.clientContent ? m.clientContent.turns[0].parts[0].text : Object.keys(m)[0]));
-    assert.deepEqual(order, ['setup', 'Hi', 'setup', 'Do you remember?']);
+    assert.deepEqual(order, ['setup', '[typed] Hi', 'setup', '[typed] Do you remember?']);
     // The new connection is ready before the old one closes.
     assert.deepEqual((await lives(k)).map((/** @type {any} */ e) => e.data.state), ['open', 'ready', 'goaway', 'open', 'resumed', 'closed']);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'goaway');
@@ -419,7 +419,7 @@ test("an append note waits for Koe's turn to end and its voice to finish playing
     await until(() => k.agent.live.view.name === 'speaking');
     await k.agent.channel.send('kokoro', 'Nepenthe is open until 22:00 today (nepenthe.com).', 'append', 'tool');
     await new Promise((r) => setTimeout(r, 300));
-    assert.deepEqual(texts(k), ['What is Nepenthe?'], 'not while she speaks');
+    assert.deepEqual(texts(k), ['[typed] What is Nepenthe?'], 'not while she speaks');
     await soon(async () => texts(k).length === 2);
     const [stream] = k.platform.streams;
     assert.ok(stream.ended && !stream.stopped && stream.playedMs >= 950, 'her voice played to its end first');

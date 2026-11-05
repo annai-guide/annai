@@ -1,4 +1,5 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
+import { editedInstructions } from './her-instructions.js';
 import { ME } from '../scopes.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
@@ -14,8 +15,8 @@ import { lang, glossary } from '../l10n.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[], languages?: string }} Snapshot
- *   languages: the languages section's words (phase 2), from the languages setting
+ *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
+ *   languages: the languages section's words (phase 2), from the languages setting; edited: the instructions the user changed (her-instructions.js)
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -39,6 +40,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     skills: skillIndex(registry),
     // Then the screens' names and a Distances choice (localization L6).
     languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
+    edited: await editedInstructions(ws),
   };
 }
 
@@ -53,9 +55,10 @@ export function nextSnapshot(prev, fresh, { cold }) {
   const samePersonality = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName;
   // A skill installed or removed shows at once, as a new tool does (choice 10 of milestone 8a).
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
-  // So does a change of the languages setting: the user chose it just now.
-  if (samePersonality && sameSkills && prev.languages === fresh.languages) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages };
+  // So does a change of the languages setting, or of her instructions: the user chose it just now.
+  const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
+  if (samePersonality && sameSkills && sameEdits && prev.languages === fresh.languages) return prev;
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited };
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
@@ -65,7 +68,7 @@ function skillIndex(registry) {
 
 /** The system text: core, personality, a half's own part (Kokoro's, while Shiori is two halves), the languages, then the snapshot. @param {Snapshot} s @param {string} [part] */
 export function systemText(s, part = '') {
-  const parts = [CORE, s.personality.trim(), ...(part ? [part] : [])];
+  const parts = [s.edited?.shiori ?? CORE, s.personality.trim(), ...(part ? [part] : [])];
   if (s.languages) /* en */ parts.push(`# Languages\n${s.languages}`);
   if (s.profile.trim()) /* en */ parts.push(`# About the user (/me/profile.md)\n${s.profile.trim()}`);
   if (s.memory.trim()) /* en */ parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);

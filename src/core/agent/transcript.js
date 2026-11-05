@@ -1,10 +1,11 @@
 import { TALK_TAG, KOE_TAG, record, storedTexts } from './log.js';
 import { blobBytes } from '../reach.js';
 import { toBase64 } from '../bytes.js';
-import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
+import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs, koeLine, asideLabel } from './blocks.js';
 import { strayNote } from '../languages.js';
 import { handOverText } from '../handover.js';
 import { nativeExtra } from '../llm/contract.js';
+import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -139,8 +140,9 @@ export class Transcript {
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
-        const typed = koe ? theirs(texts.text) : texts.text;
-        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images, ...this.#handed(d)]);
+        // Koe reads typed words marked; one half's plain lines are the typed ones, as its instructions say.
+        /* en */ const said = koe ? (d.meanwhile ? `[meanwhile, the user wrote] ${theirs(texts.text)}` : koeLine(d, texts.text, r.images.length > 0)) : d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text;
+        this.#line([{ type: 'text', text: said }, ...r.images, ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -246,7 +248,7 @@ export class Transcript {
         if (d.dismissed && this.half !== 'one') this.#aside.add(d.id);
         return;
       }
-      /* en */ const label = d.dismissed ? '[heard, not meant for you]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
+      /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
       // Koe answers what it heard: Kokoro owes nothing for it.
       if (!d.dismissed && (own || this.half === 'koe')) {
@@ -459,6 +461,24 @@ export async function resolveEvent(store, e) {
     images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', hash: doc.hash, ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
   }
   return { texts, images };
+}
+
+/**
+ * A request's messages as lines to read: what the model is sent, tool calls, results and its private text included; pictures and audio as a short line.
+ * @param {Message[]} messages @returns {string[]}
+ */
+export function linesOf(messages) {
+  /* en */ return messages.flatMap((m) => m.parts.flatMap((p) => {
+    if (p.type === 'text') return [m.role === 'user' ? p.text : `[its private text] ${p.text}`];
+    if (p.type === 'reasoning') return p.text ? [`[its thinking] ${p.text}`] : [];
+    if (p.type === 'tool_call') return [`[it calls] ${p.name} ${JSON.stringify(p.input ?? {})}`];
+    if (p.type === 'tool_result') return [`[the result${p.isError ? ', an error' : ''}] ${p.content}`];
+    if (p.type === 'image') return [`[a picture${p.path ? `: ${p.path}` : ''}]`];
+    if (p.type === 'document') return [`[a document${p.name ? `: ${p.name}` : ''}]`];
+    if (p.type === 'speech') return [p.text ?? NOT_TRANSCRIBED];
+    if (p.type === 'audio') return ['[audio]'];
+    return []; // a reply kept as it came for its provider (native) holds the parts above
+  }));
 }
 
 /**

@@ -130,6 +130,8 @@ export class LiveKoe {
   #s = null;
   /** The resume handle, in memory only (decision 28). @type {string | undefined} */
   #handle;
+  /** The setup of the session in use, or of the one a kept handle resumes. @type {{ instructions: string, context: string, tools: string[], after: number } | null} */
+  #setUp = null;
   #wake = '';
   /** What the user speaks, the browser's language where they chose none (phase 2): a very short transcript in another language is flagged against it. @type {import('../languages.js').LanguageSettings | null} */
   #languages = null;
@@ -363,6 +365,11 @@ export class LiveKoe {
     const { instructions, context, languages, known } = await this.c.setup();
     this.#languages = known ?? null;
     const tools = definitions(await this.c.koe.liveTools());
+    // What a session was set up with, for What each half sees. A resumed one goes on from it: the provider holds the rest.
+    if (!resume || !this.#setUp) {
+      const [last] = await this.c.store.tx(['events'], 'readonly', (t) => t.listEvents(this.c.koe.scope, { reverse: true, limit: 1 }));
+      this.#setUp = { instructions, context, tools: tools.map((x) => x.name), after: last?.seq ?? 0 };
+    }
     this.#wake = newId('w');
     // The phone's sound, for the Trace's ready line: its rate and the output's own latency (the pops investigation).
     const output = this.c.voice?.platform?.player.output?.() ?? undefined;
@@ -375,6 +382,16 @@ export class LiveKoe {
     for (const fn of this.#waiting.splice(0)) fn(s);
     this.#arm();
     return s;
+  }
+
+  /**
+   * What a live session got: its setup as kept, with the last entry before it (after); with none going, the setup the next would get (after: null).
+   * @returns {Promise<{ instructions: string, context: string, tools: string[], after: number | null }>}
+   */
+  async sees() {
+    if (this.#setUp && (this.state === 'open' || this.#handle)) return this.#setUp;
+    const { instructions, context } = await this.c.setup();
+    return { instructions, context, tools: definitions(await this.c.koe.liveTools()).map((x) => x.name), after: null };
   }
 
   /** An open session's voice plays from now on, where it may. */
@@ -632,7 +649,7 @@ export class LiveKoe {
     const files = handed.length ? `[the user handed you ${handed.length === 1 ? 'a file' : `${handed.length} files`}; Kokoro reads them]` : '';
     /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
       : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]`
-        : files && !words ? files : `${theirs(words)}${files ? ` ${files}` : ''}`);
+        : files && !words ? files : `[typed] ${theirs(words)}${files ? ` ${files}` : ''}`);
     return true;
   }
 

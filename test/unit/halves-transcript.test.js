@@ -91,7 +91,7 @@ test("Koe's model turns and tool results never enter Kokoro's transcript; Kokoro
     ['user', 'result call_0: Open 11:30–22:00'],
   ]);
   assert.deepEqual(texts(koe), [
-    ['user', 'Hours?'],
+    ['user', '[typed] Hours?'],
     ['assistant', 'call tell_kokoro'],
     ['user', 'result call_0: sent'],
   ]);
@@ -121,18 +121,18 @@ test("Koe's transcript has Kokoro's notes wrapped in <from_kokoro>, and only its
   const starts = () => texts(koe).filter((m) => m[0] === 'user' && m.slice(1).some((x) => !String(x).startsWith('result '))).map((m) => ['user', m.slice(1).find((x) => !String(x).startsWith('result '))]);
   for (let i = 2; i <= 17; i++) await exchange(i);
   assert.equal(starts().length, 17);
-  assert.equal(starts()[0][1], 'message 1');
+  assert.equal(starts()[0][1], '[typed] message 1');
   // The 18th exchange: the start jumps by 6.
   await exchange(18);
   assert.equal(starts().length, 12);
-  assert.equal(starts()[0][1], 'message 7');
+  assert.equal(starts()[0][1], '[typed] message 7');
   assert.equal(koe.messages[0].role, 'user');
   assert.equal(koe.messages[0].parts[0].type, 'text', 'no result without its call');
   for (let i = 19; i <= 23; i++) await exchange(i);
   assert.equal(starts().length, 17, 'the start stays put between jumps, so the cached prefix holds');
-  assert.equal(starts()[0][1], 'message 7');
+  assert.equal(starts()[0][1], '[typed] message 7');
   await exchange(24);
-  assert.equal(starts()[0][1], 'message 13');
+  assert.equal(starts()[0][1], '[typed] message 13');
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'koe', nonce: NONCE })).messages, koe.messages, 'the window is the same from the log');
 });
 
@@ -234,7 +234,7 @@ test("a conversation from before the split reads exactly as it did; Kokoro's rul
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'kokoro' })).messages, kokoro.messages);
   // Koe, opened on it later, knows what was said, and owes no answer to a message it never had.
   const koe = await Transcript.load(store, SCOPE, { half: 'koe', nonce: NONCE });
-  assert.deepEqual(texts(koe), [['user', 'Hello', '[asked the user] "Which?" (options: ["A"])', 'A', '[said to the user] "Hi"', '[annai] Shown by annai itself, since you couldn\'t be reached: "Sunset"']]);
+  assert.deepEqual(texts(koe), [['user', '[typed] Hello', '[asked the user] "Which?" (options: ["A"])', '[typed] A', '[said to the user] "Hi"', '[annai] Shown by annai itself, since you couldn\'t be reached: "Sunset"']]);
   assert.equal(koe.unanswered, false);
 });
 

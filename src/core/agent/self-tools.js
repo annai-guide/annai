@@ -154,7 +154,7 @@ async function recall(agent, i) {
       const t = { ...e.data, ...(await storedTexts(agent.store, e)) };
       const photos = (Array.isArray(e.data?.images) ? e.data.images : []).map((/** @type {any} */ p) => ` ${photoStub(p)}`).join('');
       if (e.type === 'msg.user') out.push(`#${e.seq} user: ${t.text ?? ''}${photos}`);
-      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? 'someone said, not to Shiori' : 'user said'}: ${t.text ?? words.get(t.id) ?? '[audio]'}`);
+      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? (t.source === 'live' ? "heard, Koe didn't answer" : 'someone said, not to Shiori') : 'user said'}: ${t.text ?? words.get(t.id) ?? '[audio]'}`);
       else if (e.type === 'out.speak') /* en */ out.push(`#${e.seq} Shiori said: ${t.text ?? ''}`);
       else if (e.type === 'out.show') /* en */ out.push(`#${e.seq} Shiori showed: ${[t.card?.title, t.card?.text].filter(Boolean).join(' — ')}`);
       else if (e.type === 'out.ask') /* en */ out.push(`#${e.seq} Shiori asked: ${t.question} (${(Array.isArray(t.options) ? t.options : []).join(' / ')})`);
